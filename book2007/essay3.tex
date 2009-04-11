@@ -1,0 +1,1337 @@
+\ifx\wholebook\relax \else
+%-------------------------
+
+\documentclass{article}
+\input{common.tex}
+
+\setcounter{page}{1}
+
+\begin{document}
+
+\fi
+
+% ================================================================
+%                 COVER PAGE
+% ================================================================
+
+\title{Please try 'plis' (I)\newline
+       PLIS}
+
+\author{刘新宇
+\thanks{{\bfseries Liu Xinyu } \newline
+  5-2-201, ShiZiPo, Xi, DongZhiMenWai, DongCheng district, Beijing, 200027, P.R.China \newline
+  Email: liuxinyu95@gmail.com \newline
+  Tel:   +86-1305-196-8666 \newline
+  Fax:   N.A. \newline}
+  }
+
+
+\markright{Please try 'plis' (I), April. 2007}
+
+\maketitle
+
+\ifx\wholebook\relax
+\chapter{PLIS (I)}
+\section{abstruct}
+\else
+\begin{abstract}
+\fi
+
+C++的静态强类型系统带来了高效和强大，同时也带来了限制。在《lambda和高阶函数》\cite{my_lambda}一文中，
+类型系统和lambda的动态特性甚至产生了冲突。在程序设计语言的演化过程中，即出现了如C++这样
+的强类型系统语言。也出现了如Smalltalk这样的纯动态类型语言。甚至还有lisp这样几乎无类型
+的语言。从语法上说，既有完备强大的语言（ISO C++的标准连篇累牍），也有仅用简单几句就可以
+高度抽象的灵活语言。本文就试图定义一种极为简单一致的语言plis，然后利用C++实现该语言的求值器。
+最后利用plis本身，展示这一语言的实际功能。
+
+本文使用\LaTeXe排版，遵循FDL(GNU Free Documentation License)许可协议。
+并受其保护。具体请参考：http://www.gnu.org/copyleft/fdl.html
+由于作者水平有限，文中难免有谬误之处，欢迎广大读者指正！
+
+\ifx\wholebook\relax\else
+\end{abstract}
+\fi
+
+\vspace{3cm}
+{\bfseries Keywords:} plis, lisp, C++, evaluator
+
+{\bfseries Created:} 2007 March ~ April.
+
+\maketitle
+
+\lstset{language=C++, 
+  frame=single,
+  showstringspaces=false, 
+  breaklines=true, 
+  breakautoindent=true}
+
+% ================================================================
+%                 Introduction
+% ================================================================
+\section{Introduction}
+\label{intro}
+
+\begin{verse}
+少小离家老大归，乡音无改鬓毛衰， \\
+儿童相见不相识，笑问客从何处来。
+\end{verse}
+\begin{flushright}
+——唐，贺知章
+\end{flushright}
+
+\begin{figure}[htbp]
+	\begin{center}
+	\includegraphics[scale=0.5]{images/qmsht.eps}
+    \caption{From http://www.chinaqw.com.cn/news/2005/1109/68/4903.shtml}
+	\end{center}
+\end{figure}
+
+汉语拥有最多的使用者，然而汉语也有着几乎最多的方言。“他乡遇故知”，乡音让人倍感亲切。
+自然语言的奇妙之处在于丰富多彩。然而在人们探索科学的过程中，却发现自然语言仍然不够
+方便。于是人们通过对自然语言加以限制、简化，“制造”出了新的语言。例如数学中的代数，
+在某种意义上说是一种人造语言；逻辑学中的形式语言是一种人造语言。丰富
+多彩的计算机程序设计语言也是人们创造出的语言。
+
+由于人造语言的存在，产生了一个有趣的现象。人们会同时面对两种语言，作为被研究对象的语言和研究它时所
+使用的工作语言。科学上称前者为“对象语言”，后者为“语法语言”或“元语言”\cite{godel}。
+例如人们为了提高生产力，定义了Java语言，然后利用C++实现Java语言的编译器和虚拟机。在使用
+C++实现Java语言的过程中，Java是对象语言，而用于研究Java语言的C++，则是元语言。
+
+众多的计算机语言都有自己的语法，C++的语法甚至可以写成一本书。能否定义一种即简单又强大的
+语言呢？本文作者给出一个尝试：既然计算机语言，是命令计算机去做事情，所以可以通过一系列
+祈使句来描述这些命令。在汉语中，祈使句可以写成如下形式：
+
+\begin{center}
+谓语+宾语
+\end{center}
+
+其中谓语是一个动词，而宾语是一个或者多个被操作物体。“物体”这个概念比较模糊，它究竟是什
+么呢？比如当谓语是“相加”的时候，宾语可以是“数字1和数字2”，这时这一祈使句的结果是3；
+更复杂的情况是，宾语也可以是“1和‘相减：数字3和数字4’”，最终这一祈使句的结果是0。
+
+通过这个例子说明，宾语中被操作的物体也可以是一祈使句。采用形式化的定义，作者给出的语言可以
+描述如下：
+
+\begin{center}
+表达式 = 谓语＋宾语
+
+谓语 = 动作动词
+
+宾语 = 若干表达式的列表
+\end{center}
+
+这一语言用一句话概括，就是“处理列表”，英文是process list，而著名的lisp语言的含义正好
+是list processing。所以作者暂时将此语言命名为plis语言。在后继章节中，将依次给出plis
+语言的详细定义，然后简单介绍plis语言的强大特点。接着给出如何用C++语言实现的plis语言的方法。
+在本文的后继文章中，作者会给出一个plis语言的lexer，最终实现一个plis语言解释器。
+然后展示利用plis语言编程，完成其他程序设计语言中各种任务的方法。
+
+
+% ================================================================
+%                 Syntax definition
+% ================================================================
+\section{Synatax of plis}
+\label{plis_syntax}
+为了达到尽量简单和尽量统一的目标。可以一边考虑各种情况，一边调整语法的细节。
+最终希望所有plis程序，都可以表示为：“谓语+宾语”的一致形式。
+
+作为一个计算机语言，首先要有计算能力。最简单的计算就是算术。为了进行尝试，不妨
+学习TDD（test driven developing）的思想。利用TDD(test driven design)来设计plis
+语言。
+
+为此可以列举出一些基本的算术形式，用来测试plis的语法相容与否：
+
+\begin{enumerate}
+\item 计算如1加2, 或者3乘以4这样的简单运算；
+\item 计算如1和2和3和4的连加运算；
+\item 计算复合运算，如1加上3与4的乘积。
+\item 计算数字1，应返回1；
+\end{enumerate}
+
+为了满足1。可以把加法符号+或乘法符号*作为谓语动词，宾语则是要计算的数字，写成表达式的形式就是：
+\begin{verbatim}
++ 1 2
+* 3 4
+\end{verbatim}
+
+为了明确表明谁是谓语，谁是宾语，可以把宾语用括弧括起来，并在宾语间用逗号分割。这样就变成：
+\begin{verbatim}
++(1, 2)
+*(3, 4)
+\end{verbatim}
+
+为了通过第二条测试，只要允许多个宾语都放在括号中即可，如：
+\begin{verbatim}
++(1, 2, 3, 4)
+\end{verbatim}
+
+为了通过第三条测试，只要允许宾语列表中包含“动宾”短语就可以了，如：
+\begin{verbatim}
++(1, *(3, 4))
+\end{verbatim}
+
+比较难的是第四条测试。因为下面的语句：
+\begin{verbatim}
+1
+\end{verbatim}
+
+不满足“谓语+宾语”的形式。为了通过测试，必须修改语法形式，也就是plis语言
+的表达式不一定是“谓语+宾语”。在某些情况下可以缺少一部分。但是不能全缺少，否则就
+空空如也了。那么数字1究竟算宾语呢？还是算谓语呢？
+
+通常的思路是：由于1是名词，而谓语一般是动词。所以1应该算作宾语。但是这
+和前一节中祈使句的前提有些矛盾。人们希望通过一些列命令让计算机做事情。
+所以实际上输入一个数字1的时候，人们的本意是：“计算1的值”。其实古汉语中
+的确存在这样的情况，现代称为“词类活用”，也就是把名词作为动词使用。
+例如《论语》中：“车马衣轻裘”，就是驾驶马拉的车，穿薄皮袍子的意思。
+
+一旦认为“1”是一个谓语动词，语法形式就变得一致了。至此可以进一步归纳
+plis语言表达式的语法为：
+
+\begin{center}
+表达式 = 谓语 + [宾语]
+\end{center}
+
+其中，中括号表示这部分内容可以没有，也就是说，“谓语” 或者 “谓语+宾语” 都是
+合法的plis语言表达式。如果用形式化的符号表达语法，使之通过上面4个测试，就是：
+
+\begin{verbatim}
+expr = symbol | symbol + list
+symbol = +-*/0..9
+list = (expr, expr, ..., expr)
+\end{verbatim}
+
+现在再次回到TDD的测试阶段，列举更多的情况，看看能否纳入上述的语法描述中去：
+
+\begin{enumerate}
+\item 判断某两个值是否相等；
+\item 判断某个值是否大于（小于）另外一个值；
+\item 判断某几个值是否相等；
+\item 计算某个角度的正弦值；
+\end{enumerate}
+
+对于测试一，只要让等号(=)成为谓语就可以了。写成plis语句就是“=(x, 1)”，对于测试
+二，只要让<号成为谓语即可。为此得出结论，谓语可以是逻辑运算符。
+
+为了通过测试三，只要让逻辑运算符能够操作一个宾语列表就可以了，并且规定他们之间
+是逻辑与的关系，例如：
+\begin{verbatim}
+=(x, -(z, y), 1) //x等于z-y，并且x等于1
+<(-1, x, 1)      //-1<x<1
+\end{verbatim}
+
+为了通过测试四，必须允许sin作为动词，这样sin(3.14)就是合法的。所以谓语也可以包含
+英文字母。
+
+至此，为了通过所有测试，必须对语法稍作调整，变为：
+\begin{verbatim}
+expr = symbol | symbol + list
+symbol = +-*/=><a..zA..Z0..9
+list = (expr, expr, ..., expr)
+\end{verbatim}
+
+也就是说，逻辑符号，英文字母都可以进入谓语。经过这样的定义，plis语言基本具备了计算器
+的功能，但是距离一个强大的程序设计语言还不够。为此再利用TDD增加一些测试：
+
+\begin{enumerate}
+\item 定义一个值，代表圆周率；
+\item 定义一个函数，从华氏温度计算摄氏温度。
+\item 计算一个数的绝对值；
+\item 计算从1加到100的和。
+\end{enumerate}
+
+对于测试一，用户可能希望的是这样的语句："pi=3.14"。为了符合“谓语+宾语”的语法。可以
+将等号变成动词，pi和3.14作为宾语。由于等号=已经用作逻辑判断，因此产生了冲突，一个可行
+的办法是明确用英语单词define来强调定义的意义。最终符合plis语法的表达式是：
+\begin{verbatim}
+define(pi, 3.14)
+\end{verbatim}
+
+对于测试二，明显看出，用户希望定义一个函数，它能够把摄氏度转化到华氏度。仿照
+刚才的分析，把“定义”这个动词强化出来作为谓语，把函数名称（包括自变量）以及函数体作
+为两个宾语。这样就得到了符合plis语法的表达式，如下：
+
+\begin{verbatim}
+define(f->c(x),
+  /(*(-(x, 32),100),-(312,32))
+\end{verbatim}
+
+华氏温标的定义是，一个大气压下沸水的温度是312度，冰水混合物的温度是32度。
+所以上述定义的含义就是将x减去32后乘以100，最后再除以312与32的差。
+
+使用这个函数后，求华氏911的摄氏温度，就可以表达为：
+\begin{verbatim}
+f->c(911)
+\end{verbatim}
+
+对于测试三，明显这里需要实现其他语言中的if语句。根据绝对值的定义，必须先
+判断一个数是否小于0，如果不小于零，就返回它本身，否则要返回它的相反数。
+为了符合“谓语+宾语”的语法一致性。可以再次使用词类活用的办法。将if用作动词，
+判断表达式作为第一个宾语，表达式为真时执行的内容作为第二个宾语，为假时执行
+的内容作为第三个宾语。这样绝对值就可以表示为：
+\begin{verbatim}
+if(<(x, 0), -(0, x), x)
+\end{verbatim}
+
+进一步还可以定义一个abs函数：
+\begin{verbatim}
+define(abs(x),
+  if(<(x, 0), 
+     -(0, x), 
+	 x))
+  
+abs(-3)
+\end{verbatim}
+
+为了计算1到100的和，一般语言中使用了循环语句，为了保持plis的简洁。完全可以用
+递归代替循环。例如：
+
+\begin{verbatim}
+define(sum(n),
+  if(=(n, 1), 
+     1, 
+	 +(n, sum(-(n, 1)))))
+
+sum(100)
+\end{verbatim}
+
+这样，就不用在plis中特意再定义循环语句了。通过上述一些列TDD的设计，plis语言
+已经出具雏形。为了让plis语言能够真正被使用，不妨利用C++语言实现一个plis求值器。
+
+
+% ================================================================
+%                 plis evaluator
+% ================================================================
+\section{plis evaluator} \label{evaluator}
+
+为了实现一个plis求值器，首先需要建模，也就是用什么样的模型来表示plis表达式；用
+什么样的模型来表示plis求值的过程。
+
+% ================================================================
+%                 expression
+% ================================================================
+\subsection{expression modal}
+对于第一个问题，相对容易一些，这主要是因为plis语言的语法极为简单。都可以用“谓语＋宾语”
+的形式加以概括。根据上一节给出的形式话语法定义。可以很容易地给出表达式的C++模型。
+
+\begin{lstlisting}
+class expr{
+private:
+	std::string symbol;
+	std::list<expr> elist; //list of expr
+};
+\end{lstlisting}
+
+该模型表示，一个plis表达式是一个符合结构，包括两个部分，一个是用字符串表示的谓语
+部分，一个使用包含若干子表达式的宾语列表。
+
+为了方便构造各种表达式，并且要使表达式满足放入STL容器list中的要求，需要给expr增加
+一些不同形式的构造函数，拷贝构造函数，赋值，相等判断等辅助成员函数。
+
+\begin{lstlisting}
+class expr{
+public:
+	typedef std::list<expr> EList;
+	typedef EList::const_iterator ExprIt;
+
+	//ctors
+	expr(){} //create an empty expression
+	expr(const std::string& sym):symbol(sym){} //only contains verb
+	expr(const char* str):symbol(str){} //from c str, only contains verb.
+	expr(const EList& loe):elist(loe){} //an expression without verb
+	expr(const std::string& sym, const EList& loe):symbol(sym),elist(loe){}
+
+	//copy ctor and assingment
+	expr(const expr& ref):symbol(ref.symbol), elist(ref.elist), env(ref.env){};
+	const expr& operator=(const expr& ref){
+		symbol=ref.symbol;
+		elist =ref.elist;
+		env=ref.env;
+		return *this;
+	}
+
+	const bool operator==(const expr& ref) const{
+		return symbol==ref.symbol && elist==ref.elist;
+	}
+
+private:
+	std::string symbol;
+	std::list<expr> elist; //list of expr
+};
+\end{lstlisting}
+
+使用这一C++表达式模型，可以比较容易地从plis语句，构造出用C++表示的表达式对象，例如：
+\begin{lstlisting}
+//1. +(1, 2)
+expr e1=expr("+").append("1").append("2");
+
+//2. +(1, *(3, 4))
+expr e2=expr("+").append("1").append(
+	expr("*").append("3").append("4"));
+\end{lstlisting}
+
+为了调试方便，能够容易地从C++的表达式对象变换为plis语句，可以给expr类增加一个to\_string()
+函数：
+\begin{lstlisting}
+class expr{
+public:
+	typedef std::list<expr> EList;
+	typedef EList::const_iterator ExprIt;
+
+    //...snippet...
+	std::string to_string() const{
+		std::string res;
+		if(!elist.empty()){
+			res+="(";
+			for(ExprIt it=elist.begin(); it!=elist.end(); ++it)
+				res+=it->to_string()+",";
+			res[res.length()-1]=')';
+		}
+		return symbol+res;
+	}
+    //...snippet...
+\end{lstlisting}
+
+该函数将谓语动词放在最前面，然后检查是否存在宾语，如果存在就在宾语前后
+附加上小括号，然后遍历宾语列表，递归地调用宾语列表中每个元素的的to\_string()函数。
+
+使用这一辅助函数，就可以将e1, e2输出为字符串形式的plis表达式了。如：
+\begin{lstlisting}
+std::cout<<"e1:"<<e1.to_string()<<"\n";
+std::cout<<"e2: "<<e2.to_string()<<"\n";
+\end{lstlisting}
+
+这两句会输出结果:
+\begin{verbatim}
+e1:+(1,2)
+e2: +(1,*(3,4))
+\end{verbatim}
+
+有了表达式模型，下一步就可以进一步思考求值过程模型了。求值器接受expr作为输入，
+返回求值后的结果expr作为输出。有读者也许会提出疑问：“为什么求值器不是接受
+用户输入的字符串作为输入，返回求值后结果的字符串形式作为输出？”
+
+如果这样的话，就必须在开发求值器前先开发出一个lexer，它能够将字符串转化为
+expr对象。而lexer的开发并不简单。一开始把精力集中在lexer上。会分散对于
+求值器本身的关注。
+
+为了“明心见性，直指人心”，本文将暂时将开发lexer的工作放到一边，专注于plis
+求值器本身。读者可以先利用expr的构造函数和append方法，创建出希望的plis程序。
+
+% ================================================================
+%                 environment
+% ================================================================
+
+\subsection{environment modal}
+
+对于求值器的模型，比较有代表性的是“代换模型”和“环境模型”\cite{sicp}。其中
+代换模型的思路直观朴素，实现也比较简单。它的想法和中学数学中的初等代数近似。即使用
+表达式中的实际参数取代函数中的形式参数。然后对函数体求值。例如求值-3的绝对值时，
+代换模型将abs函数体表达式:
+\begin{verbatim}
+  if(<(x, 0), -(0, x), x))
+\end{verbatim}
+中的x代换成-3，然后求得最终结果3后返回。
+
+但是对于一些复杂的情况代换模型却难以处理，例如：
+
+\begin{verbatim}
+define(abs2(x),
+  define(minus(x), -(0, x))
+  if(<(x, 0), 
+     minus(x), 
+     x))
+
+define(x, 1)
+abs(x)
+
+define(x, -2)
+abs(x)
+\end{verbatim}
+
+函数abs2为了方便，又再内部定义了一个minus函数用于求相反数。用户使用abs2求值他
+自己定义的x。问题的复杂在于，所有变量都叫x，那么究竟x应该用什么值来代换？
+
+解决这个难题，可以参考“语法语言”C++的处理办法。在C++中有作用域的概念，例如：
+\begin{lstlisting}
+int zero=0;
+
+int minus(int x){
+  return zero-x;
+}
+
+int abs2(int x){
+  if(x<0)
+    return minus(x);
+  return x;
+}
+
+int main(){
+  int x=1
+  abs2(x);
+  x=-2;
+  abs2(x);
+}
+\end{lstlisting}
+
+在C++中，每个变量都有它所属于的作用域，作用域好像一个封闭的屋子。
+屋子里面的人无法走出去，他只能在自己的屋子里面兴风作浪，外面的
+人却根本不知道。所以即使两个人名字相同都叫张三，一个在屋子里，一个
+在屋子外，外面的人却仅仅知道外面的张三而根本不知道屋子里面也有一个
+人叫张三。然而屋子里面的人却能通过窗户看到外面的世界。所以minus
+屋子里面能够知道外面的世界很精彩，还有一个叫zero的人在那里存在。
+
+求值器的环境模型就是利用这个概念。任何表达式都有它所存在的环境。
+对表达式求值必须参考它所处的环境。当表达式中出现未知变量时，求值器
+首先在当前表达式所处的环境中查找这个变量的值，如果当前环境中有
+定义，就使用该值进行代换。如果没有找到，求值器就“走出屋子”到
+当前环境的“外面世界”去寻找此变量。如果还没有找到，就尝试到更外围的
+环境去找，直到找到最外围的全局环境。如果还没有，说明这是一个语法
+错误。
+
+%=========================
+% TODO: 插图
+%=========================
+\begin{figure}[htbp]
+	\begin{center}
+	\includegraphics[scale=0.5]{images/plis_env.eps}
+	\end{center}
+\end{figure}
+
+在求值过程中，求值器也许发现需要进入其他小屋子（调用函数）。这时
+求值器会现为这个小屋子创建一个新环境，并且告知这个小屋子里的人。
+他们外围的环境是哪里。这样当在小屋子里面求值时，如果需要他们就可以
+到外围环境中去查找变量。一旦求值完毕，求值器就摧毁刚才给小屋子
+创建的临时新环境。大家从此“不知有汉，无论魏晋”。
+
+对表达式所处的环境建模并不困难。根据上面的描述，环境中应该存储着
+一些变量的名字和对应的值，以便求值器在处理表达式时能够在环境中
+查找变量。同时一个环境还应该记录着它所处的外围环境是谁，这样求值器
+一旦在当前环境中没有查找到变量，就可以进一步到外围环境中查找。
+
+因此，环境模型被实现为链表的数据结构，其C++代码的定义为：
+\begin{lstlisting}
+class Env{
+public:
+	Env():outter(0){}
+	Env(const Env& ref):var_expr(ref.var_expr), outter(ref.outter){}
+
+	const Env& operator=(const Env& ref){
+		if(this == &ref) return *this;
+		var_expr=ref.var_expr;
+		outter = ref.outter;
+		return *this;
+	}
+
+	expr look_up(const expr& exp);
+
+	void define(const expr& var, const expr& val);
+
+private:
+	std::map<std::string, expr> var_expr;
+	Env* outter;	//just reference, not own
+};
+\end{lstlisting}
+
+为了强调变量名和变量值的成对关系。环境中使用map来保存变量的“名字－值”对。
+同时环境还实现了拷贝构造和赋值，尤其赋值时，为了避免自己给自己赋值时的“深拷贝”
+操作。还使用了《Effectvie C++》中的条款\cite{effectivecpp}。成员函数
+define用于为某个变量定义一对名字和值。而look\_up则用于递归地查找某个变量的值。
+它们具体的实现为：
+
+\begin{lstlisting}
+void Env::define(const expr& var, const expr& val){
+	var_expr[var.get_symbol()]=val;
+}
+
+expr Env::look_up(const expr& exp){
+	if(exp is primitive such as +-*/=...)
+		return exp;
+
+	//search var recursively.
+	if(var_expr.find(exp.get_symbol())!=var_expr.end())
+		return var_expr[exp.get_symbol()];
+	else if(outter)
+		return outter->look_up(exp);
+	else
+		throw std::string("Unbound var: ")+exp.to_string();
+}
+\end{lstlisting}
+
+其中get\_symbol用于返回expr中的symbol成员变量，如果待查找的变量是一些
+基本谓语如加减乘除等，则不做进一步查找。求值器会直接调用C++的加减乘除等功能
+进行计算。具体将在后继内容中叙述。
+
+当然，为了方便，也可以写一个批量向环境中增加成对的变量－值数据的append方法，
+并提供使用这一方法的构造函数。这里不再赘述，读者可以作为练习自行实现，或参考
+附录中的代码。
+
+当创建一个新的内部环境时，需要把当前环境作为新环境的外围环境。所以需要给Env
+增加一个extend方法，其实现如下：
+
+\begin{lstlisting}
+Env Env::extend(const expr& vars, const expr& vals){
+	//local_env-->outter_env-->...-->global_env
+	Env res(vars, vals);
+	res.outter=this;
+	return res;
+}
+\end{lstlisting}
+
+全局环境被初始化为一空的环境，可以仿照《effective Java》中的“静态工厂”
+方法创建它。这一内容也留给读者作为练习，附录代码中有其全部的实现。
+
+
+% ================================================================
+%                 evaluator
+% ================================================================
+
+\subsection{evaluator}
+最主要的模型完备后，就可以着手建立求值器的内核。为了稳健前进，而不是一蹴而就，这里
+仍然采用TDD方法，逐步完善并作最终实现plis求值器。
+
+首先写出一些测试代码：
+\begin{lstlisting}
+//1. self evaluate 1
+expr e1=expr("1");
+std::cout<<"eval: "<<e1.to_string()<<"=";
+std::cout<<Evaluator::instance().eval(e1).to_string()<<"\n";
+
+//2. +(1, 2)
+expr e2=expr("+").append("1").append("2");
+std::cout<<"eval: "<<e2.to_string()<<"=";
+std::cout<<Evaluator::instance().eval(e2).to_string()<<"\n";
+
+//3. +(1, *(2, 3))
+expr e3=expr("+").append("1").append(
+          expr("*").append("2").append("3"));
+std::cout<<"eval: "<<e3.to_string()<<"=";
+std::cout<<Evaluator::instance().eval(e3).to_string()<<"\n";
+\end{lstlisting}
+
+为了能让这些测试代码通过，下面来着手实现类Evaluator。第一个问题是有几个求值器和
+几个全局环境存在？仔细思考可以发现，维持单一的求值器和单一的全局环境非常重要。
+所以Ealuator被实现为一个singleton，在众多single的实现中，Scott Mayer的
+实现比较简单\cite{moderncpp}。为此本文采用这种Mayer Singleton。
+求值器的入口函数接受一个表达式，然后它将表达式，连同全局环境一起作为参数开始求值
+它首先要判断表达式的类型，对于测试1，如果表达式本身是就是一个数，（称为自求值self 
+evaluator）那么直接返回表达式本身就可以了。为此首先将求值器实现如下：
+
+\begin{lstlisting}
+class Evaluator{
+public:
+	static Evaluator& instance(){
+		static Evaluator inst; //Mayer Singleton
+		return inst;
+	}
+
+	expr eval(const expr& exp){
+		return eval(exp, Env::global_env);
+	}
+
+	expr eval(const expr& exp, Env& env){
+		if(exp.is_self_eval())
+			return exp;
+		else
+			return expr(std::string("error. unknown expression\n")+exp.to_string());
+	}
+
+protected:
+	Evaluator(){}
+};
+\end{lstlisting}
+
+如何判断一个表达式就是一个简单的数字呢？根据前面第一节中的叙述，plis
+利用词类活用的方式把数字看作谓语动词。所以如果一个表达式仅仅是一个数字。
+则它一定不含有宾语列表。也就是expr对象的symbol成员不为空字符串。而
+elist成员为空列表。
+
+其次，即使满足上述条件，好要保证symbol表达的是一个合法的整数或者实数。
+而不是一个英语单词。在标准c中，这可以通过atoi之类的函数进行转换。但是
+在C++中，有更为安全有效的字符流可以用来实现同样的功能\cite{cppstr2val}
+\cite{cppval2str}。
+下面的代码分别用来实现字符串到数字以及数字到字符串的转换。
+
+\begin{lstlisting}
+struct util{
+	template <class T>
+	static bool str_val(T& val, const std::string& s, 
+		std::ios_base& (*fmt)(std::ios_base&)=std::dec)
+	{
+		std::istringstream iss(s);
+		return !(iss >> fmt >> val).fail();
+	}
+
+	template<class T>
+	static std::string val_str(const T& val){
+		std::stringstream strm;
+		strm << val;
+		return strm.str();
+	}
+};
+\end{lstlisting}
+
+有了这些工具，就可以给expr类增加一个用于判断是否是数字的方法。该方法首先
+检查表达式是否仅有谓语动词，然后尝试将谓语动词转换为数字，若成功，则返回真
+否则返回假。其实现如下：
+
+\begin{lstlisting}
+class expr{
+	//...
+	const bool is_self_eval() const{
+		if(is_symbol()){
+			long ix;
+			if(util::str_val<long>(ix, symbol))
+				return true;
+			double fx;
+			if(util::str_val<double>(fx, symbol))
+				return true;
+		}
+		return false;
+	}
+
+    const bool is_symbol() const {
+		return elist.empty() && (!symbol.empty());
+	}
+    //...
+\end{lstlisting}
+
+该程序先尝试将谓语动词转换为整数，如果失败，就尝试转换为实数。为了简单，plis
+暂时不认为字符串属于基本常量类型。如果读者感兴趣，可以自行尝试，似的plis
+支持字符串处理。
+
+经过这些改动，测试1可以顺利通过。程序输出：“eval: 1=1”
+
+为了让测试2通过，也就是能够计算+(1, 2)=3，需要实现加法运算。加法运算，连同
+普通的函数调用，如sin(3.14)，都可以看作函数求值。其中谓语动词是函数名，宾语
+是自变量列表。在语义上，其表现为将谓语“施加”到宾语上。为了抽象这种语义，求值
+器需要增加一个apply方法，专门用于处理函数计算。
+
+\begin{lstlisting}
+class Evaluator{
+    //...snippet...
+protected:
+	expr apply(const expr& proc, const expr& args){
+		if(is proc primitive +-*/?){
+			call C++ +-*/ for calculating
+		}
+		else{
+			process user defined compound function
+		}
+	}
+\end{lstlisting}
+
+apply方法接受两个参数，一个是代表谓语动词的proc，另一个是代表宾语列表的args。
+
+当求值器求值某一表达式时，它首先要判断这一表达式，是否是apply的语义。也就是
+判断是否是“谓语施加到宾语”的语义。这一判断并不复杂。只要一个expr的谓语symbol
+不为空字符串，并且它的宾语列表elist也不为空列表就可以认定是一个函数求值了。
+为此给expr增加一个is\_app方法。
+
+\begin{lstlisting}
+const bool expr::is_app() const{
+	return (!symbol.empty()) && (!elist.empty());
+}
+\end{lstlisting}
+
+然后，在求值时一旦判断出某个表达式是函数语义，就调用apply方法。所以eval改写为：
+
+\begin{lstlisting}
+class Evaluator{
+    //...
+    expr Evaluator::eval(const expr& exp, Env& env){
+	    if(exp.is_self_eval())
+		    return exp;
+	    else if(exp.is_app())
+		    return apply(
+			    get_operator(exp),
+			    get_operands(exp));
+	    else
+		    //...
+    }
+    //...
+private:
+    expr get_operator(const expr& exp){ return expr(exp.get_symbol()); }
+
+    expr get_operands(const expr& exp){ return expr(exp.get_list()); }
+    //...
+\end{lstlisting}
+
+在调用apply的过程中，还要分别从表达式中抽取出谓语和宾语，传递给apply的proc参数
+和args参数。这一抽取动作，分别由get\_operator和get\_operands来完成。
+这两个函数非常简单，就是直接调用expr的getter方法，返回表达式的symbol和elist。
+他们实现为：
+
+\begin{lstlisting}
+std::string expr::get_symbol() const{ return symbol; }
+const EList& expr::get_list() const { return elist; }
+\end{lstlisting}
+
+剩下的就是实现apply的细节：检查proc是否是加减乘除等基本运算，如果是，则调用C++语言自身的
+算术功能。对args进行求值。
+
+为了简单起见，求值器规定下述运算属于基本运算，可以由C++提供给plis。
+\begin{lstlisting}
+static const char* prim_proc_names[]=
+	{"+", "-", "*", "/", "=", "<"};
+\end{lstlisting}
+用于判断某个表达式是否是基本运算，就采用查表的方法，看该表达式的谓语动词是否是上述列表中
+的内容之一。
+
+\begin{lstlisting}
+class prim_proc{
+	static const bool is_prim_proc(const expr& exp){
+		for(int i=0; i<sizeof(prim_proc_names)/sizeof(char*); ++i)
+			if(exp.to_string() == prim_proc_names[i])
+				return true;
+		return false;
+	}
+};
+\end{lstlisting}
+
+一旦是发现某个表达式是基本运算，就利用前面的util工具，将args的内容变成数字，然后调用C++
+的算术功能，计算最终结果，其实现如下：
+\begin{lstlisting}
+class prim_proc{
+	//...
+    prim_proc(const expr& _proc, const expr& _args)
+		:proc(_proc), args(_args){}
+
+	expr apply(){
+		if(proc.to_string()=="+")
+			return plus(args);
+
+		if(proc.to_string()=="-")
+			return minus(args);
+
+		if(proc.to_string()=="*")
+			return multiply(args)
+
+		if(proc.to_string()=="/")
+			return divide(args)
+
+		throw std::string("unknown primitive proc")+proc.to_string();
+	}
+
+private:
+    static expr plus(const expr& args){ 
+		long res=0;
+
+		expr::EList::const_iterator it;
+		for(it==args.get_list().begin(); it!=args.get_list().end(); ++it)
+		{
+			long ix;
+			util::str_val<long>(ix, it->get_symbol())
+			res+=ix;
+		}
+
+		return expr(util::val_str(res));
+	}
+
+    //...implements minus, multiply, divide etc.
+
+	expr proc;
+	expr args;
+};
+\end{lstlisting}
+
+这一例子实现，仅仅处理了计算整数的情况，并且没有做任何错误处理。读者可以参考附录的代码，
+了解处理实数以及整数实数混合计算的实现。另外，由于加减乘除的实现极为相似，所以作者采用了
+policy的方式\cite{moderncpp}，将其抽象为二元计算，具体的计算则以一个policy注入高阶函数。这些都可以参考
+附录中的代码。
+
+于是Evaluator::apply函数就可以利用prim\_proc类细化为：
+\begin{lstlisting}
+expr Evaluator::apply(const expr& proc, const expr& args){
+	if(prim_proc::is_prim_proc(proc)){
+		return prim_proc(proc, args).apply();
+	}
+	else{
+		//process user defined compound function
+		return expr(); 
+	}
+}
+\end{lstlisting}
+
+经过上述变更，求值器就可以顺利通过第二个测试。程序输出：
+\begin{verbatim}
+eval: 1=1
+eval: +(1,2)=3
+\end{verbatim}
+
+为了通过第三个测试。需要进一步改进求值器的实现。第三个测试说明，被求值表达式的宾语中，可以
+不仅仅含有数字，而且含有子表达式。也就是表达式是递归的。所以解决方案自然也是递归：递归求值
+宾语列表中的所有子表达式，直到宾语列表的值全变成基本数字后，再利用谓语求值符合表达式的最终
+结果。为此将eval函数中相关的部分加入递归代码：
+\begin{lstlisting}
+expr Evaluator::eval(const expr& exp, Env& env){
+	//...
+	else if(exp.is_app())
+		return apply(
+			get_operator(exp),
+			value_list(get_operands(exp), env));
+	//...
+}
+
+expr Evaluator::value_list(const expr& exp, Env& env){
+	expr vals;
+	for(expr::EList::const_iterator it=exp.get_list().begin(); 
+		it!=exp.get_list().end(); ++it)
+			vals.append(eval(*it, env));
+	return vals;
+}
+\end{lstlisting}
+
+经过上述改动，测试就可以通过。现在程序输出：
+\begin{verbatim}
+eval: 1=1
+eval: +(1,2)=3
+eval: +(1,*(2,3))=7
+\end{verbatim}
+
+% ================================================================
+%                 More powerful evaluator
+% ================================================================
+\section{More powerful evaluator} \label{more_powerful}
+通过上一节的一些列实现，求值器已经基本能够像一个计算器一样工作了。
+但是作为一门人造语言plis的求值器，仅仅能够计算四则运算表达式还不够。
+为此，下面依然采用TDD的方法。继续完善plis求值器。首先列举出一些测试
+例子：
+
+\begin{lstlisting}
+//5. eval: define(one, 1) = ok
+//   eval: one = 1
+//6. eval: define(two, +(one, 1)) = ok
+//   eval: two = 2
+//7. eval: define(plus(x,y), +(x, y)) = ok
+//   eval: plus(1, 2) = 3
+//8. eval: define(frac(n), if(=(n, 0), 1, *(n, frac(-(n, 1))))) = ok
+//   eval: frac(6) = 720
+\end{lstlisting}
+
+这些测试，主要涉及到了变量和函数的定义。如果一个变量或者函数定义成功，
+求值器就返回OK。以后如果使用这个变量，求值器就给出变量的值；如果调用
+定义过的函数，求值器就会使用实际参数替换形式参数，给出函数求值的结果。
+
+\subsection{variable definition}
+首先实现变量的定义及引用功能。为了通过测试5，需要针对define这个谓语做
+特殊的操作。一旦发现，define是谓语，就将接下来的宾语列表分成两个部分，
+一部分是变量的名字，另一部分是变量的值，当然这个值可能还需要进一步计算
+才能得到最终结果。根据前面叙述的“环境模型”。明显这里需要将变量的名字和
+值加入到“当前”环境中去。这样将来一旦用变量名作为谓语求值，就可以到环境
+中查找到该变量对应的值并返回。
+
+为了处理define谓语，首先要给eval函数增加一条针对define的判断。
+\begin{lstlisting}
+expr Evaluator::eval(const expr& exp, Env& env){
+	//...
+	else if(exp.is_def())
+		return eval_def(exp, env);
+
+	else if(exp.is_app())
+	//...
+}
+
+const bool expr::is_def() const{ return symbol=="define"; }
+\end{lstlisting}
+
+增加了针对define的判断后，还需要进一步实现eval\_def。为了进一步降低
+Evaluator的复杂度，并且考虑定义变量和定义函数在含义上的相似。这里可以
+考虑把定义的特点抽象出来。一个定义大约包含两个部分，所被定义事物的名字
+和它的值，把这个特典抽象成C++抽象类的话，就形成了如下接口：
+\begin{lstlisting}
+class definition{
+public:
+    definition(const expr& _exp):exp(_exp){}
+	virtual ~definition(){}
+	virtual expr var()=0;
+	virtual expr val()=0;
+protected:
+	expr exp;
+};
+\end{lstlisting}
+
+然后针对变量的定义，可以这样实现此接口：变量都具有形式define(var, value)。
+所以表达式宾语列表的第一个元素就是变量名，而宾语列表的后继元素就是变量的值。
+
+\begin{lstlisting}
+class var_def: public definition{
+public:
+    var_def(const expr& _exp):definition(_exp){}
+	expr var(){	return *exp.begin();}
+	expr val(){	return *(++exp.begin());}
+};
+\end{lstlisting}
+
+这个var\_def对象，应该是在用户定义变量时被创建。而在定义函数时，创建另外一个
+函数定义对象。这种根据表达式不同，创建不同对象的行为，正好符合Object Factory模式\cite{gof}。
+所以。可以增加一个表达式定义工厂：
+
+\begin{lstlisting}
+struct def_factory{
+	static definition* create(const expr& exp){
+		if(exp.begin()->is_symbol())
+			return new var_def(exp);
+		//else function definition
+	}
+};
+\end{lstlisting}
+
+这样就可以细化求值器中针对定义的处理函数了。具体来说就是
+首先根据表达式类型，创建一个定义对象。然后将这个定义对象
+中的名称和值增加到当前环境中去。然后就可以释放定义对象的
+内存，并返回OK作为结果给用户。
+
+\begin{lstlisting}
+expr eval_def(const expr& exp, Env& env){
+	definition* def=def_factory::create(exp);
+	env.define(def->var(), eval(def->val(), env));
+	delete def;
+	return expr("OK");
+}
+\end{lstlisting}
+
+由于前面的环境模型采用了map作为内置存储的数据结构，所以增加
+一对新的变量定义并不复杂，只要调用标准库的map功能即可：
+\begin{lstlisting}
+void Env::define(const expr& var, const expr& val){
+	var_expr[var.get_symbol()]=val;
+}
+\end{lstlisting}
+
+现在就可以测试求值器是否通过了第5个测试了，测试发现，第5个测试
+只能成功一半，也就是定义成功，但是用one求值时，发生了错误。为了
+使得第5个测试的后半部分也通过。必须增加在环境中查找变量的功能。
+当求值器判断用户在以某个变量的名字作为谓语动词求值时，就在当前
+环境中查找此变量的值，如果没有找到就去当前环境的外围环境中进一步
+查找。直到全局环境如果也找不到的话，就报错给用户说这是一个为定义
+的变量。否则一旦找到，就对该变量对应的值表达式进行求值，并将结果
+返回给用户。
+
+首先要增加的一共功能是，判断一个表达式是否是以变量的名字作谓语。
+为此给expr增加如下成员方法：
+\begin{lstlisting}
+const bool is_var() const{
+	return is_symbol();	//weak than is_self_eval. must after it.
+}
+\end{lstlisting}
+
+需要注意的是，这个判断要比判断一个表达式是否是数字来的弱，
+因此必须放在自求值判断的后面。这样eval函数就变成：
+
+\begin{lstlisting}
+expr Evaluator::eval(const expr& exp, Env& env){
+	if(exp.is_self_eval())
+		return exp;
+
+	else if(exp.is_var())
+		return env.look_up(exp);
+
+	//...
+\end{lstlisting}
+
+第5个测试的后半部分以及第6个测试就都可以通过了。程序输出：
+\begin{verbatim}
+eval: define(one,1)=OK
+eval: one=1
+eval: define(two,+(one,1))=OK
+eval: two=2
+\end{verbatim}
+
+
+\subsection{function definition and lambda}
+为了通过第7个测试，需要增加针对函数定义的处理。由于前面针对
+定义进行了一部分的抽象。所以针对函数的定义，可以通过实现definition
+接口来建模，函数一般都具有这样的形式
+
+\begin{verbatim}
+define(func(x, y), +(x, y,...))
+\end{verbatim}
+
+也就是说包含3个部分，函数名称，自变量列表，和函数体，这样就无法
+归纳为名称与值的抽象形式。为了统一函数和变量的定义，不妨利用lambda
+的成果，将函数表示为lambda表达式。这样函数定义的名称就是函数名，而
+函数定义的值，就是lambda表达式。函数的自变量是lambda表达式中的变量
+列表，函数体是lambda表达式的体。
+
+采用这样的统一形式后，函数定义被实现为：
+
+\begin{lstlisting}
+class proc_def: public definition{
+public:
+    proc_def(const expr& _exp):definition(_exp){}
+	expr var(){	return expr(exp.begin()->get_symbol());}
+	expr val(){
+		//create a lambda expression to wrap func body and args.
+	}
+};
+\end{lstlisting}
+
+并且用于创建定义的对象工厂被完善为：
+\begin{lstlisting}
+static definition* def_factory::create(const expr& exp){
+	if(exp.begin()->is_symbol())
+		return new var_def(exp);
+	return new proc_def(exp);
+}
+\end{lstlisting}
+
+剩下的问题就是如何创建lambda表达式，并针对lambda表达式求值。在plis中
+lambda表达式并不特殊，依然可以统一为“谓语+宾语”的形式。例如：
+
+\begin{verbatim}
+lambda( (x, y), +(x, y) )
+\end{verbatim}
+
+其中谓语是lambda，宾语包含两个部分，一个是形式参数列表；另一个是匿名函
+数体。由于lambda完全为用户自定义过程的实现。所以可以将lambda相关的内容
+封装到一个类内，并提供一个make\_lambda从参数列表以及函数体中创建lambda
+表达式：
+
+\begin{lstlisting}
+class user_proc{
+public:
+	typedef expr::EList EList;
+	typedef expr::ExprIt ExprIt;
+
+	static expr make_lambda(EList params, ExprIt body, ExprIt end){
+		expr res=expr("lambda").append(params);
+		for(ExprIt it=body; it!=end; ++it)
+			res.append(*it);
+		return res;
+	}
+};
+\end{lstlisting}
+
+创建lambda表达式的过程，就是声明一个expr，将谓语动词设置为lambda，然后
+将参数作为第一个元素加入宾语列表，函数体依次加入到后继宾语列表。
+
+实现创建Lambda表达式的方法后，proc\_def中的val就可以细化为：
+\begin{lstlisting}
+expr proc_def::val(){
+	return user_proc::make_lambda(
+				  exp.begin()->get_list(), 
+				  ++exp.begin(), exp.end());
+}
+\end{lstlisting}
+
+为了通过第7个测试，还必须实现针对lambda表达式的求值。首先要增加判断一个
+表达式是否是lambda表达式的能力，为此给expr增加一个判断函数：
+\begin{lstlisting}
+const bool expr::is_lambda() const { return symbol=="lambda"; }
+\end{lstlisting}
+
+在求值器中，一旦发现待求值表达式是lambda表达式后，就要将lambda表达式中的
+形式参数替换成当前环境的值参，然后依次对匿名函数体求值。
+
+按照整体的构架，这种将形参替换成值参并求值的过程应该交
+由apply函数去做处理。在前面的apply中，已经具有了针对基本运算加减乘除
+的处理能力，但是对于复合过程，还没有细化。
+
+在这个求值器中，统一在复合函数前面放一个"proc"标志。这样apply就能分辨出
+这类函数不是基本运算，而是用户定义的复合过程。并且这种复合过程不同于前面
+所有的表达式，它还需要记录自己所处的当前环境。尤其是考虑到函数递归的情况，
+同一个过程可能完全对应不同的环境。在求值时必须在自己的环境中查找参数的值。
+也就是说，环境是和被调用的函数紧密绑定的。针对这类特殊的绑定要求。可以给
+表达式模型增加一个环境成员。如下：
+
+\begin{lstlisting}
+class expr{
+public:
+	//...
+	expr(const expr& ref):symbol(ref.symbol), elist(ref.elist), env(ref.env){};
+	const expr& operator=(const expr& ref){
+		//...
+		env=ref.env;
+		return *this;
+	}
+
+	//...
+	Env& get_env() const { return *env; }
+
+	expr& set_env(Env& ref){ env=&ref; return *this; }
+
+private:
+	//...
+	Env* env;	//just reference, not own
+}
+\end{lstlisting}
+
+为了根据lambda表达式生成一个能记录其所环境的复合过程，需要为
+user\_proc增加如下的功能：
+
+\begin{lstlisting}
+class user_proc/*: public procedure*/{
+public:
+	//...
+
+	static expr make(const expr& exp, Env& env){
+		return expr("proc").append(lambda_params(exp)).append(lambda_body(exp)).set_env(env);
+	}
+
+	static expr lambda_params(const expr& exp){	return *exp.begin(); }
+	static expr lambda_body(const expr& exp){ return expr(++exp.begin(), exp.end()); }
+};
+\end{lstlisting}
+
+其中make会将lambda表达式的参数列表和体分解出来，分别放入一个谓语为“proc”的表达式中，然后
+将当前所在的环境记录在这个表达式内。这样求值器内遇到lambda表达式时的处理就细化为：
+
+\begin{lstlisting}
+expr Evaluator::eval(const expr& exp, Env& env){
+	//...
+	else if(exp.is_def())
+		return eval_def(exp, env);
+
+	else if(exp.is_lambda())
+		return user_proc::make(exp, env);
+
+	else if(exp.is_app())
+		//...
+}
+\end{lstlisting}
+
+最后一处没有实现的功能就是apply函数中针对符合过程的求值部分。这部分
+的处理中，首先要将获得的值参临时绑定的过程的变量名上，方法就是扩充
+过程当前所处的环境。而过程当前所处的环境可以有表达式的env方法获取到。
+然后，剩下所需要做的就是在这个新扩充的环境内针对过程体求值。虽然这个
+求值可以通过递归地调用eval方法进行。但是考虑到过程体可能顺序包含多个
+表达式，所以必须依次针对每个表达式求值。由于这个原因，所以还需要增加
+一个顺序求值的方法eval\_seq，它遍历过程体中的所有表达式，对其求值。然
+后将最后一个表达式的求值结果作为最终结果返回。
+
+\begin{lstlisting}
+expr Evaluator::apply(const expr& proc, const expr& args){
+	if(prim_proc::is_prim_proc(proc)){
+		return prim_proc(proc, args).apply();
+	}
+	else{
+		expr::ExprIt body=++proc.get_list().begin();
+		expr::ExprIt params=proc.get_list().begin();
+		return eval_seq(*body, proc.get_env().extend(*params, args));
+	}
+}
+
+//the return value of sequence is 
+//the result of the last sentence.
+expr Evaluator::eval_seq(const expr& exp, Env env){
+	expr res;	
+	for(expr::ExprIt it=exp.get_list().begin(); it!=exp.get_list().end(); ++it)
+		res=eval(*it, env);
+	return res;
+}
+\end{lstlisting}
+
+其中，扩充当前环境并返回一个临时的新环境的实现如下：
+\begin{lstlisting}
+Env Env::extend(const expr& vars, const expr& vals){
+	//local_env-->outter_env-->...-->global_env
+	Env res(vars, vals);
+	res.outter=this;
+	return res;
+}
+\end{lstlisting}
+
+所谓扩充，就是产生一个临时环境，其中将函数自变量和值参成对放入
+其中。然后让这个临时环境的外围环境指针指向当前环境。
+
+最后一个必须做的改动是eval函数中针对过程的处理，由于复合过程的
+谓语和宾语都可能是变量，所以在调用apply前，必须对过程的谓语和宾
+语在当前环境中求值。所以eval被改动为：
+\begin{lstlisting}
+expr Evaluator::eval(const expr& exp, Env& env){
+	//...
+	else if(exp.is_app())
+		return apply(
+			eval(get_operator(exp), env),
+			value_list(get_operands(exp), env));
+
+	//...
+\end{lstlisting}
+
+经过这一些列改动，测试7就可以通过了，程序输出：
+\begin{verbatim}
+eval: define(plus(x,y),+(x,y))=OK
+eval: plus(1,2)=3
+\end{verbatim}
+
+
+% ================================================================
+%                 Summary
+% ================================================================
+\section{Summary} \label{summary}
+
+为了通过测试8，还要提供对if语句的支持，这已经非常简单了。只要发现表达式
+的谓语是if，就说明要针对if语句求值，求值时，首先对if表达式的第一个宾语
+求值如果结果是真，就求值宾语列表中的下一个部分并返回，否则求值宾语列表
+中的再下一个部分，实现如下：
+
+\begin{lstlisting}
+expr Evaluator::eval(const expr& exp, Env& env){
+	//...
+	else if(exp.is_def())
+		return eval_def(exp, env);
+
+	else if(exp.is_if())
+		return eval_if(exp, env);
+
+	//...
+}
+	
+expr Evaluator::eval_if(const expr& exp, Env& env){
+	//if( predicate, consequent, alternative )
+	if(eval(*exp.get_list().begin(), env).get_symbol()=="true")
+		return eval(*(++exp.get_list().begin()), env);
+	return eval(*(++(++exp.get_list().begin())), env);
+}
+\end{lstlisting}
+
+if语句实现后，就可以递归计算阶乘，从而通过第8个测试了，程序输出：
+\begin{verbatim}
+eval: define(frac(n),if(=(n,0),1,*(n,frac(-(n,1)))))=OK
+eval: frac(6)=720
+\end{verbatim}
+
+至此，plis的语言的求值器已经初步实现了。在后继文章中，作者会给出一个
+plis语言的lexer，从而最终实现一个解释器。并直接利用plis语言编程，展示
+其各种功能。
+
+% ================================================================
+%                 Appendix
+% ================================================================
+\section{Appendix} \label{appendix}
+
+本文的例子代码可以从\url{http://liuxinyu95.googlepages.com/book2007_example.zip}下载。
+
+\begin{thebibliography}{99}
+
+\bibitem{godel}
+朱水林《哥德尔不完全性定例》，辽宁教育出版社，1987年
+
+\bibitem{my_lambda}
+Liu Xinyu, ``Lambda and high order function" 2007, Jan. \\ http://baredog.at.infoseek.co.jp/intl/chn/ \\ softdev/book2007/html/essay1/essay1.html
+
+\bibitem{sicp}
+Harold Abelson and Gerald Jay Sussman with Julie Sussman. ``Structure and Interpretation of Computer Programs." second edition. The MIT Press.
+
+\bibitem{moderncpp}
+Andrei Alexandrescu. ``Modern C++ Design: Generic Programming and Design Pattern Applied." Addison Wesley, Feb. 2001
+
+\bibitem{effectivecpp}
+Scott Mayer. ``Effective C++: 50 specific ways to improve your programs and designs (2nd edition)." Addison Wesley. Sep. 1997
+
+\bibitem{gof}
+Erich Gamma, etc. Design pattern: Elements of Reusable Object-Oriented Software. Addison-Wesley.
+
+\bibitem{cppstr2val}
+http://www.codeguru.com/forum/showthread.php?t=231054
+
+\bibitem{cppval2str}
+http://www.codeproject.com/string/string\_conversions.asp
+
+\end{thebibliography}
+
+\ifx\wholebook\relax\else
+\end{document}
+\fi
+

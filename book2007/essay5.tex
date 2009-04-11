@@ -1,0 +1,817 @@
+\ifx\wholebook\relax \else
+%-------------------------
+
+\documentclass{article}
+\input{common.tex}
+
+\setcounter{page}{1}
+
+\begin{document}
+
+\fi
+
+% ================================================================
+%                 COVER PAGE
+% ================================================================
+
+\title{延迟求值和无穷\newline
+       delay evaluation and infinity}
+
+\author{刘新宇
+\thanks{{\bfseries Liu Xinyu } \newline
+  5-2-201, ShiZiPo, Xi, DongZhiMenWai, DongCheng district, Beijing, 200027, P.R.China \newline
+  Email: liuxinyu95@gmail.com \newline
+  Tel:   +86-1305-196-8666 \newline
+  Fax:   N.A. \newline}
+  }
+
+
+\markright{delay evaluation and infinity, July, 2007}
+
+\maketitle
+
+\ifx\wholebook\relax
+\chapter{delay evalutaion and infinity}
+\section{abstruct}
+\else
+\begin{abstract}
+\fi
+
+无穷流是解决并发计算模型中许多困难的另外一种思路。许多函数式程序设计语言采用
+该模型获得了非常简洁优雅的解决方案。延迟求值是实现该模型的基础，采用延迟求值
+，可以很自然地获得针对无穷序列的建模，而在计算机的内存和计算时间有限的前提下，
+普通计算模型难以实现对无穷世界的类似模拟。
+
+本文使用\LaTeXe排版，遵循FDL(GNU Free Documentation License)许可协议。
+并受其保护。具体请参考：http://www.gnu.org/copyleft/fdl.html
+由于作者水平有限，文中难免有谬误之处，欢迎广大读者指正！
+
+\ifx\wholebook\relax\else
+\end{abstract}
+\fi
+
+\vspace{3cm}
+{\bfseries Keywords:} delay evaluation, C++, stream, concurrent
+
+{\bfseries Created:} 2007 July ~ August.
+
+\maketitle
+
+\lstset{language=C++, 
+  frame=single,
+  showstringspaces=false, 
+  breaklines=true, 
+  breakautoindent=true}
+
+% ================================================================
+%                 Introduction
+% ================================================================
+\section{Introduction}
+\label{intro}
+
+\begin{verse}
+君不见黄河之水天上来，奔流到海不复还；\\
+君不见高堂明镜悲白发，朝如青丝暮成雪。
+\end{verse}
+\begin{flushright}
+--唐，李白《将进酒》
+\end{flushright}
+
+\begin{figure}[htbp]
+	\begin{center}
+	\includegraphics[scale=0.5]{images/yellow_river.eps}
+    \caption{黄河}
+	\end{center}
+\end{figure}
+
+时间是一个有趣地概念，人类在很早就掌握了诸如长度、质量的概念。但对于时间确一直存在
+着一些分歧。历史上人们曾经认为时间是绝对的，不变的。后来爱因斯坦提出时间是相对的可
+变的。这在当时引起了很大的争议，人们在了解《相对论》时觉得难以理解，不符合直觉。
+
+人们在使用计算机来辅助生产和生活时，很自然的将计算的时间和客观世界的时间对应起来。
+因为这是一种最直观的建模——计算机的时钟对应现实世界中的时钟。绝大多数计算机程序都
+是按照这个模型来计算的。它带来了空前的好处，但是也同时带来了问题。
+
+这个问题在并发计算里变得尖锐起来。随着技术的进步，并行多处理已经逐渐可以被普通计算
+机用户使用。这就更加使得绝对时间模型的问题越来越明显。因为在真实世界中，大多数的
+事物都是同时发生的。没有一个上帝说：“现在请大家都停止呼吸，只有张三可以呼吸，张三
+呼吸完了，现在李四可以呼吸了……”，如果世界真是这样运行，那么几乎所有的人都要窒息
+而死了。可是目前的绝对时间计算模型就是这么为世界建模的：一个进程锁定某个资源，其他
+进程都在等待，直到这个进程释放掉资源。互斥，信号量等等这些并不直观的事物，只不过
+为了保护”共享资源“。可是空气也是共享资源，现实世界中却并没有人在呼吸前要锁定它而
+独享这个资源。
+
+在函数式语言中，存在着流的概念。这一概念采用了不同于前面所描述的时间模型。它干脆
+抛开了计算机的时间，不认为计算模型是随着时间改编状态的物体。在解决并发计算的问题
+上，给出了完全不同的思路。\cite{sicp}
+
+本文从介绍流模型的技术基础“延迟计算”开始，给出一个C++实现的延迟计算模型。然后利用
+延迟求值实现流模型计算，并且给出无穷流的实现。最后探讨流模型对于并发计算的思路。
+
+% ================================================================
+%                 lazy eval
+% ================================================================
+\section{Lazy evaluation}
+\label{lazy-eval}
+
+考虑这样一个实际问题，某超市一天营业过程中，pos机不断纪录了每个客人买东西的费用。
+超市有这样的奖励措施：
+\begin{enumerate}
+\item 消费满100元，享受9折优惠；
+\item 消费满200元，享受85折优惠；
+\item 消费满300元，享受7折优惠；
+\item 第100名打折后金额仍超过500元的顾客，能够得到超市的礼物。
+\end{enumerate}
+
+一天下来，pos机纪录的消费金额（打折前）如下：
+r={100, 210, 750, ...};
+某一天的晚上，老板突然想了解一下今天获得超市礼物的顾客的最终消费金额（打折后的金额）。
+
+面对这样的问题，应该怎样编写查询程序，根据一天的消费纪录r，计算出最终结果呢？
+其中一个很简单，并且适合于数据库查询的思路大致如下：
+(假设向pos机发命令value获得当前纪录的金额，发命令next前进到下一笔纪录。)
+\begin{enumerate}
+\item 编写一个过程，能够根据原价格，计算打折后的价格
+\item 针对pos机的纪录，调用上述过程，得到一个打折价格纪录r2；
+\item 找出r2中全部大于500元的纪录得到新的纪录r3；
+\item 第r3中第100个元素返回。
+\end{enumerate}
+
+相应的伪代码如下：
+\begin{lstlisting}
+float result=getAt(filter(transform(r, discount), 
+                          Greator(500), 
+                   100);
+\end{lstlisting}
+
+其中，pos机纪录被建模为这样的形式：
+\begin{lstlisting}
+class record{
+public:
+	record(double v, record* r): value(v), _next(r){}
+	~record(){ delete _next; }
+	virtual record* next(){ return _next;}
+
+	double value;
+private:
+	record* _next;
+};
+\end{lstlisting}
+
+上面的transform, filter都是针对pos机纪录链表的操作。它们具有递归的形式。
+\begin{lstlisting}
+template<typename F>
+record* transform(record* r, F f){
+	if(r)
+		return new record(f(r->value), transform(r->next, f));
+	return 0;
+}
+
+template<typename F>
+record* filter(record* r, F f){
+	if(r)
+		if(f(r->value))
+			return new record(r->value, filter(r->next, f));
+		else
+			return filter(r->next, f);
+	return 0;
+}
+\end{lstlisting}
+
+这段代码的优点就是形式特别简洁，每一个处理步骤都用前面一个处理的输出作为自己的输入。但是仔细
+分析，就会发现它也存在明显的缺点。尤其是当超市每天的纪录数量巨大，例如数十万条时，每一步骤都
+会生成一个新的数十万条的纪录。而最终大部份中间计算的结果纪录是被丢弃的。这实际上是一种不小的
+资源浪费。甚至在某些情况下，这样的计算模型根本不可行。\footnote{例如：要找出满足$2^{n^n}+1$
+形式(这样的数称为费马数)且不是素数的一个自然数。按照上面的计算模型，就需要先从自然数集合，产生
+全部的费马数集合，然后再用素数筛子进行过滤，最后取出结果集的第一个元素。}
+
+那么有没有什么办法，使得程序既能够获得简洁的形式，又能够节约资源，不产生多余的中间结果呢？
+再次分析一下上面的代码：
+\begin{lstlisting}
+float result=getAt(filter(transform(r, discount), 
+                          Greator(500), 
+                   100);
+\end{lstlisting}
+这段程序的计算是从内到外逐步计算的。但是
+如果在利用transform计算打折后的价格时，transform并不遍历r的全部内容，而仅仅告知filter
+它有能力根据任何原始价格计算出打折价格，同时filter也告知getAt，它有能力根据任何打折后的
+价格，判断其是否仍然超过500元，而getAt也并不需要知道打折后仍超过500元的全部内容，只需要
+前100个内容就可以了。这样一来然计算过程就可以从外向内，根据getAt的需要去驱动filter和transform
+。
+
+在现实生活中也是如此，例如某人要去看电影，他不需要了解某班公共汽车从家门口到其终点战的
+全部路线，只需要保证公共汽车能够把他带到电影院那一站就可以了。他也不许要了解电影院全天
+的放映场次，只需要知道他到达电影院时正准备播放的场次就可以了。他不许要了解电影院里的全部
+座位布局，只要从第一排座位开始，找到他预定的座位号就可以了。
+
+上面叙述的关键之处就是并不立刻求值全部，而是做出一个能够求值的保证。真正的求值，是延迟
+到最终需要计算结果的时候(例如getAt寻找第100个元素时，filter和transform才开始真正的
+去计算)。
+
+在计算机科学中，称这种行为叫做“延迟求值”(Lazy evaluation或者delayed evaluation)。
+\cite{wiki_lazy_eval}
+
+
+% ================================================================
+%                 Implementation
+% ================================================================
+\section{Implementation} \label{implement}
+
+
+实际上，延迟求值的实例在计算机应用中也有很多。例如，用户用某个字处理软件（如MS Word）
+打开一篇包含图片的文档时，文档中的图片并不一下子全部读出来。只有那些在第一页的图片才被
+读出并显示，随着用户向后面翻页。后面内容中的图片才逐步被打开并显示。
+
+在GoF的着作《设计模式》\cite{GoF}中，给出了一个proxy模式实现上述延迟求值的例子。
+本文将给出一个“超市问题”的延迟求值解法。transform程序和filter程序都具备足够的抽象，
+它们是通用的程序，完全可以重用，所以问题的关键是record的实现，要在record的内部，
+引入延迟求值。
+
+目前的纪录包含两个部份，一个是该笔交易的金额，另一部分指向下一笔纪录。
+所有纪录依次链结下去，形成完整的纪录表。对纪录表引入延迟求值的思路大致如下：
+
+在构造一笔纪录时，并不要求当前的金额和指向下一笔纪录的指针都准备好。
+只要当前的金额准备好就可以构造了。而关于下一笔纪录的信息，直到明确地通过
+next命令进行引用时，才真正对其进行求值。
+
+考虑到filter和transform的通用性，延迟求值的引入不应该严重影响到这两个程序的实现
+和使用。所以原来程序中的下述语句的应该表现为延迟求值：
+
+\begin{lstlisting}
+new record(f(r->value), transform(r->next, f));
+\end{lstlisting}
+
+执行这条语句时，transform(r->next, f)并不应该被立即求值，但是根据C++的语法
+规则，record构造函数的第二个参数会在运行时进行计算。最简单的解决方案是采用lambda
+算子\cite{lxy_lambda}。考虑有一些读者不了解lambda演算，本文给出一个使用标准C++
+实现延迟计算模型。其思路如下：
+
+首先，为了防止C++在运行时，自动求值record构造函数的第二个参数，先将此参数设置为空值0,
+然后，在给record增加一个函数，该函数用来保存将来延迟求值时需要使用的transform, r和f，
+但是仅仅是保存它们，而不立即进行求值。只有在未来某个时候，用户通过next方法，明确要求
+获取下一个纪录值时，才利用以前保存过的transform, r和f，求出下笔纪录的信息。
+
+才用上述方法，发现也适用于filter程序的下列语句：
+
+\begin{lstlisting}
+return new record(r->value, filter(r->next, f));
+\end{lstlisting}
+
+在filter程序中，需要保存的是filter, r, 和f。通过对transform和filter归纳，大致
+可以得出这样的简单结论：为了实现延迟求值，必需保存3个内容，延迟求值表达式所使用的函数
+（如transform或filter），延迟求值时所作用的对象（如纪录r），延迟求值函数所需要的
+参数（如f，它实际可能是discount函数或者Greator<T> functor）。
+
+通过以上分析，就可以实现一个支持延迟求值的pos机纪录模型了，为了和前面普通的record区别，
+这一新类被命名为stream\_record。初步实现如下：
+
+\begin{lstlisting}
+class stream_record{
+public:
+	stream_record():value(0), _next(0){}
+	stream_record(double v, stream_record* r=0):value(v), _next(r){}
+	virtual ~stream_record(){ 
+		delete _next;
+	}
+
+	template<class Func, class Arg>
+	stream_record* setNext(Func f, stream_record* r, Arg arg);
+
+	virtual stream_record* operator()(){ return this;}
+
+	stream_record* next(){
+		if(_next)
+			_next=(*_next)();
+		return _next;
+	}
+	double value;
+
+private:
+	stream_record* _next;
+};
+\end{lstlisting}
+
+stream\_record和前面的record相比，有一下这些变化。首先，构造函数的第二个参数
+可以省略掉了，缺省时是空指针0。其次增加了一个函数模板setNext，使用它，用户就可以
+将延迟求值使用的函数，作用对象，以及函数参数，以类型自由的形式传入，并保存起来。
+最后的变化是next成员方法，如果next不为空，这时可能有两种情况，一种是next指向了
+一个真正的已经被求出stream\_record，这样的话，就直接通过operator()()返回下
+一笔纪录；另外一种情况就是，下一笔纪录尚未求出，next指向的是延迟求值对象。由于
+operator()()是虚函数，所以根据多态原理，就会调用延迟求值对象重载的operator()()
+，从而利用先前保存的f, r和arg求出下一笔纪录，结果以一个普通的stream\_record返回，
+并覆盖原来的next指针。
+
+根据这一解释，还可以了解到，延迟求值对象，必然是stream\_record的派生类，所以才能够
+根据Liskov原则，被当作一个strem\_record保存在next指针里。同时，由于延迟求值对象
+是通过setNext函数模板建立的，所以它必然是一个类模板对象。根据这些分析，可以把延迟
+求值对象和setNext最终实现出来：
+
+\begin{lstlisting}
+template<class Func, class Arg>
+class delayed_record: public stream_record{
+public:
+	delayed_record(Func f, stream_record* r, Arg arg): _f(f), _r(r), _arg(arg){}
+	stream_record* operator()(){
+		stream_record* res= _f(_r->next(), _arg);
+		delete this;
+		return res;
+	}
+
+private:
+	Func _f;
+	stream_record* _r;
+	Arg _arg;
+};
+
+template<class Func, class Arg>
+stream_record* stream_record::setNext(Func f, stream_record* r, Arg arg){
+	_next = new delayed_record<Func, Arg>(f, r, arg);
+	return this;
+}
+\end{lstlisting}
+
+延迟求值类模板全部从stream\_record继承，它在初始化的时候利用构造函数保存起f, r和arg。
+延迟求值类模板重载了operator()()，在这里，它利用以前保存好的f, r和arg求出真正的
+stream\_record值，然后就把自己释放掉，以后用户在引用时，就避免重复求值了。
+
+setNext函数模板，根据用户传入的不同求值函数类型，以及参数类型，构造初延迟求值对象，
+并赋值给next指针。
+
+通过上述延迟求值实现，filter和transform可以仅仅做很小的改动，就能处理延迟求值的
+纪录了。
+
+\begin{lstlisting}
+template<typename Record, typename F>
+Record* transform(Record* r, F f){
+	if(r){
+		return (new Record(f(r->value)))->setNext(transform<Record, F>, r, f);
+	}
+	return 0;
+}
+
+template<typename Record, typename F>
+Record* filter(Record* r, F f){
+	if(r)
+		if(f(r->value))
+			return (new Record(r->value))->setNext(filter<Record, F>, r, f);
+		else
+			return filter(r->next(), f);
+	return 0;
+}
+\end{lstlisting}
+
+上述改动的关键之处，在于构建新Record的语句，程序首先利用新的value构建一个next
+指针为空的纪录，然后在利用setNext函数，将延迟求值必需的函数，对象以及参数传入，
+从而将改纪录的next指针设置为指向一延迟求值对象。
+
+为了使原先的普通record和支持延迟求值的stream\_record都能被transform和filter
+处理，可以也在普通的record中略微改动一下：
+
+\begin{lstlisting}
+class record{
+public:
+	record(double v, record* r=0): value(v), _next(r){}
+
+	template<class Func, class Arg>
+	record* setNext(Func f, record* r, Arg arg){
+		_next=f(r->next(), arg);
+		return this;
+	}
+//...
+
+\end{lstlisting}
+
+这样，两种record就都能被使用了。测试代码如下：
+
+\begin{lstlisting}
+template<typename Record>
+void print_rec(Record* r){ 
+	if(r){
+		std::cout<<r->value<<", "; 
+		print_rec(r->next());
+	}
+	else
+		std::cout<<"\n";
+}
+
+int main(int, char**){
+	record* r1=new record(90, new record(250, new record(1000, 0)));
+	record* r2=transform(r1, discount);
+	record* r3=filter(r2, Greator<double>(500.0));
+	print_rec(r3);
+	delete r3;
+	delete r2;
+	delete r1;
+
+	stream_record* r4=new stream_record(90, new stream_record(250, new stream_record(1000, 0)));
+	stream_record* r5=transform(r4, discount);
+	stream_record* r6=filter(r5, Greator<double>(500.0));
+	print_rec(r6);
+	delete r6;
+	delete r5;
+	delete r4;
+}
+\end{lstlisting}
+
+两段程序都输出：700.如何证明后者的延迟求值真的起作用了呢。可以借助这样的方法，在
+stream\_record的operator()()中，打印一句标记，例如：“eval”，然后在使用一个
+如下的getAt方法，获得第i个纪录。
+
+\begin{lstlisting}
+template<typename Record>
+double getAt(Record* r, int i){
+	if(i==0)
+		return (r!=0)? r->value : -1;
+	else
+		return getAt(r->next(), i-1);
+}
+\end{lstlisting}
+
+之后，在上述第二段程序的transform之后，就可以使用getAt连续打印出所有元素，
+这时就会发现，getAt求值第一个元素时，后面的元素并没有求值，直到用getAt求值
+后面的元素时，它们才真正被求值，如下：
+
+\begin{lstlisting}
+stream_record* r5=transform(r4, discount);
+std::cout<<"transform over\n";
+std::cout<<"1st: "<<getAt(r5, 0)<<"\n";
+std::cout<<"1st got\n";
+std::cout<<"2nd: "<<getAt(r5, 1)<<"\n";
+std::cout<<"2nd got\n";
+std::cout<<"3rd: "<<getAt(r5, 2)<<"\n";
+\end{lstlisting}
+
+程序输出：
+
+\begin{verbatim}
+transform over
+still empty, eval 1st: 90
+1st got
+
+still empty, eval 2nd: 212.5
+2nd got
+
+still empty, eval 3rd: 700
+\end{verbatim}
+
+
+% ================================================================
+%                 Infinity
+% ================================================================
+
+\section{Infinity}
+
+从上面一节给出的超市交易问题看出，使用延迟求值模型，能够减少不必要的计算次数，只有
+在真正需要某个数据时，才去进行计算。这样大大节约了计算成本，对于大量的数据处理，能
+提高不少效率。
+
+实际上，延迟求值不仅可以应用于大量数据处理，甚至可以直接为无穷的概念建模。而针对无穷
+的计算是使用传统计算模型难以做到的。例如面对这样的需求：“建立一个列表，代表全部自然数”。
+这个需求，用C++的数组类型，或者vector容器类型，是难以满足的。而利用前面给出的stream\_record
+却可以非常简单的实现，如下：
+
+\begin{lstlisting}
+template<typename Succ>
+stream_record<int>* create_series(int n, Succ f){
+	return (new stream_record<int>(n))->setNext(create_series<Succ>, n, f);
+}
+
+template<class T>
+struct AddTo{
+	AddTo(int n):_n(n){}
+	T operator()(T x){ return x+_n; }
+	T _n;
+};
+
+//...
+
+stream_record<int>* N=create_series(1, AddTo<int>(1));
+std::cout<<"natural number created.\n";
+std::cout<<"7th: "<<getAt(N, 6)<<"\n";
+\end{lstlisting}
+
+并且，如果改变上面AddTo的参数为2,就可以生成全体正奇数的集合，再将起始数字遍为2,就
+可以产生全体正偶数。但是上述代码还需要针对stream\_record做一些改动。第一个改动是
+必需将stream\_record由普通类，改为类模板。以前的stream\_record仅仅支持double
+类型的内置数据，现在需要同时支持double和int。为此改动如下：
+
+\begin{lstlisting}
+template<class T>
+class stream_record{
+public:
+	//...
+	stream_record(T v, stream_record* r=0):value(v), _next(r){}
+	//...
+	T value;
+\end{lstlisting}
+
+其次，根据C++标准，由于变成了模板类，所以setNext必需改为类内联实现，否则编译无法
+通过。但是原实现中使用的delayed\_record<>类模板由于从stream\_record派生，所以
+必需在stream\_record后声明，这就出现了矛盾。为了解决这一矛盾，可以引入一个专门
+用来构造delayed\_record对象的函数，如下：
+
+\begin{lstlisting}
+template<class T=double> class stream_record;
+
+template<class Func, class Obj, class Arg, class T>
+stream_record<T>* create_delay_record(Func f, Obj x, Arg arg);
+
+template<class T>
+class stream_record{
+public:
+	//...
+\end{lstlisting}
+
+这样的前置声明(forward declaration)放在类模板stream\_record和delayed\_record
+前面，就可以在stream\_record类模板内部的setNext中使用了。于是setNext改变为：
+
+\begin{lstlisting}
+template<class T> class stream_record{
+public:
+	//...
+	template<class Func, class Obj, class Arg>
+	stream_record* setNext(Func f, Obj x, Arg arg){
+		_next = create_delay_record<Func, Obj, Arg, T>(f, x, arg);
+		return this;
+	}
+\end{lstlisting}
+
+而函数create\_delay\_record的实现，就可以放到delayed\_record的定义后面：
+
+\begin{lstlisting}
+template<class Func, class Obj, class Arg, class T>
+stream_record<T>* create_delay_record(Func f, Obj x, Arg arg){
+	return new delayed_record<Func, Obj, Arg, T>(f, x, arg);
+}
+\end{lstlisting}
+
+另外一个重要的改变是延迟求值的方式，对于以前的transform和filter延迟求值的形式
+是统一的，都是：
+\begin{verbatim}
+f(r->next(), arg)
+\end{verbatim}
+的形式，其中，f是用于延迟求值的函数，r是延迟求值的对象，arg是f所需的参数。但是
+自然数序列的延迟求值的形式却是：
+\begin{verbatim}
+create_series(Increase(n), Increase); ==> f(arg(n), arg)
+\end{verbatim}
+
+也就是要让延迟求值的参数，以函数形式作用于求值对象，这和前面的transform及filter
+是不一样的。为了支持这以改变，可以利用模板的偏特化，使得delayed\_record针对
+不同的类型，有不同的实现，如下：
+
+\begin{lstlisting}
+template<class Func, class Obj, class Arg, class T>
+class delayed_record: public stream_record<T>{
+public:
+	delayed_record(Func f, Obj x, Arg arg): _f(f), _x(x), _arg(arg){}
+	stream_record<T>* operator()(){
+		std::cout<<"\nlazy eval: ";
+		stream_record<T>* res = _f(_arg(_x), _arg);
+		delete this;
+		return res;
+	}
+
+private:
+	Func _f;
+	Obj  _x;
+	Arg  _arg;
+};
+
+//partial instatiate
+template<class Func, class Arg, class T>
+class delayed_record<Func, stream_record<T>*, Arg, T>: public stream_record<T>{
+public:
+	delayed_record(Func f, stream_record<T>* x, Arg arg): _f(f), _x(x), _arg(arg){}
+	stream_record<T>* operator()(){
+		std::cout<<"\nstill empty, eval: ";
+		stream_record<T>* res = _f(_x->next(), _arg);
+		delete this;
+		return res;
+	}
+
+private:
+	Func _f;
+	stream_record<T>* _x;
+	Arg  _arg;
+};
+\end{lstlisting}
+
+普通情况下，delayed\_record会把arg作用于求值对象x上，这适用于自然数建模的情形；
+当求值对象是stream\_record指针时，偏特化起作用，求值过程会作用到求值对象的next
+指针所指向的内容上。
+
+经过上述改动，全体自然数的延迟求值模型就可以正常使用了，程序输入如下结果：
+\begin{verbatim}
+natural number created.
+
+lazy eval:
+lazy eval:
+lazy eval:
+lazy eval:
+lazy eval:
+lazy eval: 7th: 7
+\end{verbatim}
+
+既然延迟求值可以给自然数这类的无穷序列建模，一个进一步的想法是，直接对无穷
+序列进行操作，完成各种计算任务。例如下面的程序，可以将两个无穷序列加起来：
+
+\begin{lstlisting}
+template<class Record>
+Record* add_series(Record* a, Record* b){
+	return (new Record(a->value+b->value))->setNext(add_series<Record>, a, b);
+}
+\end{lstlisting}
+
+为了使这段程序工作正常，还必需增加一个针对两个stream\_record进行操作的偏特化，
+使得add\_series可以延迟递归地运行下去。这一偏特化版本如下：
+
+\begin{lstlisting}
+template<class Func, class T>
+class delayed_record<
+	Func, 
+	stream_record<T>*, stream_record<T>*, 
+	T>: public stream_record<T>{
+public:
+	delayed_record(Func f, stream_record<T>* x, stream_record<T>* y): _f(f), _x(x), _y(y){}
+	stream_record<T>* operator()(){
+		stream_record<T>* res = _f(_x->next(), _y->next());
+		delete this;
+		return res;
+	}
+
+private:
+	Func _f;
+	stream_record<T>* _x;
+	stream_record<T>* _y;
+};
+\end{lstlisting}
+
+使用这个add\_series就可以将两个无穷序列相加了，例如，将无穷常数序列和自然数序列加以，
+可以得到从那个常数开始的无穷递增序列：
+
+\begin{lstlisting}
+typedef stream_record<int> IntStream;
+IntStream* ones=create_series(1, AddTo<int>(0));
+IntStream* N1=add_series(ones, N);
+std::cout<<"7th: "<<getAt(N1, 6)<<"\n";
+\end{lstlisting}
+
+这段程序会输出：
+\begin{verbatim}
+lazy eval:
+lazy eval:
+lazy eval:
+lazy eval:
+lazy eval:
+lazy eval: 7th: 8
+\end{verbatim}
+
+更加有趣的是，无穷序列的定义本身也可以是递归的，例如可以这样定义自然数的无穷序列：
+自然数的第一个元素是1,后面的序列是自然数与常数序列1的和。写成表达式就是：
+
+\begin{lstlisting}
+IntStream* integers=new IntStream(1);
+integers->setNext(add_series(ones, integers));
+\end{lstlisting}
+
+当然，还需要增加一个setNext接收一个stream\_record指针类型的重载形式：
+
+\begin{lstlisting}
+template<class T>
+class stream_record{
+	//...
+	stream_record* setNext(stream_record* r){
+		_next = r;
+		return this;
+	}
+\end{lstlisting}
+
+这样，如果使用getAt(integers, 4)，获得第四个自然数并打印，程序就会输出5.
+
+
+% ================================================================
+%                 stream in concurrent programming
+% ================================================================
+\section{stream in concurrent programming} \label{stream_concurrent}
+
+上述的延迟求值计算，给出了无穷流模型，这一模型是函数式编程语言解决并发编程的一种
+有效方案。在针对并发编程的各种思路中，通常有如下解决思路\cite{oz}：
+
+\begin{enumerate}
+\item 共享状态的原子操作(例如，Java/C++)
+\item 使用Active Object模式和消息传递(例如，Erlang, SALSA, Symbian)\cite{lxy_ao}
+\item 并发声明(在函数式编程语言种使用stream，例如Oz语言)
+\end{enumerate}
+
+其中，最常见的，也是最难的就是第一个方法，这也就是在本文开头种提到的那个问题。这一
+方法的本质困难在于保持公共数据的一致性。也就是数据的状态改变，和并发竞争的矛盾。
+
+使用函数式方法的好处在于，任何数据都不会被改变。因为函数式编程中无法通过赋值语句
+改变任何变量的值。所有处理过程都是针对输入数据加以计算，然后把计算结果输出。因此
+不会出现某个线程在某个未知的时刻，改变其他线程正在处理的数据的情况。所以，根本也
+就不需要任何诸如锁，信号量等显示同步手段。因此有时称函数式程序设计语言为“无副作用
+语言”。
+
+那么如何实现并发计算呢？如果一个计算过程都不会改写另一计算过程正在使用的数据，
+就可以将这两个过程并发执行\footnote{这里是指语义上的并发，实际物理上可以采用
+多处理器，或者调度器}。由于函数式语言无副作用，所以大多数计算都可以并发。在
+lisp方言scheme中，可以使用显示声明future去指定一个计算可以并发进行。在另一些
+函数式语言中，推断某个计算过程是否可以并发还可以直接交给编译器完成。\cite{progmatics}
+
+如果某个并发计算过程A，需要另外一个并发计算过程B的计算结果，那么当这个结果被计算
+出来之前，过程A将进入等待状态（例如通过自旋）。如果B计算出的结果是一个流，那么
+整个计算过程就是就呈现如下的状态：B不断产生新的计算结果，被称为“生产者(producer)”，
+A不断使用计算结果，被称为“使用者(consumer)”，AB之间使用流进行通信。
+
+由于，A，B并发执行，所以B生产的速度会和A使用的速度可能不一致，为了解决整个问题，
+延迟求值就可以发挥作用了，由于延迟求值是一种“按需求值(on demanding evaluate)”，
+所以实际的求值是由A驱动的。
+
+
+% ================================================================
+%                 Summary
+% ================================================================
+\section{Summary} \label{summary}
+
+本文给出的延迟求值和无穷流实现是基于C++的，实际上作者试图用C++模拟在函数式语言中
+的惰性求值，或称“正则序求值”。这种模拟只能实现非常简单的一些应用，一些复杂的应用
+就无法简单用C++来模拟了。在scheme中，缺省求值是“应用序”的，但是Scheme提供了
+delay和force去实现，其中一个简单的实现是使用lambda：
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (delay exp)
+  (lambda () exp))
+
+(define (force delayed-object)
+  (delayed-object))
+\end{lstlisting}
+
+此后就可以使用delay和force去实现流的构造和引用：
+
+\begin{lstlisting}
+(define (cons-stream a b)
+  (cons a (delay b))
+
+(define (stream-car stream) (car stream))
+(define (stream-cdr stream) (force (cdr stream)))
+\end{lstlisting}
+
+下面是Scheme中利用无穷流定义的斐波那契数列：
+
+\begin{lstlisting}
+(define fibs
+  (cons-stream 0
+    (cons-stream 1
+      (add-streams (stream-cdr fibs)
+        fibs))))
+\end{lstlisting}
+
+在另外一些函数式语言，如Haskell中，所有的函数都是按照正则序调用的，也就是
+惰性求值的。所以可以直接使用无穷流，下例是Haskell中的斐波那契数列定义：
+
+\begin{verbatim}
+fibs = 0 : 1 : [ a+b | a <- fibs | b <- tail fibs ]
+\end{verbatim}
+
+函数式语言采用流的概念将计算机世界的时间和现时世界时间的概念分离开，提供了完全
+不同的并发计算思路。希望本文能够提供给读者一些额外的想法，在解决实际问题时能
+有所裨益。
+
+
+% ================================================================
+%                 Appendix
+% ================================================================
+\section{Appendix} \label{appendix}
+
+本文的例子代码可以从\url{http://liuxinyu95.googlepages.com/book2007_example.zip}下载。
+
+\begin{thebibliography}{99}
+
+\bibitem{wiki_lazy_eval}
+wikipedia, ``Lazy evaluation" http://en.wikipedia.org/wiki/Lazy\_evaluation
+
+\bibitem{sicp}
+Harold Abelson and Gerald Jay Sussman with Julie Sussman. ``Structure and Interpretation of Computer Programs." second edition. The MIT Press.
+
+\bibitem{lxy_lambda}
+Liu Xinyu. ``Lambda and High order function.'' http://baredog.at.infoseek.co.jp/intl/chn/softdev/book2007/html/essay1/essay1.html
+
+\bibitem{oz}
+Carlos Varela. ``Declarative Concurrency (VRH 4)". www.cs.rpi.edu/academics/courses/fall06/proglang/handouts/Chapter4.pdf
+
+\bibitem{lxy_ao}
+Liu Xinyu. ``刀耕火种的繁荣时代". http://baredog.at.infoseek.co.jp/intl/chn/softdev/book1/essay4.htm
+
+\bibitem{GoF}
+Gamma, Erich; Richard Helm, Ralph Johnson, and John Vlissides. ``Design Patterns: Elements of Reusable Object-Oriented Software.'', Addison-Wesley. 1995.
+
+\bibitem{progmatics}
+裘宗燕译 Michael Scott. ``Programming Language Pragmatics'', Morgen Kaufmann, 2000
+
+\end{thebibliography}
+
+\ifx\wholebook\relax\else
+\end{document}
+\fi

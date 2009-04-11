@@ -1,0 +1,683 @@
+\ifx\wholebook\relax \else
+%-------------------------
+
+\documentclass{article}
+\input{common.tex}
+
+\setcounter{page}{1}
+
+\begin{document}
+
+\fi
+
+% ================================================================
+%                 COVER PAGE
+% ================================================================
+
+\title{Please try 'plis' (II)\newline
+       PLIS}
+
+\author{刘新宇
+\thanks{{\bfseries Liu Xinyu } \newline
+  5-2-201, ShiZiPo, Xi, DongZhiMenWai, DongCheng district, Beijing, 200027, P.R.China \newline
+  Email: liuxinyu95@gmail.com \newline
+  Tel:   +86-1305-196-8666 \newline
+  Fax:   N.A. \newline}
+  }
+
+
+\markright{Please try 'plis' (II), May. 2007}
+
+\maketitle
+
+\ifx\wholebook\relax
+\chapter{PLIS (II)}
+\section{abstruct}
+\else
+\begin{abstract}
+\fi
+
+在本文的上半部分，作者给出了一个极其简单的“谓语+宾语”形式的语言描述。
+它的特典就是形式的一致和简单。为了能够展示这一语言的功能，作者还给出
+了一个求值器的实现。这个求值器并不完整，它还不能理解用户的文本输入。
+在本文中，作者将给出一个用C++实现词法分析器和一个语法分析器，并把它们
+连接到求值器前面。从而最终实现一个plis语言解释器。
+
+在实现的过程中，可以发现由于plis语言的简单性和一致性，lexer和
+parser的构成极为简洁。最后，作者将利用plis语言分别实现快速
+排序，二叉树排序等算法。
+
+本文使用\LaTeXe排版，遵循FDL(GNU Free Documentation License)许可协议。
+并受其保护。具体请参考：http://www.gnu.org/copyleft/fdl.html
+由于作者水平有限，文中难免有谬误之处，欢迎广大读者指正！
+
+\ifx\wholebook\relax\else
+\end{abstract}
+\fi
+
+\vspace{3cm}
+{\bfseries Keywords:} plis, C++, lexer, parser
+
+{\bfseries Created:} 2007 May ~ June.
+
+\maketitle
+\lstset{language=C++, 
+  frame=single,
+  showstringspaces=false, 
+  breaklines=true, 
+  breakautoindent=true}
+
+% ================================================================
+%                 Introduction
+% ================================================================
+\section{Introduction}
+\label{intro}
+
+\begin{verse}
+白也诗无敌，飘然思不群。\\
+清新庾开府，俊逸鲍参军。\\
+渭北春天树，江东日暮云。\\
+何时一樽酒，重与细论文。
+\end{verse}
+\begin{flushright}
+——唐，杜甫《春日忆李白》
+\end{flushright}
+
+\begin{figure}[htbp]
+	\begin{center}
+	\includegraphics[scale=0.5]{images/huaisu.eps}
+    \caption{怀素，苦笋帖}
+	\end{center}
+\end{figure}
+
+语言，尤其是书面语言，是人类传承文明的最重要手段之一。“形之无文，传而不远”说的就是
+书面语言的重要作用。人类创造语言，并且能够理解语言是非常神奇的事情。不仅仅有诸如“巴
+比伦之塔”这类的有趣传说，也有很多尝试分析人类理解语言原理的努力。
+
+为了研究人类的语言，人们引入了许多方法。归纳语言的规律，从而抽象出语法；分割复杂的语
+言组成，从而形成词汇；应用语法重组和创造，从而得到语义和语用。这些方法也可以推广应用
+到研究人造语言，例如计算机语言的应用中。
+
+
+在上一篇文章\cite{plis1}中，作者给出了一个极为简单的“谓语＋宾语列表”形式的语言，
+它的语法非常简单，类似lisp。为了简化问题，作者仅仅给出了它的求值器。但是这样并不完整。
+因为最终用户无法直接输入这个语言的文本（通过文本文件或者字符终端），而利用该语言完成
+计算任务。为此在本文中，作者将分别给出这个语言的词法扫描器（lexer）和语法分析器
+（parser），从而和上一篇文章的求值器一同构成一个完整的plis语言解释器。最后作者将
+利用plis语言，给出快速排序等算法的plis实现，展示plis的函数式编程特性。
+
+
+% ================================================================
+%                 Lexical analysis
+% ================================================================
+\section{lexical analysis of plis}
+\label{lexer}
+
+作为一个完整的解释器，其接受的输入，是一些用文本写出的程序。好比人在读书、
+读报时，眼睛看到是一个个不同的文字，人的大脑要进一步处理这些信息，从而最终理解
+他看到的语言。
+
+对于解释器来说，第一个环节就是扫描组成程序的一个个文字，将它们组合成更大一些的
+单位。在自然语言中，这样的单位是词汇或者短语；在计算机语言中，这一级别的单位
+被称为记号(token)。
+
+plis的词法分析器(lexer)，会把用户输入的plis程序文本，组合成一个一个的plis词汇。
+为了实现这一lexer，首先必须确定plis中有哪些词汇。
+
+回顾一下plis的语法定义，可以发现由于plis的语法特别简单一致，所以plis中的词汇
+只有如下几种：
+
+\begin{enumerate}
+\item 作为谓语的动词，包括英文字母，数字，逻辑符号，算术符号；
+\item 左右括弧，谓语后如果有宾语，则宾语被括弧括起来；
+\item 逗号分割符，如果宾语不止有一个，则宾语列表中的各个元素之间用逗号分割。
+\end{enumerate}
+
+确定了token的种类，就可以为词汇建模了。一个plis的记号(token)包含两部分，一个是
+该记号的种类，例如动词或者逗号；另一部分是该记号的内容，例如“frac”或者“+”。
+同时还要实现token的赋值、复制和相等判断等基本功能。为此token可以用C++实现
+如下：
+
+\begin{lstlisting}
+struct token{
+    enum{word, left_bracket, right_bracket, deliminator};
+
+    token(int _type, std::string _content):type(_type), content(_content){}
+    token(int _type):type(_type){}
+    token(const token& x):type(x.type), content(x.content){}
+    const token& operator=(const token& x){
+        return *this;
+    }
+
+    const bool operator==(const token& x) const{
+        return type==x.type && content==x.content;
+    }
+
+    int type;
+    std::string content;
+};
+\end{lstlisting}
+
+在词法扫描器的实现中，通常采用有限状态机的模型\cite{wiki_lexer}。在
+本例中，由于plis中只有4种token，所以词法扫描器是包含4种状态的状态机。
+所谓有限状态机，是什么东西呢？最直观的一种有限状态机，就是地铁的检票机。
+（北京的地铁完全靠人检票，那是个例外）
+
+一台检票机有两个状态：“放行”和“关闭”。它不断循环监视插票口、ic卡
+刷卡装置和闸门。最开始，检票机处于“关闭”状态，当有人将票插入投币口
+或者用ic卡刷卡时，检票机的状态从“关闭”变为“放行”。当行人通过，检］
+票机发现闸门被触动时，其状态就从“放行”变为“关闭”。另外还有一些复杂
+的状态转换处理，例如某人用ic卡刷卡，但是其中余额不足，则检票机仍然保
+持“关闭”状态，并给出相关错误提示。再例如，某两个朋友一同进站，其中
+第一个人一次将两张票插入，则检票机在检测到第一次闸门触动后，并不进行
+状态转换，而是等待闸门第二次被触动后才将状态转换为“关闭”。
+
+plis的词法分析器，本质上也是如此进行工作，lexer不断循环从程序中读取
+一个个的字符，首先进入谓语动词读取状态，读入的字符都被认为是谓语动词的
+一部分。直到lexer发现读入的字符是逗号，或者左右括号，这时就发生状态转换。
+如果发现读入的是左侧括号，就将前面读入的内容作为谓语动词放入当前的plis
+表达式内；如果发现读入的是逗号，就将前面累积读入的内容作为一个宾语元素放
+入到当前的表达式中；如果发现读入的是右侧括号，则说明宾语部分结束。
+
+这样的4状态循环可以实现如下：
+
+\begin{lstlisting}
+struct lexer{
+    //...
+    static std::list<token> lex(std::string input){
+    std::list<token> res;
+    for(std::string::iterator it=input.begin(); it!=input.end();){
+        while(it!=input.end() && is_whitespace(*it)){
+            ++it;//skip white space
+        }
+
+        std::string lexeme;
+        while(it!=input.end() && is_word(*it)){
+            lexeme.push_back(*it++);
+        }
+
+        if(lexeme!="")
+            res.push_back(token(token::word, lexeme));
+
+        if(it!=input.end() && is_deliminator(*it)){
+            res.push_back(token(token::deliminator));
+            ++it;
+        }
+
+        if(it!=input.end() && *it == '('){
+            res.push_back(token(token::left_bracket));
+            ++it;
+        }
+
+        if(it!=input.end() && *it == ')'){
+            res.push_back(token(token::right_bracket));
+            ++it;
+        }
+    }
+    return res;
+    }
+};
+\end{lstlisting}
+
+为了测试并验证词法分析器是否工作，可以将一组测试用程序放入lexer转换成token，
+然后再把这些token打印出来，看看是否和刚才输入的程序一致。
+
+打印token非常简单，下面的程序就遍历token列表，并把所有token打印到屏幕上：
+
+\begin{lstlisting}
+struct lexer{
+    //...
+    void static print_tokens(std::list<token> coll){
+        for(std::list<token>::iterator it=coll.begin(); it!=coll.end(); ++it){
+            switch(it->type){
+                case token::word:
+                    std::cout<<it->content;
+                    break;
+                case token::left_bracket:
+                    std::cout<<'(';
+                    break;
+                case token::right_bracket:
+                    std::cout<<')';
+                    break;
+                case token::deliminator:
+                    std::cout<<',';
+                    break;
+            }
+        }
+        std::cout<<'\n';
+    }
+};
+\end{lstlisting}
+
+上述的print\_tokens程序，接受词法分析器的输出结果，然后它遍历此结果，并
+根据每一个token的类型，打印出各个词汇的内容。lexer的一些典型测试如下：
+\begin{lstlisting}
+lexer::print_tokens(lexer::lex("1"));
+lexer::print_tokens(lexer::lex("+(1, 2)"));
+lexer::print_tokens(lexer::lex("+(1, *(3, 4))"));
+lexer::print_tokens(lexer::lex("define(one, 1)"));
+lexer::print_tokens(lexer::lex("one"));
+lexer::print_tokens(lexer::lex("define(two, +(one, 1))"));
+lexer::print_tokens(lexer::lex("define(plus(x,y), +(x, y))"));
+lexer::print_tokens(lexer::lex("plus(1, 2)"));
+lexer::print_tokens(lexer::lex("define(frac(n), if(=(n, 0), 1, *(n, frac(-(n, 1)))))"));
+lexer::print_tokens(lexer::lex("frac(6)"));
+\end{lstlisting}
+
+这些基本的测试涵盖了常量求值，算术运算，自定义常量，引用，自定义函数和函数调用。
+
+% ================================================================
+%                 Parsing
+% ================================================================
+\section{parsing} \label{parsing}
+
+人类在阅读时，当把眼睛看到的文字分割成语言的基本单位（也就是词汇和短语）后，就进
+入了语法分析阶段。人的大脑将词汇和短语根据语言的语法，组织起来，形成一些略微复杂
+的语义结构。通常是一些句子。例如下面这句话：“子曰，学而时习之，不亦悦乎。”
+人们在读完后，先进行词法分析得到了这样的语汇(token)表：
+
+\begin{tabular}{lll}
+内容 & 语汇(token) \\
+子 & 名词 \\
+曰 & 动词 \\
+，&  标点 \\
+... & ... \\
+悦 & 动词 \\
+乎 & 副词 \\
+。& 标点
+\end{tabular}
+
+接着，人们进行语法分析，可以得到如下的一个类似树状结构的语法组织结构。
+
+\begin{figure}[htbp]
+	\begin{center}
+	\includegraphics[scale=0.5]{images/syntax_tree.eps}
+    %\caption{一句古汉语的语法树}
+	\end{center}
+\end{figure}
+
+计算机中的语法分析也是如此。计算机程序经过词法分析器处理后，得到了一系列
+词汇(token)。接着语法分析器parser，将这些token按照语言的语法组织起来，
+形成语法树。
+
+这一语法分析过程，通常采用递归下降的有限状态机模型来实现。有限状态机的原理
+如上节所描述。递归下降的概念也比较直观。例如在“地铁自动检票机”的状态循环中，
+假设已经预先设置好了如下检票规则：
+
+\begin{enumerate}
+\item 若发现用户插入票或刷卡，则处理闸门；
+\item 若发现闸门触动，则继续检测插票口或ic卡刷卡器；
+\end{enumerate}
+
+假设已经存在如下一些控制程序，可以控制地铁自动检票机：
+\begin{enumerate}
+\item check\_ticket() 检测插票口，若有票插入，则返回真；
+\item check\_ic\_card() 检测ic卡刷卡器，若有用户刷卡，则返回真；
+\item check\_gate() 检测闸门，若有用户通过，则返回真；
+\item open\_gate() 打开闸门，允许用户通过。
+\end{enumerate}
+
+于是这个自动检票机，可用如下的递归程序控制：
+
+\begin{lstlisting}
+process_ticket(){
+    if(check_ticket() or check_ic_card())
+        process_gate();
+}
+
+process_gate(){
+    open_gate();
+    if(check_gate())
+        process_ticket();
+}
+\end{lstlisting}
+
+仔细阅读这段伪代码就会发现，它非常直观的描述了前述的两条自动检票规则。
+检票程序一旦发现有票插入或刷卡，就递归调用闸门程序，闸门程序一旦发现
+有人通过，就递归调用检票程序，如此反复。
+
+plis的语法分析程序也是如此，它也是plis语法的直观描述，也就是递归下降
+描述。plis的语法可以归纳为3条：
+
+\begin{verbatim}
+expr = symbol | symbol + list
+symbol = +-*/=><a..zA..Z0..9
+list = (expr, expr, ..., expr)
+\end{verbatim}
+
+用语言叙述就是：一个plis表达式由一个谓语动词和可省略的宾语列表组成；
+其中谓语动词由英文字母，数字和一些合法的符号组成，宾语列表由括在括弧
+中的若干个用逗号分割的表达式组成。
+
+把这些语言直接翻译为c++代码就是：
+
+\begin{lstlisting}
+struct parser{
+    //...
+    expr expression(){
+        expr res;
+        if(expect(token::word))
+            res=word();
+
+        if(expect(token::left_bracket)){
+            drop();	//drop "(";
+            bool hasNext=true;
+            while(hasNext){
+                res.append(expression());
+
+                if(expect(token::right_bracket))
+                    hasNext=false;
+
+                if(expect(token::right_bracket) || expect(token::deliminator))
+                    drop(); //drop "," or ")"
+                else
+                    throw std::string("syntax error, unpaired (");
+            }
+        }
+        
+        return res;
+    }
+};
+\end{lstlisting}
+
+这段程序，首先按照plis语法，要求读入一个动词token，如果读入成功，就将动词放入
+表达式的谓语部分。接着按照plis的语法，尝试要求读入宾语列表的左侧括号，如果失败
+则说明没有宾语，程序结束；反之，就循环递归读入表达式，其中每个表达式读入成功
+后会读入一个逗号分隔符，如果没有逗号分割，就尝试读入右侧括号以结束整个宾语列表；
+如果读入右侧括号不成功，则说明左右括号不匹配，程序提示用户语法出现错误并结束。
+
+这里面的一些子例程也并不复杂，主要是在parser构造时，将lexer的词法分析结果输入。
+然后伴随语法分析的过程，不断从词法列表中剔除读入的内容：
+
+\begin{lstlisting}
+struct parser{
+    //...
+    expr parse(std::list<token> _tokens){
+        tokens=_tokens;
+        return expression();
+    }
+
+    bool expect(int type){
+        if(!tokens.empty())
+            return tokens.front().type == type;
+        return false;
+    }
+
+    void drop(){
+        tokens.pop_front();
+    }
+
+    expr word(){
+        expr res(tokens.front().content);
+        drop();
+        return res;
+    }
+
+private:
+    std::list<token> tokens;
+};
+
+\end{lstlisting}
+
+语法分析程序可以利用上一篇文章中的plis表达式来进行验证。测试程序如下：
+\begin{lstlisting}
+parser p;
+std::cout<<p.parse(lexer::lex("1")).to_string()<<'\n';
+std::cout<<p.parse(lexer::lex("+(1, 2)")).to_string()<<'\n';
+std::cout<<p.parse(lexer::lex("+(1, *(3, 4))")).to_string()<<'\n';
+std::cout<<p.parse(lexer::lex("define(one, 1)")).to_string()<<'\n';
+std::cout<<p.parse(lexer::lex("one")).to_string()<<'\n';
+std::cout<<p.parse(lexer::lex("define(two, +(one, 1))")).to_string()<<'\n';
+std::cout<<p.parse(lexer::lex("define(plus(x,y), +(x, y))")).to_string()<<'\n';
+std::cout<<p.parse(lexer::lex("plus(1, 2)")).to_string()<<'\n';
+std::cout<<p.parse(lexer::lex("define(frac(n), if(=(n, 0), 1, *(n, frac(-(n, 1)))))")).to_string()<<'\n';
+std::cout<<p.parse(lexer::lex("frac(6)")).to_string()<<'\n';
+\end{lstlisting}
+
+plist表达式的to\_string方法，首先会把语法分析生成的表达式展开成字符串，然后在送入标准
+输入打印出来。
+
+
+% ================================================================
+%                 Complete intepreter
+% ================================================================
+
+\section{plis intepreter}
+
+
+词法分析器和语法分析器都完成后，就可以和以前给出的求值器连接起来形成
+完整的解释器了。最简单的解释器循环提示用户输入plis语句，解释器解释并
+执行用户的输入，并将执行结果返回给用户。下面代码是一个解释器的标准循环：
+
+\begin{lstlisting}
+std::cout<<"driver-loop\n";
+parser p;
+std::string e;
+while(true){
+    std::cout<<"input an expression:\n";
+    if(std::getline(std::cin, e)){
+        if(e=="quit")
+            break;
+
+        try{
+            std::cout<<Evaluator::instance().eval(p.parse(lexer::lex(e))).to_string()<<'\n';
+        }
+        catch(std::string &err){
+            std::cout<<"Error: "<<err<<'\n';
+        }
+    }
+}
+\end{lstlisting}
+
+当用户输入quit时，解释器退出循环。还有一种情况是，用户使用文本编辑器
+将plis程序输入，然后将文本保存为文件，例如myprog.plis。然后用户调用
+plis解释器执行该文件，例如：plis myprog.plis。为了实现这个功能，只要
+在解释器的入口加入判断，看看用户是否输入了文件名（例如通过argc, argv
+参数等）。如果没有输入，就进入前面的命令提示循环。否则就打开文件一行
+一行读取内容，然后进行词法解析，语法解析并解释执行。知道读完全部程序
+文件或者遇到错误。这个实现并不复杂，读者可以自行实践。
+
+
+% ================================================================
+%                 power of plis language
+% ================================================================
+\section{More powerful evaluator} \label{more_powerful}
+
+有了解释器，就可以抛开C++，完全用plis实现各种计算，第一个问题是如何
+用plis实现复合数据结构。所谓如何数据结构，就是出普通数字外的数据。
+对应于其他语言中的结构体或者类。例如希望实现一个二维平面上的点，一个
+点一般包含两个部分，x坐标和y坐标。在C语言中，通常如下：
+
+\begin{lstlisting}
+struct point{
+    int x;
+    int y;
+};
+\end{lstlisting}
+
+但是plis的解释器没有直接对这种数据结构的支持。但是在《lambda和高阶函数》
+一文中\cite{lambda_lxy}，作者曾经给出了使用函数实现复合数据的思路，在
+plis中也可以如此，下面实现的二元数据结构：
+
+\begin{verbatim}
+define(construct(x, y),
+  define(get(i),
+    if(=(i, 1), x, y)),
+  get)
+
+define(first(data), data(1))
+define(next(data), data(2))
+\end{verbatim}
+
+程序首先定义了一个复合构造函数construct，它接受两个参数x和y。实际上，它在内部
+定义了一个函数get，当用1调用这个函数时，它返回x，否则返回y，而construct函数仅仅
+是返回一个get函数。为了方便获取复合数据的x和y，还定义了first和next函数，
+当first作用于一个复合数据时，它仅仅是用1调用了其内部返回的get函数，而next是
+用2调用get函数。使用方法如下：
+
+\begin{verbatim}
+define(point, construct(3, 4))
+first(point)
+next(point)
+\end{verbatim}
+
+程序会输出ok, 3, 4在屏幕上。一旦复合数据得到实现，就可以利用它实现复杂的数据类型，
+例如下面的语句实现了一个链表：
+
+\begin{verbatim}
+define(empty, -1)
+define(list, construct(2, construct(3, construct(5, empty))));
+\end{verbatim}
+
+既然plis支持了复杂数据结构，就可以尝试用plis实现某些算法，例如快速排序。快速排序的
+思路是一种递归的思路。大体可以叙述如下：
+
+\begin{enumerate}
+\item 从待排序序列中任取一个元素作为基准(pivot)；
+\item 将所有小于此基准的元素找出，并对其进行快速排序，结果为A
+\item 将所有大于此基准的元素找出，并对其进行快速排序，结果为B
+\item 最终结果为(A, pivot, B)。
+\end{enumerate}
+
+采用plis语言，并且带排序序列采用前面的链表数据结构，则程序可以表示为：
+
+\begin{verbatim}
+define(quick_sort(list),
+  if(=(list, empty), 
+    empty,
+    begin(
+      define(pivot, first(list)),
+      define(a, smaller(list, pivot)),
+      define(b, bigger(list, pivot)),
+      construct(a, construct(pivot, b)))))
+\end{verbatim}
+
+这个快速排序程序基本上就是上面叙述的直观表达。只不过加入了一个条件：如果
+待排序序列是空序列，则直接返回空，否则递归进行快速排序。
+
+但是这个程序暂时还不能运行，因为在一个序列中找出所有小于个值的元素的子程序
+smaller以及找出大于某个值的子程序bigger还没有实现。它们实现起来也不难，下面
+是smaller的一种实现方法：
+
+\begin{verbatim}
+define(smaller(list, x),
+  if(=(list, empty),
+    empty,
+    if(<(first(list), x),
+      construct(x, smaller(next(list), x)),
+      smaller(next(list), x))))
+\end{verbatim}
+
+其中上面的smaller程序也是一种递归实现，如果待查找序列是空序列，则直接返回，
+否则，它判断序列的第一个元素是否小于指定值，如果小于，则留下它，并且把剩余
+的所有元素中小于指定值元素与它组成最终结果。反之，就剔除它，把剩余的所有元
+素中小于指定值的元素返回。bigger的实现非常类似，只要把其中的小于号换成大于
+号就可以了。请读者自行练习，或者思考更为通用的抽象方法filter。
+
+定义好smaller和bigger后，快速排序算法就可以使用了，例如：
+
+\begin{verbatim}
+define(test_list, construct(3, construct(2, construct(7, construct(11, 
+  construct(9, empty))))))
+
+quick_sort(test_list)
+\end{verbatim}
+
+上述的快速排序算法展示了使用二元数据结构后plis的复杂计算功能，如果进一步
+扩展多元数据结构，还可以完成更复杂的计算。例如二叉树是一种三元数据结构，
+它可以表示为：左子树+节点值+右子树。在plis中，可以这样给二叉树建模：
+
+\begin{verbatim}
+define(creat-tree(left, x, right),
+  construct(left, construct(x, right)))
+
+define(get-left(tree), first(tree))
+define(get-right(tree), next(next(tree)))
+define(get-value(tree), first(next(tree)))
+\end{verbatim}
+
+在这样的二叉树递归定义的基础上，可以很方便的实现二叉树排序。二叉树排序的过程
+就是简历一棵排序二叉树的过程，所谓排序二叉树，就是对于树中任意节点，节点值大于
+左侧子树上的所有节点值，并且都小于右侧子树上的所有节点值。根据这个定义，算法
+实现的大致思路可以描述为：
+
+\begin{enumerate}
+\item 如果待排序序列为空，则返回一个空二叉树。 
+\item 否则，从序列中取出第1个元素； 
+\item 然后将序列中剩余的元素建立成一个排序二叉树； 
+\item 最后，将第1个元素插入到此二叉树中。 
+\end{enumerate}
+
+根据这个描述可以很直观的写出二叉树排序的plis实现：
+\begin{verbatim}
+define(tree-sort(list),
+  if(=(list, empty),
+    list,
+    insert(first(list), tree-sort(rest(list)))))
+\end{verbatim}
+
+这个程序还调用了一个未定义的子程序insert，它的作用是将一个元素插入到一棵已排序
+的二叉树中去。其实现方法也不复杂，可以叙述如下：
+
+\begin{enumerate}
+\item 如果待插入的树为空，则返回一个只有一个元素的二叉树； 
+\item 否则，若该元素小于根节点的值，则把它插入到左子树中去； 
+\item 若该元素大于根节点的值，则把它插入到右子树中去。
+\end{enumerate}
+
+相应的plis源代码如下：
+
+\begin{verbatim}
+define(insert(x, tree),
+  if(=(tree, empty),
+    create-tree(empty, x, empty),
+    if(<(x, get-value(tree)),
+      insert(x, get-left(tree)),
+      insert(x, get-right(tree)))))
+\end{verbatim}
+
+
+% ================================================================
+%                 Summary
+% ================================================================
+\section{Summary} \label{summary}
+
+通过上面的叙述，可以看到简单一致语法，带来的不仅是简单易实现的词法分析
+和语法分析；还带来了简单强大的语用，也就是强大的编程能力，使用“谓语+
+宾语列表”这样的语法形式，plis可以仅仅使用少数几句代码，完成其他语言并不
+容易实现的一些计算任务。
+
+最后，plis和lisp以及其方言scheme有着很深的渊源。它基本上可以说是受到它们
+的启发，并在语法上稍做了很小的改动而得到的。
+
+读者可以从本文直接下载全部解释器的源代码和测试用例。
+
+下载点：\url{http://liuxinyu95.googlepages.com/book2007_example.zip}
+
+
+% ================================================================
+%                 Appendix
+% ================================================================
+\section{Appendix} \label{appendix}
+
+本文的例子代码可以从\url{http://liuxinyu95.googlepages.com/book2007_example.zip}下载。
+
+\begin{thebibliography}{99}
+
+\bibitem{plis1}
+Liu Xinyu, ``Please try 'plis'" 2007, April. \\ http://baredog.at.infoseek.co.jp/intl/chn/ \\ softdev/book2007/html/essay3/essay3.html
+
+\bibitem{wiki_lexer}
+wikipedia, ``Lexical analysis" http://en.wikipedia.org/wiki/Lexical\_analysis
+
+\bibitem{wiki_parsing}
+wikipedia, ``Parsing" http://en.wikipedia.org/wiki/Parsing
+
+\bibitem{lambda_lxy}
+Liu Xinyu. ``Lambda and high order function." \\http://baredog.at.infoseek.co.jp/intl/chn/ \\ softdev/book2007/html/essay1/essay1.html.
+
+\end{thebibliography}
+
+\ifx\wholebook\relax\else
+\end{document}
+\fi
