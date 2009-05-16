@@ -1,0 +1,740 @@
+\ifx\wholebook\relax \else
+% ------------------------ 
+
+\documentclass{article}
+%------------------- Other types of document example ------------------------
+%
+%\documentclass[twocolumn]{IEEEtran-new}
+%\documentclass[12pt,twoside,draft]{IEEEtran}
+%\documentstyle[9pt,twocolumn,technote,twoside]{IEEEtran}
+%
+%-----------------------------------------------------------------------------
+\input{common.tex}
+
+\setcounter{page}{1}
+
+\begin{document}
+
+\fi
+%--------------------------
+
+% ================================================================
+%                 COVER PAGE
+% ================================================================
+
+\title{Simulate epidemic by programming\\
+通过编程模拟疾病的传染}
+
+\author{刘新宇(Liu~Xinyu)
+\thanks{{\bfseries Liu Xinyu } \newline
+  Email: liuxinyu95@gmail.com \newline
+  Tel:   +86-1305-196-8666 \newline}
+  }
+
+\markboth{Simulate epidemic by programming}
+{Simulate epidemic by programming}
+
+\maketitle
+
+\ifx\wholebook\relax
+\chapter{Simulate epidemic by programming}
+
+\section{abstruct}
+\else
+\begin{abstract}
+\fi
+
+计算机对于复杂大系统的模拟很有帮助，这种模拟，或者叫仿真，不仅仅可以帮助我们
+快速了解自然科学中的一些系统，例如复杂的粒子运动系统；还往往能够在一定程度上
+能支持我们研究社会科学中的系统。本文通过编程来给出一个疾病传染的仿真示例，希望
+能够给读者以启示。也算是作者对当前甲型H1N1流感的防治尽一些绵薄之力了。
+
+由于作者水平有限，文中难免有谬误之处，欢迎广大读者指正！
+本文使用\LaTeXe排版，遵循FDL(GNU Free Documentation License)许可协议。
+并受其保护。具体请参考：http://www.gnu.org/copyleft/fdl.html
+
+\ifx\wholebook\relax\else
+\end{abstract}
+\fi
+
+\vspace{3cm}
+{\bfseries Keywords:} Epidemic simulation, Squeak, C++
+
+{\bfseries Corresponding Author:} 刘新宇
+
+\maketitle
+
+% ================================================================
+%                 Introduction
+% ================================================================
+\section{Introduction}
+\label{introduction}
+
+%\begin{verse}
+%子曰：学而不思则罔，死而不学则殆。%\\
+%\end{verse}
+%\begin{flushright}
+%——《论语》
+%\end{flushright}
+
+%\begin{figure}[htbp]
+%       \begin{center}
+%	\includegraphics[scale=0.5]{images/peace.eps}
+%        \caption{from www.zikai.org}
+%       \end{center}
+%\end{figure}
+
+去年地震灾害的时候，我就常常问自己：“抗震救灾，一个普通的程序员能够做些什么？”。Google很快
+给出了灾区的地图，各大网站及时报道救灾的新闻。可是对于普通程序员来说，如何才能发挥所长，尽
+一份贡献呢？当前，正值甲型H1N1流感在世界蔓延，这个问题再次引起我的思考。
+
+希望能通过这篇文章，尽我自己的一点绵薄之力。我将依次通过计算机程序给出一些直观的仿真结果，包括下面的几种情形：
+\begin{itemize}
+\item 传染病发生时，如果不采取任何防治措施的传播速度
+\item 具有一定传播概率时的传播速度；
+\item 采取隔离措施，及时治疗时的传播速度；
+\item 公众自发防治，主动治疗时的传播速度；
+\end{itemize}
+
+\section{method 1}
+\label{method1}
+
+\subsection{permutation algorithms}
+
+http://www.is.titech.ac.jp/~ohshima/squeak/kedama/
+如果能够借助计算机，最直观的思路大概应该是穷举。为什么要不惜时间空间给出穷举解法？最大的目的就是作为正确性检验的手段。
+在一个题目没有公认答案，或者没有显而易见的通项公式时，穷举是检验某一解法正确与否的最可信服方法。这就好比，某人开发了一个利用三维成像计算体积，
+然后利用红外测量密度分布，最后使用限元计算获得重量的非接触磅秤，他可以在100米外测量出某人的体重。可是如何知道体重是否计算的正确性？有效的方
+法就是利用一个普通磅秤，然后把测量结果进行比较。
+
+当给出一个AB串后，首先能根据他的长度判断出对应的英文串的范围，例如给出“AABBBA”，其长度为6,所以对应英文串的范围就是abcdefg这7个字母。我们
+借助程序，给出这7个字母的所有排列，然后找出符合“AABBBA”规则的留下而剔除其他的，就可以得到最终答案。
+
+穷举法使用起来大致如下：
+\lstset{language=Haskell, 
+  %frame=single,
+  showstringspaces=false, 
+  breaklines=true, 
+  breakautoindent=true}
+
+\begin{lstlisting}
+filter hasPattern "AABBBA" permutation [a,b,c,d,e,f,g]
+\end{lstlisting}
+
+以上是Haskell代码，对应的C++代码为：
+\begin{lstlisting}
+std::string str="AABBBA";
+filter(hasPattern(str, permutation(str.length())));
+\end{lstlisting}
+
+程序对abcdefg进行全排列，然后找出符合"AABBBA"形式的所有排列结果，最后计算他的个数。
+使用程序生成全排列是下面要解决的第一个问题。这一算法的常见实现如下\cite{SunBook}：
+
+\begin{lstlisting}
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+typedef vector<int> NumberList;
+typedef vector<NumberList> Result;
+
+void generate(Result& res, const NumberList& inst, int i, int n, int r){
+  for(int j=1; j<=n; ++j){
+    if(find(inst.begin(), inst.end(), j)==inst.end()){
+      NumberList new_inst(inst);
+      new_inst.push_back(j);
+      if(i==r)
+        res.push_back(new_inst);
+      else
+        generate(res, new_inst, i+1, n, r);
+    }
+  }
+}
+
+Result permutation(int n, int r){
+  Result res;
+  generate(res, NumberList(), 1, n, r);
+  return res;
+}
+\end{lstlisting}
+
+这是一个递归算法，求n个数中取出r个数的排列可以这样产生：
+\begin{itemize}
+\item 生成第i位数字时，从[1..n]中选择一个j
+\item 检查j是否已经在1到i-1位使用过了，若使用过，则重复1，否则另j为第i位的数字
+\item 比较i是否等于r,若等于r，则找到了一个排列，可将其放入结果中；否则i+1，递归调用生成第i+1位数字。
+\end{itemize}
+
+下面是一段测试代码：
+\begin{lstlisting}
+#include <iterator>
+
+struct Print{
+  void operator()(NumberList& item){
+    copy(item.begin(), item.end(), ostream_iterator<int>(cout, " "));
+    cout<<"\n";
+  }
+};
+
+int main(int, char**){
+  Result res=permutation(5, 3);
+  for_each(res.begin(), res.end(), Print());
+}
+\end{lstlisting}
+
+上面这段程序会输出：
+\begin{verbatim}
+1 2 3
+1 2 4
+1 2 5
+...
+5 4 2
+5 4 3
+\end{verbatim}
+
+由于排列是很常见的算法，所以C++的标准库中也给出了一个实现。不过其思路和上面的不同，这里不再赘述。
+感兴趣的读者可以参考\cite{AnnotatedSTL}。使用标准库的代码如下：
+\begin{lstlisting}
+#include <algorithm>
+
+int main(int, char**){
+  string str("abcdef");
+  do{
+    cout<<str<<"\n";
+  }
+  while(next_permutation(str.begin(), str.end()));
+}
+\end{lstlisting}
+
+这里解释以下，标准库的排列算法，只实现了全排列，并不支持n个元素中取r个的排列。它通过对元素的大小比较
+来依次生成全部排列，如果序列已经是降序的，则不做任何操作返回false。否则，根据现有的序列，生成下一排列，并返回true。
+
+在排列算法的实现中，采用纯函数式的实现也非常优美，下面是Haskell的全排列算法。
+\begin{lstlisting}
+import Data.List
+
+permutation [] = [[]]     
+permutation xs = [x:ys | x <- xs, ys <- permutation (delete x xs)]
+\end{lstlisting}
+
+使用方法和运行结果为：
+\begin{verbatim}
+permutation "abcd"
+["abcd","abdc","acbd",...,"dcab","dcba"]
+\end{verbatim}
+
+这个算法是求某个list的全排列，而非n元素取r个元素的排列。这个算法相当于这样的数学描述。
+排列 list 的结果是：
+\begin{itemize}
+\item 平凡情况：若待排列list为空，则结果为空；
+\item 一般情况：排列结果集合=\{x和后继部分ys，其中x属于list，后继部分ys属于对list中删除x后进行排列的结果\}
+\end{itemize}
+
+举个例子，[1,2,3]的全排列结果是：
+x为1或2或3,
+ys为 [2,3]或[1,3]或[1,2]全排列
+x和ys组合在一起就是最终结果。
+
+如果读者从来没有接触过Haskell，可以把$<-$符号理解为数学中的集合符号$\in$。而中括号，相当于数学中表示
+集合的大括号；冒号表示把结果拼接在一起。负责从xs中删除x的delete函数，在Data.List模块中已经定义过了；
+相当于c语言中的库函数。
+
+根据上面的全排列算法，可以很方便的实现出${P_n}^r$。改动如下：
+\begin{lstlisting}
+permutation xs n r= if length xs <= n-r
+	then [[]]
+	else [x:ys | x <- xs, ys <- permutation (delete x xs) n r]
+\end{lstlisting}
+
+它的使用方法和对应输出为：
+\begin{verbatim}
+permutation "abcde" 5 3
+["abc","abd","abe",...,"edb","edc"]
+\end{verbatim}
+
+\subsection{pattern matching}
+全排列的功能实现后，相当于实现了最基本的穷举，下一步就是编写一个判断函数，用于筛选出符合给定AB串的
+候选英文字符串。我们同样给出C++实现的命令式实现和Haskell的函数式实现。
+
+先考虑C++实现，程序将遍历所有排列，然后依次检查AB串规定的字符出现先后次序是否得到满足，代码如下：
+\begin{lstlisting}
+template<typename Compare>
+bool checkOrder(Compare op, char c, const string& candidate){
+  return op(candidate.find(c), candidate.find(c+1));
+}
+
+bool hasPattern(string& pattern, const string& candidate){
+  char c='a';
+  for(string::iterator it=pattern.begin(); it!=pattern.end(); ++it, ++c){
+    if(*it=='A' && !checkOrder(less<char>(), c, candidate))
+      return false;
+    if(*it=='B' && !checkOrder(greater<char>(), c, candidate))
+      return false;
+  }
+  return true;
+}
+\end{lstlisting}
+hasPattern从第一字符a开始，若从pattern中读到A，就检查a是否在b的前面，否则检查a是否在b的后面。
+
+此后把hasPattern和排列算法连接在一起就可以求解\ref{introduction}中提出的问题了。
+\begin{lstlisting}
+void enumStr(string pattern){
+  string s;
+  for(int i=0; i<pattern.length()+1;++i)
+    s.push_back('a'+i);
+  vector<string> res;
+  do{
+    if(hasPattern(pattern, s))
+      res.push_back(s);
+  }while(next_permutation(s.begin(), s.end()));
+  for_each(res.begin(), res.end(), Print());
+  cout<<"total solution: "<<res.size()<<"\n";
+}
+
+int main(int, char**){
+  enumStr("AAABBA");
+}
+\end{lstlisting}
+enumStr这段程序根据输入的AB串pattern的长度，先生成初始串(abc...)然后调用STL的
+排列算法，针对每个排列，调用hasPattern检查是否符合AB串，若符合就存入最终结果内。
+最后打印出全部结果。
+
+为了重复使用Print这个function object,还需要把前面的代码略作改动如下：
+\begin{lstlisting}
+struct Print{
+  template<typename Container>
+  void operator()(Container& item){
+    typedef typename Container::value_type value_type;
+    copy(item.begin(), item.end(), ostream_iterator<value_type>(cout, " "));
+    cout<<"\n";
+  }
+};
+\end{lstlisting}
+这一程序的运行结果为：
+\begin{verbatim}
+a b c f e d g 
+a b c f e g d 
+a b c f g e d 
+...
+f g a e b c d 
+f g e a b c d 
+total solution: 50
+\end{verbatim}
+
+Haskell的实现与此类似，但是采用的是递归的形式。为了简单起见，这里另1代表英文字母'a'，2代表'b'，……，26代表'z'。
+\begin{lstlisting}
+perm xs = permutation xs n n where n=length xs
+
+order f s = at s x `f` at s (1+x) where
+    x = minimum s
+    at (y:ys) v = if v==y then 1 else 1 + at ys v
+
+delete_min xs = filter (\x->not (x==minimum xs)) xs
+
+hasPattern [] _ = True
+hasPattern ('A':ps) s = order (<) s && hasPattern ps (delete_min s)
+hasPattern ('B':ps) s = order (>) s && hasPattern ps (delete_min s)
+\end{lstlisting}
+
+hasPattern接受两个参数，一个pattern串，一个代表英文字母的数字串。
+如果pattern中的第一字符是A，程序要检查英文串中，最小的字符在次小的字符前，并且除掉最小字符的剩余部分，也符合pattern。
+如果是B的话，结果则相反。
+
+检查最小字符在次小字符前后的函数是order，它找出最小字符的位置和次小字符的位置，然后比较他们位置的大小。比较直观，不再赘述。
+
+删除最小字符的函数是delete\_min，可以利用filter比较容易的实现。
+\begin{lstlisting}
+enumStr1 pattern = filter f (perm [1..(1+length pattern)]) where
+    f = hasPattern pattern
+
+count1 = length.enumStr1
+\end{lstlisting}
+
+前一个函数枚举所有的串，后一个计算这样的串的个数。运行结果如下：
+\begin{verbatim}
+enumStr1 "AAABBA"
+[[1,2,3,6,5,4,7],[1,2,3,6,5,7,4],[1,2,3,6,7,5,4],[1,2,6,3,5,4,7],
+[1,2,6,3,5,7,4],[1,2,6,3,7,5,4],[1,2,6,5,3,4,7],[1,2,6,5,3,7,4],
+[1,2,6,5,7,3,4],[1,2,6,7,3,5,4],[1,2,6,7,5,3,4],[1,6,2,3,5,4,7],
+[1,6,2,3,5,7,4],[1,6,2,3,7,5,4],[1,6,2,5,3,4,7],[1,6,2,5,3,7,4],
+[1,6,2,5,7,3,4],[1,6,2,7,3,5,4],[1,6,2,7,5,3,4],[1,6,5,2,3,7,4],
+[1,6,5,2,7,3,4],[1,6,5,7,2,3,4],[1,6,7,2,3,5,4],[1,6,7,2,5,3,4],
+[1,6,7,5,2,3,4],[6,1,2,3,5,4,7],[6,1,2,3,5,7,4],[6,1,2,3,7,5,4],
+[6,1,2,5,3,4,7],[6,1,2,5,3,7,4],[6,1,2,5,7,3,4],[6,1,2,7,3,5,4],
+[6,1,2,7,5,3,4],[6,1,5,2,3,4,7],[6,1,5,2,3,7,4],[6,1,5,2,7,3,4],
+[6,1,5,7,2,3,4],[6,1,7,2,3,5,4],[6,1,7,2,5,3,4],[6,1,7,5,2,3,4],
+[6,5,1,2,3,4,7],[6,5,1,2,3,7,4],[6,5,1,2,7,3,4],[6,5,1,7,2,3,4],
+[6,5,7,1,2,3,4],[6,7,1,2,3,5,4],[6,7,1,2,5,3,4],[6,7,1,5,2,3,4],
+[6,7,5,1,2,3,4]]
+
+count1 "AAABBA"
+50
+\end{verbatim}
+运算速度虽然比较慢，但是程序能够给出正确的结果。
+
+% ================================================================
+% method 2
+% ================================================================
+\section{method 2}
+\label{method2}
+
+前一方法的缺点就是效率很低。如果可能的英文串长度为n，则全排列算法本身的计算量为n!，
+hasPattern的算法复杂度为$O(n^2)$。为了提高效率，需要找到更好的算法。
+
+仍然从题目本身出发，存在一个比较直观的思路。根据一个AB串，生成全部合法的英文串可以这样考虑：
+假设已经根据长度为n的AB串中的后n-1个AB子串，生成了全部英文串(包含b,c,...到第n+1个英文字母），现在要根据第1个AB，生成最终结
+果。
+如果第一字符是A，那么只要试图把a插入到现有结果中b的前面，就获得了全部方案；
+如果第一字符是B，那么只要试图把a插入到现有结果中b的后面，就获得了全部方案；
+如果现有结果是空，那么只有一个方案，就是a。
+
+根据这一思路用Haskell实现的代码如下(C++的实现思路和代码在后面给出)：
+\begin{lstlisting}
+enumStrR from [] = [[from]]
+
+enumStrR from ('A':ps) = foldl (++) [] (map f (enumStrR (from+1) ps)) where
+    f = insert_before from
+    insert_before y (x:xs) = if x==y+1 
+        then [y:x:xs]
+        else [y:x:xs]++ (map (x:) (insert_before y xs))
+
+enumStrR from ('B':ps) = foldl (++) [] (map f (enumStrR (from+1) ps)) where
+    f = insert_after from
+    insert_after y (x:xs) = if x==y+1 
+        then map (x:) (insert_any y xs)
+        else map (x:) (insert_after y xs) where 
+            insert_any y [] = [[y]]
+            insert_any y (x:xs) = [y:x:xs]++(map (x:) (insert_any y xs))
+
+enumStr2 = enumStrR 1
+\end{lstlisting}
+
+下面对这段代码给出一些解释。首先看最后一句，enumStr2 = enumStrR 1，这句比较简单。意思就是枚举具备pattern（例如pattern为"AAABBA"）形式的
+所有英文串，可以这样调用：
+enumStr2 "AAABBA"，实际上，就是“递归从1（也就是字母a）枚举所有英文串的意思”，相当于enumStrR 1
+"AAABBA"。
+
+如果pattern是空，那么结果就是[[from]]，也就是[[1]]
+如果pattern不空，则取出第一字母，根据他是A或者B分别处理。
+enumStrR (from+1) ps，是从a的后继字母(也就是from+1)b开始，根据除第一字母外剩余字母枚举所有的方案。
+对这些方案集合中的每个元素应用（也就是map）insert\_after或者insert\_before，如果是A就调用insert\_before，否
+则调用insert\_after。
+这样就会针对每个元素生成若干方案，把他们加到一起（利用foldl，初始值空集合和序列相加运算++），就是最终结果。
+
+insert\_before实现很简单：
+\begin{lstlisting}
+insert_before y (x:xs) = if x==y+1 
+    then [y:x:xs]
+    else [y:x:xs]++ (map (x:) (insert_before y xs))
+\end{lstlisting}
+他的含义就是，如果待插入序列的首字符就是待插入字符的后继字符，（例如待插入字符为a，待插入序列为bcd的形式）。那么就仅有一种方案。（对应为
+abcd），否则，就把这一方案（abcd)，和递归地把该字符向除去首字符的子串中insert\_before的结果合并为最终结果。
+
+insert\_after稍微复杂一些：
+\begin{lstlisting}
+insert_after y (x:xs) = if x==y+1 
+    then map (x:) (insert_any y xs)
+    else map (x:) (insert_after y xs) where
+        insert_any y [] = [[y]]
+        insert_any y (x:xs) = [y:x:xs]++(map (x:) (insert_any y xs))
+\end{lstlisting}
+针对首字符为待插入字符后继字符的情况，我们可以把待插入字符通过insert\_any插入到任意位置，反之。就要递归地寻找后继字符，并完成插
+入。insert\_any的实现极为简单，这里不再赘述。
+
+枚举所有方案后，获得方案数目就非常简单了：
+count2 = length.enumStr2
+
+现在，就可以检验这一方法的正确性，可以通过和方法1的结果对比：
+\begin{verbatim}
+EnumStr> enumStr2 "AAABBA"
+[[1,2,3,6,5,4,7],[1,2,6,3,5,4,7],[1,6,2,3,5,4,7],[6,1,2,3,5,4,7],
+[1,2,6,5,3,4,7],[1,6,2,5,3,4,7],[6,1,2,5,3,4,7],[1,6,5,2,3,4,7],
+[6,1,5,2,3,4,7],[6,5,1,2,3,4,7],[1,2,3,6,5,7,4],[1,2,6,3,5,7,4],
+[1,6,2,3,5,7,4],[6,1,2,3,5,7,4],[1,2,6,5,3,7,4],[1,6,2,5,3,7,4],
+[6,1,2,5,3,7,4],[1,6,5,2,3,7,4],[6,1,5,2,3,7,4],[6,5,1,2,3,7,4],
+[1,2,6,5,7,3,4],[1,6,2,5,7,3,4],[6,1,2,5,7,3,4],[1,6,5,2,7,3,4],
+[6,1,5,2,7,3,4],[6,5,1,2,7,3,4],[1,6,5,7,2,3,4],[6,1,5,7,2,3,4],
+[6,5,1,7,2,3,4],[6,5,7,1,2,3,4],[1,2,3,6,7,5,4],[1,2,6,3,7,5,4],
+[1,6,2,3,7,5,4],[6,1,2,3,7,5,4],[1,2,6,7,3,5,4],[1,6,2,7,3,5,4],
+[6,1,2,7,3,5,4],[1,6,7,2,3,5,4],[6,1,7,2,3,5,4],[6,7,1,2,3,5,4],
+[1,2,6,7,5,3,4],[1,6,2,7,5,3,4],[6,1,2,7,5,3,4],[1,6,7,2,5,3,4],
+[6,1,7,2,5,3,4],[6,7,1,2,5,3,4],[1,6,7,5,2,3,4],[6,1,7,5,2,3,4],
+[6,7,1,5,2,3,4],[6,7,5,1,2,3,4]]
+EnumStr> count2 "AAABBA"
+50
+EnumStr> count1 "AAB" == count2 "AAB"
+True
+EnumStr> count1 "AABB" == count2 "AABB"
+True
+EnumStr> count1 "AABBB" == count2 "AABBB"
+True
+EnumStr> count1 "A" == count2 "A"
+True
+EnumStr> count1 "AA" == count2 "AA"
+True
+EnumStr> count1 "ABA" == count2 "ABA"
+True
+\end{verbatim}
+
+以上Haskell的实现，基本是采用函数式的递归实现。如果使用C++，则可以根据题目的
+定义使用命令式的方式。下面是C++的程序代码。
+
+\begin{lstlisting}
+typedef list<string> ResultList;
+
+ResultList insertChar(string inst, char c){
+  ResultList res;
+  typedef string::size_type size_type;
+  size_type pos=inst.find(*max_element(inst.begin(), inst.end()));
+  size_type from= (c=='A')? pos+1 : 0;
+  size_type to  = (c=='A')? inst.length() : pos;
+
+  for(size_type i=from; i<=to; ++i){
+    string s(inst);
+    s.insert(i, 1, char(inst[pos]+1));
+    res.push_back(s);
+  }
+  return res;
+}
+
+ResultList enumStr2(string pattern){
+  ResultList res;
+  res.push_back(string("a"));
+  for(string::iterator it=pattern.begin(); it!=pattern.end(); ++it){
+    ResultList new_res;
+    for(list<string>::iterator inst=res.begin(); inst!=res.end(); ++inst){
+      ResultList s=insertChar(*inst, *it);
+      copy(s.begin(), s.end(), 
+           insert_iterator<ResultList>(new_res, new_res.end()));
+    }
+    res=new_res;
+  }
+  return res;
+}
+\end{lstlisting}
+
+这断代码中，enumStr2是主程序，维护一个结果列表res，该列表被初始化为含有一个英文字符串"a"，程序依次从AB串
+中取出下一个字符，并且遍历结果列表，根据字符是A或者B来将下一个英文字符插入当前结果中。由于插入的方案有多个，所以
+insertChar返回的是一集中间结果。主程序接着调用标准库的copy算法，把这一集结果添加到新的结果列表new\_res中。
+最后使用新结果列表替换老的列表，然后继续遍历AB串直到结束。
+
+insertChar子程序负责根据A或者B生成一集插入方案。它首先找出当前英文串中的最大字母的位置。如果要插入的位置
+是该字母后方，就依次生成从该位置其到字符串最后一个字符后面插入下一字符的所有方案；如果要插入的位置是该字母的前方，
+就依次生成从字符串起始位置到该位置前插入下一字符的所有方案。
+
+这段程序的调用方法如下。
+
+\begin{lstlisting}
+int main(int, char**){
+  ResultList res=enumStr2("AAABBA");
+  for_each(res.begin(), res.end(), Print());
+  cout<<"total solution:"<<res.size()<<"\n";
+}
+\end{lstlisting}
+
+程序输出：
+\begin{verbatim}
+f g e a b c d 
+f e g a b c d 
+f e a g b c d 
+...
+a b c f e d g 
+total solution:50
+\end{verbatim}
+
+% ================================================================
+%                 method 3
+% ================================================================
+\section{Method 3} \label{method3}
+
+采用第二种方法候，算法的复杂度得到了一定的降低。如果AB串的长度为n，大致最坏情况估计为:
+$1!+2!+3!+...+n!$。并且题目本身并没有要求列出所有的串，只需要得出符合要求串的个数就可以了。
+
+为了进一步寻找更好的思路。首先我们考虑平凡情况，如果AB串的内容都是A，则只有一个解答
+就是abc...；如果AB串的内容都是B，则也只有一个解答，就是...cba。
+
+现在考虑一个例子AAB。如前面分析的AA已经决定了abc的先后顺序，现在B字母决定了d必然在c的前面。
+所以d可以放置的位置如下:
+\begin{verbatim}
+(1) a (2) b (3) c
+\end{verbatim}
+也就是d可以放在1,2,3任何一个位置。因此我们对于形如AAA...AB(n个A)的串（对BBB...BA亦然）的个数可以确定为n+1
+
+下面考虑AABB，增加了一个B后，我们需要在d的前面放置e，我们依次展开放置d时的3种分支
+
+(1): 对于把d放置在这个位置，只有一个选择，把e放置在d的前面；
+(2): 对于把d放置在这个位置，有2个选择：(1) a (2) d b c；
+(3): 对于吧d放置在这个位置，有3个选择：(1) a (2) b (3) d c；
+
+规律是，当把前一个字母放在第i个位置时，我们有$C_i^1=i$个子方案，写成树状结构如下：
+
+\begin{verbatim}
+       3
+ 1,    2,    3
+\end{verbatim}
+
+进一步考虑串AABBB，依照上述分析，总方案树如下：
+\begin{verbatim}
+        3
+ 1,     2,     3
+ 1,   1, 2   1,2,3
+\end{verbatim}
+
+对应AABBBB的方案树为：
+\begin{verbatim}
+            3
+1,      2,               3
+1,   1,    2,     1,    2,     3
+1,   1,  1, 2    1,  1, 2  1,2,3
+\end{verbatim}
+
+每次把叶子节点的值加起来就是最终结果。
+
+现在考虑AAABBA，根据上面的分析，可以很容易写出前面3个A和2个B的树形方案：
+\begin{verbatim}
+       4
+1  2   3   4
+\end{verbatim}
+但是根据第5个A, 字母g要放在f的后面。而放置字母f的方案总数为$C_1^1+C_2^1+C_3^1+C_4^1=1+2+3+4$分别对应放在(1)最左, (2)最左或左数第2，(3)最左或左数第2或第
+3....等子方案。
+
+所以对应f放在最左，有$C_{3+2+1}^1=6$种放置g的方案，分别放在左数第2到第7;
+
+对应f放在左数第2，有5种放置g的方案，分别对应放在左数第3到第7
+
+...
+
+因此AAABBA的方案树为：
+\begin{verbatim}
+                4
+1      2       3          4
+6    6 5     6 5 4     6 5 4 3
+\end{verbatim}
+
+现在考虑AAABBAA，我们可以用前面同样的思路，给出方案数为：
+
+\begin{verbatim}
+                     4
+1           2                 3                      4
+6       6      5        6    5     4      6      5     4   3
+1..6  1..6    1..5    1..6 1..5  1..4    1..6  1..5  1..4 1..3
+\end{verbatim}
+
+通过上述分析，最终的规律可以归纳为：
+对于形如AA...(n1个)...A BB...(n2个)...B AA...(n3个)...A ... BB...(np个)...B的AB串，我们只要把方案树画出来，然后计算最后一行的数
+字和就可以了。
+数根的值为n1+1，然后第1层为1到n1+1，然后从该层每个值为i的节点，分支出1...i的子树，重复下去，直到n2层
+然后第n3层从每个值为i的节点，分支出(n1+n2+n3)-i+2..(n1+n2+n3+1)的子树。 
+
+根据这一方法可以很方便的给出计算程序。首先介绍c++程序
+
+\begin{lstlisting}
+template<typename Coll>
+void insertRange(int from, int to, Coll& res){
+  int step = from<to ? 1 : -1;
+  for(;;from+=step){
+    res.push_back(from);
+    if(from==to)
+      break;
+  }
+}
+
+int enumStr3(string pattern){
+  list<int> res(1,1);
+  for(int i=0; i<pattern.length(); ++i){
+    list<int> new_res;
+    if(i && pattern[i]!=pattern[i-1])
+      for(list<int>::iterator node=res.begin(); node!=res.end(); ++node)
+        insertRange(i+1, i-*node+2, new_res);
+    else
+      for(list<int>::iterator node=res.begin(); node!=res.end(); ++node)
+        insertRange(1, *node, new_res);
+    res=new_res;    
+  }
+  return accumulate(res.begin(), res.end(), 0);
+}
+\end{lstlisting}
+
+这段程序首先初始化树的根节点为1，然后遍历AB串，针对连续A或者B的情况，程序进入else分支，它进一步以类似广度优先的形式遍历上层树的所有节点，
+从每个值为i的节点，通过调用insertRange()子程序分支出1...i的子节点。如果不是连续A或B的情况变化，则程序进入if的分支，它进一步遍历上层
+树的所有节点，从每个值为i的节点，分支出从当前树的深度（也就是AB串的当前长度）n, n-1, ...一共i个子节点。最后程序把树的最底层的所有叶子
+节点值相加作为最终结果返回。
+
+insertRange是一个辅助函数，它的功能就是生成从from到to的闭区间内的所整数值，并且from可以比to小。这一函数可以也使用STL标准库SGI实现中
+的iota(发音为尤塔)函数\cite{sgiSTL},\cite{iota}.但是考虑到通用性，这里自己采用了自己的实现。
+
+这段程序的调用及运行如下：
+\begin{lstlisting}
+int main(){
+    cout<<"enum AAABBA="<<enumStr3("AAABBA")<<"\n";
+}
+\end{lstlisting}
+
+\begin{verbatim}
+enum AAABBA=50
+\end{verbatim}
+
+计算这一结果的Haskell程序，也非常直观，这里不再给出。请读者自行思考。
+
+% ================================================================
+%                 Others & summary
+% ================================================================
+\section{Other methods and Summary}
+不枚举所有的排列而直接计算结果还有其他思路。Alecs King(alecs@perlchina.org)在TopLanguage讨论组给出了一个特别优美的实现
+
+\begin{lstlisting}
+get ab = sum $ foldl f [1] ab
+    where f last 'A' = scanl (+) 0 last
+          f last 'B' = scanr (+) 0 last 
+\end{lstlisting}
+
+%$
+作为本文的结束，作者在此给出这个解法的一个简短分析。这一分析类似于数学归纳法，但是并不严格。
+
+首先是平凡情况，如果AB串的长度为0,则符合条件的英文串只有一个，就是小写英文字母a；
+
+如果长度为m的AB串，符合条件的英文串可以写成$x_1,x_2,x_3,...,x_{m+1}$的形式，
+假设在这m+1个位置，放置第m+1个英文字母的方案数依次为：$n_1,n_2,n_3,...,n_{m+1}$。则符合要求的英文串总数就等于
+$n_1+n_2+n_3+...+n_{m+1}$。
+现在考虑长度为m+1的AB串，也就是在刚才长度为m的AB串后面，增加一条“前后规则”$X$，那么放置第m+2个英文字母的方案数可以这样求出：
+\begin{itemize}
+\item 如果$X=A$，也就是新字母要放在上一个字母的后面，首先考虑放在起始位置，显然这是不可能的，因为这样一来新字母就只可能处在上一字母的前面了；
+再考虑左数第2位置，如果上一字母放在左数第1位置的方案数是$n_1$，则新字母放在第2位置的方案数也是$n_1$，因为只要把新字母紧接着上一个字母放就可以了；
+再考虑左数第3位置，如果上一字母放在左数第2位置的方案数是$n_2$，则新字母放在第3位置的方案数就是是$n_1+n_2$，也就是上一字母放在第1，第2方案数的和；
+...
+所以总方案数为$0+n_1+(n_1+n_2)+(n_1+n_2+n_3)+...+(n_1+n_2+...+n_{m+1})$。
+\item 如果$X=B$，也就是新字母要放在上一个字母的前面，首先考虑放在最右侧位置，显然这是不可能的，因为这样一来新字母就值可能处在上一字母的后面了；
+再考虑右数第2位置，如果上一字母放在倒数第1位置的方案数是$n_{m+1}$，则新字母放在倒数第2位置的方案数也是$n_{m+1}$，因为只要把新字母紧接着放在上一个字母前就可以了；
+分析基本同上，只不过要从右侧开始，所以所以总方案数为$(n_1+n_2+...+n_{m+1})+(n_1+n_2+...+n_m)+...+n_{m+1}+0$。
+\end{itemize}
+将这一分析翻译成Haskell就是上面的代码。
+
+至此本文给出了解决这一问题的三种方法，其中第一种穷举法虽然效率很差，但是特别直观，可以用来验证其他方法的正确性；第二种生成法减少了计算的次数，但是仍然需要枚举出
+所有的子方案。第三种方法通过展开方案树的形式，可以直接计算而不枚举方案。最后还给出了一种递推的思路。作者窃以为，解决了一个问题而并不满足，不断深入探索的过程特别
+有意义，并且趣味性很强。同样语言本身的特性有时候能够帮助程序员从繁冗的部分解脱出来而把更多关注放在问题本身上。无论是C++标准库还是Haskell优雅的语用都有助于解题
+的思维。由于作者水平有限，文中错误想必不少，还望读者批评指正。
+
+\begin{thebibliography}{99}
+
+\bibitem{toplanguage}
+Top Language user group. http://groups.google.com/group/pongba/
+
+\bibitem{SunBook}
+孙贺，《程序设计中的组合数学》，清华大学出版社, Feb. 2001
+
+\bibitem{AnnotatedSTL}
+候捷，《STL源码抛析》，华中科技大学出版社，2002年6月
+
+\bibitem{sgiSTL}
+http://www.sgi.com/tech/stl/
+
+\bibitem{iota}
+http://www.knowledgerush.com/kr/encyclopedia/APL\_programming\_language/
+
+\end{thebibliography}
+
+\ifx\wholebook\relax\else
+\end{document}
+\fi
