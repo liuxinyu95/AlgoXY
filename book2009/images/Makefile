@@ -1,6 +1,6 @@
-IMGS = peace
+IMGS = kedama
 
-SRCS = peace.gif
+SRCS = kedama.png
 
 .SUFFIXES: .eps .jpg .png .gif
 
