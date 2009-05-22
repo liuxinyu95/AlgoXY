@@ -10,26 +10,25 @@ const double pi = 3.141592654;
 
 class area{
 public:
-  area(){}
-  area(int w, int h):_width(w), _height(h), cells(w*h, 0){ }
-  virtual ~area(){}
+  area(int w, int h):_width(w), _height(h){
+    cells=new char[w*h];
+    reset();
+  }
+  virtual ~area(){ delete cells; }
 
   int width(){ return _width; }
   int height() { return _height; }
 
-  std::vector<int>::iterator at(int x, int y){
-    return cells.begin()+y*_width+x;
+  char* at(int x, int y){
+    return cells+y*_width+x;
   }
 
-  void reset(){
-    for(std::vector<int>::iterator it=cells.begin(); it!=cells.end(); ++it)
-      *it=0;                    // change to foreach
-  }
+  void reset(){ memset(cells, 0, _width*_height); }
 
 private:
   int _width;
   int _height;
-  std::vector<int> cells;
+  char* cells;
 };
 
 struct physics{
@@ -49,7 +48,6 @@ struct physics{
     x+=static_cast<int>(static_cast<double>(speed)*dt*cos(static_cast<double>(direction)/180.0*pi));
     y+=static_cast<int>(static_cast<double>(speed)*dt*sin(static_cast<double>(direction)/180.0*pi));
     speed = rand() % MAX_SPEED;
-    direction = rand() % 360;
   }
 
   int x;
@@ -67,7 +65,7 @@ public:
     _loc = p._loc;
     return *this;
   }
-  bool operator==(const person& p){ //??? differnt person?
+  bool operator==(const person& p){
     return _infected==p._infected && _loc == p._loc;
   }
 
@@ -105,16 +103,16 @@ public:
   }
 
   void setup(int w, int h, int n){
-    a=area(w, h);
+    a=new area(w, h);
     people=Population(n-1);
     people.push_back(person(INFECTED));
-    put_people(people, a);
+    put_people(people, *a);
     n_infected = 1;
   }
 
   void run(){
     for(int tm=0; n_infected < people.size()*90/100; tm++){
-      a.reset();
+      a->reset();
       move();
       infect();
       std::cout<<"time "<<tm/60<<":"<<tm%60<<" "
@@ -124,18 +122,19 @@ public:
 
 private:
   scheduler(){}
+  ~scheduler(){ delete a; }
 
   void move(){
     for(Population::iterator it=people.begin(); it!=people.end(); ++it){
-      it->move_inside(a, dt);   // change to foreach
+      it->move_inside(*a, dt);   // change to foreach
       if(it->infected())
-        *(a.at(it->location().x, it->location().y))=1;
+        *(a->at(it->location().x, it->location().y))=1;
     }
   }
 
   void infect(){
     for(Population::iterator it=people.begin(); it!=people.end(); ++it)
-      if(*(a.at(it->location().x, it->location().y))){
+      if(*(a->at(it->location().x, it->location().y))){
         n_infected += it->infected()?0:1;
         it->set_infected(true);   // change to foreach
       }
@@ -149,7 +148,7 @@ private:
     }
   }
 
-  area a;
+  area* a;
   typedef std::vector<person> Population;
   Population people;
   int n_infected;
