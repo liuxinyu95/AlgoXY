@@ -10,18 +10,20 @@ const double pi = 3.141592654;
 
 class area{
 public:
+  area(){}
   area(int w, int h):_width(w), _height(h), cells(w*h, 0){ }
   virtual ~area(){}
 
-  int width(){ return widht; }
-  int height() { return height; }
+  int width(){ return _width; }
+  int height() { return _height; }
 
   std::vector<int>::iterator at(int x, int y){
-    return cells.begin()+y*width+x;
+    return cells.begin()+y*_width+x;
   }
 
   void reset(){
-    cells.swap(std::vector<int>(w*h, 0));
+    for(std::vector<int>::iterator it=cells.begin(); it!=cells.end(); ++it)
+      *it=0;                    // change to foreach
   }
 
 private:
@@ -32,6 +34,7 @@ private:
 
 struct physics{
   physics(){}
+  physics(int _x, int _y, int _s, int _d):x(_x), y(_y), speed(_s), direction(_d){}
   physics(const physics& p):x(p.x), y(p.y), speed(p.speed), direction(p.direction){}
   physics& operator=(const physics& p){
     x=p.x; y=p.y;
@@ -74,15 +77,15 @@ public:
   void move_inside(area& a, double dt){
     _loc.move(dt);
     if(_loc.x<0 || _loc.x>a.width())
-      _loc.degree=(180-_loc.degree+360)%360;
+      _loc.direction = (180 - _loc.direction + 360) % 360;
     if(_loc.y<0 || _loc.y>a.height())
-      _loc.degree=(-_loc.degree+360)%360;
+      _loc.direction = (-_loc.direction + 360) % 360;
     if(_loc.x<0)
       _loc.x=-_loc.x;
     if(_loc.x>a.width())
       _loc.x=2*a.width()-_loc.x;
     if(_loc.y<0)
-      _loc.y=-locatoin.y;
+      _loc.y=-_loc.y;
     if(_loc.y>a.height())
       _loc.y=2*a.height()-_loc.y;
   }
@@ -104,16 +107,20 @@ public:
     people=Population(n-1);
     people.push_back(person(INFECTED));
     put_people(people, a);
+    n_infected = 1;
   }
-  void start(){
-    run();
-  }
-private:
+
   void run(){
-    a.reset();
-    move();
-    infect();
+    while(n_infected < people.size()*90/100){
+      a.reset();
+      move();
+      infect();
+      std::cout<<n_infected<<"/"<<people.size()<<" are infected\n";
+    }
   }
+
+private:
+  scheduler(){}
 
   void move(){
     for(Population::iterator it=people.begin(); it!=people.end(); ++it){
@@ -125,25 +132,28 @@ private:
 
   void infect(){
     for(Population::iterator it=people.begin(); it!=people.end(); ++it)
-      if(*(a.at(it->location().x, it->location().y)))
+      if(*(a.at(it->location().x, it->location().y))){
+        n_infected += it->infected()?0:1;
         it->set_infected(true);   // change to foreach
+      }
+  }
+
+  template<class Coll>
+  void put_people(Coll& coll, area& a){
+    for(typename Coll::iterator it=coll.begin(); it!=coll.end(); ++it){
+      it->set_location(physics(rand()%a.width(), rand()%a.height(),
+                               rand()%MAX_SPEED, rand()%360));
+    }
   }
 
   area a;
   typedef std::vector<person> Population;
   Population people;
+  int n_infected;
 };
-
-template<class Coll>
-void put_people(Coll& coll, area& a){
-  for(Coll::iterator it=coll.begin(); it!=coll.end(); ++it){
-    it->set_location(physics(rand()%a.width(), rand()%a.height(),
-                             rand()%MAX_SPEED, rand()%360));
-  }
-}
 
 int main(int argc, char** argv){
   //Beijing has people density as 888 persons/km^2, ==> 1061 m^2 is the best fit
-  scheculer::inst().setup(1061, 1061, 1000);
-  scheduler::inst().start();
+  scheduler::inst().setup(1061, 1061, 1000);
+  scheduler::inst().run();
 }
