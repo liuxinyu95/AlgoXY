@@ -48,6 +48,8 @@ struct physics{
   void move(double dt){
     x+=static_cast<int>(static_cast<double>(speed)*dt*cos(static_cast<double>(direction)/180.0*pi));
     y+=static_cast<int>(static_cast<double>(speed)*dt*sin(static_cast<double>(direction)/180.0*pi));
+    speed = rand() % MAX_SPEED;
+    direction = rand() % 360;
   }
 
   int x;
@@ -111,11 +113,12 @@ public:
   }
 
   void run(){
-    while(n_infected < people.size()*90/100){
+    for(int tm=0; n_infected < people.size()*90/100; tm++){
       a.reset();
       move();
       infect();
-      std::cout<<n_infected<<"/"<<people.size()<<" are infected\n";
+      std::cout<<"time "<<tm/60<<":"<<tm%60<<" "
+               <<n_infected<<"/"<<people.size()<<" are infected\n";
     }
   }
 
