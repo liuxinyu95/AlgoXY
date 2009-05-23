@@ -2,7 +2,6 @@
 #include <vector>
 #include <cstdlib>
 #include <cmath>
-#include <algorithm>
 
 const bool INFECTED = true;
 const int  MAX_SPEED = 50; // walking speed: 50 [m/min]
