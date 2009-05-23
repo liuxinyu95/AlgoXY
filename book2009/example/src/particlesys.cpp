@@ -2,6 +2,7 @@
 #include <vector>
 #include <cstdlib>
 #include <cmath>
+#include <algorithm>
 
 const bool INFECTED = true;
 const int  MAX_SPEED = 50; // walking speed: 50 [m/min]
@@ -65,9 +66,6 @@ public:
     _loc = p._loc;
     return *this;
   }
-  bool operator==(const person& p){
-    return _infected==p._infected && _loc == p._loc;
-  }
 
   physics location() const{ return _loc; }
   void set_location(const physics& l){ _loc=l; }
@@ -104,8 +102,9 @@ public:
 
   void setup(int w, int h, int n){
     a=new area(w, h);
-    people=Population(n-1);
-    people.push_back(person(INFECTED));
+    for(int i=0; i<n-1; ++i)
+      people.push_back(new person());
+    people.push_back(new person(INFECTED));
     put_people(people, *a);
     n_infected = 1;
   }
@@ -122,34 +121,38 @@ public:
 
 private:
   scheduler(){}
-  ~scheduler(){ delete a; }
+  ~scheduler(){ 
+    delete a; 
+    for(Population::iterator it=people.begin(); it!=people.end(); ++it)
+      delete *it;
+  }
 
   void move(){
     for(Population::iterator it=people.begin(); it!=people.end(); ++it){
-      it->move_inside(*a, dt);   // change to foreach
-      if(it->infected())
-        *(a->at(it->location().x, it->location().y))=1;
+      (*it)->move_inside(*a, dt);   // change to foreach
+      if((*it)->infected())
+        *(a->at((*it)->location().x, (*it)->location().y))=1;
     }
   }
 
   void infect(){
     for(Population::iterator it=people.begin(); it!=people.end(); ++it)
-      if(*(a->at(it->location().x, it->location().y))){
-        n_infected += it->infected()?0:1;
-        it->set_infected(true);   // change to foreach
+      if(*(a->at((*it)->location().x, (*it)->location().y))){
+        n_infected += (*it)->infected()?0:1;
+        (*it)->set_infected(true);   // change to foreach
       }
   }
 
   template<class Coll>
   void put_people(Coll& coll, area& a){
     for(typename Coll::iterator it=coll.begin(); it!=coll.end(); ++it){
-      it->set_location(physics(rand()%a.width(), rand()%a.height(),
-                               rand()%MAX_SPEED, rand()%360));
+      (*it)->set_location(physics(rand()%a.width(), rand()%a.height(),
+                                  rand()%MAX_SPEED, rand()%360));
     }
   }
 
   area* a;
-  typedef std::vector<person> Population;
+  typedef std::vector<person*> Population;
   Population people;
   int n_infected;
 };
