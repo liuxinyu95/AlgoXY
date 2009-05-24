@@ -173,20 +173,25 @@ private:
 \begin{lstlisting}
 struct physics{
   physics(){}
-  physics(int _x, int _y, int _s, int _d):x(_x), y(_y), speed(_s), direction(_d){}
-  physics(const physics& p):x(p.x), y(p.y), speed(p.speed), direction(p.direction){}
+  physics(int _x, int _y, int _s, int _d):x(_x), y(_y), 
+      speed(_s), direction(_d){}
+  physics(const physics& p):x(p.x), y(p.y), 
+      speed(p.speed), direction(p.direction){}
   physics& operator=(const physics& p){
     x=p.x; y=p.y;
     speed=p.speed; direction = p.direction;
   }
 
   bool operator==(const physics& p){
-    return x==p.x && y==p.y && speed== p.speed && direction == p.direction;
+    return x==p.x && y==p.y && speed== p.speed && 
+           direction == p.direction;
   }
 
   void move(double dt){
-    x+=static_cast<int>(static_cast<double>(speed)*dt*cos(static_cast<double>(direction)/180.0*pi));
-    y+=static_cast<int>(static_cast<double>(speed)*dt*sin(static_cast<double>(direction)/180.0*pi));
+    x+=static_cast<int>(static_cast<double>(speed)*dt*
+             cos(static_cast<double>(direction)/180.0*pi));
+    y+=static_cast<int>(static_cast<double>(speed)*dt*
+             sin(static_cast<double>(direction)/180.0*pi));
     speed = rand() % MAX_SPEED;
   }
 
@@ -247,6 +252,9 @@ private:
 的规律，将人限制回区域内，并让他的运动根据弹性反向。读者也可以不采用弹性碰撞，而使用
 其他物理模型。
 
+模拟程序的核心，是一个被称为scheduler的类。之所以起这个名字，是因为它的运行上，本质
+类似于一个调度器——一次取出列表中的每个人，然后让其运行\cite{ao}。首先它被设计为一个
+sigleton：
 \begin{lstlisting}
 class scheduler{
 public:
@@ -254,6 +262,36 @@ public:
     static scheduler _inst;
     return _inst;
   }
+  //...
+
+private:
+  scheduler(){}
+  ~scheduler(){ 
+    delete a; 
+    for(Population::iterator it=people.begin(); it!=people.end(); ++it)
+      delete *it;
+  }
+
+  area* a;
+  typedef std::list<person*> Population;
+  Population people;
+  int n_infected;
+  std::list<int> diagram;
+};
+\end{lstlisting}
+
+scheduler拥有一个指向模拟区域的指针a，一个记录全体被模拟人口的列表people。一个记录已染病人数
+的变量n\_infected，和一个用于将模拟结果写入文件的列表diagram。scheduler在最后析构时会释放
+所有被模拟人的对象。这里之所以没有采用person对象的列表，而采用了person指针的列表。是因为在语义
+上，我们并不关心不同个体的差异。我们并不能说，在同一位置，以同一速度运动的不同对象是相等的，因为
+他们完全可以是不同的人。
+
+scheduler在初始化时，设置好区域，创建出n-1个健康个体和一个染病个体。然后把它们随机放入区域中
+的各种位置。并设置目前的染病人口数为1。
+
+\begin{lstlisting}
+class scheduler{
+  //...
 
   void setup(int w, int h, int n){
     a=new area(w, h);
@@ -263,6 +301,25 @@ public:
     put_people(people, *a);
     n_infected = 1;
   }
+
+  //...
+private:
+  template<class Coll>
+  void put_people(Coll& coll, area& a){
+    for(typename Coll::iterator it=coll.begin(); it!=coll.end(); ++it){
+      (*it)->set_location(physics(rand()%a.width(), rand()%a.height(),
+                                  rand()%MAX_SPEED, rand()%360));
+    }
+  }
+\end{lstlisting}
+
+scheduler的核心函数是run()，它按照我们最初设计的算法，每次遍历全部人口，执行移动——感染两个步骤，
+为了直观，函数还在每次模拟后，显示输出当前时间（单位是分钟），在总人口中有多少人已染病。并在diagram
+列表中，记录染病人数随时间变化的曲线。当90\%的人口染病后，程序退出。
+
+\begin{lstlisting}
+class scheduler{
+  //...
 
   void run(){
     for(int tm=0; n_infected < people.size()*90/100; tm++){
@@ -275,15 +332,16 @@ public:
     }
     write_diagram();
   }
+\end{lstlisting}
 
+移动——感染的两个函数分别由move()和infect()实现。移动步骤遍历全部人口，针对每个人，调用move\_insdie()
+函数；如果当前个体已被感染，则标记他所在的位置为污染区（设置为1）。然后在感染步骤中，程序再次遍历全部人口，
+针对每个健康人，如果他所在的区域已经污染，则将此人标记为患病；并增加染病人口数量。
+
+\begin{lstlisting}
+class scheduler{
+  //...
 private:
-  scheduler(){}
-  ~scheduler(){ 
-    delete a; 
-    for(Population::iterator it=people.begin(); it!=people.end(); ++it)
-      delete *it;
-  }
-
   void move(){
     for(Population::iterator it=people.begin(); it!=people.end(); ++it){
       (*it)->move_inside(*a, dt);
@@ -300,32 +358,54 @@ private:
       }
   }
 
-  template<class Coll>
-  void put_people(Coll& coll, area& a){
-    for(typename Coll::iterator it=coll.begin(); it!=coll.end(); ++it){
-      (*it)->set_location(physics(rand()%a.width(), rand()%a.height(),
-                                  rand()%MAX_SPEED, rand()%360));
-    }
-  }
-
   void write_diagram(){
     std::ofstream file("diagram.csv");
-    std::copy(diagram.begin(), diagram.end(), std::ostream_iterator<int>(file, "\n"));
+    std::copy(diagram.begin(), diagram.end(), 
+       std::ostream_iterator<int>(file, "\n"));
   }
-
-  area* a;
-  typedef std::list<person*> Population;
-  Population people;
-  int n_infected;
-  std::list<int> diagram;
 };
 \end{lstlisting}
 
+我们注意到，这个算法在每一步的运算复杂度为$O(n)$，而非$O(n^2)$。程序最后使用STL的copy算法和insert iterator
+将染病人口随速度变化的曲线写入一个csv文件，供我们使用Excel进行后继分析。
+
+程序的主函数main非常简单：
+\begin{lstlisting}
+int main(int argc, char** argv){
+  //Beijing has people density as 888 persons/km^2, 
+  //==> 1061 m^2 is the best fit
+  scheduler::inst().setup(1061, 1061, 1000);
+  scheduler::inst().run();
+}
+\end{lstlisting}
+
+为了接近真实情况，考虑到北京市的人口密度为888人/平方公里，如果样本人群为1000，在1061米长1061米宽的区域内模拟
+即可。程序最后输出：
+
+\begin{verbatim}
+time 124:34 900/1000 are infected
+\end{verbatim}
+
+结果非常惊人！虽然只有一个人染病，但是仅仅过了124小时后，就有9成的人群被感染。如果考虑到人群旨在白天活动8小时，则
+在不进行任何防护措施的情况下，接触即传染的疾病仅仅需要2周，就可以使城市中的9成人口感染。这就是为什么在古代，瘟疫可以
+迅速消灭一个城市。
+
+我们用Excel将染病曲线绘制出来，如下：
+
+\begin{figure}[htbp]
+       \begin{center}
+	\includegraphics[scale=0.5]{images/epidemic-free.eps}
+        \caption{infected people along time}
+       \end{center}
+\end{figure}
+
+这是一个标准的指数曲线。也就是说，在无任何防控措施的情况下，传染病会以指数速度进行传播。
+
 % ================================================================
-% method 2
+% epidemic with possibility factor
 % ================================================================
-\section{method 2}
-\label{method2}
+\section{epidemic with possibility factor}
+\label{p-factor}
 
 前一方法的缺点就是效率很低。如果可能的英文串长度为n，则全排列算法本身的计算量为n!，
 hasPattern的算法复杂度为$O(n^2)$。为了提高效率，需要找到更好的算法。
@@ -668,6 +748,8 @@ $n_1+n_2+n_3+...+n_{m+1}$。
 \bibitem{kedama}
 Oshima Yoshiki. Kedama: A massively-parallel tile-scriptable particle system. http://www.is.titech.ac.jp/~ohshima/squeak/kedama/
 
+\bibitem{ao}
+Liu Xinyu. 
 \bibitem{kedama_cn}
 ，《程序设计中的组合数学》，清华大学出版社, Feb. 2001
 

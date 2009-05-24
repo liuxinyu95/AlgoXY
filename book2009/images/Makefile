@@ -1,6 +1,6 @@
-IMGS = kedama
+IMGS = kedama epidemic-free
 
-SRCS = kedama.png
+SRCS = kedama.png epidemic-free.png
 
 .SUFFIXES: .eps .jpg .png .gif
 
