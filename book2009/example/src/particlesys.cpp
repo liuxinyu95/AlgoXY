@@ -9,6 +9,7 @@ const bool INFECTED = true;
 const int  MAX_SPEED = 50; // walking speed: 50 [m/min]
 const double dt = 1;       // 1 min
 const double pi = 3.141592654;
+const int INFECT_PROBABILITY = 50; //50%
 
 class area{
 public:
@@ -140,8 +141,10 @@ private:
 
   void infect(){
     for(Population::iterator it=people.begin(); it!=people.end(); ++it)
-      if(*(a->at((*it)->location().x, (*it)->location().y))){
-        n_infected += (*it)->infected()?0:1;
+      if(!(*it)->infected() &&
+         *(a->at((*it)->location().x, (*it)->location().y))&&
+         rand()%100 > INFECT_PROBABILITY){
+        n_infected++;
         (*it)->set_infected(true);
       }
   }
