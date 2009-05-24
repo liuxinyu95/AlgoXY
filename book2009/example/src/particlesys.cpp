@@ -1,7 +1,9 @@
 #include <iostream>
-#include <vector>
+#include <list>
 #include <cstdlib>
 #include <cmath>
+#include <iterator>
+#include <fstream>
 
 const bool INFECTED = true;
 const int  MAX_SPEED = 50; // walking speed: 50 [m/min]
@@ -114,8 +116,10 @@ public:
       move();
       infect();
       std::cout<<"time "<<tm/60<<":"<<tm%60<<" "
-               <<n_infected<<"/"<<people.size()<<" are infected\n";
+               <<n_infected<<"/"<<people.size()<<" are infected\r";
+      diagram.push_back(n_infected);
     }
+    write_diagram();
   }
 
 private:
@@ -128,7 +132,7 @@ private:
 
   void move(){
     for(Population::iterator it=people.begin(); it!=people.end(); ++it){
-      (*it)->move_inside(*a, dt);   // change to foreach
+      (*it)->move_inside(*a, dt);
       if((*it)->infected())
         *(a->at((*it)->location().x, (*it)->location().y))=1;
     }
@@ -138,7 +142,7 @@ private:
     for(Population::iterator it=people.begin(); it!=people.end(); ++it)
       if(*(a->at((*it)->location().x, (*it)->location().y))){
         n_infected += (*it)->infected()?0:1;
-        (*it)->set_infected(true);   // change to foreach
+        (*it)->set_infected(true);
       }
   }
 
@@ -150,10 +154,16 @@ private:
     }
   }
 
+  void write_diagram(){
+    std::ofstream file("diagram.csv");
+    std::copy(diagram.begin(), diagram.end(), std::ostream_iterator<int>(file, "\n"));
+  }
+
   area* a;
-  typedef std::vector<person*> Population;
+  typedef std::list<person*> Population;
   Population people;
   int n_infected;
+  std::list<int> diagram;
 };
 
 int main(int argc, char** argv){

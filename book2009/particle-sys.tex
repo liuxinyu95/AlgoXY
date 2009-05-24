@@ -92,8 +92,8 @@
 \begin{itemize}
 \item 传染病发生时，如果不采取任何防治措施的传播速度
 \item 具有一定传播概率时的传播速度；
-\item 采取隔离措施，及时治疗时的传播速度；
-\item 公众自发防治，主动治疗时的传播速度；
+\item 公众自发防防治，主动采取隔离措施，及时治疗时的传播速度；
+\item 带有一定潜伏期时的传播速度。
 \end{itemize}
 
 \section{method 1}
@@ -119,268 +119,207 @@ OLPC(one laptop per child)中Etoy的一部分。它可以非常直观的模拟疾病的流行\cite{ke
 虽然Squeak和Etoy被设计为针对8到11岁的儿童学习使用，但是考虑到国内了解Smalltalk的人并不多。作者下面用C++来实现
 一个类似的模拟。
 
-\lstset{language=Haskell, 
-  %frame=single,
-  showstringspaces=false, 
-  breaklines=true, 
-  breakautoindent=true}
+首先是建模问题。其中一种建模的方法是采用简单的“暴力”解法，如果需要模拟一种疾病在1000个人中的传播，就开启1000个独立的
+线程，每个线程代表一个人，并行在某区域内随机运动。其中一个线程被设置为已染病个体。每个线程在随机运动过程中，都检查和
+自己遇到的其他人，是否已经染病。和染病线程接触后，自己就变成另一个染病线程。
 
+这个方法，虽然看起来直观，然而却有两个问题难以解决。第一个问题是性能问题。虽然在现代的多核计算机上，同时开启多个线程
+的性能已经大大提高，但是如果模拟人群的规模增大，例如模拟大型城市如北京、上海的上千万的人口，同时开启几千万的线程，这样
+的计算，恐怕要使用超级计算机了。第二个问题是一个算法问题，也就是每个线程代表的人在独立运动中，如何判断自己和其他线程
+代表的人接触到了？是否要在全体线程中做一个查找？如果是这样，完成某个人走一步，然后进行查找的算法为线性算法，其复杂度为$O(n)$，
+n个线程的计算量为$O(n^2)$。这是非常大的计算量，算法的效率会非常低。
+
+根据Kedama的启发，在做出一定的化简后，可以找到一个简单、高效的方法。假设需要在$W \times H$平方米的范围内，模拟
+某种疾病在N个人中的传播。我们可以将区域划分为$W \times H$个格子，也就是每平方米一个格子。然后我们建立N个对象，放入
+一个列表。每次模拟遍历一遍这个列表，让每个人独立走一步；同时，我们检查这个人是否染病，如果染病，我们就标记他所在的
+那个格子（也就是那一位置所在的1平方米）为污染区。之后我们重新遍历这个列表一次，检查每个人所在的区域是否为污染区，如
+果一个健康对象经过运动后进入了污染区，他就被标记为感染。我们的模拟程序不断重复上述的两步过程：移动——感染，直到90\%
+的人染病后，程序退出。
+
+下面我们来一步一步实现上述程序。首先是区域的建模，这部分非常简单。类定义如下：
 \begin{lstlisting}
-filter hasPattern "AABBBA" permutation [a,b,c,d,e,f,g]
+class area{
+public:
+  area(int w, int h):_width(w), _height(h){
+    cells=new char[w*h];
+    reset();
+  }
+  virtual ~area(){ delete cells; }
+
+  int width(){ return _width; }
+  int height() { return _height; }
+
+  char* at(int x, int y){
+    return cells+y*_width+x;
+  }
+
+  void reset(){ memset(cells, 0, _width*_height); }
+
+private:
+  int _width;
+  int _height;
+  char* cells;
+};
 \end{lstlisting}
 
-以上是Haskell代码，对应的C++代码为：
+其中cells是一个buffer，其实代表的是w列、h行的二维格子，我们将用它来标记污染区。之所以
+采用原始的buffer，是出于效率考虑。我们可以通过memset和随机访问操作。快速地重置污染区
+和访问污染区。
+
+之后需要对人进行建模，对于在疾病传播模拟程序中的人，我们只关心两个方面：1，他是否染病？2，他
+目前在哪里，向那个方向以多快速度进行运动？对于1，我们可以以一个bool量来代表；对于2，我们
+需要对位置和运动信息建模。这一模型如下:
+
 \begin{lstlisting}
-std::string str="AABBBA";
-filter(hasPattern(str, permutation(str.length())));
+struct physics{
+  physics(){}
+  physics(int _x, int _y, int _s, int _d):x(_x), y(_y), speed(_s), direction(_d){}
+  physics(const physics& p):x(p.x), y(p.y), speed(p.speed), direction(p.direction){}
+  physics& operator=(const physics& p){
+    x=p.x; y=p.y;
+    speed=p.speed; direction = p.direction;
+  }
+
+  bool operator==(const physics& p){
+    return x==p.x && y==p.y && speed== p.speed && direction == p.direction;
+  }
+
+  void move(double dt){
+    x+=static_cast<int>(static_cast<double>(speed)*dt*cos(static_cast<double>(direction)/180.0*pi));
+    y+=static_cast<int>(static_cast<double>(speed)*dt*sin(static_cast<double>(direction)/180.0*pi));
+    speed = rand() % MAX_SPEED;
+  }
+
+  int x;
+  int y;
+  int speed;
+  int direction;
+};
 \end{lstlisting}
 
-程序对abcdefg进行全排列，然后找出符合"AABBBA"形式的所有排列结果，最后计算他的个数。
-使用程序生成全排列是下面要解决的第一个问题。这一算法的常见实现如下\cite{SunBook}：
+物理量包括位置坐标x,y，以及运动的速率speed和运动的方向direction（本程序中使用角度）。定义拷贝构造函数，复制以及相等
+是为了方面操作。其中值得注意的是运动函数move，它接受一个运动时间小量dt，然后在二维平面上以当前的运动速度和方向更新位置，
+最后再更新运动速率。考虑到人在步行时的运动速率为3km/h，我们的最大速率设置为50m/min。
+
+有了物理运动信息，接下来就可以定义被模拟的人了：
 
 \begin{lstlisting}
-#include <iostream>
-#include <vector>
-#include <algorithm>
+class person{
+public:
+  person(bool x=false):_infected(x){}
+  person(const person& p):_infected(p._infected), _loc(p._loc){}
+  person& operator=(const person& p){
+    _infected = p._infected;
+    _loc = p._loc;
+    return *this;
+  }
 
-using namespace std;
+  physics location() const{ return _loc; }
+  void set_location(const physics& l){ _loc=l; }
+  bool infected() const { return _infected; }
+  void set_infected(bool x) { _infected = x; }
 
-typedef vector<int> NumberList;
-typedef vector<NumberList> Result;
+  void move_inside(area& a, double dt){
+    _loc.move(dt);
+    if(_loc.x<0 || _loc.x>a.width())
+      _loc.direction = (180 - _loc.direction + 360) % 360;
+    if(_loc.y<0 || _loc.y>a.height())
+      _loc.direction = (-_loc.direction + 360) % 360;
+    if(_loc.x<0)
+      _loc.x=-_loc.x;
+    if(_loc.x>a.width())
+      _loc.x=2*a.width()-_loc.x;
+    if(_loc.y<0)
+      _loc.y=-_loc.y;
+    if(_loc.y>a.height())
+      _loc.y=2*a.height()-_loc.y;
+  }
 
-void generate(Result& res, const NumberList& inst, int i, int n, int r){
-  for(int j=1; j<=n; ++j){
-    if(find(inst.begin(), inst.end(), j)==inst.end()){
-      NumberList new_inst(inst);
-      new_inst.push_back(j);
-      if(i==r)
-        res.push_back(new_inst);
-      else
-        generate(res, new_inst, i+1, n, r);
+private:
+  bool _infected;
+  physics _loc;
+};
+\end{lstlisting}
+
+这段定义中，除了构造、拷贝、赋值以及getter/setter之外，只有一个move\_inside函数，
+它是模拟人在某区域运动的关键函数。该函数接受一个区域引用和一个时间小量。然后调用前面
+定义的move函数更新物理信息。如果发现人已经运动出所限制的区域。程序按照物理上弹性碰撞
+的规律，将人限制回区域内，并让他的运动根据弹性反向。读者也可以不采用弹性碰撞，而使用
+其他物理模型。
+
+\begin{lstlisting}
+class scheduler{
+public:
+  static scheduler& inst(){
+    static scheduler _inst;
+    return _inst;
+  }
+
+  void setup(int w, int h, int n){
+    a=new area(w, h);
+    for(int i=0; i<n-1; ++i)
+      people.push_back(new person());
+    people.push_back(new person(INFECTED));
+    put_people(people, *a);
+    n_infected = 1;
+  }
+
+  void run(){
+    for(int tm=0; n_infected < people.size()*90/100; tm++){
+      a->reset();
+      move();
+      infect();
+      std::cout<<"time "<<tm/60<<":"<<tm%60<<" "
+               <<n_infected<<"/"<<people.size()<<" are infected\r";
+      diagram.push_back(n_infected);
+    }
+    write_diagram();
+  }
+
+private:
+  scheduler(){}
+  ~scheduler(){ 
+    delete a; 
+    for(Population::iterator it=people.begin(); it!=people.end(); ++it)
+      delete *it;
+  }
+
+  void move(){
+    for(Population::iterator it=people.begin(); it!=people.end(); ++it){
+      (*it)->move_inside(*a, dt);
+      if((*it)->infected())
+        *(a->at((*it)->location().x, (*it)->location().y))=1;
     }
   }
-}
 
-Result permutation(int n, int r){
-  Result res;
-  generate(res, NumberList(), 1, n, r);
-  return res;
-}
-\end{lstlisting}
-
-这是一个递归算法，求n个数中取出r个数的排列可以这样产生：
-\begin{itemize}
-\item 生成第i位数字时，从[1..n]中选择一个j
-\item 检查j是否已经在1到i-1位使用过了，若使用过，则重复1，否则另j为第i位的数字
-\item 比较i是否等于r,若等于r，则找到了一个排列，可将其放入结果中；否则i+1，递归调用生成第i+1位数字。
-\end{itemize}
-
-下面是一段测试代码：
-\begin{lstlisting}
-#include <iterator>
-
-struct Print{
-  void operator()(NumberList& item){
-    copy(item.begin(), item.end(), ostream_iterator<int>(cout, " "));
-    cout<<"\n";
+  void infect(){
+    for(Population::iterator it=people.begin(); it!=people.end(); ++it)
+      if(*(a->at((*it)->location().x, (*it)->location().y))){
+        n_infected += (*it)->infected()?0:1;
+        (*it)->set_infected(true);
+      }
   }
-};
 
-int main(int, char**){
-  Result res=permutation(5, 3);
-  for_each(res.begin(), res.end(), Print());
-}
-\end{lstlisting}
-
-上面这段程序会输出：
-\begin{verbatim}
-1 2 3
-1 2 4
-1 2 5
-...
-5 4 2
-5 4 3
-\end{verbatim}
-
-由于排列是很常见的算法，所以C++的标准库中也给出了一个实现。不过其思路和上面的不同，这里不再赘述。
-感兴趣的读者可以参考\cite{AnnotatedSTL}。使用标准库的代码如下：
-\begin{lstlisting}
-#include <algorithm>
-
-int main(int, char**){
-  string str("abcdef");
-  do{
-    cout<<str<<"\n";
+  template<class Coll>
+  void put_people(Coll& coll, area& a){
+    for(typename Coll::iterator it=coll.begin(); it!=coll.end(); ++it){
+      (*it)->set_location(physics(rand()%a.width(), rand()%a.height(),
+                                  rand()%MAX_SPEED, rand()%360));
+    }
   }
-  while(next_permutation(str.begin(), str.end()));
-}
-\end{lstlisting}
 
-这里解释以下，标准库的排列算法，只实现了全排列，并不支持n个元素中取r个的排列。它通过对元素的大小比较
-来依次生成全部排列，如果序列已经是降序的，则不做任何操作返回false。否则，根据现有的序列，生成下一排列，并返回true。
-
-在排列算法的实现中，采用纯函数式的实现也非常优美，下面是Haskell的全排列算法。
-\begin{lstlisting}
-import Data.List
-
-permutation [] = [[]]     
-permutation xs = [x:ys | x <- xs, ys <- permutation (delete x xs)]
-\end{lstlisting}
-
-使用方法和运行结果为：
-\begin{verbatim}
-permutation "abcd"
-["abcd","abdc","acbd",...,"dcab","dcba"]
-\end{verbatim}
-
-这个算法是求某个list的全排列，而非n元素取r个元素的排列。这个算法相当于这样的数学描述。
-排列 list 的结果是：
-\begin{itemize}
-\item 平凡情况：若待排列list为空，则结果为空；
-\item 一般情况：排列结果集合=\{x和后继部分ys，其中x属于list，后继部分ys属于对list中删除x后进行排列的结果\}
-\end{itemize}
-
-举个例子，[1,2,3]的全排列结果是：
-x为1或2或3,
-ys为 [2,3]或[1,3]或[1,2]全排列
-x和ys组合在一起就是最终结果。
-
-如果读者从来没有接触过Haskell，可以把$<-$符号理解为数学中的集合符号$\in$。而中括号，相当于数学中表示
-集合的大括号；冒号表示把结果拼接在一起。负责从xs中删除x的delete函数，在Data.List模块中已经定义过了；
-相当于c语言中的库函数。
-
-根据上面的全排列算法，可以很方便的实现出${P_n}^r$。改动如下：
-\begin{lstlisting}
-permutation xs n r= if length xs <= n-r
-	then [[]]
-	else [x:ys | x <- xs, ys <- permutation (delete x xs) n r]
-\end{lstlisting}
-
-它的使用方法和对应输出为：
-\begin{verbatim}
-permutation "abcde" 5 3
-["abc","abd","abe",...,"edb","edc"]
-\end{verbatim}
-
-\subsection{pattern matching}
-全排列的功能实现后，相当于实现了最基本的穷举，下一步就是编写一个判断函数，用于筛选出符合给定AB串的
-候选英文字符串。我们同样给出C++实现的命令式实现和Haskell的函数式实现。
-
-先考虑C++实现，程序将遍历所有排列，然后依次检查AB串规定的字符出现先后次序是否得到满足，代码如下：
-\begin{lstlisting}
-template<typename Compare>
-bool checkOrder(Compare op, char c, const string& candidate){
-  return op(candidate.find(c), candidate.find(c+1));
-}
-
-bool hasPattern(string& pattern, const string& candidate){
-  char c='a';
-  for(string::iterator it=pattern.begin(); it!=pattern.end(); ++it, ++c){
-    if(*it=='A' && !checkOrder(less<char>(), c, candidate))
-      return false;
-    if(*it=='B' && !checkOrder(greater<char>(), c, candidate))
-      return false;
+  void write_diagram(){
+    std::ofstream file("diagram.csv");
+    std::copy(diagram.begin(), diagram.end(), std::ostream_iterator<int>(file, "\n"));
   }
-  return true;
-}
-\end{lstlisting}
-hasPattern从第一字符a开始，若从pattern中读到A，就检查a是否在b的前面，否则检查a是否在b的后面。
 
-此后把hasPattern和排列算法连接在一起就可以求解\ref{introduction}中提出的问题了。
-\begin{lstlisting}
-void enumStr(string pattern){
-  string s;
-  for(int i=0; i<pattern.length()+1;++i)
-    s.push_back('a'+i);
-  vector<string> res;
-  do{
-    if(hasPattern(pattern, s))
-      res.push_back(s);
-  }while(next_permutation(s.begin(), s.end()));
-  for_each(res.begin(), res.end(), Print());
-  cout<<"total solution: "<<res.size()<<"\n";
-}
-
-int main(int, char**){
-  enumStr("AAABBA");
-}
-\end{lstlisting}
-enumStr这段程序根据输入的AB串pattern的长度，先生成初始串(abc...)然后调用STL的
-排列算法，针对每个排列，调用hasPattern检查是否符合AB串，若符合就存入最终结果内。
-最后打印出全部结果。
-
-为了重复使用Print这个function object,还需要把前面的代码略作改动如下：
-\begin{lstlisting}
-struct Print{
-  template<typename Container>
-  void operator()(Container& item){
-    typedef typename Container::value_type value_type;
-    copy(item.begin(), item.end(), ostream_iterator<value_type>(cout, " "));
-    cout<<"\n";
-  }
+  area* a;
+  typedef std::list<person*> Population;
+  Population people;
+  int n_infected;
+  std::list<int> diagram;
 };
 \end{lstlisting}
-这一程序的运行结果为：
-\begin{verbatim}
-a b c f e d g 
-a b c f e g d 
-a b c f g e d 
-...
-f g a e b c d 
-f g e a b c d 
-total solution: 50
-\end{verbatim}
-
-Haskell的实现与此类似，但是采用的是递归的形式。为了简单起见，这里另1代表英文字母'a'，2代表'b'，……，26代表'z'。
-\begin{lstlisting}
-perm xs = permutation xs n n where n=length xs
-
-order f s = at s x `f` at s (1+x) where
-    x = minimum s
-    at (y:ys) v = if v==y then 1 else 1 + at ys v
-
-delete_min xs = filter (\x->not (x==minimum xs)) xs
-
-hasPattern [] _ = True
-hasPattern ('A':ps) s = order (<) s && hasPattern ps (delete_min s)
-hasPattern ('B':ps) s = order (>) s && hasPattern ps (delete_min s)
-\end{lstlisting}
-
-hasPattern接受两个参数，一个pattern串，一个代表英文字母的数字串。
-如果pattern中的第一字符是A，程序要检查英文串中，最小的字符在次小的字符前，并且除掉最小字符的剩余部分，也符合pattern。
-如果是B的话，结果则相反。
-
-检查最小字符在次小字符前后的函数是order，它找出最小字符的位置和次小字符的位置，然后比较他们位置的大小。比较直观，不再赘述。
-
-删除最小字符的函数是delete\_min，可以利用filter比较容易的实现。
-\begin{lstlisting}
-enumStr1 pattern = filter f (perm [1..(1+length pattern)]) where
-    f = hasPattern pattern
-
-count1 = length.enumStr1
-\end{lstlisting}
-
-前一个函数枚举所有的串，后一个计算这样的串的个数。运行结果如下：
-\begin{verbatim}
-enumStr1 "AAABBA"
-[[1,2,3,6,5,4,7],[1,2,3,6,5,7,4],[1,2,3,6,7,5,4],[1,2,6,3,5,4,7],
-[1,2,6,3,5,7,4],[1,2,6,3,7,5,4],[1,2,6,5,3,4,7],[1,2,6,5,3,7,4],
-[1,2,6,5,7,3,4],[1,2,6,7,3,5,4],[1,2,6,7,5,3,4],[1,6,2,3,5,4,7],
-[1,6,2,3,5,7,4],[1,6,2,3,7,5,4],[1,6,2,5,3,4,7],[1,6,2,5,3,7,4],
-[1,6,2,5,7,3,4],[1,6,2,7,3,5,4],[1,6,2,7,5,3,4],[1,6,5,2,3,7,4],
-[1,6,5,2,7,3,4],[1,6,5,7,2,3,4],[1,6,7,2,3,5,4],[1,6,7,2,5,3,4],
-[1,6,7,5,2,3,4],[6,1,2,3,5,4,7],[6,1,2,3,5,7,4],[6,1,2,3,7,5,4],
-[6,1,2,5,3,4,7],[6,1,2,5,3,7,4],[6,1,2,5,7,3,4],[6,1,2,7,3,5,4],
-[6,1,2,7,5,3,4],[6,1,5,2,3,4,7],[6,1,5,2,3,7,4],[6,1,5,2,7,3,4],
-[6,1,5,7,2,3,4],[6,1,7,2,3,5,4],[6,1,7,2,5,3,4],[6,1,7,5,2,3,4],
-[6,5,1,2,3,4,7],[6,5,1,2,3,7,4],[6,5,1,2,7,3,4],[6,5,1,7,2,3,4],
-[6,5,7,1,2,3,4],[6,7,1,2,3,5,4],[6,7,1,2,5,3,4],[6,7,1,5,2,3,4],
-[6,7,5,1,2,3,4]]
-
-count1 "AAABBA"
-50
-\end{verbatim}
-运算速度虽然比较慢，但是程序能够给出正确的结果。
 
 % ================================================================
 % method 2
