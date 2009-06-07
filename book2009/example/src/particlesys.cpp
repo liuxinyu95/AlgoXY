@@ -51,6 +51,7 @@ struct physics{
   physics& operator=(const physics& p){
     x=p.x; y=p.y;
     speed=p.speed; direction = p.direction;
+    return *this;
   }
 
   bool operator==(const physics& p){
@@ -217,7 +218,7 @@ private:
   area* a;
   area* hospital;
   Population people;
-  int n_infected;
+  unsigned int n_infected;
   std::list<int> diagram;
 };
 
