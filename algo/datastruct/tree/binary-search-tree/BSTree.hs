@@ -32,21 +32,6 @@ search t x | key(t)==x = t
            | x < key(t) = search (left t) x
            | otherwise = search (right t) x
 
--- Find parent of a value in tree
-parent::(Ord a)=>Tree a -> a -> Tree a
-parent Empty _ = Empty
-parent t x | (key t) == x = Empty
-           | key (left t) == x || key (right t) == x = t --Error: left or right may be empty
-           | otherwise = if x < key t then parent (left t) x else parent (right t) x
-
--- Find an ancestor of a value wich match a certain rule
-findAncestor::(Ord a)=>Tree a -> a ->(a->a->Bool)-> Tree a
-findAncestor t x f = checkParent t (parent t x) x f where
-    checkParent _ Empty _ _ = Empty
-    checkParent t p x f = if f (key p) x then p
-                          else checkParent t (parent t (key p)) x f
-
-
 -- Tree Min
 mint::Tree a -> Tree a
 mint t = if isEmpty (left t) then t else mint $ left t
@@ -55,7 +40,29 @@ mint t = if isEmpty (left t) then t else mint $ left t
 maxt::Tree a -> Tree a
 maxt t = if isEmpty (right t) then t else maxt $ right t
 
+-- Below functions are low efficiency compare to their imperactive implementation
+
+-- Find parent of a value in tree
+-- The performance of parent is low: O(log n)
+parent::(Ord a)=>Tree a -> a -> Tree a
+parent Empty _ = Empty
+parent t x | x < (key t) = if isParent (left t) x then t else parent (left t) x
+           | x > (key t) = if isParent (right t) x then t else parent (right t) x
+           | otherwise = Empty where
+               isParent Empty _ = False
+               isParent t x = (key t)==x
+
+-- Find an ancestor of a value wich match a certain rule
+-- Performance is very low.
+findAncestor::(Ord a)=>Tree a -> a ->(a->a->Bool)-> Tree a
+findAncestor t x f = checkParent t (parent t x) x f where
+    checkParent _ Empty _ _ = Empty
+    checkParent t p x f = if f (key p) x then p
+                          else checkParent t (parent t (key p)) x f
+
+
 -- successor
+-- Performance is very low.
 succt::(Ord a)=>Tree a -> a -> Tree a
 succt Empty _ = Empty
 succt t x = if not $ isEmpty rightNode
@@ -64,12 +71,15 @@ succt t x = if not $ isEmpty rightNode
                 rightNode = right (search t x)
 
 -- predecessor
+-- Performance is very low
 predt::(Ord a)=>Tree a -> a -> Tree a
 predt Empty _ = Empty
 predt t x = if not $ isEmpty leftNode
             then maxt leftNode
             else findAncestor t x (<) where
                 leftNode = left (search t x)
+
+-- End of low efficiency functions
               
 -- Insert an element into a tree
 insert::(Ord a) => Tree a -> a -> Tree a
@@ -77,6 +87,20 @@ insert Empty x = leaf x
 insert t x = if x < key(t) 
              then (Node (insert (left t) x) (key t) (right t))
              else (Node (left t) (key t) (insert (right t) x))
+
+-- Delete an element from a tree
+-- The algorithm described in CLRS is not used here, I used the algorithm
+-- which is mentioned in Annotated STL, P 235 (by Hou Jie)
+--   if x has only one child: just splice x out
+--   if x has two child: use min(right) to replce x
+delete::(Ord a)=> Tree a -> a -> Tree a
+delete Empty _ = Empty
+delete (Node l k r) x | x < k = (Node (delete l x) k r)
+                      | x > k = (Node l k (delete r x))
+                      -- x == k
+                      | isEmpty l = r
+                      | isEmpty r = l
+                      | otherwise = (Node l k' (delete r k')) where k' = key $ mint r
 
 -- Helper to build a binary search tree from a list
 listToTree::(Ord a)=>[a] -> Tree a
@@ -110,18 +134,25 @@ testSearch = "\ntest search empty tree:\t"++ show (search (Empty::Tree Int) 3) +
              "\ntest search a node in tree:\t"++ show (search t2 18)
 
 -- test succ/pred
-testSuccPred = "\ntest succ of 7:\t"++ show (succt t2 7) ++
-               "\ntest parent of 7:\t"++ show (parent t2 7)++
-               "\ntest parent of 13:\t"++ show (parent t2 13)++
-               "\ntest bigger ancestor of 7:\t"++ show (findAncestor t2 7 (>))++
-               "\ntest bigger ancestor of 13:\t"++ show (findAncestor t2 13 (>))
-               --"\ntest succ of 13:\t"++ show (succt t2 13) ++
-               --"\ntest pred of 6:\t"++ show (predt t2 6)++
-               --"\ntest rped of 7:\t"++ show (predt t2 7)
+testSuccPred = "\ntest succ of 7:\t"++ show (key (succt t2 7)) ++
+               "\ntest parent of 7:\t"++ show (key (parent t2 7))++
+               "\ntest parent of 13:\t"++ show (key (parent t2 13))++
+               "\ntest bigger ancestor of 7:\t"++ show (key (findAncestor t2 7 (>)))++
+               "\ntest bigger ancestor of 13:\t"++ show (key (findAncestor t2 13 (>)))++
+               "\ntest succ of 13:\t"++ show (key (succt t2 13)) ++
+               "\ntest pred of 6:\t"++ show (key (predt t2 6))++
+               "\ntest pred of 7:\t"++ show (key (predt t2 7))
+
+testDel = "\ntest del 17:\t"++ show (delete t2 17)++
+          "\ntest del 7:\t"++ show (delete t2 7)++
+          "\ntest del 6:\t" ++ show (delete t2 6)++
+          "\ntest del 15:\t"++ show (delete t2 15)++
+          "\ntest del non-exist:\t" ++ show (delete t2 5)
 
 main = do
-  putStrLn testBuildTree
-  putStrLn testMinMax
-  putStrLn testSearch
-  putStrLn testTreeWalk
-  putStrLn testSuccPred
+    putStrLn testBuildTree
+    putStrLn testMinMax
+    putStrLn testSearch
+    putStrLn testTreeWalk
+    putStrLn testSuccPred
+    putStrLn testDel
