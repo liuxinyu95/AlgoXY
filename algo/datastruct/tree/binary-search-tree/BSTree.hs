@@ -92,7 +92,7 @@ insert t x = if x < key(t)
 -- The algorithm described in CLRS is not used here, I used the algorithm
 -- which is mentioned in Annotated STL, P 235 (by Hou Jie)
 --   if x has only one child: just splice x out
---   if x has two child: use min(right) to replce x
+--   if x has two children: use min(right) to replce x
 delete::(Ord a)=> Tree a -> a -> Tree a
 delete Empty _ = Empty
 delete (Node l k r) x | x < k = (Node (delete l x) k r)
