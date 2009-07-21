@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <sstream>
 
 template<class T>
 struct node{
@@ -30,6 +31,11 @@ void in_order_walk(node<T>* t, F f){
 
 template<class T>
 node<T>* search(node<T>* t, T x){
+  while(t && t->value!=x){
+    if(x < t->value) t=t->left;
+    else t=t->right;
+  }
+  return t;
 }
 
 template<class T>
@@ -44,6 +50,36 @@ node<T>* max(node<T>* x){
   while(x && x->right)
     x = x->right;
   return x;
+}
+
+template<class T>
+node<T>* succ(node<T>* x){
+  if(x){
+    if(x->right) return min(x->right);
+    //find an ancestor, whose left child contains x
+    node<T>* p = x->parent;
+    while(p && p->right==x){
+      x = p;
+      p = p->parent;
+    }
+    return p;
+  }
+  return 0;
+}
+
+template<class T>
+node<T>* pred(node<T>* x){
+  if(x){
+    if(x->left) return max(x->left);
+    //find an ancestor, whose right child contains x
+    node<T>* p = x->parent;
+    while(p && p->left==x){
+      x = p;
+      p = p->parent;
+    }
+    return p;
+  }
+  return 0;
 }
 
 template<class T>
@@ -66,8 +102,27 @@ node<T>* insert(node<T>* tree, T value){
     parent->right = x;
 }
 
-/*node& succ(node& x){
-  }*/
+// The algorithm described in CLRS isn't used here.
+// I suded the algorithm as below (refer to Annotated STL, P 235 (by Hou Jie)
+//   if x has only one child: just splice x out
+//   if x has two children: use min(right) to replace x
+template<class T>
+node<T>* del(node<T>* tree, node<T>* x){
+  if(x){
+    if(x->right && !x->left)
+      x->right->parent = x->parent;
+    else if(x->left && !x->right)
+      x->left->parent = x->parent;
+    else{
+      node<T>* y=min(x->right);
+      y->parent->left = 0;
+      y->parent = x->parent;
+      y->left = x->left;
+      y->right = x->right;
+    }
+  }
+  return tree;
+}
 
 //for testing
 template<class Coll>
@@ -79,16 +134,14 @@ node<typename Coll::value_type>* build_tree(const Coll& coll){
 }
 
 template<class T>
-void print(const node<T>* tree){
+std::string tree_to_str(const node<T>* tree){
   if(tree){
-    std::cout<<"(";
-    print(tree->left);
-    std::cout<<"), "<<tree->value<<", (";
-    print(tree->right);
-    std::cout<<")";
+    std::ostringstream s;
+    s<<"("<<tree_to_str(tree->left)<<"), "<<tree->value
+     <<", ("<<tree_to_str(tree->right)<<")";
+    return s.str();
   }
-  else
-    std::cout<<"empty";
+  return "empty";
 }
 
 //test helper
@@ -98,16 +151,26 @@ public:
   test(){
     const int buf[]={15, 6, 18, 3, 7, 17, 20, 2, 4, 13, 9};
     tree = build_tree(std::vector<int>(buf, buf+sizeof(buf)/sizeof(int)));
-    print(tree);
+    std::cout<<tree_to_str(tree);
   }
 
   ~test(){
     delete tree;
   }
 
+  template<class T> void assert_(std::string msg, T x, T y){
+    std::cout<<msg;
+    if(x==y)
+      std::cout<<x<<" OK.\n";
+    else
+      std::cout<<x<<"!="<<y<<" Fail.\n";
+  }
+
   void run(){
     test_in_order_walk();
     test_min_max();
+    test_search();
+    test_succ_pred();
   }
 
 private:
@@ -124,12 +187,28 @@ private:
 
   void test_min_max(){
     node<int>* empty(0);
-    std::cout<<"\nmin(empty)="<<min(empty)
-             <<"\nmin(tree)="<<min(tree)->value
-             <<"\nmax(empty)="<<max(empty)
-             <<"\nmax(tree)="<<max(tree)->value<<"\n";
+    assert_("min(empty)=", min(empty), empty);
+    assert_("min(tree)=", min(tree)->value, 2);
+    assert_("max(empty)=",max(empty), empty);
+    assert_("max(tree)=", max(tree)->value, 20);
   }
   
+  void test_search(){
+    node<int>* empty(0);
+    assert_("search empty: ", search(empty, 3), empty);
+    std::cout<<"search exist value: "<<tree_to_str(search(tree, 18))<<"\n";
+    assert_("search non-exist: ", search(tree, 5), empty);
+  }
+
+  void test_succ_pred(){
+    node<int>* empty(0);
+    assert_("succ 7: ", succ(search(tree, 7))->value, 9);
+    assert_("succ 13: ", succ(search(tree, 13))->value, 15);
+    assert_("succ 20: ", succ(search(tree, 20)), empty);
+    assert_("pred 6: ", pred(search(tree, 6))->value, 4);
+    assert_("pred 7: ", pred(search(tree, 7))->value, 6);
+    assert_("pred 2: ", pred(search(tree, 2)), empty);
+  }
 private:
   node<int>* tree;
 };
