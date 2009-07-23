@@ -107,20 +107,23 @@ node<T>* insert(node<T>* tree, T value){
 //   if x has only one child: just splice x out
 //   if x has two children: use min(right) to replace x
 template<class T>
-node<T>* del(node<T>* tree, node<T>* x){
-  if(x){
-    if(x->right && !x->left)
-      x->right->parent = x->parent;
-    else if(x->left && !x->right)
-      x->left->parent = x->parent;
+node<T>* del(node<T>* tree, node<T>** x){
+  node<T>* old_x = *x;
+  if(*x){
+    if((*x)->left == 0)
+      (*x) = (*x)->right;
+    else if((*x)->right == 0)
+      (*x) = (*x)->left;
     else{
       node<T>* y=min(x->right);
       y->parent->left = 0;
-      y->parent = x->parent;
-      y->left = x->left;
-      y->right = x->right;
+      y->left = (*x)->left;
+      y->right = (*x)->right;
+      (*x) = y;
     }
+    (*x)->parent = old_x->parent;
   }
+  delete(old_x);
   return tree;
 }
 
@@ -208,6 +211,15 @@ private:
     assert_("pred 6: ", pred(search(tree, 6))->value, 4);
     assert_("pred 7: ", pred(search(tree, 7))->value, 6);
     assert_("pred 2: ", pred(search(tree, 2)), empty);
+  }
+
+  test_del(){
+    node<int>* empty(0);
+    //del 17
+    //del 7
+    //del 6
+    //del 15
+    //del non-exist
   }
 private:
   node<int>* tree;
