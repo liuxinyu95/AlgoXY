@@ -84,6 +84,7 @@ node<T>* pred(node<T>* x){
 
 template<class T>
 node<T>* insert(node<T>* tree, T value){
+  node<T>* root(tree);
   node<T>* x = new node<T>(value);
   node<T>* parent(0);
   while(tree){
@@ -94,37 +95,55 @@ node<T>* insert(node<T>* tree, T value){
       tree = tree -> right;
   }
   x->parent = parent;
-  if( parent == 0 ) //teee is empty
+  if( parent == 0 ) //tree is empty
     return x;
   else if( value < parent->value)
     parent->left = x;
   else
     parent->right = x;
+  return root;
 }
 
 // The algorithm described in CLRS isn't used here.
 // I suded the algorithm as below (refer to Annotated STL, P 235 (by Hou Jie)
 //   if x has only one child: just splice x out
 //   if x has two children: use min(right) to replace x
+// @return root of the tree
 template<class T>
-node<T>* del(node<T>* tree, node<T>** x){
-  node<T>* old_x = *x;
-  if(*x){
-    if((*x)->left == 0)
-      (*x) = (*x)->right;
-    else if((*x)->right == 0)
-      (*x) = (*x)->left;
-    else{
-      node<T>* y=min(x->right);
-      y->parent->left = 0;
-      y->left = (*x)->left;
-      y->right = (*x)->right;
-      (*x) = y;
-    }
-    (*x)->parent = old_x->parent;
+node<T>* del(node<T>* tree, node<T>* x){
+  if(!x)
+    return tree;
+
+  node<T>* root(tree);
+  node<T>* out(x);
+  node<T>* parent(x->parent);
+
+  if(x->left == 0)
+    x = x->right;
+  else if(x->right == 0)
+    x = x->left;
+  else{
+    node<T>* y=min(x->right);
+    y->parent->left = 0;
+    std::swap(x->value, y->value);
+    delete y; //bug: y->right may not be 0
+    return root;
   }
-  delete(old_x);
-  return tree;
+
+  if(x)
+    x->parent = parent;
+
+  if(parent)
+    if(parent->left == out)
+      parent->left = x;
+    else
+      parent->right = x;
+  else
+    root=x;
+
+  out->left=out->right=0; //must, or the dtor will release all children
+  delete out;
+  return root;
 }
 
 //for testing
@@ -145,6 +164,18 @@ std::string tree_to_str(const node<T>* tree){
     return s.str();
   }
   return "empty";
+}
+
+template<class T>
+node<T>* clone_tree(const node<T>* t, node<T>* parent=0){
+  if(t){
+    node<T>* t1 = new node<T>(t->value);
+    t1->left = clone_tree(t->left, t1);
+    t1->right = clone_tree(t->right, t1);
+    t1->parent = parent;
+    return t1;
+  }
+  return static_cast<node<T>*>(0);
 }
 
 //test helper
@@ -174,6 +205,7 @@ public:
     test_min_max();
     test_search();
     test_succ_pred();
+    test_del();
   }
 
 private:
@@ -213,13 +245,21 @@ private:
     assert_("pred 2: ", pred(search(tree, 2)), empty);
   }
 
-  test_del(){
+  void test_del_n(int n){
     node<int>* empty(0);
-    //del 17
-    //del 7
-    //del 6
-    //del 15
-    //del non-exist
+    node<int>* t1=clone_tree(tree);
+    t1=del(t1, search(t1, n));
+    std::cout<<"del "<<n<<":\n"<<tree_to_str(t1)<<"\n";
+    assert_("searcg after del: ", search(t1, n), empty);
+    delete t1;
+  }
+
+  void test_del(){
+    test_del_n(17);
+    test_del_n(7);
+    test_del_n(6);
+    test_del_n(15);
+    test_del_n(1); //non-exist
   }
 private:
   node<int>* tree;
