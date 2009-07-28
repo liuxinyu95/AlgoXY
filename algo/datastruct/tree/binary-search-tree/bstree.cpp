@@ -104,8 +104,17 @@ node<T>* insert(node<T>* tree, T value){
   return root;
 }
 
+// cut the node off the tree, then delete it.
+// it can prevent dtor removed children of a node
+template<class T>
+void remove_node(node<T>* x){
+  if(x)
+    x->left = x->right = 0;
+  delete x;
+}
+
 // The algorithm described in CLRS isn't used here.
-// I suded the algorithm as below (refer to Annotated STL, P 235 (by Hou Jie)
+// I used the algorithm as below (refer to Annotated STL, P 235 (by Hou Jie)
 //   if x has only one child: just splice x out
 //   if x has two children: use min(right) to replace x
 // @return root of the tree
@@ -115,7 +124,7 @@ node<T>* del(node<T>* tree, node<T>* x){
     return tree;
 
   node<T>* root(tree);
-  node<T>* out(x);
+  node<T>* old_x(x);
   node<T>* parent(x->parent);
 
   if(x->left == 0)
@@ -124,25 +133,28 @@ node<T>* del(node<T>* tree, node<T>* x){
     x = x->left;
   else{
     node<T>* y=min(x->right);
-    y->parent->left = 0;
-    std::swap(x->value, y->value);
-    delete y; //bug: y->right may not be 0
+    x->value = y->value;
+    if(y->parent != x)
+      y->parent->left = y->right;
+    else
+      x->right = y->right;
+
+    remove_node(y);
     return root;
   }
 
   if(x)
     x->parent = parent;
 
-  if(parent)
-    if(parent->left == out)
+  if(!parent)
+    root = x; //remove node of a tree
+  else
+    if(parent->left == old_x)
       parent->left = x;
     else
       parent->right = x;
-  else
-    root=x;
 
-  out->left=out->right=0; //must, or the dtor will release all children
-  delete out;
+  remove_node(old_x);
   return root;
 }
 
@@ -259,7 +271,7 @@ private:
     test_del_n(7);
     test_del_n(6);
     test_del_n(15);
-    test_del_n(1); //non-exist
+    test_del_n(1); //try to del a non-exist val
   }
 private:
   node<int>* tree;
