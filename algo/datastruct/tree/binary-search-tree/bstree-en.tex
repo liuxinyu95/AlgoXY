@@ -286,7 +286,9 @@ This program will output:
 \lstset{language=Haskell}
 \begin{lstlisting}
 t2 = listToTree [15, 6, 18, 3, 7, 17, 20, 2, 4, 13, 9]
-putStrLn ("\ntest create from list:\t" ++ show t2)
+
+main = do
+  putStrLn ("\ntest create from list:\t" ++ show t2)
 \end{lstlisting}
 
 This program will output:
@@ -343,6 +345,9 @@ inOrderWalk t f = (Node (inOrderWalk (left t) f)
             (f (key t)) (inOrderWalk (right t) f))
 \end{lstlisting}
 
+The Haskell version differs a bit, it doesn't return nothing after walking, 
+but generates a new tree, with the new keys transformed by function f.
+
 To test the result of this function, we need creat a tree first. Insertion
 must be provided for tree creation, please refer to later sections for the
 details of how to create a tree. I'll use the result directly here.
@@ -388,10 +393,14 @@ While the Haskell version can be tested as below:
 \begin{lstlisting}
 testTreeWalk = "test tree in-order walk by apply (-):\t"++
                show (inOrderWalk t2 (\x -> -x))
-putStrLn testTreeWalk
+
+main = do
+  putStrLn testTreeWalk
 \end{lstlisting}
 
-It will output:
+This test example 'maps' each keys in the tree to its negative value,
+so it can output a result as below:
+
 \begin{verbatim}
 test tree in-order walk by apply (-):   Node (Node (Node 
 (Node Empty (-2) Empty) (-3) (Node Empty (-4) Empty)) (-6) 
@@ -455,13 +464,212 @@ Search can also be implemented in an imperactive way by replace the current
 node to left child if the value to be search less than the key or to right 
 child if greater than.
 
+To test search programs, for C++, I defined a special version of assert, named
+as assert\_(), it can write logs to stdout to tell if the test case ok or fail.
+
+here is C++ version of search testing.
+
+\lstset{language=c++}
+\begin{lstlisting}
+template<class T> void assert_(std::string msg, T x, T y){
+  std::cout<<msg;
+  if(x==y)
+    std::cout<<x<<" OK.\n";
+  else
+    std::cout<<x<<"!="<<y<<" Fail.\n";
+}
+
+node<int>* empty(0);
+assert_("search empty: ", search(empty, 3), empty);
+std::cout<<"search exist value: "
+         <<tree_to_str(search(tree, 18))<<"\n";
+assert_("search non-exist: ", search(tree, 5), empty);
+\end{lstlisting}
+
+The variable tree is created as describe in above section. This test example 
+gives the result as.
+\begin{verbatim}
+search empty: 0 OK.
+search exist value: ((empty), 17, (empty)), 18, ((empty), 20, (empty))
+search non-exist: 0 OK.
+\end{verbatim}
+
+Next is Haskell version of search testing.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+testSearch = "\ntest search empty tree:\t"++ show (search 
+                     (Empty::Tree Int) 3) ++
+             "\ntest search non exist node in tree:\t"++ 
+                     show (search t2 5)++
+             "\ntest search a node in tree:\t"++ show 
+                     (search t2 18)
+
+main = do
+  putStrLn testSearch
+\end{lstlisting}
+
+Where t2 is defined as the example tree, the result is:
+\begin{verbatim}
+test search empty tree: Empty
+test search non exist node in tree:     Empty
+test search a node in tree:     Node (Node Empty 17 Empty) 
+18 (Node Empty 20 Empty)
+\end{verbatim}
+
+
 \subsection{Minimun and maximum}
 
-to do ...
+Minimum and maximum can be implemented from the property of binary search
+tree, less keys are always in left child, and greater keys are in right.
+
+For minimum, we can continue traverse the left sub tree until it is empty.
+While for maximum, we traverse the right.
+
+\subsubsection*{C++ version of max/min, imperactive}
+
+\lstset{language=c++}
+\begin{lstlisting}
+template<class T>
+node<T>* min(node<T>* x){
+  while(x && x->left)
+    x = x->left;
+  return x;
+}
+
+template<class T>
+node<T>* max(node<T>* x){
+  while(x && x->right)
+    x = x->right;
+  return x;
+}
+\end{lstlisting}
+
+While in Haskell, in order not to conflict with the max/min functions 
+defined in prelude, I change the name to maxt/mint.
+
+\subsubsection*{Haskell version of max/min, recursive}
+\lstset{language=Haskell}
+\begin{lstlisting}
+mint::Tree a -> Tree a
+mint t = if isEmpty (left t) then t else mint (left t)
+
+maxt::Tree a -> Tree a
+maxt t = if isEmpty (right t) then t else maxt (right t)
+\end{lstlisting}
+
+\subsubsection*{test case and result in C++}
+\lstset{language=c++}
+\begin{lstlisting}
+node<int>* empty(0);
+assert_("min(empty)=", min(empty), empty);
+assert_("min(tree)=", min(tree)->value, 2);
+assert_("max(empty)=",max(empty), empty);
+assert_("max(tree)=", max(tree)->value, 20);
+\end{lstlisting}
+
+\begin{verbatim}
+min(tree)=2 OK.
+max(empty)=0 OK.
+max(tree)=20 OK.
+search empty: 0 OK.
+\end{verbatim}
+
+\subsubsection*{test case and result in Haskell}
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+testMinMax = "\ntest min empty:\t" ++ (show (mint (Empty::Tree Int))) ++
+             "\ntest min tree:\t" ++ show (mint t2) ++ 
+             "\ntest max empty:\t" ++ (show (maxt (Empty::Tree Int))) ++
+             "\ntest max tree:\t" ++ show (maxt t2)
+
+main = do
+    putStrLn testMinMax
+\end{lstlisting}
+
+\begin{verbatim}
+test min empty: Empty
+test min tree:  Node Empty 2 Empty
+test max empty: Empty
+test max tree:  Node Empty 20 Empty
+\end{verbatim}
 
 \subsection{Successor and predecessor}
 
-to do ...
+Successor and predecessor is useful when a tree is treated as a generic container,
+and traversed by using iterator. It will be relative easier to implement if parent of
+a node can be accessed directly. The C++ version and python version benifit from
+this reason.
+
+\subsubsection*{C++ version of succ/pred, imperactive}
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<class T>
+node<T>* succ(node<T>* x){
+  if(x){
+    if(x->right) return min(x->right);
+    //find an ancestor, whose left child contains x
+    node<T>* p = x->parent;
+    while(p && p->right==x){
+      x = p;
+      p = p->parent;
+    }
+    return p;
+  }
+  return 0;
+}
+
+template<class T>
+node<T>* pred(node<T>* x){
+  if(x){
+    if(x->left) return max(x->left);
+    //find an ancestor, whose right child contains x
+    node<T>* p = x->parent;
+    while(p && p->left==x){
+      x = p;
+      p = p->parent;
+    }
+    return p;
+  }
+  return 0;
+}
+\end{lstlisting}
+
+In function succ(), it takes a node in a tree, and tries to find the successor
+of this node. if the node to be found is empty, it just returns it.
+
+If the node has non-empty right child, the answer will be the min node in right
+sub tree. While if it hasn't right sub tree, we must back track the ancestors 
+of this node, try to find one, whose key is bigger. This can be approached 
+by testing if the left child of an ancestor contains our node.
+
+We can test the above program as below:
+
+\begin{lstlisting}
+node<int>* empty(0);
+assert_("succ 7: ", succ(search(tree, 7))->value, 9);
+assert_("succ 13: ", succ(search(tree, 13))->value, 15);
+assert_("succ 20: ", succ(search(tree, 20)), empty);
+assert_("pred 6: ", pred(search(tree, 6))->value, 4);
+assert_("pred 7: ", pred(search(tree, 7))->value, 6);
+assert_("pred 2: ", pred(search(tree, 2)), empty);
+\end{lstlisting}
+
+And the result is:
+\begin{verbatim}
+succ 7: 9 OK.
+succ 13: 15 OK.
+succ 20: 0 OK.
+pred 6: 4 OK.
+pred 7: 6 OK.
+pred 2: 0 OK.
+\end{verbatim}
+
+\subsubsection*{Haskell version of succ/pred, recursive}
+
+to do
 
 % ================================================================
 %                 Insertion and deletion
