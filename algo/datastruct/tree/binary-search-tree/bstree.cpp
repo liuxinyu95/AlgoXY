@@ -262,7 +262,7 @@ private:
     node<int>* t1=clone_tree(tree);
     t1=del(t1, search(t1, n));
     std::cout<<"del "<<n<<":\n"<<tree_to_str(t1)<<"\n";
-    assert_("searcg after del: ", search(t1, n), empty);
+    assert_("search after del: ", search(t1, n), empty);
     delete t1;
   }
 

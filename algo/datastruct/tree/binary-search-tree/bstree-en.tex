@@ -95,7 +95,7 @@ Scheme/Lisp languages. Including the definition, basic operation, such as
 in-order walk, search, find min/max element, find successor/predecessor, insertion
 and deletion. Most algorithms confirms to CLRS\cite{CLRS}.
 
-All completed source code can be downloaded in appendix, please refer to appendix
+All completed source code can be downloaded in appendix \ref{appendix}, please refer to appendix
 for detailed information about build and run.
 
 % ================================================================
@@ -135,7 +135,7 @@ I used recursive approach in dtor to release the tree, this is just for
 convinience. I also provide a constructor (ctor) which can create a leaf
 node easily.
 
-\subsubsection*{Haskell definition. (functional)}
+\subsubsection*{Haskell definition. recursive}
 \lstset{language=Haskell}
 \begin{lstlisting}
 data Tree a = Empty 
@@ -149,7 +149,7 @@ of Show is just for easy printing the result.
 % ================================================================
 % Helper functions
 % ================================================================
-\subsection{Helper functions}
+\subsection{Helper functions} \label{helper-fun}
 
 Besides the functions which are mentioned in CLRS\cite{CLRS}. I provided some
 extra helper functions. They typically helps do some common works such as 
@@ -233,7 +233,7 @@ are used to get the left sub tree and right sub tree. key function is
 used to return the value of a node. isEmpty function can test if a node
 is an empty node.
 
-\subsubsection{collection to tree helper function}
+\subsubsection{collection to tree helper function} \label{list2tree}
 It is convenient to have a function which can turn a collection, such as
 an array, a list etc into a tree. The generation process has to call insertion
 function which will be defined in later section.
@@ -336,7 +336,7 @@ void in_order_walk(node<T>* t, F f){
 The function takes a parameter f, it can be a real function, or a function
 object, this program will apply f to the node by inorder tree walk.
 
-\subsubsection*{Haskell in-order walk. (functional)}
+\subsubsection*{Haskell in-order walk. (recursive)}
 \lstset{language=Haskell}
 \begin{lstlisting}
 inOrderWalk::Tree a -> (a->b) -> Tree b
@@ -432,7 +432,7 @@ child.
 root, search in the right child.
 \end{itemize}
 
-\subsubsection*{Haskell search implementation, functional}
+\subsubsection*{Haskell search implementation, recursive}
 \lstset{language=Haskell}
 \begin{lstlisting}
 search::(Ord a)=> Tree a -> a -> Tree a
@@ -579,9 +579,11 @@ search empty: 0 OK.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-testMinMax = "\ntest min empty:\t" ++ (show (mint (Empty::Tree Int))) ++
+testMinMax = "\ntest min empty:\t" ++ 
+               (show (mint (Empty::Tree Int))) ++
              "\ntest min tree:\t" ++ show (mint t2) ++ 
-             "\ntest max empty:\t" ++ (show (maxt (Empty::Tree Int))) ++
+             "\ntest max empty:\t" ++ 
+               (show (maxt (Empty::Tree Int))) ++
              "\ntest max tree:\t" ++ show (maxt t2)
 
 main = do
@@ -648,7 +650,6 @@ by testing if the left child of an ancestor contains our node.
 We can test the above program as below:
 
 \begin{lstlisting}
-node<int>* empty(0);
 assert_("succ 7: ", succ(search(tree, 7))->value, 9);
 assert_("succ 13: ", succ(search(tree, 13))->value, 15);
 assert_("succ 20: ", succ(search(tree, 20)), empty);
@@ -669,27 +670,355 @@ pred 2: 0 OK.
 
 \subsubsection*{Haskell version of succ/pred, recursive}
 
-to do
+In Haskell implementation, since I don't record parent for a node, it's hard
+to find successor and predecessor in a easy way. I am not able to find a high
+efficient way to realize them.
+
+I defined some helper functions to find parent of a node in the tree, and filter
+out the ancestor of a node which satisfies a predication. 
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+-- Find parent of a value in tree
+-- The performance is low: O(h)
+parent::(Ord a)=>Tree a -> a -> Tree a
+parent Empty _ = Empty
+parent t x | x < (key t) = if isParent (left t) x then t 
+                              else parent (left t) x
+           | x > (key t) = if isParent (right t) x then t 
+                              else parent (right t) x
+           | otherwise = Empty where
+               isParent Empty _ = False
+               isParent t x = (key t)==x
+
+-- Find an ancestor of a value wich match a certain rule
+-- Performance is very low.
+findAncestor::(Ord a)=>Tree a -> a ->(a->a->Bool)-> Tree a
+findAncestor t x f = checkParent t (parent t x) x f where
+    checkParent _ Empty _ _ = Empty
+    checkParent t p x f = if f (key p) x then p
+                          else checkParent t (parent t (key p)) x f
+\end{lstlisting}
+
+The helper function, parent, takes 2 parameters, one is a tree, the other
+is a value x. If the tree is empty, there is no parent, so the program returns
+empty. In other case, it will test from root recursively to check if x is equal to
+the key of the left sub tree root or right sub tree root.
+
+The other helper function, findAncestor will utilize parent function. it takes 3
+parameters, a tree, a value x, and a predicate function. the program will first 
+check the direct parent of x matches the predicate. If succeeds, the parent will
+be returned, else it will recursively check grand parent until finally reach to root.
+
+With these 2 helpers, succ/pred can be realized as the following:
+\begin{lstlisting}
+-- Performance is very low.
+succt::(Ord a)=>Tree a -> a -> Tree a
+succt Empty _ = Empty
+succt t x = if not (isEmpty rightNode)
+            then mint rightNode
+            else findAncestor t x (>) where
+                rightNode = right (search t x)
+
+-- Performance is very low
+predt::(Ord a)=>Tree a -> a -> Tree a
+predt Empty _ = Empty
+predt t x = if not (isEmpty leftNode)
+            then maxt leftNode
+            else findAncestor t x (<) where
+                leftNode = left (search t x)
+\end{lstlisting}
+
+For either cases, the program will fist call search function to locate the node
+which key value is equal to x. In order to find the successor of a node, we'll 
+check if the node has right child. If the right child isn't empty, the minimum 
+of right sub tree is the answer, else we'll track back to find the nearest 
+ancestor which is greater than x.
+
+The test cases and result are as below:
+\begin{lstlisting}
+testSuccPred = 
+  "\ntest succ of 7:\t"++ show (key (succt t2 7)) ++
+  "\ntest succ of 13:\t"++ show (key (succt t2 13)) ++
+  "\ntest pred of 6:\t"++ show (key (predt t2 6))++
+  "\ntest pred of 7:\t"++ show (key (predt t2 7))
+
+main = do
+    putStrLn testSuccPred
+    putStrLn testDel
+\end{lstlisting}
+
+\begin{verbatim}
+test succ of 7: 9
+test succ of 13:        15
+test pred of 6: 4
+test pred of 7: 6
+\end{verbatim}
+
+Note that there is a big problem in compute time of successor and predecessor 
+operations if I implement them as above. For the imperactive version, the time
+is $O(h)$, where $h$ is the height of the tree ($h$ close to $log(N)$ if the
+binary search tree is balanced), while it is quite slow than this because each
+parent/ancestor finding operation takes $O(h)$ time. I am finding if there is 
+better solution.
 
 % ================================================================
 %                 Insertion and deletion
 % ================================================================
 \section{Insertion and deletion}
 
-to do...
+Different with all above tree operations, insertion and deletion can mutate
+the tree. All functions I defined till now are 'read only' functions.
 
 \subsection{Insertion}
+Insertion is the neccessary element to create a tree, one recursive description
+of insertion is like this.
 
-to do ...
+To insert a value x to a tree t,
+\begin{itemize}
+\item If the tree is empty, then return a leave with key=x;
+\item If x is less than the key of root node, insert x to the left child;
+\item If x is greater than the key of root, insert x to the right child.
+\end{itemize}
+
+\subsubsection*{Haskell tree insertion, recursive}
+By translate the above description into Hasell code, the program can be written
+as below.
+
+\begin{lstlisting}
+insert::(Ord a) => Tree a -> a -> Tree a
+insert Empty x = leaf x
+insert t x = if x < key(t) 
+             then (Node (insert (left t) x) (key t) (right t))
+             else (Node (left t) (key t) (insert (right t) x))
+\end{lstlisting}
+
+The testing of insertion can be found in section \ref{list2tree}
+
+\subsubsection*{C++ tree insertion, imperactive}
+
+By using imperacitve language such as C++, we can iterate to the sub-tree untill
+to the insertion point. There are some extra lines to set the parent of the node
+properly.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<class T>
+node<T>* insert(node<T>* tree, T value){
+  node<T>* root(tree);
+  node<T>* x = new node<T>(value);
+  node<T>* parent(0);
+  while(tree){
+    parent = tree;
+    if(value < tree->value)
+      tree = tree -> left;
+    else //assert there is no duplicated value inserted.
+      tree = tree -> right;
+  }
+  x->parent = parent;
+  if( parent == 0 ) //tree is empty
+    return x;
+  else if( value < parent->value)
+    parent->left = x;
+  else
+    parent->right = x;
+  return root;
+}
+\end{lstlisting}
+
+The testing can be refer to section \ref{list2tree}.
 
 \subsection{Deletion}
+Deletion is the most complex operation for binary search tree. this is because we
+must keep the property, that left sub tree < key < right sub tree. Deleting a node
+can break this property very easy.
 
-to do ...
+I don't use the same algorithm described in CLRS\cite{CLRS}, I found a more simple
+one from 'Annotated STL'\cite{hj-stl}
 
-\section{Appendix}
+The algorithm can be described as below:
+
+To delete a node x from a tree.
+\begin{itemize}
+\item If x has no child or only one child, splice x out;
+\item If x has two children, use minimun of its right to replace x, 
+and splice the original minimum out.
+\end{itemize}
+
+\subsubsection*{Haskell deletion, recursive}
+
+Haskell version of deletion can be realized by translating the above descrition
+directly into code. But there is a different point, instead of pass a node to the
+function, I pass value to be deleted in it. So the program need perform search first.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+delete::(Ord a)=> Tree a -> a -> Tree a
+delete Empty _ = Empty
+delete (Node l k r) x | x < k = (Node (delete l x) k r)
+                      | x > k = (Node l k (delete r x))
+                      -- x == k
+                      | isEmpty l = r
+                      | isEmpty r = l
+                      | otherwise = (Node l k' (delete r k')) 
+                          where k' = key (mint r)
+\end{lstlisting}
+
+The test cases and result are shows as below.
+
+\begin{lstlisting}
+testDel = "\ntest del 17:\t"++ show (delete t2 17)++
+          "\ntest del 7:\t"++ show (delete t2 7)++
+          "\ntest del 6:\t" ++ show (delete t2 6)++
+          "\ntest del 15:\t"++ show (delete t2 15)++
+          "\ntest del non-exist:\t" ++ show (delete t2 5)
+
+main = do
+    putStrLn testDel
+\end{lstlisting}
+
+\begin{verbatim}
+test del 17:    Node (Node (Node (Node Empty 2 Empty) 3 (Node Empty 4 
+Empty)) 6 (Node Empty 7 (Node (Node Empty 9 Empty) 13 Empty))) 15 
+(Node Empty 18 (Node Empty 20 Empty))
+test del 7:     Node (Node (Node (Node Empty 2 Empty) 3 (Node Empty 4 
+Empty)) 6 (Node (Node Empty 9 Empty) 13 Empty)) 15 (Node (Node Empty 
+17 Empty) 18 (Node Empty 20 Empty))
+test del 6:     Node (Node (Node (Node Empty 2 Empty) 3 (Node Empty 4 
+Empty)) 7 (Node (Node Empty 9 Empty) 13 Empty)) 15 (Node (Node Empty 
+17 Empty) 18 (Node Empty 20 Empty))
+test del 15:    Node (Node (Node (Node Empty 2 Empty) 3 (Node Empty 4 
+Empty)) 6 (Node Empty 7 (Node (Node Empty 9 Empty) 13 Empty))) 17 
+(Node Empty 18 (Node Empty 20 Empty))
+test del non-exist:     Node (Node (Node (Node Empty 2 Empty) 3 (Node 
+Empty 4 Empty)) 6 (Node Empty 7 (Node (Node Empty 9 Empty) 13 Empty))) 
+15 (Node (Node Empty 17 Empty) 18 (Node Empty 20 Empty))
+\end{verbatim}
+
+\subsubsection*{C++ deletion, imperactive}
+
+C++ version is more complex because it need set the parent properly.
+While we can pass the pointer to the node which will be deleted to the function,
+so that search is no more needed. The function will return the root
+of the result tree.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<class T>
+node<T>* del(node<T>* tree, node<T>* x){
+  if(!x)
+    return tree;
+
+  node<T>* root(tree);
+  node<T>* old_x(x);
+  node<T>* parent(x->parent);
+
+  if(x->left == 0)
+    x = x->right;
+  else if(x->right == 0)
+    x = x->left;
+  else{
+    node<T>* y=min(x->right);
+    x->value = y->value;
+    if(y->parent != x)
+      y->parent->left = y->right;
+    else
+      x->right = y->right;
+
+    remove_node(y);
+    return root;
+  }
+
+  if(x)
+    x->parent = parent;
+
+  if(!parent)
+    root = x; //remove node of a tree
+  else
+    if(parent->left == old_x)
+      parent->left = x;
+    else
+      parent->right = x;
+
+  remove_node(old_x);
+  return root;
+}
+\end{lstlisting}
+
+If the node to be deleted is empty, the function simply returns the original tree.
+In other cases, it will first record the root of the tree, create a copy pointer
+to x, and to its parent.
+
+If either of the children is empty, the program just splice x out. If it has two
+none-empty children, we first located the minimun of right child, replace the key
+of x to y's, then splice y out. Note that the helper function remove\_node() is
+used.
+
+Finally we reset the parent. If the parent pointer we copied before is empty, it
+means that we are deleting the root node, so we need return the new root. After
+the parent is set properly, we finally remove the old x from memory.
+
+The test cases and result are shows as below.
+
+\begin{lstlisting}
+void test_del_n(int n){
+  node<int>* empty(0);
+  node<int>* t1=clone_tree(tree);
+  t1=del(t1, search(t1, n));
+  std::cout<<"del "<<n<<":\n"<<tree_to_str(t1)<<"\n";
+  assert_("search after del: ", search(t1, n), empty);
+  delete t1;
+}
+
+test_del_n(17);
+test_del_n(7);
+test_del_n(6);
+test_del_n(15);
+test_del_n(1); //try to del a non-exist val
+\end{lstlisting}
+
+Because the deletion function in C++ inplace change the tree, so I cloned the test 
+tree for each testing. The clone\_tree() function is defined in section \ref{helper-fun}.
+
+The result of these test case is as below.
+\begin{verbatim}
+del 17:
+((((empty), 2, (empty)), 3, ((empty), 4, (empty))), 6, ((empty), 7, 
+(((empty), 9, (empty)), 13, (empty)))), 15, ((empty), 18, ((empty), 
+20, (empty)))
+search after del: 0 OK.
+del 7:
+((((empty), 2, (empty)), 3, ((empty), 4, (empty))), 6, (((empty), 9, 
+(empty)), 13, (empty))), 15, (((empty), 17, (empty)), 18, ((empty), 
+20, (empty)))
+search after del: 0 OK.
+del 6:
+((((empty), 2, (empty)), 3, ((empty), 4, (empty))), 7, (((empty), 9, 
+(empty)), 13, (empty))), 15, (((empty), 17, (empty)), 18, ((empty), 
+20, (empty)))
+search after del: 0 OK.
+del 15:
+((((empty), 2, (empty)), 3, ((empty), 4, (empty))), 6, ((empty), 7, 
+(((empty), 9, (empty)), 13, (empty)))), 17, ((empty), 18, ((empty), 
+20, (empty)))
+search after del: 0 OK.
+del 1:
+((((empty), 2, (empty)), 3, ((empty), 4, (empty))), 6, ((empty), 7, 
+(((empty), 9, (empty)), 13, (empty)))), 15, (((empty), 17, (empty)), 
+18, ((empty), 20, (empty)))
+search after del: 0 OK.
+\end{verbatim}
+
+\section{Appendix} \label{appendix}
 %\appendix
-download position: http://liuxinyu95.googlepages.com/particlesys.cpp
-appendix to do ...
+All programs are provided along with this article. They are free for downloading.
+\begin{itemize}
+\item bstree.cpp, C++ version of binary seach tree, including all test cases. I 
+compiled and tested it with GUN G++ 3.4.4.
+\item BSTree.hs, Haskell version of binary search tree, with test cases. I compiled
+and tested it with GHC 6.10.4.
+\end{itemize}
+download position: http://sites.google.com/site/algoxy/bstree/bstree.zip
 
 \begin{thebibliography}{99}
 
@@ -697,8 +1026,9 @@ appendix to do ...
 Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest and Clifford Stein. 
 ``Introduction to Algorithms, Second Edition''. ISBN:0262032937. The MIT Press. 2001
 
-\bibitem{kedama}
-Oshima Yoshiki. Kedama: A massively-parallel tile-scriptable particle system. http://www.is.titech.ac.jp/~ohshima/squeak/kedama/
+\bibitem{hj-stl}
+Hou Jie. ``The annotated STL sources (using SGI STL)''. ISBN:7-5609-2699-1 http://press.hust.edu.cn. 2002.
+
 
 \end{thebibliography}
 
