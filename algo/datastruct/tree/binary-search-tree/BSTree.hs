@@ -104,7 +104,7 @@ delete (Node l k r) x | x < k = (Node (delete l x) k r)
 
 -- Helper to build a binary search tree from a list
 listToTree::(Ord a)=>[a] -> Tree a
-listToTree lst = foldl (\t x -> insert t x) Empty lst
+listToTree lst = foldl insert Empty lst
 
 -- test data
 t1 = leaf 4
