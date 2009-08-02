@@ -6,3 +6,13 @@ SOURCE = bstree.cpp
 
 all: $(HEADER)
 	g++ $(CXX_FLAGS) $(SOURCE) -o main
+
+haskell:
+	ghc BSTree.hs -o bst
+
+image:
+	convert img/tree.png img/tree.eps
+
+html:
+	htlatex.bat bstree-en "html, imgdir:img/"
+	mv *.png img/
