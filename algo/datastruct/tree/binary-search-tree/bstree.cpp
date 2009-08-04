@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
+//#include <boost/lambda/lambda.hpp>
 
 template<class T>
 struct node{
@@ -230,6 +231,9 @@ private:
   void test_in_order_walk(){
     std::cout<<"\ntest in order walk with print functor: ";
     in_order_walk(tree, Print());
+    //this can be simplified by using boost
+    //using namespace boost::lambda;
+    //in_order_walk(tree, std::cout<<_1<<", ");
   }
 
   void test_min_max(){

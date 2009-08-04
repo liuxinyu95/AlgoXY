@@ -4,8 +4,10 @@
 
 ;; Helper functions
 (define (key tree) (cadr tree))
-(define (left tree) (car tree))
-(define (right tree) (caddr tree))
+(define (left tree) 
+  (if (null? tree) '() (car tree)))
+(define (right tree) 
+  (if (null? tree) '() (caddr tree)))
 
 ;; In order tree walk
 (define (in-order-walk tree f)
@@ -22,6 +24,46 @@
 	((< x (key tree)) (tree-search (left tree) x))
 	(else (tree-search (right tree) x))))
 
+(define (tree-min tree)
+  (if (null? (left tree))
+      tree
+      (tree-min (left tree))))
+
+(define (tree-max tree)
+  (if (null? (right tree))
+      tree
+      (tree-max (right tree))))
+
+;; low efficiency functions
+(define (parent tree x) ; x is a node, not a value
+  (define (parent? t v)
+    (if (null? t) t (equal? (key t) v)))
+  (cond ((null? tree) tree)
+	((< (key x) (key tree)) (if (parent? (left tree) (key x))
+				    tree
+				    (parent (left tree) x)))
+	((> (key x) (key tree)) (if (parent? (right tree) (key x))
+				    tree
+				    (parent (right tree) x)))
+	(else '())))
+
+(define (find-ancestor tree x f) ; x is a node, not a value
+  (define (check-parent t p v f)
+    (if (f (key p) v)
+	p
+	(check-parent t (parent t p) v f)))
+  (check-parent tree (parent tree x) (key x) f))
+
+(define (succ tree x) ;x is a node, not a value
+  (if (null? (right x))
+      (find-ancestor tree x >)
+      (tree-min (right x))))
+
+(define (pred tree x)
+  (if (null? (left x))
+      (find-ancestor tree x <)
+      (tree-max (left x))))
+      
 ;; Insertion and deletion
 
 (define (tree-insert tree x)
@@ -34,6 +76,23 @@
 	 (make-tree (left tree)
 		    (key tree)
 		    (tree-insert (right tree) x)))))
+
+(define (tree-delete tree v)
+  (cond ((null? tree) tree)
+	((< v (key tree)) (make-tree (tree-delete (left tree) v)
+				     (key tree)
+				     (right tree)))
+	((> v (key tree)) (make-tree (left tree)
+				     (key tree)
+				     (tree-delete (right tree) v)))
+	((null? (left tree)) (right tree))
+	((null? (right tree)) (left tree))
+	(else (let ((newkey (key (tree-min (right tree)))))
+		(make-tree (left tree)
+			   newkey
+			   (tree-delete (right tree) newkey))))))
+
+;; Helpers
 
 (define (list->tree lst)
   (fold-left tree-insert '() lst))
@@ -50,6 +109,26 @@
   (display (tree-search t1 5)) (newline)
   (display (tree-search t1 18)))
 
+(define (test-min-max)
+  (display (tree-min '())) (newline)
+  (display (tree-min t1)) (newline)
+  (display (tree-max '())) (newline)
+  (display (tree-max t1)))
+
+(define (test-succ-pred)
+  (display (key (succ t1 (tree-search t1 7)))) (newline)
+  (display (key (succ t1 (tree-search t1 13)))) (newline)
+  (display (key (pred t1 (tree-search t1 6)))) (newline)
+  (display (key (pred t1 (tree-search t1 7)))))
+
+(define (test-del)
+  (display (tree-delete t1 17)) (newline)
+  (display (tree-delete t1 7)) (newline)
+  (display (tree-delete t1 6)) (newline)
+  (display (tree-delete t1 15)) (newline)
+  (display (tree-delete t1 5)))
+
 ;; reference
 ;; literal programming http://en.literateprograms.org/Binary_search_tree_(Scheme)
 ;; sicp http://mitpress.mit.edu/sicp/full-text/book/book-Z-H-16.html#%_sec_2.3.3
+;; end
