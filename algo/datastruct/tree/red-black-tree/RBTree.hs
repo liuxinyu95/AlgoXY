@@ -1,6 +1,7 @@
 data Color = R | B deriving Show
 data RBTree a = Empty
               | Node Color (RBTree a) a (RBTree a)
+              | DBlack Color (RBTree a) a (RBTree a) --DoublyBlack for del
 
 -- helper functions
 key::RBTree a -> a
@@ -32,7 +33,7 @@ insert t x = makeBlack(ins t x) where  --[1]
      to reserve property 1, 3, 5, only property 2, 4 may be violated
 [3]: All keys should be indentical -}
 
--- Core functions, to make the tree balanced after insertion.
+-- Core function for insert, to make the tree balanced after insertion.
 -- refer to paper of [Chris Okasaki]
 balance::Color -> RBTree a -> a -> RBTree a -> RBTree a
 balance B (Node R (Node R a x b) y c) z d = Node R (Node B a x b) y (Node B c z d) -- case 1
@@ -43,12 +44,30 @@ balance color l k r = Node color l k r
 
 delete::(Ord a)=>RBTree a -> a -> RBTree a
 delete Empty _ = Empty
-delete (Node color l k r) x 
-       | x < k = balance color (delete l x) k r
-       | x > k = balance color l k (delete r x)
-       | isEmpty l = r
-       | isEmpty r = l
-       | otherwise = balance color l k' (delete r k') where k'= key $ mint r
+delete t x = removeDBlack(del t x) where
+    del (Node color l k r) x 
+       | x < k = fixDB color (delete l x) k r
+       | x > k = fixDB color l k (delete r x)
+       -- x == k
+       | isEmpty l = makeDBlack r
+       | isEmpty r = makeDBlack l
+       | otherwise = fixDB color l k' (del r k') where k'= key $ mint r
+    makeDBlack (Node color l k r) = DBlack color l k r
+    makeDBlack Empty 
+    removeDBlack (DBlack color l k r) = (Node color l k r)
+    removeDBlack t = t
+
+-- Core function for delete, to solve the uniform black height violation.
+-- refer to CLRS
+fixDB::Color -> RBTree a -> a -> RBTree a -> RBTree a
+fixDB color a@(DBlack _ _ _ _) x (Node B (Node R b y c) z d) = Node color (Node B a x b) y (Node B c z d)
+fixDB color a@(DBlack _ _ _ _) x (Node B b y (Node R c z d)) = Node color (Node B a x b) y (Node B c z d)
+fixDB color a@(DBlack _ _ _ _) x (Node B b@(Node B _ _ _) y c@(Node B _ _ _))
+    = DBlack color a x (Node R b y c) -- propagate the blackness up
+fixDB B a@(DBlack _ _ _ _) x (Node R b@(Node B _ _ _) y c@(Node B _ _ _))
+    = Node B (fixDB R a x b) y c
+--symmetric
+fixDB color 
 
 -- helper function to build a red black tree from a list
 
