@@ -1,7 +1,6 @@
-data Color = R | B deriving Show
+data Color = R | B | BB deriving (Show, Eq) -- BB is doubly black, used for deletion
 data RBTree a = Empty
               | Node Color (RBTree a) a (RBTree a)
-              | DBlack Color (RBTree a) a (RBTree a) --DoublyBlack for del
 
 -- helper functions
 key::RBTree a -> a
@@ -43,31 +42,39 @@ balance B a x (Node R (Node R b y c) z d) = Node R (Node B a x b) y (Node B c z 
 balance color l k r = Node color l k r
 
 delete::(Ord a)=>RBTree a -> a -> RBTree a
-delete Empty _ = Empty
-delete t x = removeDBlack(del t x) where
+delete t x = del t x where
+    del Empty _ = Empty
     del (Node color l k r) x 
-       | x < k = fixDB color (delete l x) k r
-       | x > k = fixDB color l k (delete r x)
-       -- x == k
-       | isEmpty l = makeDBlack r
-       | isEmpty r = makeDBlack l
+       | x < k = fixDB color (del l x) k r
+       | x > k = fixDB color l k (del r x)
+       -- x == k, delete this node
+       | isEmpty l = if color==B then makeBlack r else r
+       | isEmpty r = if color==B then makeBlack l else l
        | otherwise = fixDB color l k' (del r k') where k'= key $ mint r
-    makeDBlack (Node color l k r) = DBlack color l k r
-    makeDBlack Empty 
-    removeDBlack (DBlack color l k r) = (Node color l k r)
-    removeDBlack t = t
+
+makeBlack::RBTree a -> RBTree a
+makeBlack (Node B l k r) = (Node BB l k r) -- doubly black
+makeBlack (Node _ l k r) = (Node B l k r)
+makeBlack t = t
 
 -- Core function for delete, to solve the uniform black height violation.
 -- refer to CLRS
 fixDB::Color -> RBTree a -> a -> RBTree a -> RBTree a
-fixDB color a@(DBlack _ _ _ _) x (Node B (Node R b y c) z d) = Node color (Node B a x b) y (Node B c z d)
-fixDB color a@(DBlack _ _ _ _) x (Node B b y (Node R c z d)) = Node color (Node B a x b) y (Node B c z d)
-fixDB color a@(DBlack _ _ _ _) x (Node B b@(Node B _ _ _) y c@(Node B _ _ _))
-    = DBlack color a x (Node R b y c) -- propagate the blackness up
-fixDB B a@(DBlack _ _ _ _) x (Node R b@(Node B _ _ _) y c@(Node B _ _ _))
-    = Node B (fixDB R a x b) y c
---symmetric
-fixDB color 
+-- the sibling is black, and it has one red child
+fixDB color a@(Node BB _ _ _) x (Node B (Node R b y c) z d) = Node color (Node B a x b) y (Node B c z d)
+fixDB color a@(Node BB _ _ _) x (Node B b y (Node R c z d)) = Node color (Node B a x b) y (Node B c z d)
+fixDB color (Node B a x (Node R b y c)) z d@(Node BB _ _ _) = Node color (Node B a x b) y (Node B c z d)
+fixDB color (Node B (Node R a x b) y c) z d@(Node BB _ _ _) = Node color (Node B a x b) y (Node B c z d)
+-- the sibling and its 2 children are all black, propagate the blackness up
+fixDB color a@(Node BB _ _ _) x (Node B b@(Node B _ _ _) y c@(Node B _ _ _))
+    = makeBlack (Node color a x (Node R b y c))
+fixDB color (Node B a@(Node B _ _ _) x b@(Node B _ _ _)) y c@(Node BB _ _ _)
+    = makeBlack (Node color (Node R a x b) y c)
+-- the sibling is red
+fixDB B a@(Node BB _ _ _) x (Node R b y c) = fixDB B (fixDB R a x b) y c
+fixDB B (Node R a x b) y c@(Node BB _ _ _) = fixDB B a x (fixDB R b y c)
+-- otherwise
+fixDB color l k r = Node color l k r
 
 -- helper function to build a red black tree from a list
 
@@ -83,12 +90,14 @@ instance Show a => Show (RBTree a) where
 
 -- test cases
 t1=listToRBTree [11, 2, 14, 1, 7, 15, 5, 8, 4]
+t2=Node B (Node R Empty 4 Empty) 5 Empty
 
 testDel = "\ntest del 4: " ++ show (delete t1 4) ++
           "\ntest del 5: " ++ show (delete t1 5) ++
           "\ntest del 2: " ++ show (delete t1 2) ++
           "\ntest del 7: " ++ show (delete t1 7) ++
-          "\ntest del 14: " ++ show (delete t1 14)
+          "\ntest del 14: " ++ show (delete t1 14) ++
+          "\ntest del t2 4: " ++ show (delete t2 4)
 
 main = do
   putStrLn $ show t1
