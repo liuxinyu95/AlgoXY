@@ -23,10 +23,8 @@ class Node:
         self.set_left(x)
         self.set_right(y)
 
-    def set_parent(self, x):
-        self.parent == x
-
-    def replace_by(self, y):    #parent<->self ==> parent<->y
+    #parent<->self ==> parent<->y
+    def replace_by(self, y):    
         if self.parent is None:
             y.parent = None
         elif self.parent.left == self:
@@ -34,8 +32,8 @@ class Node:
         else:
             self.parent.set_right(y)
         self.parent = None
-            
 
+            
 # rotatoins
 
 # (a x (b y c)) ==> ((a x b) y c)
@@ -60,6 +58,8 @@ def right_rotate(t, y):
         t = x
     return t
 
+# insertion and deletion
+
 def rb_insert(t, key): #returns the new root
     root = t
     x = Node(key)
@@ -79,7 +79,41 @@ def rb_insert(t, key): #returns the new root
     return rb_insert_fix(root, x)
 
 def rb_insert_fix(t, x):
-    pass
+    root=t
+    
+    root.color = Black
+
+def remove_node(x):
+    if (x is None): return
+    x.parent = x.left = x.right = None
+
+def rb_delete(t, x):
+    if (x is None): return t
+    [root, old_x, parent] = [t, x, x.parent]
+    if (x.left is None):
+        x = x.right
+    elif (x.right is None):
+        x = x.left
+    else:
+        y = tree_min(x.right)
+        x.key = y.key
+        if (y.parent != x):
+            y.parent.left = y.right
+        else:
+            x.right = y.right
+        remove_node(y)
+        return root
+    if (x != None):
+        x.parent = parent
+    if (parent != None):
+        root = x
+    else:
+        if(parent.left == old_x): parent.left = x
+        else: parent.right = x
+    remove_node(old_x)
+    return root
+
+# Helper functions
 
 def rbtree_clone(t):
     n = None
