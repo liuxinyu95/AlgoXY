@@ -33,6 +33,22 @@ class Node:
             self.parent.set_right(y)
         self.parent = None
 
+    def sibling(self):
+        if self.parent.left == self:
+            return self.parent.right
+        else:
+            return self.parent.left
+
+    def uncle(self):
+        return self.parent.sibling()
+
+    def grandparent(self):
+        return self.parent.parent
+
+# helpfer operations
+def set_color(nodes, colors):
+    for (n, c) in zip(nodes, colors):
+        n.color = c
             
 # rotatoins
 
@@ -70,18 +86,41 @@ def rb_insert(t, key): #returns the new root
             t = t.left
         else:
             t = t.right
-    if(parent == None): #tree is empty
-        return x
-    elif(key < parent.key):
+    if parent is None: #tree is empty
+        root = x
+    elif key < parent.key:
         parent.set_left(x)
     else:
         parent.set_right(x)
     return rb_insert_fix(root, x)
 
+# Fix the red->red violation
 def rb_insert_fix(t, x):
-    root=t
-    
-    root.color = Black
+    while(x.parent and x.parent.color==RED):
+        if x.uncle().color == RED:
+            #case 1: ((a:R x:R b) y:B c:R) ==> ((a:R x:B b) y:R c:B)
+            set_color([x.parent, x.grandparent(), x.uncle()],
+                      [BLACK, RED, BLACK])
+            x = x.grandparent()
+        else:
+            if x.parent == x.grandparent().left:
+                if x == x.parent.right:
+                    #case 2: ((a x:R b:R) y:B c) ==> case 3
+                    x = x.parent
+                    t=left_rotate(t, x)
+                # case 3: ((a:R x:R b) y:B c) ==> (a:R x:B (b y:R c))
+                set_color([x.parent, x.grandparent()], [BLACK, RED])
+                t=right_rotate(t, x.grandparent())
+            else:
+                if x == x.parent.left:
+                    #case 2': (a x:B (b:R y:R c)) ==> case 3'
+                    x = x.parent
+                    t = right_rotate(t, x)
+                # case 3': (a x:B (b y:R c:R)) ==> ((a x:R b) y:B c:R)
+                set_color([x.parent, x.grandparent()], [BLACK, RED])
+                t=left_rotate(t, x.grandparent())
+    t.color = BLACK
+    return t
 
 def remove_node(x):
     if (x is None): return
@@ -129,6 +168,12 @@ def rbtree_to_str(t):
         color = {RED:"R", BLACK:"B"}
         return "("+rbtree_to_str(t.left)+ " " + str(t.key) +":"+color[t.color]+" " + rbtree_to_str(t.right)+")"
 
+def list_to_tree(l):
+    tree = None
+    for x in l:
+        tree = rb_insert(tree, x)
+    return tree
+
 class Test:
     def __init__(self):
         #t1 = ((1B 2R (4B 3R .)) 5B (6B 7R (8R 9B .)))
@@ -138,24 +183,37 @@ class Test:
         self.t1.right.set_children(Node(6, BLACK), Node(9, BLACK))
         self.t1.left.right.set_left(Node(3))
         self.t1.right.right.set_left(Node(8))
-        print rbtree_to_str(self.t1)
+        print "t1 1..9:\n", rbtree_to_str(self.t1)
+        self.t2=Node(11, BLACK) # as figure 13.4 in CLRS
+        self.t2.set_children(Node(2), Node(14, BLACK))
+        self.t2.left.set_children(Node(1, BLACK), Node(7, BLACK))
+        self.t2.right.set_right(Node(15))
+        self.t2.left.right.set_children(Node(5), Node(8))
+        print "t2, CLRS fig 13.4:\n", rbtree_to_str(self.t2)
 
     def run(self):
-
         self.test_rotate()
+        self.test_insert()
 
     def test_rotate(self):
         t = rbtree_clone(self.t1)
         x = t.right #7R
         t = left_rotate(t, x) #(6 7 (8 9 .) ==> ((6 7 8) 9 .)
-        print rbtree_to_str(t)
+        print "left rotate at 7:R\n", rbtree_to_str(t)
         t = right_rotate(t, t.right) #rotate back
-        print rbtree_to_str(t)
+        print "right rotate back:\n", rbtree_to_str(t)
         t = rbtree_clone(self.t1)
         t = left_rotate(t, t) #(2 5 (6 7 9) ==> ((2 5 6) 7 9)
-        print rbtree_to_str(t)
-        t = right_rotate(t, t)
-        print rbtree_to_str(t)
+        print "left rotate at root:\n", rbtree_to_str(t)
+        t = right_rotate(t, t) #rotate back
+        print "right rotate back:\n", rbtree_to_str(t)
+
+    def test_insert(self):
+        t = rbtree_clone(self.t2)
+        t = rb_insert(t, 4)
+        print "t2: after insert 4\n", rbtree_to_str(t)
+        t = list_to_tree([5, 2, 7, 1, 4, 6, 9, 3, 8])
+        print "list->tree, create t1 by insert\n", rbtree_to_str(t)
 
 if __name__ == "__main__":
     Test().run()
