@@ -2,6 +2,7 @@ import string
 
 BLACK = 0
 RED = 1
+DOUBLY_BLACK = 2
 
 class Node:
     def __init__(self, key, color = RED):
@@ -45,7 +46,7 @@ class Node:
     def grandparent(self):
         return self.parent.parent
 
-# helpfer operations
+# common helpfer operations
 def set_color(nodes, colors):
     for (n, c) in zip(nodes, colors):
         n.color = c
@@ -139,9 +140,12 @@ def remove_node(x):
     if (x is None): return
     x.parent = x.left = x.right = None
 
+class DoublyBlack(Node):
+    pass
+
 def rb_delete(t, x):
     if x is None: return t
-    db = None  # doubly black
+    (db, db_parent) = (x.parent, None)  # doubly black
     if x.left is None:
         x.replace_by(x.right)
         db=x.right
@@ -153,11 +157,15 @@ def rb_delete(t, x):
         x.key = y.key
         y.replace_by(y.right)
         (x, db)=(y, y.right)
-    t=rb_delete_fix(t, db)
+    if x.color == BLACK:
+        t=rb_delete_fix(t, parent, db)
     remove_node(x)
     return t
 
-# Helper functions
+def rb_delete_fix(t, db_parent, db):
+    if x is None:
+
+# Helper functions for test
 
 def rbtree_clone(t):
     n = None
