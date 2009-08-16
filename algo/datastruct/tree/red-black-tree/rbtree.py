@@ -141,15 +141,19 @@ def remove_node(x):
 
 def rb_delete(t, x):
     if x is None: return t
+    db = None  # doubly black
     if x.left is None:
         x.replace_by(x.right)
+        db=x.right
     elif x.right is None:
         x.replace_by(x.left)
+        db=x.left
     else:
         y = tree_min(x.right)
         x.key = y.key
         y.replace_by(y.right)
-        x=y
+        (x, db)=(y, y.right)
+    t=rb_delete_fix(t, db)
     remove_node(x)
     return t
 
