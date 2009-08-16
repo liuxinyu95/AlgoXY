@@ -50,7 +50,7 @@ def set_color(nodes, colors):
     for (n, c) in zip(nodes, colors):
         n.color = c
             
-# rotatoins
+# rotations
 
 # (a x (b y c)) ==> ((a x b) y c)
 def left_rotate(t, x):
@@ -122,35 +122,36 @@ def rb_insert_fix(t, x):
     t.color = BLACK
     return t
 
+# Querying function for deletion, we can reuse those in binary search tree (bstree.py)
+
+def tree_search(t, x):
+    while(t!=None and t.key != x):
+        if(x < t.key): t = t.left
+        else: t = t.right
+    return t
+
+def tree_min(t):
+    while(t!=None and t.left != None):
+        t = t.left
+    return t
+
 def remove_node(x):
     if (x is None): return
     x.parent = x.left = x.right = None
 
 def rb_delete(t, x):
-    if (x is None): return t
-    [root, old_x, parent] = [t, x, x.parent]
-    if (x.left is None):
-        x = x.right
-    elif (x.right is None):
-        x = x.left
+    if x is None: return t
+    if x.left is None:
+        x.replace_by(x.right)
+    elif x.right is None:
+        x.replace_by(x.left)
     else:
         y = tree_min(x.right)
         x.key = y.key
-        if (y.parent != x):
-            y.parent.left = y.right
-        else:
-            x.right = y.right
-        remove_node(y)
-        return root
-    if (x != None):
-        x.parent = parent
-    if (parent != None):
-        root = x
-    else:
-        if(parent.left == old_x): parent.left = x
-        else: parent.right = x
-    remove_node(old_x)
-    return root
+        y.replace_by(y.right)
+        x=y
+    remove_node(x)
+    return t
 
 # Helper functions
 
@@ -191,9 +192,15 @@ class Test:
         self.t2.left.right.set_children(Node(5), Node(8))
         print "t2, CLRS fig 13.4:\n", rbtree_to_str(self.t2)
 
+    def __assert(self, msg, x, y):
+        if(x == y): msg = msg + "OK."
+        else: msg = msg + str(x) + "!=" + str(y) + "Fail."
+        print msg
+
     def run(self):
         self.test_rotate()
         self.test_insert()
+        self.test_delete()
 
     def test_rotate(self):
         t = rbtree_clone(self.t1)
@@ -214,6 +221,26 @@ class Test:
         print "t2: after insert 4\n", rbtree_to_str(t)
         t = list_to_tree([5, 2, 7, 1, 4, 6, 9, 3, 8])
         print "list->tree, create t1 by insert\n", rbtree_to_str(t)
+
+    def __test_del_n(self, tree, n):
+        t = rbtree_clone(tree)
+        t = rb_delete(t, tree_search(t, n))
+        print "del ", n, ": ", rbtree_to_str(t)
+        self.__assert("search after del: ", tree_search(t, n), None)
+
+    def test_delete(self):
+        t = Node(15)
+        t.set_children(Node(6), Node(18))
+        t.left.set_children(Node(3), Node(7))
+        t.right.set_children(Node(17), Node(20))
+        t.left.left.set_children(Node(2), Node(4))
+        t.left.right.set_right(Node(13))
+        t.left.right.right.set_left(Node(9))
+        self.__test_del_n(t, 17)
+        self.__test_del_n(t, 7)
+        self.__test_del_n(t, 6)
+        self.__test_del_n(t, 15)
+        self.__test_del_n(t, 1) #del a non-exist value
 
 if __name__ == "__main__":
     Test().run()
