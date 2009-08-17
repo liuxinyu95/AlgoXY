@@ -1,7 +1,7 @@
 import string
 
-BLACK = 0
-RED = 1
+RED = 0
+BLACK = 1
 DOUBLY_BLACK = 2
 
 class Node:
@@ -27,7 +27,7 @@ class Node:
     #parent<->self ==> parent<->y
     def replace_by(self, y):    
         if self.parent is None:
-            y.parent = None
+            if y!= None: y.parent = None
         elif self.parent.left == self:
             self.parent.set_left(y)
         else:
@@ -140,12 +140,22 @@ def remove_node(x):
     if (x is None): return
     x.parent = x.left = x.right = None
 
-class DoublyBlack(Node):
-    pass
+def is_leaf(x):
+    if x is None: return False
+    return (x.left is None) and (x.right is None)
+
+def make_black(parent, x):
+    if x is None:
+        if is_leaf(parent):
+            parent.color = DOUBLY_BLACK
+        return parent
+    else:
+        x.color = x.color + 1
+        return x
 
 def rb_delete(t, x):
     if x is None: return t
-    (db, db_parent) = (x.parent, None)  # doubly black
+    (parent, db) = (x.parent, None)
     if x.left is None:
         x.replace_by(x.right)
         db=x.right
@@ -154,16 +164,60 @@ def rb_delete(t, x):
         db=x.left
     else:
         y = tree_min(x.right)
+        (parent, db)=(y.parent, y.right)
         x.key = y.key
         y.replace_by(y.right)
-        (x, db)=(y, y.right)
+        x=y
     if x.color == BLACK:
-        t=rb_delete_fix(t, parent, db)
+        t=rb_delete_fix(t, make_black(parent, db))
     remove_node(x)
     return t
 
-def rb_delete_fix(t, db_parent, db):
-    if x is None:
+def is_red(x):
+    if x is None: return False
+    return x.color == RED
+
+def is_black(x):
+    if x is None: return False
+    return x.color == BLACK
+
+def rb_delete_fix(t, db):
+    if db is None: return None # remove the root from a leaf tree
+    while(db.parent!=None and db.color==DOUBLY_BLACK):
+        if db.sibling != None:
+            # case 2: the sibling and both nephews are black
+            if is_black(db.sibling()) and is_black(db.sibling().left) and is_black(db.sibling().right):
+               set_color([db, db.sibling()], [BLACK, RED])
+               db.parent.color=db.parent.color+1
+            # case 1:  the sibling is red
+            elif is_red(db.sibling()): 
+                if(db == db.parent.left):
+                    t=left_rotate(db.parent)
+                else:
+                    t=right_rotate(db.parent)
+            # case 3, 4: the sibling is black, and one nephew is red
+            elif is_black(db.sibling()) and is_red(db.sibling().left): 
+                if db == db.parent.left:
+                    colors=[BLACK, BLACK, db.parent.color]
+                    set_color([db, db.parent, db.sibling().left], colors)
+                    t=right_rotate(t, db.sibling())
+                    t=left_rotate(t, db.parent)
+                else:
+                    colors=[BLACK, BLACK, db.parent.color, BLACK]
+                    set_color([db, db.parent, db.sibling(), db.sibling().left], colors)
+                    t=right_rotate(t, db.parent)
+            elif is_black(db.sibling()) and is_red(db.sibling().right):
+                if db == db.parent.left:
+                    colors=[BLACK, BLACK, db.parent.color, BLACK]
+                    set_color([db, db.parent, db.sibling(), db.sibling().right], colors)
+                    t=left_rotate(t, db.parent)
+                else:
+                    colors=[BLACK, BLACK, db.parent.color]
+                    set_color([db, db.parent, db.sibling().right], colors)
+                    t=left_rotate(t, db.sibling())
+                    t=right_rotate(t, db.parent)
+    t.color=BLACK
+    return t
 
 # Helper functions for test
 
@@ -241,18 +295,9 @@ class Test:
         self.__assert("search after del: ", tree_search(t, n), None)
 
     def test_delete(self):
-        t = Node(15)
-        t.set_children(Node(6), Node(18))
-        t.left.set_children(Node(3), Node(7))
-        t.right.set_children(Node(17), Node(20))
-        t.left.left.set_children(Node(2), Node(4))
-        t.left.right.set_right(Node(13))
-        t.left.right.right.set_left(Node(9))
-        self.__test_del_n(t, 17)
-        self.__test_del_n(t, 7)
-        self.__test_del_n(t, 6)
-        self.__test_del_n(t, 15)
-        self.__test_del_n(t, 1) #del a non-exist value
+        for i in range(1, 10):
+            self.__test_del_n(self.t1, i)
+        self.__test_del_n(self.t1, 11) #del a non-exist value
 
 if __name__ == "__main__":
     Test().run()
