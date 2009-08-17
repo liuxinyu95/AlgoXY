@@ -183,14 +183,11 @@ def is_black(x):
 
 def rb_delete_fix(t, db):
     if db is None: return None # remove the root from a leaf tree
+    print "db=",db.color," color=",db.color," sibling="
     while(db.parent!=None and db.color==DOUBLY_BLACK):
-        if db.sibling != None:
-            # case 2: the sibling and both nephews are black
-            if is_black(db.sibling()) and is_black(db.sibling().left) and is_black(db.sibling().right):
-               set_color([db, db.sibling()], [BLACK, RED])
-               db.parent.color=db.parent.color+1
-            # case 1:  the sibling is red
-            elif is_red(db.sibling()): 
+        if db.sibling() != None:
+            # case 1:  the sibling is red, (transform to make the sibling black)
+            if is_red(db.sibling()): 
                 if(db == db.parent.left):
                     t=left_rotate(db.parent)
                 else:
@@ -216,6 +213,15 @@ def rb_delete_fix(t, db):
                     set_color([db, db.parent, db.sibling().right], colors)
                     t=left_rotate(t, db.sibling())
                     t=right_rotate(t, db.parent)
+            # case 2: the sibling and both nephews are black. (move the blackness up)
+            elif is_black(db.sibling()) and is_black(db.sibling().left) and is_black(db.sibling().right):
+               set_color([db, db.sibling()], [BLACK, RED])
+               db.parent.color=db.parent.color+1
+               db = db.parent
+        else: # no sibling, we can move blackness up
+            db.color = BLACK
+            db.parent.color = db.parent.color+1
+            db = db.parent
     t.color=BLACK
     return t
 
@@ -298,6 +304,22 @@ class Test:
         for i in range(1, 10):
             self.__test_del_n(self.t1, i)
         self.__test_del_n(self.t1, 11) #del a non-exist value
+        t = Node(1, BLACK)
+        self.__test_del_n(t, 1)
+        t = Node(7, BLACK)
+        t.set_children(Node(3, BLACK), Node(10, BLACK))
+        t.left.set_children(Node(2, BLACK), Node(5, BLACK))
+        t.right.set_children(Node(9, BLACK), Node(12, BLACK))
+        t.left.left.set_left(Node(1, BLACK))
+        t.left.right.set_children(Node(4, BLACK), Node(6, BLACK))
+        t.right.left.set_left(Node(8, BLACK))
+        t.right.right.set_left(Node(11, BLACK))
+        print "test detailed case...\n", rbtree_to_str(t)
+        self.__test_del_n(t, 1) # case 2
+        t1 = rbtree_clone(t)
+        t1.left.set_right(None)
+        print "test no sibling case...\n", rbtree_to_str(t1)
+        self.__test_del_n(t1, 1) # no sibling case
 
 if __name__ == "__main__":
     Test().run()
