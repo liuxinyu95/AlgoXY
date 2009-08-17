@@ -305,8 +305,9 @@ class Test:
         for i in range(1, 10):
             self.__test_del_n(self.t1, i)
         self.__test_del_n(self.t1, 11) #del a non-exist value
-        t = Node(1, BLACK)
+        t = Node(1, BLACK) #leaf case
         self.__test_del_n(t, 1)
+        # test case 2
         t = Node(7, BLACK)
         t.set_children(Node(3, BLACK), Node(10, BLACK))
         t.left.set_children(Node(2, BLACK), Node(5, BLACK))
@@ -316,10 +317,12 @@ class Test:
         t.right.left.set_left(Node(8, BLACK))
         t.right.right.set_left(Node(11, BLACK))
         print "test detailed case...\n", rbtree_to_str(t)
-        self.__test_del_n(t, 1) # case 2
+        self.__test_del_n(t, 1) 
+        # test no sibling case
         t.left.set_right(None)
         print "test no sibling case...\n", rbtree_to_str(t)
-        self.__test_del_n(t, 1) # no sibling case
+        self.__test_del_n(t, 1)
+        # test case 1
         t=Node(3, BLACK)
         t.set_children(Node(2, BLACK), Node(6))
         t.left.set_left(Node(1, BLACK))
@@ -327,7 +330,23 @@ class Test:
         t.right.left.set_left(Node(4, BLACK))
         t.right.right.set_right(Node(8, BLACK))
         print "test case 1...\n", rbtree_to_str(t)
-        self.__test_del_n(t, 1) # case 1
+        self.__test_del_n(t, 1)
+        # test case 3
+        t=Node(2, BLACK)
+        t.set_children(Node(1, BLACK), Node(6, BLACK))
+        t.left.set_left(Node(0, BLACK))
+        t.right.set_children(Node(4), Node(7, BLACK))
+        t.right.left.set_children(Node(3, BLACK), Node(5, BLACK))
+        print "test case 3", rbtree_to_str(t)
+        self.__test_del_n(t, 0)
+        # test case 4
+        t=Node(6, BLACK)
+        t.set_children(Node(4, BLACK), Node(7, BLACK))
+        t.left.set_children(Node(2), Node(5, BLACK))
+        t.right.set_right(Node(8, BLACK))
+        t.left.left.set_children(Node(1, BLACK), Node(3, BLACK))
+        print "test case 4", rbtree_to_str(t)
+        self.__test_del_n(t, 8)
 
 if __name__ == "__main__":
     Test().run()
