@@ -183,15 +183,15 @@ def is_black(x):
 
 def rb_delete_fix(t, db):
     if db is None: return None # remove the root from a leaf tree
-    print "db=",db.color," color=",db.color," sibling="
-    while(db.parent!=None and db.color==DOUBLY_BLACK):
+    while(db!=t and db.color==DOUBLY_BLACK):
         if db.sibling() != None:
             # case 1:  the sibling is red, (transform to make the sibling black)
             if is_red(db.sibling()): 
+                set_color([db.parent, db.sibling()],[RED, BLACK])
                 if(db == db.parent.left):
-                    t=left_rotate(db.parent)
+                    t=left_rotate(t, db.parent)
                 else:
-                    t=right_rotate(db.parent)
+                    t=right_rotate(t, db.parent)
             # case 3, 4: the sibling is black, and one nephew is red
             elif is_black(db.sibling()) and is_red(db.sibling().left): 
                 if db == db.parent.left:
@@ -214,10 +214,11 @@ def rb_delete_fix(t, db):
                     t=left_rotate(t, db.sibling())
                     t=right_rotate(t, db.parent)
             # case 2: the sibling and both nephews are black. (move the blackness up)
-            elif is_black(db.sibling()) and is_black(db.sibling().left) and is_black(db.sibling().right):
+            elif is_black(db.sibling()) and (not is_red(db.sibling().left)) and (not is_red(db.sibling().right)):
                set_color([db, db.sibling()], [BLACK, RED])
                db.parent.color=db.parent.color+1
                db = db.parent
+            # a sibling without child is invalid case, because it violate property 5
         else: # no sibling, we can move blackness up
             db.color = BLACK
             db.parent.color = db.parent.color+1
@@ -316,10 +317,17 @@ class Test:
         t.right.right.set_left(Node(11, BLACK))
         print "test detailed case...\n", rbtree_to_str(t)
         self.__test_del_n(t, 1) # case 2
-        t1 = rbtree_clone(t)
-        t1.left.set_right(None)
-        print "test no sibling case...\n", rbtree_to_str(t1)
-        self.__test_del_n(t1, 1) # no sibling case
+        t.left.set_right(None)
+        print "test no sibling case...\n", rbtree_to_str(t)
+        self.__test_del_n(t, 1) # no sibling case
+        t=Node(3, BLACK)
+        t.set_children(Node(2, BLACK), Node(6))
+        t.left.set_left(Node(1, BLACK))
+        t.right.set_children(Node(5, BLACK), Node(7, BLACK))
+        t.right.left.set_left(Node(4, BLACK))
+        t.right.right.set_right(Node(8, BLACK))
+        print "test case 1...\n", rbtree_to_str(t)
+        self.__test_del_n(t, 1) # case 1
 
 if __name__ == "__main__":
     Test().run()
