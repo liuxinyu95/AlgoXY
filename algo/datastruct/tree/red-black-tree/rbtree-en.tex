@@ -340,9 +340,11 @@ They are trees as shown below.
 
 \subsubsection*{Python red black tree insertion, imperative}
 
+The python version imperative implementation uses the method described in CLRS.
+
 \lstset{language=Python}
 \begin{lstlisting}
-def tree_insert(t, key):
+def rb_insert(t, key): #returns the new root
     root = t
     x = Node(key)
     parent = None
@@ -352,52 +354,114 @@ def tree_insert(t, key):
             t = t.left
         else:
             t = t.right
-    x.parent = parent
-    if(parent == None): #tree is empty
-        return x
-    elif(key < parent.key):
-        parent.left = x
+    if parent is None: #tree is empty
+        root = x
+    elif key < parent.key:
+        parent.set_left(x)
     else:
-        parent.right = x
-    return root
+        parent.set_right(x)
+    return rb_insert_fix(root, x)
 \end{lstlisting}
 
-\subsubsection*{Scheme/Lisp tree insertion, imperative}
+Compare the above source code and the one in binary search tree\cite{bst-lxy}. The only difference are we simplfied the program by using set\_left()/set\_right() member functions, and there is a rb\_insert\_fix() function call to fix the red node violation.
 
-\lstset{language=lisp}
+There are 3 cases described in CLRS, and if we take the left-right symmetric into consideration. there are total 6 cases. Among them two cases can be merged together, because they are all have uncle node in red color, we can toggle the parent color and uncle color to black and set grand parent color to red. After this merge the 5 cases fixing verson can be implemented as the following.
+
 \begin{lstlisting}
-(define (tree-insert tree x)
-  (cond ((null? tree) (list '() x '()))
-	((< x (key tree))
-	 (make-tree (tree-insert (left tree) x)
-		    (key tree)
-		    (right tree)))
-	((> x (key tree))
-	 (make-tree (left tree)
-		    (key tree)
-		    (tree-insert (right tree) x)))))
+# Fix the red->red violation
+def rb_insert_fix(t, x):
+    while(x.parent and x.parent.color==RED):
+        if x.uncle().color == RED:
+            #case 1: ((a:R x:R b) y:B c:R) ==> ((a:R x:B b) y:R c:B)
+            set_color([x.parent, x.grandparent(), x.uncle()],
+                      [BLACK, RED, BLACK])
+            x = x.grandparent()
+        else:
+            if x.parent == x.grandparent().left:
+                if x == x.parent.right:
+                    #case 2: ((a x:R b:R) y:B c) ==> case 3
+                    x = x.parent
+                    t=left_rotate(t, x)
+                # case 3: ((a:R x:R b) y:B c) ==> (a:R x:B (b y:R c))
+                set_color([x.parent, x.grandparent()], [BLACK, RED])
+                t=right_rotate(t, x.grandparent())
+            else:
+                if x == x.parent.left:
+                    #case 2': (a x:B (b:R y:R c)) ==> case 3'
+                    x = x.parent
+                    t = right_rotate(t, x)
+                # case 3': (a x:B (b y:R c:R)) ==> ((a x:R b) y:B c:R)
+                set_color([x.parent, x.grandparent()], [BLACK, RED])
+                t=left_rotate(t, x.grandparent())
+    t.color = BLACK
+    return t
 \end{lstlisting}
 
-The testing can be refer to section \ref{list2tree}.
+To test the insertion function. We use some similar helper functions and test functions defined in binary search tree\cite{bst-lxy}.
 
-\subsection{Deletion}
-Deletion is the most complex operation for binary search tree. this is because we
-must keep the property, that left sub tree < key < right sub tree. Deleting a node
-can break this property very easy.
+\begin{lstlisting}
+def rbtree_clone(t):
+    n = None
+    if t != None:
+        n = Node(t.key, t.color)
+        n.set_children(rbtree_clone(t.left), rbtree_clone(t.right))
+    return n
 
-I don't use the same algorithm described in CLRS\cite{CLRS}, I found a more simple
-one from 'Annotated STL'\cite{hj-stl}
+def rbtree_to_str(t):
+    if t is None:
+        return "."
+    else:
+        color = {RED:"R", BLACK:"B"}
+        return "("+rbtree_to_str(t.left)+ " " + str(t.key) +":"+
+               color[t.color]+" " + rbtree_to_str(t.right)+")"
 
-The algorithm can be described as below:
+def list_to_tree(l):
+    tree = None
+    for x in l:
+        tree = rb_insert(tree, x)
+    return tree
 
-To delete a node x from a tree.
-\begin{itemize}
-\item If x has no child or only one child, splice x out;
-\item If x has two children, use minimum of its right to replace x, 
-and splice the original minimum out.
-\end{itemize}
+class Test:
+    def __init__(self):
+        self.t2=Node(11, BLACK) # as figure 13.4 in CLRS
+        self.t2.set_children(Node(2), Node(14, BLACK))
+        self.t2.left.set_children(Node(1, BLACK), Node(7, BLACK))
+        self.t2.right.set_right(Node(15))
+        self.t2.left.right.set_children(Node(5), Node(8))
+        print "t2, CLRS fig 13.4:\n", rbtree_to_str(self.t2)
 
-\subsubsection*{Haskell deletion, recursive}
+    def run(self):
+        self.test_insert()
+
+    def test_insert(self):
+        t = rbtree_clone(self.t2)
+        t = rb_insert(t, 4)
+        print "t2: after insert 4\n", rbtree_to_str(t)
+        t = list_to_tree([5, 2, 7, 1, 4, 6, 9, 3, 8])
+        print "list->tree, create t1 by insert\n", rbtree_to_str(t)
+\end{lstlisting}
+
+Here we use the example tree present in CLRS as in figure \ref{fig:rb-insert-clrs}.
+
+\begin{figure}[htbp]
+       \begin{center}
+	\includegraphics[scale=0.5]{img/rb-insert-clrs.eps}
+        \caption{insertion and fixing} \label{fig:rb-insert-clrs}
+       \end{center}
+\end{figure}
+
+The program will output 2 trees in console.
+
+\begin{verbatim}
+t2, CLRS fig 13.4:
+(((. 1:B .) 2:R ((. 5:R .) 7:B (. 8:R .))) 11:B (. 14:B (. 15:R .)))
+t2: after insert 4
+(((. 1:B .) 2:R ((. 4:R .) 5:B .)) 7:B ((. 8:B .) 11:R (. 14:B (. 15:R .))))
+list->tree, create t1 by insert
+(((. 1:B .) 2:R ((. 3:R .) 4:B .)) 5:B ((. 6:B .) 7:R ((. 8:R .) 9:B .)))
+\end{verbatim}
+
+\section{Haskell deletion, recursive}
 
 Haskell version of deletion can be realized by translating the above description
 directly into code. But there is a different point, instead of pass a node to the

@@ -104,7 +104,7 @@ leaf color x = Node color Empty x Empty
 t1=listToRBTree [11, 2, 14, 1, 7, 15, 5, 8, 4]
 t2=Node B (Node R Empty 4 Empty) 5 Empty
 t3=Node R (Node B (leaf B 1) 2 Empty) 3 (Node B (Node R (leaf B 4) 5 (leaf B 6)) 7 (leaf B 8))
---del t3 1 => (((. 2:B .) 3:B (. 4:B .)) 5:R ((. 6:B .) 7:B (. 8:B .)))
+--del t3 1 => (((. 2:B .) 3:B (. 4:B .)) 5:B ((. 6:B .) 7:B (. 8:B .)))
 
 testDel = "\ntest del 4: " ++ show (delete t1 4) ++
           "\ntest del 5: " ++ show (delete t1 5) ++

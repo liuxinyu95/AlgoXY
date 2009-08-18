@@ -14,6 +14,7 @@ image:
 	dot -Tps -o img/unbalanced.ps img/unbalanced.dot
 	convert img/insert-fix.png img/insert-fix.eps
 	dot -Tps -o img/insert-haskell.ps img/insert-haskell.dot
+	convert img/rb-insert-clrs.png img/rb-insert-clrs.eps
 
 html:
 	htlatex.bat rbtree-en "html, imgdir:img/"
