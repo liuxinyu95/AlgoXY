@@ -11,7 +11,9 @@ haskell:
 	ghc RBTree.hs -o rbt
 
 image:
-	dot -Tps -o unbalanced.ps unbalanced.dot
+	dot -Tps -o img/unbalanced.ps img/unbalanced.dot
+	convert img/insert-fix.png img/insert-fix.eps
+	dot -Tps -o img/insert-haskell.ps img/insert-haskell.dot
 
 html:
 	htlatex.bat rbtree-en "html, imgdir:img/"

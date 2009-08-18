@@ -246,66 +246,99 @@ def set_color(nodes, colors):
 % ================================================================
 \section{Insertion}
 
-Different with all above tree operations, insertion and deletion can mutate
-the tree. All functions I defined till now are 'read only' functions.
+Insertion can violate the red black tree properties, so we need transform
+the tree after insertion.
 
-\subsection{Insertion}
-Insertion is the necessary element to create a tree, one recursive description
-of insertion is like this.
+We can use the same insert function as defined in binary search tree, and 
+then do some fix the resume the red black properties. One good practice is 
+to always insert red node. as far as the new inserted node isn't the root.
+We can keep all properties except number 4. It may bring two adjacent red
+nodes.
 
-To insert a value x to a tree t,
-\begin{itemize}
-\item If the tree is empty, then return a leave with key=x;
-\item If x is less than the key of root node, insert x to the left child;
-\item If x is greater than the key of root, insert x to the right child.
-\end{itemize}
+Functional and imperative implementation have different fixing ways. One
+is uniformed but has some overhead, the other is a bit complex but has 
+higher performance.
 
-\subsubsection*{Haskell tree insertion, recursive}
-By translate the above description into Haskell code, the program can be written
-as below.
+\subsubsection*{Haskell red black insertion, functional}
+As described by Chris Okasaki, there are total 4 cases which violate property 4.
+All of them has 2 adjacent red nodes. However, they have a uniformed form
+after fixing\cite{okasaki}. 
 
+\begin{figure}[htbp]
+       \begin{center}
+	\includegraphics[scale=0.5]{img/insert-fix.eps}
+        \caption{4 cases for balancing a red black tree after insertion} \label{fig:insert-fix}
+       \end{center}
+\end{figure}
+
+Note that this transformation will move the redness one level up. So this is a bottom-up recursive fixing, the last step will make the root node red. According
+to property 2, root is always black. So we need final fixing to revert the root
+color to black. All these can be implemented as the following Haskell code.
+
+\lstset{language=Haskell}
 \begin{lstlisting}
-insert::(Ord a) => Tree a -> a -> Tree a
-insert Empty x = leaf x
-insert t x = if x < key(t) 
-             then (Node (insert (left t) x) (key t) (right t))
-             else (Node (left t) (key t) (insert (right t) x))
+insert::(Ord a)=>RBTree a -> a -> RBTree a
+insert t x = makeBlack(ins t x) where  --[1]
+    ins Empty x = Node R Empty x Empty --[2]
+    ins (Node color l k r) x 
+        | x < k     = balance color (ins l x) k r
+        | otherwise = balance color l k (ins r x) --[3]
+    makeBlack(Node _ l k r) = Node B l k r
+
+balance::Color -> RBTree a -> a -> RBTree a -> RBTree a
+balance B (Node R (Node R a x b) y c) z d = 
+                Node R (Node B a x b) y (Node B c z d)
+balance B (Node R a x (Node R b y c)) z d = 
+                Node R (Node B a x b) y (Node B c z d)
+balance B a x (Node R b y (Node R c z d)) = 
+                Node R (Node B a x b) y (Node B c z d)
+balance B a x (Node R (Node R b y c) z d) = 
+                Node R (Node B a x b) y (Node B c z d)
+balance color l k r = Node color l k r
 \end{lstlisting}
 
-The testing of insertion can be found in section \ref{list2tree}
+Here are some explaination. For [1], the program always set the root
+color as black, this is because of property 2; For [2], we always insert
+a red leaf to satisify all properties except number 4; For [3], I assume, 
+there shouldn't be different nodes with equal key value. But it is not always
+applicable. for example in chapter 14, ``Augmenting Data Structures'' in CLRS\cite{CLRS}, it enables such case. The use of otherwise allows user to do this.
 
-\subsubsection*{C++ tree insertion, imperative}
+In order to test this program, we can write something like below.
 
-By using imperacitve language such as C++, we can iterate to the sub-tree untill
-to the insertion point. There are some extra lines to set the parent of the node
-properly.
-
-\lstset{language=C++}
 \begin{lstlisting}
-template<class T>
-node<T>* insert(node<T>* tree, T value){
-  node<T>* root(tree);
-  node<T>* x = new node<T>(value);
-  node<T>* parent(0);
-  while(tree){
-    parent = tree;
-    if(value < tree->value)
-      tree = tree -> left;
-    else //assert there is no duplicated value inserted.
-      tree = tree -> right;
-  }
-  x->parent = parent;
-  if( parent == 0 ) //tree is empty
-    return x;
-  else if( value < parent->value)
-    parent->left = x;
-  else
-    parent->right = x;
-  return root;
-}
+-- helper function to build a red black tree from a list
+
+listToRBTree::(Ord a)=>[a] -> RBTree a
+listToRBTree lst = foldl insert Empty lst
+
+-- Helper function for pretty printing
+instance Show a => Show (RBTree a) where
+    show Empty = "."
+    show (Node c l k r) = "(" ++ show l ++ " " ++ 
+                          show k ++ ":" ++ show c ++ " " ++ 
+                          show r ++ ")"
+
+main = do
+  putStrLn (show (listToRBTree [11, 2, 14, 1, 7, 15, 5, 8, 4]))
+  putStrLn (show (listToRBTree [1, 2, 3, 4, 5, 6, 7, 8]))
 \end{lstlisting}
 
-\subsubsection*{Python tree insertion, imperative}
+This program will output:
+\begin{verbatim}
+(((. 1:B .) 2:B ((. 4:R .) 5:B .)) 7:B (((. 8:R .) 11:B .) 14:B (. 15:B .)))
+(((. 1:B .) 2:B (. 3:B .)) 4:B ((. 5:B .) 6:B (. 7:B (. 8:R .))))
+\end{verbatim}
+
+They are trees as shown below.
+
+\begin{figure}[htbp]
+       \begin{center}
+	\includegraphics[scale=0.5]{img/insert-haskell.ps}
+        \caption{Haskell insert results} 
+       \end{center}
+\end{figure}
+
+\subsubsection*{Python red black tree insertion, imperative}
 
 \lstset{language=Python}
 \begin{lstlisting}
