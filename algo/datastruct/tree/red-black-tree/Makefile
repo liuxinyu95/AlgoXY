@@ -1,5 +1,5 @@
 HEADER = 
-SOURCE = bstree.cpp
+SOURCE = rbtree.cpp
 #CXX_FLAGS = -I/usr/include/boost-1_33_1
 
 .PHONY: all
@@ -11,8 +11,8 @@ haskell:
 	ghc RBTree.hs -o rbt
 
 image:
-	convert img/tree.png img/tree.eps
+	dot -Tps -o unbalanced.ps unbalanced.dot
 
 html:
-	htlatex.bat bstree-en "html, imgdir:img/"
+	htlatex.bat rbtree-en "html, imgdir:img/"
 	mv *.png img/
