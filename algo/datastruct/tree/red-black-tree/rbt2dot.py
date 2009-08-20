@@ -44,7 +44,8 @@ def str_to_tree(ts):
                 sys.exit()
 
 def define_connection(node, prefix):
-    (left, leftstyle, right, rightstyle, res)=("", "\n", "", "\n", "\t")
+    (left, leftstyle, right, rightstyle, res)=("", "\n", "", "\n", "")
+    (mid, midstyle)=("nil" + prefix+node.key+"m", "[style=invis];\n")
     if node.left is None:
         left="nil"+prefix+node.key+"l"
         leftstyle="[style=invis];\n"
@@ -55,9 +56,10 @@ def define_connection(node, prefix):
         rightstyle="[style=invis];\n"
     else:
         right=prefix+node.right.key
-    res=res+prefix+node.key + "->" + left + leftstyle
+    res=res+"\t"+prefix+node.key + "->" + left + leftstyle
+    res=res+"\t"+prefix+node.key + "->" + mid + midstyle
     res=res+"\t"+prefix+node.key + "->" + right + rightstyle
-    res=res+"\t{rank=same "+left+"->"+right+ "[style=invis]}\n"
+    res=res+"\t{rank=same "+left+"->"+mid+"->"+right+"[style=invis]}\n"
     return res
 
 def define_node(node, prefix="a", parent=None, postfix=""):
@@ -69,12 +71,10 @@ def define_node(node, prefix="a", parent=None, postfix=""):
                       "B":"fillcolor=black, fontcolor=white"}
         res=res+prefix+node.key+"[label=\""+node.key+"\", style=filled, "+color_dict[node.color]+"];\n"
         res=res+define_node(node.left, prefix, node, "l")+define_node(node.right, prefix, node, "r")
+        res=res+define_node(None, prefix, node, "m") #used for balancing, refer to [1]
         res=res+define_connection(node, prefix)
     return res
 
-def define_tree():
-    pass
-            
 def tree_to_dot(t, filename):
     res="digraph G{\n" "\tnode[shape=circle]\n"
     res=res+define_node(t)
@@ -84,13 +84,6 @@ def tree_to_dot(t, filename):
     f.write(res)
     f.close()
     print "write to file ", filename, "OK."
-
-# helper for verfiy the parser
-def rbtree_to_str(t):
-    if t is None:
-        return "."
-    else:
-        return "("+rbtree_to_str(t.left)+ " " + t.key +":"+t.color+" " + rbtree_to_str(t.right)+")"
 
 def get_args(argv):
     try:
@@ -111,8 +104,10 @@ def usage():
 def main(argv):
     (filename, ts)=get_args(argv)
     (t, ts)=str_to_tree(ts)
-    print "write dot for: ", rbtree_to_str(t)
     tree_to_dot(t, filename)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
+
+#reference
+#[1] http://www.graphviz.org/mywiki/FaqBalanceTree
