@@ -17,7 +17,6 @@ class Node:
 def str_to_tree(ts):
     ts=ts.lstrip()
     x = Node()
-    states=["parsing-key", "parsing-color"]
     state=""
     while True:
         c=ts[0]
@@ -68,16 +67,19 @@ def define_node(node, prefix="a", parent=None, postfix=""):
         res=res+"nil"+prefix+parent.key+postfix+"[label=\"\", style=invis];\n"
     else:
         color_dict = {"R":"fillcolor=lightgray, fontcolor=black", 
-                      "B":"fillcolor=black, fontcolor=white"}
+                      "B":"fillcolor=black, fontcolor=white",
+                      "BB":"fillcolor=black, fontcolor=white, peripheries=2", #BB: doubly black
+                      "C":"fillcolor=white, fontcolor=black", #C: unknow color
+                      "N":"color=white"} #N: this is not a node, but a sub stree
         res=res+prefix+node.key+"[label=\""+node.key+"\", style=filled, "+color_dict[node.color]+"];\n"
         res=res+define_node(node.left, prefix, node, "l")+define_node(node.right, prefix, node, "r")
         res=res+define_node(None, prefix, node, "m") #used for balancing, refer to [1]
         res=res+define_connection(node, prefix)
     return res
 
-def tree_to_dot(t, filename):
+def tree_to_dot(t, prefix, filename):
     res="digraph G{\n" "\tnode[shape=circle]\n"
-    res=res+define_node(t)
+    res=res+define_node(t, prefix)
     res=res+"}"
     print res
     f=open(filename,'w')
@@ -87,13 +89,16 @@ def tree_to_dot(t, filename):
 
 def get_args(argv):
     try:
-        opts, args = getopt.getopt(argv, "o:")
+        prefix="a"
+        opts, args = getopt.getopt(argv, "o:p:")
         for opt, arg in opts:
             if opt == "-o":
                 filename=arg
+            elif opt == "-p":
+                prefix=arg
             else:
                 usage()
-        return (filename, args[0])
+        return (filename, prefix, args[0])
     except getopt.GetoptError:
         usage()
 
@@ -102,9 +107,9 @@ def usage():
     sys.exit()
 
 def main(argv):
-    (filename, ts)=get_args(argv)
+    (filename, prefix, ts)=get_args(argv)
     (t, ts)=str_to_tree(ts)
-    tree_to_dot(t, filename)
+    tree_to_dot(t, prefix, filename)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

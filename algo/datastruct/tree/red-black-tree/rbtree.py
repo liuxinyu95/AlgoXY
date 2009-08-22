@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import string
 
 RED = 0

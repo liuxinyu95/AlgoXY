@@ -18,6 +18,9 @@ image:
 	dot -Tps -o img/db-fix.ps img/db-fix.dot
 	convert img/rb-insert-clrs.png img/rb-insert-clrs.eps
 	convert img/insert-fix.png img/insert-fix.eps
+	convert img/del-case1.png img/del-case1.eps
+	convert img/del-case2.png img/del-case2.eps
+	convert img/del-case3.png img/del-case3.eps
 
 html:
 	htlatex.bat rbtree-en "html, imgdir:img/"

@@ -333,7 +333,7 @@ They are trees as shown below.
 
 \begin{figure}[htbp]
        \begin{center}
-	\includegraphics[scale=0.5]{img/insert-haskell.ps}
+	\includegraphics[scale=0.4]{img/insert-haskell.ps}
         \caption{Haskell insert results} 
        \end{center}
 \end{figure}
@@ -630,267 +630,324 @@ After these 4 lines pattern matching program, there won't be any doubly black em
 node in the tree, we can go down to process other cases.
 
 Then we entered the case that the sibling of the doubly black node is black and it
-has one red child. In search case, we can fix the doubly blackness with one rotation.
-Actually there are 4 different situation's in this case, they are shown in the following
-figure.
+has one red child. In such case, we can fix the doubly blackness with one rotation.
+Actually there are 4 different situation's in this case, all of them can be transform
+to one form. They are shown in the figure \ref{fig:del-case1}. These cases are described
+in CLRS as case 3 and case 4.
 
-\begin{verbatim}
-test del 17:    Node (Node (Node (Node Empty 2 Empty) 3 (Node Empty 4 
-Empty)) 6 (Node Empty 7 (Node (Node Empty 9 Empty) 13 Empty))) 15 
-(Node Empty 18 (Node Empty 20 Empty))
-test del 7:     Node (Node (Node (Node Empty 2 Empty) 3 (Node Empty 4 
-Empty)) 6 (Node (Node Empty 9 Empty) 13 Empty)) 15 (Node (Node Empty 
-17 Empty) 18 (Node Empty 20 Empty))
-test del 6:     Node (Node (Node (Node Empty 2 Empty) 3 (Node Empty 4 
-Empty)) 7 (Node (Node Empty 9 Empty) 13 Empty)) 15 (Node (Node Empty 
-17 Empty) 18 (Node Empty 20 Empty))
-test del 15:    Node (Node (Node (Node Empty 2 Empty) 3 (Node Empty 4 
-Empty)) 6 (Node Empty 7 (Node (Node Empty 9 Empty) 13 Empty))) 17 
-(Node Empty 18 (Node Empty 20 Empty))
-test del non-exist:     Node (Node (Node (Node Empty 2 Empty) 3 (Node 
-Empty 4 Empty)) 6 (Node Empty 7 (Node (Node Empty 9 Empty) 13 Empty))) 
-15 (Node (Node Empty 17 Empty) 18 (Node Empty 20 Empty))
-\end{verbatim}
+\begin{figure}[htbp]
+       \begin{center}
+	\includegraphics[scale=0.4]{img/del-case1.eps}
+        \caption{case 1, fix the doubly black by rotation} \label{fig:del-case1}
+       \end{center}
+\end{figure}
 
-\subsubsection*{C++ deletion, imperative}
+In the figure, the doubly black node are shown in black circle with 2 edges.
 
-C++ version is more complex because it need set the parent properly.
-While we can pass the pointer to the node which will be deleted to the function,
-so that search is no more needed. The function will return the root
-of the result tree.
+After these 4 cases, the program entered another case. In this case, not only the sibling
+of the doubly black node is black, but also its two children are black. We can change to color
+of the sibling node to red and prpagate the doubly black one level up to the parent node.
 
-\lstset{language=C++}
-\begin{lstlisting}
-template<class T>
-node<T>* del(node<T>* tree, node<T>* x){
-  if(!x)
-    return tree;
-
-  node<T>* root(tree);
-  node<T>* old_x(x);
-  node<T>* parent(x->parent);
-
-  if(x->left == 0)
-    x = x->right;
-  else if(x->right == 0)
-    x = x->left;
-  else{
-    node<T>* y=min(x->right);
-    x->value = y->value;
-    if(y->parent != x)
-      y->parent->left = y->right;
-    else
-      x->right = y->right;
-
-    remove_node(y);
-    return root;
-  }
-
-  if(x)
-    x->parent = parent;
-
-  if(!parent)
-    root = x; //remove node of a tree
-  else
-    if(parent->left == old_x)
-      parent->left = x;
-    else
-      parent->right = x;
-
-  remove_node(old_x);
-  return root;
-}
-\end{lstlisting}
-
-If the node to be deleted is empty, the function simply returns the original tree.
-In other cases, it will first record the root of the tree, create a copy pointer
-to x, and to its parent.
-
-If either of the children is empty, the program just splice x out. If it has two
-none-empty children, we first located the minimum of right child, replace the key
-of x to y's, then splice y out. Note that the helper function remove\_node() is
-used.
-
-Finally we reset the parent. If the parent pointer we copied before is empty, it
-means that we are deleting the root node, so we need return the new root. After
-the parent is set properly, we finally remove the old x from memory.
-
-The test cases and result are shows as below.
+Let's review the 2 lines which are applied to this case. They are shown in figure \ref{fig:del-case2}.
 
 \begin{lstlisting}
-void test_del_n(int n){
-  node<int>* empty(0);
-  node<int>* t1=clone_tree(tree);
-  t1=del(t1, search(t1, n));
-  std::cout<<"del "<<n<<":\n"<<tree_to_str(t1)<<"\n";
-  assert_("search after del: ", search(t1, n), empty);
-  delete t1;
-}
-
-test_del_n(17);
-test_del_n(7);
-test_del_n(6);
-test_del_n(15);
-test_del_n(1); //try to del a non-exist val
+-- the sibling and its 2 children are all black, propagate the blackness up
+fixDB color a@(Node BB _ _ _) x (Node B b@(Node B _ _ _) y c@(Node B _ _ _))
+    = makeBlack (Node color (makeBlack a) x (Node R b y c))
+fixDB color (Node B a@(Node B _ _ _) x b@(Node B _ _ _)) y c@(Node BB _ _ _)
+    = makeBlack (Node color (Node R a x b) y (makeBlack c))
 \end{lstlisting}
 
-Because the deletion function in C++ inplace change the tree, so I cloned the test 
-tree for each testing. The clone\_tree() function is defined in section \ref{helper-fun}.
+\begin{figure}[htbp]
+       \begin{center}
+	\includegraphics[scale=0.4]{img/del-case2.eps}
+        \caption{case 2, propagate the blackness up.} \label{fig:del-case2}
+       \end{center}
+\end{figure}
 
-The result of these test case is as below.
+These two cases are described in CLRS as case 2.
+
+Next, we enetered the final case. In this case, the sibling of the doubly black node is red.
+We can do a rotation to change this case to case 1. the source code and the figures are shown
+as below.
+
+\begin{lstlisting}
+-- the sibling is red
+fixDB B a@(Node BB _ _ _) x (Node R b y c) = fixDB B (fixDB R a x b) y c
+fixDB B (Node R a x b) y c@(Node BB _ _ _) = fixDB B a x (fixDB R b y c)
+\end{lstlisting}
+
+\begin{figure}[htbp]
+       \begin{center}
+	\includegraphics[scale=0.4]{img/del-case3.eps}
+        \caption{case 3, the sibling of the doubly black is red.} \label{fig:del-case3}
+       \end{center}
+\end{figure}
+
+This two cases are described in CLRS as case 1.
+
+By fixing the doubly black node with the above 3 cases, There are two termination conditions
+which the program will stop at. One is the case 1, The doubly black node was eliminated. The
+other 2 cases may continously propagate the doubly black node from bottom to top till the root.
+Finaly the program will mark the root node as black anyway, so the doubly blackness will be
+removed.
+
+we can test this delete program by using the following test cases:
+
+\begin{lstlisting}
+t1=listToRBTree [11, 2, 14, 1, 7, 15, 5, 8, 4]
+
+testDel = "\ntest del 4: " ++ show (delete t1 4) ++
+          "\ntest del 5: " ++ show (delete t1 5) ++
+          "\ntest del 2: " ++ show (delete t1 2) ++
+          "\ntest del 7: " ++ show (delete t1 7) ++
+          "\ntest del 14: " ++ show (delete t1 14)
+
+main = do
+  putStrLn testDel
+\end{lstlisting}
+
+The program will output the result as below.
+
 \begin{verbatim}
-del 17:
-((((empty), 2, (empty)), 3, ((empty), 4, (empty))), 6, ((empty), 7, 
-(((empty), 9, (empty)), 13, (empty)))), 15, ((empty), 18, ((empty), 
-20, (empty)))
-search after del: 0 OK.
-del 7:
-((((empty), 2, (empty)), 3, ((empty), 4, (empty))), 6, (((empty), 9, 
-(empty)), 13, (empty))), 15, (((empty), 17, (empty)), 18, ((empty), 
-20, (empty)))
-search after del: 0 OK.
-del 6:
-((((empty), 2, (empty)), 3, ((empty), 4, (empty))), 7, (((empty), 9, 
-(empty)), 13, (empty))), 15, (((empty), 17, (empty)), 18, ((empty), 
-20, (empty)))
-search after del: 0 OK.
-del 15:
-((((empty), 2, (empty)), 3, ((empty), 4, (empty))), 6, ((empty), 7, 
-(((empty), 9, (empty)), 13, (empty)))), 17, ((empty), 18, ((empty), 
-20, (empty)))
-search after del: 0 OK.
-del 1:
-((((empty), 2, (empty)), 3, ((empty), 4, (empty))), 6, ((empty), 7, 
-(((empty), 9, (empty)), 13, (empty)))), 15, (((empty), 17, (empty)), 
-18, ((empty), 20, (empty)))
-search after del: 0 OK.
+test del 4: (((. 1:B .) 2:B (. 5:B .)) 7:B (((. 8:R .) 11:B .) 14:B (. 15:B .)))
+test del 5: (((. 1:B .) 2:B (. 4:B .)) 7:B (((. 8:R .) 11:B .) 14:B (. 15:B .)))
+test del 2: (((. 1:B .) 4:B (. 5:B .)) 7:B (((. 8:R .) 11:B .) 14:B (. 15:B .)))
+test del 7: (((. 1:B .) 2:B ((. 4:R .) 5:B .)) 8:B ((. 11:B .) 14:B (. 15:B .)))
+test del 14: (((. 1:B .) 2:B ((. 4:R .) 5:B .)) 7:B (((. 8:R .) 11:B .) 15:B .))
 \end{verbatim}
 
 \subsubsection*{Python deletion, imperative}
-Python version is very similar to C++, but it needn't free memory because
-of GC support.
+
+Imperative deletion method is well discussed in CLRS. Since I added some helper member functions
+in the red black tree definition. The delete method without the fixing part can be much simpler
+than the one I give in \cite{bst-lxy}. Similar to the functional approach, I explicitly defined
+the doubly black concept.
 
 \lstset{language=Python}
 \begin{lstlisting}
-def tree_delete(t, x):
-    if (x is None): return t
-    [root, old_x, parent] = [t, x, x.parent]
-    if (x.left is None):
-        x = x.right
-    elif (x.right is None):
-        x = x.left
+RED = 0
+BLACK = 1
+DOUBLY_BLACK = 2
+\end{lstlisting}
+
+There is small trick if I define doubly black color as interger 2, I can use color+1 to represent
+doubly blackness later.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def rb_delete(t, x):
+    if x is None: return t
+    (parent, db) = (x.parent, None)
+    if x.left is None:
+        x.replace_by(x.right)
+        db=x.right
+    elif x.right is None:
+        x.replace_by(x.left)
+        db=x.left
     else:
         y = tree_min(x.right)
+        (parent, db)=(y.parent, y.right)
         x.key = y.key
-        if (y.parent != x):
-            y.parent.left = y.right
-        else:
-            x.right = y.right
-        remove_node(y)
-        return root
-    if (x != None):
-        x.parent = parent
-    if (parent != None):
-        root = x
+        y.replace_by(y.right)
+        x=y
+    if x.color == BLACK:
+        t=rb_delete_fix(t, make_black(parent, db))
+    remove_node(x)
+    return t
+\end{lstlisting}
+
+The major difference is in the tail part. If the sliced out node is black, the program will
+try a fixing procedure to re-balance the red black tree. The paramater pass to the fixing
+function includes the tree and the doubly black node. In order to locate the doubly black
+node. I provide a function make\_black(). It is implemented like this.
+
+\begin{lstlisting}
+def make_black(parent, x):
+    if x is None:
+        if is_leaf(parent):
+            parent.color = DOUBLY_BLACK
+        return parent
     else:
-        if(parent.left == old_x): parent.left = x
-        else: parent.right = x
-    remove_node(old_x)
-    return root
+        x.color = x.color + 1
+        return x
+
+def is_leaf(x):
+    if x is None: return False
+    return (x.left is None) and (x.right is None)
 \end{lstlisting}
 
-This function can be tested as below:
+In the delete function, I use parent to record the parent pointer of the node to be deleted. 
+And variable db is point to the root of the sub tree which will replace x. db may be empty.
+make\_black() function will check this predication. If it (the db) is empty, and the parent is a leaf
+node (which means parent has a one child empty and another child doubly black empty), we make
+the parent node doubly black. else we change the color of it (the db) to either black or doubly
+black by increasing the color value by 1. please refer to the BBEmpty section in functional 
+implementation for detail.
+
+This delete function also use some read-only querying method, such as tree\_min(), they are defined
+as same as in \cite{bst-lxy}. Let's review them again.
 
 \begin{lstlisting}
-def __test_del_n(self, n):
-    t = clone_tree(self.tree)
-    t = tree_delete(t, tree_search(t, n))
-    print "del ", n, ": ", tree_to_str(t)
-    self.__assert("search after del: ", tree_search(t, n), None)
+def tree_min(t):
+    while(t!=None and t.left != None):
+        t = t.left
+    return t
 
-def test_del(self):
-    self.__test_del_n(17)
-    self.__test_del_n(7)
-    self.__test_del_n(6)
-    self.__test_del_n(15)
-    self.__test_del_n(1) #del a non-exist value
+def remove_node(x):
+    if (x is None): return
+    x.parent = x.left = x.right = None
+
+def tree_search(t, x):
+    while(t!=None and t.key != x):
+        if(x < t.key): t = t.left
+        else: t = t.right
+    return t
 \end{lstlisting}
 
-The test result is as same as C++.
-
-\subsubsection*{Scheme/Lisp deletion, recursive}
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (tree-delete tree v)
-  (cond ((null? tree) tree)
-	((< v (key tree)) (make-tree (tree-delete (left tree) v)
-				     (key tree)
-				     (right tree)))
-	((> v (key tree)) (make-tree (left tree)
-				     (key tree)
-				     (tree-delete (right tree) v)))
-	((null? (left tree)) (right tree))
-	((null? (right tree)) (left tree))
-	(else (let ((newkey (key (tree-min (right tree)))))
-		(make-tree (left tree)
-			   newkey
-			   (tree-delete (right tree) newkey))))))
-\end{lstlisting}
-
-Test cases are like the following.
+Next we go to the core function of the delete fixing procedure. Basically it is strictly implemented
+based on CLRS.
 
 \begin{lstlisting}
-(define (test-del)
-  (display (tree-delete t1 17)) (newline)
-  (display (tree-delete t1 7)) (newline)
-  (display (tree-delete t1 6)) (newline)
-  (display (tree-delete t1 15)) (newline)
-  (display (tree-delete t1 5)))
+def rb_delete_fix(t, db):
+    if db is None: return None # remove the root from a leaf tree
+    while(db!=t and db.color==DOUBLY_BLACK):
+        if db.sibling() != None:
+            # case 1:  the sibling is red, (transform to make it black)
+            if is_red(db.sibling()): 
+                set_color([db.parent, db.sibling()],[RED, BLACK])
+                if(db == db.parent.left):
+                    t=left_rotate(t, db.parent)
+                else:
+                    t=right_rotate(t, db.parent)
+            # case 3, 4: the sibling is black, and one nephew is red
+            elif is_black(db.sibling()) and is_red(db.sibling().left): 
+                if db == db.parent.left:
+                    colors=[BLACK, BLACK, db.parent.color]
+                    set_color([db, db.parent, 
+                                   db.sibling().left], colors)
+                    t=right_rotate(t, db.sibling())
+                    t=left_rotate(t, db.parent)
+                else:
+                    colors=[BLACK, BLACK, db.parent.color, BLACK]
+                    set_color([db, db.parent, db.sibling(), 
+                                   db.sibling().left], colors)
+                    t=right_rotate(t, db.parent)
+            elif is_black(db.sibling()) and is_red(db.sibling().right):
+                if db == db.parent.left:
+                    colors=[BLACK, BLACK, db.parent.color, BLACK]
+                    set_color([db, db.parent, db.sibling(), 
+                                   db.sibling().right], colors)
+                    t=left_rotate(t, db.parent)
+                else:
+                    colors=[BLACK, BLACK, db.parent.color]
+                    set_color([db, db.parent, db.sibling().right], colors)
+                    t=left_rotate(t, db.sibling())
+                    t=right_rotate(t, db.parent)
+            # case 2: the sibling and both nephews are black. 
+            # (move the blackness up)
+            elif is_black(db.sibling()) and (not is_red(db.sibling().left)) 
+                   and (not is_red(db.sibling().right)):
+               set_color([db, db.sibling()], [BLACK, RED])
+               db.parent.color=db.parent.color+1
+               db = db.parent
+            # a sibling without child is invalid case, because it 
+            # violate property 5
+        else: # no sibling, we can move blackness up
+            db.color = BLACK
+            db.parent.color = db.parent.color+1
+            db = db.parent
+    t.color=BLACK
+    return t
 \end{lstlisting}
 
-It will output the result in emulator as below.
+There is a slight difference from CLRS, I found either the sibling is on the left or on
+the right, case 1 in the program can be applied in same way, so I pulled it up. There are
+also 2 helper function to test if a node is red node or black node as below.
+
+\begin{lstlisting}
+def is_red(x):
+    if x is None: return False
+    return x.color == RED
+
+def is_black(x):
+    if x is None: return False
+    return x.color == BLACK
+\end{lstlisting}
+
+In order to test the delete function for red black tree, I defined some similar helper
+functions. The test cases are something like below.
+
+\begin{lstlisting}
+class Test:
+    ...
+    def __assert(self, msg, x, y):
+        if(x == y): msg = msg + "OK."
+        else: msg = msg + str(x) + "!=" + str(y) + "Fail."
+        print msg
+
+    def __test_del_n(self, tree, n):
+        t = rbtree_clone(tree)
+        t = rb_delete(t, tree_search(t, n))
+        print "del ", n, ": ", rbtree_to_str(t)
+        self.__assert("search after del: ", tree_search(t, n), None)
+
+    def test_delete(self):
+        for i in range(1, 10):
+            self.__test_del_n(self.t1, i)
+        self.__test_del_n(self.t1, 11) #del a non-exist value
+        t = Node(1, BLACK) #leaf case
+        self.__test_del_n(t, 1)
+\end{lstlisting}
+
+It will output the result in console.
 
 \begin{verbatim}
-(test-del)
-((((() 2 ()) 3 (() 4 ())) 6 (() 7 ((() 9 ()) 13 ()))) 15 (() 18 (() 20 ())))
-((((() 2 ()) 3 (() 4 ())) 6 ((() 9 ()) 13 ())) 15 ((() 17 ()) 18 (() 20 ())))
-((((() 2 ()) 3 (() 4 ())) 7 ((() 9 ()) 13 ())) 15 ((() 17 ()) 18 (() 20 ())))
-((((() 2 ()) 3 (() 4 ())) 6 (() 7 ((() 9 ()) 13 ()))) 17 (() 18 (() 20 ())))
-((((() 2 ()) 3 (() 4 ())) 6 (() 7 ((() 9 ()) 13 ()))) 15 ((() 17 ()) 18 (() 
-20 ())))
-;Unspecified return value
+del  1 :  ((. 2:R ((. 3:R .) 4:B .)) 5:B ((. 6:B .) 7:R ((. 8:R .) 9:B .)))
+search after del: OK.
+del  2 :  (((. 1:B .) 3:R (. 4:B .)) 5:B ((. 6:B .) 7:R ((. 8:R .) 9:B .)))
+search after del: OK.
+del  3 :  (((. 1:B .) 2:R (. 4:B .)) 5:B ((. 6:B .) 7:R ((. 8:R .) 9:B .)))
+search after del: OK.
+del  4 :  (((. 1:B .) 2:R (. 3:B .)) 5:B ((. 6:B .) 7:R ((. 8:R .) 9:B .)))
+search after del: OK.
+del  5 :  (((. 1:B .) 2:R ((. 3:R .) 4:B .)) 6:B (. 7:R ((. 8:R .) 9:B .)))
+search after del: OK.
+del  6 :  (((. 1:B .) 2:R ((. 3:R .) 4:B .)) 5:B (. 7:R ((. 8:R .) 9:B .)))
+search after del: OK.
+del  7 :  (((. 1:B .) 2:R ((. 3:R .) 4:B .)) 5:B ((. 6:B .) 8:R (. 9:B .)))
+search after del: OK.
+del  8 :  (((. 1:B .) 2:R ((. 3:R .) 4:B .)) 5:B ((. 6:B .) 7:R (. 9:B .)))
+search after del: OK.
+del  9 :  (((. 1:B .) 2:R ((. 3:R .) 4:B .)) 5:B ((. 6:B .) 7:R (. 8:B .)))
+search after del: OK.
+del  11 :  (((. 1:B .) 2:R ((. 3:R .) 4:B .)) 5:B ((. 6:B .) 7:R ((. 8:R .) 9:B .)))
+search after del: OK.
+del  1 :  .
+search after del: OK.
 \end{verbatim}
-
-\section{Randomly built binary search tree}
-In CRLS\cite{CLRS}, it described about randomly built binary search tree.
-Ramdomly building can help to avoid (decrease the possibility) unbalanced
-binary trees.
-
-This can be easily implemented in imperative way, such as by C++ and Python.
-Before call build\_tree() or list\_to\_tree() function, we can call random
-process, to shuffle the list or collection. The same approach can also be
-used in Scheme/Lisp. While for pure functional programming language, such as
-Haskell, randomization violate the property of pure function. We have to
-use alternative approach such as Monad.
-
-There are more solution to ensure the tree is balanced, such as red black tree,
-please refer to other posts for detailed implementation.
 
 \section{Appendix} \label{appendix}
 %\appendix
 All programs are provided along with this article. They are free for downloading.
 \begin{itemize}
-\item bstree.cpp, C++ version of binary seach tree, including all test cases. I 
-compiled and tested it with GUN G++ 3.4.4.
-\item BSTree.hs, Haskell version of binary search tree, with test cases. I compiled
+\item RBTree.hs, Haskell version of binary search tree, with test cases. I compiled
 and tested it with GHC 6.10.4.
-\item bstree.py, Python version of the binary search tree, with test cases. Tested
+\item rbtree.py, Python version of the binary search tree, with test cases. Tested
 with Python 2.5.1
-\item bstree.scm, Scheme version of the binary search tree and test cases. Tested
-with MIT/Scheme 14.9
 \end{itemize}
-download position: http://sites.google.com/site/algoxy/bstree/bstree.zip
+
+Besides them, I use graphviz to draw most of the figures in this post. In order to
+translate the red black tree output to dot language scripts. I wrote a python program.
+it can be used like this.
+
+\begin{verbatim}
+./rbt2dot.py -o foo.dot "(((. 1:B .) 2:B .) 3:R ((. 4:B .) 5:B (. 6:B  .)))"
+\end{verbatim}
+
+This helper scripts can also be downloaded with this article.
+
+download position: http://sites.google.com/site/algoxy/rbtree/rbtree.zip
 
 \begin{thebibliography}{99}
 
