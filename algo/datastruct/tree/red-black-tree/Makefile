@@ -15,6 +15,7 @@ image:
 	dot -Tps -o img/insert-haskell.ps img/insert-haskell.dot
 	dot -Tps -o img/clrs-fig.13.4.ps img/clrs-fig.13.4.dot
 	dot -Tps -o img/python-insert.ps img/python-insert.dot
+	dot -Tps -o img/db-fix.ps img/db-fix.dot
 	convert img/rb-insert-clrs.png img/rb-insert-clrs.eps
 	convert img/insert-fix.png img/insert-fix.eps
 
