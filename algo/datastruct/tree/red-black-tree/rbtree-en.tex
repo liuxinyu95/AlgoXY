@@ -461,7 +461,7 @@ list->tree, create t1 by insert
 (((. 1:B .) 2:R ((. 3:R .) 4:B .)) 5:B ((. 6:B .) 7:R ((. 8:R .) 9:B .)))
 \end{verbatim}
 
-One tree is created from a list as shown in figure \ref{fig:python-insert}.
+After insert element 4 into the first tree the result will be like in figure \ref{fig:rb-insert-clrs} (d), the second test case shows a tree which is created from a list as shown in figure \ref{fig:python-insert}.
 
 \begin{figure}[htbp]
        \begin{center}
@@ -470,41 +470,139 @@ One tree is created from a list as shown in figure \ref{fig:python-insert}.
        \end{center}
 \end{figure}
 
+If we compare the results from the functional implementaion and from the imperative one, we can 
+find there is difference. Even if we insert the same element into the same red black tree, the
+results varies. This is because the functional way focus on expressive of the program, and there 
+is a bit performance overhead in it. Okasaki discussed about the difference in his paper\cite{okasaki}.
+And he show the result that the computation time is still $O(log n)$. It is possible to use a 
+similar way to the imperactive implementation. And that's a kind of fine tune in the 'balance()'
+function. But it will loss the expressive merit.
+
 % ================================================================
 %                 Deletion
 % ================================================================
 
 \section{Deletion}
 
-Haskell version of deletion can be realized by translating the above description
-directly into code. But there is a different point, instead of pass a node to the
-function, I pass value to be deleted in it. So the program need perform search first.
+Deletion is more complex than insertion. Both funtional and imperative implementaion 
+need face more cases to fix. Deletion may also violate the red black tree properties,
+so we need fix it after the normal insertion as decribed in binary search tree\cite{bst-lxy}.
+
+The deletion wasn't been discussed in Okasaki's paper\cite{okasaki}. I refered to a
+handout of CLRS course\cite{lyn}. The problem only happens if you try to delete a black node.
+Because it will violate the property 4 of red black tree, which means the number of black
+node in the path may decresed so that it is not uniformed black-height any more.
+
+CLRS proposed a 'doubly-black' approach to resume property 4. However in the real fixing
+program, there is no explicit expression of the doubly-black node. I decided to use
+this concept in this post
+
+\subsubsection*{Haskell red black tree deletion, functional}
+
+In order to express the 'doubly-node', I added a defition of it both in color and in node.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-delete::(Ord a)=> Tree a -> a -> Tree a
-delete Empty _ = Empty
-delete (Node l k r) x | x < k = (Node (delete l x) k r)
-                      | x > k = (Node l k (delete r x))
-                      -- x == k
-                      | isEmpty l = r
-                      | isEmpty r = l
-                      | otherwise = (Node l k' (delete r k')) 
-                          where k' = key (mint r)
+data Color = R | B | BB deriving (Show, Eq) -- BB: doubly black for deletion
+data RBTree a = Empty
+              | Node Color (RBTree a) a (RBTree a)
+              | BBEmpty -- doubly black empty
 \end{lstlisting}
 
-The test cases and result are shows as below.
+Differenet from the basic deletion of binary search tree. I used the one like below:
+\begin{itemize}
+\item If the node to be deleted has an empty left child, use the right child to replace it;
+\item If the right child is empty, use the left child to replace it;
+\item If both children are not empty, use the minimum one in the right child to replace it, and
+slice the minimum one out.
+\end{itemize}
+
+After it, if the node to be sliced out is black, we need fix the tree to keep the red black
+properties.
 
 \begin{lstlisting}
-testDel = "\ntest del 17:\t"++ show (delete t2 17)++
-          "\ntest del 7:\t"++ show (delete t2 7)++
-          "\ntest del 6:\t" ++ show (delete t2 6)++
-          "\ntest del 15:\t"++ show (delete t2 15)++
-          "\ntest del non-exist:\t" ++ show (delete t2 5)
+delete::(Ord a)=>RBTree a -> a -> RBTree a
+delete t x = blackenRoot(del t x) where
+    del Empty _ = Empty
+    del (Node color l k r) x 
+        | x < k = fixDB color (del l x) k r --[1]
+        | x > k = fixDB color l k (del r x)
+        -- x == k, delete this node
+        | isEmpty l = if color==B then makeBlack r else r --[2]
+        | isEmpty r = if color==B then makeBlack l else l
+        | otherwise = fixDB color l k' (del r k') where k'= key (mint r)
+    blackenRoot (Node _ l k r) = Node B l k r
+    blackenRoot _ = Empty
 
-main = do
-    putStrLn testDel
+makeBlack::RBTree a -> RBTree a
+makeBlack (Node B l k r) = Node BB l k r -- doubly black
+makeBlack (Node _ l k r) = Node B l k r
+makeBlack Empty = BBEmpty
+makeBlack t = t
 \end{lstlisting}
+
+Let me explain it a bit. The mint function as shown in \cite{bst-lxy} can help to find the 
+minimum of a tree. While the isEmpty helper function can test if a node is empty. Let's review 
+them here:
+
+\begin{lstlisting}
+-- helper functions
+key::RBTree a -> a
+key (Node _ _ k _) = k
+
+left::RBTree a -> RBTree a
+left (Node _ l _ _) = l
+left _ = Empty
+
+isEmpty::RBTree a -> Bool
+isEmpty Empty = True
+isEmpty _ = False
+
+mint::RBTree a -> RBTree a
+mint t = if isEmpty (left t) then t else mint (left t)
+\end{lstlisting}
+
+The blackenRoot function is used to keep the property 2, that the root of a red black tree
+must be black. In line [2], if the color of the sliced root is black, I'll make the root 
+of the subtree which will replace the deleted one be black. This can help to keep the property
+4, so the black-height will not decreased.
+
+For makeBlack() function, If the root is red, it will change it to black; if the root node is 
+already black, it will mark it as 'doubly-black', and if it is empty, it will mark it as a 
+doubly-black empty node by BBEmpty.
+
+Next, we must use a function to fix the 'doubly-black' by rotation and color changes.
+
+\begin{lstlisting}
+-- Core function for delete, to solve the uniform black height violation.
+-- refer to CLRS
+fixDB::Color -> RBTree a -> a -> RBTree a -> RBTree a
+fixDB color BBEmpty k Empty = Node BB Empty k Empty
+fixDB color BBEmpty k r = Node color Empty k r
+fixDB color Empty k BBEmpty = Node BB Empty k Empty
+fixDB color l k BBEmpty = Node color l k Empty
+-- the sibling is black, and it has one red child
+fixDB color a@(Node BB _ _ _) x (Node B (Node R b y c) z d) = 
+      Node color (Node B (makeBlack a) x b) y (Node B c z d)
+fixDB color a@(Node BB _ _ _) x (Node B b y (Node R c z d)) = 
+      Node color (Node B (makeBlack a) x b) y (Node B c z d)
+fixDB color (Node B a x (Node R b y c)) z d@(Node BB _ _ _) = 
+      Node color (Node B a x b) y (Node B c z (makeBlack d))
+fixDB color (Node B (Node R a x b) y c) z d@(Node BB _ _ _) = 
+      Node color (Node B a x b) y (Node B c z (makeBlack d))
+-- the sibling and its 2 children are all black, propagate the blackness up
+fixDB color a@(Node BB _ _ _) x (Node B b@(Node B _ _ _) y c@(Node B _ _ _))
+    = makeBlack (Node color (makeBlack a) x (Node R b y c))
+fixDB color (Node B a@(Node B _ _ _) x b@(Node B _ _ _)) y c@(Node BB _ _ _)
+    = makeBlack (Node color (Node R a x b) y (makeBlack c))
+-- the sibling is red
+fixDB B a@(Node BB _ _ _) x (Node R b y c) = fixDB B (fixDB R a x b) y c
+fixDB B (Node R a x b) y c@(Node BB _ _ _) = fixDB B a x (fixDB R b y c)
+-- otherwise
+fixDB color l k r = Node color l k r
+\end{lstlisting}
+
+
 
 \begin{verbatim}
 test del 17:    Node (Node (Node (Node Empty 2 Empty) 3 (Node Empty 4 
@@ -779,14 +877,11 @@ Liu Xinyu. ``Comparison of imperative and functional implementation of binary se
 \bibitem{wiki}
 Wikipedia. ``Red-black tree''. http://en.wikipedia.org/wiki/Red-black\_tree
 
+\bibitem{lyn}
+Lyn Turbak. ``Red-Black Trees''. cs.wellesley.edu/~cs231/fall01/red-black.pdf Nov. 2, 2001.
+
 \bibitem{hj-stl}
 Hou Jie. ``The annotated STL sources (using SGI STL)''. ISBN:7-5609-2699-1 http://press.hust.edu.cn. 2002.
-
-\bibitem{literal-program}
-http://en.literateprograms.org/Category:Binary\_search\_tree
-
-\bibitem{wiki-fold}
-http://en.wikipedia.org/wiki/Foldl
 
 \end{thebibliography}
 
