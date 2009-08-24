@@ -44,7 +44,7 @@
 \begin{abstract}
 \fi
 This post provides the functional and imperative implementation of red black tree. There are
-multiple programming languages used, including, C++(on going), Haskell, python and scheme/lisp(on going).
+multiple programming languages used, including, C++(on going), Haskell, python and scheme/lisp.
 C++ and python are mostly used to show the imperative implementation, while Haskell and Scheme are
 used for functional purpose.
 
@@ -190,6 +190,9 @@ data RBTree a = Empty
               | Node Color (RBTree a) a (RBTree a)
 \end{lstlisting}
 
+\subsubsection*{Scheme/Lisp definition}
+Scheme/lisp just use a list to represent the red black tree, it contains 4 elements, a color a left child, a key and a right child. there is no explicit definition in Scheme/Lisp. 
+
 % ================================================================
 % Rotation and helper functions
 % ================================================================
@@ -239,6 +242,31 @@ to each node in order.
 def set_color(nodes, colors):
     for (n, c) in zip(nodes, colors):
         n.color = c
+\end{lstlisting}
+
+\subsubsection*{Scheme/Lisp helper functions}
+
+In order have a uniformed output like we defined the red black tree as a list of (left key color right).
+I defined some helper functions to construct the red black tree and access the element of the tree.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (make-rbtree c l k r) ;;color, left, key, right
+  (list l k c r))
+
+(define (key tree) (cadr tree))
+(define (color tree) (caddr tree))
+(define (left tree) 
+  (if (null? tree) '() (car tree)))
+(define (right tree)
+  (if (null? tree) '() (cadddr tree)))
+
+;; Test the color
+(define (red? t)
+  (if (null? t) '() (equal? (color t) "R")))
+
+(define (black? t)
+  (if (null? t) '() (equal? (color t) "B")))
 \end{lstlisting}
 
 % ================================================================
@@ -337,6 +365,82 @@ They are trees as shown below.
         \caption{Haskell insert results} 
        \end{center}
 \end{figure}
+
+\subsubsection*{Scheme/Lisp red black tree insertion, functional}
+
+Scheme/Lisp version of insert is very similar, since there is no pattern matching
+in Scheme, we use normal condition to do the similar things.
+
+\lstset{language=Lisp}
+\begin{lstlisting}
+(define (rb-insert tree x)
+  (define (make-black t)
+    (make-rbtree "B" (left t) (key t) (right t)))
+  (define (ins t x)
+    (cond ((null? t) (make-rbtree "R" '() x '()))
+	  ((< x (key t)) (balance (color t) 
+                                  (ins (left t) x) (key t) (right t)))
+	  (else (balance (color t) (left t) (key t) (ins (right t) x)))))
+  (make-black (ins tree x)))
+\end{lstlisting}
+
+And the core function balace which can fix the red-red violation is as below.
+
+\begin{lstlisting}
+(define (balance c l k r)
+  (if (equal? c "B")
+      (cond ((and (red? l) (red? (left l)))
+	     (make-rbtree "R" 
+			  (make-rbtree "B" (left (left l)) 
+                                           (key (left l)) 
+                                           (right (left l)))
+			  (key l)
+			  (make-rbtree "B" (right l) k r)))
+	    ((and (red? l) (red? (right l)))
+	     (make-rbtree "R"
+			  (make-rbtree "B" (left l) (key l) (left (right l)))
+			  (key (right l))
+			  (make-rbtree "B" (right (right l)) k r)))
+	    ((and (red? r) (red? (right r)))
+	     (make-rbtree "R" 
+			  (make-rbtree "B" l k (left r))
+			  (key r)
+			  (make-rbtree "B" (left (right r)) 
+                                           (key (right r)) 
+                                           (right (right r)))))
+	    ((and (red? r) (red? (left r)))
+	     (make-rbtree "R"
+			  (make-rbtree "B" l k (left (left r)))
+			  (key (left r))
+			  (make-rbtree "B" (right (left r)) 
+                                           (key r) 
+                                           (right r))))
+	    (else (make-rbtree c l k r)))
+      (make-rbtree c l k r)))
+\end{lstlisting}
+
+This program can be test with a similar test cases as below:
+
+\begin{lstlisting}
+(define (list->rbtree lst)
+  (fold-left rb-insert '() lst))
+
+(define t1 (list->rbtree '(11 2 14 1 7 15 5 8 4)))
+(define t2 (list->rbtree '(1 2 3 4 5 6 7 8)))
+\end{lstlisting}
+
+If we evaluate t1 and t2, it will output the results like this.
+
+\begin{verbatim}
+t1
+;Value 11: (((() 1 "B" ()) 2 "B" ((() 4 "R" ()) 5 "B" ())) 7 "B" (((() 8 "R" ()) 
+11 "B" ()) 14 "B" (() 15 "B" ())))
+
+t2
+;Value 12: (((() 1 "B" ()) 2 "B" (() 3 "B" ())) 4 "B" ((() 5 "B" ()) 6 "B" (() 
+7 "B" (() 8 "R" ()))))
+\end{verbatim}
+
 
 \subsubsection*{Python red black tree insertion, imperative}
 
