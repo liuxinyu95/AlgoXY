@@ -44,7 +44,7 @@
 \begin{abstract}
 \fi
 This post provides the functional and imperative implementation of red black tree. There are
-multiple programming languages used, including, C++(on going), Haskell, python and scheme/lisp.
+multiple programming languages used, including, C++, Haskell, python and scheme/lisp.
 C++ and python are mostly used to show the imperative implementation, while Haskell and Scheme are
 used for functional purpose.
 
@@ -106,7 +106,14 @@ Please note the 4th property, which means there won't be 2 adjacent red nodes. s
 
 All read only operations such as search, min/max are as same as in binary search tree. While only the insertion and deletion are special.
 
-This article provides implementation of insertion and deletion for red black tree in C++(on going), Haskell, Python, and Scheme/Lisp(on going) languages. Most imperative algorithms confirms to CLRS\cite{CLRS}. While for functional implementation, thanks for Chris Okasaki very much. He found a very expressive way\cite{okasaki} of insertion.
+This article provides implementation of insertion and deletion for red black tree in C++, Haskell, Python, and Scheme/Lisp(on going) languages. Most imperative algorithms confirms to CLRS\cite{CLRS}. While for functional implementation, thanks for Chris Okasaki very much. He found a very expressive way\cite{okasaki} of insertion.
+
+Many implementation of set in the well known C++ Standard library
+(STL) are based on red black tree. In this post, SGI STL\cite{sgi-stl} is
+selected. There is a lot of the layers in the stl\_tree.h to conform
+to the STL concept, such as iterator etc, so that red black tree can
+also be treated like standard STL container. I try to high light the
+algorithm part rather than the OO and generic programing parts.
 
 All completed source code can be downloaded in appendix \ref{appendix}, please refer to appendix for detailed information about build and run.
 
@@ -191,7 +198,60 @@ data RBTree a = Empty
 \end{lstlisting}
 
 \subsubsection*{Scheme/Lisp definition}
-Scheme/lisp just use a list to represent the red black tree, it contains 4 elements, a color a left child, a key and a right child. there is no explicit definition in Scheme/Lisp. 
+Scheme/lisp just use a list to represent the red black tree, it
+contains 4 elements, a color a left child, a key and a right
+child. there is no explicit definition in Scheme/Lisp. 
+
+\subsubsection*{C++ definition}
+SGI STL version of red black tree has many layers, but the core part
+contains all the neccessary information of a red black tree, the
+color, the left and right children, the parent and the value.
+
+\lstset{language=c++}
+\begin{lstlisting}
+typedef bool _Rb_tree_Color_type;
+const _Rb_tree_Color_type _S_rb_tree_red = false;
+const _Rb_tree_Color_type _S_rb_tree_black = true;
+
+struct _Rb_tree_node_base
+{
+  typedef _Rb_tree_Color_type _Color_type;
+  typedef _Rb_tree_node_base* _Base_ptr;
+
+  _Color_type _M_color; 
+  _Base_ptr _M_parent;
+  _Base_ptr _M_left;
+  _Base_ptr _M_right;
+
+  //...
+
+template <class _Value>
+struct _Rb_tree_node : public _Rb_tree_node_base
+{
+  typedef _Rb_tree_node<_Value>* _Link_type;
+  _Value _M_value_field;
+};
+
+template <class _Tp, ...>
+struct _Rb_tree_base
+{
+  //...
+protected:
+  _Rb_tree_node<_Tp>* _M_header;
+  //...
+
+template <class _Key, class _Value, ... >
+class _Rb_tree : protected _Rb_tree_base<_Value, ...> {
+\end{lstlisting}
+
+The first layer is base class of red black tree node, it defines
+color, parent, left and right children members. The second layer
+defines the red black tree node, it defines the value field based on
+the base node class. The third layer define the base class of red
+black tree, it has a header member, which point to the tree node.
+This approach abstract the red black tree concept from the node
+concept. The last layer defines the red black tree and provided it
+finally as a concept of container. for the detail, please refer to \cite{sgi-stl}.
 
 % ================================================================
 % Rotation and helper functions
@@ -268,6 +328,56 @@ I defined some helper functions to construct the red black tree and access the e
 (define (black? t)
   (if (null? t) '() (equal? (color t) "B")))
 \end{lstlisting}
+
+\subsubsection*{C++ helper functions}
+
+Similar to Python like imperative implementation, C++ provides left
+and right rotation functions, here is the rotation program in SGI STL.
+
+\lstset{language=c++}
+\begin{lstlisting}
+inline void 
+_Rb_tree_rotate_left(_Rb_tree_node_base* __x, _Rb_tree_node_base*& __root)
+{
+  _Rb_tree_node_base* __y = __x->_M_right;
+  __x->_M_right = __y->_M_left;
+  if (__y->_M_left !=0)
+    __y->_M_left->_M_parent = __x;
+  __y->_M_parent = __x->_M_parent;
+
+  if (__x == __root)
+    __root = __y;
+  else if (__x == __x->_M_parent->_M_left)
+    __x->_M_parent->_M_left = __y;
+  else
+    __x->_M_parent->_M_right = __y;
+  __y->_M_left = __x;
+  __x->_M_parent = __y;
+}
+
+inline void 
+_Rb_tree_rotate_right(_Rb_tree_node_base* __x, _Rb_tree_node_base*& __root)
+{
+  _Rb_tree_node_base* __y = __x->_M_left;
+  __x->_M_left = __y->_M_right;
+  if (__y->_M_right != 0)
+    __y->_M_right->_M_parent = __x;
+  __y->_M_parent = __x->_M_parent;
+
+  if (__x == __root)
+    __root = __y;
+  else if (__x == __x->_M_parent->_M_right)
+    __x->_M_parent->_M_right = __y;
+  else
+    __x->_M_parent->_M_left = __y;
+  __y->_M_right = __x;
+  __x->_M_parent = __y;
+}
+\end{lstlisting}
+
+This code is more like the pseudo code presents in CLRS than the
+python code, becasue My python program provides some bi-directional
+assignment helper member functions.
 
 % ================================================================
 %                 Insertion
@@ -573,6 +683,94 @@ After insert element 4 into the first tree the result will be like in figure \re
         \caption{insert from a list} \label{fig:python-insert}
        \end{center}
 \end{figure}
+
+\subsubsection*{C++ red black tree insertion}
+
+The C++ SGI STL implementation of red black tree also adopts the
+concept of the sentinel as described in CLRS. Every time we initialize
+an empty red black tree, it create such sentinel first.
+
+\lstset{language=c++}
+\begin{lstlisting}
+void _M_empty_initialize() {
+  _S_color(_M_header) = _S_rb_tree_red; // used to distinguish header from 
+                                      // __root, in iterator.operator++
+  _M_root() = 0;
+  _M_leftmost() = _M_header;
+  _M_rightmost() = _M_header;
+}
+\end{lstlisting}
+
+Where the left sides are accessor operators, which returns the
+reference of color, and other fields etc. There is a good explaination
+in \cite{hj-stl}.
+
+C++ SGI STL version of insertion provided two options,
+insert\_unique() and insert\_equal(), we only present one of them in
+this post.
+
+\begin{lstlisting}
+template <class _Key, class _Value, class _KeyOfValue, ...>
+typename _Rb_tree<_Key,_Value,_KeyOfValue, ...>::iterator
+_Rb_tree<_Key,_Value,_KeyOfValue, ...>
+  ::insert_equal(const _Value& __v)
+{
+  _Link_type __y = _M_header;
+  _Link_type __x = _M_root();
+  while (__x != 0) {
+    __y = __x;
+    __x = _M_key_compare(_KeyOfValue()(__v), _S_key(__x)) ? 
+            _S_left(__x) : _S_right(__x);
+  }
+  return _M_insert(__x, __y, __v);
+}
+\end{lstlisting}
+
+In order to focus on the algorithm itself, I replace the allocator and
+the compare template parameter with '...'. The insert will first use a 
+while loop to locate where the new value should be inserted. then it
+call \_M\_insert() function to do the real insertion. Where x is the
+the insert position, y point to the parent of x.
+
+Next, SGI STL will call the core insert function which is defined as
+the following.
+
+\begin{lstlisting}
+template <class _Key, class _Value, class _KeyOfValue, ...>
+typename _Rb_tree<_Key,_Value,_KeyOfValue, ...>::iterator
+_Rb_tree<_Key,_Value,_KeyOfValue, ...>
+  ::_M_insert(_Base_ptr __x_, _Base_ptr __y_, const _Value& __v)
+{
+  _Link_type __x = (_Link_type) __x_;
+  _Link_type __y = (_Link_type) __y_;
+  _Link_type __z;
+
+  if (__y == _M_header || __x != 0 || 
+      _M_key_compare(_KeyOfValue()(__v), _S_key(__y))) {
+    __z = _M_create_node(__v);
+    _S_left(__y) = __z;               // also makes _M_leftmost() = __z 
+                                      //    when __y == _M_header
+    if (__y == _M_header) {
+      _M_root() = __z;
+      _M_rightmost() = __z;
+    }
+    else if (__y == _M_leftmost())
+      _M_leftmost() = __z;   // maintain _M_leftmost() pointing to min node
+  }
+  else {
+    __z = _M_create_node(__v);
+    _S_right(__y) = __z;
+    if (__y == _M_rightmost())
+      _M_rightmost() = __z;  // maintain _M_rightmost() pointing to max node
+  }
+  _S_parent(__z) = __y;
+  _S_left(__z) = 0;
+  _S_right(__z) = 0;
+  _Rb_tree_rebalance(__z, _M_header->_M_parent);
+  ++_M_node_count;
+  return iterator(__z);
+}
+\end{lstlisting}
 
 If we compare the results from the functional implementation and from the imperative one, we can 
 find there is difference. Even if we insert the same element into the same red black tree, the
@@ -1186,10 +1384,12 @@ The results are identify with the one output by Haskell.
 %\appendix
 All programs are provided along with this article. They are free for downloading.
 \begin{itemize}
-\item RBTree.hs, Haskell version of binary search tree, with test cases. I compiled
+\item RBTree.hs, Haskell version of red black tree, with test cases. I compiled
 and tested it with GHC 6.10.4.
-\item rbtree.py, Python version of the binary search tree, with test cases. Tested
+\item rbtree.py, Python version of the red black tree, with test cases. Tested
 with Python 2.5.1
+\item rbtree.scm, Scheme version of the red black tree and test cases. Tested
+with MIT/Scheme 14.9
 \end{itemize}
 
 Besides them, I use graphviz to draw most of the figures in this post. In order to
@@ -1221,6 +1421,9 @@ Wikipedia. ``Red-black tree''. http://en.wikipedia.org/wiki/Red-black\_tree
 
 \bibitem{lyn}
 Lyn Turbak. ``Red-Black Trees''. cs.wellesley.edu/~cs231/fall01/red-black.pdf Nov. 2, 2001.
+
+\bibitem{sgi-stl}
+http://www.sgi.com/tech/stl/
 
 \bibitem{hj-stl}
 Hou Jie. ``The annotated STL sources (using SGI STL)''. ISBN:7-5609-2699-1 http://press.hust.edu.cn. 2002.
