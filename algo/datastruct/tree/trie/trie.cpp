@@ -1,60 +1,66 @@
 #include <iostream>
 #include <map>
+#include <functional>
+#include <sstream>
+#include <algorithm>
+#include <boost/lambda/lambda.hpp>
+#include <boost/lambda/bind.hpp>
+#include <boost/lambda/construct.hpp>
 
-//
-// Typically, trie use map to store children.
-// I use multimap to support T9 like 1 key - multiple values cases
-//
-template<class T, typename Compare=std::less<T> >
+template<class T>
 struct Trie{
-  Trie(Compare comp=std::less<T>):children(comp){}
-  Trie(T x, Compare comp=std::less<T>):children(comp){ 
-    children[x]=new Trie; 
-  }
+  typedef std::map<T, Trie<T>*> Children;
+
+  Trie(int x=-1):value(x){}
+
   ~Trie(){
-    for(Children::iterator it=children.begin(); 
+    for(typename Children::iterator it=children.begin();
         it!=children.end(); ++it)
       delete it->second;
   }
-  typedef std::multimap<T, Trie<T>*, Compare> Children;
+
+  int value; //frequency etc.
   Children children;
 };
 
-//
-// Functional approach can be used if we assume there
-// is no too long word, that will cause stack overflow.
-//
-template<class T, class Coll, 
-         typename Compare, typename MapFunc=std::identity<T> >
-Trie<T, Compare>* insert(Trie<T, Compare>* t, Coll value, MapFunc f=MapFunc()){
+// recursive
+template<class T, class Coll>
+Trie<T>* insert(Trie<T>* t, Coll value){
   if(!t)
-    t=new Trie<T, Compare>;
+    t=new Trie<T>;
 
-  if(value.empty())
-    return t;
-  
-  typename Coll::iterator it=value.begin();
-  return insert(t->children[f(*it)], Coll(++it, value.end()));
+  if(!value.empty()){
+    typename Coll::iterator it=value.begin();
+    t->children[*it]=insert(t->children[*it], 
+                            Coll(++value.begin(), value.end())); //tricky, we can't use Coll(++it, value.end()), because ++it is evalueate first before *it.
+  }
+  return t;
 }
 
-//
-// For T9 input method,
-// returns candidates list, the input string is ITU-T keys(2..9)
-// the compare function is customized to map from key to char.
-//
-// For input completion,
-// returns a common parent of candidates words.
-//
-template<class T, typename Coll, typename Comp=std::equal_to<T> >
-std::list<Trie<T>*> search(Trie<T>* t, Coll str, Comp comp=Comp()){
-  typedef std::list<Trie<T>*> Result;
-  Result res;
-  res.push_back(t);
-  for(Coll::iterator x=str.begin(); x!=str.end(); ++x){
-    Result candidates;
-    for(Result::iterator it=res.begin(); it!=res.end(); ++it){
-      if(it->children.find
-    }
-  }
-  return res;
+// test helpers
+template<class T>
+std::string trie_to_str(Trie<T>* t, std::string prefix=""){
+  std::ostringstream s;
+  s<<"("<<prefix;
+  for(typename Trie<T>::Children::iterator it=t->children.begin();
+      it!=t->children.end(); ++it)
+    s<<", "<<trie_to_str(it->second, prefix+it->first);
+  s<<")";
+
+  return s.str();
+}
+
+void test_insert(){
+  Trie<char>* t(0);
+  t=insert(t, std::string("a"));
+  t=insert(t, std::string("b"));
+  insert(t, std::string("good"));
+  insert(t, std::string("home"));
+  insert(t, std::string("gone"));
+  std::cout<<trie_to_str(t);
+  delete t;
+}
+
+int main(int, char**){
+  test_insert();
 }
