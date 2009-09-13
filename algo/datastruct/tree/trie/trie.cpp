@@ -5,21 +5,16 @@
 #include <algorithm>
 #include <list>
 #include <iterator>
-//#include <boost/lambda/lambda.hpp>
-//#include <boost/lambda/bind.hpp>
-//#include <boost/lambda/construct.hpp>
 
 template<class Coll>
-void print(const Coll& xs, std::string prefix){
+void print(const Coll& xs, std::string prefix=""){
   using namespace std;
   cout<<prefix<<": ";
   copy(xs.begin(), xs.end(), ostream_iterator<typename Coll::value_type>(cout, ", "));
   cout<<"\n";
 }
 
-//
 // default mapping functor, map from search input to keys in Trie
-//
 template<class T>
 struct map_identity: public std::unary_function<T, std::list<T> >{
   std::list<T> operator()(T x){
@@ -31,14 +26,14 @@ struct map_identity: public std::unary_function<T, std::list<T> >{
 struct t9_mapping: public std::unary_function<char, std::list<char> >{
   std::map<char, std::string> keypad;
   t9_mapping(){
-    keypad['2']=std::string("abc");
-    keypad['3']=std::string("def");
-    keypad['4']=std::string("ghi");
-    keypad['5']=std::string("jkl");
-    keypad['6']=std::string("mno");
-    keypad['7']=std::string("pqrs");
-    keypad['8']=std::string("tuv");
-    keypad['9']=std::string("wxyz");
+    keypad['2']="abc";
+    keypad['3']="def";
+    keypad['4']="ghi";
+    keypad['5']="jkl";
+    keypad['6']="mno";
+    keypad['7']="pqrs";
+    keypad['8']="tuv";
+    keypad['9']="wxyz";
   }
 
   std::list<char> operator()(char x){
@@ -51,12 +46,10 @@ struct t9_mapping: public std::unary_function<char, std::list<char> >{
   }
 };
 
-
 template<class T, class _MapFunc=map_identity<T> >
 struct Trie{
   typedef _MapFunc MapFunc;
   typedef std::map<T, Trie<T, MapFunc>*> Children;
-
 
   Trie(int x=-1):value(x){}
 
@@ -66,7 +59,7 @@ struct Trie{
       delete it->second;
   }
 
-  int value; //frequency etc.
+  int value; //augument data, frequency etc.
   Children children;
 };
 
@@ -80,17 +73,16 @@ Trie<T, MapFunc>* insert(Trie<T, MapFunc>* t, Coll value){
     typename Coll::iterator it=value.begin();
     t->children[*it]=insert(t->children[*it], 
                             Coll(++value.begin(), value.end())); 
-    //tricky, we can't use Coll(++it, value.end()), 
-    //because ++it is evalueate first before *it.
   }
   return t;
 }
 
-
+// helper functions to map appending element a list
+// map (lambda e, es, -> (e+es)) xs
 template<class T, class Coll>
-std::list<Coll> map_append(T x, std::list<Coll> xs){
-  for(typename std::list<Coll>::iterator it=xs.begin(); it!=xs.end(); ++it){
-    std::insert_iterator<Coll> i(*it, it->begin());
+Coll operator+(T x, Coll xs){
+  for(typename Coll::iterator it=xs.begin(); it!=xs.end(); ++it){
+    std::insert_iterator<typename Coll::value_type> i(*it, it->begin());
     *i++=x;
   }
   return xs;
@@ -113,7 +105,7 @@ std::list<Coll> search(Trie<T, MapFunc>* t, Coll value){
       if(tail.empty())
         xs.push_back(Coll(1, *k));
       else
-        xs=map_append(*k, search(t->children[*k], tail));
+        xs=(*k)+search(t->children[*k], tail);
       std::back_insert_iterator<std::list<Coll> > i(res);
       std::copy(xs.begin(), xs.end(), i);
     }
