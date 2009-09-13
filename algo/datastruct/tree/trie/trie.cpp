@@ -46,6 +46,7 @@ struct t9_mapping: public std::unary_function<char, std::list<char> >{
   }
 };
 
+// Definition
 template<class T, class _MapFunc=map_identity<T> >
 struct Trie{
   typedef _MapFunc MapFunc;
@@ -63,7 +64,7 @@ struct Trie{
   Children children;
 };
 
-// recursive
+// recursive insertion
 template<class T, class MapFunc, class Coll>
 Trie<T, MapFunc>* insert(Trie<T, MapFunc>* t, Coll value){
   if(!t)
@@ -97,6 +98,7 @@ Coll& operator+(Coll& x, Coll& y){
   return x;
 }
 
+// recursive search
 template<class T, class MapFunc, class Coll>
 std::list<Coll> search(Trie<T, MapFunc>* t, Coll value){
   std::list<Coll> res;
