@@ -88,6 +88,15 @@ Coll operator+(T x, Coll xs){
   return xs;
 }
 
+// helper function to concat 2 collections together
+// x = x + y; where + means append
+template<class Coll>
+Coll& operator+(Coll& x, Coll& y){
+  std::back_insert_iterator<Coll> it(x);
+  std::copy(y.begin(), y.end(), it);
+  return x;
+}
+
 template<class T, class MapFunc, class Coll>
 std::list<Coll> search(Trie<T, MapFunc>* t, Coll value){
   std::list<Coll> res;
@@ -106,8 +115,7 @@ std::list<Coll> search(Trie<T, MapFunc>* t, Coll value){
         xs.push_back(Coll(1, *k));
       else
         xs=(*k)+search(t->children[*k], tail);
-      std::back_insert_iterator<std::list<Coll> > i(res);
-      std::copy(xs.begin(), xs.end(), i);
+      res=res+xs;
     }
   }
   return res;
