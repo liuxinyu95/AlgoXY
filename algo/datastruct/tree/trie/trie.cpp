@@ -105,10 +105,13 @@ struct TrieDict: public Trie<T>{
 // map (lambda e, es, -> (e+es)) xs
 template<class T, class Coll>
 Coll operator+(T x, Coll xs){
-  for(typename Coll::iterator it=xs.begin(); it!=xs.end(); ++it){
-    std::insert_iterator<typename Coll::value_type> i(*it, it->begin());
-    *i++=x;
-  }
+  if(xs.empty())
+    xs.push_back(typename Coll::value_type(1, x));
+  else
+    for(typename Coll::iterator it=xs.begin(); it!=xs.end(); ++it){
+      std::insert_iterator<typename Coll::value_type> i(*it, it->begin());
+      *i++=x;
+    }
   return xs;
 }
 
@@ -135,12 +138,8 @@ std::list<Coll> search(Trie<T, MapFunc>* t, Coll value){
   keys.sort(std::greater<typename Keys::value_type>());
   for(typename Keys::iterator k=keys.begin(); k!=keys.end(); ++k){
     if(t->children.find(*k)!=t->children.end()){
-      Coll tail=Coll(++value.begin(), value.end());
-      std::list<Coll> xs;
-      if(tail.empty())
-        xs.push_back(Coll(1, *k));
-      else
-        xs=(*k)+search(t->children[*k], tail);
+      std::list<Coll> xs=(*k)+search(t->children[*k], 
+                                     Coll(++value.begin(), value.end()));
       res=res+xs;
     }
   }
@@ -148,8 +147,34 @@ std::list<Coll> search(Trie<T, MapFunc>* t, Coll value){
 }
 
 // search all candidates with prefix as value
+// Caution: if the trie is big, and the prefix 
+// is very small, it may return a huge result.
 template<class T, class MapFunc, class Coll>
-std::list<Coll> search_all(Trie<T, MapFunc>* t, Coll value){
+std::list<Coll> search_all(Trie<T, MapFunc>* t, Coll prefix){
+  std::list<Coll> res;
+  
+  if(t->children.empty()) return res;
+
+  if(prefix.empty()){
+    for(typename Trie<T, MapFunc>::Children::iterator it=t->children.begin(); 
+        it!=t->children.end(); ++it){
+      std::list<Coll> xs=(it->first)+search_all(it->second, Coll());
+      res=res+xs;
+    }
+  }
+  else{
+    MapFunc f;
+    typedef typename MapFunc::result_type Keys;
+    Keys keys=f(*prefix.begin());
+    keys.sort(std::greater<typename Keys::value_type>());
+    for(typename Keys::iterator k=keys.begin(); k!=keys.end(); ++k){
+      if(t->children.find(*k)!=t->children.end()){
+        std::list<Coll> xs=(*k)+search_all(t->children[*k], 
+                                       Coll(++prefix.begin(), prefix.end()));
+        res=res+xs;
+      }
+    }
+  }
 }
 
 // test helpers
@@ -214,6 +239,11 @@ private:
 
     res=search(t2, std::string("4663"));
     print(res, "t9 search 4663 with priority");
+
+    res=search_all(t, std::string(""));
+    print(res, "search all");
+    res=search_all(t, std::string("go"));
+    print(res, "search all start with go");
   }
 
 public:
