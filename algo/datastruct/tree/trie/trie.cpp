@@ -52,21 +52,21 @@ struct Trie{
   typedef _MapFunc MapFunc;
   typedef std::map<T, Trie<T, MapFunc>*> Children;
 
-  Trie(int x=-1):value(x){}
+  Trie():count(0){}
 
-  ~Trie(){
+  virtual ~Trie(){
     for(typename Children::iterator it=children.begin();
         it!=children.end(); ++it)
       delete it->second;
   }
 
-  int value; //augument data, frequency etc.
+  int count; //frequency.
   Children children;
 };
 
 // recursive insertion
 template<class T, class MapFunc, class Coll>
-Trie<T, MapFunc>* insert(Trie<T, MapFunc>* t, Coll value){
+Trie<T,MapFunc>* insert(Trie<T, MapFunc>* t, Coll value){
   if(!t)
     t=new Trie<T, MapFunc>;
 
@@ -77,6 +77,29 @@ Trie<T, MapFunc>* insert(Trie<T, MapFunc>* t, Coll value){
   }
   return t;
 }
+
+// imperative insertion, with frequency
+template<class T, class MapFunc, class Coll>
+Trie<T, MapFunc>* trie_insert(Trie<T, MapFunc>* t, Coll value, int priority=1){
+  if(!t)
+    t= new Trie<T, MapFunc>;
+
+  Trie<T, MapFunc>* p=t;
+  for(typename Coll::iterator it=value.begin(); it!=value.end(); ++it){
+    if(p->children.find(*it)==p->children.end())
+      p->children[*it]=new Trie<T, MapFunc>;
+    p=p->children[*it];
+    p->count+=priority;
+  }
+  return t;
+}
+
+// Definition
+template<class T, class U>
+struct TrieDict: public Trie<T>{
+  TrieDict(U x=U()): Trie<T>(), value(x){}
+  U value;
+};
 
 // helper functions to map appending element a list
 // map (lambda e, es, -> (e+es)) xs
@@ -123,6 +146,9 @@ std::list<Coll> search(Trie<T, MapFunc>* t, Coll value){
   return res;
 }
 
+// functional search, with candidate list sort by priority
+//template<class T, class MapFunc, class Coll>
+
 // test helpers
 template<class T, class MapFunc>
 std::string trie_to_str(Trie<T, MapFunc>* t, std::string prefix=""){
@@ -139,6 +165,7 @@ class Test{
 private:
   Trie<char>* t;
   Trie<char, t9_mapping>* t1;
+  Trie<char, t9_mapping>* t2;
 
   void test_insert(){
     t=insert(t, std::string("a"));
@@ -157,6 +184,12 @@ private:
     t1=insert(t1, std::string("an"));
     t1=insert(t1, std::string("the"));
     std::cout<<"t1=\n"<<trie_to_str(t1)<<"\n";
+
+    // insert words with priority
+    t2=trie_insert(t2, std::string("home"), 3);
+    t2=trie_insert(t2, std::string("good"), 2);
+    t2=trie_insert(t2, std::string("gone"));
+    std::cout<<"t2=\n"<<trie_to_str(t2)<<"\n";
   }
 
   void test_search(){
@@ -178,11 +211,12 @@ private:
   }
 
 public:
-  Test():t(0), t1(0){ }
+  Test():t(0), t1(0), t2(0){ }
 
   ~Test(){
     delete t;
     delete t1;
+    delete t2;
   }
 
   void run(){
