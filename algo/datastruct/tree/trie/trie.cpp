@@ -132,6 +132,7 @@ std::list<Coll> search(Trie<T, MapFunc>* t, Coll value){
   MapFunc f;
   typedef typename MapFunc::result_type Keys; 
   Keys keys=f(*value.begin());
+  keys.sort(std::greater<typename Keys::value_type>());
   for(typename Keys::iterator k=keys.begin(); k!=keys.end(); ++k){
     if(t->children.find(*k)!=t->children.end()){
       Coll tail=Coll(++value.begin(), value.end());
@@ -146,8 +147,10 @@ std::list<Coll> search(Trie<T, MapFunc>* t, Coll value){
   return res;
 }
 
-// functional search, with candidate list sort by priority
-//template<class T, class MapFunc, class Coll>
+// search all candidates with prefix as value
+template<class T, class MapFunc, class Coll>
+std::list<Coll> search_all(Trie<T, MapFunc>* t, Coll value){
+}
 
 // test helpers
 template<class T, class MapFunc>
@@ -208,6 +211,9 @@ private:
     print(res, "t9 search 4663");
     res=search(t1, std::string("2"));
     print(res, "t9 search 2");
+
+    res=search(t2, std::string("4663"));
+    print(res, "t9 search 4663 with priority");
   }
 
 public:
