@@ -64,6 +64,13 @@ struct Trie{
   Children children;
 };
 
+// Example of how to add other augment data
+template<class T, class U>
+struct TrieDict: public Trie<T>{
+  TrieDict(U x=U()): Trie<T>(), value(x){}
+  U value; //explaination of a word etc.
+};
+
 // recursive insertion
 template<class T, class MapFunc, class Coll>
 Trie<T,MapFunc>* insert(Trie<T, MapFunc>* t, Coll value){
@@ -89,17 +96,10 @@ Trie<T, MapFunc>* trie_insert(Trie<T, MapFunc>* t, Coll value, int priority=1){
     if(p->children.find(*it)==p->children.end())
       p->children[*it]=new Trie<T, MapFunc>;
     p=p->children[*it];
-    p->count+=priority;
+    p->count+=priority; // simple approach, disadvantage: sum of many low priority words > 1 high priority word
   }
   return t;
 }
-
-// Definition
-template<class T, class U>
-struct TrieDict: public Trie<T>{
-  TrieDict(U x=U()): Trie<T>(), value(x){}
-  U value;
-};
 
 // helper functions to map appending element a list
 // map (lambda e, es, -> (e+es)) xs
@@ -124,6 +124,20 @@ Coll& operator+(Coll& x, Coll& y){
   return x;
 }
 
+// heper function to prioritize the candidates
+template<class Keys, class Map>
+Keys prioritize(Keys& keys, Map& ts){
+  typedef std::multimap<int, typename Keys::value_type, std::greater<int> > Coll;
+  Coll coll;
+  for(typename Keys::iterator k=keys.begin(); k!=keys.end(); ++k)
+    if(ts.find(*k)!=ts.end())
+      coll.insert(std::make_pair(ts[*k]->count, *k));
+  Keys res;
+  for(typename Coll::iterator it=coll.begin(); it!=coll.end(); ++it)
+    res.push_back(it->second);
+  return res;
+}
+
 // recursive search
 template<class T, class MapFunc, class Coll>
 std::list<Coll> search(Trie<T, MapFunc>* t, Coll value){
@@ -135,7 +149,7 @@ std::list<Coll> search(Trie<T, MapFunc>* t, Coll value){
   MapFunc f;
   typedef typename MapFunc::result_type Keys; 
   Keys keys=f(*value.begin());
-  keys.sort(std::greater<typename Keys::value_type>());
+  keys=prioritize(keys, t->children);
   for(typename Keys::iterator k=keys.begin(); k!=keys.end(); ++k){
     if(t->children.find(*k)!=t->children.end()){
       std::list<Coll> xs=(*k)+search(t->children[*k], 
@@ -166,7 +180,6 @@ std::list<Coll> search_all(Trie<T, MapFunc>* t, Coll prefix){
     MapFunc f;
     typedef typename MapFunc::result_type Keys;
     Keys keys=f(*prefix.begin());
-    keys.sort(std::greater<typename Keys::value_type>());
     for(typename Keys::iterator k=keys.begin(); k!=keys.end(); ++k){
       if(t->children.find(*k)!=t->children.end()){
         std::list<Coll> xs=(*k)+search_all(t->children[*k], 
@@ -217,6 +230,7 @@ private:
     t2=trie_insert(t2, std::string("home"), 3);
     t2=trie_insert(t2, std::string("good"), 2);
     t2=trie_insert(t2, std::string("gone"));
+    t2=trie_insert(t2, std::string("hood"));
     std::cout<<"t2=\n"<<trie_to_str(t2)<<"\n";
   }
 
