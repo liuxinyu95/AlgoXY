@@ -126,7 +126,7 @@ Coll& operator+(Coll& x, Coll& y){
 
 // heper function to prioritize the candidates
 template<class Keys, class Map>
-Keys prioritize(Keys& keys, Map& ts){
+Keys prioritize(Keys keys, Map& ts){
   typedef std::multimap<int, typename Keys::value_type, std::greater<int> > Coll;
   Coll coll;
   for(typename Keys::iterator k=keys.begin(); k!=keys.end(); ++k)
@@ -148,14 +148,11 @@ std::list<Coll> search(Trie<T, MapFunc>* t, Coll value){
 
   MapFunc f;
   typedef typename MapFunc::result_type Keys; 
-  Keys keys=f(*value.begin());
-  keys=prioritize(keys, t->children);
+  Keys keys=prioritize(f(*value.begin()), t->children);
   for(typename Keys::iterator k=keys.begin(); k!=keys.end(); ++k){
-    if(t->children.find(*k)!=t->children.end()){
-      std::list<Coll> xs=(*k)+search(t->children[*k], 
-                                     Coll(++value.begin(), value.end()));
-      res=res+xs;
-    }
+    std::list<Coll> xs=(*k)+search(t->children[*k], 
+                                   Coll(++value.begin(), value.end()));
+    res=res+xs;
   }
   return res;
 }
@@ -188,6 +185,46 @@ std::list<Coll> search_all(Trie<T, MapFunc>* t, Coll prefix){
       }
     }
   }
+}
+
+template<class Result, class Coll>
+void foreach_append(Result& res, Coll xs){
+  if(res.empty())
+    for(typename Coll::iterator x=xs.begin(); x!=xs.end(); ++x)
+      res.push_back(typename Result::data_type(1, *x));
+  else{
+    typename Result::iterator r=res.begin();
+    typename Coll::iterator x=xs.begin();
+    for(; r!=res.end() && x!=xs.end(); ++r, ++x)
+      r->push_back(*x);
+  }
+}
+
+// imperative search
+template<class T, class MapFunc, class Coll>
+std::list<Coll> trie_search(Trie<T, MapFunc>* t, Coll value){
+  std::list<Coll> res;
+
+  if(t->children.empty() || value.empty())
+      return res;
+
+  MapFunc f;
+  typedef typename MapFunc::result_type Keys; 
+  typedef typename std::list<Trie<T, MapFunc>*> Candidates;
+  Candidates tries(1, t);
+  for(typename Coll::iterator it=value.begin(); it!=value.end(); ++it){
+    Candidates nexts;
+    for(typename Candidates::iterator tr=tries.begin(); tr!=tries.end(); ++tr){
+      Keys keys=prioritize(f(*it), (*tr)->children);
+      foreach_append(res, keys); //???
+      for(typename Keys::iterator k=keys.begin(); k!=keys.end(); ++k){
+        nexts.push_back((*tr)->children[*k]);
+      }
+      tries=nexts;
+    }
+  }
+
+  return res;
 }
 
 // test helpers
