@@ -124,6 +124,25 @@ Coll& operator+(Coll& x, Coll& y){
   return x;
 }
 
+// helpfer function for collection of pair
+template<class Coll>
+std::list<typename Coll::value_type::first_type> first_items(Coll& coll){
+  typedef typename Coll::value_type::first_type Result;
+  std::list<Result> res;
+  for(typename Coll::iterator it=coll.begin(); it!=coll.end(); ++it)
+    res.push_back(it->first);
+  return res;
+}
+
+template<class Coll>
+std::list<typename Coll::value_type::second_type> second_items(Coll& coll){
+  typedef typename Coll::value_type::second_type Result;
+  std::list<Result> res;
+  for(typename Coll::iterator it=coll.begin(); it!=coll.end(); ++it)
+    res.push_back(it->second);
+  return res;
+}
+
 // heper function to prioritize the candidates
 template<class Keys, class Map>
 Keys prioritize(Keys keys, Map& ts){
@@ -132,10 +151,7 @@ Keys prioritize(Keys keys, Map& ts){
   for(typename Keys::iterator k=keys.begin(); k!=keys.end(); ++k)
     if(ts.find(*k)!=ts.end())
       coll.insert(std::make_pair(ts[*k]->count, *k));
-  Keys res;
-  for(typename Coll::iterator it=coll.begin(); it!=coll.end(); ++it)
-    res.push_back(it->second);
-  return res;
+  return second_items(coll);
 }
 
 // recursive search
@@ -213,9 +229,7 @@ std::list<Coll> trie_search(Trie<T, MapFunc>* t, Coll value){
     tries=nexts;
   }
 
-  for(typename Candidates::iterator tr=tries.begin(); tr!=tries.end(); ++tr)
-    res.push_back(tr->first);
-  return res;
+  return first_items(tries);
 }
 
 // test helpers
