@@ -187,19 +187,6 @@ std::list<Coll> search_all(Trie<T, MapFunc>* t, Coll prefix){
   }
 }
 
-template<class Result, class Coll>
-void foreach_append(Result& res, Coll xs){
-  if(res.empty())
-    for(typename Coll::iterator x=xs.begin(); x!=xs.end(); ++x)
-      res.push_back(typename Result::data_type(1, *x));
-  else{
-    typename Result::iterator r=res.begin();
-    typename Coll::iterator x=xs.begin();
-    for(; r!=res.end() && x!=xs.end(); ++r, ++x)
-      r->push_back(*x);
-  }
-}
-
 // imperative search
 template<class T, class MapFunc, class Coll>
 std::list<Coll> trie_search(Trie<T, MapFunc>* t, Coll value){
@@ -210,20 +197,24 @@ std::list<Coll> trie_search(Trie<T, MapFunc>* t, Coll value){
 
   MapFunc f;
   typedef typename MapFunc::result_type Keys; 
-  typedef typename std::list<Trie<T, MapFunc>*> Candidates;
-  Candidates tries(1, t);
+  typedef std::list<std::pair<Coll, Trie<T, MapFunc>*> > Candidates;
+  Candidates tries;
+  tries.push_back(std::make_pair(Coll(), t));
   for(typename Coll::iterator it=value.begin(); it!=value.end(); ++it){
     Candidates nexts;
     for(typename Candidates::iterator tr=tries.begin(); tr!=tries.end(); ++tr){
-      Keys keys=prioritize(f(*it), (*tr)->children);
-      foreach_append(res, keys); //???
+      Keys keys=prioritize(f(*it), tr->second->children);
       for(typename Keys::iterator k=keys.begin(); k!=keys.end(); ++k){
-        nexts.push_back((*tr)->children[*k]);
+        Coll prefix(tr->first);
+        prefix.push_back(*k);
+        nexts.push_back(std::make_pair(prefix, tr->second->children[*k]));
       }
-      tries=nexts;
     }
+    tries=nexts;
   }
 
+  for(typename Candidates::iterator tr=tries.begin(); tr!=tries.end(); ++tr)
+    res.push_back(tr->first);
   return res;
 }
 
@@ -272,7 +263,17 @@ private:
   }
 
   void test_search(){
-    std::list<std::string> res=search(t, std::string("a"));
+    test_dict_search();
+    test_t9_search();
+    test_priority_search();
+    test_search_all();
+    test_imperative_search();
+  }
+
+  void test_dict_search(){
+    std::cout<<"test dict search\n";
+    std::list<std::string> res;
+    res=search(t, std::string("a"));
     print(res, "search a");
     res=search(t, std::string("go"));
     print(res, "search go");
@@ -280,21 +281,44 @@ private:
     print(res, "search bar");
     res=search(t, std::string("gone"));
     print(res, "search gone");
+  }
 
+  void test_t9_search(){
+    std::cout<<"test t9 search\n";
+    std::list<std::string> res;
     res=search(t1, std::string("46"));
     print(res, "t9 search 46");
     res=search(t1, std::string("4663"));
     print(res, "t9 search 4663");
     res=search(t1, std::string("2"));
     print(res, "t9 search 2");
+  }
 
+  void test_priority_search(){
+    std::cout<<"test priority search\n";
+    std::list<std::string> res;
     res=search(t2, std::string("4663"));
     print(res, "t9 search 4663 with priority");
+  }
 
+  void test_search_all(){
+    std::cout<<"test serach all\n";
+    std::list<std::string> res;
     res=search_all(t, std::string(""));
     print(res, "search all");
     res=search_all(t, std::string("go"));
     print(res, "search all start with go");
+  }
+
+  void test_imperative_search(){
+    std::cout<<"test imperative search\n";
+    std::list<std::string> res;
+    res=trie_search(t1, std::string("46"));
+    print(res, "t9 search 46");
+    res=trie_search(t1, std::string("4663"));
+    print(res, "t9 search 4663");
+    res=trie_search(t1, std::string("2"));
+    print(res, "t9 search 2");
   }
 
 public:
