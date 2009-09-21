@@ -253,9 +253,9 @@ private:
   void test_insert(){
     t=insert(t, std::string("a"));
     t=insert(t, std::string("b"));
-    insert(t, std::string("good"));
-    insert(t, std::string("home"));
-    insert(t, std::string("gone"));
+    t=insert(t, std::string("good"));
+    t=insert(t, std::string("home"));
+    t=insert(t, std::string("gone"));
     std::cout<<"t=\n"<<trie_to_str(t)<<"\n";
 
     t1=insert(t1, std::string("good"));
