@@ -6,9 +6,7 @@
 --	Workshop on ML, September 1998, pages 77-86,
 --	<http://www.cse.ogi.edu/~andy/pub/finite.htm>
 
-import Data.Bits
-
--- 1. Very simple int (binary) trie as CLRS 12-2 (Little-Edian)
+-- A very simple int (binary) trie as CLRS 12-2 (Little-Edian)
 data IntTrie a = Empty 
                | Branch (IntTrie a) (Maybe a) (IntTrie a) -- left, value, right
 
@@ -27,7 +25,7 @@ value :: IntTrie a -> Maybe a
 value (Branch _ v _) = v
 value Empty = Nothing
 
--- 1.1 insert
+-- Insertion
 -- if user insert a value already binding with existed key, just over write 
 -- the previous value
 -- usage: insert trie key x
@@ -37,14 +35,14 @@ insert t k x = if even k
                then Branch (insert (left t) (k `div` 2) x) (value t) (right t)
                else Branch (left t) (value t) (insert (right t) (k `div` 2) x)
 
--- 1.2 look up
+-- Look up
 search :: IntTrie a -> Key -> Maybe a
 search Empty k = Nothing
 search t 0 = value t
 search t k = if even k then search (left t) (k `div` 2)
              else search (right t) (k `div` 2)
 
--- 1.3 test helper
+-- Test helper
 fromList :: [(Key, a)] -> IntTrie a
 fromList xs = foldl ins Empty xs where
     ins t (k, v) = insert t k v
@@ -59,13 +57,11 @@ toString t = toStr t 0 1 where
     valueStr (Just x) = ":" ++ (show x)
     valueStr _ = ""
 
--- 1.4 test cases
+-- Test cases
 testIntTrie = "t=" ++ (toString t) ++ "\nsearch t 4: " ++ (show $ search t 4) ++
               "\nsearch t 0: " ++ (show $ search t 0)
     where
       t = fromList [(1, 'x'), (4, 'y'), (5, 'z')]
-
--- 2. Int Patricia (Radix) tree
 
 main = do
   putStrLn testIntTrie
