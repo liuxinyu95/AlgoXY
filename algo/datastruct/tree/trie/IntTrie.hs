@@ -33,13 +33,16 @@ value Empty = Nothing
 -- usage: insert trie key x
 insert :: IntTrie a -> Key -> a -> IntTrie a
 insert t 0 x = Branch (left t) (Just x) (right t)
-insert t k x = if testBit k 0 
-               then Branch (left t) (value t) (insert (right t) (k `div` 2) x)
-               else Branch (insert (left t) (k `div` 2) x) (value t) (right t)
+insert t k x = if even k
+               then Branch (insert (left t) (k `div` 2) x) (value t) (right t)
+               else Branch (left t) (value t) (insert (right t) (k `div` 2) x)
 
 -- 1.2 look up
---lookup :: Key -> a
-
+search :: IntTrie a -> Key -> Maybe a
+search Empty k = Nothing
+search t 0 = value t
+search t k = if even k then search (left t) (k `div` 2)
+             else search (right t) (k `div` 2)
 
 -- 1.3 test helper
 fromList :: [(Key, a)] -> IntTrie a
@@ -57,7 +60,10 @@ toString t = toStr t 0 1 where
     valueStr _ = ""
 
 -- 1.4 test cases
-testIntTrie = toString (fromList [(1, 'x'), (4, 'y'), (5, 'z')])
+testIntTrie = "t=" ++ (toString t) ++ "\nsearch t 4: " ++ (show $ search t 4) ++
+              "\nsearch t 0: " ++ (show $ search t 0)
+    where
+      t = fromList [(1, 'x'), (4, 'y'), (5, 'z')]
 
 -- 2. Int Patricia (Radix) tree
 
