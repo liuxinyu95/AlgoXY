@@ -36,7 +36,10 @@ join p1 t1 p2 t2 = if zeroBit p1 m then Branch p m t1 t2
 
 -- 'lcf' means 'longest common prefix'
 lcf :: Prefix -> Prefix -> (Prefix, Mask)
-lcf p1 p2 =
+lcf p1 p2 = highestBit (p1 `xor` p2)
+
+highestBit :: Int -> Int
+highestBit x = if x==0 then 0 else 1+highestBit (shiftR x 1)
 
 -- Insertion
 -- if user insert a value already binding with existed key, 
