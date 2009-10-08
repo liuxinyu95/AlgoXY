@@ -8,7 +8,9 @@
 
 import Data.Bits
 
--- 1. Little Edian Patricia tree
+{------------------------------------ 
+  1. Big Edian Patricia tree
+-------------------------------------}
 data IntTree a = Empty 
                | Leaf Key a
                | Branch Prefix Mask (IntTree a) (IntTree a) -- prefix, mask, left, right
@@ -17,7 +19,10 @@ type Key = Int
 type Prefix = Int
 type Mask = Int
 
--- helpers
+{-----------------------------------
+  2. helpers
+-----------------------------------}
+
 -- join 2 nodes together.
 -- (prefix1, tree1) ++ (prefix2, tree2)
 --  1. find the longest common prefix == common(prefix1, prefix2)
@@ -29,19 +34,50 @@ type Mask = Int
 --  3. if      x=='0', y=='1' then (tree1=>left, tree2=>right), 
 --     else if x=='1', y=='0' then (tree2=>left, tree1=>right).
 join :: Prefix -> IntTree a -> Prefix -> IntTree a -> IntTree a
-join p1 t1 p2 t2 = if zeroBit p1 m then Branch p m t1 t2
-                                   else Branch p m t2 t1 
+join p1 t1 p2 t2 = if zero p1 m then Branch p m t1 t2
+                                else Branch p m t2 t1 
     where
-      (prefix, mask) = lcf p1 p2
+      (p, m) = lcf p1 p2
 
 -- 'lcf' means 'longest common prefix'
 lcf :: Prefix -> Prefix -> (Prefix, Mask)
-lcf p1 p2 = highestBit (p1 `xor` p2)
+lcf p1 p2 = (p, m) where
+    m = bit $ highestBit (p1 `xor` p2)
+    p = mask p1 m
 
+-- get the order of highest bit of 1.
+-- For a number x = 00...0,1,a(i-1)...a(1)
+-- the result is i
 highestBit :: Int -> Int
 highestBit x = if x==0 then 0 else 1+highestBit (shiftR x 1)
 
--- Insertion
+-- For a number x = a(n),a(n-1)...a(i),a(i-1),...,a(0)
+-- and a mask m = 100..0 (=2^i)
+-- the result is a(n),a(n-1)...a(i),00..0
+mask :: Int -> Mask -> Int
+mask x m = (x .&. complement (m-1)) -- complement means bitwise not.
+
+
+-- Test if the next bit after mask bit is zero
+-- For a number x = a(n),a(n-1)...a(i),1,...a(0)
+-- and a mask   m = 100..0 (=2^i)
+-- because the bit next to a(i) is 1, so the result is False
+-- For a number y = a(n),a(n-1)...a(i),0,...a(0) the result is True.
+zero :: Int -> Mask -> Bool
+zero x m = (x .&. (m-1)) .&. (shiftR m 1) == 0
+
+-- Test if a key matches a prefix above of the mask bit
+-- For a prefix: p(n),p(n-1)...p(i)...p(0)
+--     a key:    k(n),k(n-1)...k(i)...k(0)
+-- and a mask:                 100..0 = (2^i)
+-- If and only if p(j)==k(j), i<=j<=n the result is True
+match :: Key -> Prefix -> Mask -> Bool
+match k p m = (mask k m) == p
+
+{--------------------------------------
+  3. Insertion
+--------------------------------------}
+
 -- if user insert a value already binding with existed key, 
 -- just over write the previous value
 -- usage: insert tree key x
@@ -52,34 +88,47 @@ insert t k x
        Leaf k' x' -> if k==k' then Leaf k x
                      else join k (Leaf k x) k' t -- t@(Leaf k' x')
        Branch p m l r
-          | matchPrefix k p m -> if zeroBit k m
-                                 then Branch p m (insert l k x) r
-                                 else Branch p m l (insert r k x)
-          | otherwise join k (Leaf k x) p t
+          | match k p m -> if zero k m
+                           then Branch p m (insert l k x) r
+                           else Branch p m l (insert r k x)
+          | otherwise -> join k (Leaf k x) p t -- t@(Branch p m l r)
 
--- Look up
+{-----------------------------------
+  4. Look up
+--------------------------------------}
+
+-- look up a key
 search :: IntTree a -> Key -> Maybe a
-search Empty k = Nothing
-search t 0 = value t
-search t k = if even k then search (left t) (k `div` 2)
-             else search (right t) (k `div` 2)
+search t k 
+  = case t of
+      Empty -> Nothing
+      Leaf k' x -> if k==k' then Just x else Nothing
+      Branch p m l r 
+             | match k p m -> if zero k m then search l k
+                              else search r k
+             | otherwise -> Nothing
 
--- Test helper
+{---------------------------------
+  5. Test helper
+---------------------------------}
+
+-- Generate a Int Patricia tree from a list
+-- Usage: fromList [(k1, x1), (k2, x2),..., (kn, xn)]
 fromList :: [(Key, a)] -> IntTree a
 fromList xs = foldl ins Empty xs where
     ins t (k, v) = insert t k v
 
--- k = ... a2, a1, a0 ==> k' = ai * m + k, where m=2^i
 toString :: (Show a)=>IntTree a -> String
-toString t = toStr t 0 1 where
-    toStr Empty k m = "."
-    toStr tr k m = "(" ++ (toStr (left tr) k (2*m)) ++
-                      " " ++ (show k) ++ (valueStr (value tr)) ++
-                      " " ++ (toStr (right tr) (m+k) (2*m)) ++ ")"
-    valueStr (Just x) = ":" ++ (show x)
-    valueStr _ = ""
+toString t =
+    case t of
+      Empty -> "."
+      Leaf k x -> (show k) ++ ":" ++ (show x)
+      Branch p m l r -> "[" ++ (show p) ++ "@" ++ (show m) ++ "]" ++ 
+                        "(" ++ (toString l) ++ ", " ++ (toString r) ++ ")"
 
--- Test cases
+{---------------------------------
+  6. Test cases
+----------------------------------}
 testIntTree = "t=" ++ (toString t) ++ "\nsearch t 4: " ++ (show $ search t 4) ++
               "\nsearch t 0: " ++ (show $ search t 0)
     where
