@@ -64,7 +64,7 @@ mask x m = (x .&. complement (m-1)) -- complement means bitwise not.
 -- because the bit next to a(i) is 1, so the result is False
 -- For a number y = a(n),a(n-1)...a(i),0,...a(0) the result is True.
 zero :: Int -> Mask -> Bool
-zero x m = (x .&. (m-1)) .&. (shiftR m 1) == 0
+zero x m = x .&. (shiftR m 1) == 0
 
 -- Test if a key matches a prefix above of the mask bit
 -- For a prefix: p(n),p(n-1)...p(i)...p(0)
