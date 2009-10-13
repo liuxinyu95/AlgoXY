@@ -13,6 +13,7 @@ haskell:
 
 image:
 	convert img/radix-tree.png img/radix-tree.eps
+	dot -Tps -o img/little-edian-trie.ps img/little-edian-trie.dot
 
 html:
 	htlatex.bat rbtree-en "html, imgdir:img/"

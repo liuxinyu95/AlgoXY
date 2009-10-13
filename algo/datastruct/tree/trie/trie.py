@@ -13,6 +13,8 @@ def trie_insert(t, key):
 
     p = t
     for c in key:
+        if c.isdigit():
+            c = eval(c)
         if not c in p.children: 
             p.children[c] = Trie()
         p = p.children[c]
@@ -20,9 +22,10 @@ def trie_insert(t, key):
     return t
 
 def trie_to_str(t, prefix=""):
+    to_str = lambda x: "%s" %x
     str="("+prefix
     for (k,v) in t.children.items():
-        str += ", "+trie_to_str(v, prefix+k)
+        str += ", "+trie_to_str(v, prefix+to_str(k))
     str+=")"
     return str
 
