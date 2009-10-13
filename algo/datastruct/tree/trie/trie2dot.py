@@ -19,10 +19,11 @@ def define_connection(n1, n2, edge):
 def define_node(node, prefix=""):
     res="\t"
     node_name = lambda x: "t"+x
+    to_str = lambda x: "%s" %x
     res += node_name(prefix)+"[label=\""+node.value+"\"];\n"
     for k, v in node.children.items():
-        res += define_node(v, prefix+k)
-        res += define_connection(node_name(prefix), node_name(prefix+k), k)
+        res += define_node(v, prefix+to_str(k))
+        res += define_connection(node_name(prefix), node_name(prefix+to_str(k)), to_str(k))
     return res
 
 def trie_to_dot(t, filename):

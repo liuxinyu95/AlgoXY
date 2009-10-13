@@ -141,21 +141,131 @@ insert the other bits to the left sub tree; if it is 1, we insert into right
 sub tree.
 
 However, there is a big problem if we treat the key as integer. Consider a binary
-trie shows in below figure
+trie shows in figure \ref{fig:little-endian-trie}. If the keys are represented in 
+string based on '0' and '1', all the three keys are different. While if they are
+turned into integers, they are identical. So if we want to insert a data with integer
+key 3, where should we put it into the trie?
+
+\begin{figure}[htbp]
+       \begin{center}
+	\includegraphics[scale=0.5]{img/little-endian-trie.ps}
+        \caption{a little-endian trie} \label{fig:little-endian-trie}
+       \end{center}
+\end{figure}
+
+If an integer is represented in 32-bits, and want to insert key 1 to a trie, it will end
+up with a 32 level tree. There are 31 node has only 1 left sub tree and the last node has
+a right sub tree. It is very inefficent in terms of space.
+
+Chris Okasaki shows a method to solve this problem in \cite{okasaki-int-map}. Instead of 
+normal big-endian integer, we can use little-endian integer as key. By using little-endian,
+decimal integer 1 is represent as binary 1, if we insert it to an empty binary trie, we
+get a trie with a root and a right leaf. It is only 1 level. For integer 3, it is 11 in 
+birnary, we needn't add any prefix 0, the position in the trie is unique.
+
+\subsection{Definition of Integer Trie}
+The definition of little-endian binary trie is simple, we can reuse the structure
+of binary tree, with its left sub tree to store 0 part and right tree to store 1 part.
+The augment data can be stored as value.
+
+\subsubsection*{Definition of little-edian interger trie in Haskell}
+In trie, since a node may not contains value, so we use Haskell Maybe data to represent
+this situation. A IntTrie node is either an empty node, or a branch node. The branch
+node contains a left child a `Maybe' value and a right child. 
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+data IntTrie a = Empty 
+               | Branch (IntTrie a) (Maybe a) (IntTrie a) -- left, value, right
+
+type Key = Int
+
+-- helpers
+left :: IntTrie a -> IntTrie a
+left (Branch l _ _) = l
+left Empty = Empty
+
+right :: IntTrie a -> IntTrie a
+right (Branch _ _ r) = r
+right Empty = Empty
+
+value :: IntTrie a -> Maybe a
+value (Branch _ v _) = v
+value Empty = Nothing
+\end{lstlisting}
+
+In order to access the children and value some helper functions are given.
+
+\subsection{Insertion of integer trie}
+Since the key is little-endian, when we insert a key into trie, we take the
+bit from right most (LSB). If it is 0, we go to the left child, and go to right
+for 1. if the child is empty, we need create new node, and repeat this until
+met the last bit (MSB) of the integer.
+
+\subsubsection*{Insertion of integer trie in pseudocode}
+
+%\begin{algorithm}
+\begin{algorithmic}
+\STATE $INT-TRIE-INSERT(T, x, data)$
+\IF{$T = NIL$}
+   \STATE $T \leftarrow EmptyNode$ \ENDIF
+
+  \STATE $p=T$
+  \WHILE{$x \neq 0$}
+    \IF{$EVEN(x) = TRUE$}
+      \STATE $p \leftarrow LEFT(p)$
+    \ELSE
+      \STATE $p \leftarrow RIGHT(p)$
+    \ENDIF
+    \IF{$p = NIL$}
+      \STATE $p \leftarrow EmptyNode$ \ENDIF
+    \STATE $x \leftarrow x/2$
+  \ENDWHILE
+  \STATE $DATA(p) \leftarrow data$
+\end{algorithmic}
+%\end{algorithm}
+
+\subsubsection*{Insertion of integer trie in Haskell}
+To simply the problem, If user insert a data with key already exists, we simply
+overwrite the previous stored data. This approach can be easily replaced with 
+other methods, such as storing data as a linked list etc.
+
+Insertion integer key into a trie can be implementated with Haskell as below.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+insert :: IntTrie a -> Key -> a -> IntTrie a
+insert t 0 x = Branch (left t) (Just x) (right t)
+insert t k x = 
+  if even k
+       then Branch (insert (left t) (k `div` 2) x) (value t) (right t)
+       else Branch (left t) (value t) (insert (right t) (k `div` 2) x)
+\end{lstlisting}
+
+If the key is zero, we just insert the data to current node, in other
+cases, the program go down along the trie according to the last bit
+of the key.
+
+To test if this program, some test helper functions are provided.
+
+\begin{lstlisting}
+fromList :: [(Key, a)] -> IntTrie a
+fromList xs = foldl ins Empty xs where
+    ins t (k, v) = insert t k v
+
+-- k = ... a2, a1, a0 ==> k' = ai * m + k, where m=2^i
+toString :: (Show a)=>IntTrie a -> String
+toString t = toStr t 0 1 where
+    toStr Empty k m = "."
+    toStr tr k m = "(" ++ (toStr (left tr) k (2*m)) ++
+                      " " ++ (show k) ++ (valueStr (value tr)) ++
+                      " " ++ (toStr (right tr) (m+k) (2*m)) ++ ")"
+    valueStr (Just x) = ":" ++ (show x)
+    valueStr _ = ""
+\end{lstlisting}
+
 
 Formal definition of trie will be given in alphabetic trie section
-
-% ================================================================
-% Definition
-% ================================================================
-\section{Definition}
-\label{definition}
-
-The definition of red black tree is very similar to the binary search tree.
-In imperative implementation, it has one more color member to denote if the node is red or black. The parent member is critical in red black tree, because
-it need back-track in insertion and deletion to keep the balancing properties.
-I added some member functions to the definition to help simplify the operations
-in node connection change.
 
 \subsubsection*{Python definition, imperative}
 \lstset{language=python}
