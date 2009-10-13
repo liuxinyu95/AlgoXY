@@ -164,6 +164,9 @@ get a trie with a root and a right leaf. It is only 1 level. For integer 3, it i
 birnary, we needn't add any prefix 0, the position in the trie is unique.
 
 \subsection{Definition of Integer Trie}
+Trie is invented by Edward Fredkin. It comes from ``retrieval'', pronouces 
+as /'tri:/ by the inventor, while it is pronouced /'trai/ ``try'' 
+by other authors \cite{wiki-trie}.
 The definition of little-endian binary trie is simple, we can reuse the structure
 of binary tree, with its left sub tree to store 0 part and right tree to store 1 part.
 The augment data can be stored as value.
@@ -264,175 +267,36 @@ toString t = toStr t 0 1 where
     valueStr _ = ""
 \end{lstlisting}
 
+fromList function can create a trie from a list of integer-data pairs.
+toString function can turn a trie data structure to readable string
+for printing. The following code shows a test.
 
-Formal definition of trie will be given in alphabetic trie section
-
-\subsubsection*{Python definition, imperative}
-\lstset{language=python}
 \begin{lstlisting}
-RED = 0
-BLACK = 1
-
-class Node:
-    def __init__(self, key, color = RED):
-        self.key = key;
-        self.color = color;
-        self.left = self.right = self.parent = None
-
-    def set_left(self, x):
-        self.left = x
-        if x != None:
-            x.parent = self
-
-    def set_right(self, x):
-        self.right = x
-        if x != None:
-            x.parent = self
-
-    def set_children(self, x, y):
-        self.set_left(x)
-        self.set_right(y)
-
-    #parent<->self ==> parent<->y
-    def replace_by(self, y):    
-        if self.parent is None:
-            if y!= None: y.parent = None
-        elif self.parent.left == self:
-            self.parent.set_left(y)
-        else:
-            self.parent.set_right(y)
-        self.parent = None
-
-    def sibling(self):
-        if self.parent.left == self:
-            return self.parent.right
-        else:
-            return self.parent.left
-
-    def uncle(self):
-        return self.parent.sibling()
-
-    def grandparent(self):
-        return self.parent.parent
+main = do
+  putStrLn (toString (fromList [(1, 'x'), (4, 'y'), (5, 'z')]))
 \end{lstlisting}
 
-Note that, in case we set a node y as a child of node y, we don't only
-make the left or right child point to y, but also make y's parent point to x.
-So this is bi-directional assignment. The same thing happens in replace\_by()
-member function, when we try to replace a node x with another node y, we
-mean make y connect to x's parent as a child. I also provide sibling, uncle,
-and grandparent members, those meanings are straightforward.
+This will output:
+\begin{verbatim}
+(((. 0 (. 4:'y' .)) 0 .) 0 ((. 1 (. 5:'z' .)) 1:'x' .))
+\end{verbatim}
 
-\subsubsection*{Haskell definition, recursive}
-Instead of provide 2 different constructors for red and black node, a color
-data is passed to node constructor. It makes the definition very similar to the 
-one in binary search tree.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-data Color = R | B deriving (Show, Eq) 
-data RBTree a = Empty
-              | Node Color (RBTree a) a (RBTree a)
-\end{lstlisting}
-
-\subsubsection*{Scheme/Lisp definition}
-Scheme/lisp just use a list to represent the red black tree, it
-contains 4 elements, a color a left child, a key and a right
-child. there is no explicit definition in Scheme/Lisp. 
-
-\subsubsection*{C++ definition}
-SGI STL version of red black tree has many layers, but the core part
-contains all the necessary information of a red black tree, the
-color, the left and right children, the parent and the value.
-
-\lstset{language=c++}
-\begin{lstlisting}
-typedef bool _Rb_tree_Color_type;
-const _Rb_tree_Color_type _S_rb_tree_red = false;
-const _Rb_tree_Color_type _S_rb_tree_black = true;
-
-struct _Rb_tree_node_base
-{
-  typedef _Rb_tree_Color_type _Color_type;
-  typedef _Rb_tree_node_base* _Base_ptr;
-
-  _Color_type _M_color; 
-  _Base_ptr _M_parent;
-  _Base_ptr _M_left;
-  _Base_ptr _M_right;
-
-  //...
-
-template <class _Value>
-struct _Rb_tree_node : public _Rb_tree_node_base
-{
-  typedef _Rb_tree_node<_Value>* _Link_type;
-  _Value _M_value_field;
-};
-
-template <class _Tp, ...>
-struct _Rb_tree_base
-{
-  //...
-protected:
-  _Rb_tree_node<_Tp>* _M_header;
-  //...
-
-template <class _Key, class _Value, ... >
-class _Rb_tree : protected _Rb_tree_base<_Value, ...> {
-\end{lstlisting}
-
-The first layer is base class of red black tree node, it defines
-color, parent, left and right children members. The second layer
-defines the red black tree node, it defines the value field based on
-the base node class. The third layer define the base class of red
-black tree, it has a header member, which point to the tree node.
-This approach abstract the red black tree concept from the node
-concept. The last layer defines the red black tree and provided it
-finally as a concept of container. for the detail, please refer to \cite{sgi-stl}.
+Figure \ref{int-trie} shows this result\cite{okasaki-int-map}. 
+\begin{figure}[htbp]
+       \begin{center}
+	\includegraphics[scale=0.5]{img/int-trie.eps}
+        \caption{An little-endian integer binary tree for the map \{$ 1 \rightarrow x, 4 \rightarrow y, 5 \rightarrow z$\}.} \label{fig:int-trie}
+       \end{center}
+\end{figure}
 
 % ================================================================
-% Rotation and helper functions
+%               Int Patricia
 % ================================================================
-\subsection{Rotation and helper functions} \label{helper-fun}
+\section{Integer Patricia} 
+\label{int-patricia}
 
-Rotation is one of the key operations to in red black tree. we know that
-different binary search tree can have the data in same order by in-order walk.
-Rotation can keep the data order while changing the tree. 
-
-In functional implementation, we can use pattern matching and data construction.
-So there is no need to provide rotation functions at all (see below sections).
-While the imperative rotation can be simplified a lot by using the member functions we defined.
-
-\subsubsection*{Python rotation functions}
-\lstset{language=Python}
-\begin{lstlisting}
-# (a x (b y c)) ==> ((a x b) y c)
-def left_rotate(t, x):
-    (parent, y) = (x.parent, x.right)
-    (a, b, c)   = (x.left, y.left, y.right)
-    x.replace_by(y)
-    x.set_children(a, b)
-    y.set_children(x, c)
-    if parent is None:
-        t=y
-    return t
-
-# (a x (b y c)) <== ((a x b) y c)
-def right_rotate(t, y):
-    (parent, x) = (y.parent, y.left)
-    (a, b, c)   = (x.left, x.right, y.right)
-    y.replace_by(x)
-    y.set_children(b, c)
-    x.set_children(a, y)
-    if parent is None:
-        t = x
-    return t
-\end{lstlisting}
-
-I also provide a function for batch color setting. It accept two lists,
-one is list of nodes, the other is list of colors. It helps to set color
-to each node in order.
+It's very easy to find the drawbacks of integer trie. Trie wasts a lot of 
+spaces. 
 
 \subsubsection*{Python helper function}
 \lstset{language=Python}
@@ -1790,17 +1654,8 @@ Maps''. Workshop on ML, September 1998, pages 77-86, http://www.cse.ogi.edu/~and
 \bibitem{wiki-suffix-tree}
 Suffix Tree, Wikipedia. http://en.wikipedia.org/wiki/Suffix\_tree
 
-\bibitem{wiki}
-Wikipedia. ``Red-black tree''. http://en.wikipedia.org/wiki/Red-black\_tree
-
-\bibitem{lyn}
-Lyn Turbak. ``Red-Black Trees''. cs.wellesley.edu/~cs231/fall01/red-black.pdf Nov. 2, 2001.
-
-\bibitem{sgi-stl}
-http://www.sgi.com/tech/stl/
-
-\bibitem{hj-stl}
-Hou Jie. ``The annotated STL sources (using SGI STL)''. ISBN:7-5609-2699-1 http://press.hust.edu.cn. 2002.
+\bibitem{wiki-trie}
+Trie, Wikipedia. http://en.wikipedia.org/wiki/Trie
 
 \end{thebibliography}
 
