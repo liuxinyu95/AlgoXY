@@ -29,7 +29,7 @@ def lookup(t, key):
 def trie_to_str(t, prefix=""):
     to_str = lambda x: "%s" %x
     str="("+prefix
-    if not t.value is None:
+    if t.value is not None:
         str += ":"+t.value
     for (k,v) in t.children.items():
         str += ", "+trie_to_str(v, prefix+to_str(k))
@@ -70,14 +70,5 @@ class TrieTest:
         t2 = map_to_trie({"001":'y', "100":'x', "101":'z'})
         print trie_to_str(t2)
 
-def main(argv):
-    (filename, type, ts)=get_args(argv)
-    if type == "trie":
-        t=str_to_trie(ts)
-        trie_to_dot(t, filename)
-
 if __name__ == "__main__":
     TrieTest().run()
-
-#reference
-#[1] http://www.graphviz.org/mywiki/FaqBalanceTree
