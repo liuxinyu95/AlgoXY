@@ -1,15 +1,15 @@
 HEADER = 
-SOURCE = trie.cpp
-#CXX_FLAGS = -I/usr/include/boost-1_33_1
+SOURCE = 
 
 .PHONY: all
 
-all: $(HEADER)
-	g++ $(CXX_FLAGS) $(SOURCE) -o main
+all: image
+
+cpp:
+	make cpp -C src
 
 haskell:
-	ghc IntTrie.hs -o inttrie
-	ghc IntPatricia.hs -o intpatricia
+	make haskell -C src
 
 image:
 	convert img/radix-tree.png img/radix-tree.eps
@@ -19,3 +19,6 @@ image:
 html:
 	htlatex.bat rbtree-en "html, imgdir:img/"
 	mv *.png img/
+
+clean:
+	rm *.aux *.dvi *.log *.out *.pdf *~

@@ -4,7 +4,9 @@ SOURCE = trie.cpp
 
 .PHONY: all
 
-all: $(HEADER)
+all: cpp haskell
+
+cpp: $(HEADER)
 	g++ $(CXX_FLAGS) $(SOURCE) -o main
 
 haskell:

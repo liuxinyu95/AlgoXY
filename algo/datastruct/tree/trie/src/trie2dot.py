@@ -22,7 +22,7 @@ def define_node(node, prefix=""):
     node_name = lambda x: "t"+x
     to_str = lambda x: "%s" %x
     node_attrib = "[label=\"\"];\n"
-    if not node.value is None:
+    if node.value is not None:
         node_attrib = "[label=\""+prefix + ":" + node.value + "\", shape=ellipse];\n"
     res += node_name(prefix)+node_attrib
     for k, v in node.children.items():
