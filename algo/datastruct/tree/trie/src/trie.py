@@ -21,6 +21,11 @@ def trie_insert(t, key, value = None):
     p.value = value
     return t
 
+def lookup(t, key):
+    if t is None:
+        return None
+    return None
+
 def trie_to_str(t, prefix=""):
     to_str = lambda x: "%s" %x
     str="("+prefix
