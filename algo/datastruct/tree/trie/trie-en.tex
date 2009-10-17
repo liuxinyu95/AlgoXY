@@ -287,7 +287,9 @@ toString t = toStr t 0 1 where
 
 fromList function can create a trie from a list of integer-data pairs.
 toString function can turn a trie data structure to readable string
-for printing. The following code shows a test.
+for printing. This is a modified in-order tree traverse, since the number
+stored is in little-endian, the program store the $2^m$ to calculate
+the keys. The following code shows a test.
 
 \begin{lstlisting}
 main = do
@@ -335,15 +337,15 @@ def trie_insert(t, key, value = None):
 In order to test this insertion program, some test helpers are provided:
 
 \begin{lstlisting}
-def trie_to_str(t, prefix=0):
+def trie_to_str(t, prefix=0, depth=0):
     to_str = lambda x: "%s" %x
     str="("+to_str(prefix)
-    if not t.value is None:
+    if t.value is not None:
         str += ":"+t.value
-    if not t.left is None:
-        str += ", "+trie_to_str(t.left, (prefix<<1))
-    if not t.right is None:
-        str += ", "+trie_to_str(t.right, (prefix<<1)+1)
+    if t.left is not None:
+        str += ", "+trie_to_str(t.left, prefix, depth+1)
+    if t.right is not None:
+        str += ", "+trie_to_str(t.right, (1<<depth)+prefix, depth+1)
     str+=")"
     return str
 
@@ -394,12 +396,21 @@ if __name__ == "__main__":
 Running this program will print the following result.
 
 \begin{verbatim}
-(0, (0, (0, (1))), (1, (2, (5))))
-(0, (0, (0, (1))), (1, (2, (5))))
-(0, (0, (0, (1:y))), (1:x, (2, (5:z))))
+(0, (0, (0, (4))), (1, (1, (5))))
+(0, (0, (0, (4))), (1, (1, (5))))
+(0, (0, (0, (4:y))), (1:x, (1, (5:z))))
 \end{verbatim}
 
-Please note that by printing 
+Please note that by pre-ordre traverse trie, we can get a 'lexcical' order
+result of the keys as below:
+
+\begin{verbatim}
+001
+100
+101
+\end{verbatim}
+
+We'll go back to this feature of trie later in alphabetic trie section.
 
 % ================================================================
 %               Look up in integer binary trie
@@ -461,6 +472,48 @@ This program will output these result.
 t=(((. 0 (. 4:'y' .)) 0 .) 0 ((. 1 (. 5:'z' .)) 1:'x' .))
 search t 4: Just 'y'
 search t 0: Nothing
+\end{verbatim}
+
+\subsubsection*{Look up implemented in Python}
+By translate the algorithm in pseudocode, we can easily get a python 
+implementation.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def lookup(t, key):
+    while key != 0 and (t is not None):
+        if key & 1 == 0:
+            t = t.left
+        else:
+            t = t.right
+        key = key>>1
+    if t is not None:
+        return t.value
+    else:
+        return None
+\end{lstlisting}
+
+In this implementation, instead of using even-odd property, bit-wise
+manipulation is used to test if a bit is 0 or 1.
+
+Here is the smoke test of the lookup function.
+
+\begin{lstlisting}
+class IntTrieTest:
+    #...
+    def test_lookup(self):
+        t = map_to_trie({4:'y', 1:'x', 5:'z'})
+        print "look up 4: ", lookup(t, 4)
+        print "look up 5: ", lookup(t, 5)
+        print "look up 0: ", lookup(t, 0)
+\end{lstlisting}
+
+The output of the test cases is as below.
+
+\begin{verbatim}
+look up 4:  y
+look up 5:  z
+look up 0:  None
 \end{verbatim}
 
 % ================================================================
