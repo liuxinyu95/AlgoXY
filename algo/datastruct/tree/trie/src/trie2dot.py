@@ -13,6 +13,7 @@ import sys
 import string
 import getopt
 import trie
+import patricia
 
 def define_connection(n1, n2, edge):
     return "\t"+n1+"->"+n2+"[label=\""+edge+"\"]\n"
@@ -25,7 +26,7 @@ def define_node(node, prefix=""):
     if node.value is not None:
         node_attrib = "[label=\""+prefix + ":" + node.value + "\", shape=ellipse];\n"
     res += node_name(prefix)+node_attrib
-    for k, v in node.children.items():
+    for k, v in sorted(node.children.items()):
         res += define_node(v, prefix+to_str(k))
         res += define_connection(node_name(prefix), node_name(prefix+to_str(k)), to_str(k))
     return res
@@ -43,7 +44,7 @@ def trie_to_dot(t, filename):
 def get_args(argv):
     try:
         type="trie"
-        opts, args = getopt.getopt(argv, "o:p:")
+        opts, args = getopt.getopt(argv, "o:t:")
         for opt, arg in opts:
             if opt == "-o":
                 filename=arg
@@ -77,6 +78,13 @@ def main(argv):
         else:
             t=trie.list_to_trie(ts.split(", "))
         print trie.trie_to_str(t)
+        trie_to_dot(t, filename)
+    if type == "patricia":
+        if is_map(ts):
+            t=patricia.map_to_patricia(to_map(ts))
+        else:
+            t=patricia.list_to_patricia(ts.split(", "))
+        print patricia.to_string(t)
         trie_to_dot(t, filename)
 
 if __name__ == "__main__":

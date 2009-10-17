@@ -37,11 +37,11 @@ join :: Prefix -> IntTree a -> Prefix -> IntTree a -> IntTree a
 join p1 t1 p2 t2 = if zero p1 m then Branch p m t1 t2
                                 else Branch p m t2 t1 
     where
-      (p, m) = lcf p1 p2
+      (p, m) = lcp p1 p2
 
--- 'lcf' means 'longest common prefix'
-lcf :: Prefix -> Prefix -> (Prefix, Mask)
-lcf p1 p2 = (p, m) where
+-- 'lcp' means 'longest common prefix'
+lcp :: Prefix -> Prefix -> (Prefix, Mask)
+lcp p1 p2 = (p, m) where
     m = bit $ highestBit (p1 `xor` p2)
     p = mask p1 m
 

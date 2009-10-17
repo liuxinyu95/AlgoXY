@@ -13,8 +13,6 @@ def trie_insert(t, key, value = None):
 
     p = t
     for c in key:
-        if c.isdigit():
-            c = eval(c) # fix a problem in python.dict
         if not c in p.children: 
             p.children[c] = Trie()
         p = p.children[c]
@@ -27,12 +25,11 @@ def lookup(t, key):
     return None
 
 def trie_to_str(t, prefix=""):
-    to_str = lambda x: "%s" %x
     str="("+prefix
     if t.value is not None:
         str += ":"+t.value
-    for (k,v) in t.children.items():
-        str += ", "+trie_to_str(v, prefix+to_str(k))
+    for k,v in sorted(t.children.items()):
+        str += ", "+trie_to_str(v, prefix+k)
     str+=")"
     return str
 
