@@ -37,7 +37,7 @@ def lookup(t, key):
     else:
         return None
 
-def trie_to_str(t, prefix=0, depth=1):
+def trie_to_str(t, prefix=0, depth=0):
     to_str = lambda x: "%s" %x
     str="("+to_str(prefix)
     if t.value is not None:
@@ -45,7 +45,7 @@ def trie_to_str(t, prefix=0, depth=1):
     if t.left is not None:
         str += ", "+trie_to_str(t.left, prefix, depth+1)
     if t.right is not None:
-        str += ", "+trie_to_str(t.right, 1<<(depth+1)+prefix, depth+1)
+        str += ", "+trie_to_str(t.right, (1<<depth)+prefix, depth+1)
     str+=")"
     return str
 
@@ -84,6 +84,7 @@ class IntTrieTest:
     def test_lookup(self):
         t = map_to_trie({4:'y', 1:'x', 5:'z'})
         print "look up 4: ", lookup(t, 4)
+        print "look up 5: ", lookup(t, 5)
         print "look up 0: ", lookup(t, 0)
 
 if __name__ == "__main__":
