@@ -132,7 +132,7 @@ Let's give a definition of the data structure in figure \ref{radix-trie}.
 To be more accurate, it should be called as \emph{binary trie}. a binary
 trie is a binary tree in which the placement of each key is controlled by
 its bits, each 0 means ``go left at the next node'' and each 1 means ``go
-right at the next node''\ref{okasaki-int-map}.
+right at the next node''\cite{okasaki-int-map}.
 
 Because integers can be represented in binary format in computer, it is 
 possible to store integer keys rather than 0,1 strings. When we insert an
@@ -140,21 +140,22 @@ integer as a new key to the trie, we take first bit, if it is 0, we recursively
 insert the other bits to the left sub tree; if it is 1, we insert into right
 sub tree.
 
-However, there is a big problem if we treat the key as integer. Consider a binary
-trie shows in figure \ref{fig:little-endian-trie}. If the keys are represented in 
+However, there is a problem if we treat the key as integer. Consider a binary
+trie shows in figure \ref{fig:big-endian-trie}. If the keys are represented in 
 string based on '0' and '1', all the three keys are different. While if they are
 turned into integers, they are identical. So if we want to insert a data with integer
 key 3, where should we put it into the trie?
 
 \begin{figure}[htbp]
        \begin{center}
-	\includegraphics[scale=0.5]{img/little-endian-trie.ps}
-        \caption{a little-endian trie} \label{fig:little-endian-trie}
+	\includegraphics[scale=0.5]{img/big-endian-trie.ps}
+        \caption{a little-endian trie} \label{fig:big-endian-trie}
        \end{center}
 \end{figure}
 
-If an integer is represented in 32-bits, and want to insert key 1 to a trie, it will end
-up with a 32 level tree. There are 31 node has only 1 left sub tree and the last node has
+Suppose an integer is represented in 32-bits and all prefix zero can't be omitted. 
+If we want to insert key 1 to a trie, it will end up with a 32 level tree. 
+There are 31 node has only 1 left sub tree and the last node has
 a right sub tree. It is very inefficent in terms of space.
 
 Chris Okasaki shows a method to solve this problem in \cite{okasaki-int-map}. Instead of 
@@ -293,19 +294,21 @@ the keys. The following code shows a test.
 
 \begin{lstlisting}
 main = do
-  putStrLn (toString (fromList [(1, 'x'), (4, 'y'), (5, 'z')]))
+  putStrLn (toString (fromList [(1, 'a'), (4, 'b'), (5, 'c'), (9, 'd')]))
 \end{lstlisting}
 
 This will output:
 \begin{verbatim}
-(((. 0 (. 4:'y' .)) 0 .) 0 ((. 1 (. 5:'z' .)) 1:'x' .))
+(((. 0 (. 4:'b' .)) 0 .) 0 (((. 1 (. 9:'d' .)) 1 (. 5:'c' .)) 1:'a' .))
 \end{verbatim}
 
 Figure \ref{int-trie} shows this result. 
 \begin{figure}[htbp]
        \begin{center}
 	\includegraphics[scale=0.5]{img/int-trie.ps}
-        \caption{An little-endian integer binary tree for the map \{$ 1 \rightarrow x, 4 \rightarrow y, 5 \rightarrow z$\}.} \label{fig:int-trie}
+        \caption{An little-endian integer binary trie for the map 
+          \{$ 1 \rightarrow a, 4 \rightarrow b, 5 \rightarrow c, 9 \rightarrow d$\}.} 
+        \label{fig:int-trie}
        \end{center}
 \end{figure}
 
@@ -386,7 +389,7 @@ class IntTrieTest:
         print trie_to_str(t)
         t1 = list_to_trie([1, 4, 5])
         print trie_to_str(t1)
-        t2 = map_to_trie({4:'y', 1:'x', 5:'z'})
+        t2 = map_to_trie({4:'b', 1:'a', 5:'c', 9:'d'})
         print trie_to_str(t2)
 
 if __name__ == "__main__":
@@ -398,19 +401,22 @@ Running this program will print the following result.
 \begin{verbatim}
 (0, (0, (0, (4))), (1, (1, (5))))
 (0, (0, (0, (4))), (1, (1, (5))))
-(0, (0, (0, (4:y))), (1:x, (1, (5:z))))
+(0, (0, (0, (4:b))), (1:a, (1, (1, (9:d)), (5:c))))
 \end{verbatim}
 
-Please note that by pre-ordre traverse trie, we can get a 'lexcical' order
-result of the keys as below:
+Please note that by pre-ordre traverse trie, we can get a 'lexical' order
+result of the keys. For instance, the last result print the little-endian
+format of key 1, 4, 5, 9 as below.
 
 \begin{verbatim}
 001
-100
+1
+1001
 101
 \end{verbatim}
 
-We'll go back to this feature of trie later in alphabetic trie section.
+They are in lexcical order. We'll go back to this feature of trie later in 
+alphabetic trie section.
 
 % ================================================================
 %               Look up in integer binary trie
@@ -460,7 +466,7 @@ testIntTrie = "t=" ++ (toString t) ++
               "\nsearch t 4: " ++ (show $ search t 4) ++
               "\nsearch t 0: " ++ (show $ search t 0)
     where
-      t = fromList [(1, 'x'), (4, 'y'), (5, 'z')]
+      t = fromList [(1, 'a'), (4, 'b'), (5, 'c'), (9, 'd')]
 
 main = do
   putStrLn testIntTrie
@@ -469,8 +475,8 @@ main = do
 This program will output these result.
 
 \begin{verbatim}
-t=(((. 0 (. 4:'y' .)) 0 .) 0 ((. 1 (. 5:'z' .)) 1:'x' .))
-search t 4: Just 'y'
+t=(((. 0 (. 4:'b' .)) 0 .) 0 (((. 1 (. 9:'d' .)) 1 (. 5:'c' .)) 1:'a' .))
+search t 4: Just 'b'
 search t 0: Nothing
 \end{verbatim}
 
@@ -519,7 +525,7 @@ look up 0:  None
 % ================================================================
 %               Int Patricia
 % ================================================================
-\section{Integer Patricia} 
+\section{Integer Patricia Tree} 
 \label{int-patricia}
 
 It's very easy to find the drawbacks of integer binary trie. Trie wasts a lot of 
@@ -530,15 +536,15 @@ which have only one child. Patricia is such a data structure invented by
 Donald R. Morrison. Patricia means practical algorithm to retrieve information coded
 in aphanumeric\cite{patricia-morrison}. Wikipedia redirect Patricia as Radix tree.
 
-Chris Okasaki gave his implementation of Integer Patricia in paper \cite{okasaki-int-map}. 
-If we compress the chained nodes which have only one child together in figure \ref{fig:int-trie},
+Chris Okasaki gave his implementation of Integer Patricia tree in paper \cite{okasaki-int-map}. 
+If we merge the chained nodes which have only one child together in figure \ref{fig:int-trie},
 We can get a patricia as shown in figure \ref{fig:little-endian-patricia}.
 
 \begin{figure}[htbp]
        \begin{center}
 	\includegraphics[scale=0.5]{img/little-endian-patricia.ps}
         \caption{Little endian patricia for the map 
-                        \{$ 1 \rightarrow x, 4 \rightarrow y, 5 \rightarrow z$\}.} 
+                        \{$ 1 \rightarrow a, 4 \rightarrow b, 5 \rightarrow c, 9 \rightarrow d$\}.} 
         \label{fig:little-endian-patricia}
        \end{center}
 \end{figure}
