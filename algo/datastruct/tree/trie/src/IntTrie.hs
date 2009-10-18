@@ -61,7 +61,7 @@ toString t = toStr t 0 1 where
 testIntTrie = "t=" ++ (toString t) ++ "\nsearch t 4: " ++ (show $ search t 4) ++
               "\nsearch t 0: " ++ (show $ search t 0)
     where
-      t = fromList [(1, 'x'), (4, 'y'), (5, 'z')]
+      t = fromList [(1, 'a'), (4, 'b'), (5, 'c'), (9, 'd')]
 
 main = do
   putStrLn testIntTrie

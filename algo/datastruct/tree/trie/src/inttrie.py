@@ -78,7 +78,7 @@ class IntTrieTest:
         print trie_to_str(t)
         t1 = list_to_trie([1, 4, 5])
         print trie_to_str(t1)
-        t2 = map_to_trie({4:'y', 1:'x', 5:'z'})
+        t2 = map_to_trie({4:'b', 1:'a', 5:'c', 9:'d'})
         print trie_to_str(t2)
 
     def test_lookup(self):
