@@ -22,6 +22,12 @@ class IntTree:
     def is_leaf(self):
         return self.left is None and self.right is None
 
+    def get_prefix(self):
+        if self.prefix is None:
+            return self.key
+        else:
+            return self.prefix
+
 def maskbit(x, mask):
     pass
 
@@ -35,9 +41,8 @@ def zero(x, mask):
 
 def branch(t1, t2):
     t = IntTree()
-    #need cover cases: t1 is leaf, or t2 is leaf
-    (t.prefix, t.mask) = lcp(t1.prefix, t2.prefix)
-    if zero(t1.prefix, t.mask):
+    (t.prefix, t.mask) = lcp(t1.get_prefix(), t2.get_prefix())
+    if zero(t1.get_prefix(), t.mask):
         t.set_children(t1, t2)
     else:
         t.set_children(t2, t1)
