@@ -9,11 +9,11 @@ class IntTree:
         self.prefix = self.mask = None
         self.left = self.right = None
 
-    def set_children(l, r):
+    def set_children(self, l, r):
         self.left = l
         self.right = r
 
-    def replace_child(x, y):
+    def replace_child(self, x, y):
         if self.left == x:
             self.left = y
         else:
@@ -29,7 +29,7 @@ class IntTree:
             return self.prefix
 
 def maskbit(x, mask):
-    pass
+    return x & (~(mask-1))
 
 def match(key, tree):
     if tree.is_leaf():
@@ -37,7 +37,15 @@ def match(key, tree):
     return maskbit(key, tree.mask) == tree.prefix
 
 def zero(x, mask):
-    pass
+    return x & (mask>>1) == 0
+
+def lcp(p1, p2):
+    diff = (p1 ^ p2)
+    mask=1
+    while(diff!=0):
+        diff>>=1
+        mask<<=1
+    return (maskbit(p1, mask), mask)
 
 def branch(t1, t2):
     t = IntTree()
@@ -73,3 +81,44 @@ def insert(t, key, value = None):
                     parent.replace_child(node, new_node)
             break
     return t
+
+def to_string(t):
+    to_str = lambda x: "%s" %x
+    if t is None:
+        return ""
+    if t.is_leaf():
+        str = to_str(t.key)
+        if t.value is not None:
+            str += ":"+to_str(t.value)
+        return str
+    str ="["+to_str(t.prefix)+"@"+to_str(t.mask)+"]"
+    str+="("+to_string(t.left)+","+to_string(t.right)+")"
+    return str
+
+def list_to_patricia(l):
+    t = None
+    for x in l:
+        t = insert(t, x)
+    return t
+
+def map_to_patricia(m):
+    t = None
+    for k, v in m.items():
+        t = insert(t, k, v)
+    return t
+
+class IntTreeTest:
+    def run(self):
+        self.test_insert()
+
+    def test_insert(self):
+        print "test insert"
+        t = list_to_patricia([6])
+        print to_string(t)
+        t = list_to_patricia([6, 7])
+        print to_string(t)
+        t = map_to_patricia({1:'x', 4:'y', 5:'z'})
+        print to_string(t)
+
+if __name__ == "__main__":
+    IntTreeTest().run()
