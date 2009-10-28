@@ -20,6 +20,7 @@ image:
 	dot -Tps -o img/int-patricia-insert-b.ps img/int-patricia-insert-b.dot
 	dot -Tps -o img/int-patricia-insert-c.ps img/int-patricia-insert-c.dot
 	dot -Tps -o img/int-patricia-insert-d.ps img/int-patricia-insert-d.dot
+	dot -Tps -o img/int-patricia-haskell-insert.ps img/int-patricia-haskell-insert.dot
 
 html:
 	htlatex.bat trie-en "html, imgdir:img/"
