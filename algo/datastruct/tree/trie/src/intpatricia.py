@@ -82,6 +82,19 @@ def insert(t, key, value = None):
             break
     return t
 
+def lookup(t, key):
+    if t is None:
+        return None
+    while (not t.is_leaf()) and match(key, t):
+        if zero(key, t.mask):
+            t = t.left
+        else:
+            t = t.right
+    if t.is_leaf() and t.key == key:
+        return t.value
+    else:
+        return None
+
 def to_string(t):
     to_str = lambda x: "%s" %x
     if t is None:
@@ -110,6 +123,7 @@ def map_to_patricia(m):
 class IntTreeTest:
     def run(self):
         self.test_insert()
+        self.test_lookup()
 
     def test_insert(self):
         print "test insert"
@@ -119,6 +133,12 @@ class IntTreeTest:
         print to_string(t)
         t = map_to_patricia({1:'x', 4:'y', 5:'z'})
         print to_string(t)
+
+    def test_lookup(self):
+        print "test look up"
+        t = map_to_patricia({1:'x', 4:'y', 5:'z'})
+        print "look up 4: ", lookup(t, 4)
+        print "look up 0: ", lookup(t, 0)
 
 if __name__ == "__main__":
     IntTreeTest().run()
