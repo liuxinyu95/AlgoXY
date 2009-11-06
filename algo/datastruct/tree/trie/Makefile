@@ -8,6 +8,9 @@ all: image
 cpp:
 	make cpp -C src
 
+c:
+	make c -C src
+
 haskell:
 	make haskell -C src
 
