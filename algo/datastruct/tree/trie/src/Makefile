@@ -9,6 +9,9 @@ all: cpp haskell
 cpp: $(HEADER)
 	g++ $(CXX_FLAGS) $(SOURCE) -o main
 
+c:
+	gcc trie.c -o triec
+
 haskell:
 	ghc IntTrie.hs -o inttrie
 	ghc IntPatricia.hs -o intpatricia
