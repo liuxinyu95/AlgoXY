@@ -70,7 +70,7 @@ struct Trie* test_insert(){
   t = insert(t, "another", 0);
   t = insert(t, "boy", 0);
   t = insert(t, "bool", 0);
-  t = insert(t, "boy", 0);
+  t = insert(t, "zoo", 0);
   print_trie(t, "");
   return t;
 }
