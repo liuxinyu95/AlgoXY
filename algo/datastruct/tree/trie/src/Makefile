@@ -15,6 +15,7 @@ c:
 haskell:
 	ghc IntTrie.hs -o inttrie
 	ghc IntPatricia.hs -o intpatricia
+	ghc Trie.hs -o trie
 
 clean:
 	rm *.exe *.hi *~ *.o *.pyc
