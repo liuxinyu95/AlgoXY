@@ -6,9 +6,6 @@ data Trie a = Trie { value :: Maybe a
 
 empty = Trie Nothing []
 
-isEmpty (Trie Nothing []) = True
-isEmpty _ = False
-
 -- insert
 -- usage: insert t "zoo" "a place where animals are for public to see"
 insert :: Trie a -> String -> a -> Trie a
@@ -32,17 +29,19 @@ fromList xs = foldl ins empty xs where
 
 toString :: (Show a)=> Trie a -> String
 toString t = toStr t "" where
-    toStr t prefix = "(" ++ prefix ++ showMaybe (value t) ++ showChildren (children t) prefix ++ "), "
+    toStr t prefix = "(" ++ prefix ++ showMaybe (value t) ++ 
+                     (concat $ map (\(k, v)-> ", " ++ toStr v (prefix++[k])) 
+                                 (children t))
+                     ++ ")"
     showMaybe Nothing = ""
     showMaybe (Just x)  = ":" ++ show x
-    showChildren [] _ = ""
-    showChildren (p:ps) prefix = (toStr (snd p) prefix++[(fst p)]) ++", "++ (showChildren ps prefix)
 
-testTrie = "t=" ++ (toString t)
+testTrie = "t=" ++ (toString t) ++ 
+           "\nsearch t an: " ++ (show $ find t "an") ++
+           "\nsearch t boy: " ++ (show $ find t "boy") ++
+           "\nsearch t the: " ++ (show $ find t "the")
     where 
-      t = fromList [("a", 1)]
-      --t = fromList [("a", 1), ("an", 2), ("another", 7), ("boy", 3), ("bool", 4), ("zoo", 3)]
+      t = fromList [("a", 1), ("an", 2), ("another", 7), ("boy", 3), ("bool", 4), ("zoo", 3)]
 
 main = do
   putStrLn testTrie
-  putStrLn $ toString ((Trie Nothing [('a', (Trie (Just 1) []))])::(Trie Int))
