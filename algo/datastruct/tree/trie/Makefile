@@ -25,6 +25,7 @@ image:
 	dot -Tps -o img/int-patricia-insert-d.ps img/int-patricia-insert-d.dot
 	dot -Tps -o img/int-patricia-haskell-insert.ps img/int-patricia-haskell-insert.dot
 	dot -Tps -o img/trie-of-26.ps img/trie-of-26.dot
+	dot -Tps -o img/patricia-tree.ps img/patricia-tree.dot
 
 html:
 	htlatex.bat trie-en "html, imgdir:img/"
