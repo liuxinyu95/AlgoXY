@@ -128,7 +128,7 @@ refer to appendix for detailed information about build and run.
 \section{Integer Trie}
 \label{int-trie}
 
-Let's give a definition of the data structure in figure \ref{radix-trie}.
+Let's give a definition of the data structure in figure \ref{fig:radix-tree}.
 To be more accurate, it should be called as \emph{binary trie}. a binary
 trie is a binary tree in which the placement of each key is controlled by
 its bits, each 0 means ``go left at the next node'' and each 1 means ``go
@@ -1521,12 +1521,35 @@ This process can be decribed in pseudo code as below.
 \end{algorithmic}
 
 \subsubsection*{Look up in alphabetic trie in Haskell}
-in haskell...
+To express this algorithm in Haskell, we can utlize 'lookup' function
+in Haskell standard library\cite{wiki-trie}.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
+find :: Trie a -> String -> Maybe a
+find t [] = value t
+find t (k:ks) = case lookup k (children t) of
+                  Nothing -> Nothing
+                  Just t' -> find t' ks
+\end{lstlisting}
+
+We can append some search test cases right after insert.
+
+\begin{lstlisting}
+testTrie = "t=" ++ (toString t) ++ 
+           "\nsearch t an: " ++ (show (find t "an")) ++
+           "\nsearch t boy: " ++ (show (find t "boy")) ++
+           "\nsearch t the: " ++ (show (find t "the"))
 ...
 \end{lstlisting}
+
+Here is the search result.
+
+\begin{verbatim}
+search t an: Just 2
+search t boy: Just 3
+search t the: Nothing
+\end{verbatim}
 
 \subsubsection*{Look up in alphabetic trie in C++}
 in C++...
@@ -1538,12 +1561,43 @@ in C++...
 
 
 \subsubsection*{Look up in alphabetic trie in Python}
-in python...
+By translating the algorithm in Python language, we can get 
+a imperative program.
 
 \lstset{language=Python}
 \begin{lstlisting}
-...
+def lookup(t, key):
+    if t is None:
+        return None
+
+    p = t
+    for c in key:
+        if not c in p.children:
+            return None
+        p = p.children[c]
+    return p.value
 \end{lstlisting}
+
+We can use the similiar test cases to test looking up function.
+
+\begin{lstlisting}
+class TrieTest:
+    #...
+    def test_lookup(self):
+        t = map_to_trie({"a":1, "an":2, "another":7, "b":1, 
+                         "bool":4, "bob":3, "home":4})
+        print "find another: ", lookup(t, "another")
+        print "find home: ", lookup(t, "home")
+        print "find the: ", lookup(t, "the")
+\end{lstlisting}
+
+The result of these test cases are.
+
+\begin{verbatim}
+find another:  7
+find home:  4
+find the:  None
+\end{verbatim}
 
 \subsubsection*{Look up in alphabetic trie in Scheme/Lisp}
 in scheme/lisp...
@@ -1557,13 +1611,33 @@ in scheme/lisp...
 %                 Alphabetic Patricia Tree
 % ================================================================
 \section{Alphabetic Patricia Tree}
-Alphabetic patricia...
+Alphabetic Trie has the same problem as integer Trie. It is not memory
+efficient. We can use the same method to compress alphabetic Trie into
+Patricia.
 
 % ================================================================
 %                 Definition of Alphabetic Patricia Tree
 % ================================================================
 \subsection{Definition of alphabetic Patricia Tree}
-Definition...
+Alphabetic patricia tree is a special tree, each node contains
+multiple branches. All children of a node share the longest common 
+prefix string. There is no node has only one children, because it
+is conflict with the longest common prefix property.
+
+If we turn the Trie shown in figure \ref{fig:trie-of-26} into Patricia
+tree by compressing those nodes which has only one child. we can get
+a Patricia tree like in figure \ref{fig:patricia-tree}.
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[scale=0.5]{img/patricia-tree.ps}
+      \caption{A Patricia tree, with key a, an, another, bool,
+    boy and zoo inserted.}
+      \label{fig:patricia-tree}
+  \end{center}
+\end{figure}
+
+Note that the root node always contains empty value.
 
 \subsubsection*{Definition of alphabetic Patricia Tree in Haskell}
 in Haskell...
@@ -1578,7 +1652,10 @@ in Python...
 
 \lstset{language=Python}
 \begin{lstlisting}
-...
+class Patricia:
+    def __init__(self, value = None):
+        self.value = value
+        self.children = {}
 \end{lstlisting}
 
 % ================================================================
@@ -1611,7 +1688,32 @@ in python...
 
 \lstset{language=Python}
 \begin{lstlisting}
-...
+def insert(t, key, value = None):
+    if t is None:
+        t = Patricia()
+
+    node = t
+    while(True):
+        match = False
+        for k, tr in node.children.items():
+            if key == k: # just overwrite
+                node.value = value
+                return t
+            (prefix, k1, k2)=lcp(key, k)
+            if prefix != "":
+                match = True
+                if k2 == "": # go on traversing
+                    node = tr
+                    key = k1
+                    break
+                else: #branch out a new leaf
+                    node.children[prefix] = branch(k1, Patricia(value), k2, tr)
+                    del node.children[k]
+                    return t
+        if not match: # add a new leaf
+            node.children[key] = Patricia(value)
+            break
+    return t
 \end{lstlisting}
 
 \subsubsection*{Insertion of alphabetic Patrica Tree in Scheme/Lisp}
