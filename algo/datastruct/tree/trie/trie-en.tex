@@ -1344,13 +1344,69 @@ This program will output a Trie like this.
 \end{verbatim}
 
 It is exactly the Trie as shown in figure \ref{fig:trie-of-26}.
+
 \subsubsection*{Insertion of alphabetic trie in Haskell}
-in haskell...
+To realize the insertion in Haskell, The only thing we need do is
+to translate the for-each loop into recursive call. 
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-...
+insert :: Trie a -> String -> a -> Trie a
+insert t []     x = Trie (Just x)  (children t)
+insert t (k:ks) x = Trie (value t) (ins (children t) k ks x) where
+    ins [] k ks x = [(k, (insert empty ks x))]
+    ins (p:ps) k ks x = if fst p == k 
+                        then (k, insert (snd p) ks x):ps
+                        else p:(ins ps k ks x)
 \end{lstlisting}
+
+If the key is empty, the program reaches the trivial terminator case.
+It just set the value. In other case, it examine the children recursively.
+Each element of the children is a pair, contains a character and
+a branch. 
+
+Some helpef funcitons are provided as the following.
+
+\begin{lstlisting}
+fromList :: [(String, a)] -> Trie a
+fromList xs = foldl ins empty xs where
+    ins t (k, v) = insert t k v
+
+toString :: (Show a)=> Trie a -> String
+toString t = toStr t "" where
+    toStr t prefix = "(" ++ prefix ++ showMaybe (value t) ++ 
+                     (concat (map (\(k, v)-> ", " ++ toStr v (prefix++[k])))
+                                 (children t))
+                     ++ ")"
+    showMaybe Nothing = ""
+    showMaybe (Just x)  = ":" ++ show x
+\end{lstlisting}
+
+The fromList function provide an easy way to repeatly extract
+key-value pairs from a list and insert them into a Trie.
+
+Function toString can print the Trie in a modified pre-order way.
+
+We can test the above program with the below test cases.
+
+\begin{lstlisting}
+testTrie = "t=" ++ (toString t)
+    where 
+      t = fromList [("a", 1), ("an", 2), ("another", 7), ("boy", 3), 
+                   ("bool", 4), ("zoo", 3)]
+
+main = do
+  putStrLn testTrie
+\end{lstlisting}
+
+The program outputs:
+
+\begin{verbatim}
+t=(, (a:1, (an:2, (ano, (anot, (anoth, (anothe, (another:7))))))), 
+(b, (bo, (boy:3), (boo, (bool:4)))), (z, (zo, (zoo:3))))
+\end{verbatim}
+
+It is identical to the ANSI C result exept the values we inserted.
 
 \subsubsection*{Insertion of alphabetic trie in C++}
 in C++...
