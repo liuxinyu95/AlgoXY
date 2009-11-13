@@ -39,3 +39,4 @@ lcp :: Key -> Key -> Key
 lcp [] _ = []
 lcp _ [] = []
 lcp (x:xs) (y:ys) = if x==y then x:(lcp xs ys) else []
+
