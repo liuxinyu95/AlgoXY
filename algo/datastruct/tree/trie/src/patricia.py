@@ -18,6 +18,8 @@ def lcp(s1, s2):
     return (s1[0:j], s1[j:], s2[j:])
 
 def branch(key1, tree1, key2, tree2):
+    if key1 == "":
+        tree1.children[
     t = Patricia()
     t.children[key1] = tree1
     t.children[key2] = tree2
@@ -89,6 +91,8 @@ class PatriciaTest:
         t = list_to_patricia(["romane", "romanus", "romulus"])
         print to_string(t)
         t = map_to_patricia({"001":'y', "100":'x', "101":'z'})
+        print to_string(t)
+        t = list_to_patricia(["another", "an", "a"]);
         print to_string(t)
 
 if __name__ == "__main__":
