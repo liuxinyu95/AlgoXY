@@ -5,7 +5,7 @@ all: $(BOOK).pdf
 
 $(BOOK).pdf: $(SRC)
 	latex $(BOOK).tex
-	makeindex -o $(BOOK).ind $(BOOK).idx
+	makeindex -o $(BOOK).ind $(BOOK).idx #must have \makeindex in tex file
 	latex $(BOOK).tex
 	dvipdfmx $(BOOK).dvi
 
