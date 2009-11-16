@@ -27,8 +27,12 @@ match x y = head x == head y
 
 branch :: Key -> Patricia a -> Key -> Patricia a -> (Key, Patricia a)
 branch k1 t1 k2 t2 
-    | k1'=="" = (k, Patricia (value t1) [(k2', t2)])
-    | k2'=="" = (k, Patricia (value t2) [(k1', t1)])
+    | k1 == k 
+        -- ex: merge "an" into "another" => ("an", Node t1 ("other", Node t2..))
+        = (k, Patricia (value t1) [(k2', t2)])
+    | k2 == k 
+        -- ex: merge "another" into "an"
+        = (k, Patricia (value t2) [(k1', t1)])
     | otherwise = (k, Patricia Nothing [(k1', t1), (k2', t2)]) 
    where
       k = lcp k1 k2
