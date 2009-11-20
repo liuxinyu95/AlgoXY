@@ -95,7 +95,7 @@ class PatriciaTest:
         print to_string(t)
         t = map_to_patricia({"001":'y', "100":'x', "101":'z'})
         print to_string(t)
-        t = list_to_patricia(["another", "an", "a"]);
+        t = list_to_patricia(["home", "bool", "bob", "b", "another", "an", "a"]);
         print to_string(t)
 
 if __name__ == "__main__":

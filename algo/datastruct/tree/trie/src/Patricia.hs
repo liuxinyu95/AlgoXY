@@ -48,11 +48,17 @@ fromList :: [(Key, a)] -> Patricia a
 fromList xs = foldl ins empty xs where
     ins t (k, v) = insert t k v
 
+sort :: (Ord a)=>[(a, b)] -> [(a, b)]
+sort [] = []
+sort (p:ps) = sort xs ++ [p] ++ sort ys where
+    xs = [x | x<-ps, fst x <= fst p ]
+    ys = [y | y<-ps, fst y > fst p ]
+
 toString :: (Show a)=>Patricia a -> String
 toString t = toStr t "" where
     toStr t prefix = "(" ++ prefix ++ showMaybe (value t) ++
                      (concat $ map (\(k, v)->", " ++ toStr v (prefix++k))
-                             (children t))
+                             (sort $children t))
                      ++ ")"
     showMaybe Nothing = ""
     showMaybe (Just x) = ":" ++ show x
