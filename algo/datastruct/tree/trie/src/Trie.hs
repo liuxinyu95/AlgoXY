@@ -27,21 +27,29 @@ fromList :: [(String, a)] -> Trie a
 fromList xs = foldl ins empty xs where
     ins t (k, v) = insert t k v
 
+sort :: (Ord a)=>[(a, b)] -> [(a, b)]
+sort [] = []
+sort (p:ps) = sort xs ++ [p] ++ sort ys where
+    xs = [x | x<-ps, fst x <= fst p ]
+    ys = [y | y<-ps, fst y > fst p ]
+
 toString :: (Show a)=> Trie a -> String
 toString t = toStr t "" where
     toStr t prefix = "(" ++ prefix ++ showMaybe (value t) ++ 
                      (concat $ map (\(k, v)-> ", " ++ toStr v (prefix++[k])) 
-                                 (children t))
+                                 (sort $ children t))
                      ++ ")"
     showMaybe Nothing = ""
     showMaybe (Just x)  = ":" ++ show x
 
 testTrie = "t=" ++ (toString t) ++ 
+           "\nt'=" ++ (toString t') ++
            "\nsearch t an: " ++ (show $ find t "an") ++
            "\nsearch t boy: " ++ (show $ find t "boy") ++
            "\nsearch t the: " ++ (show $ find t "the")
     where 
       t = fromList [("a", 1), ("an", 2), ("another", 7), ("boy", 3), ("bool", 4), ("zoo", 3)]
+      t'= fromList [("zoo", 3), ("bool", 4), ("boy", 3), ("another", 7), ("an", 2), ("a", 1)]
 
 main = do
   putStrLn testTrie
