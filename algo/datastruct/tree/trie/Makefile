@@ -1,9 +1,10 @@
 HEADER = 
-SOURCE = 
+SOURCE = trie-en.tex
+OBJECT = trie-en
 
 .PHONY: all
 
-all: image
+all: pdf
 
 cpp:
 	make cpp -C src
@@ -15,19 +16,16 @@ haskell:
 	make haskell -C src
 
 image:
-	convert img/radix-tree.png img/radix-tree.eps
-	dot -Tps -o img/int-trie.ps img/int-trie.dot
-	dot -Tps -o img/big-endian-trie.ps img/big-endian-trie.dot
-	dot -Tps -o img/little-endian-patricia.ps img/little-endian-patricia.dot
-	dot -Tps -o img/int-patricia-insert-a.ps img/int-patricia-insert-a.dot
-	dot -Tps -o img/int-patricia-insert-b.ps img/int-patricia-insert-b.dot
-	dot -Tps -o img/int-patricia-insert-c.ps img/int-patricia-insert-c.dot
-	dot -Tps -o img/int-patricia-insert-d.ps img/int-patricia-insert-d.dot
-	dot -Tps -o img/int-patricia-haskell-insert.ps img/int-patricia-haskell-insert.dot
-	dot -Tps -o img/trie-of-26.ps img/trie-of-26.dot
-	dot -Tps -o img/patricia-tree.ps img/patricia-tree.dot
+	make -C img
 
-html:
+pdf: tex
+	dvipdfmx $(OBJECT)
+
+tex: image
+	latex $(OBJECT)
+	latex $(OBJECT)
+
+html: image
 	htlatex.bat trie-en "html, imgdir:img/"
 	mv *.png img/
 
