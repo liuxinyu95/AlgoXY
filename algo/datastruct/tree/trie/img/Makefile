@@ -3,6 +3,10 @@ DOT_OBJECTS = int-trie big-endian-trie little-endian-patricia \
 int-patricia-insert-a int-patricia-insert-b int-patricia-insert-c \
 int-patricia-insert-d int-patricia-haskell-insert trie-of-26 \
 patricia-tree patricia-insert-a
+DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
+
+#suffix replacement, replace .dot with .png
+PNG_OBJECTS = $(DOT_SOURCES:.dot=.png)
 
 .SUFFIXES: .eps .jpg .png .dot .ps
 
@@ -30,6 +34,11 @@ $(DOT_OBJECTS): % : %.ps
 %.ps : %.dot
 	dot -Tps -o $@ $<
 
+png: $(PNG_OBJECTS)
+
+%.png : %.dot
+	dot -Tpng -o $@ $<
+
 clean:
 	rm -f *.ps *.eps trie-en* *~
-	rm -f $(foreach file, $(DOT_OBJECTS), $(file).png)
+	rm -f $(PNG_OBJECTS)
