@@ -2,7 +2,8 @@ IMG_OBJECTS = radix-tree
 DOT_OBJECTS = int-trie big-endian-trie little-endian-patricia \
 int-patricia-insert-a int-patricia-insert-b int-patricia-insert-c \
 int-patricia-insert-d int-patricia-haskell-insert trie-of-26 \
-patricia-tree patricia-insert-a
+patricia-tree patricia-insert-a patricia-insert-b patricia-insert-c \
+patricia-insert-d
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
