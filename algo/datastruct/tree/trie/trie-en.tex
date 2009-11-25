@@ -1719,6 +1719,7 @@ The insertion algorithm can be described as below pseudo code.
 
   \STATE $p=T$
   \LOOP
+    \STATE $match \leftarrow FALSE$
     \FOR{each $i$ in $CHILDREN(p)$}
       \IF{$key = KEY(i)$}
         \STATE $VALUE(p) \leftarrow value$
@@ -1726,18 +1727,75 @@ The insertion algorithm can be described as below pseudo code.
       \ENDIF
 
       \STATE $prefix \leftarrow LONGEST-COMMON-PREFIX(key, KEY(i))$
+      \STATE $key1 \leftarrow key$ subtract $prefix$
+      \STATE $key2 \leftarrow KEY(i)$ subtract $prefix$
+      \IF{$prefix \neq NIL$}
+        \STATE $match \leftarrow TRUE$
+        \IF{$key2 = NIL$} 
+          \STATE $p \leftarrow TREE(i)$
+          \STATE $key \leftarrow key$ substract $prefix$
+          \STATE break
+        \ELSE
+          \STATE $CHILDREN(p)[prefix] \leftarrow BRANCH(key1, value, key2, TREE(i))$
+          \STATE DELETE $CHILDREN(p)[KEY(i)]$
+          \RETURN $T$
+        \ENDIF
+      \ENDIF
+
+      \IF{$match = FALSE$}
+        \STATE $CHILDREN(p)[key] \leftarrow CREATE-LEAF(value)$
+      \ENDIF
     \ENDFOR
-    \STATE $match \leftarrow FALSE$
+
   \ENDLOOP
-  \RETURN $DATA(p)$
+  \RETURN $T$
 \end{algorithmic}
 
+In the above algorithm, LONGEST-COMMON-PREFIX function will find the longest
+common prefix of two given string, for example, string ``bool'' and ``boy''
+has longest common prefix ``bo''. BRANCH function will create a branch node
+and update keys accordingly.
+
 \subsubsection*{Insertion of alphabetic Patrica Tree in Haskell}
-in haskell...
+By implementing the above algorithm in Recursive way, we can get a 
+Haskell program of Patricia insertion.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-...
+insert :: Patricia a -> Key -> a -> Patricia a
+insert t k x = Patricia (value t) (ins (children t) k x) where
+    ins []     k x = [(k, Patricia (Just x) [])]
+    ins (p:ps) k x 
+        | (fst p) == k 
+            = (k, Patricia (Just x) (children (snd p))):ps --overwrite
+        | match (fst p) k 
+            = (branch k x (fst p) (snd p)):ps
+        | otherwise 
+            = p:(ins ps k x)
+
+match :: Key -> Key -> Bool
+match [] _ = False
+match _ [] = False
+match x y = head x == head y
+
+branch :: Key -> a -> Key -> Patricia a -> (Key, Patricia a)
+branch k1 x k2 t2 
+    | k1 == k 
+        -- ex: insert "an" into "another" 
+        = (k, Patricia (Just x) [(k2', t2)])
+    | k2 == k 
+        -- ex: insert "another" into "an"
+        = (k, insert t2 k1' x)
+    | otherwise = (k, Patricia Nothing [(k1', leaf x), (k2', t2)]) 
+   where
+      k = lcp k1 k2
+      k1' = drop (length k) k1
+      k2' = drop (length k) k2
+
+lcp :: Key -> Key -> Key
+lcp [] _ = []
+lcp _ [] = []
+lcp (x:xs) (y:ys) = if x==y then x:(lcp xs ys) else []
 \end{lstlisting}
 
 \subsubsection*{Insertion of alphabetic Patricia in C++}
