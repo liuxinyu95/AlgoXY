@@ -1773,11 +1773,33 @@ insert t k x = Patricia (value t) (ins (children t) k x) where
         | otherwise 
             = p:(ins ps k x)
 
+\end{lstlisting}
+
+Function insert takes a Patricia tree, a key and a value. It will call
+an internal function ins to insert the data into the children of the tree.
+If the tree has no children, it simply create a leaf node and put it
+as the single child of the tree. In other case it will check each child
+to see if any one has common prefix with the key. There is a special case,
+the child has very same key, we can overwrite the data. If the child has common
+prefix is located, we branch out a new node.
+
+A function match is provided to determin if two keys have common prefix as 
+below.
+
+\begin{lstlisting}
 match :: Key -> Key -> Bool
 match [] _ = False
 match _ [] = False
 match x y = head x == head y
+\end{lstlisting}
 
+This function is straightforward, only if the first character of the two keys
+are indentical, we say they have common prefix.
+
+Branch out function and the longest common prefix function are implemented like
+the following.
+
+\begin{lstlisting}
 branch :: Key -> a -> Key -> Patricia a -> (Key, Patricia a)
 branch k1 x k2 t2 
     | k1 == k 
@@ -1797,6 +1819,64 @@ lcp [] _ = []
 lcp _ [] = []
 lcp (x:xs) (y:ys) = if x==y then x:(lcp xs ys) else []
 \end{lstlisting}
+
+Function take a key, k1, a value, another key, k2, and a Patricia tree t2. It will first
+call lcp to get the longest common prefix, k, and the different part of the original key.
+If k is just k1, which means k1 is a substring of k2, we create a new Patricia node, 
+put the new value in it, then set the left part of k2 and t2 as the single child of this 
+new node. If k is just k2, which means k2 is a substring of k1, we recursively insert
+the update key and value to t2. Otherwise, we create a new node, along with the the longest
+common prefix. the new node has 2 children, one is t2, the other is a leaf node of the data
+to be inserted. Each of them are binding to updated keys.
+
+In order to test the above program, we provided some helper functions.
+
+\begin{lstlisting}
+fromList :: [(Key, a)] -> Patricia a
+fromList xs = foldl ins empty xs where
+    ins t (k, v) = insert t k v
+
+sort :: (Ord a)=>[(a, b)] -> [(a, b)]
+sort [] = []
+sort (p:ps) = sort xs ++ [p] ++ sort ys where
+    xs = [x | x<-ps, fst x <= fst p ]
+    ys = [y | y<-ps, fst y > fst p ]
+
+toString :: (Show a)=>Patricia a -> String
+toString t = toStr t "" where
+    toStr t prefix = "(" ++ prefix ++ showMaybe (value t) ++
+                     (concat $ map (\(k, v)->", " ++ toStr v (prefix++k))
+                             (sort $children t))
+                     ++ ")"
+    showMaybe Nothing = ""
+    showMaybe (Just x) = ":" ++ show x
+\end{lstlisting}
+
+Function fromList can recursively insert each key-value pair into a Patricia node.
+Function sort helps to sort a list of key-value paris based on keys by using quick sort
+algorithm. toString turns a Patricia tree into a string by using modified pre-order.
+
+After that, we can test our insert program with the following test cases.
+
+\begin{lstlisting}
+testPatricia = "t1=" ++ (toString t1) ++ "\n" ++
+               "t2=" ++ (toString t2)
+    where
+      t1 = fromList [("a", 1), ("an", 2), ("another", 7), 
+                     ("boy", 3), ("bool", 4), ("zoo", 3)]
+      t2 = fromList [("zoo", 3), ("bool", 4), ("boy", 3), 
+                     ("another", 7), ("an", 2), ("a", 1)]
+
+main = do
+  putStrLn testPatricia
+\end{lstlisting}
+
+No matter what's the insert order, the 2 test cases output an identical result.
+
+\begin{verbatim}
+t1=(, (a:1, (an:2, (another:7))), (bo, (bool:4), (boy:3)), (zoo:3))
+t2=(, (a:1, (an:2, (another:7))), (bo, (bool:4), (boy:3)), (zoo:3))
+\end{verbatim}
 
 \subsubsection*{Insertion of alphabetic Patricia in C++}
 in C++...
