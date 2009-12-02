@@ -55,6 +55,23 @@ def insert(t, key, value = None):
             break
     return t
 
+def lookup(t, key):
+    if t is None:
+        return None
+    while(True):
+        match = False
+        for k, tr in t.children.items():
+            if k == key:
+                return tr.value
+            (prefix, k1, k2) = lcp(key, k)
+            if prefix != "":
+                match = True
+                key = k1
+                t = tr
+                break
+        if not match:
+            return None
+
 def to_string(t, prefix=""):
     str = "(" + prefix
     if t.value is not None:
@@ -80,6 +97,7 @@ class PatriciaTest:
     def run(self):
         self.test_lcp()
         self.test_insert()
+        self.test_lookup()
 
     def test_lcp(self):
         print "test lcp"
@@ -97,6 +115,14 @@ class PatriciaTest:
         print to_string(t)
         t = list_to_patricia(["home", "bool", "bob", "b", "another", "an", "a"]);
         print to_string(t)
+
+    def test_lookup(self):
+        print "test lookup"
+        t = map_to_patricia({"a":1, "an":2, "another":7, "b":1, "bob":3, "bool":4, "home":4})
+        print "search t another", lookup(t, "another")
+        print "search t boo", lookup(t, "boo")
+        print "search t bob", lookup(t, "bob")
+        print "search t boolean", lookup(t, "boolean")
 
 if __name__ == "__main__":
     PatriciaTest().run()
