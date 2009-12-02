@@ -44,6 +44,16 @@ lcp [] _ = []
 lcp _ [] = []
 lcp (x:xs) (y:ys) = if x==y then x:(lcp xs ys) else []
 
+-- lookup
+find :: Patricia a -> Key -> Maybe a
+find t k = find' (children t) k where
+    find' [] _ = Nothing
+    find' (p:ps) k
+          | (fst p) == k = value (snd p)
+          | match (fst p) k = find (snd p) (diff (fst p) k)
+          | otherwise = find' ps k
+    diff k1 k2 = drop (length (lcp k1 k2)) k2
+
 fromList :: [(Key, a)] -> Patricia a
 fromList xs = foldl ins empty xs where
     ins t (k, v) = insert t k v
@@ -64,7 +74,11 @@ toString t = toStr t "" where
     showMaybe (Just x) = ":" ++ show x
 
 testPatricia = "t1=" ++ (toString t1) ++ "\n" ++
-               "t2=" ++ (toString t2)
+               "t2=" ++ (toString t2) ++ "\n" ++
+               "find t1 another =" ++ (show (find t1 "another")) ++ "\n" ++
+               "find t1 bo = " ++ (show (find t1 "bo")) ++ "\n" ++
+               "find t1 boy = " ++ (show (find t1 "boy")) ++ "\n" ++
+               "find t1 boolean = " ++ (show (find t1 "boolean"))
     where
       t1 = fromList [("a", 1), ("an", 2), ("another", 7), ("boy", 3), ("bool", 4), ("zoo", 3)]
       t2 = fromList [("zoo", 3), ("bool", 4), ("boy", 3), ("another", 7), ("an", 2), ("a", 1)]
