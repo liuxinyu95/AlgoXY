@@ -2028,44 +2028,30 @@ children has common prefix, it means the looking up failed.
 This algorithm can be described in pseudocode as below.
 \begin{algorithmic}
 \STATE $PATRICIA-LOOK-UP(T, key)$
-\IF{$T = NIL$}
-   \RETURN $NIL$ \ENDIF
-  \STATE $p=T$
-  \LOOP
+  \IF{$T = NIL$}
+     \RETURN $NIL$ \ENDIF
+
+  \REPEAT
     \STATE $match \leftarrow FALSE$
-    \FOR{each $i$ in $CHILDREN(p)$}
+    \FOR{each $i$ in $CHILDREN(T)$}
       \IF{$key = KEY(i)$}
-        \STATE $VALUE(p) \leftarrow value$
-        \RETURN $T$
+        \RETURN $VALUE(TREE(i))$
       \ENDIF
-
       \STATE $prefix \leftarrow LONGEST-COMMON-PREFIX(key, KEY(i))$
-      \STATE $key1 \leftarrow key$ subtract $prefix$
-      \STATE $key2 \leftarrow KEY(i)$ subtract $prefix$
-      \IF{$prefix \neq NIL$}
+      \IF{$prefix \ne NIL$}
         \STATE $match \leftarrow TRUE$
-        \IF{$key2 = NIL$} 
-          \STATE $p \leftarrow TREE(i)$
-          \STATE $key \leftarrow key$ substract $prefix$
-          \STATE break
-        \ELSE
-          \STATE $CHILDREN(p)[prefix] \leftarrow BRANCH(key1, value, key2, TREE(i))$
-          \STATE DELETE $CHILDREN(p)[KEY(i)]$
-          \RETURN $T$
-        \ENDIF
-      \ENDIF
-
-      \IF{$match = FALSE$}
-        \STATE $CHILDREN(p)[key] \leftarrow CREATE-LEAF(value)$
+        \STATE $key \leftarrow key$ subtract $prefix$
+        \STATE $T \leftarrow TREE(i)$
+        \STATE break
       \ENDIF
     \ENDFOR
-
-  \ENDLOOP
-  \RETURN $T$
+  \UNTIL{$match = FALSE$}
+  \RETURN $NIL$
 \end{algorithmic}
 
 \subsubsection*{Look up in alphabetic Patrica Tree in Haskell}
-in haskell...
+In Haskell implementation, the above algorithm should be turned
+into recursive way. 
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -2079,6 +2065,40 @@ find t k = find' (children t) k where
           | otherwise = find' ps k
     diff k1 k2 = drop (length (lcp k1 k2)) k2
 \end{lstlisting}
+
+When we search a given key in a Patricia tree, we recursively check each
+of the child. If there are no children at all, we stop the recursion and 
+indicate a look up failure. In other case, we pick the prefix-node pair
+one by one. If the prefix is as same as the given key, it means the target
+node is found and the value of the node is returned. If the key has common
+prefix with the child, the key will be updated by removing the longest
+common prefix and we performs looking up recursively.
+
+We can verify the above Haskell program with the following simple cases.
+
+\begin{lstlisting}
+testPatricia = "t1=" ++ (toString t1) ++ "\n" ++
+               "find t1 another =" ++ (show (find t1 "another")) ++ "\n" ++
+               "find t1 bo = " ++ (show (find t1 "bo")) ++ "\n" ++
+               "find t1 boy = " ++ (show (find t1 "boy")) ++ "\n" ++
+               "find t1 boolean = " ++ (show (find t1 "boolean"))
+    where
+      t1 = fromList [("a", 1), ("an", 2), ("another", 7), ("boy", 3), 
+           ("bool", 4), ("zoo", 3)]
+
+main = do
+  putStrLn testPatricia
+\end{lstlisting}
+
+The output is as below.
+
+\begin{verbatim}
+t1=(, (a:1, (an:2, (another:7))), (bo, (bool:4), (boy:3)), (zoo:3))
+find t1 another =Just 7
+find t1 bo = Nothing
+find t1 boy = Just 3
+find t1 boolean = Nothing
+\end{verbatim}
 
 \subsubsection*{Look up in alphabetic Patrica Tree in C++}
 in C++...
