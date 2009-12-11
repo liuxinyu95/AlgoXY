@@ -1,4 +1,5 @@
 -- Refer to http://en.wikipedia.org/wiki/Trie
+module Trie where
 
 -- definition
 data Trie a = Trie { value :: Maybe a
@@ -42,6 +43,8 @@ toString t = toStr t "" where
     showMaybe Nothing = ""
     showMaybe (Just x)  = ":" ++ show x
 
+-- test cases
+
 testTrie = "t=" ++ (toString t) ++ 
            "\nt'=" ++ (toString t') ++
            "\nsearch t an: " ++ (show $ find t "an") ++
@@ -52,4 +55,4 @@ testTrie = "t=" ++ (toString t) ++
       t'= fromList [("zoo", 3), ("bool", 4), ("boy", 3), ("another", 7), ("an", 2), ("a", 1)]
 
 main = do
-  putStrLn testTrie
+    putStrLn testTrie

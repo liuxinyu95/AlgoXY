@@ -1,7 +1,8 @@
 HEADER = 
 SOURCE = trie.cpp
-HS_SOURCES = IntTrie.hs IntPatricia.hs Trie.hs Patricia.hs
-HS_OBJECTS = inttrie intpatricia trie patricia
+HS_SOURCES = IntTrie.hs IntPatricia.hs Trie.hs Patricia.hs EDict.hs
+HS_OBJECTS = $(HS_SOURCES:.hs=.o)
+HS_TARGETS = inttrie intpatricia trie patricia
 #CXX_FLAGS = -I/usr/include/boost-1_33_1
 
 .PHONY: all
@@ -15,10 +16,10 @@ c:
 	gcc trie.c -o triec
 
 haskell: 
-	ghc IntTrie.hs -o inttrie
-	ghc IntPatricia.hs -o intpatricia
-	ghc Trie.hs -o trie
-	ghc Patricia.hs -o patricia
+	ghc --make IntTrie -o inttrie
+	ghc --make IntPatricia -o intpatricia
+	ghc --make Trie -o trie
+	ghc --make Patricia -o patricia
 
 clean:
 	rm *.exe *.hi *~ *.o *.pyc
