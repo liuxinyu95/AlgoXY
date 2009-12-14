@@ -1,3 +1,5 @@
+module Patricia where
+
 type Key = String
 
 data Patricia a = Patricia { value :: Maybe a
@@ -83,5 +85,3 @@ testPatricia = "t1=" ++ (toString t1) ++ "\n" ++
       t1 = fromList [("a", 1), ("an", 2), ("another", 7), ("boy", 3), ("bool", 4), ("zoo", 3)]
       t2 = fromList [("zoo", 3), ("bool", 4), ("boy", 3), ("another", 7), ("an", 2), ("a", 1)]
 
-main = do
-  putStrLn testPatricia

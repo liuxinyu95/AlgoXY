@@ -7,6 +7,8 @@
 --	<http://www.cse.ogi.edu/~andy/pub/finite.htm>
 
 -- A very simple int (binary) trie as CLRS 12-2 (Little-Edian)
+module IntTrie where
+
 data IntTrie a = Empty 
                | Branch (IntTrie a) (Maybe a) (IntTrie a) -- left, value, right
 
@@ -63,5 +65,3 @@ testIntTrie = "t=" ++ (toString t) ++ "\nsearch t 4: " ++ (show $ search t 4) ++
     where
       t = fromList [(1, 'a'), (4, 'b'), (5, 'c'), (9, 'd')]
 
-main = do
-  putStrLn testIntTrie

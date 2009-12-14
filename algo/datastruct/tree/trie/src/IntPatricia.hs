@@ -6,6 +6,8 @@
 --	Workshop on ML, September 1998, pages 77-86,
 --	<http://www.cse.ogi.edu/~andy/pub/finite.htm>
 
+module IntPatricia where
+
 import Data.Bits
 
 {------------------------------------ 
@@ -134,5 +136,3 @@ testIntTree = "t=" ++ (toString t) ++ "\nsearch t 4: " ++ (show $ search t 4) ++
     where
       t = fromList [(1, 'x'), (4, 'y'), (5, 'z')]
 
-main = do
-  putStrLn testIntTree
