@@ -2210,9 +2210,105 @@ upper position it will be shown in the list.
        \end{center}
 \end{figure}
 
-In both case, we say the software provide a kind of word auto-completion support. In some mordern IDE, the editor can even helps user to auto-complete programmings. 
+In both case, we say the software provide a kind of word auto-completion support. 
+In some mordern IDE, the editor can even helps user to auto-complete programmings. 
 
 In this section, I'll show a very simple implementation of e-dictionary with Trie
+and Patricia.
+To simplify the problem, let us assume the dictionary only support English - English
+information.
+
+Typically, a dictionary contains a lot of key-value pairs, the keys are English
+words or phrases, and the relative values are the meaning of the words.
+
+We can store all words and their meanings to a Trie, the drawback for this 
+approach is that it isn't space effective. We'll use Patricia as alternative
+later on.
+
+As an example, when user want to look up 'a', the dictionary does not only
+return the meaning of then English word 'a', but also provide a list of 
+candidate words, which are all start with 'a', including 'abandon', 'about',
+'accent', 'adam', ... Of course all these words are stored in Trie.
+
+If there are too many candidates, one solution is only display the top 10
+words for the user, and if he like, he can browe more.
+
+\subsubsection*{An e-dictionary by Trie in Haskell}
+In Haskell implementation, we provide a function named as findAll.
+Thanks for the lazy evaluation support, findAll won't produce all candidates
+words until we need them. we can use something like 'take 10 findAll'
+to get the top 10 words easily.
+
+findAll is given as the following.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+findAll:: Trie a -> String -> [(String, a)]
+findAll t [] = 
+    case value t of
+      Nothing -> enum (children t) 
+      Just x  -> ("", x):(enum (children t))
+    where
+      enum [] = []
+      enum (p:ps) = (mapAppend (fst p) (findAll (snd p) [])) ++ (enum ps)
+findAll t (k:ks) = 
+    case lookup k (children t) of
+      Nothing -> []
+      Just t' -> mapAppend k (findAll t' ks)
+
+mapAppend x lst = map (\p->(x:(fst p), (snd p))) lst
+\end{lstlisting}
+
+function findAll take a Trie, a word to be looked up, it will output
+a list of pairs, the first element of the pair is the candidate word,
+the second element of the pair is the meaning of the word.
+
+Compare with the find function of Trie, the none-trivial case is very similar.
+We take a letter form the words to be looked up, if there is no child starting
+with this letter, the program returns empty list. If there is such a child
+starting with this letter, this child should be a candidate. We use function
+mapAppend to add this letter in front of all elements of recusively founded
+candidate words.
+
+In case we consumed all letters, we next returns all potential words, which
+means the program will traverse all children of the current node.
+
+Note that only the node with value field not equal to 'None' is a meaningful
+word in our dictionary. We need append the list with the right meaning.
+
+With this function, we can constract a very simple dictionary and return
+top 5 candidate to user. Here is the test program.
+
+\begin{lstlisting}
+testFindAll = "\nlook up a: " ++ (show $ take 5 $findAll t "a") ++
+              "\nlook up ab: " ++ (show $ take 5 $findAll t "ab")
+    where 
+      t = fromList [
+        ("a", "the first letter of English"), 
+        ("an", "used instead of 'a' when the following word begins with" 
+               "a vowel sound"), 
+        ("another", "one more person or thing or an extra amount"), 
+        ("abandon", "to leave a place, thing or person forever"),
+        ("about", "on the subject of; connected with"),
+        ("adam", "a character in the Bible who was the first man made by God"),
+        ("boy", "a male child or, more generally, a male of any age"), 
+        ("bodyl", "the whole physical structure that forms a person or animal"), 
+        ("zoo", "an area in which animals, especially wild animals, are kept" 
+                " so that people can go and look at them, or study them")]
+
+main = do
+    putStrLn testFindAll
+\end{lstlisting}
+
+This program will out put a result like this:
+\begin{verbatim}
+look up a: [("a","the first letter of English"),("an","used instead of 'a' 
+when the following word begins with a vowel sound"),("another","one more 
+person or thing or an extra amount"),("abandon","to leave a place, thing 
+or person forever"),("about","on the subject of; connected with")]
+look up ab: [("abandon","to leave a place, thing or person forever"),
+("about","on the subject of; connected with")]
+\end{verbatim}
 
 \subsection{T9 input method}
 ...
