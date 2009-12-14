@@ -54,5 +54,3 @@ testTrie = "t=" ++ (toString t) ++
       t = fromList [("a", 1), ("an", 2), ("another", 7), ("boy", 3), ("bool", 4), ("zoo", 3)]
       t'= fromList [("zoo", 3), ("bool", 4), ("boy", 3), ("another", 7), ("an", 2), ("a", 1)]
 
-main = do
-    putStrLn testTrie
