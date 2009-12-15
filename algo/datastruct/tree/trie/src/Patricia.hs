@@ -1,5 +1,7 @@
 module Patricia where
 
+import qualified Data.List
+
 type Key = String
 
 data Patricia a = Patricia { value :: Maybe a
@@ -52,7 +54,7 @@ find t k = find' (children t) k where
     find' [] _ = Nothing
     find' (p:ps) k
           | (fst p) == k = value (snd p)
-          | match (fst p) k = find (snd p) (diff (fst p) k)
+          | (fst p) `Data.List.isPrefixOf` k = find (snd p) (diff (fst p) k)
           | otherwise = find' ps k
     diff k1 k2 = drop (length (lcp k1 k2)) k2
 
@@ -80,6 +82,7 @@ testPatricia = "t1=" ++ (toString t1) ++ "\n" ++
                "find t1 another =" ++ (show (find t1 "another")) ++ "\n" ++
                "find t1 bo = " ++ (show (find t1 "bo")) ++ "\n" ++
                "find t1 boy = " ++ (show (find t1 "boy")) ++ "\n" ++
+               "find t1 by = " ++ (show (find t1 "by")) ++ "\n" ++
                "find t1 boolean = " ++ (show (find t1 "boolean"))
     where
       t1 = fromList [("a", 1), ("an", 2), ("another", 7), ("boy", 3), ("bool", 4), ("zoo", 3)]

@@ -64,7 +64,7 @@ def lookup(t, key):
             if k == key:
                 return tr.value
             (prefix, k1, k2) = lcp(key, k)
-            if prefix != "":
+            if prefix != "" and k2 == "":
                 match = True
                 key = k1
                 t = tr
@@ -118,10 +118,11 @@ class PatriciaTest:
 
     def test_lookup(self):
         print "test lookup"
-        t = map_to_patricia({"a":1, "an":2, "another":7, "b":1, "bob":3, "bool":4, "home":4})
+        t = map_to_patricia({"a":1, "an":2, "another":7, "boy":3, "bool":4, "home":4})
         print "search t another", lookup(t, "another")
         print "search t boo", lookup(t, "boo")
-        print "search t bob", lookup(t, "bob")
+        print "search t boy", lookup(t, "boy")
+        print "search t by", lookup(t, "by")
         print "search t boolean", lookup(t, "boolean")
 
 if __name__ == "__main__":

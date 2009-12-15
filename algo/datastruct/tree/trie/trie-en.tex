@@ -2020,10 +2020,10 @@ in scheme/lisp...
 % ================================================================
 \subsection{Look up in alphabetic Patricia Tree}
 Different with Trie, we can't take each character from the key to lookup.
-We need check each child to see if the key to be found has common prefix
-with it. If there is such a child, we then remove the common prefix from 
+We need check each child to see if it is a prefix of the key to be found.
+If there is such a child, we then remove the prefix from 
 the key, and search this updated key in that child. if we can't find any
-children has common prefix, it means the looking up failed.
+children as a prefix of the key, it means the looking up failed.
 
 This algorithm can be described in pseudocode as below.
 \begin{algorithmic}
@@ -2037,10 +2037,9 @@ This algorithm can be described in pseudocode as below.
       \IF{$key = KEY(i)$}
         \RETURN $VALUE(TREE(i))$
       \ENDIF
-      \STATE $prefix \leftarrow LONGEST-COMMON-PREFIX(key, KEY(i))$
-      \IF{$prefix \ne NIL$}
+      \IF{$KEY(i)$ IS-PREFIX-OF $key$}
         \STATE $match \leftarrow TRUE$
-        \STATE $key \leftarrow key$ subtract $prefix$
+        \STATE $key \leftarrow key$ subtract $KEY(i)$
         \STATE $T \leftarrow TREE(i)$
         \STATE break
       \ENDIF
@@ -2056,12 +2055,14 @@ into recursive way.
 \lstset{language=Haskell}
 \begin{lstlisting}
 -- lookup
+import qualified Data.List
+
 find :: Patricia a -> Key -> Maybe a
 find t k = find' (children t) k where
     find' [] _ = Nothing
     find' (p:ps) k
           | (fst p) == k = value (snd p)
-          | match (fst p) k = find (snd p) (diff (fst p) k)
+          | (fst p) `Data.List.isPrefixOf` k = find (snd p) (diff (fst p) k)
           | otherwise = find' ps k
     diff k1 k2 = drop (length (lcp k1 k2)) k2
 \end{lstlisting}
@@ -2125,7 +2126,7 @@ def lookup(t, key):
             if k == key:
                 return tr.value
             (prefix, k1, k2) = lcp(key, k)
-            if prefix != "":
+            if prefix != "" and k2 == "":
                 match = True
                 key = k1
                 t = tr
