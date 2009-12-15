@@ -1,5 +1,6 @@
 module Main where
 
+import qualified Data.List
 import qualified Trie
 import Patricia
 
@@ -17,10 +18,26 @@ findAll t (k:ks) =
       Nothing -> []
       Just t' -> mapAppend k (findAll t' ks)
 
-mapAppend x lst = map (\p->(x:(fst p), (snd p))) lst
+mapAppend x lst = map (\p->(x:(fst p), snd p)) lst
 
 -- find all candidates in Patricia
+{--
 findAll' :: Patricia a -> Key -> [(Key, a)]
+findAll' t k = find' (children t) k where
+    find' [] _ = []
+    find' (p:ps) k
+          | (fst p) == k = 
+              case value (snd p) of
+                Nothing -> enum (children (snd p))
+                Just v  -> ("", v):(enum (children (snd p)))
+          | (fst p) `Data.List.isPrefixOf`k = 
+              mapAppend' (fst p) (findAll' (snd p) (k `diff` (fst p)))
+          | otherwise = find' ps k
+    diff x y = drop (length y) x
+    mapAppend' s lst = map (\p->(s++(fst p), snd p)) lst
+    enum [] = []
+    enum (p:ps) = mapAppend' (fst p) (findAll' (snd p) 
+--}
 
 -- test
 testFindAll = "t=" ++ (Trie.toString t) ++ 
