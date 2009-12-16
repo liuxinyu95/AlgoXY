@@ -2311,6 +2311,38 @@ look up ab: [("abandon","to leave a place, thing or person forever"),
 ("about","on the subject of; connected with")]
 \end{verbatim}
 
+The Trie solution wasts a lot of spaces. It is very easy to improve the above
+program with Patricia. Below source code shows the Patricia approach.
+
+\begin{lstlisting}
+findAll' :: Patricia a -> Key -> [(Key, a)]
+findAll' t [] =
+    case value t of
+      Nothing -> enum $ children t
+      Just x  -> ("", x):(enum $ children t)
+    where
+      enum [] = []
+      enum (p:ps) = (mapAppend' (fst p) (findAll' (snd p) [])) ++ (enum ps)
+findAll' t k = find' (children t) k where
+    find' [] _ = []
+    find' (p:ps) k
+          | (fst p) == k 
+              = mapAppend' k (findAll' (snd p) [])
+          | (fst p) `Data.List.isPrefixOf` k 
+              = mapAppend' (fst p) (findAll' (snd p) (k `diff` (fst p)))
+          | k `Data.List.isPrefixOf` (fst p) 
+              = findAll' (snd p) []
+          | otherwise = find' ps k
+    diff x y = drop (length y) x
+
+mapAppend' s lst = map (\p->(s++(fst p), snd p)) lst
+\end{lstlisting}
+
+If compare this program with the one implemented by Trie, we can find they are
+very similiar to each other. In none-trivial case, we just examine each child
+to see if any one match the key to be looked up. If one child is exactly equal
+to the key, we then expand all its sub branches and put them to the candidate list.
+
 \subsection{T9 input method}
 ...
 
