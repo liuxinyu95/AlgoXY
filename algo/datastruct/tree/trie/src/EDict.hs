@@ -21,31 +21,39 @@ findAll t (k:ks) =
 mapAppend x lst = map (\p->(x:(fst p), snd p)) lst
 
 -- find all candidates in Patricia
-{--
 findAll' :: Patricia a -> Key -> [(Key, a)]
+findAll' t [] =
+    case value t of
+      Nothing -> enum (children t)
+      Just x  -> ("", x):(enum $ children t)
+    where
+      enum [] = []
+      enum (p:ps) = (mapAppend' (fst p) (findAll' (snd p) [])) ++ (enum ps)
 findAll' t k = find' (children t) k where
     find' [] _ = []
     find' (p:ps) k
-          | (fst p) == k = 
-              case value (snd p) of
-                Nothing -> enum (children (snd p))
-                Just v  -> ("", v):(enum (children (snd p)))
-          | (fst p) `Data.List.isPrefixOf`k = 
-              mapAppend' (fst p) (findAll' (snd p) (k `diff` (fst p)))
+          | (fst p) == k 
+              = mapAppend' k (findAll' (snd p) [])
+          | (fst p) `Data.List.isPrefixOf` k 
+              = mapAppend' (fst p) (findAll' (snd p) (k `diff` (fst p)))
+          | k `Data.List.isPrefixOf` (fst p) 
+              = findAll' (snd p) []
           | otherwise = find' ps k
     diff x y = drop (length y) x
-    mapAppend' s lst = map (\p->(s++(fst p), snd p)) lst
-    enum [] = []
-    enum (p:ps) = mapAppend' (fst p) (findAll' (snd p) 
---}
+
+mapAppend' s lst = map (\p->(s++(fst p), snd p)) lst
 
 -- test
 testFindAll = "t=" ++ (Trie.toString t) ++ 
               "\nlook up a: " ++ (show $ take 5 $findAll t "a") ++
-              "\nlook up ab: " ++ (show $ take 5 $findAll t "ab")
+              "\nlook up ab: " ++ (show $ take 5 $findAll t "ab") ++ "\n\n" ++
+              "t'=" ++ (toString t') ++
+              "\nlook up a: " ++ (show $ take 5 $findAll' t' "a") ++
+              "\nlook up ab: " ++ (show $ take 5 $findAll' t' "ab")
     where 
-      t = Trie.fromList [
-           ("a", "the first letter of English"), 
+      t = Trie.fromList lst
+      t'= fromList lst
+      lst=[("a", "the first letter of English"), 
            ("an", "used instead of 'a' when the following word begins with a vowel sound"), 
            ("another", "one more person or thing or an extra amount"), 
            ("abandon", "to leave a place, thing or person forever"),
