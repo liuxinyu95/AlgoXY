@@ -24,7 +24,7 @@ mapAppend x lst = map (\p->(x:(fst p), snd p)) lst
 findAll' :: Patricia a -> Key -> [(Key, a)]
 findAll' t [] =
     case value t of
-      Nothing -> enum (children t)
+      Nothing -> enum $ children t
       Just x  -> ("", x):(enum $ children t)
     where
       enum [] = []
