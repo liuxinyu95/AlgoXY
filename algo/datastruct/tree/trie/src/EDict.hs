@@ -43,6 +43,10 @@ findAll' t k = find' (children t) k where
 
 mapAppend' s lst = map (\p->(s++(fst p), snd p)) lst
 
+-- T9-find in Trie
+
+-- T9-find in Patricia
+
 -- test
 testFindAll = "t=" ++ (Trie.toString t) ++ 
               "\nlook up a: " ++ (show $ take 5 $findAll t "a") ++
