@@ -43,7 +43,24 @@ findAll' t k = find' (children t) k where
 
 mapAppend' s lst = map (\p->(s++(fst p), snd p)) lst
 
+-- T9 mapping
+mapT9 = [('2', "abc"), ('3', "def"), ('4', "ghi"), ('5', "jkl"), 
+         ('6', "mno"), ('7', "pqrs"), ('8', "tuv"), ('9', "wxyz")]
+
+lookupT9 :: Char -> [(Char, b)] -> [(Char, b)]
+lookupT9 c children = case lookup c mapT9 of
+        Nothing -> []
+        Just s  -> foldl f [] s where
+             f lst x = case lookup x children of
+                 Nothing -> lst
+                 Just t  -> (x, t):lst
+        
 -- T9-find in Trie
+findT9:: Trie.Trie a -> String -> [(String, Maybe a)]
+findT9 t [] = [("", Trie.value t)]
+findT9 t (k:ks) = foldl f [] (lookupT9 k (Trie.children t))
+    where
+      f lst (c, tr) = (mapAppend c (findT9 tr ks)) ++ lst
 
 -- T9-find in Patricia
 
@@ -67,5 +84,16 @@ testFindAll = "t=" ++ (Trie.toString t) ++
            ("bodyl", "the whole physical structure that forms a person or animal"), 
            ("zoo", "an area in which animals, especially wild animals, are kept so that people can go and look at them, or study them")]
 
+testFindT9 = "t=" ++ (Trie.toString t) ++
+             "\npress 4: " ++ (show $ take 5 $ findT9 t "4")++
+             "\npress 46: " ++ (show $ take 5 $ findT9 t "46")++
+             "\npress 4663: " ++ (show $ take 5 $ findT9 t "4663")++
+             "\npress 2: " ++ (show $ take 5 $ findT9 t "2")++
+             "\npress 22: " ++ (show $ take 5 $ findT9 t "22")
+    where
+      t = Trie.fromList lst
+      lst = [("home", 1), ("good", 2), ("gone", 3), ("hood", 4), ("a", 5), ("another", 6), ("an", 7)]
+
 main = do
     putStrLn testFindAll
+    putStrLn testFindT9
