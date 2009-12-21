@@ -2395,9 +2395,19 @@ Method 2 is called as T9 input method, or predictive input method
 for 'textonym'. In this section, I'll show an example implementation of T9
 by using Trie and Patricia.
 
+In order to provide candidate words to user, a dictionary must be prepared
+in advance. Trie or Patricia can be used to store the Dictionary. In the real
+commercial software, complex indexing dictionary is used. We show the very 
+simple Trie and Patricia only for illustration purpose.
+
 TODO: pseudocode for T9
 
 \subsubsection*{T9 implemented with Trie in Haskell}
+
+In Haskell, we first define a map from key pad to English letter. When user
+input a key pad number sequence, we take each number and check from the Trie.
+All children match the number should be investigated. Below is a Haskell 
+program to realize T9 input.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -2419,6 +2429,101 @@ findT9 t (k:ks) = foldl f [] (lookupT9 k (children t))
     where
       f lst (c, tr) = (mapAppend c (findT9 tr ks)) ++ lst
 \end{lstlisting}
+
+findT9 is the main function, it takes 2 parameters, a Trie and a number
+sequence string. In non-trivial case, it calls lookupT9 function to
+examine all childrens which match the first number.
+
+For each matched child, the program recursively calls findT9 on it with
+the left numbers, and we use mapAppend to insert the currently finding letter
+in front of all results. The program use foldl to combine all these together.
+
+Function lookupT9 is used to filtered all possible children who match a
+number. It first call lookup function on mapT9, so that a string of possible
+English letters can be indentified. Next we call lookup for each candidate
+letter to see if there is a child can match the letter. We use folderl to 
+collect all such child together.
+
+This proram can be verfied by using some simiple test cases.
+
+\begin{lstlisting}
+testFindT9 = "press 4: " ++ (show $ take 5 $ findT9 t "4")++
+             "\npress 46: " ++ (show $ take 5 $ findT9 t "46")++
+             "\npress 4663: " ++ (show $ take 5 $ findT9 t "4663")++
+             "\npress 2: " ++ (show $ take 5 $ findT9 t "2")++
+             "\npress 22: " ++ (show $ take 5 $ findT9 t "22")
+    where
+      t = Trie.fromList lst
+      lst = [("home", 1), ("good", 2), ("gone", 3), ("hood", 4), 
+             ("a", 5), ("another", 6), ("an", 7)]
+\end{lstlisting}
+
+The program will output below result.
+
+\begin{verbatim}
+press 4: [("g",Nothing),("h",Nothing)]
+press 46: [("go",Nothing),("ho",Nothing)]
+press 4663: [("gone",Just 3),("good",Just 2),("home",Just 1),("hood",Just 4)]
+press 2: [("a",Just 5)]
+press 22: []
+\end{verbatim}
+
+The value of each child is just for illustration, we can put empty value instead
+and only returns candidate keys for a real input application.
+
+Tries consumes to many spaces, we can provide a Patricia version as alternative.
+
+\begin{lstlisting}
+findPrefixT9' :: String -> [(String, b)] -> [(String, b)]
+findPrefixT9' s lst = filter f lst where
+    f (k, _) = (toT9 k) `Data.List.isPrefixOf` s
+
+toT9 :: String -> String
+toT9 [] = []
+toT9 (x:xs) = (unmapT9 x mapT9):(toT9 xs) where
+    unmapT9 x (p:ps) = if x `elem` (snd p) then (fst p) else unmapT9 x ps
+
+findT9' :: Patricia a -> String -> [(String, Maybe a)]
+findT9' t [] = [("", value t)]
+findT9' t k = foldl f [] (findPrefixT9' k (children t)) 
+    where
+      f lst (s, tr) = (mapAppend' s (findT9' tr (k `diff` s))) ++ lst
+      diff x y = drop (length y) x
+\end{lstlisting}
+
+In this program, we don't check one digit at a time, we take all the digit
+sequence, and we examine all children of the Patricia node. For each dhild,
+the program convert the prefix string to number sequence by using function 
+toT9, if the result is prefix of what user input, we go on search in this 
+child and append the prefix in front of all further results.
+
+If we tries the same test case, we can find the result is a bit different.
+
+\begin{verbatim}
+press 4: []
+press 46: [("go",Nothing),("ho",Nothing)]
+press 466: []
+press 4663: [("good",Just 2),("gone",Just 3),("home",Just 1),("hood",Just 4)]
+press 2: [("a",Just 5)]
+press 22: []
+\end{verbatim}
+
+If user press key '4', because the dictionary (represent by Patricia) doesn't
+contain any candidates matches it, user will get an empty candidates list.
+The same situation happens when he enters ``466''. In real input method 
+implementation, such user epxerience isnt' good, because it displays nothing
+although user presses the key serveral times. One improvement is to 
+predict what user will input next by display a partial result. This can be 
+easily achieved by modify the above program. (Hint: not only check
+\begin{lstlisting}
+findPrefixT9' s lst = filter f lst where
+    f (k, _) = (toT9 k) `Data.List.isPrefixOf` s
+\end{lstlisting}
+but also check
+\begin{lstlisting}
+    f (k, _) = s `Data.List.isPrefixOf` (toT9 k)
+\end{lstlisting}
+)
 
 % ================================================================
 %                 Appendix
