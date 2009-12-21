@@ -63,6 +63,21 @@ findT9 t (k:ks) = foldl f [] (lookupT9 k (Trie.children t))
       f lst (c, tr) = (mapAppend c (findT9 tr ks)) ++ lst
 
 -- T9-find in Patricia
+findPrefixT9' :: String -> [(String, b)] -> [(String, b)]
+findPrefixT9' s lst = filter f lst where
+    f (k, _) = (toT9 k) `Data.List.isPrefixOf` s
+
+toT9 :: String -> String
+toT9 [] = []
+toT9 (x:xs) = (unmapT9 x mapT9):(toT9 xs) where
+    unmapT9 x (p:ps) = if x `elem` (snd p) then (fst p) else unmapT9 x ps
+
+findT9' :: Patricia a -> String -> [(String, Maybe a)]
+findT9' t [] = [("", value t)]
+findT9' t k = foldl f [] (findPrefixT9' k (children t)) 
+    where
+      f lst (s, tr) = (mapAppend' s (findT9' tr (k `diff` s))) ++ lst
+      diff x y = drop (length y) x
 
 -- test
 testFindAll = "t=" ++ (Trie.toString t) ++ 
@@ -89,9 +104,18 @@ testFindT9 = "t=" ++ (Trie.toString t) ++
              "\npress 46: " ++ (show $ take 5 $ findT9 t "46")++
              "\npress 4663: " ++ (show $ take 5 $ findT9 t "4663")++
              "\npress 2: " ++ (show $ take 5 $ findT9 t "2")++
-             "\npress 22: " ++ (show $ take 5 $ findT9 t "22")
+             "\npress 22: " ++ (show $ take 5 $ findT9 t "22")++
+             "\n\nt'=" ++ (toString t') ++
+             "\npress 4: " ++ (show $ take 5 $ findT9' t' "4")++
+             "\npress 46: " ++ (show $ take 5 $ findT9' t' "46")++
+             "\npress 466: " ++ (show $ take 5 $ findT9' t' "466")++
+             "\npress 4663: " ++ (show $ take 5 $ findT9' t' "4663")++
+             "\npress 2: " ++ (show $ take 5 $ findT9' t' "2")++
+             "\npress 22: " ++ (show $ take 5 $ findT9' t' "22")
+             
     where
       t = Trie.fromList lst
+      t' = fromList lst
       lst = [("home", 1), ("good", 2), ("gone", 3), ("hood", 4), ("a", 5), ("another", 6), ("an", 7)]
 
 main = do
