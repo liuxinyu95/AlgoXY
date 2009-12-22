@@ -2234,9 +2234,46 @@ candidate words, which are all start with 'a', including 'abandon', 'about',
 If there are too many candidates, one solution is only display the top 10
 words for the user, and if he like, he can browe more.
 
-TODO: provide pseudo code of the e-dict algorithm
+Below pseduo code resue the looking up program in previous sections and
+Expand all potiential top N candidates.
 
-\subsubsection*{An e-dictionary by Trie in Haskell}
+\begin{algorithmic}
+\STATE $TRIE-LOOK-UP-TOP-N(T, key, N)$
+  \STATE $p \leftarrow TRIE-LOOK-UP'(T, key)$
+  \RETURN $EXPAND-TOP-N(p, key, N)$
+\end{algorithmic}
+
+Note that we should modify the TRIE-LOOK-UP a bit, instead of return
+the value of the node, TRIE-LOOK-UP' returns the node itself.
+
+Another alternative is to use Patricia instead of Trie. It can save much
+spaces.
+
+\begin{algorithmic}
+\STATE $PATRICIA-LOOK-UP-TOP-N(T, key, N)$
+  \IF{$T = NIL$}
+     \RETURN $NIL$ \ENDIF
+
+  \STATE $prefix \leftarrow NIL$
+  \REPEAT
+    \STATE $match \leftarrow FALSE$
+    \FOR{each $i$ in $CHILDREN(T)$}
+      \IF{$key$ IS-PREFIX-OF $KEY(i)$}
+        \RETURN $EXPAND-TOP-N(TREE(i), prefix, N)$
+      \ENDIF
+      \IF{$KEY(i)$ IS-PREFIX-OF $key$}
+        \STATE $match \leftarrow TRUE$
+        \STATE $key \leftarrow key$ subtract $KEY(i)$
+        \STATE $T \leftarrow TREE(i)$
+        \STATE $prefix \leftarrow prefix + KEY(i)$
+        \STATE break
+      \ENDIF
+    \ENDFOR
+  \UNTIL{$match = FALSE$}
+  \RETURN $NIL$
+\end{algorithmic}
+
+\subsubsection*{An e-dictionary in Haskell}
 In Haskell implementation, we provide a function named as findAll.
 Thanks for the lazy evaluation support, findAll won't produce all candidates
 words until we need them. we can use something like 'take 10 findAll'
@@ -2351,6 +2388,99 @@ this child and return all its sub branches as candidate list.
 
 This program can be tested with the very same case as above, and it will output
 the same result.
+
+\subsubsection*{An e-dictionary in Python}
+In Haskell implementation, a function trie\_lookup\_N is provided to perform
+search all top N candidate started with a given string.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def trie_lookup(t, key, n):
+    if t is None:
+        return None
+
+    p = t
+    for c in key:
+        if not c in p.children:
+            return None
+        p=p.children[c]
+    return expand(key, p, n)
+
+def expand(prefix, t, n):
+    res = []
+    q = [(prefix, t)]
+    while len(res)<n and len(q)>0:
+        (s, p) = q.pop(0)
+        if p.value is not None:
+            res.append((s, p.value))
+        for k, tr in p.children.items():
+            q.append((s+k, tr))
+    return res
+\end{lstlisting}
+
+Compare with the Trie lookup function, the first part of this program is almost
+same. The difference part is after we successfully located the node which matches the key, all sub trees are expanded from this node in a bread-first manner, and the top n candidates are returned. 
+
+This program can be verified by below simple test cases.
+
+\begin{lstlisting}
+class LookupTest:
+    def __init__(self):
+        dict = {"a":"the first letter of English", \
+           "an":"...same dict as in Haskell example"}
+        self.tt = trie.map_to_trie(dict)
+
+    def run(self):
+        self.test_trie_lookup()
+
+    def test_trie_lookup(self):
+        print "test lookup top 5"
+        print "search a ", trie_lookup(self.tt, "a", 5)
+        print "search ab ", trie_lookup(self.tt, "ab", 5)
+\end{lstlisting}
+
+The test will output the following result.
+
+\begin{verbatim}
+test lookup to 5
+search a  [('a', 'the first letter of English'), ('an', "used instead of 'a' 
+when the following word begins with a vowel sound"), ('adam', 'a character in 
+the Bible who was the first man made by God'), ('about', 'on the subject of; 
+connected with'), ('abandon', 'to leave a place, thing or person forever')]
+search ab  [('about', 'on the subject of; connected with'), ('abandon', 'to 
+leave a place, thing or person forever')]
+\end{verbatim}
+
+To save the spaces, we can also implement such a dictionary search by using
+Patricia.
+
+\begin{lstlisting}
+def patricia_lookup(t, key, n):
+    if t is None:
+        return None
+    prefix = ""
+    while(True):
+        match = False
+        for k, tr in t.children.items():
+            if string.find(k, key) == 0: #is prefix of
+                return expand(prefix+k, tr, n)
+            if string.find(key, k) ==0:
+                match = True
+                key = key[len(k):]
+                t = tr
+                prefix += k
+                break
+        if not match:
+            return None
+\end{lstlisting}
+
+In this program, we called Python string class to test if a string x is
+prefix of a string y. In case we locate a node with the key we are looking
+up is either equal of as prefix of the this sub tree, we expand it till
+we find n candidates. Function expand() can be reused here.
+
+We can test this program with the very same test cases and the results are
+identical to the previous one.
 
 \subsection{T9 input method}
 Most mobile phones around year 2000 has a key pad. To edit a short message/email

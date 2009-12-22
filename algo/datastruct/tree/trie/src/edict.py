@@ -4,19 +4,10 @@ import string
 import trie
 import patricia
 
-# lookup top N candidate start from key
-def trie_lookup_N(t, key, n):
-    if t is None:
-        return None
-
-    p = t
-    for c in key:
-        if not c in p.children:
-            return None
-        p=p.children[c]
-    # expand all
+# expand all sub branches with a prefix string
+def expand(prefix, t, n):
     res = []
-    q = [(key, p)]
+    q = [(prefix, t)]
     while len(res)<n and len(q)>0:
         (s, p) = q.pop(0)
         if p.value is not None:
@@ -25,9 +16,36 @@ def trie_lookup_N(t, key, n):
             q.append((s+k, tr))
     return res
 
-def patricia_lookup_N(t, key):
-    pass
+# lookup top N candidate start from key
+def trie_lookup(t, key, n):
+    if t is None:
+        return None
 
+    p = t
+    for c in key:
+        if not c in p.children:
+            return None
+        p=p.children[c]
+    return expand(key, p, n)
+
+def patricia_lookup(t, key, n):
+    if t is None:
+        return None
+    prefix = ""
+    while(True):
+        match = False
+        for k, tr in t.children.items():
+            if string.find(k, key) == 0: #is prefix of
+                return expand(prefix+k, tr, n)
+            if string.find(key, k) ==0:
+                match = True
+                key = key[len(k):]
+                t = tr
+                prefix += k
+                break
+        if not match:
+            return None
+                
 def trie_lookup_t9(t, key):
     pass
 
@@ -50,18 +68,20 @@ class LookupTest:
         self.tp = patricia.map_to_patricia(dict)
 
     def run(self):
-        self.test_trie_lookup_N()
-        self.test_patricia_lookup_N()
+        self.test_trie_lookup()
+        self.test_patricia_lookup()
         self.test_trie_t9()
         self.test_patricia_t9()
 
-    def test_trie_lookup_N(self):
-        print "test lookup to 5"
-        print "search a ", trie_lookup_N(self.tt, "a", 5)
-        print "search ab ", trie_lookup_N(self.tt, "ab", 5)
+    def test_trie_lookup(self):
+        print "test lookup top 5 in Trie"
+        print "search a ", trie_lookup(self.tt, "a", 5)
+        print "search ab ", trie_lookup(self.tt, "ab", 5)
 
-    def test_patricia_lookup_N(self):
-        pass
+    def test_patricia_lookup(self):
+        print "test lookup top 5 in Patricia"
+        print "search a ", patricia_lookup(self.tp, "a", 5)
+        print "search ab ", patricia_lookup(self.tp, "ab", 5)
 
     def test_trie_t9(self):
         pass
