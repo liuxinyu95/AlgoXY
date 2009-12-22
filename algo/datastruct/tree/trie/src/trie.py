@@ -61,13 +61,13 @@ class TrieTest:
 
     def test_insert(self):
         t = None
-        t = trie_insert(t, "a");
-        t = trie_insert(t, "an");
-        t = trie_insert(t, "another");
-        t = trie_insert(t, "b");
-        t = trie_insert(t, "bob");
-        t = trie_insert(t, "bool");
-        t = trie_insert(t, "home");
+        t = trie_insert(t, "a")
+        t = trie_insert(t, "an")
+        t = trie_insert(t, "another")
+        t = trie_insert(t, "b")
+        t = trie_insert(t, "bob")
+        t = trie_insert(t, "bool")
+        t = trie_insert(t, "home")
         print trie_to_str(t)
         t1 = list_to_trie(["011", "11", "0011"])
         print trie_to_str(t1)
