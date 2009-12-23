@@ -2419,7 +2419,7 @@ def expand(prefix, t, n):
 \end{lstlisting}
 
 Compare with the Trie lookup function, the first part of this program is almost
-same. The difference part is after we successfully located the node which matches the key, all sub trees are expanded from this node in a bread-first manner, and the top n candidates are returned. 
+same. The difference part is after we successfully located the node which matches the key, all sub trees are expanded from this node in a bread-first search manner, and the top n candidates are returned. 
 
 This program can be verified by below simple test cases.
 
@@ -2530,7 +2530,60 @@ in advance. Trie or Patricia can be used to store the Dictionary. In the real
 commercial software, complex indexing dictionary is used. We show the very 
 simple Trie and Patricia only for illustration purpose.
 
-TODO: pseudocode for T9
+Below pseduo code shows how to realize T9 with Trie.
+
+\begin{algorithmic}
+\STATE $TRIE-LOOK-UP-T9(T, key)$
+  \STATE $PUSH-BACK(Q, NIL, key, T)$
+  \STATE $r \leftarrow NIL$
+  \WHILE{$Q$ is not empty}
+    \STATE $p, k, t \leftarrow POP-FRONT(Q)$
+    \STATE $i \leftarrow FIRST-LETTER(k)$
+    \FOR{each $c$ in $T9-MAPPING(i)$}
+      \IF{$c$ is in $CHILDREN(t)$}
+        \STATE $k' \leftarrow k$ subtract $i$
+        \IF{$k'$ is empty}
+          \STATE $APPEND(r, p+c)$
+        \ELSE
+          \STATE $PUSH-BACK(Q, p+c, k', CHILDREN(t)[c])$
+        \ENDIF
+      \ENDIF
+    \ENDFOR
+  \ENDWHILE
+  \RETURN $r$
+\end{algorithmic}
+
+This is actually a bread-first search program. It utilizes a queue to store
+the current node and key string we are examing. The algorithm takes the first
+digit from the key, looks up it in T9 mapping to get all English letters 
+corresponding to this digit. For each letter, if it can be found in the children
+of current node, the node along with the English string found so far are
+push back to the queue. In case all digits are examined, a candidate is found.
+We'll append this candidate to the result list. The loop will terminate when
+the queue is empty.
+
+Since Trie is not space effecitve, minor modification of the above program can
+work with Patricia, which can help to save extra spaces.
+
+\begin{algorithmic}
+\STATE $PATRICIA-LOOK-UP-T9(T, key)$
+  \STATE $PUSH-BACK(Q, NIL, key, T)$
+  \STATE $r \leftarrow NIL$
+  \WHILE{$Q$ is not empty}
+    \STATE $p, k, t \leftarrow POP-FRONT(Q)$
+    \FOR{each $child$ in $CHILDREN(t)$}
+      \STATE $k' \leftarrow CONVERT-T9(KEY(child))$
+      \IF{$k'$ IS-PREFIX-OF $k$}
+        \IF{$k' = k$}
+          \STATE $APPEND(r, p+KEY(child))$
+        \ELSE
+          \STATE $PUSH-BACK(Q, p+KEY(child), k-k', child)$
+        \ENDIF
+      \ENDIF
+    \ENDFOR
+  \ENDWHILE
+  \RETURN $r$
+\end{algorithmic}
 
 \subsubsection*{T9 implemented in Haskell}
 
@@ -2657,6 +2710,8 @@ but also check
 
 \subsubsection*{T9 implementation in Python}
 
+In Python implementation, T9 looking up is realized in a typical bread-first search algorithm as the following.
+
 \lstset{language=Python}
 \begin{lstlisting}
 T9MAP={'2':"abc", '3':"def", '4':"ghi", '5':"jkl", \
@@ -2681,12 +2736,25 @@ def trie_lookup_t9(t, key):
     return res
 \end{lstlisting}
 
+Function trie\_lookup\_t9 check if the parameters are valide first. Then
+it push the initial data into a queue. The program repeatly pop the item
+from the queue, including what node it will examine next, the number sequence
+string, and the alphabetic string it has been searched.
+
+For each poped item, the program takes the next digit from the number
+sequence, and looks up in T9 map to find the corresponding English letters.
+With all these letters, if they can be found in the children of the current
+node, we'll push this child along with the updated number sequence string
+and updated alphabetic string into the queue. In case we process all 
+numbers, we find a candidate result.
+
+We can verify the above program with the following test cases.
+
 \begin{lstlisting}
 class LookupTest:
     def __init__(self):
         t9dict = ["home", "good", "gone", "hood", "a", "another", "an"]
         self.t9t = trie.list_to_trie(t9dict)
-        self.t9p = patricia.list_to_patricia(t9dict)
 
     def test_trie_t9(self):
         print "search 4 ", trie_lookup_t9(self.t9t, "4")
@@ -2696,6 +2764,9 @@ class LookupTest:
         print "search 22 ", trie_lookup_t9(self.t9t, "22")
 \end{lstlisting}
 
+If we run the test, it will output a very same result as the above Haskell
+program.
+
 \begin{verbatim}
 search 4  [('g', None), ('h', None)]
 search 46  [('go', None), ('ho', None)]
@@ -2703,6 +2774,63 @@ search 4663  [('gone', None), ('good', None), ('home', None), ('hood', None)]
 search 2  [('a', None)]
 search 22  []
 \end{verbatim}
+
+To save the spaces, Patricia can be used instead of Trie.
+
+\begin{lstlisting}
+def patricia_lookup_t9(t, key):
+    if t is None or key == "":
+        return None
+    q = [("", key, t)]
+    res = []
+    while len(q)>0:
+        (prefix, key, t) = q.pop(0)
+        for k, tr in t.children.items():
+            digits = toT9(k)
+            if string.find(key, digits)==0: #is prefix of
+                if key == digits:
+                    res.append((prefix+k, tr.value))
+                else:
+                    q.append((prefix+k, key[len(k):], tr))
+    return res
+\end{lstlisting}
+
+Compare to the implementation with Trie, they are very similiar. We also 
+used a bread-first search approach. The different part is that we convert
+the string of each child to number sequence string according to T9 mapping.
+if it is prefix of the key we are looking for, we push this child along with
+updated key and prefix. In case we examined all digits, we find a candidate
+result.
+
+The convert function is a reverse mapping process as below.
+\begin{lstlisting}
+def toT9(s):
+    res=""
+    for c in s:
+        for k, v in T9MAP.items():
+            if string.find(v, c)>=0:
+                res+=k
+                break
+        #error handling skipped.
+    return res
+\end{lstlisting}
+
+For illustration purpose, the error handling for invalid letters is skipped.
+If we feed the program with the same test cases, we can get a result as the 
+following.
+
+\begin{verbatim}
+search 4  []
+search 46  [('go', None), ('ho', None)]
+search 466  []
+search 4663  [('good', None), ('gone', None), ('home', None), ('hood', None)]
+search 2  [('a', None)]
+search 22  []
+\end{verbatim}
+
+The result is slightly different from the one output by Trie. The reason is
+as same as what we analyzed in Haskell implementation. It is easily to modify
+the program to output a similar result.
 
 % ================================================================
 %                 Appendix
