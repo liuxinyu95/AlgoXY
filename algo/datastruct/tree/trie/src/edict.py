@@ -67,8 +67,31 @@ def trie_lookup_t9(t, key):
                     q.append((prefix+c, k[1:], t.children[c]))
     return res
 
+def toT9(s):
+    res=""
+    for c in s:
+        for k, v in T9MAP.items():
+            if string.find(v, c)>=0:
+                res+=k
+                break
+        #error handling skipped.
+    return res
+
 def patricia_lookup_t9(t, key):
-    pass
+    if t is None or key == "":
+        return None
+    q = [("", key, t)]
+    res = []
+    while len(q)>0:
+        (prefix, key, t) = q.pop(0)
+        for k, tr in t.children.items():
+            digits = toT9(k)
+            if string.find(key, digits)==0: #is prefix of
+                if key == digits:
+                    res.append((prefix+k, tr.value))
+                else:
+                    q.append((prefix+k, key[len(k):], tr))
+    return res
 
 class LookupTest:
     def __init__(self):
@@ -113,7 +136,13 @@ class LookupTest:
         print "search 22 ", trie_lookup_t9(self.t9t, "22")
 
     def test_patricia_t9(self):
-        pass
+        print "test t9 lookup in Patricia"
+        print "search 4 ", patricia_lookup_t9(self.t9p, "4")
+        print "search 46 ", patricia_lookup_t9(self.t9p, "46")
+        print "search 466 ", patricia_lookup_t9(self.t9p, "466")
+        print "search 4663 ", patricia_lookup_t9(self.t9p, "4663")
+        print "search 2 ", patricia_lookup_t9(self.t9p, "2")
+        print "search 22 ", patricia_lookup_t9(self.t9p, "22")
 
 if __name__ == "__main__":
     LookupTest().run()
