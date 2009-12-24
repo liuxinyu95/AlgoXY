@@ -40,6 +40,21 @@ IntTrie<T>* insert(IntTrie<T>* t, int key, T value=T()){
 }
 
 template<class T>
+T lookup(IntTrie<T>* t, int key){
+  while(key && t){
+    if( (key & 0x1) == 0)
+      t = t->left;
+    else
+      t = t->right;
+    key>>=1;
+  }
+  if(t)
+    return t->value;
+  else
+    return T();
+}
+
+template<class T>
 std::string trie_to_str(IntTrie<T>* t, int prefix=0, int depth=0){
   std::stringstream s;
   s<<"("<<prefix;
@@ -80,6 +95,7 @@ public:
 
   void run(){
     test_trie_insert();
+    test_lookup();
   }
 private:
   void test_trie_insert(){
@@ -101,6 +117,12 @@ private:
     std::copy(keys, keys+sizeof(keys)/sizeof(int),
               std::ostream_iterator<int>(std::cout, ", "));
     std::cout<<"==>"<<trie_to_str(tc);
+  }
+
+  void test_lookup(){
+    std::cout<<"\nlook up 4: "<<lookup(tc, 4)
+             <<"\nlook up 9: "<<lookup(tc, 9)
+             <<"\nlook up 0: "<<lookup(tc, 0);
   }
 
   IntTrie<int>* ti;

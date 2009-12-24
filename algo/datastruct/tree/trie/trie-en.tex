@@ -173,7 +173,28 @@ The definition of little-endian binary trie is simple, we can reuse the structur
 of binary tree, with its left sub tree to store 0 part and right tree to store 1 part.
 The augment data can be stored as value.
 
-\subsubsection*{Definition of little-edian interger trie in Haskell}
+\subsubsection*{Definition of little-endian integer Trie in C++}
+We can utilize C++ template to abstract the value stored in Trie. The type
+of key is integer. Each node contains a value, a left child and a right child.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<class T>
+struct IntTrie{
+  IntTrie():value(), left(0), right(0){}
+  ~IntTrie(){
+    delete left;
+    delete right;
+  }
+  T value;
+  IntTrie* left;
+  IntTrie* right;
+};
+\end{lstlisting}
+
+In order to simplify the release, recursive destruction is added.
+
+\subsubsection*{Definition of little-endian integer Trie in Haskell}
 In trie, since a node may not contains value, so we use Haskell Maybe data to represent
 this situation. A IntTrie node is either an empty node, or a branch node. The branch
 node contains a left child a `Maybe' value and a right child. 
@@ -201,8 +222,9 @@ value Empty = Nothing
 
 In order to access the children and value some helper functions are given.
 
-\subsubsection*{Definition of little-edian interger trie in Python}
-The definition of integer trie in Python is shown as below
+\subsubsection*{Definition of little-endian integer Trie in Python}
+The definition of integer trie in Python is shown as below. All fileds
+are initialized as empty values.
 
 \lstset{language=Python}
 \begin{lstlisting}
@@ -212,8 +234,14 @@ class IntTrie:
         self.left = self.right = None
 \end{lstlisting}
 
-left child and right child represent sub trie, and value is used to 
+left child and right child represent sub Trie branches, and value is used to 
 store actual data.
+
+\subsubsection*{Definition of little-endian integer Trie in Scheme/Lisp}
+In Scheme/Lisp, we provides some helper functions to create and access 
+Trie data. The underground data structure is still list.
+
+TODO: Scheme version of help functions.
 
 % ================================================================
 %               Insertion of integer trie
@@ -222,7 +250,8 @@ store actual data.
 Since the key is little-endian, when we insert a key into trie, we take the
 bit from right most (LSB). If it is 0, we go to the left child, and go to right
 for 1. if the child is empty, we need create new node, and repeat this until
-met the last bit (MSB) of the integer.
+meet the last bit (MSB) of the integer. Below is the iterative algorithm
+of insertion.
 
 %\begin{algorithm}
 \begin{algorithmic}
@@ -245,7 +274,106 @@ met the last bit (MSB) of the integer.
 \end{algorithmic}
 %\end{algorithm}
 
-\subsubsection*{Insertion of integer trie in Haskell}
+\subsubsection*{Insertion of integer Trie in C++}
+With C++ language we can speed up the above even/odd test and key update with
+bitwise operation.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<class T>
+IntTrie<T>* insert(IntTrie<T>* t, int key, T value=T()){
+  if(!t)
+    t = new IntTrie<T>();
+
+  IntTrie<T>* p = t;
+  while(key){
+    if( (key&0x1) == 0){
+      if(!p->left) p->left = new IntTrie<T>();
+      p = p->left;
+    }
+    else{
+      if(!p->right) p->right = new IntTrie<T>();
+      p = p->right;
+    }
+    key>>=1;
+  }
+  p->value = value;
+  return t;
+}
+\end{lstlisting}
+
+In order to verify this program, some helper functions are provided to
+simplify the repeat insertions. And we also provide a function to convert
+the Trie to readable string.
+
+\begin{lstlisting}
+template<class T, class Iterator>
+IntTrie<T>* list_to_trie(Iterator first, Iterator last){
+  IntTrie<T>* t(0);
+  for(;first!=last; ++first)
+    t = insert(t, *first);
+  return t;
+}
+
+template<class T, class Iterator>
+IntTrie<T>* map_to_trie(Iterator first, Iterator last){
+  IntTrie<T>* t(0);
+  for(;first!=last; ++first)
+    t = insert(t, first->first, first->second);
+  return t;
+}
+
+template<class T>
+std::string trie_to_str(IntTrie<T>* t, int prefix=0, int depth=0){
+  std::stringstream s;
+  s<<"("<<prefix;
+  if(t->value!=T())
+    s<<":"<<t->value;
+  if(t->left)
+    s<<", "<<trie_to_str(t->left, prefix, depth+1);
+  if(t->right)
+    s<<", "<<trie_to_str(t->right, (1<<depth)+prefix, depth+1);
+  s<<")";
+  return s.str();
+}
+\end{lstlisting}
+
+Function list\_to\_trie just inserts keys, all values are treated as default
+value as type T, while map\_to\_trie inserts both keys and values repeatly.
+Function trie\_to\_str helps to convert a Trie to literal string in a modified
+pre-order traverse.
+
+The verification cases are as the following.
+
+\begin{lstlisting}
+const int lst[] = {1, 4, 5};
+std::list<int> l(lst, lst+sizeof(lst)/sizeof(int));
+
+IntTrie<int>* ti = list_to_trie<int, std::list<int>::iterator>(l.begin(), l.end());
+std::copy(l.begin(), l.end(), 
+          std::ostream_iterator<int>(std::cout, ", "));
+std::cout<<"==>"<<trie_to_str(ti)<<"\n";
+    
+IntTrie<char>* tc;
+typedef std::list<std::pair<int, char> > Dict;
+const int  keys[] = {4, 1, 5, 9};
+const char vals[] = "bacd";
+Dict m;
+for(int i=0; i<sizeof(keys)/sizeof(int); ++i)
+  m.push_back(std::make_pair(keys[i], vals[i]));
+tc = map_to_trie<char, Dict::iterator>(m.begin(), m.end());
+std::copy(keys, keys+sizeof(keys)/sizeof(int),
+          std::ostream_iterator<int>(std::cout, ", "));
+std::cout<<"==>"<<trie_to_str(tc);
+\end{lstlisting}
+
+The above code lines will output results in console like this.
+\begin{verbatim}
+1, 4, 5, ==>(0, (0, (0, (4))), (1, (1, (5))))
+4, 1, 5, 9, ==>(0, (0, (0, (4:b))), (1:a, (1, (1, (9:d)), (5:c))))
+\end{verbatim}
+
+\subsubsection*{Insertion of integer Trie in Haskell}
 To simply the problem, If user insert a data with key already exists, we simply
 overwrite the previous stored data. This approach can be easily replaced with 
 other methods, such as storing data as a linked list etc.
