@@ -1,5 +1,6 @@
-HEADER = 
+HEADER = inttrie.hpp
 SOURCE = trie.cpp
+CPP_TEST_OBJS = test.o
 HS_TEST_SRCS = IntTrie.hs IntPatricia.hs Trie.hs Patricia.hs TestMain.hs
 HS_TEST_OBJS = $(HS_TEST_SRCS:.hs=.o)
 HS_APP_SRCS = EDict.hs
@@ -12,8 +13,12 @@ HS_APP_OBJS = EDict.o Trie.o Patricia.o
 
 all: cpp haskell
 
-cpp: $(HEADER)
-	g++ $(CXX_FLAGS) $(SOURCE) -o main
+cpp: cpptest
+
+cpptest: $(CPP_TEST_OBJS)
+	g++ $(CXX_FLAGS) -o $@ $(CPP_TEST_OBJS)
+
+$(CPP_TEST_OBJS): inttrie.hpp
 
 c:
 	gcc trie.c -o triec
