@@ -1,6 +1,7 @@
 HEADER = inttrie.hpp
 SOURCE = trie.cpp
 CPP_TEST_OBJS = test.o
+CXX_FLAGS = -Wall
 HS_TEST_SRCS = IntTrie.hs IntPatricia.hs Trie.hs Patricia.hs TestMain.hs
 HS_TEST_OBJS = $(HS_TEST_SRCS:.hs=.o)
 HS_APP_SRCS = EDict.hs
