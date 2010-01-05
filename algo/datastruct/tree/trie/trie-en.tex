@@ -247,6 +247,8 @@ TODO: Scheme version of help functions.
 %               Insertion of integer trie
 % ================================================================
 \subsection{Insertion of integer trie}
+
+\subsubsection{Iterative insertion algorithm}
 Since the key is little-endian, when we insert a key into trie, we take the
 bit from right most (LSB). If it is 0, we go to the left child, and go to right
 for 1. if the child is empty, we need create new node, and repeat this until
@@ -373,71 +375,6 @@ The above code lines will output results in console like this.
 4, 1, 5, 9, ==>(0, (0, (0, (4:b))), (1:a, (1, (1, (9:d)), (5:c))))
 \end{verbatim}
 
-\subsubsection*{Insertion of integer Trie in Haskell}
-To simply the problem, If user insert a data with key already exists, we simply
-overwrite the previous stored data. This approach can be easily replaced with 
-other methods, such as storing data as a linked list etc.
-
-Insertion integer key into a trie can be implementated with Haskell as below.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-insert :: IntTrie a -> Key -> a -> IntTrie a
-insert t 0 x = Branch (left t) (Just x) (right t)
-insert t k x = 
-  if even k
-       then Branch (insert (left t) (k `div` 2) x) (value t) (right t)
-       else Branch (left t) (value t) (insert (right t) (k `div` 2) x)
-\end{lstlisting}
-
-If the key is zero, we just insert the data to current node, in other
-cases, the program go down along the trie according to the last bit
-of the key.
-
-To test if this program, some test helper functions are provided.
-
-\begin{lstlisting}
-fromList :: [(Key, a)] -> IntTrie a
-fromList xs = foldl ins Empty xs where
-    ins t (k, v) = insert t k v
-
--- k = ... a2, a1, a0 ==> k' = ai * m + k, where m=2^i
-toString :: (Show a)=>IntTrie a -> String
-toString t = toStr t 0 1 where
-    toStr Empty k m = "."
-    toStr tr k m = "(" ++ (toStr (left tr) k (2*m)) ++
-                      " " ++ (show k) ++ (valueStr (value tr)) ++
-                      " " ++ (toStr (right tr) (m+k) (2*m)) ++ ")"
-    valueStr (Just x) = ":" ++ (show x)
-    valueStr _ = ""
-\end{lstlisting}
-
-fromList function can create a trie from a list of integer-data pairs.
-toString function can turn a trie data structure to readable string
-for printing. This is a modified in-order tree traverse, since the number
-stored is in little-endian, the program store the $2^m$ to calculate
-the keys. The following code shows a test.
-
-\begin{lstlisting}
-main = do
-  putStrLn (toString (fromList [(1, 'a'), (4, 'b'), (5, 'c'), (9, 'd')]))
-\end{lstlisting}
-
-This will output:
-\begin{verbatim}
-(((. 0 (. 4:'b' .)) 0 .) 0 (((. 1 (. 9:'d' .)) 1 (. 5:'c' .)) 1:'a' .))
-\end{verbatim}
-
-Figure \ref{int-trie} shows this result. 
-\begin{figure}[htbp]
-       \begin{center}
-	\includegraphics[scale=0.5]{img/int-trie.ps}
-        \caption{An little-endian integer binary trie for the map 
-          \{$ 1 \rightarrow a, 4 \rightarrow b, 5 \rightarrow c, 9 \rightarrow d$\}.} 
-        \label{fig:int-trie}
-       \end{center}
-\end{figure}
-
 \subsubsection*{Insertion of integer trie in Python}
 Imperative implementation of insertion in Python can be easily given by translating
 the pseudocode of the algorithm.
@@ -543,6 +480,93 @@ format of key 1, 4, 5, 9 as below.
 
 They are in lexcical order. We'll go back to this feature of trie later in 
 alphabetic trie section.
+
+\subsubsection{Recursive insertion algorithm}
+Insertion can also be implemented in a recursive manner. If the LSB is 0, it 
+means that the key to be inserted is an even number, we recursively insert the
+date to left child, we can devide the number by 2 and round to integer to get
+rid of the LSB. If the LSB is 1, the key is then an odd number, the recursive
+insertion will be happened to right child. This algorithm is described as below.
+
+\begin{algorithmic}
+\STATE $INT-TRIE-INSERT'(T, x, data)$
+  \IF { x = 0}
+    \STATE $VALUE(T) \leftarrow data$
+  \ELSE
+    \IF {$EVEN(x)$}
+      \STATE $LEFT(T) \leftarrow INT-TRIE-INSERT'(LEFT(T), x/2, data)$
+    \ELSE
+      \STATE $RIGHT(T) \leftarrow INT-TRIE-INSERT'(RIGHT(T), x/2, data)$
+    \ENDIF
+  \ENDIF
+  \RETURN $T$
+\end{algorithmic}
+
+\subsubsection*{Insertion of integer Trie in Haskell}
+To simply the problem, If user insert a data with key already exists, we simply
+overwrite the previous stored data. This approach can be easily replaced with 
+other methods, such as storing data as a linked list etc.
+
+Insertion integer key into a trie can be implementated with Haskell as below.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+insert :: IntTrie a -> Key -> a -> IntTrie a
+insert t 0 x = Branch (left t) (Just x) (right t)
+insert t k x = 
+  if even k
+       then Branch (insert (left t) (k `div` 2) x) (value t) (right t)
+       else Branch (left t) (value t) (insert (right t) (k `div` 2) x)
+\end{lstlisting}
+
+If the key is zero, we just insert the data to current node, in other
+cases, the program go down along the trie according to the last bit
+of the key.
+
+To test if this program, some test helper functions are provided.
+
+\begin{lstlisting}
+fromList :: [(Key, a)] -> IntTrie a
+fromList xs = foldl ins Empty xs where
+    ins t (k, v) = insert t k v
+
+-- k = ... a2, a1, a0 ==> k' = ai * m + k, where m=2^i
+toString :: (Show a)=>IntTrie a -> String
+toString t = toStr t 0 1 where
+    toStr Empty k m = "."
+    toStr tr k m = "(" ++ (toStr (left tr) k (2*m)) ++
+                      " " ++ (show k) ++ (valueStr (value tr)) ++
+                      " " ++ (toStr (right tr) (m+k) (2*m)) ++ ")"
+    valueStr (Just x) = ":" ++ (show x)
+    valueStr _ = ""
+\end{lstlisting}
+
+fromList function can create a trie from a list of integer-data pairs.
+toString function can turn a trie data structure to readable string
+for printing. This is a modified in-order tree traverse, since the number
+stored is in little-endian, the program store the $2^m$ to calculate
+the keys. The following code shows a test.
+
+\begin{lstlisting}
+main = do
+  putStrLn (toString (fromList [(1, 'a'), (4, 'b'), (5, 'c'), (9, 'd')]))
+\end{lstlisting}
+
+This will output:
+\begin{verbatim}
+(((. 0 (. 4:'b' .)) 0 .) 0 (((. 1 (. 9:'d' .)) 1 (. 5:'c' .)) 1:'a' .))
+\end{verbatim}
+
+Figure \ref{int-trie} shows this result. 
+\begin{figure}[htbp]
+       \begin{center}
+	\includegraphics[scale=0.5]{img/int-trie.ps}
+        \caption{An little-endian integer binary trie for the map 
+          \{$ 1 \rightarrow a, 4 \rightarrow b, 5 \rightarrow c, 9 \rightarrow d$\}.} 
+        \label{fig:int-trie}
+       \end{center}
+\end{figure}
+
 
 % ================================================================
 %               Look up in integer binary trie
