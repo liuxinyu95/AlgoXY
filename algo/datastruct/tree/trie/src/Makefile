@@ -1,4 +1,4 @@
-HEADER = inttrie.hpp
+HEADER = inttrie.hpp intpatricia.hpp
 SOURCE = trie.cpp
 CPP_TEST_OBJS = test.o
 CXX_FLAGS = -Wall
