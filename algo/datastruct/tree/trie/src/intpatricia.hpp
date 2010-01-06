@@ -3,10 +3,29 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <iterator>
+#include <list>
 #include <functional>
+#include <numeric> //for std::accumulate
 
 bool maskbit(int x, int mask){
   return x & (~(mask-1));
+}
+
+bool zero(int x, int mask){
+  return x & (mask>>1) == 0;
+}
+
+//the longest common prefix, return the mask
+int lcp(int& p, int p1, int p2){
+  int diff = p1^p2;
+  int mask = 1;
+  while(diff){
+    diff>>=1;
+    mask<<=1;
+  }
+  p = maskbit(p1, mask);
+  return mask;
 }
 
 template<class T>
@@ -32,6 +51,12 @@ struct IntPatricia{
       left = y;
     else
       right = y;
+    delete x;
+  }
+
+  void set_children(IntPatricia<T>* l, IntPatricia<T>* r){
+    left = l;
+    right = r;
   }
 
   int key;
@@ -43,9 +68,20 @@ struct IntPatricia{
 };
 
 template<class T>
+IntPatricia<T>* branch(IntPatricia<T>* t1, IntPatricia<T>* t2){
+  IntPatricia<T>* t = new IntPatricia<T>();
+  t->mask = lcp(t->prefix, t1->prefix, t2->prefix);
+  if(zero(t1->prefix, t->mask))
+    t->set_children(t1, t2);
+  else
+    t->set_children(t2, t1);
+  return t;
+}
+
+template<class T>
 IntPatricia<T>* insert(IntPatricia<T>* t, int key, T value=T()){
   if(!t)
-    return IntPatricia<T>(key, value);
+    return new IntPatricia<T>(key, value);
 
   IntPatricia<T>* node = t;
   IntPatricia<T>* parent(0);
@@ -61,7 +97,7 @@ IntPatricia<T>* insert(IntPatricia<T>* t, int key, T value=T()){
   if(node->is_leaf() && key == node->key)
     node->value = value;
   else{
-    IntPatricia<T>* p = branch(node, IntPatricia<T>(key, value));
+    IntPatricia<T>* p = branch(node, new IntPatricia<T>(key, value));
     if(!parent)
       return p;
     parent->replace_child(node, p);
@@ -86,7 +122,8 @@ std::string patricia_to_str(IntPatricia<T>* t){
   return s.str();
 }
 
-//C++ version of foldl is std::accumulate
+// C++ version of foldl is std::accumulate
+// here are 2 helper functions for foldl
 template<class T>
 IntPatricia<T>* insert_key(IntPatricia<T>* t, int key){
   return insert(t, key);
@@ -107,17 +144,25 @@ public:
   }
 
   void run(){
+    std::cout<<"\n\ntest int patricia\n";
     test_patricia_insert();
   }
 
 private:
   void test_patricia_insert(){
-    const int lst[] = {6};
+    const int lst[] = {6, 7};
     std::list<int> l(lst, lst+sizeof(lst)/sizeof(int));
     ti = std::accumulate(l.begin(), l.end(), ti, std::ptr_fun(insert_key<int>));
+    std::copy(l.begin(), l.end(), std::ostream_iterator<int>(std::cout, ", "));
+    std::cout<<"==>"<<patricia_to_str(ti)<<"\n";
 
     const int keys[] = {1, 4, 5};
     const char vals[] = "xyz";
+    for(int i=0; i<sizeof(keys)/sizeof(int); ++i)
+      tc = insert(tc, keys[i], vals[i]);
+    std::copy(keys, keys+sizeof(keys)/sizeof(int),
+	      std::ostream_iterator<int>(std::cout, ", "));
+    std::cout<<"==>"<<patricia_to_str(tc);
   }
 
   IntPatricia<int>* ti;
