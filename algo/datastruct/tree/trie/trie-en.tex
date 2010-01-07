@@ -833,6 +833,64 @@ class IntTree:
             return self.prefix
 \end{lstlisting}
 
+Some helper member functions are provided in this definition. When
+Intialized, prefix, mask and children are all set to invalid value.
+Note the get\_prefix() function, in case the prefix hasn't been
+initialized, which means it is a leaf node, the key itself is returned.
+
+\subsubsection*{Definition of big-endian integer Patricia tree in C++}
+
+With ISO C++, the type of the data stored in Patricia can be abstracted
+as a template parameter. The definition is similar to the python version.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<class T>
+struct IntPatricia{
+  IntPatricia(int k=0, T v=T()): 
+    key(k), value(v), prefix(k), mask(1), left(0), right(0){}
+
+  ~IntPatricia(){
+    delete left;
+    delete right;
+  }
+
+  bool is_leaf(){
+    return left == 0 && right == 0;
+  }
+
+  bool match(int x){
+    return (!is_leaf()) && (maskbit(x, mask) == prefix);
+  }
+
+  void replace_child(IntPatricia<T>* x, IntPatricia<T>* y){
+    if(left == x)
+      left = y;
+    else
+      right = y;
+  }
+
+  void set_children(IntPatricia<T>* l, IntPatricia<T>* r){
+    left = l;
+    right = r;
+  }
+
+  int key;
+  T value;
+  int prefix;
+  int mask;
+  IntPatricia* left;
+  IntPatricia* right;
+};
+\end{lstlisting}
+
+In order to release the memory easily, the program just recursively
+deletes the children in destructor. The default value of type T
+is used for initialization. The prefix is initialized to be the same
+value as key.
+
+For the member function match(), I'll explain it in later part.
+
 % ================================================================
 %                 Insertion of int patricia tree
 % ================================================================
@@ -889,6 +947,8 @@ node. Figure \ref{fig:int-patricia-insert-c} shows these 2 different cases.
        \end{center}
 \end{figure}
 
+\subsubsection{Iterative insetion algorithm for integer Patricia}
+
 Summarize the above cases, the insertion of integer patricia can be described
 with the following algorithm.
 
@@ -934,6 +994,296 @@ $p(n), p(n-1), ..., p(i), ..., p(0)$ in binary, key x is
 $k(n), k(n-1), ..., k(i), ..., k(0)$, and mask of node y is 
 $100...0=2^i$, if and only if $p(j)=k(j)$ for all $i \leq j \leq n$, 
 we say the key matches.
+
+\subsubsection*{Insertion of big-endian integer Patricia tree in Python}
+
+Based on the above algorithm, the main insertion program can be realized 
+as the following.
+
+\begin{lstlisting}
+def insert(t, key, value = None):
+    if t is None:
+        t = IntTree(key, value)
+        return t
+
+    node = t
+    parent = None
+    while(True):
+        if match(key, node):
+            parent = node
+            if zero(key, node.mask):
+                node = node.left
+            else:
+                node = node.right
+        else:
+            if node.is_leaf() and key == node.key:
+                node.value = value
+            else:
+                new_node = branch(node, IntTree(key, value))
+                if parent is None:
+                    t = new_node
+                else:
+                    parent.replace_child(node, new_node)
+            break
+    return t
+\end{lstlisting}
+
+The sub prodedure of match, branch, lcp etc. are given as below.
+
+\begin{lstlisting}
+def maskbit(x, mask):
+    return x & (~(mask-1))
+
+def match(key, tree):
+    if tree.is_leaf():
+        return False
+    return maskbit(key, tree.mask) == tree.prefix
+
+def zero(x, mask):
+    return x & (mask>>1) == 0
+
+def lcp(p1, p2):
+    diff = (p1 ^ p2)
+    mask=1
+    while(diff!=0):
+        diff>>=1
+        mask<<=1
+    return (maskbit(p1, mask), mask)
+
+def branch(t1, t2):
+    t = IntTree()
+    (t.prefix, t.mask) = lcp(t1.get_prefix(), t2.get_prefix())
+    if zero(t1.get_prefix(), t.mask):
+        t.set_children(t1, t2)
+    else:
+        t.set_children(t2, t1)
+    return t
+\end{lstlisting}
+
+Function maskbit() can clear all bits covered by a mask to 0. For instance,
+$x = 101101(b)$, and $mask = 2^3 = 100(b)$, the lowest 2 bits will be cleared to 0,
+which means $maskbit(x, mask) = 101100(b)$. This can be easily done by bitwise
+operation.
+
+Function zero() is used to check if the bit next to mask bit is 0. For instance,
+if $x = 101101(b), y = 101111(b)$, and $mask = 2^3 = 100(b)$, zero will check
+if the 2nd lowest bit is 0. So $zero(x, mask) = true, zero(y, mask) = false$.
+
+Function lcp can extract 'the Lonest Common Prefix' of two integer. For the $x$
+and $y$ in above example, because only the last 2 bits are different, so
+$lcp(x, y) = 101100(b)$. And we set a mask to $2^3 = 100(b)$ to indicate that
+the last 2 bits are not effective for the prefix value.
+
+To convert a list or a map into a Patricia tree, we can repeatly
+insert the elements one by one.
+
+\begin{lstlisting}
+def list_to_patricia(l):
+    t = None
+    for x in l:
+        t = insert(t, x)
+    return t
+
+def map_to_patricia(m):
+    t = None
+    for k, v in m.items():
+        t = insert(t, k, v)
+    return t
+\end{lstlisting}
+
+In order to have smoke test of the above insertion program, some test
+cases and output helper are given.
+
+\begin{lstlisting}
+def to_string(t):
+    to_str = lambda x: "%s" %x
+    if t is None:
+        return ""
+    if t.is_leaf():
+        str = to_str(t.key)
+        if t.value is not None:
+            str += ":"+to_str(t.value)
+        return str
+    str ="["+to_str(t.prefix)+"@"+to_str(t.mask)+"]"
+    str+="("+to_string(t.left)+","+to_string(t.right)+")"
+    return str
+
+class IntTreeTest:
+    def run(self):
+        self.test_insert()
+
+    def test_insert(self):
+        print "test insert"
+        t = list_to_patricia([6])
+        print to_string(t)
+        t = list_to_patricia([6, 7])
+        print to_string(t)
+        t = map_to_patricia({1:'x', 4:'y', 5:'z'})
+        print to_string(t)
+
+if __name__ == "__main__":
+    IntTreeTest().run()
+\end{lstlisting}
+
+The program will output a result as the following.
+
+\begin{verbatim}
+test insert
+6
+[6@2](6,7)
+[0@8](1:x,[4@2](4:y,5:z))
+\end{verbatim}
+
+This result means the program creates a Patrica tree shown in 
+Figure \ref{fig:int-patricia-haskell-insert}.
+
+\begin{figure}[htbp]
+       \begin{center}
+	\includegraphics[scale=1]{img/int-patricia-haskell-insert.ps}
+        \caption{Insert map $1 \rightarrow x, 4 \rightarrow y, 5 \rightarrow z$ into a big-endian integer Patricia tree.}
+        \label{fig:int-patricia-haskell-insert}
+       \end{center}
+\end{figure}
+
+\subsubsection*{Insertion of big-endian integer Patricia tree in C++}
+
+In the below C++ program, the default value of data type is used if user
+doesn't provide data. It is nearly strict translation of the pseudo code.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<class T>
+IntPatricia<T>* insert(IntPatricia<T>* t, int key, T value=T()){
+  if(!t)
+    return new IntPatricia<T>(key, value);
+
+  IntPatricia<T>* node = t;
+  IntPatricia<T>* parent(0);
+
+  while( node->is_leaf()==false && node->match(key) ){
+    parent = node;
+    if(zero(key, node->mask))
+      node = node->left;
+    else
+      node = node->right;
+  }
+
+  if(node->is_leaf() && key == node->key)
+    node->value = value;
+  else{
+    IntPatricia<T>* p = branch(node, new IntPatricia<T>(key, value));
+    if(!parent)
+      return p;
+    parent->replace_child(node, p);
+  }
+  return t;
+}
+\end{lstlisting}
+
+Let's review the implementation of member function match()
+
+\begin{lstlisting}
+bool match(int x){
+  return (!is_leaf()) && (maskbit(x, mask) == prefix);
+}
+\end{lstlisting}
+
+if a node is not a leaf, and it has common prefix (in bitwise) as the key
+to be inserted, we say the node match the key. It is realized by a maskbit()
+function as below.
+
+\begin{lstlisting}
+int maskbit(int x, int mask){
+  return x & (~(mask-1));
+}
+\end{lstlisting}
+
+Since mask is always $2^n$, minus 1 will flip it to $111...1(b)$, then
+we reverse the it by bitwise not, and clear all the lowest $n-1$ bits of
+$x$ by bitwise and.
+
+The branch() function in above program is as the following.
+
+\begin{lstlisting}
+template<class T>
+IntPatricia<T>* branch(IntPatricia<T>* t1, IntPatricia<T>* t2){
+  IntPatricia<T>* t = new IntPatricia<T>();
+  t->mask = lcp(t->prefix, t1->prefix, t2->prefix);
+  if(zero(t1->prefix, t->mask))
+    t->set_children(t1, t2);
+  else
+    t->set_children(t2, t1);
+  return t;
+}
+\end{lstlisting}
+
+It will extract the 'Longest Common Prefix', and create a new node, put
+the 2 nodes to be merged as its children. Function lcp() is implemented
+as below.
+
+\begin{lstlisting}
+int lcp(int& p, int p1, int p2){
+  int diff = p1^p2;
+  int mask = 1;
+  while(diff){
+    diff>>=1;
+    mask<<=1;
+  }
+  p = maskbit(p1, mask);
+  return mask;
+}
+\end{lstlisting}
+
+Because we can only return one value in C++, we set the reference of 
+parameter p as the common prefix result and returns the mask value.
+
+To decide which child is left and which one is right when branching,
+we need test if the bit next to mask bit is zero. 
+
+\begin{lstlisting}
+bool zero(int x, int mask){
+  return (x & (mask>>1)) == 0;
+}
+\end{lstlisting}
+
+To verify the C++ program, some simple test cases are provided.
+
+\begin{lstlisting}
+IntPatricia<int>* ti(0);
+const int lst[] = {6, 7};
+std::list<int> l(lst, lst+sizeof(lst)/sizeof(int));
+ti = std::accumulate(l.begin(), l.end(), ti, std::ptr_fun(insert_key<int>));
+std::copy(l.begin(), l.end(), std::ostream_iterator<int>(std::cout, ", "));
+std::cout<<"==>"<<patricia_to_str(ti)<<"\n";
+
+const int keys[] = {1, 4, 5};
+const char vals[] = "xyz";
+IntPatricia<char>* tc(0);
+for(unsigned int i=0; i<sizeof(keys)/sizeof(int); ++i)
+  tc = insert(tc, keys[i], vals[i]);
+std::copy(keys, keys+sizeof(keys)/sizeof(int),
+   std::ostream_iterator<int>(std::cout, ", "));
+std::cout<<"==>"<<patricia_to_str(tc);
+\end{lstlisting}
+
+In C++ STL, std::accumulate() plays a similar role of fold-left. But the
+functor we provide to accumulate must take 2 parameters, so we provide a 
+wrapper function as below.
+
+\begin{lstlisting}
+template<class T>
+IntPatricia<T>* insert_key(IntPatricia<T>* t, int key){
+  return insert(t, key);
+}
+\end{lstlisting}
+
+With all these code line, we can get the following result.
+\begin{verbatim}
+6, 7, ==>[6@2](6,7)
+1, 4, 5, ==>[0@8](1:x,[4@2](4:y,5:z))
+\end{verbatim}
+
+\subsubsection{Recursive insertion algorithm for integer Patricia}
 
 \subsubsection*{Insertion of big-endian integer Patricia tree in Haskell}
 Insertion of big-endian integer Patricia tree can be implemented in Haskell
@@ -1047,169 +1397,7 @@ t=[0@8](1:'x', [4@2](4:'y', 5:'z'))
 
 This result means the program creates a Patrica tree shown in Figure \ref{fig:int-patricia-haskell-insert}.
 
-\begin{figure}[htbp]
-       \begin{center}
-	\includegraphics[scale=1]{img/int-patricia-haskell-insert.ps}
-        \caption{Insert map $1 \rightarrow x, 4 \rightarrow y, 5 \rightarrow z$ into a big-endian integer Patricia tree.}
-        \label{fig:int-patricia-haskell-insert}
-       \end{center}
-\end{figure}
 
-\subsubsection*{Insertion of big-endian integer Patricia tree in Python}
-In order to simplify the operation, I added prefix and mask member
-variables to the Patricia tree difinition in Python
-implementation. Also there are some helper methods are provided.
-
-\lstset{language=Python}
-\begin{lstlisting}
-class IntTree:
-    def __init__(self, key = None, value = None):
-        self.key = key
-        self.value = value
-        self.prefix = self.mask = None
-        self.left = self.right = None
-
-    def set_children(self, l, r):
-        self.left = l
-        self.right = r
-
-    def replace_child(self, x, y):
-        if self.left == x:
-            self.left = y
-        else:
-            self.right = y
-
-    def is_leaf(self):
-        return self.left is None and self.right is None
-
-    def get_prefix(self):
-        if self.prefix is None:
-            return self.key
-        else:
-            return self.prefix
-\end{lstlisting}
-
-The main insertion program can be realized as the following.
-
-\begin{lstlisting}
-def insert(t, key, value = None):
-    if t is None:
-        t = IntTree(key, value)
-        return t
-
-    node = t
-    parent = None
-    while(True):
-        if match(key, node):
-            parent = node
-            if zero(key, node.mask):
-                node = node.left
-            else:
-                node = node.right
-        else:
-            if node.is_leaf() and key == node.key:
-                node.value = value
-            else:
-                new_node = branch(node, IntTree(key, value))
-                if parent is None:
-                    t = new_node
-                else:
-                    parent.replace_child(node, new_node)
-            break
-    return t
-\end{lstlisting}
-
-Where the sub prodedure of match, branch, lcp etc. are given as below.
-
-\begin{lstlisting}
-def maskbit(x, mask):
-    return x & (~(mask-1))
-
-def match(key, tree):
-    if tree.is_leaf():
-        return False
-    return maskbit(key, tree.mask) == tree.prefix
-
-def zero(x, mask):
-    return x & (mask>>1) == 0
-
-def lcp(p1, p2):
-    diff = (p1 ^ p2)
-    mask=1
-    while(diff!=0):
-        diff>>=1
-        mask<<=1
-    return (maskbit(p1, mask), mask)
-
-def branch(t1, t2):
-    t = IntTree()
-    (t.prefix, t.mask) = lcp(t1.get_prefix(), t2.get_prefix())
-    if zero(t1.get_prefix(), t.mask):
-        t.set_children(t1, t2)
-    else:
-        t.set_children(t2, t1)
-    return t
-\end{lstlisting}
-
-To convert a list or a map into a Patricia tree, we can repeatly
-insert the elements one by one.
-
-\begin{lstlisting}
-def list_to_patricia(l):
-    t = None
-    for x in l:
-        t = insert(t, x)
-    return t
-
-def map_to_patricia(m):
-    t = None
-    for k, v in m.items():
-        t = insert(t, k, v)
-    return t
-\end{lstlisting}
-
-In order to have smoke test of the above insertion program, some test
-cases and output helper are given.
-
-\begin{lstlisting}
-def to_string(t):
-    to_str = lambda x: "%s" %x
-    if t is None:
-        return ""
-    if t.is_leaf():
-        str = to_str(t.key)
-        if t.value is not None:
-            str += ":"+to_str(t.value)
-        return str
-    str ="["+to_str(t.prefix)+"@"+to_str(t.mask)+"]"
-    str+="("+to_string(t.left)+","+to_string(t.right)+")"
-    return str
-
-class IntTreeTest:
-    def run(self):
-        self.test_insert()
-
-    def test_insert(self):
-        print "test insert"
-        t = list_to_patricia([6])
-        print to_string(t)
-        t = list_to_patricia([6, 7])
-        print to_string(t)
-        t = map_to_patricia({1:'x', 4:'y', 5:'z'})
-        print to_string(t)
-
-if __name__ == "__main__":
-    IntTreeTest().run()
-\end{lstlisting}
-
-The program will output a similar result as the Haskell one.
-
-\begin{verbatim}
-test insert
-6
-[6@2](6,7)
-[0@8](1:x,[4@2](4:y,5:z))
-\end{verbatim}
 
 % ================================================================
 %                 Lookup in int patricia tree
