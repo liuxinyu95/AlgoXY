@@ -122,7 +122,7 @@ private:
   void test_lookup(){
     std::cout<<"\nlook up 4: "<<lookup(tc, 4)
              <<"\nlook up 9: "<<lookup(tc, 9)
-             <<"\nlook up 0: "<<lookup(tc, 0);
+             <<"\nlook up 0: "<<lookup(tc, 0)<<"\n";
   }
 
   IntTrie<int>* ti;
