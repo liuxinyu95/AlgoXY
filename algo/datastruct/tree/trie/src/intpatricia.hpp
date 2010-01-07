@@ -13,7 +13,7 @@ int maskbit(int x, int mask){
 }
 
 bool zero(int x, int mask){
-  return x & (mask>>1) == 0;
+  return (x & (mask>>1)) == 0;
 }
 
 //the longest common prefix, return the mask
