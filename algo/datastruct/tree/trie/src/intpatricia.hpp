@@ -105,6 +105,23 @@ IntPatricia<T>* insert(IntPatricia<T>* t, int key, T value=T()){
 }
 
 template<class T>
+T lookup(IntPatricia<T>* t, int key){
+  if(!t)
+    return T(); //or throw exception
+
+  while( (!t->is_leaf()) && t->match(key)){
+    if(zero(key, t->mask))
+      t = t->left;
+    else
+      t = t->right;
+  }
+  if(t->is_leaf() && t->key == key)
+    return t->value;
+  else
+    return T(); //or throw exception
+}
+
+template<class T>
 std::string patricia_to_str(IntPatricia<T>* t){
   if(!t)
     return "";
@@ -143,8 +160,9 @@ public:
   }
 
   void run(){
-    std::cout<<"\n\ntest int patricia\n";
+    std::cout<<"\ntest int patricia\n";
     test_patricia_insert();
+    test_patricia_lookup();
   }
 
 private:
@@ -162,6 +180,11 @@ private:
     std::copy(keys, keys+sizeof(keys)/sizeof(int),
 	      std::ostream_iterator<int>(std::cout, ", "));
     std::cout<<"==>"<<patricia_to_str(tc);
+  }
+
+  void test_patricia_lookup(){
+    std::cout<<"\nlook up 4: "<<lookup(tc, 4)
+             <<"\nlook up 0: "<<lookup(tc, 0)<<"\n";
   }
 
   IntPatricia<int>* ti;
