@@ -8,7 +8,7 @@
 #include <functional>
 #include <numeric> //for std::accumulate
 
-bool maskbit(int x, int mask){
+int maskbit(int x, int mask){
   return x & (~(mask-1));
 }
 
@@ -31,7 +31,7 @@ int lcp(int& p, int p1, int p2){
 template<class T>
 struct IntPatricia{
   IntPatricia(int k=0, T v=T()): 
-    key(k), value(v),prefix(), mask(), left(0), right(0){}
+    key(k), value(v), prefix(k), mask(1), left(0), right(0){}
 
   ~IntPatricia(){
     delete left;
@@ -51,7 +51,6 @@ struct IntPatricia{
       left = y;
     else
       right = y;
-    delete x;
   }
 
   void set_children(IntPatricia<T>* l, IntPatricia<T>* r){
@@ -158,7 +157,7 @@ private:
 
     const int keys[] = {1, 4, 5};
     const char vals[] = "xyz";
-    for(int i=0; i<sizeof(keys)/sizeof(int); ++i)
+    for(unsigned int i=0; i<sizeof(keys)/sizeof(int); ++i)
       tc = insert(tc, keys[i], vals[i]);
     std::copy(keys, keys+sizeof(keys)/sizeof(int),
 	      std::ostream_iterator<int>(std::cout, ", "));
