@@ -111,7 +111,7 @@ private:
     const int  keys[] = {4, 1, 5, 9};
     const char vals[] = "bacd";
     Dict m;
-    for(int i=0; i<sizeof(keys)/sizeof(int); ++i)
+    for(unsigned int i=0; i<sizeof(keys)/sizeof(int); ++i)
       m.push_back(std::make_pair(keys[i], vals[i]));
     tc = map_to_trie<char, Dict::iterator>(m.begin(), m.end());
     std::copy(keys, keys+sizeof(keys)/sizeof(int),
