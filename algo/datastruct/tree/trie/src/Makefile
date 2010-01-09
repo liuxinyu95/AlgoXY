@@ -1,8 +1,8 @@
-HEADER = inttrie.hpp intpatricia.hpp
+HEADER = inttrie.hpp intpatricia.hpp trie.hpp
 SOURCE = trie.cpp
 CPP_TEST_OBJS = test.o
 CXX = g++ -Wall
-CXX_FLAGS = -Wall
+CXX_FLAGS = 
 HS_TEST_SRCS = IntTrie.hs IntPatricia.hs Trie.hs Patricia.hs TestMain.hs
 HS_TEST_OBJS = $(HS_TEST_SRCS:.hs=.o)
 HS_APP_SRCS = EDict.hs
