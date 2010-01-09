@@ -4,7 +4,6 @@
 #include <string>
 #include <sstream>
 #include <iterator>
-#include <list>
 #include <functional>
 #include <numeric> //for std::accumulate
 
@@ -168,9 +167,8 @@ public:
 private:
   void test_patricia_insert(){
     const int lst[] = {6, 7};
-    std::list<int> l(lst, lst+sizeof(lst)/sizeof(int));
-    ti = std::accumulate(l.begin(), l.end(), ti, std::ptr_fun(insert_key<int>));
-    std::copy(l.begin(), l.end(), std::ostream_iterator<int>(std::cout, ", "));
+    ti = std::accumulate(lst, lst+sizeof(lst)/sizeof(int), ti, std::ptr_fun(insert_key<int>));
+    std::copy(lst, lst+sizeof(lst)/sizeof(int), std::ostream_iterator<int>(std::cout, ", "));
     std::cout<<"==>"<<patricia_to_str(ti)<<"\n";
 
     const int keys[] = {1, 4, 5};
