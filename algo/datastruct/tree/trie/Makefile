@@ -18,7 +18,7 @@ haskell:
 image:
 	make -C img
 
-pdf: tex
+pdf: $(OBJECT).dvi
 	dvipdfmx $(OBJECT)
 
 tex: image
