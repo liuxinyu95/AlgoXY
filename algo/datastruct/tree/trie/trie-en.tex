@@ -2044,7 +2044,7 @@ create a new node and add it to children before doing the recursively insertion.
   \IF{$p = NIL$}
     \STATE $p \leftarrow APPEND(CHILDREN(T), FIRST(key), EmptyNode)$
   \ENDIF
-  \STATE $TRIE-INSERT'(p, LEFT(key), data)$
+  \STATE $TRIE-INSERT'(p, REST(key), data)$
 \ENDIF
 \RETURN $T$
 \end{algorithmic}
@@ -2140,6 +2140,8 @@ In case there is no such child, the look up process terminates
 immediately to indicate a fail result. If we reach the last charactor,
 The data stored in the current node is the result we are looking up.
 
+\subsubsection{Iterative lookup algorithm for alphabetic Trie}
+
 This process can be decribed in pseudo code as below.
 
 \begin{algorithmic}
@@ -2157,45 +2159,54 @@ This process can be decribed in pseudo code as below.
   \RETURN $DATA(p)$
 \end{algorithmic}
 
-\subsubsection*{Look up in alphabetic trie in Haskell}
-To express this algorithm in Haskell, we can utlize 'lookup' function
-in Haskell standard library\cite{wiki-trie}.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-find :: Trie a -> String -> Maybe a
-find t [] = value t
-find t (k:ks) = case lookup k (children t) of
-                  Nothing -> Nothing
-                  Just t' -> find t' ks
-\end{lstlisting}
-
-We can append some search test cases right after insert.
-
-\begin{lstlisting}
-testTrie = "t=" ++ (toString t) ++ 
-           "\nsearch t an: " ++ (show (find t "an")) ++
-           "\nsearch t boy: " ++ (show (find t "boy")) ++
-           "\nsearch t the: " ++ (show (find t "the"))
-...
-\end{lstlisting}
-
-Here is the search result.
-
-\begin{verbatim}
-search t an: Just 2
-search t boy: Just 3
-search t the: Nothing
-\end{verbatim}
-
-\subsubsection*{Look up in alphabetic trie in C++}
-in C++...
+\subsubsection*{Look up in alphabetic Trie in C++}
+We can easily translate the iterative algorithm to C++. If the key
+specified can't be found in the Trie, our program returns a default
+value of the data type. As alternative, it is also a choice to raise
+exception.
 
 \lstset{language=C++}
 \begin{lstlisting}
-...
+template<class T, class Key>
+typename T::ValueType lookup(T* t, Key key){
+  if(!t)
+    return typename T::ValueType(); //or throw exception
+
+  T* p(t);
+  for(typename Key::iterator it=key.begin(); it!=key.end(); ++it){
+    if(p->children.find(*it) == p->children.end())
+      return typename T::ValueType(); //or throw exception
+    p = p->children[*it];
+  }
+  return p->value;
+}
 \end{lstlisting}
 
+To verify the lookup program, we can test it with some simple test
+cases.
+
+\begin{lstlisting}
+Trie<char, int>* t(0);
+const char* keys[] = {"a", "an", "another", "b", "bool", "bob", "home"};
+const int vals[] = {1, 2, 7, 1, 4, 3, 4};
+for(unsigned int i=0; i<sizeof(keys)/sizeof(char*); ++i)
+  t = insert(t, std::string(keys[i]), vals[i]);
+std::cout<<"\nlookup another: "<<lookup(t, std::string("another"))
+         <<"\nlookup home: "<<lookup(t, std::string("home"))
+	 <<"\nlookup the: "<<lookup(t, std::string("the"))<<"\n";
+delete t;
+\end{lstlisting}
+
+We can get result as below.
+
+\begin{verbatim}
+lookup another: 7
+lookup home: 4
+lookup the: 0
+\end{verbatim}
+
+We see that key word ``the'' isn't contained in Trie, in our program,
+the default value of integer, 0 is returned.
 
 \subsubsection*{Look up in alphabetic trie in Python}
 By translating the algorithm in Python language, we can get 
@@ -2235,6 +2246,58 @@ find another:  7
 find home:  4
 find the:  None
 \end{verbatim}
+
+\subsubsection{Recursive lookup algorithm for alphabetic Trie}
+
+In recursive algorithm, we take first charactor from the key to be
+looked up. If it can be found in a child for the current node, we then
+recursively search the rest characters of the key from that child
+branch. else it means the key can't be found.
+
+\begin{algorithmic}
+\STATE $TRIE-LOOK-UP'(T, key)$
+  \IF{$key = NIL$}
+    \RETURN $VALUE(T)$
+  \ENDIF
+  \STATE $p \leftarrow FIND(CHILDREN(T), FIRST(key))$
+  \IF{$p = NIL$}
+    \RETURN $NIL$
+  \ELSE
+    \RETURN $TRIE-LOOK-UP'(p, REST(key))$
+  \ENDIF
+\end{algorithmic}
+
+\subsubsection*{Look up in alphabetic trie in Haskell}
+To express this algorithm in Haskell, we can utlize 'lookup' function
+in Haskell standard library\cite{wiki-trie}.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+find :: Trie a -> String -> Maybe a
+find t [] = value t
+find t (k:ks) = case lookup k (children t) of
+                  Nothing -> Nothing
+                  Just t' -> find t' ks
+\end{lstlisting}
+
+We can append some search test cases right after insert.
+
+\begin{lstlisting}
+testTrie = "t=" ++ (toString t) ++ 
+           "\nsearch t an: " ++ (show (find t "an")) ++
+           "\nsearch t boy: " ++ (show (find t "boy")) ++
+           "\nsearch t the: " ++ (show (find t "the"))
+...
+\end{lstlisting}
+
+Here is the search result.
+
+\begin{verbatim}
+search t an: Just 2
+search t boy: Just 3
+search t the: Nothing
+\end{verbatim}
+
 
 \subsubsection*{Look up in alphabetic trie in Scheme/Lisp}
 in scheme/lisp...
