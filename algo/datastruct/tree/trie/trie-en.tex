@@ -1251,7 +1251,8 @@ To verify the C++ program, some simple test cases are provided.
 \begin{lstlisting}
 IntPatricia<int>* ti(0);
 const int lst[] = {6, 7};
-ti = std::accumulate(lst, lst+sizeof(lst)/sizeof(int), ti, std::ptr_fun(insert_key<int>));
+ti = std::accumulate(lst, lst+sizeof(lst)/sizeof(int), ti, 
+                     std::ptr_fun(insert_key<int>));
 std::copy(lst, lst+sizeof(lst)/sizeof(int),
 std::ostream_iterator<int>(std::cout, ", "));
 std::cout<<"==>"<<patricia_to_str(ti)<<"\n";
@@ -1265,6 +1266,10 @@ std::copy(keys, keys+sizeof(keys)/sizeof(int),
    std::ostream_iterator<int>(std::cout, ", "));
 std::cout<<"==>"<<patricia_to_str(tc);
 \end{lstlisting}
+
+To avoid repeating ourselves, we provide a different way instead of
+write a list\_to\_patrica(), which is very similar to list\_to\_trie
+in previous section.
 
 In C++ STL, std::accumulate() plays a similar role of fold-left. But the
 functor we provide to accumulate must take 2 parameters, so we provide a 
@@ -1696,7 +1701,7 @@ children nodes.
 \subsubsection*{Definition of aplhabetic Trie in C++}
 
 With C++ and STL, we can abstract the language and characters as type
-parameter. Since the number of characters of that language varies, we
+parameter. Since the number of characters of the undetermined language varies, we
 can use std::map to store children of a node.
 
 \lstset{language=C++}
@@ -1870,9 +1875,179 @@ It is exactly the Trie as shown in figure \ref{fig:trie-of-26}.
 
 \subsubsection*{Insertion of alphabetic Trie in C++}
 
+With above C++ definition, we can utilize STL provided search
+function in std::map to locate a child quickly, the program is
+implemented as the following, note that if user only provides key for
+insert, we also insert a default value of that type.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<class Char, class Value, class Key>
+Trie<Char, Value>* insert(Trie<Char, Value>* t, Key key, Value value=Value()){
+  if(!t)
+    t = new Trie<Char, Value>();
+
+  Trie<Char, Value>* p(t);
+  for(typename Key::iterator it=key.begin(); it!=key.end(); ++it){
+    if(p->children.find(*it) == p->children.end())
+      p->children[*it] = new Trie<Char, Value>();
+    p = p->children[*it];
+  }
+  p->value = value;
+  return t;
+}
+
+template<class T, class K>
+T* insert_key(T* t, K key){
+  return insert(t, key);
+}
+\end{lstlisting}
+
+Where insert\_key() acts as a adapter, we'll use similar accumulation
+method to create trie from list later.
+
+To test this program, we provide the helper functions to print the
+trie on console. 
+
+\begin{lstlisting}
+template<class T>
+std::string trie_to_str(T* t, std::string prefix=""){
+  std::ostringstream s;
+  s<<"("<<prefix;
+  if(t->value != typename T::ValueType())
+    s<<":"<<t->value;
+  for(typename T::Children::iterator it=t->children.begin();
+      it!=t->children.end(); ++it)
+    s<<", "<<trie_to_str(it->second, prefix+it->first);
+  s<<")";
+  return s.str();
+}
+\end{lstlisting}
+
+After that, we can test our program with some simple test cases.
+
+\begin{lstlisting}
+typedef Trie<char, std::string> TrieType;
+TrieType* t(0);
+const char* lst[] = {"a", "an", "another", "b", "bob", "bool", "home"};
+t = std::accumulate(lst, lst+sizeof(lst)/sizeof(char*), t,
+                    std::ptr_fun(insert_key<TrieType, std::string>));
+std::copy(lst, lst+sizeof(lst)/sizeof(char*),
+          std::ostream_iterator<std::string>(std::cout, ", "));
+std::cout<<"\n==>"<<trie_to_str(t)<<"\n";
+delete t;
+
+t=0;
+const char* keys[] = {"001", "100", "101"};
+const char* vals[] = {"y", "x", "z"};
+for(unsigned int i=0; i<sizeof(keys)/sizeof(char*); ++i)
+  t = insert(t, std::string(keys[i]), std::string(vals[i]));
+std::copy(keys, keys+sizeof(keys)/sizeof(char*),
+          std::ostream_iterator<std::string>(std::cout, ", "));
+std::cout<<"==>"<<trie_to_str(t)<<"\n";
+delete t;
+\end{lstlisting}
+
+It will output result like this.
+
+\begin{verbatim}
+a, an, another, b, bob, bool, home, 
+==>(, (a, (an, (ano, (anot, (anoth, (anothe, (another))))))), (b, (bo,
+(bob), (boo, (bool)))), (h, (ho, (hom, (home)))))
+001, 100, 101, ==>(, (0, (00, (001:y))), (1, (10, (100:x), (101:z))))
+\end{verbatim}
+
+\subsubsection*{Insertion of alphabetic trie in Python}
+In python the implementation is very similiar to the pseudo code.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def trie_insert(t, key, value = None):
+    if t is None:
+        t = Trie()
+
+    p = t
+    for c in key:
+        if not c in p.children: 
+            p.children[c] = Trie()
+        p = p.children[c]
+    p.value = value
+    return t
+\end{lstlisting}
+
+And we define the helper functions as the following.
+
+\begin{lstlisting}
+def trie_to_str(t, prefix=""):
+    str="("+prefix
+    if t.value is not None:
+        str += ":"+t.value
+    for k,v in sorted(t.children.items()):
+        str += ", "+trie_to_str(v, prefix+k)
+    str+=")"
+    return str
+
+def list_to_trie(l):
+    t = None
+    for x in l:
+        t = trie_insert(t, x)
+    return t
+
+def map_to_trie(m):
+    t = None
+    for k, v in m.items():
+        t = trie_insert(t, k, v)
+    return t
+\end{lstlisting}
+
+With these helpers, we can test the insert program as below.
+
+\begin{lstlisting}
+class TrieTest:
+    #...
+    def test_insert(self):
+        t = None
+        t = trie_insert(t, "a")
+        t = trie_insert(t, "an")
+        t = trie_insert(t, "another")
+        t = trie_insert(t, "b")
+        t = trie_insert(t, "bob")
+        t = trie_insert(t, "bool")
+        t = trie_insert(t, "home")
+        print trie_to_str(t)
+\end{lstlisting}
+
+It will print a trie in console.
+
+\begin{verbatim}
+(, (a, (an, (ano, (anot, (anoth, (anothe, (another))))))), 
+(b, (bo, (bob), (boo, (bool)))), (h, (ho, (hom, (home)))))
+\end{verbatim}
+
 \subsubsection {Recursive algorithm of Trie insertion}
 
-TODO: pseudo code ...
+The iterative algorithms can transform to recursive algorithm by such
+approach. We take one charactor from
+the key, and locate the child branch, then recursivly insert the left
+characters of the key to that branch. If the branch is empty, we
+create a new node and add it to children before doing the recursively insertion.
+
+\begin{algorithmic}
+\STATE $TRIE-INSERT'(T, key, data)$
+\IF{$T = NIL$}
+  \STATE $T \leftarrow EmptyNode$ \ENDIF
+
+\IF{$key = NIL$}
+  \STATE $VALUE(T) \leftarrow data$
+\ELSE
+  \STATE $p \leftarrow FIND(CHILDREN(T), FIRST(key))$
+  \IF{$p = NIL$}
+    \STATE $p \leftarrow APPEND(CHILDREN(T), FIRST(key), EmptyNode)$
+  \ENDIF
+  \STATE $TRIE-INSERT'(p, LEFT(key), data)$
+\ENDIF
+\RETURN $T$
+\end{algorithmic}
 
 \subsubsection*{Insertion of alphabetic trie in Haskell}
 To realize the insertion in Haskell, The only thing we need do is
@@ -1945,84 +2120,9 @@ t=(, (a:1, (an:2, (ano, (anot, (anoth, (anothe, (another:7))))))),
 
 It is identical to the ANSI C result exept the values we inserted.
 
-\subsubsection*{Insertion of alphabetic trie in C++}
-in C++...
-
-\lstset{language=C++}
-\begin{lstlisting}
-...
-\end{lstlisting}
-
-
-\subsubsection*{Insertion of alphabetic trie in Python}
-In python the implementation is very similiar to the pseudo code.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def trie_insert(t, key, value = None):
-    if t is None:
-        t = Trie()
-
-    p = t
-    for c in key:
-        if not c in p.children: 
-            p.children[c] = Trie()
-        p = p.children[c]
-    p.value = value
-    return t
-\end{lstlisting}
-
-And we define the helper functions as the following.
-
-\begin{lstlisting}
-def trie_to_str(t, prefix=""):
-    str="("+prefix
-    if t.value is not None:
-        str += ":"+t.value
-    for k,v in sorted(t.children.items()):
-        str += ", "+trie_to_str(v, prefix+k)
-    str+=")"
-    return str
-
-def list_to_trie(l):
-    t = None
-    for x in l:
-        t = trie_insert(t, x)
-    return t
-
-def map_to_trie(m):
-    t = None
-    for k, v in m.items():
-        t = trie_insert(t, k, v)
-    return t
-\end{lstlisting}
-
-With these helpers, we can test the insert program as below.
-
-\begin{lstlisting}
-class TrieTest:
-    #...
-    def test_insert(self):
-        t = None
-        t = trie_insert(t, "a")
-        t = trie_insert(t, "an")
-        t = trie_insert(t, "another")
-        t = trie_insert(t, "b")
-        t = trie_insert(t, "bob")
-        t = trie_insert(t, "bool")
-        t = trie_insert(t, "home")
-        print trie_to_str(t)
-\end{lstlisting}
-
-It will print a trie in console.
-
-\begin{verbatim}
-(, (a, (an, (ano, (anot, (anoth, (anothe, (another))))))), 
-(b, (bo, (bob), (boo, (bool)))), (h, (ho, (hom, (home)))))
-\end{verbatim}
-
 \subsubsection*{Insertion of alphabetic trie in Scheme/Lisp}
-in scheme/lisp...
+
+TODO:...
 
 \lstset{language=lisp}
 \begin{lstlisting}
