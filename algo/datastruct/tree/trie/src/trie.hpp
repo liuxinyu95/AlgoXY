@@ -41,15 +41,15 @@ Trie<Char, Value>* insert(Trie<Char, Value>* t, Key key, Value value=Value()){
   return t;
 }
 
-template<class T, class Key>
-typename T::ValueType lookup(T* t, Key key){
+template<class C, class K, class V>
+V lookup(Trie<C, V>* t, K key){
   if(!t)
-    return typename T::ValueType(); //or throw exception
+    return V(); //or throw exception
 
-  T* p(t);
-  for(typename Key::iterator it=key.begin(); it!=key.end(); ++it){
+  Trie<C, V>* p(t);
+  for(typename K::iterator it=key.begin(); it!=key.end(); ++it){
     if(p->children.find(*it) == p->children.end())
-      return typename T::ValueType(); //or throw exception
+      return V(); //or throw exception
     p = p->children[*it];
   }
   return p->value;
