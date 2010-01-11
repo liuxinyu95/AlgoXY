@@ -5,8 +5,6 @@
 #include <string>
 #include <iostream>
 #include <iterator>
-#include <functional> //for std::ptr_fun
-#include <numeric> //for std::accumulate
 #include "trieutil.hpp"
 
 // Definition
@@ -69,8 +67,7 @@ private:
     typedef Trie<char, std::string> TrieType;
     TrieType* t(0);
     const char* lst[] = {"a", "an", "another", "b", "bob", "bool", "home"};
-    t = std::accumulate(lst, lst+sizeof(lst)/sizeof(char*), t,
-			std::ptr_fun(insert_key<TrieType, std::string>));
+    t = list_to_trie(lst, lst+sizeof(lst)/sizeof(char*), t);
     std::copy(lst, lst+sizeof(lst)/sizeof(char*),
 	      std::ostream_iterator<std::string>(std::cout, ", "));
     std::cout<<"\n==>"<<trie_to_str(t)<<"\n";
