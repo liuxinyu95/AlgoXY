@@ -2,6 +2,8 @@
 #define _TRIE_UTILITY
 
 #include <sstream>
+#include <functional> //for std::ptr_fun
+#include <numeric> //for std::accumulate
 
 template<class T>
 std::string trie_to_str(T* t, std::string prefix=""){
@@ -20,6 +22,14 @@ std::string trie_to_str(T* t, std::string prefix=""){
 template<class T, class K>
 T* insert_key(T* t, K key){
   return insert(t, key);
+}
+
+// list_to_trie
+template<class Iterator, class T>
+T* list_to_trie(Iterator first, Iterator last, T* t){
+  typedef typename T::ValueType ValueType;
+  return std::accumulate(first, last, t,
+                         std::ptr_fun(insert_key<T, ValueType>));
 }
 
 #endif //_TRIE_UTILITY

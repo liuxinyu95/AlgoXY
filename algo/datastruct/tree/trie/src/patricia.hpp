@@ -5,8 +5,6 @@
 #include <map>
 #include <string>
 #include <iterator> //for std::ostream_iterator
-#include <functional> //for std::ptr_fun
-#include <numeric> //for std::accumulate
 #include "trieutil.hpp"
 
 template<class Key, class Value>
@@ -104,8 +102,7 @@ private:
   void test_list_to_patricia(Iterator first, Iterator last){
     typedef Patricia<std::string, std::string> PatriciaType;
     PatriciaType* t(0);
-    t = std::accumulate(first, last, t, 
-			std::ptr_fun(insert_key<PatriciaType, std::string>));
+    t = list_to_trie(first, last, t);
     std::copy(first, last, 
 	      std::ostream_iterator<std::string>(std::cout, ", "));
     std::cout<<"\n==>"<<trie_to_str(t)<<"\n";
