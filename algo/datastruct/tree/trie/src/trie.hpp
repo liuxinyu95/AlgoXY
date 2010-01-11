@@ -3,11 +3,11 @@
 
 #include <map>
 #include <string>
-#include <sstream>
 #include <iostream>
 #include <iterator>
 #include <functional> //for std::ptr_fun
 #include <numeric> //for std::accumulate
+#include "trieutil.hpp"
 
 // Definition
 template<class Char, class Value>
@@ -55,27 +55,6 @@ typename T::ValueType lookup(T* t, Key key){
     p = p->children[*it];
   }
   return p->value;
-}
-
-// helper functions
-
-// for C++ fold-left, std::accumulate
-template<class T, class K>
-T* insert_key(T* t, K key){
-  return insert(t, key);
-}
-
-template<class T>
-std::string trie_to_str(T* t, std::string prefix=""){
-  std::ostringstream s;
-  s<<"("<<prefix;
-  if(t->value != typename T::ValueType())
-    s<<":"<<t->value;
-  for(typename T::Children::iterator it=t->children.begin();
-      it!=t->children.end(); ++it)
-    s<<", "<<trie_to_str(it->second, prefix+it->first);
-  s<<")";
-  return s.str();
 }
 
 class TrieTest{
