@@ -53,7 +53,9 @@ T* branch(typename T::KeyType k1, T* t1,
 }
 
 template<class K, class V>
-Patricia<K, V>* insert(Patricia<K, V>* t, K key, V value=V()){
+Patricia<K, V>* insert(Patricia<K, V>* t, 
+                       typename Patricia<K, V>::KeyType key, 
+                       typename Patricia<K, V>::ValueType value=V()){
   if(!t)
     t = new Patricia<K, V>();
 
@@ -88,6 +90,29 @@ Patricia<K, V>* insert(Patricia<K, V>* t, K key, V value=V()){
     }
   }
   return t;
+}
+
+template<class K, class V>
+V lookup(Patricia<K, V>* t, typename Patricia<K, V>::KeyType key){
+  typedef typename Patricia<K, V>::Children::iterator Iterator;
+  if(!t)
+    return V(); //or throw exception
+  for(;;){
+    bool match(false);
+    for(Iterator it=t->children.begin(); it!=t->children.end(); ++it){
+      K k = it->first;
+      if(key == k)
+        return it->second->value;
+      K prefix = lcp(key, k);
+      if((!prefix.empty()) && k.empty()){
+        match = true;
+        t = it->second;
+        break;
+      }
+    }
+    if(!match)
+      return V(); //or throw exception
+  }
 }
 
 class PatriciaTest{
@@ -132,6 +157,17 @@ private:
   }
 
   void test_lookup(){
+    Patricia<std::string, int>* t(0);
+    const char* keys[] = {"a", "an", "another", "boy", "bool", "home"};
+    const int vals[] = {1, 2, 7, 3, 4, 4};
+    for(unsigned int i=0; i<sizeof(keys)/sizeof(char*); ++i)
+      t = insert(t, keys[i], vals[i]);
+    std::cout<<"\nlookup another: "<<lookup(t, "another")
+             <<"\nlookup boo: "<<lookup(t, "boo")
+             <<"\nlookup boy: "<<lookup(t, "boy")
+             <<"\nlookup by: "<<lookup(t, "by")
+             <<"\nlookup boolean: "<<lookup(t, "boolean")<<"\n";
+    delete t;
   }
 };
 #endif //_PATRICIA
