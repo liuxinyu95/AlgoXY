@@ -114,9 +114,16 @@ private:
 
   void test_insert(){
     const char* lst1[] = {"a", "an", "another", "b", "bob", "bool", "home"};
-    test_list_to_patricia(lst1, lst1+sizeof(lst1)/sizeof(int));
+    test_list_to_patricia(lst1, lst1+sizeof(lst1)/sizeof(char*));
 
-    /*t=0;
+    const char* lst2[] = {"home", "bool", "bob", "b", "another", "an", "a"};
+    test_list_to_patricia(lst2, lst2+sizeof(lst2)/sizeof(char*));
+
+    const char* lst3[] = {"romane", "romanus", "romulus"};
+    test_list_to_patricia(lst3, lst3+sizeof(lst3)/sizeof(char*));
+
+    typedef Patricia<std::string, std::string> PatriciaType;
+    PatriciaType* t(0);
     const char* keys[] = {"001", "100", "101"};
     const char* vals[] = {"y", "x", "z"};
     for(unsigned int i=0; i<sizeof(keys)/sizeof(char*); ++i)
@@ -124,7 +131,7 @@ private:
     std::copy(keys, keys+sizeof(keys)/sizeof(char*),
 	      std::ostream_iterator<std::string>(std::cout, ", "));
     std::cout<<"==>"<<trie_to_str(t)<<"\n";
-    delete t;*/
+    delete t;
   }
 
   void test_lookup(){
