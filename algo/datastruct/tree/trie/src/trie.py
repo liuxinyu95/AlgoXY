@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import string
+from trieutil import *
 
 class Trie:
     def __init__(self):
@@ -30,26 +31,11 @@ def lookup(t, key):
         p = p.children[c]
     return p.value
 
-def trie_to_str(t, prefix=""):
-    str="("+prefix
-    if t.value is not None:
-        str += ":"+t.value
-    for k,v in sorted(t.children.items()):
-        str += ", "+trie_to_str(v, prefix+k)
-    str+=")"
-    return str
-
 def list_to_trie(l):
-    t = None
-    for x in l:
-        t = trie_insert(t, x)
-    return t
+    return from_list(l, trie_insert)
 
 def map_to_trie(m):
-    t = None
-    for k, v in m.items():
-        t = trie_insert(t, k, v)
-    return t
+    return from_map(m, trie_insert)
 
 class TrieTest:
     def __init__(self):

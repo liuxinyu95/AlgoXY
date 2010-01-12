@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import string
+from trieutil import from_list, from_map
 
 class IntTree:
     def __init__(self, key = None, value = None):
@@ -109,16 +110,10 @@ def to_string(t):
     return str
 
 def list_to_patricia(l):
-    t = None
-    for x in l:
-        t = insert(t, x)
-    return t
+    return from_list(l, insert)
 
 def map_to_patricia(m):
-    t = None
-    for k, v in m.items():
-        t = insert(t, k, v)
-    return t
+    return from_map(m, insert)
 
 class IntTreeTest:
     def run(self):
