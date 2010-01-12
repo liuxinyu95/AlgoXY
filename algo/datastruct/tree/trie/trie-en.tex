@@ -1075,20 +1075,34 @@ $lcp(x, y) = 101100(b)$. And we set a mask to $2^3 = 100(b)$ to indicate that
 the last 2 bits are not effective for the prefix value.
 
 To convert a list or a map into a Patricia tree, we can repeatly
-insert the elements one by one.
+insert the elements one by one. Since the program is same, except for
+the insert function, we can abstract list\_to\_xxx and map\_to\_xxx to
+utility functions
+
+\begin{lstlisting}
+# in trieutil.py
+def from_list(l, insert_func):
+    t = None
+    for x in l:
+        t = insert_func(t, x)
+    return t
+
+def from_map(m, insert_func):
+    t = None
+    for k, v in m.items():
+        t = insert_func(t, k, v)
+    return t
+\end{lstlisting}
+
+With this high level functions, we can provide list\_to\_patricia and
+map\_to\_patricia as below.
 
 \begin{lstlisting}
 def list_to_patricia(l):
-    t = None
-    for x in l:
-        t = insert(t, x)
-    return t
+    return from_list(l, insert)
 
 def map_to_patricia(m):
-    t = None
-    for k, v in m.items():
-        t = insert(t, k, v)
-    return t
+    return from_map(m, insert)
 \end{lstlisting}
 
 In order to have smoke test of the above insertion program, some test
@@ -1988,16 +2002,10 @@ def trie_to_str(t, prefix=""):
     return str
 
 def list_to_trie(l):
-    t = None
-    for x in l:
-        t = trie_insert(t, x)
-    return t
+    return from_list(l, trie_insert)
 
 def map_to_trie(m):
-    t = None
-    for k, v in m.items():
-        t = trie_insert(t, k, v)
-    return t
+    return from_map(m, trie_insert)
 \end{lstlisting}
 
 With these helpers, we can test the insert program as below.
@@ -2646,28 +2654,17 @@ In order to test the insertion program, some helper functions are
 provided.
 
 \begin{lstlisting}
-def to_string(t, prefix=""):
-    str = "(" + prefix
-    if t.value is not None:
-        str += ":"+t.value
-    for k, tr in sorted(t.children.items()):
-        str += ", " + to_string(tr, prefix+k)
-    str += ")"
-    return str
+def to_string(t):
+    return trie_to_str(t)
 
 def list_to_patricia(l):
-    t = None
-    for x in l:
-        t = insert(t, x)
-    return t
+    return from_list(l, insert)
 
 def map_to_patricia(m):
-    t = None
-    for k, v in m.items():
-        t = insert(t, k, v)
-    return t
+    return from _map(m, insert)
 \end{lstlisting}
 
+We can reuse the trie\_to\_str since their implementation are same.
 to\_string function can turn a Patricia tree into string by traversing it
 in pre-order. list\_to\_patricia helps to convert a list of object into
 a Patricia tree by repeatly insert every elements into the tree. While 
