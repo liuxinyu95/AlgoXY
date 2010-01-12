@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import string
+from trieutil import from_list, from_map
 
 class IntTrie:
     def __init__(self):
@@ -50,16 +51,10 @@ def trie_to_str(t, prefix=0, depth=0):
     return str
 
 def list_to_trie(l):
-    t = None
-    for x in l:
-        t = trie_insert(t, x)
-    return t
+    return from_list(l, trie_insert)
 
 def map_to_trie(m):
-    t = None
-    for k, v in m.items():
-        t = trie_insert(t, k, v)
-    return t
+    return from_map(m, trie_insert)
 
 class IntTrieTest:
     def __init__(self):

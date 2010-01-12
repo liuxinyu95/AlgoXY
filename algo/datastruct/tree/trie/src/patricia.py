@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import string
+from trieutil import *
 
 # Patricia Trie definition
 class Patricia:
@@ -72,26 +73,14 @@ def lookup(t, key):
         if not match:
             return None
 
-def to_string(t, prefix=""):
-    str = "(" + prefix
-    if t.value is not None:
-        str += ":"+t.value
-    for k, tr in sorted(t.children.items()):
-        str += ", " + to_string(tr, prefix+k)
-    str += ")"
-    return str
+def to_string(t):
+    return trie_to_str(t)
 
 def list_to_patricia(l):
-    t = None
-    for x in l:
-        t = insert(t, x)
-    return t
+    return from_list(l, insert)
 
 def map_to_patricia(m):
-    t = None
-    for k, v in m.items():
-        t = insert(t, k, v)
-    return t
+    return from _map(m, insert)
 
 class PatriciaTest:
     def run(self):
