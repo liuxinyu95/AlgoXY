@@ -3,6 +3,7 @@
 
 #include <list>
 #include <queue>
+#include <algorithm> //for std::equal
 #include "trie.hpp"
 #include "patricia.hpp"
 
@@ -51,18 +52,50 @@ std::list<std::pair<K, V> > lookup(Trie<K, V>* t,
   return expand(key, p, n);
 }
 
-template<class K, class V>
-std::list<std::pair<K, V> > lookup(Patricia<K, V>* t, 
-                                   typename Patricia<K, V>::KeyType key,
-                                   unsigned int n){
+// x `is prefix of` y?
+template<class T>
+bool is_prefix_of(T x, T y){
+  if(x.size()<=y.size())
+    return std::equal(x.begin(), x.end(), y.begin());
+  return false;
 }
 
 template<class K, class V>
-std::string to_str(std::list<std::pair<K, V> > l){
-  typedef typename std::list<std::pair<K, V> >::iterator Iterator;
+std::list<std::pair<K, V> > lookup(Patricia<K, V>* t, 
+                                   typename Patricia<K, V>::KeyType key,
+                                   unsigned int n)
+{
+  typedef typename std::list<std::pair<K, V> > Result;
+  typedef typename Patricia<K, V>::Children::iterator Iterator;
+  if(!t)
+    return Result();
+  K prefix;
+  for(;;){
+    bool match(false);
+    for(Iterator it=t->children.begin(); it!=t->children.end(); ++it){
+      K k(it->first);
+      if(is_prefix_of(key, k))
+        return expand(prefix+k, it->second, n);
+      if(is_prefix_of(k, key)){
+        match = true;
+        prefix += k;
+        lcp<K>(key, k); //update key
+        t = it->second;
+        break;
+      }
+    }
+    if(!match)
+      return Result();
+  }
+}
+
+//list of pairs to string
+template<class Container>
+std::string lop_to_str(Container coll){
+  typedef typename Container::iterator Iterator;
   std::ostringstream s;
   s<<"[";
-  for(Iterator it=l.begin(); it!=l.end(); ++it)
+  for(Iterator it=coll.begin(); it!=coll.end(); ++it)
     s<<"("<<it->first<<", "<<it->second<<"), ";
   s<<"]";
   return s.str();
@@ -70,7 +103,7 @@ std::string to_str(std::list<std::pair<K, V> > l){
 
 class EDictTest{
 public:
-  EDictTest():t(0){
+  EDictTest():t(0), p(0){
     const char* dict[] = {
       "a", "the first letter of English",                               \
       "an", "used instead of 'a' when the following word begins with a vowel sound", \
@@ -84,27 +117,38 @@ public:
 
     const char** first=dict;
     const char** last =dict + sizeof(dict)/sizeof(char*);
-    for(;first!=last; ++first, ++first)
+    for(;first!=last; ++first, ++first){
       t = insert(t, *first, *(first+1));
+      p = insert(p, *first, *(first+1));
+    }
   }
 
   ~EDictTest(){
     delete t;
+    delete p;
   }
 
   void run(){
     std::cout<<"\nword auto-completion and T9 test\n";
     test_trie_lookup();
+    test_patricia_lookup();
   }
 
 private:
   void test_trie_lookup(){
     std::cout<<"test lookup top 5 in Trie\n"
-             <<"search a "<<to_str(lookup(t, "a", 5))<<"\n"
-             <<"search ab "<<to_str(lookup(t, "ab", 5))<<"\n";
+             <<"search a "<<lop_to_str(lookup(t, "a", 5))<<"\n"
+             <<"search ab "<<lop_to_str(lookup(t, "ab", 5))<<"\n";
+  }
+
+  void test_patricia_lookup(){
+    std::cout<<"\ntest lookup top 5 in Patricia\n"
+             <<"search a "<<lop_to_str(lookup(p, "a", 5))<<"\n"
+             <<"search ab "<<lop_to_str(lookup(p, "ab", 5))<<"\n";
   }
 
   Trie<std::string, std::string>* t;
+  Patricia<std::string, std::string>* p;
 };
 
 #endif //_EDICT_
