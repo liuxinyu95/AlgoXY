@@ -80,7 +80,7 @@ def list_to_patricia(l):
     return from_list(l, insert)
 
 def map_to_patricia(m):
-    return from _map(m, insert)
+    return from_map(m, insert)
 
 class PatriciaTest:
     def run(self):

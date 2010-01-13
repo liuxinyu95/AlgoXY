@@ -8,10 +8,12 @@
 #include "trieutil.hpp"
 
 // Definition
-template<class Char, class Value>
+template<class Key, class Value>
 struct Trie{
-  typedef Trie<Char, Value> Self;
+  typedef typename Key::value_type Char;
+  typedef Trie<Key, Value> Self;
   typedef std::map<Char, Self*> Children;
+  typedef Key KeyType;
   typedef Value ValueType;
 
   Trie():value(Value()){}
@@ -26,27 +28,29 @@ struct Trie{
   Children children;
 };
 
-template<class Char, class Value, class Key>
-Trie<Char, Value>* insert(Trie<Char, Value>* t, Key key, Value value=Value()){
+template<class K, class V>
+Trie<K, V>* insert(Trie<K, V>* t, 
+                   typename Trie<K, V>::KeyType key, 
+                   typename Trie<K, V>::ValueType value=V()){
   if(!t)
-    t = new Trie<Char, Value>();
+    t = new Trie<K, V>();
 
-  Trie<Char, Value>* p(t);
-  for(typename Key::iterator it=key.begin(); it!=key.end(); ++it){
+  Trie<K, V>* p(t);
+  for(typename K::iterator it=key.begin(); it!=key.end(); ++it){
     if(p->children.find(*it) == p->children.end())
-      p->children[*it] = new Trie<Char, Value>();
+      p->children[*it] = new Trie<K, V>();
     p = p->children[*it];
   }
   p->value = value;
   return t;
 }
 
-template<class C, class K, class V>
-V lookup(Trie<C, V>* t, K key){
+template<class K, class V>
+V lookup(Trie<K, V>* t, typename Trie<K, V>::KeyType key){
   if(!t)
     return V(); //or throw exception
 
-  Trie<C, V>* p(t);
+  Trie<K, V>* p(t);
   for(typename K::iterator it=key.begin(); it!=key.end(); ++it){
     if(p->children.find(*it) == p->children.end())
       return V(); //or throw exception
@@ -64,7 +68,7 @@ public:
   }
 private:
   void test_insert(){
-    typedef Trie<char, std::string> TrieType;
+    typedef Trie<std::string, std::string> TrieType;
     TrieType* t(0);
     const char* lst[] = {"a", "an", "another", "b", "bob", "bool", "home"};
     t = list_to_trie(lst, lst+sizeof(lst)/sizeof(char*), t);
@@ -85,14 +89,14 @@ private:
   }
 
   void test_lookup(){
-    Trie<char, int>* t(0);
+    Trie<std::string, int>* t(0);
     const char* keys[] = {"a", "an", "another", "b", "bool", "bob", "home"};
     const int vals[] = {1, 2, 7, 1, 4, 3, 4};
     for(unsigned int i=0; i<sizeof(keys)/sizeof(char*); ++i)
       t = insert(t, std::string(keys[i]), vals[i]);
-    std::cout<<"\nlookup another: "<<lookup(t, std::string("another"))
-	     <<"\nlookup home: "<<lookup(t, std::string("home"))
-	     <<"\nlookup the: "<<lookup(t, std::string("the"))<<"\n";
+    std::cout<<"\nlookup another: "<<lookup(t, "another")
+	     <<"\nlookup home: "<<lookup(t, "home")
+	     <<"\nlookup the: "<<lookup(t, "the")<<"\n";
     delete t;
   }
 };
