@@ -1,4 +1,4 @@
-HEADER = inttrie.hpp intpatricia.hpp trie.hpp patricia.hpp trieutil.hpp
+HEADER = inttrie.hpp intpatricia.hpp trie.hpp patricia.hpp trieutil.hpp edict.hpp
 SOURCE = trie.cpp
 CPP_TEST_OBJS = test.o
 CXX = g++ -Wall

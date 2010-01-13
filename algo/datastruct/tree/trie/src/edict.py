@@ -103,7 +103,7 @@ class LookupTest:
            "about":"on the subject of; connected with",\
            "adam":"a character in the Bible who was the first man made by God",\
            "boy":"a male child or, more generally, a male of any age", \
-           "bodyl":"the whole physical structure that forms a person or animal", \
+           "body":"the whole physical structure that forms a person or animal", \
            "zoo":"an area in which animals, especially wild animals, are kept so that people can go and look at them, or study them"}
         self.tt = trie.map_to_trie(dict)
         self.tp = patricia.map_to_patricia(dict)
