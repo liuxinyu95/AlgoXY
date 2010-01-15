@@ -2761,7 +2761,7 @@ key, the program create a new leaf, and add it as a new child.
 \STATE $p \leftarrow FIND-MATCH(CHILDREN(T), key)$
 \IF{$p = NIL$}
   \STATE $ADD(CHILDREN(T), CREATE-LEAF(key, value))$
-\ELSIF{$PREFIX(p) = key$}
+\ELSIF{$KEY(p) = key$}
   \STATE $VALUE(p) \leftarrow value$
 \ELSE
   \STATE $q \leftarrow BRANCH(CREATE-LEAF(key, value), p)$
@@ -2783,19 +2783,19 @@ prefix and set its two children.
   \STATE $prefix \leftarrow LONGEST-COMMON-PREFIX(T1, T2)$
 
   \STATE $p \leftarrow EmptyNode$
-  \IF{$prefix = PREFIX(T1)$}
-    \STATE $PREFIX(T2) \leftarrow PREFIX(T2)$ subtract $prefix$
+  \IF{$prefix = KEY(T1)$}
+    \STATE $KEY(T2) \leftarrow KEY(T2)$ subtract $prefix$
     \STATE $p \leftarrow CREATE-LEAF(prefix, VALUE(T1))$
     \STATE $ADD(CHILDREN(p), T2)$
-  \ELSIF{$prefix = PREFIX(T2)$}
-    \STATE $PREFIX(T1) \leftarrow PREFIX(T1)$ subtract $prefix$
-    \STATE $p \leftarrow PATRICIA-INSERT'(T2, PREFIX(T1), VALUE(T1))$
-    \STATE $PREFIX(p) \leftarrow prefix$
+  \ELSIF{$prefix = KEY(T2)$}
+    \STATE $KEY(T1) \leftarrow KEY(T1)$ subtract $prefix$
+    \STATE $p \leftarrow PATRICIA-INSERT'(T2, KEY(T1), VALUE(T1))$
+    \STATE $KEY(p) \leftarrow prefix$
   \ELSE
-    \STATE $PREFIX(T2) \leftarrow PREFIX(T2)$ subtract $prefix$
-    \STATE $PREFIX(T1) \leftarrow PREFIX(T1)$ subtract $prefix$
+    \STATE $KEY(T2) \leftarrow KEY(T2)$ subtract $prefix$
+    \STATE $KEY(T1) \leftarrow KEY(T1)$ subtract $prefix$
     \STATE $ADD(CHILDREN(p), T1, T2)$
-    \STATE $PREFIX(p) \leftarrow prefix$
+    \STATE $KEY(p) \leftarrow prefix$
   \ENDIF
   \RETURN $p$
 \end{algorithmic}
@@ -3100,10 +3100,10 @@ with updated key.
 \STATE $FIND-IN-CHILDREN(l, key)$
   \IF{$l = NIL$}
     \RETURN $NIL$
-  \ELSIF{$PREFIX(FIRST(l)) = key$}
+  \ELSIF{$KEY(FIRST(l)) = key$}
     \RETURN $VALUE(FIRST(l))$
-  \ELSIF{$PREFIX(FIRST(l))$ is prefix of $key$}
-    \STATE $key \leftarrow key$ subtract $PREFIX(FIRST(l))$
+  \ELSIF{$KEY(FIRST(l))$ is prefix of $key$}
+    \STATE $key \leftarrow key$ subtract $KEY(FIRST(l))$
     \RETURN $PATRICIA-LOOK-UP'(FIRST(l), key)$
   \ELSE
     \RETURN $FIND-IN-CHILDREN(REST(l), key)$
@@ -3257,6 +3257,10 @@ spaces.
 
 \subsubsection{Iterative algorithm of search top N candidate in Patricia}
 
+The algorithm is similar to the Patricia lookup one, but when we found
+a node which key start from the string we are looking for, we expand
+all its children until we get N candidates.
+
 \begin{algorithmic}
 \STATE $PATRICIA-LOOK-UP-TOP-N(T, key, N)$
   \IF{$T = NIL$}
@@ -3281,13 +3285,343 @@ spaces.
   \RETURN $NIL$
 \end{algorithmic}
 
+\subsubsection*{An e-dictionary in Python}
+In Python implementation, a function trie\_lookup is provided to perform
+search all top N candidate started with a given string.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def trie_lookup(t, key, n):
+    if t is None:
+        return None
+
+    p = t
+    for c in key:
+        if not c in p.children:
+            return None
+        p=p.children[c]
+    return expand(key, p, n)
+
+def expand(prefix, t, n):
+    res = []
+    q = [(prefix, t)]
+    while len(res)<n and len(q)>0:
+        (s, p) = q.pop(0)
+        if p.value is not None:
+            res.append((s, p.value))
+        for k, tr in p.children.items():
+            q.append((s+k, tr))
+    return res
+\end{lstlisting}
+
+Compare with the Trie lookup function, the first part of this program is almost
+same. The difference part is after we successfully located the node which matches the key, all sub trees are expanded from this node in a bread-first search manner, and the top n candidates are returned. 
+
+This program can be verified by below simple test cases.
+
+\begin{lstlisting}
+class LookupTest:
+    def __init__(self):
+        dict = {"a":"the first letter of English", \
+           "an":"...same dict as in Haskell example"}
+        self.tt = trie.map_to_trie(dict)
+
+    def run(self):
+        self.test_trie_lookup()
+
+    def test_trie_lookup(self):
+        print "test lookup top 5"
+        print "search a ", trie_lookup(self.tt, "a", 5)
+        print "search ab ", trie_lookup(self.tt, "ab", 5)
+\end{lstlisting}
+
+The test will output the following result.
+
+\begin{verbatim}
+test lookup to 5
+search a  [('a', 'the first letter of English'), ('an', "used instead of 'a' 
+when the following word begins with a vowel sound"), ('adam', 'a character in 
+the Bible who was the first man made by God'), ('about', 'on the subject of; 
+connected with'), ('abandon', 'to leave a place, thing or person forever')]
+search ab  [('about', 'on the subject of; connected with'), ('abandon', 'to 
+leave a place, thing or person forever')]
+\end{verbatim}
+
+To save the spaces, we can also implement such a dictionary search by using
+Patricia.
+
+\begin{lstlisting}
+def patricia_lookup(t, key, n):
+    if t is None:
+        return None
+    prefix = ""
+    while(True):
+        match = False
+        for k, tr in t.children.items():
+            if string.find(k, key) == 0: #is prefix of
+                return expand(prefix+k, tr, n)
+            if string.find(key, k) ==0:
+                match = True
+                key = key[len(k):]
+                t = tr
+                prefix += k
+                break
+        if not match:
+            return None
+\end{lstlisting}
+
+In this program, we called Python string class to test if a string x is
+prefix of a string y. In case we locate a node with the key we are looking
+up is either equal of as prefix of the this sub tree, we expand it till
+we find n candidates. Function expand() can be reused here.
+
+We can test this program with the very same test cases and the results are
+identical to the previous one.
+
+\subsubsection*{An e-dictionary in C++}
+
+In C++ implementation, we overload the lookup function by providing an
+extra integer n to indicate we want to searl top n candidates. the
+result is a list of key-value pairs, 
+
+\lstset{language=C++}
+\begin{lstlisting}
+//lookup top n candidate with prefix key in Trie
+template<class K, class V>
+std::list<std::pair<K, V> > lookup(Trie<K, V>* t, 
+                                   typename Trie<K, V>::KeyType key, 
+                                   unsigned int n)
+{
+  typedef std::list<std::pair<K, V> > Result;
+  if(!t)
+    return Result();
+
+  Trie<K, V>* p(t);
+  for(typename K::iterator it=key.begin(); it!=key.end(); ++it){
+    if(p->children.find(*it) == p->children.end())
+      return Result();
+    p = p->children[*it];
+  }
+  return expand(key, p, n);
+}
+\end{lstlisting}
+
+The program is almost same as the Trie looking up one, except it will
+call expand function when it located the node with the key. Function
+expand is as the following.
+
+\begin{lstlisting}
+template<class T>
+std::list<std::pair<typename T::KeyType, typename T::ValueType> >
+expand(typename T::KeyType prefix, T* t, unsigned int n)
+{
+  typedef typename T::KeyType KeyType;
+  typedef typename T::ValueType ValueType;
+  typedef std::list<std::pair<KeyType, ValueType> > Result;
+
+  Result res;
+  std::queue<std::pair<KeyType, T*> > q;
+  q.push(std::make_pair(prefix, t));
+  while(res.size()<n && (!q.empty())){
+    std::pair<KeyType, T*> i = q.front();
+    KeyType s = i.first;
+    T* p = i.second;
+    q.pop();
+    if(p->value != ValueType()){
+      res.push_back(std::make_pair(s, p->value));
+    }
+    for(typename T::Children::iterator it = p->children.begin();
+        it!=p->children.end(); ++it)
+      q.push(std::make_pair(s+it->first, it->second));
+  }
+  return res;
+}
+\end{lstlisting}
+
+This function use a bread-first search approach to expand top N
+candidates, it maintain a queue to store the node it is currently
+dealing with. Each time the program picks a candidate node from the
+queue, expands all its children and put them to the queue. the program
+will terminate when the queue is empty or we have already found N
+candidates. 
+
+Function expand is gernic we'll use it in later sections.
+
+Then we can provide a helper function to convert the candidate
+list to readable string. Note that this list is actually a list of pairs so we can
+provide a generic fucntion.
+
+\begin{lstlisting}
+//list of pairs to string
+template<class Container>
+std::string lop_to_str(Container coll){
+  typedef typename Container::iterator Iterator;
+  std::ostringstream s;
+  s<<"[";
+  for(Iterator it=coll.begin(); it!=coll.end(); ++it)
+    s<<"("<<it->first<<", "<<it->second<<"), ";
+  s<<"]";
+  return s.str();
+}
+\end{lstlisting}
+
+After that, we can test the program with some simple test cases.
+
+\begin{lstlisting}
+Trie<std::string, std::string>* t(0);
+const char* dict[] = {
+  "a", "the first letter of English", \
+  "an", "used instead of 'a' when the following word begins with a vowel sound", \
+  "another", "one more person or thing or an extra amount", \
+  "abandon", "to leave a place, thing or person forever", \
+  "about", "on the subject of; connected with", \
+  "adam", "a character in the Bible who was the first man made by God", \
+  "boy", "a male child or, more generally, a male of any age", \
+  "body", "the whole physical structure that forms a person or animal", \
+  "zoo", "an area in which animals, especially wild animals, are kept" \
+         "so that people can go and look at them, or study them"};
+
+const char** first=dict;
+const char** last =dict + sizeof(dict)/sizeof(char*);
+for(;first!=last; ++first, ++first)
+  t = insert(t, *first, *(first+1));
+}
+
+std::cout<<"test lookup top 5 in Trie\n"
+         <<"search a "<<lop_to_str(lookup(t, "a", 5))<<"\n"
+         <<"search ab "<<lop_to_str(lookup(t, "ab", 5))<<"\n";
+delete t;
+\end{lstlisting}
+
+The result print to the console is something like this:
+
+\begin{verbatim}
+test lookup top 5 in Trie
+search a [(a, the first letter of English), (an, used instead of 'a'
+when the following word begins with a vowel sound), (adam, a character 
+in the Bible who was the first man made by God), (about, on the 
+subject of; connected with), (abandon, to leave a place, thing or 
+person forever), ]
+search ab [(about, on the subject of; connected with), (abandon, to 
+leave a place, thing or person forever), ]
+\end{verbatim}
+
+To save the the space with Patricia, we provide a C++ program to
+search top N candidate as below.
+
+\begin{lstlisting}
+template<class K, class V>
+std::list<std::pair<K, V> > lookup(Patricia<K, V>* t, 
+                                   typename Patricia<K, V>::KeyType key,
+                                   unsigned int n)
+{
+  typedef typename std::list<std::pair<K, V> > Result;
+  typedef typename Patricia<K, V>::Children::iterator Iterator;
+  if(!t)
+    return Result();
+  K prefix;
+  for(;;){
+    bool match(false);
+    for(Iterator it=t->children.begin(); it!=t->children.end(); ++it){
+      K k(it->first);
+      if(is_prefix_of(key, k))
+        return expand(prefix+k, it->second, n);
+      if(is_prefix_of(k, key)){
+        match = true;
+        prefix += k;
+        lcp<K>(key, k); //update key
+        t = it->second;
+        break;
+      }
+    }
+    if(!match)
+      return Result();
+  }
+}
+\end{lstlisting}
+
+The program iterate all children if the string we are looked up is
+prefix of one child, we expand this child to find top N candidates; If
+the in the opposite case, we update the string and go on examin into
+this child Patricia tree.
+
+Where the function is\_prefix\_of() is defined as below.
+
+\begin{lstlisting}
+// x `is prefix of` y?
+template<class T>
+bool is_prefix_of(T x, T y){
+  if(x.size()<=y.size())
+    return std::equal(x.begin(), x.end(), y.begin());
+  return false;
+}
+\end{lstlisitng}
+
+We use STL equal function to check if x is prefix of y. 
+
+The test case is nearly same as the one in Trie.
+
+\begin{lstlisting}
+Patricia<std::string, std::string>* t(0);
+const char* dict[] = {
+  "a", "the first letter of English", \
+  "an", "used instead of 'a' when the following word begins with a vowel sound", \
+  "another", "one more person or thing or an extra amount", \
+  "abandon", "to leave a place, thing or person forever", \
+  "about", "on the subject of; connected with", \
+  "adam", "a character in the Bible who was the first man made by God", \
+  "boy", "a male child or, more generally, a male of any age", \
+  "body", "the whole physical structure that forms a person or animal", \
+  "zoo", "an area in which animals, especially wild animals, are kept" \
+         "so that people can go and look at them, or study them"};
+
+const char** first=dict;
+const char** last =dict + sizeof(dict)/sizeof(char*);
+for(;first!=last; ++first, ++first)
+  t = insert(t, *first, *(first+1));
+}
+
+std::cout<<"test lookup top 5 in Trie\n"
+         <<"search a "<<lop_to_str(lookup(t, "a", 5))<<"\n"
+         <<"search ab "<<lop_to_str(lookup(t, "ab", 5))<<"\n";
+delete t;
+\end{lstlisting}
+
+This test case will output a very same result in console.
+
 \subsubsection{Recursive algorithm of search top N candidate in
   Patricia}
 
+This algorithm can also be implemented recursively, if the string we
+are looking for is empth, we exapand all children until we get N
+candidates. else we recursively examine the children of the node to
+see if we can find one has prefix as this string.
+
 \begin{algorithmic}
 \STATE $PATRICIA-LOOK-UP-TOP-N(T, key, N)$
+  \IF{$T = NIL$}
+    \RETURN $NIL$
+  \ENDIF
 
+  \IF{$KEY = NIL$}
+    \RETURN $EXPAND-TOP-N(T, NIL, N)$
+  \ELSE
+    \RETURN $FIND-IN-CHILDREN-TOP-N(CHILDREN(T), key, N)$
+  \ENDIF
 
+\STATE $FIND-IN-CHILDREN-TOP-N(l, key, N)$
+  \IF{$l = NIL$}
+    \RETURN $NIL$
+  \ELSIF{$KEY(FIRST(l)) = key$}
+    \RETURN $EXPAND-TOP-N(FIRST(l), key, N)$
+  \ELSIF{$KEY(FIRST(l)$ is prefix of $key$}
+    \RETURN $PATRICIA-LOOK-UP-TOP-N(FIRST(l), key$ subtract
+    $KEY(FIRST(l)))$
+  \ELSIF{$key$ is prefix of $KEY(FIRST(l)$}
+    \RETURN $PATRICIA-LOOK-UP-TOP-N(FIRST(l), NIL, N)$
+  \ELSE
+    \RETURN $FIND-IN-CHILDREN-TOP-N(REST(l), key, N)$
+  \ENDIF
 \end{algorithmic}
 
 \subsubsection*{An e-dictionary in Haskell}
@@ -3406,98 +3740,9 @@ this child and return all its sub branches as candidate list.
 This program can be tested with the very same case as above, and it will output
 the same result.
 
-\subsubsection*{An e-dictionary in Python}
-In Python implementation, a function trie\_lookup is provided to perform
-search all top N candidate started with a given string.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def trie_lookup(t, key, n):
-    if t is None:
-        return None
-
-    p = t
-    for c in key:
-        if not c in p.children:
-            return None
-        p=p.children[c]
-    return expand(key, p, n)
-
-def expand(prefix, t, n):
-    res = []
-    q = [(prefix, t)]
-    while len(res)<n and len(q)>0:
-        (s, p) = q.pop(0)
-        if p.value is not None:
-            res.append((s, p.value))
-        for k, tr in p.children.items():
-            q.append((s+k, tr))
-    return res
-\end{lstlisting}
-
-Compare with the Trie lookup function, the first part of this program is almost
-same. The difference part is after we successfully located the node which matches the key, all sub trees are expanded from this node in a bread-first search manner, and the top n candidates are returned. 
-
-This program can be verified by below simple test cases.
-
-\begin{lstlisting}
-class LookupTest:
-    def __init__(self):
-        dict = {"a":"the first letter of English", \
-           "an":"...same dict as in Haskell example"}
-        self.tt = trie.map_to_trie(dict)
-
-    def run(self):
-        self.test_trie_lookup()
-
-    def test_trie_lookup(self):
-        print "test lookup top 5"
-        print "search a ", trie_lookup(self.tt, "a", 5)
-        print "search ab ", trie_lookup(self.tt, "ab", 5)
-\end{lstlisting}
-
-The test will output the following result.
-
-\begin{verbatim}
-test lookup to 5
-search a  [('a', 'the first letter of English'), ('an', "used instead of 'a' 
-when the following word begins with a vowel sound"), ('adam', 'a character in 
-the Bible who was the first man made by God'), ('about', 'on the subject of; 
-connected with'), ('abandon', 'to leave a place, thing or person forever')]
-search ab  [('about', 'on the subject of; connected with'), ('abandon', 'to 
-leave a place, thing or person forever')]
-\end{verbatim}
-
-To save the spaces, we can also implement such a dictionary search by using
-Patricia.
-
-\begin{lstlisting}
-def patricia_lookup(t, key, n):
-    if t is None:
-        return None
-    prefix = ""
-    while(True):
-        match = False
-        for k, tr in t.children.items():
-            if string.find(k, key) == 0: #is prefix of
-                return expand(prefix+k, tr, n)
-            if string.find(key, k) ==0:
-                match = True
-                key = key[len(k):]
-                t = tr
-                prefix += k
-                break
-        if not match:
-            return None
-\end{lstlisting}
-
-In this program, we called Python string class to test if a string x is
-prefix of a string y. In case we locate a node with the key we are looking
-up is either equal of as prefix of the this sub tree, we expand it till
-we find n candidates. Function expand() can be reused here.
-
-We can test this program with the very same test cases and the results are
-identical to the previous one.
+%=====================================
+% T9
+%=====================================
 
 \subsection{T9 input method}
 Most mobile phones around year 2000 has a key pad. To edit a short message/email
