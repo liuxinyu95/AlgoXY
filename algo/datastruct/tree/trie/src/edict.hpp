@@ -6,6 +6,7 @@
 #include <algorithm> //for std::equal
 #include "trie.hpp"
 #include "patricia.hpp"
+#include "boost/tuple/tuple.hpp"
 
 template<class T>
 std::list<std::pair<typename T::KeyType, typename T::ValueType> >
@@ -89,6 +90,60 @@ std::list<std::pair<K, V> > lookup(Patricia<K, V>* t,
   }
 }
 
+struct t9map{
+  std::map<char, std::string> map;
+  t9map(){
+    map['2']="abc";
+    map['3']="def";
+    map['4']="ghi";
+    map['5']="jkl";
+    map['6']="mno";
+    map['7']="pqrs";
+    map['8']="tuv";
+    map['9']="wxyz";
+  }
+
+  static t9map& inst(){
+    static t9map i;
+    return i;
+  }
+};
+
+template<class K, class V>
+std::list<std::pair<K, V> > lookup_t9(Trie<K, V>* t,
+				   typename Trie<K, V>::KeyType key)
+{
+  typedef std::list<std::pair<K, V> > Result;
+  typedef typename Trie<K, V>::KeyType Key;
+  typedef typename Trie<K, V>::Char Char;
+
+  if((!t) || key.empty())
+    return Result();
+  
+  Key prefix;
+  std::map<Char, Key> m = t9map::inst().map;
+  std::queue<boost::tuple<Key, Key, Trie<K, V>*> > q;
+  q.push(boost::make_tuple(prefix, key, t));
+  Result res;
+  while(!q.empty()){
+    boost::tie(prefix, key, t) = q.front();
+    q.pop();
+    Char c = *key.begin();
+    key = Key(key.begin()+1, key.end());
+    if(m.find(c) == m.end())
+      return Result();
+    Key cs = m[c];
+    for(typename Key::iterator i=cs.begin(); i!=cs.end(); ++i)
+      if(t->children.find(*i)!=t->children.end()){
+	if(key.empty())
+	  res.push_back(std::make_pair(prefix+*i, t->children[*i]->value));
+	else
+	  q.push(boost::make_tuple(prefix+*i, key, t->children[*i]));
+      }
+  }
+  return res;
+}
+
 //list of pairs to string
 template<class Container>
 std::string lop_to_str(Container coll){
@@ -103,7 +158,7 @@ std::string lop_to_str(Container coll){
 
 class EDictTest{
 public:
-  EDictTest():t(0), p(0){
+  EDictTest():t(0), p(0), t9trie(0), t9patricia(0){
     const char* dict[] = {
       "a", "the first letter of English",                               \
       "an", "used instead of 'a' when the following word begins with a vowel sound", \
@@ -121,34 +176,52 @@ public:
       t = insert(t, *first, *(first+1));
       p = insert(p, *first, *(first+1));
     }
+
+    const char* t9dict[] = {"home", "good", "gone", "hood", "a", "another", "an"};
+    t9trie = list_to_trie(t9dict, t9dict+sizeof(t9dict)/sizeof(char*), t9trie);
+    t9patricia = list_to_trie(t9dict, t9dict+sizeof(t9dict)/sizeof(char*), t9patricia);
   }
 
   ~EDictTest(){
     delete t;
     delete p;
+    delete t9trie;
+    delete t9patricia;
   }
 
   void run(){
     std::cout<<"\nword auto-completion and T9 test\n";
     test_trie_lookup();
     test_patricia_lookup();
+    test_trie_t9();
   }
 
 private:
   void test_trie_lookup(){
     std::cout<<"test lookup top 5 in Trie\n"
              <<"search a "<<lop_to_str(lookup(t, "a", 5))<<"\n"
-             <<"search ab "<<lop_to_str(lookup(t, "ab", 5))<<"\n";
+             <<"search ab "<<lop_to_str(lookup(t, "ab", 5))<<"\n\n";
   }
 
   void test_patricia_lookup(){
-    std::cout<<"\ntest lookup top 5 in Patricia\n"
+    std::cout<<"test lookup top 5 in Patricia\n"
              <<"search a "<<lop_to_str(lookup(p, "a", 5))<<"\n"
-             <<"search ab "<<lop_to_str(lookup(p, "ab", 5))<<"\n";
+             <<"search ab "<<lop_to_str(lookup(p, "ab", 5))<<"\n\n";
+  }
+
+  void test_trie_t9(){
+    std::cout<<"\ntest t9 lookup in Trie\n"
+	     <<"search 4 "<<lop_to_str(lookup_t9(t9trie, "4"))<<"\n"
+	     <<"serach 46 "<<lop_to_str(lookup_t9(t9trie, "46"))<<"\n"
+	     <<"serach 4663 "<<lop_to_str(lookup_t9(t9trie, "4663"))<<"\n"
+	     <<"serach 2 "<<lop_to_str(lookup_t9(t9trie, "2"))<<"\n"
+	     <<"serach 22 "<<lop_to_str(lookup_t9(t9trie, "22"))<<"\n\n";
   }
 
   Trie<std::string, std::string>* t;
   Patricia<std::string, std::string>* p;
+  Trie<std::string, std::string>* t9trie;
+  Patricia<std::string, std::string>* t9patricia;
 };
 
 #endif //_EDICT_
