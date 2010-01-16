@@ -3792,6 +3792,8 @@ in advance. Trie or Patricia can be used to store the Dictionary. In the real
 commercial software, complex indexing dictionary is used. We show the very 
 simple Trie and Patricia only for illustration purpose.
 
+\subsucsection{Iterative algorithm of T9 looking up}
+
 Below pseduo code shows how to realize T9 with Trie.
 
 \begin{algorithmic}
@@ -3846,129 +3848,6 @@ work with Patricia, which can help to save extra spaces.
   \ENDWHILE
   \RETURN $r$
 \end{algorithmic}
-
-\subsubsection*{T9 implemented in Haskell}
-
-In Haskell, we first define a map from key pad to English letter. When user
-input a key pad number sequence, we take each number and check from the Trie.
-All children match the number should be investigated. Below is a Haskell 
-program to realize T9 input.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-mapT9 = [('2', "abc"), ('3', "def"), ('4', "ghi"), ('5', "jkl"), 
-         ('6', "mno"), ('7', "pqrs"), ('8', "tuv"), ('9', "wxyz")]
-
-lookupT9 :: Char -> [(Char, b)] -> [(Char, b)]
-lookupT9 c children = case lookup c mapT9 of
-        Nothing -> []
-        Just s  -> foldl f [] s where
-             f lst x = case lookup x children of
-                 Nothing -> lst
-                 Just t  -> (x, t):lst
-        
--- T9-find in Trie
-findT9:: Trie a -> String -> [(String, Maybe a)]
-findT9 t [] = [("", Trie.value t)]
-findT9 t (k:ks) = foldl f [] (lookupT9 k (children t))
-    where
-      f lst (c, tr) = (mapAppend c (findT9 tr ks)) ++ lst
-\end{lstlisting}
-
-findT9 is the main function, it takes 2 parameters, a Trie and a number
-sequence string. In non-trivial case, it calls lookupT9 function to
-examine all childrens which match the first number.
-
-For each matched child, the program recursively calls findT9 on it with
-the left numbers, and we use mapAppend to insert the currently finding letter
-in front of all results. The program use foldl to combine all these together.
-
-Function lookupT9 is used to filtered all possible children who match a
-number. It first call lookup function on mapT9, so that a string of possible
-English letters can be indentified. Next we call lookup for each candidate
-letter to see if there is a child can match the letter. We use folderl to 
-collect all such child together.
-
-This proram can be verfied by using some simiple test cases.
-
-\begin{lstlisting}
-testFindT9 = "press 4: " ++ (show $ take 5 $ findT9 t "4")++
-             "\npress 46: " ++ (show $ take 5 $ findT9 t "46")++
-             "\npress 4663: " ++ (show $ take 5 $ findT9 t "4663")++
-             "\npress 2: " ++ (show $ take 5 $ findT9 t "2")++
-             "\npress 22: " ++ (show $ take 5 $ findT9 t "22")
-    where
-      t = Trie.fromList lst
-      lst = [("home", 1), ("good", 2), ("gone", 3), ("hood", 4), 
-             ("a", 5), ("another", 6), ("an", 7)]
-\end{lstlisting}
-
-The program will output below result.
-
-\begin{verbatim}
-press 4: [("g",Nothing),("h",Nothing)]
-press 46: [("go",Nothing),("ho",Nothing)]
-press 4663: [("gone",Just 3),("good",Just 2),("home",Just 1),("hood",Just 4)]
-press 2: [("a",Just 5)]
-press 22: []
-\end{verbatim}
-
-The value of each child is just for illustration, we can put empty value instead
-and only returns candidate keys for a real input application.
-
-Tries consumes to many spaces, we can provide a Patricia version as alternative.
-
-\begin{lstlisting}
-findPrefixT9' :: String -> [(String, b)] -> [(String, b)]
-findPrefixT9' s lst = filter f lst where
-    f (k, _) = (toT9 k) `Data.List.isPrefixOf` s
-
-toT9 :: String -> String
-toT9 [] = []
-toT9 (x:xs) = (unmapT9 x mapT9):(toT9 xs) where
-    unmapT9 x (p:ps) = if x `elem` (snd p) then (fst p) else unmapT9 x ps
-
-findT9' :: Patricia a -> String -> [(String, Maybe a)]
-findT9' t [] = [("", value t)]
-findT9' t k = foldl f [] (findPrefixT9' k (children t)) 
-    where
-      f lst (s, tr) = (mapAppend' s (findT9' tr (k `diff` s))) ++ lst
-      diff x y = drop (length y) x
-\end{lstlisting}
-
-In this program, we don't check one digit at a time, we take all the digit
-sequence, and we examine all children of the Patricia node. For each dhild,
-the program convert the prefix string to number sequence by using function 
-toT9, if the result is prefix of what user input, we go on search in this 
-child and append the prefix in front of all further results.
-
-If we tries the same test case, we can find the result is a bit different.
-
-\begin{verbatim}
-press 4: []
-press 46: [("go",Nothing),("ho",Nothing)]
-press 466: []
-press 4663: [("good",Just 2),("gone",Just 3),("home",Just 1),("hood",Just 4)]
-press 2: [("a",Just 5)]
-press 22: []
-\end{verbatim}
-
-If user press key '4', because the dictionary (represent by Patricia) doesn't
-contain any candidates matches it, user will get an empty candidates list.
-The same situation happens when he enters ``466''. In real input method 
-implementation, such user epxerience isnt' good, because it displays nothing
-although user presses the key serveral times. One improvement is to 
-predict what user will input next by display a partial result. This can be 
-easily achieved by modify the above program. (Hint: not only check
-\begin{lstlisting}
-findPrefixT9' s lst = filter f lst where
-    f (k, _) = (toT9 k) `Data.List.isPrefixOf` s
-\end{lstlisting}
-but also check
-\begin{lstlisting}
-    f (k, _) = s `Data.List.isPrefixOf` (toT9 k)
-\end{lstlisting}
-)
 
 \subsubsection*{T9 implementation in Python}
 
@@ -4094,6 +3973,338 @@ The result is slightly different from the one output by Trie. The reason is
 as same as what we analyzed in Haskell implementation. It is easily to modify
 the program to output a similar result.
 
+\subsubsection*{T9 implemented in C++}
+
+First we define T9 mapping as a Singleton object, this is because we
+want to it can be used both in Trie lookup and Patricia lookup programs.
+
+\lstset{language=C++}
+\begin{lstlisting}
+struct t9map{
+  typedef std::map<char, std::string> Map;
+  Map map;
+
+  t9map(){
+    map['2']="abc";
+    map['3']="def";
+    map['4']="ghi";
+    map['5']="jkl";
+    map['6']="mno";
+    map['7']="pqrs";
+    map['8']="tuv";
+    map['9']="wxyz";
+  }
+
+  static t9map& inst(){
+    static t9map i;
+    return i;
+  }
+};
+\end{lstlisting}
+
+Note in other languages or keypad layout, we can define different
+mappings and pass them as a parameter to the looking up function.
+
+With this mapping, the looking up in Trie can be given as
+below. Although we want to keep the genericity of the program, for
+illustration purpose, we just simpliy use the t9 mapping directly.
+
+In order to keep the code as short as possible, a boost library tool,
+boost::tuple is used. For more about boost::tuple, please refer to \cite{boost-book}.
+
+\begin{lstlisting}
+template<class K, class V>
+std::list<std::pair<K, V> > lookup_t9(Trie<K, V>* t,
+				      typename Trie<K, V>::KeyType key)
+{
+  typedef std::list<std::pair<K, V> > Result;
+  typedef typename Trie<K, V>::KeyType Key;
+  typedef typename Trie<K, V>::Char Char;
+
+  if((!t) || key.empty())
+    return Result();
+  
+  Key prefix;
+  std::map<Char, Key> m = t9map::inst().map;
+  std::queue<boost::tuple<Key, Key, Trie<K, V>*> > q;
+  q.push(boost::make_tuple(prefix, key, t));
+  Result res;
+  while(!q.empty()){
+    boost::tie(prefix, key, t) = q.front();
+    q.pop();
+    Char c = *key.begin();
+    key = Key(key.begin()+1, key.end());
+    if(m.find(c) == m.end())
+      return Result();
+    Key cs = m[c];
+    for(typename Key::iterator it=cs.begin(); it!=cs.end(); ++it)
+      if(t->children.find(*it)!=t->children.end()){
+	if(key.empty())
+	  res.push_back(std::make_pair(prefix+*it, t->children[*it]->value));
+	else
+	  q.push(boost::make_tuple(prefix+*it, key, t->children[*it]));
+      }
+  }
+  return res;
+}
+\end{lstlisting}
+
+This program will first check if the Patricia tree or the key are
+empty to deal with with trivial case. It next initialize a queue, and
+push one tuple to it. the tuple contains 3 elements, a prefix to
+represent a string the program has been searched, current key it need
+lookup, and a node it will examin. 
+
+Then the program repeatly pops the tuple from the queue, takes the
+first character from the key, and looks up in T9 map to get a
+candidate English letter list. With each letter in this list, the
+program examine if it exists in the children of current node. In case
+it find such a child, if there is no left letter to lookup, it means
+we found a candidate result, we push it to the result list. Else, we
+create a new tuple with updated prefix, key and this child; the puch
+it to the queue for later process.
+
+Below are some simple test cases for verification.
+
+\begin{lstlisting}
+Trie<std::string, std::string>* t9trie(0);
+const char* t9dict[] = {"home", "good", "gone", "hood", "a", "another", "an"};
+t9trie = list_to_trie(t9dict, t9dict+sizeof(t9dict)/sizeof(char*), t9trie);
+std::cout<<"test t9 lookup in Trie\n"
+         <<"search 4 "<<lop_to_str(lookup_t9(t9trie, "4"))<<"\n"
+	 <<"serach 46 "<<lop_to_str(lookup_t9(t9trie, "46"))<<"\n"
+	 <<"serach 4663 "<<lop_to_str(lookup_t9(t9trie, "4663"))<<"\n"
+	 <<"serach 2 "<<lop_to_str(lookup_t9(t9trie, "2"))<<"\n"
+	 <<"serach 22 "<<lop_to_str(lookup_t9(t9trie, "22"))<<"\n\n";
+delete t9trie;
+\end{lstlisting}
+
+It will output the same result as the Python program.
+
+\begin{verbatim}
+test t9 lookup in Trie
+search 4 [(g, ), (h, ), ]
+serach 46 [(go, ), (ho, ), ]
+serach 4663 [(gone, ), (good, ), (home, ), (hood, ), ]
+serach 2 [(a, ), ]
+serach 22 []
+\end{verbatim}
+
+In order to save space, a looking up program for Patricia is also
+provided.
+
+\begin{lstlisting}
+template<class K, class V>
+std::list<std::pair<K, V> > lookup_t9(Patricia<K, V>* t,
+				      typename Patricia<K, V>::KeyType key)
+{
+  typedef std::list<std::pair<K, V> > Result;
+  typedef typename Patricia<K, V>::KeyType Key;
+  typedef typename Key::value_type Char;
+  typedef typename Patricia<K, V>::Children::iterator Iterator;
+
+  if((!t) || key.empty())
+    return Result();
+
+  Key prefix;
+  std::map<Char, Key> m = t9map::inst().map;
+  std::queue<boost::tuple<Key, Key, Patricia<K, V>*> > q;
+  q.push(boost::make_tuple(prefix, key, t));
+  Result res;
+  while(!q.empty()){
+    boost::tie(prefix, key, t) = q.front();
+    q.pop();
+    for(Iterator it=t->children.begin(); it!=t->children.end(); ++it){
+      Key digits = t9map::inst().toT9(it->first);
+      if(is_prefix_of(digits, key)){
+	if(digits == key)
+	  res.push_back(std::make_pair(prefix+it->first, it->second->value));
+	else{
+	  key =Key(key.begin()+it->first.size(), key.end());
+	  q.push(boost::make_tuple(prefix+it->first, key, it->second));
+	}
+      }
+    }
+  }
+  return res;
+}
+\end{lstlisting}
+
+The program is similar to the one with Trie very much. This is a
+typical bread-frist search approach. Note that we added a member
+function to\_t9() to convert a English word/phrase back to digit
+number string. This member function is implemented as the following.
+
+\begin{lstlisting}
+struct t9map{
+  //...
+  std::string to_t9(std::string s){
+    std::string res;
+    for(std::string::iterator c=s.begin(); c!=s.end(); ++c){
+      for(Map::iterator m=map.begin(); m!=map.end(); ++m){
+	std::string val = m->second;
+	if(std::find(val.begin(), val.end(), *c)!=val.end()){
+	  res.push_back(m->first);
+	  break;
+	}
+      }
+    } // skip error handling.
+    return res;
+  }
+\end{lstlisting}
+
+The error handling for invalid letters is omitted in order to keep the
+code short for easy understanding. We can use the very similar test
+cases as above except we need change the Trie to Patrica. It will
+ouput as below.
+
+\begin{verbatim}
+test t9 lookup in Patricia
+search 4 []
+serach 46 [(go, ), (ho, ), ]
+serach 466 []
+serach 4663 [(gone, ), (good, ), ]
+serach 2 [(a, ), ]
+serach 22 []
+\end{verbatim}
+
+The result is slightly different, please refer to the Haskell section
+for the reason of this difference. It is very easy to modify the
+program to output the very same result as Trie's one.
+
+\subsubsection{Recursive algorithm of T9 looking up}
+
+\subsubsection*{T9 implemented in Haskell}
+
+In Haskell, we first define a map from key pad to English letter. When user
+input a key pad number sequence, we take each number and check from the Trie.
+All children match the number should be investigated. Below is a Haskell 
+program to realize T9 input.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+mapT9 = [('2', "abc"), ('3', "def"), ('4', "ghi"), ('5', "jkl"), 
+         ('6', "mno"), ('7', "pqrs"), ('8', "tuv"), ('9', "wxyz")]
+
+lookupT9 :: Char -> [(Char, b)] -> [(Char, b)]
+lookupT9 c children = case lookup c mapT9 of
+        Nothing -> []
+        Just s  -> foldl f [] s where
+             f lst x = case lookup x children of
+                 Nothing -> lst
+                 Just t  -> (x, t):lst
+        
+-- T9-find in Trie
+findT9:: Trie a -> String -> [(String, Maybe a)]
+findT9 t [] = [("", Trie.value t)]
+findT9 t (k:ks) = foldl f [] (lookupT9 k (children t))
+    where
+      f lst (c, tr) = (mapAppend c (findT9 tr ks)) ++ lst
+\end{lstlisting}
+
+findT9 is the main function, it takes 2 parameters, a Trie and a number
+sequence string. In non-trivial case, it calls lookupT9 function to
+examine all childrens which match the first number.
+
+For each matched child, the program recursively calls findT9 on it with
+the left numbers, and we use mapAppend to insert the currently finding letter
+in front of all results. The program use foldl to combine all these together.
+
+Function lookupT9 is used to filtered all possible children who match a
+number. It first call lookup function on mapT9, so that a string of possible
+English letters can be indentified. Next we call lookup for each candidate
+letter to see if there is a child can match the letter. We use folderl to 
+collect all such child together.
+
+This proram can be verfied by using some simiple test cases.
+
+\begin{lstlisting}
+testFindT9 = "press 4: " ++ (show $ take 5 $ findT9 t "4")++
+             "\npress 46: " ++ (show $ take 5 $ findT9 t "46")++
+             "\npress 4663: " ++ (show $ take 5 $ findT9 t "4663")++
+             "\npress 2: " ++ (show $ take 5 $ findT9 t "2")++
+             "\npress 22: " ++ (show $ take 5 $ findT9 t "22")
+    where
+      t = Trie.fromList lst
+      lst = [("home", 1), ("good", 2), ("gone", 3), ("hood", 4), 
+             ("a", 5), ("another", 6), ("an", 7)]
+\end{lstlisting}
+
+The program will output below result.
+
+\begin{verbatim}
+press 4: [("g",Nothing),("h",Nothing)]
+press 46: [("go",Nothing),("ho",Nothing)]
+press 4663: [("gone",Just 3),("good",Just 2),("home",Just 1),("hood",Just 4)]
+press 2: [("a",Just 5)]
+press 22: []
+\end{verbatim}
+
+The value of each child is just for illustration, we can put empty value instead
+and only returns candidate keys for a real input application.
+
+Tries consumes to many spaces, we can provide a Patricia version as alternative.
+
+\begin{lstlisting}
+findPrefixT9' :: String -> [(String, b)] -> [(String, b)]
+findPrefixT9' s lst = filter f lst where
+    f (k, _) = (toT9 k) `Data.List.isPrefixOf` s
+
+toT9 :: String -> String
+toT9 [] = []
+toT9 (x:xs) = (unmapT9 x mapT9):(toT9 xs) where
+    unmapT9 x (p:ps) = if x `elem` (snd p) then (fst p) else unmapT9 x ps
+
+findT9' :: Patricia a -> String -> [(String, Maybe a)]
+findT9' t [] = [("", value t)]
+findT9' t k = foldl f [] (findPrefixT9' k (children t)) 
+    where
+      f lst (s, tr) = (mapAppend' s (findT9' tr (k `diff` s))) ++ lst
+      diff x y = drop (length y) x
+\end{lstlisting}
+
+In this program, we don't check one digit at a time, we take all the digit
+sequence, and we examine all children of the Patricia node. For each dhild,
+the program convert the prefix string to number sequence by using function 
+toT9, if the result is prefix of what user input, we go on search in this 
+child and append the prefix in front of all further results.
+
+If we tries the same test case, we can find the result is a bit different.
+
+\begin{verbatim}
+press 4: []
+press 46: [("go",Nothing),("ho",Nothing)]
+press 466: []
+press 4663: [("good",Just 2),("gone",Just 3),("home",Just 1),("hood",Just 4)]
+press 2: [("a",Just 5)]
+press 22: []
+\end{verbatim}
+
+If user press key '4', because the dictionary (represent by Patricia) doesn't
+contain any candidates matches it, user will get an empty candidates list.
+The same situation happens when he enters ``466''. In real input method 
+implementation, such user epxerience isnt' good, because it displays nothing
+although user presses the key serveral times. One improvement is to 
+predict what user will input next by display a partial result. This can be 
+easily achieved by modify the above program. (Hint: not only check
+\begin{lstlisting}
+findPrefixT9' s lst = filter f lst where
+    f (k, _) = (toT9 k) `Data.List.isPrefixOf` s
+\end{lstlisting}
+but also check
+\begin{lstlisting}
+    f (k, _) = s `Data.List.isPrefixOf` (toT9 k)
+\end{lstlisting}
+)
+
+
+% ================================================================
+%                 Short summary
+% ================================================================
+\section{Short summary}
+
+TO-DO: add short summary
+
 % ================================================================
 %                 Appendix
 % ================================================================
@@ -4165,7 +4376,12 @@ Trie, Wikipedia. http://en.wikipedia.org/wiki/Trie
 T9 (predictive text), Wikipedia. http://en.wikipedia.org/wiki/T9\_(predictive\_text)
 
 \bibitem{wiki-predictive-text}
-Predictive text, Wikipedia. http://en.wikipedia.org/wiki/Predictive\_text
+Predictive text,
+Wikipedia. http://en.wikipedia.org/wiki/Predictive\_text
+
+\bibitem{boost-book}
+Bjorn Karlsson. ``Beyond the C++ Standard Library: An Introduction to
+Boost''. Addison Wesley Professional, August 31, 2005, ISBN: 0321133544
 
 \end{thebibliography}
 
