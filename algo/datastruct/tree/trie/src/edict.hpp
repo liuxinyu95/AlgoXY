@@ -91,7 +91,9 @@ std::list<std::pair<K, V> > lookup(Patricia<K, V>* t,
 }
 
 struct t9map{
-  std::map<char, std::string> map;
+  typedef std::map<char, std::string> Map;
+  Map map;
+
   t9map(){
     map['2']="abc";
     map['3']="def";
@@ -107,11 +109,25 @@ struct t9map{
     static t9map i;
     return i;
   }
+
+  std::string toT9(std::string s){
+    std::string res;
+    for(std::string::iterator c=s.begin(); c!=s.end(); ++c){
+      for(Map::iterator m=map.begin(); m!=map.end(); ++m){
+	std::string val = m->second;
+	if(std::find(val.begin(), val.end(), *c)!=val.end()){
+	  res.push_back(m->first);
+	  break;
+	}
+      }
+    } // skip error handling.
+    return res;
+  }
 };
 
 template<class K, class V>
 std::list<std::pair<K, V> > lookup_t9(Trie<K, V>* t,
-				   typename Trie<K, V>::KeyType key)
+				      typename Trie<K, V>::KeyType key)
 {
   typedef std::list<std::pair<K, V> > Result;
   typedef typename Trie<K, V>::KeyType Key;
@@ -133,13 +149,48 @@ std::list<std::pair<K, V> > lookup_t9(Trie<K, V>* t,
     if(m.find(c) == m.end())
       return Result();
     Key cs = m[c];
-    for(typename Key::iterator i=cs.begin(); i!=cs.end(); ++i)
-      if(t->children.find(*i)!=t->children.end()){
+    for(typename Key::iterator it=cs.begin(); it!=cs.end(); ++it)
+      if(t->children.find(*it)!=t->children.end()){
 	if(key.empty())
-	  res.push_back(std::make_pair(prefix+*i, t->children[*i]->value));
+	  res.push_back(std::make_pair(prefix+*it, t->children[*it]->value));
 	else
-	  q.push(boost::make_tuple(prefix+*i, key, t->children[*i]));
+	  q.push(boost::make_tuple(prefix+*it, key, t->children[*it]));
       }
+  }
+  return res;
+}
+
+template<class K, class V>
+std::list<std::pair<K, V> > lookup_t9(Patricia<K, V>* t,
+				      typename Patricia<K, V>::KeyType key)
+{
+  typedef std::list<std::pair<K, V> > Result;
+  typedef typename Patricia<K, V>::KeyType Key;
+  typedef typename Key::value_type Char;
+  typedef typename Patricia<K, V>::Children::iterator Iterator;
+
+  if((!t) || key.empty())
+    return Result();
+
+  Key prefix;
+  std::map<Char, Key> m = t9map::inst().map;
+  std::queue<boost::tuple<Key, Key, Patricia<K, V>*> > q;
+  q.push(boost::make_tuple(prefix, key, t));
+  Result res;
+  while(!q.empty()){
+    boost::tie(prefix, key, t) = q.front();
+    q.pop();
+    for(Iterator it=t->children.begin(); it!=t->children.end(); ++it){
+      Key digits = t9map::inst().toT9(it->first);
+      if(is_prefix_of(digits, key)){
+	if(digits == key)
+	  res.push_back(std::make_pair(prefix+it->first, it->second->value));
+	else{
+	  key =Key(key.begin()+it->first.size(), key.end());
+	  q.push(boost::make_tuple(prefix+it->first, key, it->second));
+	}
+      }
+    }
   }
   return res;
 }
@@ -194,6 +245,7 @@ public:
     test_trie_lookup();
     test_patricia_lookup();
     test_trie_t9();
+    test_patricia_t9();
   }
 
 private:
@@ -216,6 +268,16 @@ private:
 	     <<"serach 4663 "<<lop_to_str(lookup_t9(t9trie, "4663"))<<"\n"
 	     <<"serach 2 "<<lop_to_str(lookup_t9(t9trie, "2"))<<"\n"
 	     <<"serach 22 "<<lop_to_str(lookup_t9(t9trie, "22"))<<"\n\n";
+  }
+
+  void test_patricia_t9(){
+    std::cout<<"\ntest t9 lookup in Patricia\n"
+	     <<"search 4 "<<lop_to_str(lookup_t9(t9patricia, "4"))<<"\n"
+	     <<"serach 46 "<<lop_to_str(lookup_t9(t9patricia, "46"))<<"\n"
+	     <<"serach 466 "<<lop_to_str(lookup_t9(t9patricia, "466"))<<"\n"
+	     <<"serach 4663 "<<lop_to_str(lookup_t9(t9patricia, "4663"))<<"\n"
+	     <<"serach 2 "<<lop_to_str(lookup_t9(t9patricia, "2"))<<"\n"
+	     <<"serach 22 "<<lop_to_str(lookup_t9(t9patricia, "22"))<<"\n\n";
   }
 
   Trie<std::string, std::string>* t;
