@@ -110,7 +110,7 @@ struct t9map{
     return i;
   }
 
-  std::string toT9(std::string s){
+  std::string to_t9(std::string s){
     std::string res;
     for(std::string::iterator c=s.begin(); c!=s.end(); ++c){
       for(Map::iterator m=map.begin(); m!=map.end(); ++m){
@@ -181,7 +181,7 @@ std::list<std::pair<K, V> > lookup_t9(Patricia<K, V>* t,
     boost::tie(prefix, key, t) = q.front();
     q.pop();
     for(Iterator it=t->children.begin(); it!=t->children.end(); ++it){
-      Key digits = t9map::inst().toT9(it->first);
+      Key digits = t9map::inst().to_t9(it->first);
       if(is_prefix_of(digits, key)){
 	if(digits == key)
 	  res.push_back(std::make_pair(prefix+it->first, it->second->value));
@@ -262,7 +262,7 @@ private:
   }
 
   void test_trie_t9(){
-    std::cout<<"\ntest t9 lookup in Trie\n"
+    std::cout<<"test t9 lookup in Trie\n"
 	     <<"search 4 "<<lop_to_str(lookup_t9(t9trie, "4"))<<"\n"
 	     <<"serach 46 "<<lop_to_str(lookup_t9(t9trie, "46"))<<"\n"
 	     <<"serach 4663 "<<lop_to_str(lookup_t9(t9trie, "4663"))<<"\n"
@@ -271,7 +271,7 @@ private:
   }
 
   void test_patricia_t9(){
-    std::cout<<"\ntest t9 lookup in Patricia\n"
+    std::cout<<"test t9 lookup in Patricia\n"
 	     <<"search 4 "<<lop_to_str(lookup_t9(t9patricia, "4"))<<"\n"
 	     <<"serach 46 "<<lop_to_str(lookup_t9(t9patricia, "46"))<<"\n"
 	     <<"serach 466 "<<lop_to_str(lookup_t9(t9patricia, "466"))<<"\n"
