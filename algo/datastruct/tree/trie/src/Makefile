@@ -1,13 +1,12 @@
 HEADER = inttrie.hpp intpatricia.hpp trie.hpp patricia.hpp trieutil.hpp edict.hpp
 SOURCE = trie.cpp
 CPP_TEST_OBJS = test.o
-CXX = g++ -Wall
+CXX = g++ -Wall -I/usr/include/boost-1_33_1
 CXX_FLAGS = 
 HS_TEST_SRCS = IntTrie.hs IntPatricia.hs Trie.hs Patricia.hs TestMain.hs
 HS_TEST_OBJS = $(HS_TEST_SRCS:.hs=.o)
 HS_APP_SRCS = EDict.hs
 HS_APP_OBJS = EDict.o Trie.o Patricia.o
-#CXX_FLAGS = -I/usr/include/boost-1_33_1
 
 .SUFFIXES: .o .hs
 
