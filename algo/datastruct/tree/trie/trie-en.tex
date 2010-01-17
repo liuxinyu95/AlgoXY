@@ -241,7 +241,25 @@ store actual data.
 In Scheme/Lisp, we provides some helper functions to create and access 
 Trie data. The underground data structure is still list.
 
-TODO: Scheme version of help functions.
+\lstset{language=lisp}
+\begin{lstlisting}
+;; Definition
+
+(define (make-int-trie l v r) ;; left, value, right
+  (list l v r))
+
+;; Helpers
+(define (left trie)
+  (if (null? trie) '() (car trie)))
+
+(define (value trie)
+  (if (null? trie) '() (cadr trie)))
+
+(define (right trie)
+  (if (null? trie) '() (caddr trie)))
+\end{lstlisting}
+
+Some helper functions are provided for easy access to children and value.
 
 % ================================================================
 %               Insertion of integer trie
@@ -567,6 +585,70 @@ Figure \ref{int-trie} shows this result.
        \end{center}
 \end{figure}
 
+\subsubsection*{Insertion of integer Trie in Scheme/Lisp}
+
+Insertion program implemented with Scheme/Lisp is quite similar, since
+Scheme has a complex numberic system, it will use fraction instead of
+round to integer, we minus the key by 1 before devide it with 2.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+;; Insertion
+;;   if user insert an existed value, just overwrite the old value
+;;   usage: (insert t k x) t: trie, k: key, x: value
+(define (insert t k x)
+  (if (= k 0)
+      (make-int-trie (left t) x (right t))
+      (if (even? k)
+	  (make-int-trie (insert (left t) (/ k 2) x) (value t) (right t))
+	  (make-int-trie (left t) (value t) (insert (right t) (/ (- k 1) 2) x)))))
+\end{lstlisting}
+
+In order to make creation of Trie from a list of key-value pairs easy,
+here is a helper function.
+
+\begin{lstlisting}
+(define (list->trie lst) ;;lst is list of pairs
+  (define (insert-pair t p)
+    (insert t (car p) (cadr p)))
+  (fold-left insert-pair '() lst))
+\end{lstlisting}
+
+In order to convert the Trie to a readable string, a converter
+function is given as the following.
+
+\begin{lstlisting}
+(define (trie->string trie)
+  (define (value->string x)
+    (cond ((null? x) ".")
+	  ((number? x) (number->string x))
+	  ((string? x) x)
+	  (else "unknon value")))
+  (define (trie->str t k m)
+    (if (null? t)
+	"."
+	(string-append "(" (trie->str (left t) k (* m 2)) " "
+		       (number->string k) (value->string (value t)) " "
+		       (trie->str (right t) (+ m k) (* m 2)) ")")))
+  (trie->str trie 0 1))
+\end{lstlisting}
+
+To verify the program, we can test it with a easy test case.
+
+\begin{lstlisting}
+(define (test-int-trie)
+  (define t (list->trie (list '(1 "a") '(4 "b") '(5 "c") '(9 "d"))))
+  (display (trie->string t)) (newline))
+\end{lstlisting}
+
+Evaluate this test function will generate below output.
+
+\begin{lstlisting}
+(test-int-trie)
+(((. 0. (. 4b .)) 0. .) 0. (((. 1. (. 9d .)) 1. (. 5c .)) 1a .))
+\end{lstlisting}
+
+Which is identical to the Haskell output.
 
 % ================================================================
 %               Look up in integer binary trie
@@ -731,6 +813,39 @@ search t 4: Just 'b'
 search t 0: Nothing
 \end{verbatim}
 
+\subsubseciton*{Lookup implemented in Scheme/Lisp}
+
+Scheme/Lisp implementation is quite similar. Note that we decrese key
+by 1 before devide it with 2.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (lookup t k)
+  (if (null? t) '()
+      (if (= k 0) (value t)
+	  (if (even? k) 
+	      (lookup (left t) (/ k 2))
+	      (lookup (right t) (/ (- k 1) 2))))))
+\end{lstlisting}
+
+Test cases use the same Trie which is created in insertion section.
+
+\begin{lstlisting}
+(define (test-int-trie)
+  (define t (list->trie (list '(1 "a") '(4 "b") '(5 "c") '(9 "d"))))
+  (display (trie->string t)) (newline)
+  (display "lookup 4: ") (display (lookup t 4)) (newline)
+  (display "lookup 0: ") (display (lookup t 0)) (newline))
+\end{lstlisting}
+
+the result is as same as the one output by Haskell program.
+
+\begin{lstlisting}
+(test-int-trie)
+(((. 0. (. 4b .)) 0. .) 0. (((. 1. (. 9d .)) 1. (. 5c .)) 1a .))
+lookup 4: b
+lookup 0: ()
+\end{lstlisting}
 
 % ================================================================
 %               Int Patricia
@@ -3792,7 +3907,7 @@ in advance. Trie or Patricia can be used to store the Dictionary. In the real
 commercial software, complex indexing dictionary is used. We show the very 
 simple Trie and Patricia only for illustration purpose.
 
-\subsucsection{Iterative algorithm of T9 looking up}
+\subsubsection{Iterative algorithm of T9 looking up}
 
 Below pseduo code shows how to realize T9 with Trie.
 
