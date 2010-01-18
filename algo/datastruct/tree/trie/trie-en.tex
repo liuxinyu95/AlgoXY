@@ -1006,6 +1006,51 @@ value as key.
 
 For the member function match(), I'll explain it in later part.
 
+\subsubsection*{Definition of big-endian integer Patricia tree in
+Scheme/Lisp}
+
+In Scheme/Lisp program, the data structure behind is still list, we
+provide creator functions and accessors to create Patricia and access
+the children, key, value, prefix and mask.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (make-leaf k v) ;; key and value
+  (list k v))
+
+(define (make-branch p m l r) ;; prefix, mask, left and right
+  (list p m l r))
+
+;; Helpers
+(define (leaf? t)
+  (= (length t) 2))
+
+(define (branch? t)
+  (= (length t) 4))
+
+(define (key t)
+  (if (leaf? t) (car t) '()))
+
+(define (value t)
+  (if (leaf? t) (cadr t) '()))
+
+(define (prefix t)
+  (if (branch? t) (car t) '()))
+
+(define (mask t)
+  (if (branch? t) (cadr t) '()))
+
+(define (left t)
+  (if (branch? t) (caddr t) '()))
+
+(define (right t)
+  (if (branch? t) (cadddr t) '()))
+\end{lstlisting}
+
+Function key and value are only applicable to leaf node while prefix,
+mask, children accessors are only applicable to branch node. So we
+test the node type in these functions.
+
 % ================================================================
 %                 Insertion of int patricia tree
 % ================================================================
@@ -1555,7 +1600,82 @@ This test will output:
 t=[0@8](1:'x', [4@2](4:'y', 5:'z'))
 \end{verbatim}
 
-This result means the program creates a Patrica tree shown in Figure \ref{fig:int-patricia-haskell-insert}.
+This result means the program creates a Patrica tree shown in
+Figure \ref{fig:int-patricia-haskell-insert}.
+
+\subsubsection*{Insertion of big-endian integer Patricia tree in
+Scheme/Lisp}
+
+In Scheme/Lisp, we use switch-case like condition to test if the node
+is empty, or a leaf or a branch. 
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (insert t k x) ;; t: patrica, k: key, x: value
+  (cond ((null? t) (make-leaf k x))
+	((leaf? t) (if (= (key t) k) 
+		       (make-leaf k x) ;; overwrite
+		       (branch k (make-leaf k x) (key t) t)))
+	((branch? t) (if (match? k (prefix t) (mask t))
+			 (if (zero-bit? k (mask t))
+			     (make-branch (prefix t) 
+					  (mask t) 
+					  (insert (left t) k x) 
+					  (right t))
+			     (make-branch (prefix t)
+					  (mask t)
+					  (left t)
+					  (insert (right t) k x)))
+			 (branch k (make-leaf k x) (prefix t) t)))))
+\end{lstlisting}
+
+Where the function match?, zero-bit?, and branch are given as the
+following. We use the scheme fix number bitwise operations to mask the
+number and test bit.
+
+\begin{lstlisting}
+(define (mask-bit x m)
+  (fix:and x (fix:not (- m 1))))
+
+(define (zero-bit? x m)
+  (= (fix:and x (fix:lsh m -1)) 0))
+
+(define (lcp x y) ;; get the longest common prefix
+  (define (count-mask z)
+    (if (= z 0) 1 (* 2 (count-mask (fix:lsh z -1)))))
+  (let* ((m (count-mask (fix:xor x y)))
+	 (p (mask-bit x m)))
+    (cons p m)))
+
+(define (match? k p m)
+  (= (mask-bit k m) p))
+	
+(define (branch p1 t1 p2 t2) ;; pi: prefix i, ti: Patricia i
+  (let* ((pm (lcp p1 p2)) 
+	 (p (car pm)) 
+	 (m (cdr pm)))
+    (if (zero-bit? p1 m)
+	(make-branch p m t1 t2)
+	(make-branch p m t2 t1))))
+\end{lstlisting}
+
+We can use the very same list->trie fucntion which is defined in
+integer trie. Below is an example to create a integer Patricia tree.
+
+\begin{lstlisting}
+(define (test-int-patricia)
+  (define t (list->trie (list '(1 "x") '(4 "y") '(5 "z"))))
+  (display t) (newline))
+\end{lstlisting}
+
+Evaluate it will generate a Patricia tree like below.
+
+\begin{lstlisting}
+(test-int-patricia)
+(0 8 (1 x) (4 2 (4 y) (5 z)))
+\end{lstlisting}
+
+It is identical to the insert result output by Hasekll insertion program.
 
 % ================================================================
 %                 Lookup in int patricia tree
@@ -1732,7 +1852,47 @@ search t 4: Just 'y'
 search t 0: Nothing
 \end{verbatim}
 
-TODO: Schme/Lisp version of lookup
+\subsubsection*{Look up in big-endian integer Patricia tree in
+Scheme/Lisp}
+
+Scheme/Lisp program for looking up is similar in case the tree is
+empty, we just returns nothing; If it is a leaf node and the key is
+equal to the number we are looking for, we find the result; If it is
+branch, we need test if binary format of the prefix matches the
+number, then we recursively search either in left child or in right
+child according to the next bit after mask is zero or not.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (lookup t k)
+  (cond ((null? t) '())
+	((leaf? t) (if (= (key t) k) (value t) '()))
+	((branch? t) (if (match? k (prefix t) (mask t))
+			 (if (zero-bit? k (mask t))
+			     (lookup (left t) k)
+			     (lookup (right t) k))
+			 '()))))
+\end{lstlisting}
+
+We can test it with the Patricia tree we create in the insertion
+program.
+
+\begin{lstlisting}
+(define (test-int-patricia)
+  (define t (list->trie (list '(1 "x") '(4 "y") '(5 "z"))))
+  (display t) (newline)
+  (display "lookup 4: ") (display (lookup t 4)) (newline)
+  (display "lookup 0: ") (display (lookup t 0)) (newline))
+\end{lstlisting}
+
+The result is like below.
+
+\begin{lstlisting}
+(test-int-patricia)
+(0 8 (1 x) (4 2 (4 y) (5 z)))
+lookup 4: y
+lookup 0: ()
+\end{lstlisting}
 
 % ================================================================
 %                 Alphabetic trie
@@ -1887,7 +2047,40 @@ class Trie:
 \end{lstlisting}
 
 \subsubsection*{Definition of alphabetic Trie in Scheme/Lisp}
-TODO: ...
+
+The definition of alphabetic Trie in Scheme/Lisp is a list of two
+elements, one is the value of the node, the other is a children
+list. The children list is a list of pairs, one is the character
+binding to the child, the other is a Trie node.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (make-trie v lop) ;; v: value, lop: children, list of char-trie pairs
+  (cons v lop))
+
+(define (empty-trie)
+  (make-trie '() '()))
+
+(define (value t)
+  (if (null? t) '() (car t)))
+
+(define (children t)
+  (if (null? t) '() (cdr t)))
+\end{lstlisting}
+
+In order to create the child and access it easily, we also provide
+functions for such purpose.
+
+\begin{lstlisting}
+(define (make-child k t)
+  (cons k t))
+
+(define (key child)
+  (if (null? child) '() (car child)))
+
+(define (tree child)
+  (if (null? child) '() (cdr child)))
+\end{lstlisting}
 
 % ================================================================
 %                 Insertion of Alphabetic trie
@@ -2245,11 +2438,100 @@ It is identical to the ANSI C result exept the values we inserted.
 
 \subsubsection*{Insertion of alphabetic trie in Scheme/Lisp}
 
-TODO:...
+In order to maniplulate string like list, we provide two helper
+function to provide car, cdr like operations for string.
 
 \lstset{language=lisp}
 \begin{lstlisting}
-...
+(define (string-car s)
+  (string-head s 1))
+
+(define (string-cdr s)
+  (string-tail s 1))
+\end{lstlisting}
+
+After that, we can implement insert program as the following.
+
+\begin{lstlisting}
+(define (insert t k x)
+  (define (ins lst k ks x) ;; return list of child
+    (if (null? lst)
+	(list (make-child k (insert '() ks x)))
+	(if (string=? (key (car lst)) k)
+	    (cons (make-child k (insert (tree (car lst)) ks x)) (cdr lst))
+	    (cons (car lst) (ins (cdr lst) k ks x)))))
+  (if (string-null? k) 
+      (make-trie x (children t))
+      (make-trie (value t) 
+		 (ins (children t) (string-car k) (string-cdr k) x))))
+\end{lstlisting}
+
+In order to print readable string for a Trie, we provide a pre-order
+manner of Trie traverse function. It can convert a Trie to string.
+
+\begin{lstlisting}
+(define (trie->string t)
+  (define (value->string x)
+    (cond ((null? x) ".")
+	  ((number? x) (number->string x))
+	  ((string? x) x)
+	  (else "unknon value")))
+  (define (trie->str t prefix)
+    (define (child->str c)
+      (string-append ", " (trie->str (tree c) (string-append prefix (key c)))))
+    (let ((lst (map child->str (sort-children (children t)))))
+      (string-append "(" prefix (value->string (value t))
+		     (fold-left string-append "" lst) ")")))
+  (trie->str t ""))
+\end{lstlisting}
+
+Where sort-children is a quick sort algorithm to sort all children of
+a node based on keys.
+
+\begin{lstlisting}
+(define (sort-children lst)
+  (if (null? lst) '()
+      (let ((xs (filter (lambda (c) (string<=? (key c) (key (car lst)))) 
+			(cdr lst)))
+	    (ys (filter (lambda (c) (string>?  (key c) (key (car lst)))) 
+			(cdr lst))))
+	(append (sort-children xs) 
+		(list (car lst))
+		(sort-children ys)))))
+\end{lstlisting}
+
+Function filter is only available after $R^6RS$, for $R^5RS$, we define
+the filter function manually.
+
+\begin{lstlisting}
+(define (filter pred lst)
+  (keep-matching-items lst pred))
+\end{lstlisting}
+
+With all of these defintion, we can test our insert program with some
+simple test cases.
+
+\begin{lstlisting}
+(define (test-trie)
+  (define t (list->trie (list '("a" 1) '("an" 2) '("another" 7) 
+                              '("boy" 3) '("bool" 4) '("zoo" 3))))
+  (define t2 (list->trie (list '("zoo" 3) '("bool" 4) '("boy" 3) 
+                               '("another" 7) '("an" 2) '("a" 1))))
+  (display (trie->string t)) (newline)
+  (display (trie->string t2)) (newline))
+\end{lstlisting}
+
+In the above test program, function trie->string is reused, it is
+previous defined for integer trie.
+
+Evaluate test-trie function will output the following result.
+
+\begin{lstlisting}
+(test-trie)
+(., (a1, (an2, (ano., (anot., (anoth., (anothe., (another7))))))), 
+    (b., (bo., (boo., (bool4)), (boy3))), (z., (zo., (zoo3))))
+(., (a1, (an2, (ano., (anot., (anoth., (anothe., (another7))))))), 
+    (b., (bo., (boo., (bool4)), (boy3))), (z., (zo., (zoo3))))
 \end{lstlisting}
 
 % ================================================================
@@ -2423,11 +2705,48 @@ search t the: Nothing
 
 
 \subsubsection*{Look up in alphabetic trie in Scheme/Lisp}
-in scheme/lisp...
+
+In Scheme/Lisp program, if the key is empty, we just return the value
+of the current node, else we recursively find in children of the node
+to see if there is a child binding to a character, which match the
+first character of the key. We repeat this process till examine all
+characters of the key.
 
 \lstset{language=lisp}
 \begin{lstlisting}
-...
+(define (lookup t k)
+  (define (find k lst)
+    (if (null? lst) '()
+	(if (string=? k (key (car lst)))
+	    (tree (car lst))
+	    (find k (cdr lst)))))
+  (if (string-null? k) (value t)
+      (let ((child (find (string-car k) (children t))))
+	(if (null? child) '()
+	    (lookup child (string-cdr k))))))
+\end{lstlisting}
+
+we can test this lookup with similar test cases as in Haskell program.
+
+\begin{lstlisting}
+(define (test-trie)
+  (define t (list->trie (list '("a" 1) '("an" 2) '("another" 7) 
+                              '("boy" 3) '("bool" 4) '("zoo" 3))))
+  (display (trie->string t)) (newline)
+  (display "lookup an: ") (display (lookup t "an")) (newline)
+  (display "lookup boy: ") (display (lookup t "boy")) (newline)
+  (display "lookup the: ") (display (lookup t "the")) (newline))
+\end{lstlisting}
+
+This program will output the following result.
+
+\begin{lstlisting}
+(test-trie)
+(., (a1, (an2, (ano., (anot., (anoth., (anothe., (another7))))))), 
+    (b., (bo., (boo., (bool4)), (boy3))), (z., (zo., (zoo3))))
+lookup an: 2
+lookup boy: 3
+lookup the: ()
 \end{lstlisting}
 
 % ================================================================
