@@ -1,6 +1,7 @@
 HEADER = 
 SOURCE = trie-en.tex
 OBJECT = trie-en
+TEX = latex
 
 .PHONY: all
 
