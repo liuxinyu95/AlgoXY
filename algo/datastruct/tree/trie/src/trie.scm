@@ -44,6 +44,18 @@
       (make-trie (value t) 
 		 (ins (children t) (string-car k) (string-cdr k) x))))
 
+;; Lookup
+(define (lookup t k)
+  (define (find k lst)
+    (if (null? lst) '()
+	(if (string=? k (key (car lst)))
+	    (tree (car lst))
+	    (find k (cdr lst)))))
+  (if (string-null? k) (value t)
+      (let ((child (find (string-car k) (children t))))
+	(if (null? child) '()
+	    (lookup child (string-cdr k))))))
+
 ;; Test helpers
 
 ;; sort children base on keys
@@ -73,4 +85,9 @@
 
 (define (test-trie)
   (define t (list->trie (list '("a" 1) '("an" 2) '("another" 7) '("boy" 3) '("bool" 4) '("zoo" 3))))
-  (display (trie->string t)) (newline))
+  (define t2 (list->trie (list '("zoo" 3) '("bool" 4) '("boy" 3) '("another" 7) '("an" 2) '("a" 1))))
+  (display (trie->string t)) (newline)
+  (display (trie->string t2)) (newline)
+  (display "lookup an: ") (display (lookup t "an")) (newline)
+  (display "lookup boy: ") (display (lookup t "boy")) (newline)
+  (display "lookup the: ") (display (lookup t "the")) (newline))
