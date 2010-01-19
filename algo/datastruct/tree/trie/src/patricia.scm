@@ -45,9 +45,9 @@
 (define (lookup t k)
   (define (find lst k) ;; lst, [(k patrica)]
     (if (null? lst) '()
-	(cond ((string=? (key (car lst)) k) (value (car lst)))
+	(cond ((string=? (key (car lst)) k) (value (tree (car lst))))
 	      ((string-prefix? (key (car lst)) k)
-	       (find (tree (car lst)) 
+	       (lookup (tree (car lst)) 
 		     (string-tail k (string-length (key (car lst))))))
 	      (else (find (cdr lst) k)))))
   (find (children t) k))

@@ -2838,7 +2838,20 @@ struct Patricia{
 };
 \end{lstlisting}
 
-For illustration purpose, we simply release the memory in a recursive way.
+For illustration purpose, we simply release the memory in a recursive
+way.
+
+\subsubsection*{Definition of alphabetic Patricia tree in Scheme/Lisp}
+
+We can fully reuse the definition of alphabetic Trie in Scheme/Lisp.
+In order to provide a easy way to create a leaf node, we define an
+extra helper function.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (make-leaf x)
+  (make-trie x '()))
+\end{lstlisting}
 
 % ================================================================
 %                 Insertion of Alphabetic Patrica Tree
@@ -3355,11 +3368,91 @@ t2=(, (a:1, (an:2, (another:7))), (bo, (bool:4), (boy:3)), (zoo:3))
 
 
 \subsubsection*{Insertion of alphabetic Patrica Tree in Scheme/Lisp}
-in scheme/lisp...
+
+In Scheme/Lisp, If the root doesn't has child, we create a leaf node
+with the value, and bind the key with this node; if the key binding to
+one child is equal to the string we want to insert, we just overwrite
+the current value; If the key has common prefix of the string to be
+inserted, we branch out a new node.
 
 \lstset{language=lisp}
 \begin{lstlisting}
-...
+(define (insert t k x)
+  (define (ins lst k x) ;; lst: [(key patrica)]
+    (if (null? lst) (list (make-child k (make-leaf x)))
+	(cond ((string=? (key (car lst)) k)
+	       (cons (make-child k (make-trie x (children (tree (car lst)))))
+		     (cdr lst)))
+	      ((match? (key (car lst)) k)
+	       (cons (branch k x (key (car lst)) (tree (car lst)))
+		     (cdr lst)))
+	      (else (cons (car lst) (ins (cdr lst) k x))))))
+  (make-trie (value t) (ins (children t) k x)))
+\end{lstlisting}
+
+The match? function just test if two strings have common prefix.
+
+\begin{lstlisting}
+(define (match? x y)
+  (and (not (or (string-null? x) (string-null? y)))
+       (string=? (string-car x) (string-car y))))
+\end{lstlisting}
+
+Function branch takes 4 parameters, the first key, the value to be
+inserted, the second key, and the Patricia tree need to be branch
+out. If will first find the longest common prefix of the two keys, If
+it is equal to the first key, it measn that the first key is the prefix of
+the second key, we just create a new node with the value and chained
+the Patricia tree by setting it as the only one child of this new
+node; If the longest common prefix is equal to the second key, it
+means that the second key is the prefix of the first key, we just
+recursively insert the different part (the remove the prefix part)
+into this Patricic tree; In other case, we just create a branch node
+and set its two children, one is the leaf node with the value to be
+inserted, the other is the Patricia tree passed as the fourth parameter.
+
+\begin{lstlisting}
+(define (branch k1 x k2 t2) ;; returns (key tree)
+  (let* ((k (lcp k1 k2))
+	 (k1-new (string-tail k1 (string-length k)))
+	 (k2-new (string-tail k2 (string-length k))))
+    (cond ((string=? k1 k) ;; e.g. insert "an" into "another"
+	   (make-child k (make-trie x (list (make-child k2-new t2)))))
+	  ((string=? k2 k) ;; e.g. insert "another" into "an"
+	   (make-child k (insert t2 k1-new x)))
+	  (else (make-child k (make-trie 
+			       '() 
+			       (list (make-child k1-new (make-leaf x))
+				     (make-child k2-new t2))))))))
+\end{lstlisting}
+
+Where the longest common prefix is extracted as the following.
+
+\begin{lstlisting}
+(define (lcp x y)
+  (let ((len (string-match-forward x y)))
+    (string-head x len)))
+\end{lstlisting}
+
+We can reuse the list->trie and trie->string functions to test our
+program.
+
+\begin{lstlisting}
+(define (test-patricia)
+  (define t (list->trie (list '("a" 1) '("an" 2) '("another" 7) 
+                        '("boy" 3) '("bool" 4) '("zoo" 3))))
+  (define t2 (list->trie (list '("zoo" 3) '("bool" 4) '("boy" 3) 
+                         '("another" 7) '("an" 2) '("a" 1))))
+  (display (trie->string t)) (newline)
+  (display (trie->string t2)) (newline))
+\end{lstlisting}
+
+Evaluate this function will print t and t2 as below.
+
+\begin{lstlisting}
+(test-patricia)
+(., (a1, (an2, (another7))), (bo., (bool4), (boy3)), (zoo3))
+(., (a1, (an2, (another7))), (bo., (bool4), (boy3)), (zoo3))
 \end{lstlisting}
 
 % ================================================================
@@ -3596,11 +3689,50 @@ find t1 boolean = Nothing
 
 
 \subsubsection*{Look up in alphabetic Patricia Tree in Scheme/Lisp}
-in scheme/lisp...
+
+The Scheme/Lisp program is given as the following. The function
+delegate the looking up to an inner function which will check each
+child to see if the key binding to the child match the string we are
+looking for.
 
 \lstset{language=lisp}
 \begin{lstlisting}
-...
+(define (lookup t k)
+  (define (find lst k) ;; lst, [(k patrica)]
+    (if (null? lst) '()
+	(cond ((string=? (key (car lst)) k) (value (tree (car lst))))
+	      ((string-prefix? (key (car lst)) k)
+	       (lookup (tree (car lst)) 
+		     (string-tail k (string-length (key (car lst))))))
+	      (else (find (cdr lst) k)))))
+  (find (children t) k))
+\end{lstlisting}
+
+In order to verify this program, some simple test cases are given to
+search in the Patricia we created in previous section.
+
+\begin{lstlisting}
+(define (test-patricia)
+  (define t (list->trie (list '("a" 1) '("an" 2) '("another" 7) 
+                        '("boy" 3) '("bool" 4) '("zoo" 3))))
+  (display (trie->string t)) (newline)
+  (display "lookup another: ") (display (lookup t "another")) (newline)
+  (display "lookup bo: ") (display (lookup t "bo")) (newline)
+  (display "lookup boy: ") (display (lookup t "boy")) (newline)
+  (display "lookup by: ") (display (lookup t "by")) (newline)
+  (display "lookup boolean: ") (display (lookup t "boolean")) (newline))
+\end{lstlisting}
+
+This program will output the same result as the Haskell one.
+
+\begin{lstlisting}
+(test-patricia)
+(., (a1, (an2, (another7))), (bo., (bool4), (boy3)), (zoo3))
+lookup another: 7
+lookup bo: ()
+lookup boy: 3
+lookup by: ()
+lookup boolean: ()
 \end{lstlisting}
 
 % ================================================================
