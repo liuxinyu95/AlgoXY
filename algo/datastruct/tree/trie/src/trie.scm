@@ -7,9 +7,6 @@
 (define (make-trie v lop) ;; v: value, lop: children, list of char-trie pairs
   (cons v lop))
 
-(define (empty-trie)
-  (make-trie '() '()))
-
 (define (value t)
   (if (null? t) '() (car t)))
 
