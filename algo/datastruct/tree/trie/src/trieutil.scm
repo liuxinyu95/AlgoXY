@@ -8,3 +8,6 @@
 ;; filter is defined in R6RS, but not in R5RS
 (define (filter pred lst)
   (keep-matching-items lst pred))
+
+(define (map-string-append x lst) ;; lst: [(key value)]
+  (map (lambda (p) (cons (string-append x (car p)) (cdr p))) lst))
