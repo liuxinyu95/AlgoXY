@@ -62,3 +62,23 @@
   (display "lookup boy: ") (display (lookup t "boy")) (newline)
   (display "lookup by: ") (display (lookup t "by")) (newline)
   (display "lookup boolean: ") (display (lookup t "boolean")) (newline))
+
+;; Find all candidates
+(define (find t k)
+  (define (find-child lst k)
+    (if (null? lst) '()
+	(cond ((string=? (key (car lst)) k) 
+	       (map-string-append k (enumerate (tree (car lst)))))
+	      ((string-prefix? (key (car lst)) k) 
+	       (let ((k-new (string-tail k (string-length (key (car lst))))))
+		 (map-string-append (key (car lst)) (find (tree (car lst)) k-new))))
+	      ((string-prefix? k (key (car lst))) (enumerate (tree (car lst))))
+	      (else (find-child (cdr lst) k)))))
+  (if (string-null? k)
+      (enumerate t)
+      (find-child (children t) k)))
+
+(define (test-patricia-find-all)
+  (define t (list->trie dict))
+  (display "find a*: ") (display (find t "a")) (newline)
+  (display "find ab*: ") (display (find t "ab")) (newline))

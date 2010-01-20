@@ -3878,7 +3878,9 @@ def expand(prefix, t, n):
 \end{lstlisting}
 
 Compare with the Trie lookup function, the first part of this program is almost
-same. The difference part is after we successfully located the node which matches the key, all sub trees are expanded from this node in a bread-first search manner, and the top n candidates are returned. 
+same. The difference part is after we successfully located the node
+which matches the key, all sub trees are expanded from this node in a 
+bread-first search manner, and the top n candidates are returned. 
 
 This program can be verified by below simple test cases.
 
@@ -4302,6 +4304,115 @@ this child and return all its sub branches as candidate list.
 
 This program can be tested with the very same case as above, and it will output
 the same result.
+
+\subsubsection*{An e-dictionary in Scheme/Lisp}
+
+In Scheme/Lisp implementation with Trie, a function named find is used
+to search all candidates start with a given string. If the string is
+empty, the program will enumerate all sub trees as result; else the
+program calls an inner function find-child to search a child which
+matches the first character of the given string. Then the program
+recursively apply the find function to this child with the rest
+characters of the string to be searched. 
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (find t k)
+  (define (find-child lst k)
+    (tree (find-matching-item lst (lambda (c) (string=? (key c) k)))))
+  (if (string-null? k) 
+      (enumerate t) 
+      (let ((t-new (find-child (children t) (string-car k))))
+	(if (null? t-new) '()
+	  (map-string-append (string-car k) (find t-new (string-cdr k)))))))
+\end{lstlisting}
+
+Note that the map-string-append will insert the first character to all
+the elements (more accurately, each element is a pair with a key and a
+value, map-string-append insert the character in front of each key) in
+the result returned by recursive call. It is defined like this.
+
+\begin{lstlisting}
+(define (map-string-append x lst) ;; lst: [(key value)]
+  (map (lambda (p) (cons (string-append x (car p)) (cdr p))) lst))
+\end{lstlisting}
+
+The enumerate function which can expend all sub trees is implemented
+as the following.
+
+\begin{lstlisting}
+(define (enumerate t) ;; enumerate all sub trees
+  (if (null? t) '()
+      (let ((res (append-map 
+		  (lambda (p)(map-string-append (key p)(enumerate (tree p))))
+		  (children t))))
+	(if (null? (value t)) res
+	    (cons (cons "" (value t)) res)))))
+\end{lstlisting}
+
+The test case is a very simple list of word-meaning pairs.
+
+\begin{lstlisting}
+(define dict 
+  (list '("a" "the first letter of English")
+	'("an" "used instead of 'a' when the following word begins with a vowel sound")
+	'("another" "one more person or thing or an extra amount")
+	'("abandon" "to leave a place, thing or person forever")
+	'("about" "on the subject of; connected with")
+	'("adam" "a character in the Bible who was the first man made by God")
+	'("boy" "a male child or, more generally, a male of any age")
+	'("bodyl" "the whole physical structure that forms a person or animal")
+	'("zoo" "an area in which animals, especially wild animals,
+  are kept so that people can go and look at them, or study them")))
+\end{lstlisting}
+
+After feed this dict to a Trie, if user tries to find 'a*' or 'ab*'
+like below.
+
+\begin{lstlisting}
+(define (test-trie-find-all)
+  (define t (list->trie dict))
+  (display "find a*: ") (display (find t "a")) (newline)
+  (display "find ab*: ") (display (find t "ab")) (newline))
+\end{lstlisting}
+
+The result is a list with all candidates start with the given string.
+\begin{verbatim}
+(test-trie-find-all)
+find a*: ((a . the first letter of English) (an . used instead of 'a' 
+when the following word begins with a vowel sound) (another . one more 
+person or thing or an extra amount) (abandon . to leave a place, thing 
+or person forever) (about . on the subject of; connected with) (adam
+. a character in the Bible who was the first man made by God))
+find ab*: ((abandon . to leave a place, thing or person forever)
+(about . on the subject of; connected with))
+\end{verbatim}
+
+Trie approach isn't space effective. Patricia can be one alternative
+to improve in terms of space.
+
+We can fully reuse the function enumerate, map-string-append which are
+defined for trie. the find function for Patricia is implemented as the
+following.
+
+\begin{lstlisting}
+(define (find t k)
+  (define (find-child lst k)
+    (if (null? lst) '()
+	(cond ((string=? (key (car lst)) k) 
+	       (map-string-append k (enumerate (tree (car lst)))))
+	      ((string-prefix? (key (car lst)) k) 
+	       (let ((k-new (string-tail k (string-length (key (car lst))))))
+		 (map-string-append (key (car lst)) (find (tree (car lst)) k-new))))
+	      ((string-prefix? k (key (car lst))) (enumerate (tree (car lst))))
+	      (else (find-child (cdr lst) k)))))
+  (if (string-null? k)
+      (enumerate t)
+      (find-child (children t) k)))
+\end{lstlisting}
+
+If the same test cases of search all cnadidate of 'a*' and 'ab*' are
+fed we can get a very same result.
 
 %=====================================
 % T9
