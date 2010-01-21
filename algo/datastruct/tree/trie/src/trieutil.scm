@@ -11,3 +11,7 @@
 
 (define (map-string-append x lst) ;; lst: [(key value)]
   (map (lambda (p) (cons (string-append x (car p)) (cdr p))) lst))
+
+(define (string- x y)
+  (string-tail x (string-length y)))
+
