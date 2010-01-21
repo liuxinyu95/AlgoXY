@@ -78,7 +78,37 @@
       (enumerate t)
       (find-child (children t) k)))
 
-(define (test-patricia-find-all)
+(define (test-patricia-find)
   (define t (list->trie dict))
   (display "find a*: ") (display (find t "a")) (newline)
   (display "find ab*: ") (display (find t "ab")) (newline))
+
+(define (str->t9 s)
+  (define (unmap-t9 c)
+    (car (find-matching-item map-T9 (lambda (x) (substring? c (cadr x))))))
+  (if (string-null? s) ""
+      (string-append (unmap-t9 (string-car s)) (str->t9 (string-cdr s)))))
+
+(define (find-T9 t k)
+  (define (accumulate-find lst child)
+    (append (map-string-append (key child) (find-T9 (tree child) (string- k (key child))))
+	    lst))
+  (define (lookup-child lst k)
+    (filter (lambda (child) (string-prefix? (str->t9 (key child)) k)) lst))
+  (if (string-null? k) (list (cons "" (value t)))
+      (fold-left accumulate-find '() (lookup-child (children t) k))))
+
+(define (test-patricia-T9)
+  (define t (list->trie dict-T9))
+  (display (trie->string t)) (newline)
+  (display "find 4: ") (display (find-T9 t "4")) (newline)
+  (display "find 46: ") (display (find-T9 t "46")) (newline)
+  (display "find 466: ") (display (find-T9 t "466")) (newline)
+  (display "find 4663: ") (display (find-T9 t "4663")) (newline)
+  (display "find 2: ") (display (find-T9 t "2")) (newline)
+  (display "find 22: ") (display (find-T9 t "22")) (newline))
+
+(define (test-all)
+  (test-patricia)
+  (test-patricia-find)
+  (test-patricia-T9))
