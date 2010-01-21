@@ -150,3 +150,8 @@
   (display "find 4663: ") (display (find-T9 t "4663")) (newline)
   (display "find 2: ") (display (find-T9 t "2")) (newline)
   (display "find 22: ") (display (find-T9 t "22")) (newline))
+
+(define (test-all)
+  (test-trie)
+  (test-trie-find-all)
+  (test-trie-t9))
