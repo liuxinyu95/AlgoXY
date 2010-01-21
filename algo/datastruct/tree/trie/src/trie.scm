@@ -122,3 +122,31 @@
   (define t (list->trie dict))
   (display "find a*: ") (display (find t "a")) (newline)
   (display "find ab*: ") (display (find t "ab")) (newline))
+
+;; T9
+
+(define map-T9 (list '("2" "abc") '("3" "def") '("4" "ghi") '("5" "jkl")
+		     '("6" "mno") '("7" "pqrs") '("8" "tuv") '("9" "wxyz")))
+
+(define (find-T9 t k) ;; return [(key value)]
+  (define (accumulate-find lst child)
+    (append (map-string-append (key child) (find-T9 (tree child) (string-cdr k))) 
+	    lst))
+  (define (lookup-child lst c) ;; lst, list of childen [(key tree)], c, char
+    (let ((res (find-matching-item map-T9 (lambda (x) (string=? c (car x))))))
+      (if (not res) '()
+	  (filter (lambda (x) (substring? (key x) (cadr res))) lst))))
+  (if (string-null? k) (list (cons k (value t)))
+      (fold-left accumulate-find '() (lookup-child (children t) (string-car k)))))
+
+(define dict-T9 (list '("home" ()) '("good" ()) '("gone" ()) '("hood" ()) 
+		      '("a" ()) '("another" ()) '("an" ())))
+
+(define (test-trie-T9)
+  (define t (list->trie dict-T9))
+  (display (trie->string t)) (newline)
+  (display "find 4: ") (display (find-T9 t "4")) (newline)
+  (display "find 46: ") (display (find-T9 t "46")) (newline)
+  (display "find 4663: ") (display (find-T9 t "4663")) (newline)
+  (display "find 2: ") (display (find-T9 t "2")) (newline)
+  (display "find 22: ") (display (find-T9 t "22")) (newline))
