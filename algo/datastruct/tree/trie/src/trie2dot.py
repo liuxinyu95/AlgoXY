@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 # trie2dot.py, Convert tool, convert from Trie/Patricia to Dot script.
 # Copyright (C) 2010, Liu Xinyu (liuxinyu95@gmail.com)
 #
@@ -14,7 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#!/usr/bin/python
 """
 transform the trie to dot script (graphviz)
 usage: 
