@@ -2,10 +2,12 @@
 module Main where
 
 import Control.Monad
+import Control.Applicative ((<$>))
 import System.Directory
 import System.FilePath
 import Data.List
 import qualified Data.Map as Map
+
 
 data Lan l = Lan { head :: String
                  , lead :: String
@@ -23,9 +25,10 @@ comments = [("C/C++", ["/*", " *", " */"]),
             ("Lisp", ["", ";; ", ""])]
 
 toLan :: FilePath -> Maybe String
-toLan ext = case find (\p->ext `elem` (snd p)) exts of 
-              Nothing -> Nothing
-              Just p -> Just (fst p)
+toLan ext = fst <$> find (\p->ext `elem` (snd p)) exts 
+
+--createComments filename, language, author, year?
+--createComments :: FilePath -> String ->
 
 walk :: FilePath -> IO [FilePath]
 walk dir = do
@@ -36,7 +39,7 @@ walk dir = do
              if isDir then walk path else return [path]
   return (concat paths)
 
---main = do
---  items <- walk "."
---  putStrLn $ show items
+main = do
+  items <- walk "."
+  putStrLn $ show items
   
