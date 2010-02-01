@@ -5,6 +5,8 @@ import Control.Monad
 import Control.Applicative ((<$>))
 import System.Directory
 import System.FilePath
+import System.IO
+import System.Environment (getArgs)
 import Data.List
 import Data.Time.Clock (getCurrentTime, utctDay)
 import Data.Time.Calendar (toGregorian)
@@ -31,7 +33,7 @@ exts = [("C/C++", [".c", ".cpp", ".h", ".hpp", ".cxx", ".hxx"]),
         ("Haskell", [".hs"]),
         ("Lisp", [".scm"])]
 
-comments = [("C/C++", ["/*", " *", " */"]), 
+comments = [("C/C++", ["/*", " * ", " */"]), 
             ("Script", ["", "# ", ""]),
             ("Haskell", ["", "-- ", ""]),
             ("Lisp", ["", ";; ", ""])]
@@ -39,26 +41,51 @@ comments = [("C/C++", ["/*", " *", " */"]),
 toLan :: FilePath -> Maybe String
 toLan ext = fst <$> find (\p->ext `elem` (snd p)) exts 
 
-createComments :: FilePath -> String -> String -> String -> String
-createComments filename lan author year = 
-    join "\n" ([head] ++ (map (\x -> lead++x) lines) ++ [tail]) where
-        join s = concat . map (\x -> x++s)
-        lines = [filename, "Copyright (C) "++year++" "++author]++stateGPL
+createComments :: FilePath -> String -> String -> String -> [String]
+createComments filename lan author y = 
+    [head] ++ (map (\x -> lead++x) lns) ++ [tail] where
+        lns = [filename, "Copyright (C) "++y++" "++author, ""]++stateGPL
         [head, lead, tail] = maybe ["", "", ""] id (lookup lan comments)
  
-date :: IO (Integer,Int,Int) -- :: (year,month,day)
-date = getCurrentTime >>= return . toGregorian . utctDay
+year:: IO String
+year = do 
+  (y, _, _) <- date 
+  return (show y) where
+       date :: IO (Integer,Int,Int) -- :: (year,month,day)
+       date = getCurrentTime >>= return . toGregorian . utctDay
 
-walk :: FilePath -> IO [FilePath]
-walk dir = do
-  names <- getDirectoryContents dir
-  paths <- forM (filter (`notElem` [".", ".."]) names) $ \name -> do
-             let path = dir </> name
-             isDir <- doesDirectoryExist path
-             if isDir then walk path else return [path]
-  return (concat paths)
+insertComments :: FilePath -> String -> String -> [String] -> String
+insertComments filename lan y lns = dropWhile ('\n'==) $ unlines $ 
+    xs ++ 
+    (createComments (takeFileName filename) lan authorInfo y) ++ 
+    ys where
+        (xs, ys) = splitAt pos lns
+        pos = if lan == "Script" 
+                  then maybe 0 (+1) (findIndex ("#!" `isPrefixOf`) lns)
+                  else 0
+
+gplize:: FilePath -> IO ()
+gplize filename = 
+    case toLan $ takeExtension filename of
+      Nothing -> return ()
+      Just lan -> do
+        s <- readFile filename
+        y <- year
+        if magicName `isInfixOf` s 
+            then return ()
+            else do 
+              putStrLn filename
+              renameFile filename (filename++"~")
+              writeFile filename $ insertComments filename lan y (lines s)
+
+walk :: (FilePath->IO ()) -> FilePath ->IO ()
+walk f dir = do
+  isDir <- doesDirectoryExist dir
+  if isDir 
+      then getDirectoryContents dir >>= 
+           mapM_ (\x -> walk f $ dir </> x) . (filter (`notElem` [".", ".."]))
+      else f dir
 
 main = do
-  items <- walk "."
-  putStrLn $ show items
+  getArgs >>= mapM_ (walk gplize)
   
