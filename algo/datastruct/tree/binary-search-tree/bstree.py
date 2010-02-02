@@ -1,3 +1,4 @@
+#!/usr/bin/python
 
 # bstree.py
 # Copyright (C) 2010 Liu Xinyu (liuxinyu95@gmail.com)
