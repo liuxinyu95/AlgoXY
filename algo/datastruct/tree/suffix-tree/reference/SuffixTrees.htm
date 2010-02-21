@@ -1,0 +1,1253 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+
+<HTML>
+<HEAD> <TITLE>Suffix Trees</TITLE>
+<META NAME="description" Content="Suffix Trees">
+<META Name="keywords" Content="Suffix Trees Prefix Tree String Search Weiner McCreight Ukkonen online construction on-line left to right build building Algorithmica 1995 programming computer algorithm sequence analysis text search searching problem strings palindrome maximal maximum longest common substring sub-string LCS LCSS">
+<!-- DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN" -->
+<!--        GENERATOR = vi (Linux + Solaris) -->
+<META NAME="GENERATOR" CONTENT="vi (Linux + Solaris)">
+<SCRIPT LANGUAGE="JavaScript">
+var REMOTE_HOST='(none)';
+</SCRIPT>
+<SCRIPT LANGUAGE="JavaScript">
+<!--
+REMOTE_HOST='18.79.197.194.in-addr.arpa domain name pointer ttihfwgw.tieto.com.';
+
+// -->
+</SCRIPT>
+<!-- Lloyd ALLISON, Victoria, Australia -->
+<!--              Content-Type = text/html;         charset=iso-8859-1 -->
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+
+</HEAD>
+
+<BODY BGCOLOR="#EEEEEE" TEXT="#000000" LINK="#0000FF" VLINK="#400090" ONLOAD="if(top!=self)top.location=self.location;">
+
+<TABLE BORDER="0" CELLSPACING="0" CELLPADDING="2" WIDTH="100%">
+<TR><TD ALIGN="center"> <!--   BGCOLOR="#EEFFEE" -->
+
+
+
+<H3>Suffix Trees</H3>
+
+
+</TD></TR>
+</TABLE>
+
+<TABLE BORDER="0" CELLSPACING="0" CELLPADDING="2" WIDTH="100%">
+<TR><TD ALIGN="center" VALIGN="top" WIDTH="10%">
+
+  <TABLE BORDER="1" CELLSPACING="0" CELLPADDING="1"> <!-- left column -->
+  <TR><TD>
+<A HREF="http://www.allisons.org/ll/"        TARGET="_top">LA&nbsp;home</A><BR>
+<A HREF="http://www.allisons.org/ll/Computing/" TARGET="_top">Computing</A><BR>
+
+
+<!-- Left  extras for children  NB. relative to children -->
+<A HREF="../../"  TARGET="_top">Algorithms</A><BR>
+&nbsp;<A HREF="../../Glossary/"  TARGET="_top">glossary</A><BR>
+&nbsp;<A HREF="../"              TARGET="_top">Binary&nbsp;Trees</A><BR>
+&nbsp;&nbsp;<A HREF="../Search/"   TARGET="_top">Search&nbsp;T'</A><BR>
+&nbsp;&nbsp;<A HREF="../Trie/"     TARGET="_top">Tries</A><BR>
+&nbsp;&nbsp;<A HREF="../PATRICIA/" TARGET="_top">PATRICIA</A><BR>
+&nbsp;&nbsp;<A HREF="../Suffix/"   TARGET="_top">Suffix&nbsp;Trees</A><BR>
+&nbsp;<A HREF="../../Table/" TARGET="_top">Tables</A><BR>
+
+&nbsp;&nbsp;<B>Suffix&nbsp;T.</B><BR>
+<!-- Left Extras Here -->
+&nbsp;&nbsp;&nbsp;<A HREF="../Woolloomooloo/"><FONT SIZE="-1">Woolloomooloo</FONT></A><BR>
+<BR>
+also&nbsp;see<BR>
+&nbsp;<A HREF="../../Strings/">Strings</A><BR>
+&nbsp;&nbsp;<A HREF="../../Strings/Suffix/"><FONT SIZE="-1">Suffix&nbsp;array</FONT></A><BR>
+&nbsp;&nbsp;<A HREF="../../Strings/BWT/">BWT</A><BR>
+  <!-- Lloyd Allison -->
+  </TD></TR>
+  </TABLE>
+
+</TD><TD ALIGN="left" VALIGN="top" WIDTH="80%">
+
+
+
+
+
+<TABLE BORDER=1 CELLSPACING=0 CELLPADDING=5 ALIGN="right" WIDTH=35%>
+<TR><TD>
+<FONT SIZE="-1">e.g. Given the string `mississippi',<BR>
+<NOBR>`miss' is a <EM>prefix</EM>,</NOBR>
+<NOBR>`ippi' is a <EM>suffix</EM>,</NOBR> &amp;
+<NOBR>`issi' is a <EM>substring</EM>.</NOBR>
+Note that a substring is a prefix of a suffix, and
+a suffix of a prefix.<BR></FONT>
+</TD></TR></TABLE>
+
+<P>A Suffix Tree is a data-structure that allows many problems on strings
+(sequences of characters) to be solved quickly.
+If
+<CODE>txt=t<SUB>1</SUB>t<SUB>2</SUB>...t<SUB>i</SUB>...t<SUB>n</SUB></CODE>
+is a string, then
+<CODE>T<SUB>i</SUB>=t<SUB>i</SUB>t<SUB>i+1</SUB>...t<SUB>n</SUB></CODE>
+is the <EM>suffix</EM> of <CODE>txt</CODE> that starts at position i, e.g.
+</P>
+
+<DL><DD><PRE>
+T<SUB>1</SUB>  = mississippi = txt
+T<SUB>2</SUB>  = ississippi
+T<SUB>3</SUB>  = ssissippi
+T<SUB>4</SUB>  = sissippi
+T<SUB>5</SUB>  = issippi
+T<SUB>6</SUB>  = ssippi
+T<SUB>7</SUB>  = sippi
+T<SUB>8</SUB>  = ippi
+T<SUB>9</SUB>  = ppi
+T<SUB>10</SUB> = pi
+T<SUB>11</SUB> = i
+T<SUB>12</SUB> =               (empty)
+</PRE></DD></DL>
+
+<P>The suffix tree for `<CODE>txt</CODE>' is a
+<A HREF="../Trie/">Trie</A>-like or
+<A HREF="../PATRICIA/">PATRICIA</A>-like
+data structure that represents the suffixes of <CODE>txt</CODE>.
+</P>
+
+<P>A given suffix tree can be used to search for a substring,
+<CODE>pat[1..m]</CODE> in O(m) time.
+There are n(n+1)/2 substrings in <CODE>txt[1..n]</CODE>
+so it is rather surprising that a suffix tree can be built in O(n) time.
+Adding just one character to <CODE>txt</CODE> increases the number of
+substrings<!-- nosilla --> by n+1, but they are not independent.
+Weiner (1973) gave the first algorithm and
+McCreight (1976) gave a more readable account for constructing the
+suffix tree while processing <CODE>txt</CODE> from right to left.
+Only much later did Ukkonen (1992, 1995) give a left-to-right
+<EM>on-line</EM> algorithm,
+<NOBR>i.e. an algorithm</NOBR> that maintains a suffix tree
+for <CODE>txt[1..i]</CODE> at each step as i is increased from 1 to n.
+</P>
+
+<P>If the non-empty suffixes are sorted:
+
+<DL><DD><PRE>
+T<SUB>11</SUB> = i
+T<SUB>8</SUB>  = ippi
+T<SUB>5</SUB>  = issippi
+T<SUB>2</SUB>  = ississippi
+T<SUB>1</SUB>  = mississippi
+T<SUB>10</SUB> = pi
+T<SUB>9</SUB>  = ppi
+T<SUB>7</SUB>  = sippi
+T<SUB>4</SUB>  = sissippi
+T<SUB>6</SUB>  = ssippi
+T<SUB>3</SUB>  = ssissippi
+</PRE></DD></DL>
+
+it becomes obvious that some of them (may) share common prefixes.
+Here there are substrings starting with `i', `m', `p' and `s',
+but all of those starting `is', in fact start `issi'.
+Two or more common <EM>prefixes</EM><!-- l allison comp sci --> share
+a common path<!-- L.Allison .au --> from the root
+of the suffix tree (as in a PATRICIA tree).
+Now, a search (sub)string <CODE>pat</CODE> must be a prefix of a suffix
+of <CODE>txt</CODE>, if it occurs in <CODE>txt</CODE>.<BR CLEAR="all">
+</P>
+
+<TABLE BORDER="0" CELLSPACING="0" CELLPADDING="3" WIDTH="100%">
+<TR><TD WIDTH="5%" ROWSPAN="2">&nbsp;</TD><!-- indent -->
+<TD ALIGN="left" WIDTH="95%">
+<PRE>
+<STRONG>           tree                       substrings</STRONG>
+
+tree--&gt;|---mississippi                m .. mississippi
+       |
+       |---i--&gt;|---ssi--&gt;|---ssippi   i .. ississippi
+       |       |         |
+       |       |         |---ppi      issip,issipp,issippi
+       |       |
+       |       |---ppi                ip, ipp, ippi
+       |
+       |---s--&gt;|---si--&gt;|---ssippi    s .. ssissippi
+       |       |        |
+       |       |        |---ppi       ssip, ssipp, ssippi
+       |       |
+       |       |---i--&gt;|---ssippi     si .. sissippi
+       |               |
+       |               |---ppi        sip, sipp, sippi
+       |
+       |---p--&gt;|---pi                 p, pp, ppi
+               |
+               |---i                  p, pi
+</PRE>
+</TD></TR>
+<TR><TD>
+<CODE><STRONG>--- Suffix Tree for
+&quot;mississippi&quot;<!-- nosilla --> ---</STRONG></CODE><BR>
+</TD></TR></TABLE>
+
+<P>Each edge (arc) of the suffix tree is <EM>labelled</EM>
+with a substring of <CODE>txt</CODE>
+which is implemented by pointers to the start and end of the substring,
+e.g.&nbsp;`ssi' by &lt;3,5&gt;.
+One of the observation in Ukkonen's algorithm is that
+an edge, &lt;i,n&gt;, leading to a leaf can be implemented by
+&lt;i,&infin;&gt; where `&infin;', i.e.&nbsp;infinity,
+means `to the end of the string'.
+</P>
+
+
+<H4>Suffix Tree Demonstration</H4>
+
+<SCRIPT LANGUAGE="JavaScript">
+<!--
+// ----------------------------------------------------------------------------
+
+var Txt='',    // the input text string
+    root=null, // root of the suffix tree
+    infinity;  // quite a big number
+    nForks=0;  // number of branching nodes in the suffix tree
+
+function pair(a, b) { this.fst = a; this.snd = b; } // i.e. <fst, snd>
+// NB. most of Ukkonen's functions return a pair (s,w)
+
+
+function isEmptyStrng() { return this.right < this.left; }
+
+function Strng(left, right) // represents Txt[left..right]
+ { this.left=left; this.right=right;
+   this.isEmpty = isEmptyStrng;
+}//constructor
+
+
+function addTrnstn(left, right, s) // this['a'] >---(left..right)---> s
+// add a transition to `this' state
+ { this[Txt.charAt(left)] = new pair(new Strng(left,right), s);
+   this.isLeaf = false;
+ }
+
+function State() // i.e. a new leaf node in the suffix tree
+ { this.addTransition = addTrnstn; this.isLeaf = true; }
+
+
+function show(T, str, arc) // print the suffix tree
+ { if(T == null)//should not happen!
+    { document.theForm.opt.value += str+arc+'NULL !!!\n';
+      return;//should not be here
+    }
+ //else
+   if(T.isLeaf)
+    { document.theForm.opt.value += str+arc+'leaf\n';
+      return;//llewop d
+    }
+ //else
+      nForks++;
+      var attr, iter = 0;
+      var spaces = '';  var i;
+      for(i=1; i < arc.length; i++) spaces += ' ';
+      spaces += '|';   // |spaces|==|arc|
+      var str2 = str+spaces;//nosilla l
+
+      for(attr in T)//each subtree
+      if(attr.length == 1)//a char attribute selects a suffix-tree branch
+       { iter++;//ics pmoc hsanom
+         var wAndT2 = T[attr];
+         var w = wAndT2.fst, T2 = wAndT2.snd;
+         var myStr = '('+(w.left+1)+':'+Txt.substring(w.left, w.right+1)+')|';
+         if(iter > 1)//must get to at least 2 if suffix tree is correct.
+            document.theForm.opt.value += (iter==2 ? str+arc : str2)+'\n';
+         show(T2, str2, myStr)
+       }
+ }//show
+
+
+// from E.Ukkonen, On-Line Construction of Suffix Trees ***                   C
+//                 Algorithmica 14(3) pp 249-260, 1995  ***                   o
+// (U. Helsinki, Finland)                                                     m
+                                                                           // p
+                                                                           // .
+function upDate(s, k, i)                                                   // S
+// (s, (k, i-1)) is the canonical reference pair for the active point         c
+ { var oldr = root;                                                        // i
+   var endAndr = test_and_split(s, k, i-1, Txt.charAt(i))                  // M
+   var endPoint = endAndr.fst; var r = endAndr.snd                         // o
+                                                                           // n
+   while (!endPoint)                                                       // n
+    { r.addTransition(i, infinity, new State());                           // a
+      if (oldr != root) oldr.sLink = r;                                    // s
+                                                                           // h
+      oldr = r;
+      var sAndk = canonize(s.sLink, k, i-1)                                // A
+      s = sAndk.fst; k = sAndk.snd;                                        // l
+      endAndr = test_and_split(s, k, i-1, Txt.charAt(i))                   // l
+      endPoint = endAndr.fst; r = endAndr.snd;                             // i
+    }                                                                      // s
+                                                                           // o
+   if(oldr != root) oldr.sLink = s;                                        // n
+
+   return new pair(s, k);
+ }//upDate
+
+
+function test_and_split(s, k, p, t)                                        // P
+ { if(k<=p)                                                                // o
+    { // find the t_k transition g'(s,(k',p'))=s' from s                   // w
+      // k1 is k'  p1 is p'                                                // e
+      var w1ands1 = s[Txt.charAt(k)];          // s --(w1)--> s1              l
+      var s1 = w1ands1.snd;                                                // l
+      var k1 = w1ands1.fst.left;  var p1 = w1ands1.fst.right;
+
+      if (t == Txt.charAt(k1 + p - k + 1))
+         return new pair(true, s);
+      else
+       { var r = new State()
+         s.addTransition(k1, k1+p-k,   r);     // s ----> r ----> s1
+         r.addTransition(    k1+p-k+1, p1, s1);
+         return new pair(false, r)
+       }
+    }
+   else // k > p;  ? is there a t-transition from s ?
+      return new pair(s[t] != null, s);
+ }//test_and_split
+
+
+function canonize(s, k, p)
+ { if(p < k) return new pair (s, k);
+
+   // find the t_k transition g'(s,(k',p'))=s' from s
+   // k1 is k',  p1 is p'
+   var w1ands1 = s[Txt.charAt(k)];                            // s --(w1)--> s1
+   var s1 = w1ands1.snd;
+   var k1 = w1ands1.fst.left;  var p1 = w1ands1.fst.right;
+
+   while(p1-k1 <= p-k)                               // s --(w1)--> s1 ---> ...
+    { k += p1 - k1 + 1;                    // remove |w1| chars from front of w
+      s = s1;
+      if(k <= p)
+       { w1ands1 = s[Txt.charAt(k)];                          // s --(w1)--> s1
+         s1 = w1ands1.snd;
+         k1 = w1ands1.fst.left; p1 = w1ands1.fst.right;
+       }
+     }
+    return new pair(s, k);
+  }//canonize
+
+
+function algorithm2()
+ { var s, k, i;
+   var bt;
+
+   root = new State();
+   bt = new State();                                      // bt (bottom or _|_)
+
+   // Want to create transitions for all possible chars
+   // from bt to root
+   for (i=0; i<Txt.length; i++)
+      bt.addTransition(i,i, root);
+
+   root.sLink = bt;
+   s=root; k=0;  // NB. Start k=0, unlike Ukkonen paper our strings are 0 based
+
+   for(i=0; i < Txt.length; i++)
+    { var sAndk = upDate(s, k, i);   // (s,k) < - upDate(...)
+      s = sAndk.fst; k = sAndk.snd;
+      sAndk = canonize(s, k, i);     // (s,k) < - canonize(...)
+      s = sAndk.fst; k = sAndk.snd;
+    }
+ }//algorithm2
+
+
+// ----------------------------------------------------------------------------
+// The following sorts the suffixes just to show what the STree should be.
+
+function insertionSort(Txt) // NB. O(n**2) or worse; unacceptable for long input strings!
+ { if(Txt.length > 11) return;//too long for sorting
+
+   var A = new Array(), len = Txt.length;
+   var i;
+   for(i = 0; i < Txt.length; i++) A[i] = i;
+   for(i = 0; i < Txt.length-1; i++)
+    { var j,  small = i;
+      for(j = i+1; j < Txt.length; j++)
+         if(Txt.substring(A[j],len) < Txt.substring(A[small], len))
+            small = j;
+      var temp = A[i]; A[i] = A[small]; A[small] = temp;
+    }
+   for(i = 0; i < len; i++)
+    { var numbr = '    '+(1+A[i])+': ';
+      numbr = numbr.substring(numbr.length-4, numbr.length);
+      document.theForm.opt.value += numbr+Txt.substring(A[i], len)+'\n';
+    }
+   document.theForm.opt.value += '\n';
+ }//insertionSort
+
+// ----------------------------------------------------------------------------
+
+function stDriver()
+ { Txt = document.theForm.inp.value;
+   infinity = Txt.length + 1000; // well it's quite big :-)
+   nForks = 0;
+
+   document.theForm.opt.value = '';
+   insertionSort(Txt);
+
+   algorithm2();  // ------------ the business
+   show(root, '', 'tree:|');
+   document.theForm.opt.value += nForks + ' branching nodes';
+ }//stDriver
+// -->
+</SCRIPT>
+
+<P><A NAME="demo">Change</A> the Text <CODE>txt=...</CODE> in the
+<A NAME="demoForm">HTML FORM</A> below,
+and click on `go'; experiment with different text strings:
+</P>
+
+<FORM NAME="theForm" ONSUBMIT="stDriver(); return false;"><TABLE BORDER=1 CELLSPACING=0 CELLPADDING=2 ALIGN="right"><TR><TD ALIGN="center" VALIGN="top"><FONT COLOR="#BBBBBB" SIZE="1">&copy;<BR>D<BR>.<BR>P<BR>o<BR>w<BR>e<BR>l<BR>l<BR></FONT></TD></TR><TR><TD ALIGN="center" VALIGN="top"><FONT COLOR="#BBBBBB" SIZE="1">&amp;<BR>L<BR>.<BR>A<BR>l<BR>l<BR>i<BR>s<BR>o<BR>n<BR> <BR>2<BR>0<BR>0<BR>0<BR></FONT></TD></TR></TABLE>
+txt=<INPUT TYPE="text" SIZE=50 NAME="inp" VALUE="mississippi" ONCHANGE=" ">
+<INPUT TYPE="button" ONCLICK="stDriver()" VALUE="go"><BR>
+
+tree<TEXTAREA NAME="opt" ROWS="23" COLS="50" WRAP="off">
+  NEEDS NETSCAPE's JavaScript1.1 OR LATER
+</TEXTAREA></FORM><BR CLEAR="all"><SCRIPT LANGUAGE="JavaScript1.1">
+<!--
+ document.theForm.opt.value = "";
+// ----------------------------------------------------------------------------
+// -->
+</SCRIPT>
+
+<P>NB. If the string is "short", a simple sort routine is run first
+to sort the suffices the slow way for comparison with the tree;
+this is not done if the string is "long".
+</P>
+<P>If the termination of <CODE>txt</CODE> is important,
+this can be indicated by a special terminating character
+often denoted by `$' in papers on strings
+(~zero char in C/Unix).
+</P>
+
+
+<H3>Building a Suffix Tree, (a) Slowly</H3>
+
+<P>We show how a suffix tree might be built &quot;by hand&quot;.
+Three dots, `<CODE>...</CODE>', are used to show the current
+end of any suffix that will grow as more characters are processed.
+Starting with the empty suffix tree,
+consider the string `m':
+</P>
+
+<TABLE BORDER=0 CELLSPACING=0 CELLPADDING=3>
+<TR><TD WIDTH=5% ROWSPAN=2>&nbsp;</TD><!-- indent -->
+<TD ALIGN="left">
+<PRE>
+<STRONG>           tree<SUB>1</SUB></STRONG>
+
+tree--&gt;----m...
+
+</PRE>
+</TD></TR></TABLE>
+
+<P>Adding the second character to get `mi'
+there are now suffixes `mi' and `i':
+</P>
+
+<TABLE BORDER=0 CELLSPACING=0 CELLPADDING=3>
+<TR><TD WIDTH=5% ROWSPAN=2>&nbsp;</TD><!-- indent -->
+<TD ALIGN="left">
+<PRE>
+<STRONG>           tree<SUB>2</SUB></STRONG>
+
+tree--&gt;|---mi...
+       <B>|</B>
+       <B>|---i...</B>
+</PRE>
+</TD></TR></TABLE>
+
+<P>Next `mis'</P>
+
+<TABLE BORDER=0 CELLSPACING=0 CELLPADDING=3>
+<TR><TD WIDTH=5% ROWSPAN=2>&nbsp;</TD><!-- indent -->
+<TD ALIGN="left">
+<PRE>
+<STRONG>           tree<SUB>3</SUB></STRONG>
+
+tree--&gt;|---mis...
+       |
+       |---is...
+       <B>|</B>
+       <B>|---s...</B>
+</PRE>
+</TD></TR></TABLE>
+
+<P>There is no need to add any more splits for `miss'
+because `s' is part of `ss'.
+</P>
+
+<TABLE BORDER=0 CELLSPACING=0 CELLPADDING=3>
+<TR><TD WIDTH=5% ROWSPAN=2>&nbsp;</TD><!-- indent -->
+<TD ALIGN="left">
+<PRE>
+<STRONG>           tree<SUB>4</SUB></STRONG>
+
+tree--&gt;|---miss...
+       |
+       |---iss...
+       |
+       |---ss...
+</PRE>
+</TD></TR></TABLE>
+
+<P>However, with `missi' there must be a split
+because one `s' is followed by `i', the other by `s'
+</P>
+
+<TABLE BORDER=0 CELLSPACING=0 CELLPADDING=3>
+<TR><TD WIDTH=5% ROWSPAN=2>&nbsp;</TD><!-- indent -->
+<TD ALIGN="left">
+<PRE>
+<STRONG>           tree<SUB>5</SUB></STRONG>
+
+tree--&gt;|---missi...
+       |
+       |---issi...
+       |
+       |---s--&gt;|---si...
+               <B>|</B>
+               <B>|---i...</B>
+</PRE>
+</TD></TR></TABLE>
+
+<P>The 6th character, `s', brings us to `missis'
+and no split because both `i's are followed by `s's.
+</P>
+
+<TABLE BORDER=0 CELLSPACING=0 CELLPADDING=3>
+<TR><TD WIDTH=5% ROWSPAN=2>&nbsp;</TD><!-- indent -->
+<TD ALIGN="left">
+<PRE>
+<STRONG>           tree<SUB>6</SUB></STRONG>
+
+tree--&gt;|---missis...
+       |
+       |---issis...
+       |
+       |---s--&gt;|---sis...
+               |
+               |---is...
+</PRE>
+</TD></TR></TABLE>
+
+<P>`mississ'</P>
+
+<TABLE BORDER=0 CELLSPACING=0 CELLPADDING=3>
+<TR><TD WIDTH=5% ROWSPAN=2>&nbsp;</TD><!-- indent -->
+<TD ALIGN="left">
+<PRE>
+<STRONG>           tree<SUB>7</SUB></STRONG>
+
+tree--&gt;|---mississ...
+       |
+       |---ississ...
+       |
+       |---s--&gt;|---siss...
+               |
+               |---iss...
+</PRE>
+</TD></TR></TABLE>
+
+<P>`mississi'</P>
+
+<TABLE BORDER=0 CELLSPACING=0 CELLPADDING=3>
+<TR><TD WIDTH=5% ROWSPAN=2>&nbsp;</TD><!-- indent -->
+<TD ALIGN="left">
+<PRE>
+<STRONG>           tree<SUB>8</SUB></STRONG>
+
+tree--&gt;|---mississi...
+       |
+       |---ississi...
+       |
+       |---s--&gt;|---sissi...
+               |
+               |---issi...
+</PRE>
+</TD></TR></TABLE>
+
+<P>A lot suddenly happens for `mississip',
+because it brings the first `p', and
+causes the third `i' to be followed by `p'
+where the other two are followed by `ssi'.
+Consequently one of the `ssi' is followed by `p', the other by `ssip',
+ditto `si'.
+</P>
+
+<TABLE BORDER=0 CELLSPACING=0 CELLPADDING=3>
+<TR><TD WIDTH=5% ROWSPAN=2>&nbsp;</TD><!-- indent -->
+<TD ALIGN="left">
+<PRE>
+<STRONG>           tree<SUB>9</SUB></STRONG>
+
+tree--&gt;|---mississip...
+       |
+       |---i--&gt;|---ssi--&gt;|---ssip...
+       |       <B>|</B>         <B>|</B>
+       |       <B>|</B>         <B>|---p...</B>
+       |       <B>|</B>
+       |       <B>|---p...</B>
+       |
+       |---s--&gt;|---si--&gt;|---ssip...
+       <B>|</B>       |        <B>|</B>
+       <B>|</B>       |        <B>|---p...</B>
+       <B>|</B>       |
+       <B>|</B>       |---i--&gt;|---ssip...
+       <B>|</B>               <B>|</B>
+       <B>|</B>               <B>|---p...</B>
+       <B>|</B>
+       <B>|---p...</B>
+</PRE>
+</TD></TR></TABLE>
+
+<P>By comparison `mississipp' is very quiet</P>
+
+<TABLE BORDER=0 CELLSPACING=0 CELLPADDING=3>
+<TR><TD WIDTH=5% ROWSPAN=2>&nbsp;</TD><!-- indent -->
+<TD ALIGN="left">
+<PRE>
+<STRONG>           tree<SUB>10</SUB></STRONG>
+
+tree--&gt;|---mississipp...
+       |
+       |---i--&gt;|---ssi--&gt;|---ssipp...
+       |       |         |
+       |       |         |---pp...
+       |       |
+       |       |---pp...
+       |
+       |---s--&gt;|---si--&gt;|---ssipp...
+       |       |        |
+       |       |        |---pp...
+       |       |
+       |       |---i--&gt;|---ssipp...
+       |               |
+       |               |---pp...
+       |
+       |---pp...
+</PRE>
+</TD></TR></TABLE>
+
+<P>`mississippi' is an anti-climax</P>
+
+<TABLE BORDER=0 CELLSPACING=0 CELLPADDING=3>
+<TR><TD WIDTH=5% ROWSPAN=2>&nbsp;</TD><!-- indent -->
+<TD ALIGN="left">
+<PRE>
+<STRONG>           tree<SUB>11</SUB></STRONG>
+
+tree--&gt;|---mississippi
+       |
+       |---i--&gt;|---ssi--&gt;|---ssippi
+       |       |         |
+       |       |         |---ppi
+       |       |
+       |       |---ppi
+       |
+       |---s--&gt;|---si--&gt;|---ssippi
+       |       |        |
+       |       |        |---ppi
+       |       |
+       |       |---i--&gt;|---ssippi
+       |               |
+       |               |---ppi
+       |
+       |---p--&gt;|---pi
+               |
+               |---i
+</PRE>
+</TD></TR></TABLE>
+
+<P>and we are done.
+The challenge, to a computer scienctist, is to
+make sure tree<SUB>i</SUB> is updated to tree<SUB>i+1</SUB>
+<EM>efficiently</EM>.  This can be done (Ukkonen 1992, 1995)
+so that tree<SUB>n</SUB> can be built,
+starting from tree<SUB>0</SUB>, in O(n)-time overall.
+</P>
+
+
+<H3>(b) Faster</H3>
+
+<P>The following terminology is adapted from Ukkonen (1995).</P>
+
+<UL>
+<LI>If `x' is a substring of txt then `<B>x</B>' represents the
+<EM>state</EM> (i.e. location) in the suffix-tree
+found by tracing out the characters of x from the root.
+Note that <B>x</B> might be part-way along an edge of the tree.
+</LI>
+<LI>A vertex (node) of the suffix-tree  is
+called an <EM>explicit state</EM>.</LI>
+<LI>A substring x=txt[L..R] can be represented by (L,R).</LI>
+<LI>If `v' is a vertex of the suffix-tree,
+the pair `(v,x)', equivalently (v,(L,R)),
+represents the state (location) in the suffix-tree found
+by tracing out the characters of x from v.
+</LI>
+<LI>(v,x) is <EM>canonical</EM> if v is the last explit state
+on the path from v to (v,x).
+NB.&nbsp;(v,empty) is canonical.</LI>
+<LI>A special vertex called `bottom' is added and is denoted _|_.</DD>
+</UL>
+
+<DL>
+<DT>The <EM>transition function</EM>, g(&nbsp;), is defined as follows:</DT>
+<DD>g(_|_, a) = root, for all characters `a'.</DD>
+<DD>g(<B>x</B>, a) = <B>y</B> where y=xa, for character `a'.</DD>
+</DL>
+
+<DL>
+<DT>f(&nbsp;):</DT>
+<DD>f(root)=_|_</DD>
+<DD>f(<B>x</B>)=<B>y</B>, if x~=empty and x=ay</DD>
+</DL>
+
+<DL>
+<DT>The <EM>suffix function</EM> f'(&nbsp;) is defined as follows:</DT>
+<DD>f'(root)=_|_.</DD>
+<DD>If vertex v=<B>x</B> where x~=empty then f'(v)=<B>y</B>
+where x=ay for some character `a' and substring y (possibly empty).
+</DD>
+</DL>
+
+<DL>
+<DT>The <EM>boundary path</EM>
+s<SUB>1</SUB>, s<SUB>2</SUB>, ..., s<SUB>i</SUB>, s<SUB>i+1</SUB>
+of suffix-tree<SUB>i-1</SUB>:</DT>
+<DD>s<SUB>1</SUB>=<B>(1,i-1)</B>,
+  i.e. the state corresponding to txt[1..i-1]</DD>
+<DD>s<SUB>2</SUB>=<B>(2,i-1)</B></DD>
+<DD>...</DD>
+<DD>s<SUB>i</SUB>=root</DD>
+<DD>s<SUB>i+1</SUB>=_|_</DD>
+
+<DT>The <EM>active point</EM>
+is the first s<SUB>j</SUB> on the boundary path that is not a leaf,
+and</DT>
+<DT>the <EM>end-point</EM>
+is the first s<SUB>j'</SUB> that has a txt[i]-transition.</DT>
+</DL>
+
+<P>When tree<SUB>i-1</SUB> is expanded into tree<SUB>i</SUB>,
+character txt[i] must be dealt with.
+This is done during a traversal of the boundary path.
+Any state on the boundary path before s<SUB>j</SUB> is a leaf
+and could be extended by adding txt[i] to the incoming arc,
+but this can be done <EM>for free</EM>
+by representing arcs to leaves by (L,&infin;) where `&infin;' is `infinity'.
+So it it is only necessary to examine states
+from the active point s<SUB>j</SUB> and
+prior to the end-point s<SUB>j'</SUB>&nbsp;.
+</P>
+
+<P>&quot;[states from s<SUB>j</SUB> and before s<SUB>j'</SUB>&nbsp;
+create entirely new branches that start from states s<SUB>h</SUB>,
+j&lt;=h&lt;j'. <CODE>...</CODE>
+They are found along the boundary path of [tree<SUB>i-1</SUB>] using
+reference pairs and suffix links.&quot;
+<NOBR>- Ukkonen (1995)</NOBR>.
+</P>
+
+<P>
+<TABLE BORDER=1 CELLSPACING=0 CELLPADDING=3 WIDTH=100%><TR><TD>
+<PRE><FONT SIZE="-1">
+// almost <!-- NB. THIS IS NOT HOT CODE!!! --> JavaScript (try view-source)
+
+<B>function</B> upDate(s, k, i)
+// (s, (k, i-1)) is the canonical reference pair for the active point
+ { var oldr = root;
+   var (endPoint, r) = test_and_split(s, k, i-1, Txt.charAt(i));
+
+   while (!endPoint)
+    { r.addTransition(i, infinity, new State());
+      if (oldr != root) oldr.sLink = r; // build suffix-link active-path
+
+      oldr = r;
+      var (s,k) = canonize(s.sLink, k, i-1)
+      (endPoint, r) = test_and_split(s, k, i-1, Txt.charAt(i))
+    }
+
+   if(oldr != root) oldr.sLink = s;
+
+   return new pair(s, k);
+ }//upDate
+
+</FONT></PRE>
+</TD></TR></TABLE>
+Note that <CODE>r.addTransition(...)</CODE> adds
+an edge from state <CODE>r</CODE>,
+labelling the edge with a substring.
+New txt[i]-transitions must be &quot;open&quot; transitions
+of the form (L,&infin;).
+</P>
+
+<P>Where necessary,
+<CODE>test_and_split(...)</CODE> replaces edges
+<CODE>s---&gt;s1</CODE> with <CODE>s---&gt;r---&gt;s1</CODE>
+for a new node&nbsp;r.
+This makes <CODE>r=(s,(k,p))</CODE> explicit.
+</P>
+
+<TABLE BORDER=1 CELLSPACING=0 CELLPADDING=3 WIDTH=100%><TR><TD>
+<PRE><FONT SIZE="-1"><B>function</B> test_and_split(s, k, p, t)
+ { if(k&lt;=p)
+    { // find the t_k transition g'(s,(k',p'))=s' from s
+      // k1 is k'  p1 is p' in Ukkonen '95
+      var ((k1,p1), s1)  = s[Txt.charAt(k)];
+
+      if (t == Txt.charAt(k1 + p - k + 1))
+         return new pair(true, s);
+      else
+       { var r = new State()
+         s.addTransition(k1, k1+p-k,   r);     // s----&gt;r----&gt;s1
+         r.addTransition(    k1+p-k+1, p1, s1);
+         return new pair(false, r)
+       }
+    }
+   else // k &gt; p;  ? is there a t-transition from s ?
+      return new pair(s[t] != null, s);
+ }//test_and_split
+
+</FONT></PRE>
+</TD></TR></TABLE>
+
+<P><CODE>Canonize(...)</CODE> takes (s,w)=(s,(k,p))
+and steps over intermediate nodes by spelling
+out the characters of w=txt[k..p] for as far as possible.
+</P>
+
+<TABLE BORDER=1 CELLSPACING=0 CELLPADDING=3 WIDTH=100%><TR><TD>
+<PRE><FONT SIZE="-1"><B>function</B> canonize(s, k, p)    // s---&gt;...
+ { if(p &lt; k) return new pair (s, k);
+
+   // find the t_k transition g'(s,(k',p'))=s' from s
+   // k1 is k',  p1 is p' in Ukk' '95
+   var ((k1,p1), s1) = s[Txt.charAt(k)];     // s--(k1,p1)--&gt;s1
+
+   while(p1-k1 &lt;= p-k)                       // s--(k1,p1)--&gt;s1---&gt;...
+    { k += p1 - k1 + 1;  // remove |(k1,p1)| chars from front of (k,p)
+      s = s1;
+      if(k &lt;= p)
+       { ((k1,p1), s1) = s[Txt.charAt(k)];   // s--(k1,p1)--&gt;s1
+       }
+    }
+   return new pair(s, k);
+ }//canonize
+
+</FONT></PRE>
+</TD></TR></TABLE>
+
+<P>The main controlling routine
+repeatedly takes the next character,
+updates the sites on the active path
+and finds and canonizes the new active point:
+</P>
+
+<TABLE BORDER=1 CELLSPACING=0 CELLPADDING=3 WIDTH=100%><TR><TD>
+<PRE><FONT SIZE="-1"><B>function</B> ukkonen95()// construct suffix tree for Txt[0..N-1]
+ { var s, k, i;
+   var bt;
+
+   root = new State();
+   bt = new State();                            // bt (bottom or _|_)
+
+   // Want to create transitions for all possible chars
+   // from bt to root
+   for (i=0; i &lt; Txt.length; i++)
+      bt.addTransition(i,i, root);
+
+   root.sLink = bt;
+   s=root; k=0;    // NB. k=0, unlike Ukkonen our strings are 0 based
+
+   for(i=0; i &lt; Txt.length; i++)
+    { var (s,k) = upDate(s, k, i);   // follow path from active-point
+      (s,k) = canonize(s, k, i);
+    }
+ }//ukkonen95
+</FONT></PRE>
+</TD></TR></TABLE>
+
+<P>It relies upon the fact
+(<NOBR>lemma 2</NOBR> <NOBR>Ukkonen (1995)</NOBR>)
+that if (s,(k,i-1)) is a reference pair for
+the end-point, s<SUB>j'</SUB>&nbsp;,
+of tree<SUB>i-1</SUB> then
+(s,(k,i)) is a reference pair for the active point of tree<SUB>i</SUB>.
+</P>
+
+
+<H3>Suffix Tree Applications</H3>
+
+<P>Suffix Trees can be used to solve a large number of string problems
+that occur in text-editing, free-text search, computational biology,
+and other application areas.  Some examples are given below.
+</P>
+
+
+<H4>String Search</H4>
+
+<P>Searching for a substring,
+<CODE>pat[1..m]</CODE>, in <CODE>txt[1..n]</CODE>,
+can be solved in O(m) time
+(after the suffix tree for <CODE>txt</CODE> has been built in O(n) time).
+</P>
+
+
+<H4>Longest Repeated Substring</H4>
+
+<P>Add a special ``end of string'' character, e.g. `$',
+to <CODE>txt[1..n]</CODE> and build a suffix tree;
+the <EM>longest repeated substring</EM> of <CODE>txt[1..n]</CODE>
+is indicated by the <EM>deepest</EM> fork node in the suffix tree, where
+depth is measured by the number of <EM>characters</EM> traversed from the root,
+<NOBR>i.e. `issi' in</NOBR> the case of `mississippi'.
+The longest repeated substring can be found in O(n) time using a suffix tree.
+</P>
+
+
+<H4>Longest Common Substring</H4>
+
+<P>The <EM>longest common substring</EM> of two strings,
+<CODE>txt<SUB>1</SUB></CODE> and <CODE>txt<SUB>2</SUB></CODE>,
+can be found by building a <EM>generalized</EM> suffix tree
+for <CODE>txt<SUB>1</SUB></CODE> and <CODE>txt<SUB>2</SUB></CODE>:
+Each node is <EM>marked</EM> to indicate if it represents a suffix of
+<CODE>txt<SUB>1</SUB></CODE> or <CODE>txt<SUB>2</SUB></CODE> or both.
+The deepest node marked for both
+<CODE>txt<SUB>1</SUB></CODE> and <CODE>txt<SUB>2</SUB></CODE>
+represents the longest common substring.
+</P>
+
+<P>Equivalently, one can build a (basic) suffix tree for the string
+<CODE>txt<SUB>1</SUB>$txt<SUB>2</SUB>#</CODE>,
+where `$' is a special terminator for <CODE>txt<SUB>1</SUB></CODE>
+and   `#' is a special terminator for <CODE>txt<SUB>2</SUB></CODE>.
+The longest common substring is indicated by the deepest fork node
+that has both `...$...' and `...#...'&nbsp;(no&nbsp;$) beneath it.<BR>
+(Try it using the HTML FORM <A HREF="#demoForm">above</A>.)
+</P>
+
+<P>Note that the `longest common <EM>substring</EM> problem' is
+different to the `longest common <EM>subsequence</EM> problem'
+which is closely related to the
+`<A HREF="../../Dynamic/Edit/">edit-distance</A>
+problem':
+An instance of a sub<EM>sequence</EM>
+can have gaps where it appears in
+<CODE>txt<SUB>1</SUB></CODE> and in <CODE>txt<SUB>2</SUB></CODE>,
+but an instance of a sub<EM>string</EM> cannot have gaps.
+</P>
+
+
+<H4>Palindromes</H4>
+
+<P>A palindrome is a string, P, such that P=reverse(P).
+e.g.&nbsp;`abba'=reverse(`abba').
+e.g.&nbsp;`ississi' is the <EM>longest</EM> palindrome in `mississippi'.
+</P>
+
+<P>The longest palindrome of <CODE>txt[1..n]</CODE> can be found in O(n) time,
+e.g.&nbsp;by building the suffix tree for
+<CODE>txt$reverse(txt)#</CODE>
+or by building the generalized suffix tree for
+<CODE>txt</CODE> and <CODE>reverse(txt)</CODE>.<BR>
+(<A HREF="#demoForm">Try it</A>.)
+</P>
+
+
+<TABLE BORDER=1 CELLSPACING=0 CELLPADDING=2 ALIGN="right">
+<TR><TD ALIGN="center" VALIGN="top"><FONT SIZE="1" COLOR="#BBBBBB">
+C<BR>o<BR>m<BR>p<BR>u<BR>t<BR>e<BR>r<BR>-<BR>
+S<BR>c<BR>i<BR>e<BR>n<BR>c<BR>e<BR>
+</FONT></TD></TR></TABLE><H3>Suffix Tree Notes</H3>
+
+<P>Significant developments are due to
+Weiner&nbsp;(1973),
+McCreight&nbsp;(1976) and
+Ukkonen&nbsp;(1992,1995).
+</P>
+
+<UL>
+<LI>See also
+  <A HREF="../Trie/">Tries</A> and
+  <A HREF="../PATRICIA/">PATRICIA</A>
+  trees, but remember that these are for implementing lookup-tables
+  containing many, usually short, strings rather than for finding
+  substrings of one long text.
+</LI>
+
+<LI>E. M. McCreight.
+  <I>A Space-Economical Suffix Tree Construction Algorithm.</I>
+  Jrnl. of Algorithms, <B>23</B>(2) pp262-272, 1976.<BR>
+  <FONT SIZE="-1">Credited with making Weiner's suffix trees (1973)
+  more efficient and (a little) more accessible.
+  Algorithm still right-to-left.</FONT>
+</LI>
+
+<LI>E. Ukkonen. <I>Constructing Suffix Trees On-Line in Linear Time.</I>
+  In <I>Algorithms, Software, Architecture</I>, <NOBR>J.v.Leeuwen (ed)</NOBR>,
+  vol#1 of <NOBR>Information Processing 92</NOBR>,
+  Proc. IFIP 12th World Computer Congress, Madrid, Spain,
+  Elsevier Sci. Publ.,
+  pp484-492, 1992.<BR>
+  <FONT SIZE="-1">Gives an <EM>on-line</EM> algorithm, i.e. it processes the
+  input text incrementally from left to right and at each stage it has a
+  suffix tree for the part of the text that has been processed
+  so far. But see note about &quot;inaccuracies&quot; below!</FONT><BR>
+  E. Ukkonen. <I>On-line Construction of Suffix Trees.</I>
+  Algorithmica, <B>14</B>(3) pp249-260, 1995.<BR>
+  <FONT SIZE="-1">p260: &quot;J.Karkkainen pointed out some inaccuracies
+  in the earlier [1992] version of this work.&quot;</FONT>
+</LI>
+
+<LI>P. Weiner. <I>Linear Pattern Matching Algorithms.</I>
+  Proc. 14th IEEE Annual Symp. on Switching and Automata Theory,
+  pp1-11, 1973.<BR>
+  <FONT SIZE="-1">Extremely important paper introducing suffix trees
+  and hence fast ways of solving many problems on strings.</FONT>
+</LI>
+
+<LI>Also see
+[<A HREF="../../Strings/">String Searching</A>].</LI>
+</UL>
+
+
+
+</TD><TD ALIGN="center" VALIGN="top" WIDTH="10%">
+
+
+
+<TABLE BORDER="1" CELLSPACING="0" CELLPADDING="1"> <!-- right column -->
+<TR><TD>
+<FONT SIZE="-1">www</FONT><BR>
+
+
+<TABLE BORDER="1" CELLSPACING="0" CELLPADDING="3" BGCOLOR="#AAFFAA" WIDTH="100%">
+<TR><TD>
+
+<SCRIPT LANGUAGE="JavaScript">
+<!--
+function locale()
+ { var len=REMOTE_HOST.length;
+   if(len>0 && REMOTE_HOST.lastIndexOf('.')==len-1)
+   REMOTE_HOST=REMOTE_HOST.substring(0,len-1);
+   if(REMOTE_HOST.lastIndexOf('.')==REMOTE_HOST.length-3)
+   return REMOTE_HOST.substring(REMOTE_HOST.length-2).toLowerCase();
+   else return 'us';
+ }//locale
+
+function showAmaz2007(str)
+ { var part = str.split('|'); // part[0] should be kw's
+   var usTemplate = '<' + 'a href="http://www.amazon.com/gp/product/XXX?ie=UTF8&tag=fourwheeldrivein&linkCode=as2&camp=1789&creative=9325&creativeASIN=XXX">YYY<' + '/a><' + 'img src="http://www.assoc-amazon.com/e/ir?t=fourwheeldrivein&l=as2&o=1&a=XXX" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" />',
+   ukTemplate = '<' + 'a href="http://www.amazon.co.uk/gp/product/XXX?ie=UTF8&tag=fourwheeldriv-21&linkCode=as2&camp=1634&creative=6738&creativeASIN=XXX">YYY<' + '/a><' + 'img src="http://www.assoc-amazon.co.uk/e/ir?t=fourwheeldriv-21&l=as2&o=2&a=XXX" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" />';
+   if(part.length < 4) part[3] = ''; // post link
+   if(part.length < 5) part[4] = ''; // locale
+   var template = usTemplate;  if(locale() == 'uk') template=ukTemplate;
+   if(part[4] == 'uk') template = ukTemplate;  // overrides
+   if(part[4] == 'us') template = usTemplate;  // overrides
+   while(true)
+    { var p=template.indexOf('XXX');  if(p >= 0)
+        template=template.substring(0,p)+part[1]+template.substring(p+3);
+      else break;
+    }
+   while(true)
+    { var p=template.indexOf('YYY');  if(p >= 0)
+        template=template.substring(0,p)+part[2]+template.substring(p+3);
+      else break;
+    }
+   document.writeln(template + '<' + 'BR><'
+     + 'FONT SIZE="-1">' + part[3] +'<' + '/FONT>' );
+ }//showAmaz2007
+
+function doAmaz2007()
+{var dflt = "xyz,MML,Bioinformatics|0143010336|The Darwin Awards V:|Next Evolution|us";
+ var url=document.URL+"$",  items = new Array(
+ "Computing,merton,Images/$,Publication," + dflt,
+ "merton,Images/$,Publication|0143038257|Three Cups of Tea|One Man's Mission to Promote Peace One School at a Time",
+ "/AI/,MML,Learning,Bayes|1584883871|Bayesian Artificial Intelligence|Korb and Nicholson",
+ "AlgDS,Algorithm,Computing|0201485419|The Art of Computer Programming, Vols.1-3|Donald Knuth",
+ "AlgDS,Algorithm,Graph,Computing|0262032937|Introduction to Algorithms|Cormen et al",
+ "AlgDS,Algorithm,BIB,Publications,/C/,Computing|0201657880|Programming Pearls|Jon Bentley",
+ "AlgDS,Stack,Queue,/C/,Algorithm,Graph|0201756080|Algorithms in C|Sedgwick",
+ "AlgDS,Stack,Queue,Cplusplus,Lang/$,PL-|0321543726|Programming Principles and Practice using C++|Stroustrup",
+ "/C/,Cplusplus,Lang/$,PL-|0201700735|The C++ Programming Language|Stroustrup",
+ "Bioinf|1584886420|An Introduction to Systems Biology|U.Alon",
+ "Bioinf,Edit|0262101068|An Introduction to Bioinformatics Algorithms|Jones and Pevzner",
+ "Bioinf,Edit|0199277877|Introduction to Bioinformatics|Arthur Lesk",
+ "Bioinf|0805382194|Discovering Genomics, Proteomics and Bioinformatics|Campbell and Heyer",
+ "Computers,Computing,BIB|019284055X|Colossus: The Secrets of Bletchley Park's Code Breaking Computers|Jack Copeland",
+ "Computers,Computing,BIB|0470229055|The Annotated Turing|Charles Petzold",
+ "FP/,Lambda|0691083940|The Calculi of Lambda Conversion|Alonzo Church|us",
+ "FP/$,Lambda,Curried|0954300653|An Introduction To Lambda Calculi|C.Hankin",
+ "FP/,Haskell|0521826144|Haskell 98 Language and Libraries|the Revised Report",
+ "FP/$,Haskell|0521644089|The Haskell School of Expression:|Learning Functional Programming through Multimedia. P.Hudak",
+ "FP/$,Haskell,Types,Curried|0521692695|Programming in Haskell|Graham Hutton",
+ "FP/$,Haskell|0596514980|Real World Haskell|OSullivan et al",
+ "FP/$,Haskell,Types,Curried|0134843460|Introduction to Functional Programming using Haskell|Richard Bird",
+ "FP/$,Haskell,Curried|1740094042|An Introduction to Computing with Haskell|Chakravarty and Keller",
+ "FP/,SML|0137903871|Elements of ML Programming|Ullman",
+ "FP/$,SML,Curried|052156543X|ML for the Working programmer|Larry Paulson",
+ "FP/$,SML|0201398206|Introduction to Programming using SML|Hansen and Rischel",
+ "Java/,AlgDS,Algorithm|0321370139|Data Structures and Algorithm Analysis in Java|M.A.Weiss",
+ "JavaScript,WWW|1565922344|JavaScript, the Definitive Guide|Flanagan",
+ "Lang,PL-,Grammar,Syntax,Compil,Interp|0201100886|Compilers: Principles, Techniques, and Tools|Aho, Sethi and Ullman",
+ "Lang/$,Compil,Grammar,PL-,/C/|1882114396|Using GCC: Reference Manual|Stallman et al",
+ "Lang/$,Compil,Grammar,PL-,Java/|052182060X|Modern Compiler Implementation in Java|Appel and Palsberg",
+ "Logic,Math,Grammar|1930190867|Discrete Mathematics for Computer Science|K.P.Bogart",
+ "Math,Numer,AlgDS,Logic|0201558025|Concrete Mathematics: A Foundation for Computer Science|Graham, Knuth, Patashnik",
+ "MML,MDL,Wallace,Bayes,Ockham,/AI/,Learning,Stat|038723795X|Statistical and Inductive Inference by Minimum Message Length|Chris Wallace",
+ "MML,MDL|0262072815|The Minimum Description Length Principle|Grunwald",
+ "Prolog,Logic|3540629718|Clause and Effect: Prolog Programming|W.F.Clocksin",
+ "Prolog,/AI/,Learning|0201403757|Prolog Programming for Artificial Intelligence|Ivan Bratko",
+ "Propositional,Boolean,Digital,Circuit|013198926X|Logic and Computer Design Fundamentals|Mano and Kime",
+ "Film/$,Movie,witch|B0001V01BQ|Monty Python and the Holy Grail|DVD|uk",
+ "Film,Movie,witch|B000W8AB22|Monty Python, Monster Box Set|DVD|uk",
+ "Film/$,Movie,SciFi|B000HWXQBQ|Dr. Strangelove|DVD|uk",
+ "Film/$,Andromeda|B000JLTE5C|A for Andromeda|BBC DVD|uk",
+ "Film/$,Andromeda|B000FPV8IS|The Andromeda Anthology|(1961) DVD|uk",
+ "Publication,BIB,Seminar,Semantic,Interp,Lambda|0521314232|A Practical Introduction to Denotational Semantics|L.Allison"
+ );
+ // document.writeln(items.length + "_items");  //debug
+ var i, numMatch = 0, candidate = new Array();
+ for(i = 0; i < items.length; i++)
+  { var the_item = items[i].split("|");
+    var keys     = the_item[0].split(",");
+    var j;
+    for(j = 0; j < keys.length; j++)
+     { if(url.indexOf(keys[j]) >= 0)
+        { candidate[numMatch]=i; numMatch++;  break; }
+  }  }//for j, for i
+ // document.writeln(numMatch + "_match");  //debug
+ if(numMatch <= 0)
+    showAmaz2007(dflt);
+ else
+  { var nM=numMatch, nth;
+    for(nth=1; nth <= Math.min((numMatch > 3 ? 3 : 2),numMatch); nth++)
+     { var choice = Math.floor((nM - 0.0001) * Math.random());
+       // document.writeln(' choice_' + choice ); // debug
+       if(choice < 0) choice = 0;
+       else if(choice >= nM) choice = nM - 1;
+       if(nth>1) document.writeln('<'+'HR SIZE="1" NOSHADE>');
+       showAmaz2007(items[candidate[choice]]);
+       nM--; candidate[choice]=candidate[nM]; // !
+  }  }
+ document.writeln( ' <' + 'FONT COLOR="#999999" SIZE="1">' + numMatch
+   + locale() + '<' + '/FONT>');
+}//doAmaz2007
+
+doAmaz2007();
+// -->
+</SCRIPT>
+
+<NOSCRIPT>
+
+<!-- 9/2007 -->
+<FONT SIZE="+1">
+<A HREF="http://www.amazon.com/gp/product/0525949607?ie=UTF8&tag=fourwheeldrivein&linkCode=as2&camp=1789&creative=9325&creativeASIN=0618680004">The Darwin Awards 4:</A>
+</FONT>
+Intelligent Design<BR>
+</NOSCRIPT>
+<!--
+0525949607 The Darwin Awards 4:, Intelligent Design (2006)
+0618680004 The God Delusion, Richard Dawkins (2007)
+-->
+
+<!-- ====================================================================== -->
+</TD></TR></TABLE>
+
+
+<BR>
+<TABLE BORDER="1" CELLSPACING="0" CELLPADDING="3" WIDTH="100%">
+<TR><TD><FONT SIZE="-1">free:</FONT><BR>
+<A HREF="http://www.linux.org/" TARGET="_top">Linux</A>
+<FONT SIZE="-1">operating-sys</FONT><BR>
+
+<A HREF="http://www.openoffice.org/" TARGET="_top">OpenOffice</A>
+<FONT SIZE="-1">office-suite, ver.&nbsp;2.4+</FONT><BR>
+
+<A HREF="http://www.gimp.org/" TARGET="_top">The GIMP</A>
+<FONT SIZE="-1">~photoshop</FONT><BR>
+
+<A HREF="http://www.mozilla.com/" TARGET="_top">Firefox</A>
+<FONT SIZE="-1">web browser</FONT><BR>
+
+<A HREF="http://flashblock.mozdev.org/" TARGET="_top">FlashBlock</A>
+<FONT SIZE="-1">flash on/off</FONT><BR>
+</TD></TR></TABLE>
+
+
+
+    <!-- check for a recent-enough web-browser version -->
+    <B><SCRIPT LANGUAGE="JavaScript">
+    <!--
+       var isOldBrowser = true,
+           versionStr   = navigator.appVersion,
+           appCodeName  = navigator.appCodeName.toLowerCase();
+       if( appCodeName.indexOf('mozilla') >= 0  &&
+           versionStr != null && versionStr.length > 0 )
+        { var criticalVersion = 4.7; // recommended by m0n@sh uni .au
+          var version = criticalVersion-0.001,  i,  numDot = 0,  stillOK = true;
+          for( i = 0; i < versionStr.length; i++ ) // seek a number
+           { if( versionStr.charAt(i) == '.' )
+              { numDot ++ ;  stillOK = numDot < 2; }
+             else
+                stillOK = versionStr.charAt(i) >= '0' && versionStr.charAt(i) <= '9';
+             if( ! stillOK ) break; // ...charAt(i) is bad
+           }//for
+          if( i > numDot ) // i>0, have a valid number in version[0..i-1]
+             version = new Number( versionStr.substring(0,i) ) - 0;
+          isOldBrowser = version < criticalVersion;
+        }//if
+       if( isOldBrowser )
+        { document.writeln( '<' + 'BR>' );
+          document.writeln( '<' + 'TABLE BORDER="1" CELLSPACING="0" WIDTH="100%"> ' );
+          document.writeln( '<' + 'TR><' + 'TD BGCOLOR="#FFCCCC">' );
+          document.writeln( '<' + 'FONT SIZE="+1">Upgrade your old web ' );
+          document.writeln( '<' + 'A HREF="http://browsers.net' + 'scape.com/">[browser]<' + '/A>' );
+          document.writeln( '<' + 'A HREF="http://www.moz' + 'illa.org/">[now]<' + '/A>!<' + '/FONT>' );
+          document.writeln( '<' + '/TR> <' + '/TD> <' + '/TABLE>' );
+        }//if
+    // -->
+    </SCRIPT></B>
+
+
+
+<!-- Right extras for children  NB. relative to children -->
+
+<!-- Right Extras Here -->
+  </TD></TR>
+  </TABLE>
+
+</TD></TR>
+</TABLE>
+
+
+
+<TABLE BORDER="0" CELLSPACING="0" CELLPADDING="2" WIDTH="100%">
+<TR><TD ALIGN="center">
+<HR SIZE="4" NOSHADE> <!-- --------------------------------------subtable--->
+<TABLE BORDER="0" CELLSPACING="0" CELLPADDING="1">
+<TR><TD><FONT SIZE="-1">
+<ADDRESS>&copy; L. Allison &nbsp;
+<A HREF="http://www.allisons.org/ll/" TARGET="_top">http://www.allisons.org/ll/</A> &nbsp;
+<NOBR>(<U>or as otherwise indicated</U>),</NOBR><BR>
+Created with &quot;vi (Linux + Solaris)&quot;,&nbsp;
+charset=iso-8859-1,&nbsp;
+<NOBR>fetched Sunday, 27-Sep-2009 14:49:21 EST.</NOBR>
+</FONT>
+</TD></TR>
+</TABLE>
+<HR SIZE="4" NOSHADE> <!-- --------------------------------------subtable--->
+</TD></TR>
+</TABLE>
+
+
+</BODY>
+</HTML>
