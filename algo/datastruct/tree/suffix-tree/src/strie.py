@@ -25,13 +25,15 @@ class STrie:
 
 def insert(top, c):
     if top is None:
-        return STrie()
+        top=STrie()
     node = top
     new_node = STrie() #dummy init value
     while (node is not None) and (c not in node.children):
         new_node.suffix = node.children[c] = STrie(node)
         new_node = node.children[c]
         node = node.suffix
+    if node is not None:
+        new_node.suffix = node.children[c]
     return top.children[c] #update top
 
 def root(node):
@@ -58,9 +60,10 @@ def to_str(t):
     res = ""
     for c, tr in sorted(t.children.items()):
         lines = to_str(tr).split("\n")
-        lines[0] = "+"+c+"-"
-        map(lambda l: "|  "+l, lines[1:])
-        res+="\n".join(lines)
+        lines.pop()
+        lines[0] = "|-"+c+lines[0]
+        lines[1:]=map(lambda l: "|  "+l, lines[1:])
+        res+="\n".join(lines)+"\n"
     return res
 
 class SuffixTrieTest:
