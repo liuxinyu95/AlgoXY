@@ -87,6 +87,7 @@ class SuffixTrieTest:
         t = suffix_trie(str)
         for i in range(len(str)):
             print "lookup ", str[i:], ": ", lookup(t, str[i:])!=None
+        print "lookup oac: ",lookup(t, "oac")!=None
 
 if __name__ == "__main__":
     SuffixTrieTest().run()
