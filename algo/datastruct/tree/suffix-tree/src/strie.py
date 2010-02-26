@@ -54,17 +54,24 @@ def suffix_trie(str):
         t = insert(t, c)
     return root(t)
 
-def to_str(t):
+def to_lines(t):
     if len(t.children)==0:
-        return "\n"
-    res = ""
+        return [""]
+    res = []
     for c, tr in sorted(t.children.items()):
-        lines = to_str(tr).split("\n")
-        lines.pop()
-        lines[0] = "|-"+c+lines[0]
-        lines[1:]=map(lambda l: "|  "+l, lines[1:])
-        res+="\n".join(lines)+"\n"
+        lines = to_lines(tr)
+        lines[0] = "|--"+c+"-->"+lines[0]
+        if len(t.children)>1:
+            lines[1:] = map(lambda l: "|      "+l, lines[1:])
+        else:
+            lines[1:] = map(lambda l: "       "+l, lines[1:])
+        if res !=[]:
+            res.append("|")
+        res += lines
     return res
+
+def to_str(t):
+    return "\n".join(to_lines(t))
 
 class SuffixTrieTest:
     def __init__(self):
@@ -75,7 +82,7 @@ class SuffixTrieTest:
         self.test_lookup()
 
     def __test_build(self, str):
-        print str, "==>\n", to_str(suffix_trie(str))
+        print "Suffix Trie ("+str+"):\n", to_str(suffix_trie(str)),"\n"
 
     def test_build(self):
         str="cacao"
@@ -86,8 +93,8 @@ class SuffixTrieTest:
         str="cacao"
         t = suffix_trie(str)
         for i in range(len(str)):
-            print "lookup ", str[i:], ": ", lookup(t, str[i:])!=None
-        print "lookup oac: ",lookup(t, "oac")!=None
+            print "lookup "+str[i:]+":", lookup(t, str[i:])!=None
+        print "lookup oac: ", lookup(t, "oac")!=None
 
 if __name__ == "__main__":
     SuffixTrieTest().run()
