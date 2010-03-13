@@ -42,29 +42,48 @@ def substr(str, left, right):
 # node: s in Ukkonen '95
 def suffix_tree(str):
     t = STree(str)
+    bottom = Node()
+
+    for i in range(len(str)):
+        bottom.children[str[i]]=((i, i), t.root)
+    t.root.suffix = bottom
+
     node = t.root # init active point is root
     left = 0
     for i in range(len(str)):
+        print "i=", i, "left=", left
         (node, left) = update(t, node, (left, i))
+        print "after update, left=", left
+        if node == t.root:
+            print "after update, node=root"
+        if node == bottom:
+            print "after update, node = bottom"
         (node, left) = canonize(t, node, (left, i))
+        print "after canonize, left=", left
+        if node == t.root:
+            print "after canonize, node = root"
+        if node == bottom:
+            print "after canonize, node = bottom"
     return t
 
 # Main func: STree(Str[i-1]) ==> STree(Str[i])
 # prev: oldr in Ukkonen '95
 # p:    r in Ukkonen '95
+# @return, end-point ref pair (s_j', (left, i-1))
 def update(t, node, str_ref):
     (left, i) = str_ref 
     c = t.str[i] # current char
     # (node, (left, right-1)), canonical ref pair for the active point
-    prev = Node() # dummy init value
+    prev = t.root # dummy init value
     (finish, p) = branch(t, node, (left, i-1), c)
     while not finish:
         p.children[c]=((i, t.infinity), Node())
-        prev.suffix = p
+        if prev != t.root:
+            prev.suffix = p
+
         prev = p
-        if node.suffix is None:
-            break
         (node, left) = canonize(t, node.suffix, (left, i-1))
+        print "    inside update, left=", left
         (finish, p) = branch(t, node, (left, i-1), c)
     if prev != t.root:
         prev.suffix = node
@@ -83,6 +102,8 @@ def branch(t, node, str_ref, c):
     (l, r) = str_ref
     if l <= r:
         ((l1, r1), node1) = node.children[t.str[l]]
+        print "    l=", l, "r=", r, "l1=", l1, "r1=", r1
+        print "    str[tk+offset+1]=", t.str[l1+r-l+1], "c=", c
         if t.str[l1+(r-l+1)]==c:
             return (True, node)
         else:
@@ -101,13 +122,16 @@ def branch(t, node, str_ref, c):
 # find the closet node and left, so that they point to same position _
 def canonize(t, node, str_ref):
     (l, r) = str_ref 
+    print "    canonize: l=", l, "r=", r
     while l<=r: # str_ref is not empty
         ((l1, r1), child) = node.children[t.str[l]] # node--(l', r')-->child
+        print "        str[l]=", t.str[l], "l1=", l1, "r1=", r1
         if r-l >= r1-l1: #node--(l',r')-->child--->...
             l += r1-l1+1 # remove |(l',r')| chars from (l, r)
             node = child 
         else:
             break
+    print "    canonized: l=", l
     return (node, l)
 
 class SuffixTreeTest:
@@ -119,8 +143,13 @@ class SuffixTreeTest:
 
     def test_build(self):
         str="cacao"
-        for i in range(len(str)):
-            self.__test_build(str[:i+1])
+        #for i in range(len(str)):
+        #    self.__test_build(str[:i+1])
+        suffix_tree(str)
+
+    def __test_build(self, str):
+        print "build suffix tree(", str, ")"
+        suffix_tree(str)
 
 if __name__ == "__main__":
     SuffixTreeTest().run()
