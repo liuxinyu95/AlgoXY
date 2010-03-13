@@ -109,3 +109,18 @@ def canonize(t, node, str_ref):
         else:
             break
     return (node, l)
+
+class SuffixTreeTest:
+    def __init__(self):
+        print "start suffix tree test"
+
+    def run(self):
+        self.test_build()
+
+    def test_build(self):
+        str="cacao"
+        for i in range(len(str)):
+            self.__test_build(str[:i+1])
+
+if __name__ == "__main__":
+    SuffixTreeTest().run()
