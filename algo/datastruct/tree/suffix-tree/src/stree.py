@@ -117,7 +117,10 @@ def branch(t, node, str_ref, c):
 def canonize(t, node, str_ref):
     (l, r) = str_ref 
     if node is None:
-        return (t.root, l+1)
+        if length(str_ref)<=0:
+            return (None, l)
+        else:
+            return (t.root, l+1)
     while l<=r: # str_ref is not empty
         ((l1, r1), child) = node.children[t.str[l]] # node--(l', r')-->child
         if r-l >= r1-l1: #node--(l',r')-->child--->...
