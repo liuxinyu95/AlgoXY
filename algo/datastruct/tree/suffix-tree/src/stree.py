@@ -78,7 +78,7 @@ def update(t, node, str_ref):
         p.children[c]=((i, t.infinity), Node())
         prev.suffix = p
         prev = p
-        # go up along with suffix link
+        # go up along suffix link
         (node, l) = canonize(t, node.suffix, (l, i-1))
     prev.suffix = node
     return (node, l)
@@ -155,10 +155,11 @@ class SuffixTreeTest:
         print "start suffix tree test"
 
     def run(self):
-        self.test_build()
+        strs = ["cacao", "mississippi", "banana$"]
+        for s in strs:
+            self.test_build(s)
 
-    def test_build(self):
-        str="cacao"
+    def test_build(self, str):
         for i in range(len(str)):
             self.__test_build(str[:i+1])
 
