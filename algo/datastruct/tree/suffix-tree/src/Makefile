@@ -17,7 +17,7 @@
 HEADER = stree.hpp
 SOURCE = test.cpp
 CPP_TEST_OBJS = test.o
-CXX = g++ -Wall -g -I/usr/include/boost-1_33_1
+CXX = g++ -Wall -ggdb -I/usr/include/boost-1_33_1
 CXX_FLAGS = 
 HS_TEST_SRCS = IntTrie.hs IntPatricia.hs Trie.hs Patricia.hs TestMain.hs
 HS_TEST_OBJS = $(HS_TEST_SRCS:.hs=.o)

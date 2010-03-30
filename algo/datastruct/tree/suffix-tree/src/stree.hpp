@@ -187,9 +187,9 @@ std::pair<Node*, int> update(STree* t, Node* node, StrRef str){
   int l, i;
   tie(l, i)=str;
   Node::Key c(t->str[i]); //current char
-  Node dummy;
+  Node dummy, *p;
   Node* prev(&dummy);
-  for(Node* p=branch(t, node, StrRef(l, i-1), c);p!=0;){
+  while((p=branch(t, node, StrRef(l, i-1), c))!=0){
     p->children[c]=RefPair(new Node(), StrRef(i, t->infinity));
     prev->suffix = p;
     prev = p;
