@@ -160,7 +160,7 @@ std::pair<Node*, int> canonize(STree* t, Node* node, StrRef str){
     if(str.len()<=0)
       return std::make_pair(node, l);
     else
-      return std::make_pair(t->root, l+1);
+      return canonize(t, t->root, StrRef(l+1, r));
   while(l<=r){ //str isn't empty
     RefPair rp = node->children[t->str[l]];
     int l1, r1;
@@ -273,8 +273,8 @@ public:
   }
   void run(){
     test_build("cacao");
-    //mississippi
-    //banana$
+    test_build("mississippi");
+    test_build("banana$");
   }
 private:
   void test_build(std::string str){

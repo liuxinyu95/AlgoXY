@@ -120,7 +120,7 @@ def canonize(t, node, str_ref):
         if length(str_ref)<=0:
             return (None, l)
         else:
-            return (t.root, l+1)
+            return canonize(t, t.root, (l+1, r))
     while l<=r: # str_ref is not empty
         ((l1, r1), child) = node.children[t.str[l]] # node--(l', r')-->child
         if r-l >= r1-l1: #node--(l',r')-->child--->...
