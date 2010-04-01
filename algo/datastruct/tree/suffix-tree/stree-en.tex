@@ -88,37 +88,41 @@ an English word `banana'.
 
 \begin{figure}[htbp]
        \begin{center}
-	\includegraphics[scale=0.5]{img/stree-banana.eps}
+	\includegraphics[scale=0.5]{img/stree-banana.ps}
         \caption{The suffix tree for `banana'} \label{fig:stree-banana}
        \end{center}
 \end{figure}
 
-Figure \ref{fig:radix-tree} shows a radix tree contains the bit
-strings 1011, 10, 011, 100 and 0. When searching for a key $k=b_0b_1...b_n$, we
-take the first bit $b_0$ (MSB from left), check if it is 0 or 1, if it
-is 0, we turn left, and turn right for 1. Then we take the 2nd bit and
-repeat this search until we either meet a leaf or finish all n bits.
+Note that all suffixes, 'banana', 'anana', 'nana', 'ana', 'na', 'a', '' can 
+be looked up in the above tree. Among them the first 3 suffixes are explicitly
+shown; others are implicitly represented. The reason for why 'ana, 'na', 'a', 
+and '' are not shown explicitly is because they are prefixes of some edges.
+In order to make all suffixes shown explicitly, we can append a special pad 
+terminal symbal, which is not seen to the string. Such terminator is typically
+denoted as '\$'. With this method, no suffix will be a prefix of the others.
+In this post, we won't use terminal symbol for most cases.
 
-Note that radix tree needn't store key in node at all. The
-information are represented by edges in fact. The node with key string
-in the above figure are only for illustration.
+It's very interesting that compare to the simple suffix tree for 'banana', the
+suffix tree for 'bananas' is quite different as shown in figure \ref{fig:stree-bananas}.
 
-It is very natural to come to the idea `is it possible to represent
-keys in integers instead of string, because integer can be denoted in
-binary format?'. Such approach can save spaces and it is fast if we
-can use bit-wise manipulation.
+\begin{figure}[htbp]
+       \begin{center}
+	\includegraphics[scale=0.5]{img/stree-bananas.ps}
+        \caption{The suffix tree for `bananas'} \label{fig:stree-bananas}
+       \end{center}
+\end{figure}
 
-I'll first show the integer based Trie data structure and implementation in
-section \ref{int-trie}. Then we can point out the drawbacks and go to
-the improved data structure of integer based Patricia in
-section \ref{int-patricia}.
-After that, I'll show alphabetic Trie and Patricia and list some
-typical use of them in textual manipulation engineering problems.
+In this post, I'll first introduce about suffix Trie, and give the trivial method
+about how to construct suffix Trie and tree. Trivial methods utilize the insertion
+algorithm for normal Trie and patricia. They need much of computation and spaces.
+Then, I'll explain about the online construction for suffix Trie by using suffix link
+concept. After that, I'll show Ukkonen's method, which is a linear time online 
+construction algorithm. For both suffix Trie and suffix tree, functional approach
+is provided as well as the imperative one. In the last section, I'll list some
+typical string manipulation problems and show how to solve them with suffix tree.
 
-This article provides example implementation of Trie and Patricia 
-in C, C++, Haskell, Python, and Scheme/Lisp languages. Some functional
-implementation can be referenced from current Haskell packages \ref{hackage-int-map} 
-\ref{hackage-bytestring-map}.
+This article provides example implementation in C, C++, Haskell, Python, and 
+Scheme/Lisp languages. 
 
 All source code can be downloaded in appendix \ref{appendix}, please 
 refer to appendix for detailed information about build and run.
@@ -129,146 +133,71 @@ refer to appendix for detailed information about build and run.
 \section{Suffix Trie}
 \label{suffix-trie}
 
-Let's give a definition of the data structure in figure \ref{fig:radix-tree}.
-To be more accurate, it should be called as \emph{binary trie}. a binary
-trie is a binary tree in which the placement of each key is controlled by
-its bits, each 0 means ``go left at the next node'' and each 1 means ``go
-right at the next node''\cite{okasaki-int-map}.
-
-Because integers can be represented in binary format in computer, it is 
-possible to store integer keys rather than 0,1 strings. When we insert an
-integer as a new key to the trie, we take first bit, if it is 0, we recursively
-insert the other bits to the left sub tree; if it is 1, we insert into right
-sub tree.
-
-However, there is a problem if we treat the key as integer. Consider a binary
-trie shows in figure \ref{fig:big-endian-trie}. If the keys are represented in 
-string based on '0' and '1', all the three keys are different. While if they are
-turned into integers, they are identical. So if we want to insert a data with integer
-key 3, where should we put it into the trie?
+Just likes the relationship between Trie and Patricia, Suffix Trie has much simpler
+structure than suffix tree. Figure \ref{fig:strie-banana} shows the suffix Trie of
+'banana'.
 
 \begin{figure}[htbp]
        \begin{center}
-	\includegraphics[scale=0.5]{img/big-endian-trie.ps}
-        \caption{a big-endian trie} \label{fig:big-endian-trie}
+	\includegraphics[scale=0.5]{img/strie-banana.ps}
+        \caption{Suffix Trie of 'banana'} \label{fig:strie-banana}
        \end{center}
 \end{figure}
 
-One approach is to treat all prefix zero as effective bits.
-Suppose an integer is represented in 32-bits, If we want to insert key 1 to a trie, 
-it will end up with a 32-levels tree. 
-There are 31 node has only 1 left sub tree and the last node has
-a right sub tree. It is very inefficient in terms of space.
+Compare with figure \ref{fig:stree-banana}, the difference is that, instead of representing
+a word for each edge, one edge in suffix Trie only represents one character. Thus
+suffix Trie need more spaces. If we pack all nodes which has only one child, the suffix
+Trie can be turned into a suffix tree.
 
-Chris Okasaki shows a method to solve this problem in \cite{okasaki-int-map}. Instead of 
-normal big-endian integer, we can use little-endian integer as key. By using little-endian,
-decimal integer 1 is represent as binary 1, if we insert it to an empty binary trie, we
-get a trie with a root and a right leaf. There is only 1 level. For integer 3, it is 11 in 
-binary, we needn't add any prefix 0, the position in the trie is unique.
+Suffix Trie can be a good start point for explaining the suffix tree construction algorithm.
 
 %=========================================================================
 %       Trivial construction of Suffix Trie and Suffix Tree
 %=========================================================================
-\subsection{Trivial construction methods of Suffix Trie and Suffix Tree}
-Trie is invented by Edward Fredkin. It comes from ``retrieval'', pronounce 
-as /'tri:/ by the inventor, while it is pronounced /'trai/ ``try'' 
-by other authors \cite{wiki-trie}.
-The definition of little-endian binary trie is simple, we can reuse the structure
-of binary tree, with its left sub tree to store 0 part and right tree to store 1 part.
-The augment data can be stored as value.
+\section{Trivial construction methods of Suffix Tree}
+\label{trivial-cons}
 
-\subsubsection*{Definition of little-endian integer Trie in C++}
-We can utilize C++ template to abstract the value stored in Trie. The type
-of key is integer. Each node contains a value, a left child and a right child.
+By repeatly applying the insertion algorithms\cite{lxy-trie} for Trie and Patricia
+on each suffixes of a word, Suffix Trie and tree can be built in a trivial way.
 
-\lstset{language=C++}
-\begin{lstlisting}
-template<class T>
-struct IntTrie{
-  IntTrie():value(), left(0), right(0){}
-  ~IntTrie(){
-    delete left;
-    delete right;
-  }
-  T value;
-  IntTrie* left;
-  IntTrie* right;
-};
-\end{lstlisting}
+Below algorithm illustrates this approach for suffix tree.
 
-In order to simplify the release, recursive destruction is added.
+\begin{algorithmic}
+\STATE $TRIVIAL-SUFFIX-TREE(S)$
+  \STATE $T \leftarrow NIL$
+  \FOR{$i$ from $1$ to $LENGTH(S)$}
+    \STATE $T \leftarrow PATRICIA-INSERT(T, RIGHT(S, i))$
+  \ENDFOR
+  \RETURN $T$
+\end{algorithmic}
 
-\subsubsection*{Definition of little-endian integer Trie in Haskell}
-In trie, since a node may not contains value, so we use Haskell Maybe data to represent
-this situation. A IntTrie node is either an empty node, or a branch node. The branch
-node contains a left child a `Maybe' value and a right child. 
+Where function $RIGHT(S, i)$ will extract substring of S from left to right most.
+Similar functional algorithm can also be provided in this way.
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-data IntTrie a = Empty 
-               | Branch (IntTrie a) (Maybe a) (IntTrie a) -- left, value, right
+\begin{algorithmic}
+\STATE $TRIVIAL-SUFFIX-TREE'(S)$
+  \RETURN $FOLD-LEFT(PATRICIA-INSERT, NIL, TAILS(S))$
+\end{algorithmic}
 
-type Key = Int
-
--- helpers
-left :: IntTrie a -> IntTrie a
-left (Branch l _ _) = l
-left Empty = Empty
-
-right :: IntTrie a -> IntTrie a
-right (Branch _ _ r) = r
-right Empty = Empty
-
-value :: IntTrie a -> Maybe a
-value (Branch _ v _) = v
-value Empty = Nothing
-\end{lstlisting}
-
-In order to access the children and value some helper functions are given.
-
-\subsubsection*{Definition of little-endian integer Trie in Python}
-The definition of integer trie in Python is shown as below. All fields
-are initialized as empty values.
-
-\lstset{language=Python}
-\begin{lstlisting}
-class IntTrie:
-    def __init__(self):
-        self.value = None
-        self.left = self.right = None
-\end{lstlisting}
-
-left child and right child represent sub Trie branches, and value is used to 
-store actual data.
-
-\subsubsection*{Definition of little-endian integer Trie in Scheme/Lisp}
-In Scheme/Lisp, we provides some helper functions to create and access 
-Trie data. The underground data structure is still list.
+Function TAILS() returns a list of all suffixes for string S. In Haskell, Module 
+Data.List provides this function already. In Scheme/Lisp, it can be implemented as below.
 
 \lstset{language=lisp}
 \begin{lstlisting}
-;; Definition
-
-(define (make-int-trie l v r) ;; left, value, right
-  (list l v r))
-
-;; Helpers
-(define (left trie)
-  (if (null? trie) '() (car trie)))
-
-(define (value trie)
-  (if (null? trie) '() (cadr trie)))
-
-(define (right trie)
-  (if (null? trie) '() (caddr trie)))
+(define (tails s)
+  (if (string-null? s)
+      '("")
+      (cons s (tails (string-tail s 1)))))
 \end{lstlisting}
 
-Some helper functions are provided for easy access to children and value.
+The trivial suffix Trie/tree construction method takes $O(n^2)$ time, where $n$ is the 
+length of the word. Altough the string manipulation can be very fast by using suffix
+tree, slow construction will be the bottleneck of the whole process.
 
 % ================================================================
 %               Online construction of Suffix Trie
 % ================================================================
-\subsection{Online construction of suffix trie}
+\section{Online construction of suffix trie}
 
 \subsubsection{Iterative insertion algorithm}
 Since the key is little-endian, when we insert a key into trie, we take the
@@ -580,14 +509,14 @@ This will output:
 \end{verbatim}
 
 Figure \ref{int-trie} shows this result. 
-\begin{figure}[htbp]
-       \begin{center}
-	\includegraphics[scale=0.5]{img/int-trie.ps}
-        \caption{An little-endian integer binary trie for the map 
-          \{$ 1 \rightarrow a, 4 \rightarrow b, 5 \rightarrow c, 9 \rightarrow d$\}.} 
-        \label{fig:int-trie}
-       \end{center}
-\end{figure}
+%\begin{figure}[htbp]
+%       \begin{center}
+%	\includegraphics[scale=0.5]{img/int-trie.ps}
+%        \caption{An little-endian integer binary trie for the map 
+%          \{$ 1 \rightarrow a, 4 \rightarrow b, 5 \rightarrow c, 9 \rightarrow d$\}.} 
+%        \label{fig:int-trie}
+%       \end{center}
+%\end{figure}
 
 \subsubsection*{Insertion of integer Trie in Scheme/Lisp}
 
@@ -871,13 +800,13 @@ In order to provide good user experience, when user input something,
 the dictionary will search its word library, and list all candidate words and
 phrases similar to what user have entered.
 
-\begin{figure}[htbp]
-       \begin{center}
-	\includegraphics[scale=0.5]{img/ciba.eps}
-        \caption{e-dictionary. All candidates starting with what user input are listed.}
-        \label{fig:e-dict}
-       \end{center}
-\end{figure}
+%\begin{figure}[htbp]
+%       \begin{center}
+%	\includegraphics[scale=0.5]{img/ciba.eps}
+%        \caption{e-dictionary. All candidates starting with what user input are listed.}
+%        \label{fig:e-dict}
+%       \end{center}
+%\end{figure}
 
 Typically such dictionary contains hundreds of thousands words, performs a whole
 word search is expensive. Commercial software adopts complex approach, including
@@ -889,13 +818,13 @@ lists, with all items start with what user has entered. And these candidates
 are shown in an order of popularity. The more people search for a word, the
 upper position it will be shown in the list.
 
-\begin{figure}[htbp]
-       \begin{center}
-	\includegraphics[scale=0.5]{img/adaptive-input.eps}
-        \caption{Search engine. All candidates key words starting with what user input are listed.}
-        \label{fig:word-completion}
-       \end{center}
-\end{figure}
+%\begin{figure}[htbp]
+%       \begin{center}
+%	\includegraphics[scale=0.5]{img/adaptive-input.eps}
+%        \caption{Search engine. All candidates key words starting with what user input are listed.}
+%        \label{fig:word-completion}
+%       \end{center}
+%\end{figure}
 
 In both case, we say the software provide a kind of word auto-completion support. 
 In some modern IDE, the editor can even helps user to auto-complete programmings. 
@@ -1541,13 +1470,13 @@ with such key-pad, users typically have quite different experience from PC.
 Because a mobile-phone key pad, or so called ITU-T key pad has few keys.
 Figure {fig:itut-keypad} shows an example.
 
-\begin{figure}[htbp]
-       \begin{center}
-	\includegraphics[scale=0.5]{img/itu-t.eps}
-        \caption{an ITU-T keypad for mobile phone.}
-        \label{fig:itut-keypad}
-       \end{center}
-\end{figure}
+%% \begin{figure}[htbp]
+%%        \begin{center}
+%% 	\includegraphics[scale=0.5]{img/itu-t.eps}
+%%         \caption{an ITU-T keypad for mobile phone.}
+%%         \label{fig:itut-keypad}
+%%        \end{center}
+%% \end{figure}
 
 There are typical 2 methods to input an English word/phrase with ITU-T key pad.
 For instance, if user wants to enter a word ``home'', He can press the key
@@ -2198,7 +2127,9 @@ approach give the very same result.
 % ================================================================
 %                 Short summary
 % ================================================================
-\section{Short summary}
+\section{Notes and short summary}
+
+Suffix Tree was first introduced by Weiner in 1973 \cite{weiner}.
 
 In this post, we start from the Integer base trie and Patricia, the
 map data structure based on integer patricia plays an important role
@@ -2322,11 +2253,14 @@ download position: http://sites.google.com/site/algoxy/trie/trie.zip
 \bibitem{wiki-suffix-tree}
 Suffix Tree, Wikipedia. http://en.wikipedia.org/wiki/Suffix\_tree
 
-\bibitem{ukkonne-presentation}
+\bibitem{ukkonen-presentation}
 Esko Ukkonen. ``Suffix tree and suffix array techniques for pattern ananlysis in strings''. http://www.cs.helsinki.fi/u/ukkonen/Erice2005.ppt
 
 \bibitem{wiki-trie}
 Trie, Wikipedia. http://en.wikipedia.org/wiki/Trie
+
+\bibitem{lxy-trie}
+Liu Xinyu. ``Trie and Patricia, with Functional and imperative implementation''. http://sites.google.com/site/algoxy/trie
 
 \end{thebibliography}
 
