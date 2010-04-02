@@ -199,324 +199,43 @@ tree, slow construction will be the bottleneck of the whole process.
 % ================================================================
 \section{Online construction of suffix trie}
 
-\subsubsection{Iterative insertion algorithm}
-Since the key is little-endian, when we insert a key into trie, we take the
-bit from right most (LSB). If it is 0, we go to the left child, and go to right
-for 1. if the child is empty, we need create new node, and repeat this until
-meet the last bit (MSB) of the integer. Below is the iterative algorithm
-of insertion.
+Analysis of construction for suffix Trie can be a good start point in finding
+the linear time suffix tree construction algorithm. In Ukkonen's paper\cite{ukkonen95}, 
+finite-state automation, transition function and suffix function are used to 
+build the mathematical model for suffix Trie/tree. 
 
-%\begin{algorithm}
-\begin{algorithmic}
-\STATE $INT-TRIE-INSERT(T, x, data)$
-\IF{$T = NIL$}
-   \STATE $T \leftarrow EmptyNode$ \ENDIF
+In order to make it easy for understanding, let's explain the above concept with
+the elements of Trie data structure.
 
-  \STATE $p=T$
-  \WHILE{$x \neq 0$}
-    \IF{$EVEN(x) = TRUE$}
-      \STATE $p \leftarrow LEFT(p)$
-    \ELSE
-      \STATE $p \leftarrow RIGHT(p)$
-    \ENDIF
-    \IF{$p = NIL$}
-      \STATE $p \leftarrow EmptyNode$ \ENDIF
-    \STATE $x \leftarrow x/2$
-  \ENDWHILE
-  \STATE $DATA(p) \leftarrow data$
-\end{algorithmic}
-%\end{algorithm}
+With a set of alphabetic, a string with length $n$ can be defined as $S=s_1s_2...s_n$.
+And we define $S[i]=s_1s_2...s_i$, which contains the first $i$ characters.
 
-\subsubsection*{Insertion of integer Trie in C++}
-With C++ language we can speed up the above even/odd test and key update with
-bit-wise operation.
+In a suffix Trie, each node represents a suffix string. for example in figure 
+\ref{fig:strie-cacao}, node X represents suffix 'a', by adding a character 'c',
+node X transfers to node Y which represents suffix 'ac'. We say node X and edge labelled 'c'
+transfers to node Y. This relation ship can be denoted in psuedo code as below.
 
-\lstset{language=C++}
-\begin{lstlisting}
-template<class T>
-IntTrie<T>* insert(IntTrie<T>* t, int key, T value=T()){
-  if(!t)
-    t = new IntTrie<T>();
-
-  IntTrie<T>* p = t;
-  while(key){
-    if( (key&0x1) == 0){
-      if(!p->left) p->left = new IntTrie<T>();
-      p = p->left;
-    }
-    else{
-      if(!p->right) p->right = new IntTrie<T>();
-      p = p->right;
-    }
-    key>>=1;
-  }
-  p->value = value;
-  return t;
-}
-\end{lstlisting}
-
-In order to verify this program, some helper functions are provided to
-simplify the repeat insertions. And we also provide a function to convert
-the Trie to readable string.
-
-\begin{lstlisting}
-template<class T, class Iterator>
-IntTrie<T>* list_to_trie(Iterator first, Iterator last){
-  IntTrie<T>* t(0);
-  for(;first!=last; ++first)
-    t = insert(t, *first);
-  return t;
-}
-
-template<class T, class Iterator>
-IntTrie<T>* map_to_trie(Iterator first, Iterator last){
-  IntTrie<T>* t(0);
-  for(;first!=last; ++first)
-    t = insert(t, first->first, first->second);
-  return t;
-}
-
-template<class T>
-std::string trie_to_str(IntTrie<T>* t, int prefix=0, int depth=0){
-  std::stringstream s;
-  s<<"("<<prefix;
-  if(t->value!=T())
-    s<<":"<<t->value;
-  if(t->left)
-    s<<", "<<trie_to_str(t->left, prefix, depth+1);
-  if(t->right)
-    s<<", "<<trie_to_str(t->right, (1<<depth)+prefix, depth+1);
-  s<<")";
-  return s.str();
-}
-\end{lstlisting}
-
-Function list\_to\_trie just inserts keys, all values are treated as default
-value as type T, while map\_to\_trie inserts both keys and values repeatedly.
-Function trie\_to\_str helps to convert a Trie to literal string in a modified
-pre-order traverse.
-
-The verification cases are as the following.
-
-\begin{lstlisting}
-const int lst[] = {1, 4, 5};
-std::list<int> l(lst, lst+sizeof(lst)/sizeof(int));
-
-IntTrie<int>* ti = list_to_trie<int, std::list<int>::iterator>(l.begin(), l.end());
-std::copy(l.begin(), l.end(), 
-          std::ostream_iterator<int>(std::cout, ", "));
-std::cout<<"==>"<<trie_to_str(ti)<<"\n";
-    
-IntTrie<char>* tc;
-typedef std::list<std::pair<int, char> > Dict;
-const int  keys[] = {4, 1, 5, 9};
-const char vals[] = "bacd";
-Dict m;
-for(int i=0; i<sizeof(keys)/sizeof(int); ++i)
-  m.push_back(std::make_pair(keys[i], vals[i]));
-tc = map_to_trie<char, Dict::iterator>(m.begin(), m.end());
-std::copy(keys, keys+sizeof(keys)/sizeof(int),
-          std::ostream_iterator<int>(std::cout, ", "));
-std::cout<<"==>"<<trie_to_str(tc);
-\end{lstlisting}
-
-The above code lines will output results in console like this.
-\begin{verbatim}
-1, 4, 5, ==>(0, (0, (0, (4))), (1, (1, (5))))
-4, 1, 5, 9, ==>(0, (0, (0, (4:b))), (1:a, (1, (1, (9:d)), (5:c))))
-\end{verbatim}
-
-\subsubsection*{Insertion of integer trie in Python}
-Imperative implementation of insertion in Python can be easily given by translating
-the pseudo code of the algorithm.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def trie_insert(t, key, value = None):
-    if t is None:
-        t = IntTrie()
-
-    p = t
-    while key != 0:
-        if key & 1 == 0:
-            if p.left is None:
-                p.left = IntTrie()
-            p = p.left
-        else:
-            if p.right is None:
-                p.right = IntTrie()
-            p = p.right
-        key = key>>1
-    p.value = value
-    return t
-\end{lstlisting}
-
-In order to test this insertion program, some test helpers are provided:
-
-\begin{lstlisting}
-def trie_to_str(t, prefix=0, depth=0):
-    to_str = lambda x: "%s" %x
-    str="("+to_str(prefix)
-    if t.value is not None:
-        str += ":"+t.value
-    if t.left is not None:
-        str += ", "+trie_to_str(t.left, prefix, depth+1)
-    if t.right is not None:
-        str += ", "+trie_to_str(t.right, (1<<depth)+prefix, depth+1)
-    str+=")"
-    return str
-
-def list_to_trie(l):
-    t = None
-    for x in l:
-        t = trie_insert(t, x)
-    return t
-
-def map_to_trie(m):
-    t = None
-    for k, v in m.items():
-        t = trie_insert(t, k, v)
-    return t
-\end{lstlisting}
-
-Function trie\_to\_str can print the contents of trie in pre-order,
-It doesn't only print the value of the node, but also print the edge information.
-
-Function list\_to\_trie can repeatedly insert a list of keys into a trie, since the
-default argument of value is None, so all data relative to keys are empty. If the
-data isn't empty, function map\_to\_trie can insert a list of key-value pairs into 
-the trie.
-
-Then a test class is given to encapsulate test cases:
-
-\begin{lstlisting}
-class IntTrieTest:
-    def run(self):
-        self.test_insert()
-
-    def test_insert(self):
-        t = None
-        t = trie_insert(t, 0);
-        t = trie_insert(t, 1);
-        t = trie_insert(t, 4);
-        t = trie_insert(t, 5);
-        print trie_to_str(t)
-        t1 = list_to_trie([1, 4, 5])
-        print trie_to_str(t1)
-        t2 = map_to_trie({4:'b', 1:'a', 5:'c', 9:'d'})
-        print trie_to_str(t2)
-
-if __name__ == "__main__":
-    IntTrieTest().run()
-\end{lstlisting}
-
-Running this program will print the following result.
-
-\begin{verbatim}
-(0, (0, (0, (4))), (1, (1, (5))))
-(0, (0, (0, (4))), (1, (1, (5))))
-(0, (0, (0, (4:b))), (1:a, (1, (1, (9:d)), (5:c))))
-\end{verbatim}
-
-Please note that by pre-order traverse trie, we can get a 'lexical' order
-result of the keys. For instance, the last result print the little-endian
-format of key 1, 4, 5, 9 as below.
-
-\begin{verbatim}
-001
-1
-1001
-101
-\end{verbatim}
-
-They are in lexical order. We'll go back to this feature of trie later in 
-alphabetic trie section.
-
-\subsubsection{Recursive insertion algorithm}
-Insertion can also be implemented in a recursive manner. If the LSB is 0, it 
-means that the key to be inserted is an even number, we recursively insert the
-date to left child, we can divide the number by 2 and round to integer to get
-rid of the LSB. If the LSB is 1, the key is then an odd number, the recursive
-insertion will be happened to right child. This algorithm is described as below.
+\begin{figure}[htbp]
+       \begin{center}
+	\includegraphics[scale=0.5]{img/strie-cacao.ps}
+        \caption{node $X \leftarrow 'a'$, node $Y \leftarrow 'ac'$, $X$ transfer to $Y$ with character 'c'}
+        \label{fig:strie-cacao}
+       \end{center}
+\end{figure}
 
 \begin{algorithmic}
-\STATE $INT-TRIE-INSERT'(T, x, data)$
-  \IF { x = 0}
-    \STATE $VALUE(T) \leftarrow data$
-  \ELSE
-    \IF {$EVEN(x)$}
-      \STATE $LEFT(T) \leftarrow INT-TRIE-INSERT'(LEFT(T), x/2, data)$
-    \ELSE
-      \STATE $RIGHT(T) \leftarrow INT-TRIE-INSERT'(RIGHT(T), x/2, data)$
-    \ENDIF
-  \ENDIF
-  \RETURN $T$
+\STATE $Y \leftarrow CHILDREN(X)[c]$
 \end{algorithmic}
 
-\subsubsection*{Insertion of integer Trie in Haskell}
-To simply the problem, If user insert a data with key already exists, we simply
-overwrite the previous stored data. This approach can be easily replaced with 
-other methods, such as storing data as a linked list etc.
+It's equal to the following C++ and Python code.
 
-Insertion integer key into a trie can be implemented with Haskell as below.
+Next: suffix link
 
-\lstset{language=Haskell}
+\lstset{language=python}
 \begin{lstlisting}
-insert :: IntTrie a -> Key -> a -> IntTrie a
-insert t 0 x = Branch (left t) (Just x) (right t)
-insert t k x = 
-  if even k
-       then Branch (insert (left t) (k `div` 2) x) (value t) (right t)
-       else Branch (left t) (value t) (insert (right t) (k `div` 2) x)
+y = x.children[c]
 \end{lstlisting}
 
-If the key is zero, we just insert the data to current node, in other
-cases, the program go down along the trie according to the last bit
-of the key.
-
-To test if this program, some test helper functions are provided.
-
-\begin{lstlisting}
-fromList :: [(Key, a)] -> IntTrie a
-fromList xs = foldl ins Empty xs where
-    ins t (k, v) = insert t k v
-
--- k = ... a2, a1, a0 ==> k' = ai * m + k, where m=2^i
-toString :: (Show a)=>IntTrie a -> String
-toString t = toStr t 0 1 where
-    toStr Empty k m = "."
-    toStr tr k m = "(" ++ (toStr (left tr) k (2*m)) ++
-                      " " ++ (show k) ++ (valueStr (value tr)) ++
-                      " " ++ (toStr (right tr) (m+k) (2*m)) ++ ")"
-    valueStr (Just x) = ":" ++ (show x)
-    valueStr _ = ""
-\end{lstlisting}
-
-fromList function can create a trie from a list of integer-data pairs.
-toString function can turn a trie data structure to readable string
-for printing. This is a modified in-order tree traverse, since the number
-stored is in little-endian, the program store the $2^m$ to calculate
-the keys. The following code shows a test.
-
-\begin{lstlisting}
-main = do
-  putStrLn (toString (fromList [(1, 'a'), (4, 'b'), (5, 'c'), (9, 'd')]))
-\end{lstlisting}
-
-This will output:
-\begin{verbatim}
-(((. 0 (. 4:'b' .)) 0 .) 0 (((. 1 (. 9:'d' .)) 1 (. 5:'c' .)) 1:'a' .))
-\end{verbatim}
-
-Figure \ref{int-trie} shows this result. 
-%\begin{figure}[htbp]
-%       \begin{center}
-%	\includegraphics[scale=0.5]{img/int-trie.ps}
-%        \caption{An little-endian integer binary trie for the map 
-%          \{$ 1 \rightarrow a, 4 \rightarrow b, 5 \rightarrow c, 9 \rightarrow d$\}.} 
-%        \label{fig:int-trie}
-%       \end{center}
-%\end{figure}
 
 \subsubsection*{Insertion of integer Trie in Scheme/Lisp}
 
@@ -2249,6 +1968,9 @@ This helper scripts can also be downloaded with this article.
 download position: http://sites.google.com/site/algoxy/trie/trie.zip
 
 \begin{thebibliography}{99}
+
+\bibitem{ukkonen95}
+Esko Ukkonen. ``On-line construction of suffix trees''. Algorithmica 14 (3): 249--260. doi:10.1007/BF01206331. http://www.cs.helsinki.fi/u/ukkonen/SuffixT1withFigs.pdf
 
 \bibitem{wiki-suffix-tree}
 Suffix Tree, Wikipedia. http://en.wikipedia.org/wiki/Suffix\_tree
