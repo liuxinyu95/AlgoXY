@@ -1,6 +1,6 @@
 #IMG_OBJECTS = radix-tree adaptive-input ciba itu-t
 DOT_OBJECTS = stree-banana strie-banana stree-bananas stree-cacao \
-strie-cacao
+strie-cacao stree-bananas-label strie-cacao
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
