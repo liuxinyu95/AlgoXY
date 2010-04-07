@@ -217,7 +217,7 @@ transfers to node Y. This relationship can be denoted in psuedo code as below.
 
 \begin{figure}[htbp]
    \begin{center}
-     \includegraphics[scale=0.5]{img/strie-cacao.ps}
+     \includegraphics[scale=0.4]{img/strie-cacao.ps}
      \caption{node $X \leftarrow$ ``a'', node $Y \leftarrow$ ``ac'', $X$ transfers to $Y$ with character 'c'}
      \label{fig:strie-cacao}
    \end{center}
@@ -248,7 +248,9 @@ For a string $S$, Suppose we have construct suffix Trie for its $i$-th prefix
 $s_1s_2...s_i$. We denote the suffix Trie for this $i$-th prefix as $SuffixTrie(S_i)$.
 Let's consider how can we obtain $SuffixTrie(S_{i+1})$ from $SuffixTrie(S_i)$.
 
-If we list all suffixes corresponding to $SuffixTrie(S_i)$, we get a table as below.
+If we list all suffixes corresponding to $SuffixTrie(S_i)$, fromt the longest 
+$S_i$ to the shortest empty string, we get table \ref{tab:suffixes_s_i}. There
+are total $i+1$ suffixes.
 
 \begin{table}
   \begin{tabular}{r}
@@ -268,12 +270,15 @@ The most straightforward way is to append $s_{i+1}$ to each of the suffix in abo
 table, and add a new empty suffix. This operation can be implemented as create
 a new node, and append the new node as a child with edge bind to character $s_{i+1}$.
 
+\begin{algorithm}
 \begin{algorithmic}
 \FOR{each $node$ in $SuffixTrie(S_i)$}
-  \STATE $CHILDREN(node)[s_{i+1}]=CREATE-NEW-NODE()$
+  \STATE $CHILDREN(node)[s_{i+1}] \leftarrow CREATE-NEW-NODE()$
 \ENDFOR
 \end{algorithmic}
-
+\caption{Initial version of update $SuffixTrie(S_i)$ to $SuffixTrie(S_{i+1})$.}
+\label{algo:strie1}
+\end{algorithm}
 
 However, some node in $SuffixTrie(S_i)$ may have already $s_{i+1}$-child. 
 For example, in figure \ref{fig:strie-cac}, Node $X$ and $Y$ are corresonding 
@@ -296,11 +301,65 @@ $SuffixTrie(S_{i+1})$, in this case it is for ``caca'', is shown in right part o
 figure \ref{fig:strie-cac}.
 
 If we check each node as the same order as in table \ref{tab:suffixes_s_i}, we can 
-stop immediately once we find a node has a $s_{i+1}$-child. This is because all suffixes 
-after that will also be 
+stop immediately once we find a node which has a $s_{i+1}$-child. This is because 
+if a node $X$ in $SuffixTrie(S_i)$ has already a $s_{i+1}$-child, then according to the
+definition of suffix link, all suffix nodes $X'$ of $X$ in $SuffixTrie(S_i)$ must 
+also have $s_{i+1}$-child. In other words, let $c=s_{i+1}$, if $wc$ is a substring
+of $S_i$, then every suffix of $wc$ is also a substring of $S_i$ \cite{ukkonen95}.
+The only exception is root node, which represents for empty string ``''.
 
-According to this 
+According to this fact, we can refine the algorithm \ref{algo:strie1} to 
 
+\begin{algorithm}
+  \begin{algorithmic}
+  \FOR{each $node$ in $SuffixTrie(S_i)$ in descending order of suffix length}
+    \IF{$CHILDREN(node)[s_{i+1}] = NIL$}
+      \STATE $CHILDREN(node)[s_{i+1}] \leftarrow CREATE-NEW-NODE()$ 
+    \ELSE
+      \STATE break
+    \ENDIF
+  \ENDFOR
+  \end{algorithmic}
+  \caption{Revised version of update $SuffixTrie(S_i)$ to $SuffixTrie(S_{i+1})$.}
+  \label{algo:strie2}
+\end{algorithm}
+
+The next unclear question is how to iterate all nodes in $SuffixTrie(S_i)$
+in descending order of suffix string length? We can define the top of a suffix
+Trie as the deepest leaf node, by using suffix link for each node, we can 
+traverse suffix Trie untill the root. Note that the top of $SuffixTrie(NIL)$
+is root, so we can get a final version of on-line construction algorithm for
+suffix Trie.
+
+\begin{algorithmic}
+\STATE $INSERT(top, c)$
+  \IF{$top = NIL$}
+    \STATE $top \leftarrow CREATE-NEW-NODE()$
+  \ENDIF
+  \STATE $node \leftarrow top$
+  \STATE $node' \leftarrow CREATE-NEW-NODE()$
+  \WHILE{$node \ne NIL \and CHILDREN(node)[c] = NIL$}
+    \STATE $CHILDREN(node)[c] \leftarrow CREATE-NEW-NODE()$
+    \STATE $SUFFIX-LINK(node') \leftarrow CHILDREN(node)[c]$
+    \STATE $node' \leftarrow CHILDREN(node)[c]$
+    \STATE $node \leftarrow SUFFIX-LINK(node)$
+  \ENDWHILE
+  \IF{$node \ne NIL$}
+    \STATE $SUFFIX-LINK(node') \leftarrow CHILDREN(node)[c]$
+  \ENDIF
+  \RETURN $CHILDREN(top)[c]$
+\end{algorithmic}
+
+and the main part of the algorithm is as below:
+\begin{algorithmic}
+\STATE $SUFFIX-TRIE(S)$
+  \STATE $t \leftarrow NIL$
+  \FOR{$i$ from 1 to $LENGTH(S)$}
+    \STATE $t \leftarrow INSERT(t, s_i)$
+  \ENDFOR
+\end{algorithmic}
+
+\subsection{Suffix Trie on-line construction program in Python and C++}
 C++/Python version of this algorithm
 
 Alternative functional algorithm
