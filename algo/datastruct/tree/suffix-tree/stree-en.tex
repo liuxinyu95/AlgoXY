@@ -566,6 +566,8 @@ algorithm for suffix tree is introduced based on Ukkonen's work\cite{ukkonen95}.
 % ================================================================
 \subsection{Online construction of suffix tree} 
 
+\subsubsection{Active point and end point}
+\label{ap-and-ep}
 Although the suffix Trie construction algorithm is $O(n^2)$, it shows very
 important facts about what happens when $SuffixTrie(S_i)$ is updated to
 $SuffixTrie(S_{i+1})$. Let's review the last 2 trees when we construct for
@@ -599,15 +601,125 @@ this time point until we stop at the $k$-th node.
 Ukkonen defined the first none-leaf node $n_j$ as 'active point' and the last
 one $n_k$ as 'end point'. Please note that end point can be the root node.
 
-represent of string
+\subsubsection{Reference pair}
 
-reference pair, canonical reference pair
+In suffix Trie, we define a node $X$ transfer to node $Y$ by edge labelled with
+a character $c$ as $Y \leftarrow CHILDREN(X)[c]$, However, If we compress the Trie
+to Patricia, we can't use this transfer concept anymore.
 
-definition of transition
+\begin{figure}[htbp]
+   \begin{center}
+     \includegraphics[scale=0.5]{img/stree-bananas-label.ps}
+     \caption{Suffix tree of ``bananas''. $X$ transfer to $Y$ with substring ``na''.}
+     \label{fig:stree-bananas-label}
+   \end{center}
+\end{figure}
 
-how to find the active point and end point, the relation between end point
-and the next active point
+Figure \ref{fig:stree-bananas-label} shows the suffix tree of english word ``bananas''.
+Node $X$ represents for suffix ``a'', by adding a substring ``na'', node $X$ transfers
+to node $Y$, which represents for suffix ``ana''. Such transfer relationship can be
+denoted like $Y \leftarrow CHILDREN(X)[w]$, where $w=``ana''$. In other words, we can
+represent $Y$ with a pair of node and a substring, like $(X, w)$. Ukkonen defined
+such kind of pair as {\em reference pair}. Not only the explicity node, but also the
+implicit position in suffix tree can be represented with reference pair. For example,
+$(X, ``n'')$ represents to a position which is not an explicit node. By using reference
+pair, we can represent every position in a suffix Trie for suffix tree.
 
+In order to save spaces, Ukkonen found that given a string $S$ all substrings can
+be represented as a pair of index $(l, r)$, where $l$ is the left index and $r$ is the 
+right index of character for the substring. For instance, if $S=``bananas''$, and the
+index from 1, substring ``na'' can be represented with pair $(3, 4)$. As the result,
+there will be only one copy of the complete string, and all position in a suffix tree
+will be refined as $(node, (l, r))$. This is the final form for reference pair.
+
+Let's define the node transfer for suffix tree as the following.
+
+$CHILDREN(X)[s_l] \leftarrow ((l, r), Y) \iff Y \leftarrow (X, (l, r))$
+
+If $s_i=c$, we say that node $X$ has a $c$-child. Each node can have at most one $c$-child.
+
+\subsubsection{canonical reference pair}
+
+It's obvious that the one position in a suffix tree has multiple reference pairs.
+For example, node $Y$ in Figure \ref{fig:stree-bananas-label} can be either
+denoted as $(X, (3, 4))$ or $(root, (2, 4))$. And if we define empty string 
+$\epsilon=(i, i-1)$, $Y$ can also be represented as $(Y, \epsilon)$.
+
+Ukkonen defined the canonical reference pair as the one which has the closest node
+to the position. So among the reference pairs of $(root, (2, 3))$ and $(X, (3, 3))$,
+the latter is the canonical reference pair. Specially, in case a position is an
+explicit node, the canonical reference pair is $(node, \epsilon)$, so $(Y, \epsilon)$
+is the canonical reference pair of poistion corresponding to node $Y$.
+
+It's easy to provide an algorithm to convert a reference pair $(node, (l, r))$ 
+to canonical reference pair $(node', (l', r))$. Note that $r$ won't be changed,
+so this algorithm can only return $(node', l')$ as the result.
+
+\begin{algorithm}
+\begin{algorithmic}
+\STATE $CANONIZE(node, (l, r))$
+  \IF{$node = NIL$}
+    \IF{$(l, r) = \epsilon$}
+      \RETURN $(NIL, l)$
+    \ELSE
+      \RETURN $CANONIZE(root, (l+1, r))$
+    \ENDIF
+  \ENDIF
+  \WHILE{$l\leq r$}
+    \STATE $((l', r'), node') \leftarrow CHILDREN(node)[s_l]$
+    \IF{$r-l \geq r'-l'$}
+      \STATE $l \leftarrow l+LENGTH(l', r')$
+      \STATE $node \leftarrow node'$
+    \ELSE
+      \STATE break
+    \ENDIF
+  \ENDWHILE
+  \RETURN $(node, l)$
+\end{algorithmic}
+\caption{Convert reference pair to conanical reference pair}
+\label{algo:strie1}
+\end{algorithm}
+
+In case the node parameter is $NIL$, it means a very special case, typically it is somthing
+like the following.
+
+$CANONIZE(SUFFIX-LINK(root), (l, r))$
+
+Because the suffix link of root points to $NIL$, the result should be $(root, (l+1, r))$
+if $(l, r)$ is not $\epsilon$. Else $(NIL, \epsilon)$ is returned to indicate
+a terminal position.
+
+I'll explain this special case in more detail later.
+
+\subsubsection{The algorithm}
+
+In \ref{ap-and-ep}, we mentioned, all updating to leaves is trivial, because we
+only need append the new coming character to the leaf. With reference pair,
+it means, when we update $SuffixTree(S_i)$ to $SuffixTree(S_{i+1})$, 
+For all reference pairs with form $(node, (l, i))$, they are leaves, they will
+be change to $(node, (l, i+1))$ next time. Ukkonen defined leaf as
+$(node, (l, \infty))$, here $\infty$ means ``open to grow''. We can omit all 
+leaves until the suffix tree is completely constructed. After that, we can 
+change all $\infty$ to the length of the string.
+
+So the main algorithm only cares about {\em positions} from active point
+to end point. However, how to find the active point and end point?
+
+When we start from the very beginning, there is only a root node, there are
+no branches nor leaves. The active point should be $(root, \epsilon)$, or
+$(root, (1, 0))$ (the string index start from 1).
+
+About the end point, it's a position we can finish updating $SuffixTree(S_i)$.
+According to the algorithm for suffix trie, we know it should be a
+{\em position} which has $s_{i+1}$-child already. Because a position
+in suffix trie may not be an explicit node in suffix tree. If $(node, (l, r))$
+is the end point, there are two cases.
+
+\begin{enumerate}
+\item $(l, r)=\epsilon$, it means node itself an end point, so node has a 
+$s_{i+1}$-child. Which means $CHILDREN(node)[s_{i+1}] \ne NIL$
+\item otherwise, $l \leq r$, end point is a implicit position.
+\end{enumerate}
 
 \subsubsection{Implementation of Ukkonen algorithm in imperative languages}
 C++/Python verison of this algorithm
