@@ -718,8 +718,127 @@ is the end point, there are two cases.
 \begin{enumerate}
 \item $(l, r)=\epsilon$, it means node itself an end point, so node has a 
 $s_{i+1}$-child. Which means $CHILDREN(node)[s_{i+1}] \ne NIL$
-\item otherwise, $l \leq r$, end point is a implicit position.
+\item otherwise, $l \leq r$, end point is an implicit position. 
+It must satisfy $s_{i+1}=s_{l'+|(l, r)|}$, where $CHILDREN(node)[s_l]=((l', r'), node')$.
+and $|(l, r)|$ means the length of string $(l, r)$. it is equal to $r-l+1$.
+This is illustrate in figure \ref{fig:implicit-end-point}. We can
+also say that $(node, (l, r))$ has a $s_{i+1}$-child implicitly.
 \end{enumerate}
+
+\begin{figure}[htbp]
+   \begin{center}
+     \includegraphics[scale=0.5]{img/implicit-end-point.eps}
+     \caption{Implicit end point}
+     \label{fig:implicit-end-point}
+   \end{center}
+\end{figure}
+
+Ukkonen found a very important fact that if the $(node, (l, i))$ is the end
+point of $SuffixTree(S_i)$, then $(node, (l, i+1))$ is the active point 
+$SuffixTree(S_{i+1})$.
+
+This is because if $(node, (l, i))$ is the end point of $SuffixTree(S_i)$,
+It must have a $s_{i+1}$-child (either explicitly or implicitly).
+If the suffix this end point represents is $s_ks_{k+1}...s_i$, it is the longest
+suffix in $SuffxiTree(S_i)$ which satisfies $s_ks_{k+1}...s_is_{i+1}$ is a substring
+of $S_i$. Consider $S_{i+1}$, $s_ks_{k+1}...s_is_{i+1}$ must occurs at least
+twice in $S_{i+1}$, so position $(node, (l, i+1))$ is the active point of
+$SuffixTree(S_{i+1})$. Figure \ref{fig:ep-ap} shows about this truth.
+
+\begin{figure}[htbp]
+   \begin{center}
+     \includegraphics[scale=0.5]{img/ep-ap.eps}
+     \caption{End point in $SuffixTree(S_i)$ and active point in $SuffixTree(S_{i+1})$.}
+     \label{fig:ep-ap}
+   \end{center}
+\end{figure}
+
+At this time point, the algorithm of Ukkonen's on-line construction can 
+be given as the following.
+
+\begin{algorithm}
+\begin{algorithmic}
+\STATE $UPDATE(node, (l, i))$
+  \STATE $prev \leftarrow CREATE-NEW-NODE()$
+  \WHILE{$TRUE$}
+    \STATE $(finish, node') \leftarrow END-POINT-BRANCH?(node, (l, i-1), s_i)$
+    \IF{$finish = TRUE$}
+      \STATE $BREAK$
+    \ENDIF
+    \STATE $CHILDREN(node')[s_i] \leftarrow ((i, \infty), CREATE-NEW-NODE())$
+    \STATE $SUFFIX-LINK(prev) \leftarrow node'$
+    \STATE $prev \leftarrow node'$
+    \STATE $(node, l) = CANONIZE(SUFFIX-LINK(node), (l, i-1))$
+  \ENDWHILE
+  \STATE $SUFFIX-LINK(prev) \leftarrow node$
+  \RETURN $(node, l)$
+\end{algorithmic}
+\caption{Update $SuffixTree(S_{i-1})$}
+\label{algo:update}
+\end{algorithm}
+
+This algorithm takes a parameter as reference pair $(node, (l, i))$, note that
+position $(node, (l, i-1)$ is the active point for $SuffixTree(S_{i-1})$.
+Next we enter a loop, this loop will go along with the suffix link until it
+found the current position $(node, (l, i-1))$ is the end point. If it is not
+end point, the function $END-POINT-BRNACH?()$ will return a position, from 
+where the new leaf node will be branch out.
+
+$END-POINT-BRANCH?()$ algorithm is implemented as below.
+
+\begin{algorithm}
+\begin{algorithmic}
+\STATE $END-POINT-BRANCH?(node, (l, r), c)$
+  \IF{$(l, r) = \epsilon$}
+    \IF{$node = NIL$}
+      \RETURN $(TRUE, root)$
+    \ELSE
+      \RETURN $(CHILDREN(node)[c] = NIL?, node)$
+    \ENDIF
+  \ELSE
+    \STATE $((l', r'), node') \leftarrow CHILDREN(node)[s_l]$
+    \STATE $pos \leftarrow l'+|(l, r)|$
+    \IF{$s_{pos}=c$}
+      \RETURN $(TRUE, node)$
+    \ELSE
+      \STATE $p \leftarrow CREATE-NEW-NODE()$
+      \STATE $CHILDREN(node)[s_{l'}] \leftarrow ((l', pos-1), p)$
+      \STATE $CHILDREN(p)[s_{pos}] \leftarrow ((pos, r'), node')$
+      \RETURN $(FALSE, p)$
+    \ENDIF
+  \ENDIF
+\end{algorithmic}
+\caption{Test if a position is end point and create explicit node for further branching.}
+\label{algo:branch}
+\end{algorithm}
+
+If the position is $(root, \epsilon)$, which means we have gone along suffix links to
+the root, we return $TRUE$ to indicate the updating can be finished for this round.
+If the position is in form of $(node, \epsilon)$, it means the reference pair represents
+an explicit node, we just test if this node has already $c$-child, where $c=s_i$. and
+if not, we can just branching out a leaf from this node.
+
+In other case, which means the position $(node, (l, r))$ points to a implicit node.
+We need find the exact position next to it to see if it is $c$-child implicitly.
+If yes, we meet a end point, the updating loop can be finished, else, we make
+the position an explicit node, and return it for further branching.
+
+With the previous defined $CANONIZE()$ funciton, we can finalize the Ukkonen algorithm.
+
+\begin{algorithm}
+\begin{algorithmic}
+\STATE $SUFFIX-TREE(S)$
+  \STATE $root \leftarrow CREATE-NEW-NODE()$
+  \STATE $node \leftarrow root, l \leftarrow 0$
+  \FOR{$i \leftarrow 1$ to $LENGTH(S)$}
+    \STATE $(node, l) = UPDATE(node, (l, i))$
+    \STATE $(node, l) = CANONIZE(node, (l, i))$
+  \ENDFOR
+  \RETURN $root$
+\end{algorithmic}
+\caption{Main algorithm of Ukkonen's on-line construction for suffix tree.}
+\label{algo:ukkonen2}
+\end{algorithm}
 
 \subsubsection{Implementation of Ukkonen algorithm in imperative languages}
 C++/Python verison of this algorithm
