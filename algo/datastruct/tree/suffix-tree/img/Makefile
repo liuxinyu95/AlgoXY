@@ -1,4 +1,4 @@
-#IMG_OBJECTS = radix-tree adaptive-input ciba itu-t
+IMG_OBJECTS = implicit-end-point ep-ap
 DOT_OBJECTS = stree-banana strie-banana stree-bananas stree-cacao \
 stree-bananas-label strie-cacao strie-caca strie-cac strie-ca strie-c \
 strie-empty
