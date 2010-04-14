@@ -1,3 +1,21 @@
+{-
+    Patricia.hs, Alphabetic Patricia Tree.
+    Copyright (C) 2010, Liu Xinyu (liuxinyu95@gmail.com)
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-}
+
 module STree where
 
 import Data.List
@@ -104,6 +122,28 @@ trie = lazyTr edgeTrie
 
 patricia::[String]->Tr
 patricia = lazyTr edgeTree
+
+-- Method 3
+-- Liu Xinyu: Construct the suffix tree from left to right
+update::Tr->Char->Tr
+update Lf c = Br [([c], Lf)]
+update Br ts c = case find (\(s, _)->c==head s) ts of 
+                   Nothing -> Br map (appendLeaf c) ts
+                   _       -> Br (map (insertAfter c c') ts)++[([c], Lf)]
+    where
+      c' = lastElem $ head ts
+                                      
+appendLeaf::Char->(String, Tr)->(String, Tr)
+appendLeaf c (s, Lf) = (s++[c], Lf)
+appendLeaf c (s, Br ts) = (s, Br map (appendLeaf c) ts)
+                   
+lastElem::(String, Tr)->Char
+lastElem:: (s, Lf) = last s
+lastElem:: (_, Br ts) = lastElem $ head ts
+
+--(s1c's2c'...snc's, t) --> (s1c', Br [(c, Lf), (s2c', Br [(c, Lf), Br ...
+insertAfter::Char->Char->(String, Tr)->(String, Tr)
+insertAfter c c' (s, t)
 
 -- testing
 
