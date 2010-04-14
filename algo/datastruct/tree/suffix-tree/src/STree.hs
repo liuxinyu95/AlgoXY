@@ -127,23 +127,38 @@ patricia = lazyTr edgeTree
 -- Liu Xinyu: Construct the suffix tree from left to right
 update::Tr->Char->Tr
 update Lf c = Br [([c], Lf)]
-update Br ts c = case find (\(s, _)->c==head s) ts of 
-                   Nothing -> Br map (appendLeaf c) ts
-                   _       -> Br (map (insertAfter c c') ts)++[([c], Lf)]
+update (Br ts) c = case find (\(s, _)->c==head s) ts of 
+                   Nothing -> Br ((map (insertAfter c c') ts)++[([c], Lf)])
+                   _       -> Br ((map (insertAfter c c') ts)) --Br (map (appendLeaf c) ts)
     where
-      c' = lastElem $ head ts
+      c' = lastElem $ head ts -- c' is the last char of any edge to leaf
                                       
 appendLeaf::Char->(String, Tr)->(String, Tr)
 appendLeaf c (s, Lf) = (s++[c], Lf)
-appendLeaf c (s, Br ts) = (s, Br map (appendLeaf c) ts)
+appendLeaf c (s, (Br ts)) = (s, Br (map (appendLeaf c) ts))
                    
 lastElem::(String, Tr)->Char
-lastElem:: (s, Lf) = last s
-lastElem:: (_, Br ts) = lastElem $ head ts
+lastElem (s, Lf) = last s
+lastElem (_, Br ts) = lastElem $ head ts
 
 --(s1c's2c'...snc's, t) --> (s1c', Br [(c, Lf), (s2c', Br [(c, Lf), Br ...
 insertAfter::Char->Char->(String, Tr)->(String, Tr)
-insertAfter c c' (s, t)
+insertAfter c c' (s, t) = ins c lst where
+	lst = split (c'==) s
+        ins c [x] = if isLeaf t then (x++[c], t) else (x, update t c)
+	ins c (x:xs) = (x, Br [(ins c xs), ([c], Lf)])
+
+isLeaf::Tr -> Bool
+isLeaf Lf = True
+isLeaf _  = False
+
+split _ [] = []
+split f lst | ys == [] = [xs] 
+            | otherwise = (xs++[head ys]): split f (tail ys)
+    where (xs, ys) = break f lst
+
+suffixTree'::String->Tr
+suffixTree' = foldl update Lf
 
 -- testing
 
