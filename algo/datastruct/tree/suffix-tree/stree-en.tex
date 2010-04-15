@@ -823,7 +823,7 @@ We need find the exact position next to it to see if it is $c$-child implicitly.
 If yes, we meet a end point, the updating loop can be finished, else, we make
 the position an explicit node, and return it for further branching.
 
-With the previous defined $CANONIZE()$ funciton, we can finalize the Ukkonen algorithm.
+With the previous defined $CANONIZE()$ funciton, we can finalize the Ukkonen's algorithm.
 
 %\begin{algorithm}
 \begin{algorithmic}
@@ -841,7 +841,7 @@ With the previous defined $CANONIZE()$ funciton, we can finalize the Ukkonen alg
 %\end{algorithm}
 
 Figure \ref{fig:cons-stree-cacao} shows the phases when constructing the
-suffix tree for string ``cacao'' with Ukkonen algorithm.
+suffix tree for string ``cacao'' with Ukkonen's algorithm.
 
 \begin{figure}[htbp]
    \begin{center}
@@ -859,11 +859,11 @@ suffix tree for string ``cacao'' with Ukkonen algorithm.
 Note that it needn't setup suffix link for leaf nodes, only branch nodes
 have been set suffix links.
 
-\subsubsection{Implementation of Ukkonen algorithm in imperative languages}
-The 2 main features of Ukkonen algorithm are intense use of suffix link and
+\subsubsection{Implementation of Ukkonen's algorithm in imperative languages}
+The 2 main features of Ukkonen's algorithm are intense use of suffix link and
 on-line update. So it will be very suitable to implement in imperative lanaguage.
 
-\subsubsection*{Ukkonen algorithm in Python}
+\subsubsection*{Ukkonen's algorithm in Python}
 The node definition is as same as the suffix Trie, however, the exact meaning
 for children field are not same.
 
@@ -909,7 +909,7 @@ def length(str_ref):
     return r-l+1
 \end{lstlisting}
 
-The main entry for Ukkonen algorithm is implemented as the following.
+The main entry for Ukkonen's algorithm is implemented as the following.
 
 \begin{lstlisting}
 def suffix_tree(str):
@@ -1096,7 +1096,383 @@ Suffix Tree (cacao):
 
 The result is identical to the one which is shown in figure \ref{fig:cons-stree-cacao}.
 
-\subsubsection*{Ukkonen algorithm in C++}
+\subsubsection*{Ukkonen's algorithm in C++}
+Ukkonen's algorithm has much use of pairs, including reference pair and 
+substring index pair. Altough STL provided std::pair tool, it is lack of
+variable binding ability, for example (x, y)=apair like assignment isn't
+leggal C++ code. boost::tuple provides a hany tool, tie(). I'l given a mimic
+tool like boost::tie so that we can bind two variables to a pair.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<typename T1, typename T2>
+struct Bind{
+  Bind(T1& r1, T2& r2):x1(r1), x2(r2){}
+  Bind(const Bind& r):x1(r.x1), x2(r.x2){}
+
+  // Support implicit type conversion
+  template<typename U1, typename U2>
+  Bind& operator=(const std::pair<U1, U2>& p){
+    x1 = p.first;
+    x2 = p.second;
+    return *this;
+  }
+  T1& x1;
+  T2& x2;
+};
+
+template<typename T1, typename T2>
+Bind<T1, T2> tie(T1& r1, T2& r2){ 
+  return Bind<T1, T2>(r1, r2); 
+}
+\end{lstlisting}
+
+With this tool, we can tie variables like the following.
+
+\begin{lstlisting}
+int l, r;
+tie(l, r) = str_pair;
+\end{lstlisting}
+
+We define substring index pair and reference pair like below.
+First is string index reference pair.
+
+\begin{lstlisting}
+struct StrRef: public std::pair<int, int>{
+  typedef std::pair<int, int> Pair;
+  static std::string str;
+  StrRef():Pair(){}
+  StrRef(int l, int r):Pair(l, r){}
+  StrRef(const Pair& ref):Pair(ref){}
+
+  std::string substr(){
+    int l, r;
+    tie(l, r) = *this;
+    return str.substr(l, r);
+  }
+
+  int len(){ 
+    int l, r;
+    tie(l, r) = *this;
+    return r-l+1; 
+  }
+};
+
+std::string StrRef::str="";
+\end{lstlisting}
+
+Because there is only one copy of the complete string, a static variable
+is used to store it. substr() function is used to convert a pair of left,
+right index into the sub-string. Function len() is used to calculate the
+length of a sub-string.
+
+Ukkonen's reference pair is defined in the sameway.
+
+\begin{lstlisting}
+struct Node;
+
+struct RefPair: public std::pair<Node*, StrRef>{
+  typedef std::pair<Node*, StrRef> Pair;
+  RefPair():Pair(){}
+  RefPair(Node* n, StrRef s):Pair(n, s){}
+  RefPair(const Pair& p):Pair(p){}
+  Node* node(){ return first; }
+  StrRef str(){ return second; }
+};
+\end{lstlisting}
+
+With these definition, the node type of suffix tree
+can be defined.
+
+\begin{lstlisting}
+struct Node{
+  typedef std::string::value_type Key;
+  typedef std::map<Key, RefPair> Children;
+
+  Node():suffix(0){}
+  ~Node(){
+    for(Children::iterator it=children.begin();
+        it!=children.end(); ++it)
+      delete it->second.node();
+  }
+
+  Children children;
+  Node* suffix;
+};
+\end{lstlisting}
+
+The children of a node is defined as a map with reference pairs stored.
+In order for easy memory management, a recursive approach is used.
+
+The final suffix tree is defined with a string and a root node.
+
+\begin{lstlisting}
+struct STree{
+  STree(std::string s):str(s), 
+                       infinity(s.length()+1000), 
+                       root(new Node){}
+
+  ~STree() { delete root; }
+  std::string str;
+  int infinity;
+  Node* root;
+};
+\end{lstlisting}
+
+the infinity is defined as the length of the string plus a big number.
+Infinity will be used for leaf node as the `open to append' meaning.
+
+Next is the main entry of Ukkonen's algorithm.
+
+\begin{lstlisting}
+STree* suffix_tree(std::string s){
+  STree* t=new STree(s);
+  Node* node = t->root; // init active point as (root, empty)
+  for(unsigned int i=0, l=0; i<s.length(); ++i){
+    tie(node, l) = update(t, node, StrRef(l, i));
+    tie(node, l) = canonize(t, node, StrRef(l, i));
+  }
+  return t;
+}
+\end{lstlisting}
+
+The program start from the initialized active point, and repeatly
+call update(), the returned end point will be canonized and used
+for the next active point.
+
+Function update() is implemented as below.
+
+\begin{lstlisting}
+std::pair<Node*, int> update(STree* t, Node* node, StrRef str){
+  int l, i;
+  tie(l, i)=str;
+  Node::Key c(t->str[i]); //current char
+  Node dummy, *p;
+  Node* prev(&dummy);
+  while((p=branch(t, node, StrRef(l, i-1), c))!=0){
+    p->children[c]=RefPair(new Node(), StrRef(i, t->infinity));
+    prev->suffix = p;
+    prev = p;
+    // go up along suffix link
+    tie(node, l) = canonize(t, node->suffix, StrRef(l, i-1));
+  }
+  prev->suffix = node;
+  return std::make_pair(node, l);
+}
+\end{lstlisting}
+
+In this function, pair (node, (l, i-1)) is the real active point
+position. It is fed to branch() funciton. If the position is
+end point, branch will return NULL pointer, so the while loop
+terminates. else a node for branching out a new leaf is returned.
+Then the program will go up along with suffix links and update
+the previous suffix link accordingly. The end point will be
+returned as the result of this function.
+
+Function branch() is implemented as the following.
+
+\begin{lstlisting}
+Node* branch(STree* t, Node* node, StrRef str, Node::Key c){
+  int l, r;
+  tie(l, r) = str;
+  if(str.len()<=0){ // (node, empty)
+    if(node && node->children.find(c)==node->children.end())
+      return node;
+    else
+      return 0; // either node is empty (_|_), or is EP
+  }
+  else{
+    RefPair rp = node->children[t->str[l]];
+    int l1, r1;
+    tie(l1, r1) = rp.str();
+    int pos = l1+str.len();
+    if(t->str[pos]==c)
+      return 0;
+    else{ // node--->branch_node--->node1
+      Node* branch_node = new Node();
+      node->children[t->str[l1]]=RefPair(branch_node, StrRef(l1, pos-1));
+      branch_node->children[t->str[pos]] = RefPair(rp.node(), StrRef(pos, r1));
+      return branch_node;
+    }
+  }
+}
+\end{lstlisting}
+
+If the position is (NULL, empty), it means the program arrive at the
+root position, NULL pointer is returned to indicate the updating can
+be terminated. If the position is in form of $(node, \epsilon)$, it 
+then check if the node has already a $s_i$-child. In other case, it
+means the position point to a implicit node, we need extra process
+to test if it is end point. If not, a spliting happens to convert the
+implicit node to exmplicit one.
+
+The function to cononize a reference pair is given below.
+
+\begin{lstlisting}
+std::pair<Node*, int> canonize(STree* t, Node* node, StrRef str){
+  int l, r;
+  tie(l, r)=str;
+  if(!node)
+    if(str.len()<=0)
+      return std::make_pair(node, l);
+    else
+      return canonize(t, t->root, StrRef(l+1, r));
+  while(l<=r){ //str isn't empty
+    RefPair rp = node->children[t->str[l]];
+    int l1, r1;
+    tie(l1, r1) = rp.str();
+    if(r-l >= r1-l1){
+      l += rp.str().len(); // remove len() from (l, r)
+      node = rp.node();
+    }
+    else
+      break;
+  }
+  return std::make_pair(node, l);
+}
+\end{lstlisting}
+
+In order to test the program, some helper functions are provided
+to represent the suffix tree as string. Among them, some are very
+common tools.
+
+\begin{lstlisting}
+// map (x+) coll in Haskell
+// boost lambda: transform(first, last, first, x+_1)
+template<class Iter, class T>
+void map_add(Iter first, Iter last, T x){
+  std::transform(first, last, first, 
+                 std::bind1st(std::plus<T>(), x));
+}
+
+// x ++ y in Haskell
+template<class Coll>
+void concat(Coll& x, Coll& y){
+  std::copy(y.begin(), y.end(), 
+            std::insert_iterator<Coll>(x, x.end()));
+}
+\end{lstlisting}
+
+map\_add() will add a value to every element in a collection.
+concat can concatenate tow collections together.
+
+the suffix tree to string function is finally provided like this.
+
+\begin{lstlisting}
+std::list<std::string> to_lines(Node* node){
+  typedef std::list<std::string> Result;
+  Result res;
+  if(node->children.empty()){
+    res.push_back("");
+    return res;
+  }
+  for(Node::Children::iterator it = node->children.begin();
+      it!=node->children.end(); ++it){
+    RefPair rp = it->second;
+    Result lns = to_lines(rp.node());
+    std::string edge = rp.str().substr();
+    *lns.begin() = "|--" + edge + "-->" + (*lns.begin());
+    map_add(++lns.begin(), lns.end(), 
+            std::string("|")+std::string(edge.length()+5, ' '));
+    if(!res.empty())
+      res.push_back("|");
+    concat(res, lns);
+  }
+  return res;
+}
+
+std::string to_str(STree* t){
+  StrRef::str = t->str;
+  std::list<std::string> ls = to_lines(t->root);
+  std::ostringstream s;
+  std::copy(ls.begin(), ls.end(), 
+            std::ostream_iterator<std::string>(s, "\n"));
+  return s.str();
+}
+\end{lstlisting}
+
+After that, the program can be verfified by some simple test cases.
+
+\begin{lstlisting}
+class SuffixTreeTest{
+public:
+  SuffixTreeTest(){
+    std::cout<<"Start suffix tree test\n";
+  }
+  void run(){
+    test_build("cacao");
+    test_build("mississippi");
+    test_build("banana$"); //$ as special terminator
+  }
+private:
+  void test_build(std::string str){
+    for(unsigned int i=0; i<str.length(); ++i)
+      test_build_step(str.substr(0, i+1));
+  }
+
+  void test_build_step(std::string str){
+    STree* t = suffix_tree(str);
+    std::cout<<"Suffix Tree ("<<str<<"):\n"
+             <<to_str(t)<<"\n";
+    delete t;
+  }
+};
+\end{lstlisting}
+
+Below are sinippet of suffix tree construction phases.
+
+\begin{verbatim}
+Suffix Tree (b):
+|--b-->
+
+Suffix Tree (ba):
+|--a-->
+|
+|--ba-->
+
+Suffix Tree (ban):
+|--an-->
+|
+|--ban-->
+|
+|--n-->
+
+Suffix Tree (bana):
+|--ana-->
+|
+|--bana-->
+|
+|--na-->
+
+Suffix Tree (banan):
+|--anan-->
+|
+|--banan-->
+|
+|--nan-->
+
+Suffix Tree (banana):
+|--anana-->
+|
+|--banana-->
+|
+|--nana-->
+
+Suffix Tree (banana$):
+|--$-->
+|
+|--a-->|--$-->
+|      |
+|      |--nan-->|--$-->
+|      |        |
+|      |        |--na$-->
+|
+|--banana$-->
+|
+|--nan-->|--$-->
+|        |
+|        |--na$-->
+\end{verbatim}
 
 \subsubsection{Functional algorithm for suffix tree construction}
 Alternative functional algorithm
