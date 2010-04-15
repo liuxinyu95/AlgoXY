@@ -1,5 +1,5 @@
 {-
-    Patricia.hs, Alphabetic Patricia Tree.
+    STree.hs, Suffix Tree/Trie in Haskell.
     Copyright (C) 2010, Liu Xinyu (liuxinyu95@gmail.com)
 
     This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,6 @@ module STree where
 
 import Data.List
 
--- method 1
 -- According to:
 --   * Robert Giegerich and Stefan Kurtz, \"/A comparison of
 --     imperative and purely functional suffix tree constructions/\",
@@ -37,62 +36,31 @@ import Data.List
 --  is equivalent to:
 --      foldl patricia-insert empty tails(word)
 --
-data STree = Leaf | Branch [(Edge, STree)] deriving (Eq, Show)
-type Edge = (String, Int)
-type EdgeFunction = [String]->(Int, [String])
 
-alpha = ['a'..'z']++['A'..'Z']
-
-lazyTree::EdgeFunction->[String]->STree
-lazyTree edge = stree where
-    stree [[]] = Leaf
-    stree ss = Branch [((a:sa, 1+cpl), stree ss') 
-                           | a<-alpha,
-                             x@(sa:_) <- [ss `selectBy` a],
-                             (cpl, ss') <- [edge x]]
-    selectBy ss a = [cs | c:cs <-ss, c==a] -- select suffixes starting with a
-
---ast: Atomic Suffix Tree,  means Suffix Trie
-ast::EdgeFunction
-ast ss = (0, ss)
-
---cst: Compact Suffix Tree, Suffix Patricia
---     extract the longest common prefix
-cst::EdgeFunction
-cst [s] = (length s, [[]])
-cst awss@((a:w):ss) | null [c | c:_<-ss, a /= c] = (1+cpl, ss')
-                    | otherwise                  = (0, awss)
-                    where (cpl, ss') = cst (w:[u | _:u<-ss])
-
-suffixes = init.tails -- returns non-empty suffixes
-
-suffixTrie::String->STree
-suffixTrie = lazyTree ast . suffixes
-
-suffixTree::String->STree
-suffixTree = lazyTree cst . suffixes
-
--- method 2
 -- Liu Xinyu: pure brute-force method with list comprehension
 --
 data Tr = Lf | Br [(String, Tr)] deriving (Eq, Show)
 type EdgeFunc = [String]->(String, [String])
 
+alpha = ['a'..'z']++['A'..'Z']
+
 -- Create Lazy Radix Tree
 -- some helper comments
 --  xs@(x:_)<-[...], The @(x:_) is used to filter out the empty elements
-lazyTr::EdgeFunc -> [String] -> Tr
-lazyTr edge = build where
+lazyTree::EdgeFunc -> [String] -> Tr
+lazyTree edge = build where
     build [[]] = Lf
     build ss = Br [(a:prefix, build ss') | a<-alpha, 
                                            xs@(x:_) <-[[cs | c:cs<-ss, c==a]],
                                            (prefix, ss')<-[edge xs]]
 
 -- Trie
+-- ast: Atomic Suffix Tree,  means Suffix Trie
 edgeTrie::EdgeFunc
 edgeTrie ss = ("", ss)
 
 -- Patricia: Extract the longest common prefix
+-- cst: Compact Suffix Tree, Suffix Patricia
 -- ex: 
 --   edgeTree ["an", "another", "and"] = ("an", ["", "other", "d"])
 --   edgeTree ["bool", "foo", "bar"] = ("", ["bool", "foo", "bar"])
@@ -110,71 +78,30 @@ edgeTree awss@((a:w):ss) | null [c|c:_<-ss, a/=c] = (a:prefix, ss')
                          where (prefix, ss') = edgeTree (w:[u| _:u<-ss])
 edgeTree ss = ("", ss) -- (a:w):ss can't be match <==> head ss == ""
 
-sufTrie::String->Tr
-sufTrie = lazyTr edgeTrie . tails
+suffixTrie::String->Tr
+suffixTrie = lazyTree edgeTrie . tails -- or init . tails
 
-sufTree::String->Tr
-sufTree = lazyTr edgeTree . tails
+suffixTree::String->Tr
+suffixTree = lazyTree edgeTree . tails
 
 -- Let's prove it's brute-force
 trie::[String]->Tr
-trie = lazyTr edgeTrie
+trie = lazyTree edgeTrie
 
 patricia::[String]->Tr
-patricia = lazyTr edgeTree
-
--- Method 3
--- Liu Xinyu: Construct the suffix tree from left to right
-update::Tr->Char->Tr
-update Lf c = Br [([c], Lf)]
-update (Br ts) c = case find (\(s, _)->c==head s) ts of 
-                   Nothing -> Br ((map (insertAfter c c') ts)++[([c], Lf)])
-                   _       -> Br ((map (insertAfter c c') ts)) --Br (map (appendLeaf c) ts)
-    where
-      c' = lastElem $ head ts -- c' is the last char of any edge to leaf
-                                      
-appendLeaf::Char->(String, Tr)->(String, Tr)
-appendLeaf c (s, Lf) = (s++[c], Lf)
-appendLeaf c (s, (Br ts)) = (s, Br (map (appendLeaf c) ts))
-                   
-lastElem::(String, Tr)->Char
-lastElem (s, Lf) = last s
-lastElem (_, Br ts) = lastElem $ head ts
-
---(s1c's2c'...snc's, t) --> (s1c', Br [(c, Lf), (s2c', Br [(c, Lf), Br ...
-insertAfter::Char->Char->(String, Tr)->(String, Tr)
-insertAfter c c' (s, t) = ins c lst where
-	lst = split (c'==) s
-        ins c [x] = if isLeaf t then (x++[c], t) else (x, update t c)
-	ins c (x:xs) = (x, Br [(ins c xs), ([c], Lf)])
-
-isLeaf::Tr -> Bool
-isLeaf Lf = True
-isLeaf _  = False
-
-split _ [] = []
-split f lst | ys == [] = [xs] 
-            | otherwise = (xs++[head ys]): split f (tail ys)
-    where (xs, ys) = break f lst
-
-suffixTree'::String->Tr
-suffixTree' = foldl update Lf
+patricia = lazyTree edgeTree
 
 -- testing
 
-testSuffixTrie s = "Robert, Kurtz:\n SuffixTrie(\"" ++ s ++ "\")=" ++ (show $ suffixTrie s) ++ "\n"
+testSuffixTrie s = "SuffixTrie(\"" ++ s ++ "\")=" ++ (show $ suffixTrie s) ++ "\n"
 
-testSuffixTree s = "Robert, Kurtz:\n SuffixTree(\"" ++ s ++ "\")=" ++ (show $ suffixTree s) ++ "\n"
-
-testSuffixTrie' s = "Liu Xinyu:\n SuffixTrie(\"" ++ s ++ "\")=" ++ (show $ sufTrie s) ++ "\n"
-
-testSuffixTree' s = "Liu Xinyu:\n SuffixTree(\"" ++ s ++ "\")=" ++ (show $ sufTree s) ++ "\n"
+testSuffixTree s = "SuffixTree(\"" ++ s ++ "\")=" ++ (show $ suffixTree s) ++ "\n"
 
 testTrie ss = "Trie(\"" ++ (show ss) ++ "\")=" ++ (show $ trie ss) ++ "\n"
 
 testPatricia ss = "Patricia(\"" ++ (show ss) ++ "\")=" ++ (show $ patricia ss) ++ "\n"
 
 test = concat [ f s | s <- ["cacao", "mississippi", "banans"],
-                      f <- [testSuffixTrie, testSuffixTree, testSuffixTrie', testSuffixTree']] ++
+                      f <- [testSuffixTrie, testSuffixTree]] ++
        testTrie ["zoo", "bool", "boy", "another", "an", "a"] ++
        testPatricia ["zoo", "bool", "boy", "another", "an", "a"]
