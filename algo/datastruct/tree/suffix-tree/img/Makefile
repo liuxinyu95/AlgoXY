@@ -1,7 +1,7 @@
 IMG_OBJECTS = implicit-end-point ep-ap
-DOT_OBJECTS = stree-banana strie-banana stree-bananas stree-cacao \
+DOT_OBJECTS = stree-banana strie-banana stree-bananas \
 stree-bananas-label strie-cacao strie-caca strie-cac strie-ca strie-c \
-strie-empty
+strie-empty stree-cacao stree-caca stree-cac stree-ca stree-c
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png

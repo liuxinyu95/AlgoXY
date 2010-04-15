@@ -756,7 +756,7 @@ $SuffixTree(S_{i+1})$. Figure \ref{fig:ep-ap} shows about this truth.
 At this time point, the algorithm of Ukkonen's on-line construction can 
 be given as the following.
 
-\begin{algorithm}
+%\begin{algorithm}
 \begin{algorithmic}
 \STATE $UPDATE(node, (l, i))$
   \STATE $prev \leftarrow CREATE-NEW-NODE()$
@@ -773,9 +773,9 @@ be given as the following.
   \STATE $SUFFIX-LINK(prev) \leftarrow node$
   \RETURN $(node, l)$
 \end{algorithmic}
-\caption{Update $SuffixTree(S_{i-1})$}
-\label{algo:update}
-\end{algorithm}
+%\caption{Update $SuffixTree(S_{i-1})$}
+%\label{algo:update}
+%\end{algorithm}
 
 This algorithm takes a parameter as reference pair $(node, (l, i))$, note that
 position $(node, (l, i-1)$ is the active point for $SuffixTree(S_{i-1})$.
@@ -786,7 +786,7 @@ where the new leaf node will be branch out.
 
 $END-POINT-BRANCH?()$ algorithm is implemented as below.
 
-\begin{algorithm}
+%\begin{algorithm}
 \begin{algorithmic}
 \STATE $END-POINT-BRANCH?(node, (l, r), c)$
   \IF{$(l, r) = \epsilon$}
@@ -808,9 +808,9 @@ $END-POINT-BRANCH?()$ algorithm is implemented as below.
     \ENDIF
   \ENDIF
 \end{algorithmic}
-\caption{Test if a position is end point and create explicit node for further branching.}
-\label{algo:branch}
-\end{algorithm}
+%\caption{Test if a position is end point and create explicit node for further branching.}
+%\label{algo:branch}
+%\end{algorithm}
 
 If the position is $(root, \epsilon)$, which means we have gone along suffix links to
 the root, we return $TRUE$ to indicate the updating can be finished for this round.
@@ -825,7 +825,7 @@ the position an explicit node, and return it for further branching.
 
 With the previous defined $CANONIZE()$ funciton, we can finalize the Ukkonen algorithm.
 
-\begin{algorithm}
+%\begin{algorithm}
 \begin{algorithmic}
 \STATE $SUFFIX-TREE(S)$
   \STATE $root \leftarrow CREATE-NEW-NODE()$
@@ -836,12 +836,267 @@ With the previous defined $CANONIZE()$ funciton, we can finalize the Ukkonen alg
   \ENDFOR
   \RETURN $root$
 \end{algorithmic}
-\caption{Main algorithm of Ukkonen's on-line construction for suffix tree.}
-\label{algo:ukkonen2}
-\end{algorithm}
+%\caption{Main algorithm of Ukkonen's on-line construction for suffix tree.}
+%\label{algo:ukkonen2}
+%\end{algorithm}
+
+Figure \ref{fig:cons-stree-cacao} shows the phases when constructing the
+suffix tree for string ``cacao'' with Ukkonen algorithm.
+
+\begin{figure}[htbp]
+   \begin{center}
+     \includegraphics[scale=0.5]{img/strie-empty.ps}empty
+     \includegraphics[scale=0.5]{img/stree-c.ps}``c''
+     \includegraphics[scale=0.5]{img/stree-ca.ps}``ca''
+     \includegraphics[scale=0.5]{img/stree-cac.ps}``cac'' \newline
+     \includegraphics[scale=0.5]{img/stree-caca.ps}``caca''
+     \includegraphics[scale=0.5]{img/stree-cacao.ps}``cacao''
+     \caption{Construction of suffix tree for ``cacao'', the 6 phases are shown, only the last layer of suffix links are shown in dotted arrow.}
+     \label{fig:cons-stree-cacao}
+   \end{center}
+\end{figure}
+
+Note that it needn't setup suffix link for leaf nodes, only branch nodes
+have been set suffix links.
 
 \subsubsection{Implementation of Ukkonen algorithm in imperative languages}
-C++/Python verison of this algorithm
+The 2 main features of Ukkonen algorithm are intense use of suffix link and
+on-line update. So it will be very suitable to implement in imperative lanaguage.
+
+\subsubsection*{Ukkonen algorithm in Python}
+The node definition is as same as the suffix Trie, however, the exact meaning
+for children field are not same.
+
+\lstset{language=Python}
+\begin{lstlisting}
+class Node:
+    def __init__(self, suffix=None):
+        self.children = {} # 'c':(word, Node), where word = (l, r)
+        self.suffix = suffix
+\end{lstlisting}
+
+The children for suffix tree actually represent to the node transition
+with reference pair. if the trasition is 
+$CHILDREN(node)[s_l] \leftarrow ((l, r) node')$, 
+The key type of the children is the character, which is corresponding 
+to $s_l$, the data; the data type of the children is the referene pair.
+
+Because there is only one copy of the complete string, all substrings
+are represent in $(left, right)$ pairs, and the leaf are open pairs
+as $(left, \infty)$, so we provide a tree definition in Python as below.
+
+\begin{lstlisting}
+class STree:
+    def __init__(self, s):
+        self.str = s
+        self.infinity = len(s)+1000
+        self.root = Node()
+\end{lstlisting}
+
+The infinity is defined as the length of the string plus a big number, we'll
+benifit from python's list[a:b] expression that if the right index exceed to the
+length of the list, the result is from left to the end of the list.
+
+For convenience, I provide 2 helper funcitons for later use.
+
+\begin{lstlisting}
+def substr(str, str_ref):
+    (l, r)=str_ref
+    return str[l:r+1]
+
+def length(str_ref):
+    (l, r)=str_ref
+    return r-l+1
+\end{lstlisting}
+
+The main entry for Ukkonen algorithm is implemented as the following.
+
+\begin{lstlisting}
+def suffix_tree(str):
+    t = STree(str)
+    node = t.root # init active point is (root, Empty)
+    l = 0
+    for i in range(len(str)):
+        (node, l) = update(t, node, (l, i))
+        (node, l) = canonize(t, node, (l, i))
+    return t
+\end{lstlisting}
+
+In the main entry, we initialize the tree and let the node points to the
+root, at this time point, the active point is $(root, \epsilon)$, which
+is (root, (0, -1)) in Python. we pass the active point to update() function 
+in a loop from the left most index to the right most index of the string.
+Inside the loop, update() funciton returns the end point, and we need 
+convert it to canonical reference pair for the next time update.
+
+the update() function is realized like the following.
+
+\begin{lstlisting}
+def update(t, node, str_ref):
+    (l, i) = str_ref 
+    c = t.str[i] # current char
+    prev = Node() # dummy init 
+    while True:
+        (finish, p) = branch(t, node, (l, i-1), c)
+        if finish:
+            break
+        p.children[c]=((i, t.infinity), Node())
+        prev.suffix = p
+        prev = p
+        # go up along suffix link
+        (node, l) = canonize(t, node.suffix, (l, i-1))
+    prev.suffix = node
+    return (node, l)
+\end{lstlisting}
+
+Different with Ukkonen's original program, I didn't use sentinel node.
+The reference passed in is $(node, (l, i)$, the active point is
+$(node, (l, i-1))$ actually, we passed the active point to branch() 
+function. If it is end point, branch() function will return true
+as the first element in the result. we then terminate the loop immediately.
+Otherwise, branch() function will return the node which need to branch
+out a new leaf as the second element in the result. The program
+then create the new leaf, set it as open pair, and then go up along
+with suffix link. The prev variable first point to a dummy node,
+this can simplify the logic, and it used to record the position along
+the boundary path. by the end of the loop, we'll finish the last
+updating of the suffix link and return the end point. Since the end
+point is always in form of (node, (l, i-1)), only (node, l) is returned.
+
+Function branch() is used to test if a position is the end point
+and turn the implicit node to explict node if neccessary.
+
+\begin{lstlisting}
+def branch(t, node, str_ref, c):
+    (l, r) = str_ref
+    if length(str_ref)<=0: # (node, empty)
+        if node is None: #_|_
+            return (True, t.root)
+        else:
+            return ((c in node.children), node)
+    else:
+        ((l1, r1), node1) = node.children[t.str[l]]
+        pos = l1+length(str_ref)
+        if t.str[pos]==c:
+            return (True, node)
+        else:             # node--->branch_node--->node1
+            branch_node = Node()
+            node.children[t.str[l1]]=((l1, pos-1), branch_node)
+            branch_node.children[t.str[pos]] = ((pos, r1), node1)
+            return (False, branch_node)
+\end{lstlisting}
+
+Because I don't use sentinel node, the special case is handled
+in the first if-clause.
+
+The canonize() function helps to conver a reference pair to 
+canonical reference pair.
+
+\begin{lstlisting}
+def canonize(t, node, str_ref):
+    (l, r) = str_ref 
+    if node is None:
+        if length(str_ref)<=0:
+            return (None, l)
+        else:
+            return canonize(t, t.root, (l+1, r))
+    while l<=r: # str_ref is not empty
+        ((l1, r1), child) = node.children[t.str[l]] # node--(l', r')-->child
+        if r-l >= r1-l1: #node--(l',r')-->child--->...
+            l += r1-l1+1 # remove |(l',r')| chars from (l, r)
+            node = child 
+        else:
+            break
+    return (node, l)
+\end{lstlisting}
+
+Before testing the suffix tree construction algorithm, some helper
+functions to convert the suffix tree to human readable string are
+given.
+
+\begin{lstlisting}
+def to_lines(t, node):
+    if len(node.children)==0:
+        return [""]
+    res = []
+    for c, (str_ref, tr) in sorted(node.children.items()):
+        lines = to_lines(t, tr)
+        edge_str = substr(t.str, str_ref)
+        lines[0] = "|--"+edge_str+"-->"+lines[0]
+        if len(node.children)>1:
+            lines[1:] = map(lambda l: "|"+" "*(len(edge_str)+5)+l, lines[1:])
+        else:
+            lines[1:] = map(lambda l: " "+" "*(len(edge_str)+6)+l, lines[1:])
+        if res !=[]:
+            res.append("|")
+        res += lines
+    return res
+
+def to_str(t):
+    return "\n".join(to_lines(t, t.root))
+\end{lstlisting}
+
+They are quite similar to the helper functions for suffix Trie print. The different
+part is mainly cause by the reference pair of string.
+
+In order to verify the implementation, some very simple test cases are feed to the
+algorithm as below.
+
+\begin{lstlisting}
+class SuffixTreeTest:
+    def __init__(self):
+        print "start suffix tree test"
+
+    def run(self):
+        strs = ["cacao", "mississippi", "banana$"] #$ speical terminator
+        for s in strs:
+            self.test_build(s)
+
+    def test_build(self, str):
+        for i in range(len(str)):
+            self.__test_build(str[:i+1])
+
+
+    def __test_build(self, str):
+        print "Suffix Tree ("+str+"):\n", to_str(suffix_tree(str)),"\n"
+\end{lstlisting}
+
+Here is a result snippet which shows the construciton phases for string ``cacao''
+
+\begin{verbatim}
+Suffix Tree (c):
+|--c--> 
+
+Suffix Tree (ca):
+|--a-->
+|
+|--ca--> 
+
+Suffix Tree (cac):
+|--ac-->
+|
+|--cac--> 
+
+Suffix Tree (caca):
+|--aca-->
+|
+|--caca--> 
+
+Suffix Tree (cacao):
+|--a-->|--cao-->
+|      |
+|      |--o-->
+|
+|--ca-->|--cao-->
+|       |
+|       |--o-->
+|
+|--o--> 
+\end{verbatim}
+
+The result is identical to the one which is shown in figure \ref{fig:cons-stree-cacao}.
+
+\subsubsection*{Ukkonen algorithm in C++}
 
 \subsubsection{Functional algorithm for suffix tree construction}
 Alternative functional algorithm
