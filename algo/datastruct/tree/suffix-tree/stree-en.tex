@@ -1475,9 +1475,171 @@ Suffix Tree (banana$):
 \end{verbatim}
 
 \subsubsection{Functional algorithm for suffix tree construction}
-Alternative functional algorithm
+Ukkonen's algorithm is in a manner of on-ling updating and suffix
+link plays very important role. Such properties can't be realized
+in a functinal approach. Giegerich and Kurtz found Ukkonen's algorithm
+can be transformed to McCreight's algorithm\cite{GieKur97}. These
+two and the algorithm found by Weiner are all $O(n)$-algorithms.
+They also conjecture (although it isn't proved) that any sequential
+suffix tree construction not base on the important concepts, such
+as suffix links, active suffixes, etc., will fail to meet $O(n)$-criterion.
 
-Haskell and Scheme/Lisp version.
+There is implemented in PLT/Scheme\cite{plt-stree} based on
+Ukkonen's algorithm, However it updates suffix links during the 
+processing, so it is not pure functinal approach.
+
+A lazy suffix tree construction method is discussed in \cite{GieKur95}.
+And this method is contribute to Haskell Hackage by Bryan O'Sullivan.
+\cite{Hackage-STree}.
+
+This method benifit from the lazy evaluation property of 
+Haskell progrmming languages, so that the tree won't be constructed
+untill it is traversed. However, I think it is still a kind of brute-force
+method. In other functional programming languages such as ML.
+It can't be $O(n)$ algorithm.
+
+I will provide a pure brute-force implementation which is similar
+but not 100\% same in this post.
+
+\subsubsection*{Brute-force suffix tree construction in Haskell}
+
+For brute-force implementation, we needn't suffix link at all. The definition
+of suffix node is plain straightforward.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+data Tr = Lf | Br [(String, Tr)] deriving (Eq, Show)
+type EdgeFunc = [String]->(String, [String])
+\end{lstlisting}
+
+The edge function plays interesting role. it takes a list of strings,
+and extract a prefix of these strings, the prefix may not be the
+longest prefix, and empty string is also possible. Whether extract
+the longest prefix or just return them trivially can be defiend by different
+edge functions.
+
+For easy implementation, we limit the character set as below.
+
+\begin{lstlisting}
+alpha = ['a'..'z']++['A'..'Z']
+\end{lstlisting}
+
+This is only for illustration purpose, only the English lower case and upper
+case letters are included. We can of course includes other characters if neccessary.
+
+The core algorithm is given in list comprehension style.
+
+\begin{lstlisting}
+lazyTree::EdgeFunc -> [String] -> Tr
+lazyTree edge = build where
+    build [[]] = Lf
+    build ss = Br [(a:prefix, build ss') | 
+                         a<-alpha, 
+                         xs@(x:_) <-[[cs | c:cs<-ss, c==a]],
+                         (prefix, ss')<-[edge xs]]
+\end{lstlisting}
+
+lazyTree function takes a list of string, it will generate a radix
+tree (for example a Trie or a patricia) from these string.
+
+It will categorize all strings with the first letter in several groups, 
+and remove the first letter for each elements in every group.
+For example, for the string list [``acac'', ``cac'', ``ac'', ``c'']
+the categorized group will be [('a', [``cac'', ``c'']), ('c', [``ac'', ``''])].
+For easy understanding, I left the first letter, and write the groups
+as tuple. then all strings with same first letter (removed) will
+be fed to edge function.
+
+Different edge function produce different radix trees. The most trivial
+one will build a Trie.
+
+\begin{lstlisting}
+edgeTrie::EdgeFunc
+edgeTrie ss = ("", ss)
+\end{lstlisting}
+
+If the edge function extract the longest common prefix, then it will 
+build a Paticia.
+
+\begin{lstlisting}
+-- ex: 
+--   edgeTree ["an", "another", "and"] = ("an", ["", "other", "d"])
+--   edgeTree ["bool", "foo", "bar"] = ("", ["bool", "foo", "bar"])
+--
+-- some helper comments
+--   let awss@((a:w):ss) = ["an", "another", "and"]
+--       (a:w) = "an",  ss = ["another", "and"]
+--       a='a', w="n"
+--       rests awss = w:[u| _:u<-ss] = ["n", "nother", "nd"]
+--
+edgeTree::EdgeFunc
+edgeTree [s] = (s, [[]])
+edgeTree awss@((a:w):ss) | null [c|c:_<-ss, a/=c] = (a:prefix, ss')
+                         | otherwise              = ("", awss)
+                         where (prefix, ss') = edgeTree (w:[u| _:u<-ss])
+edgeTree ss = ("", ss) -- (a:w):ss can't be match <==> head ss == ""
+\end{lstlisting}
+
+We can build suffix Trie and suffix tree with the above two functions.
+
+\begin{lstlisting}
+suffixTrie::String->Tr
+suffixTrie = lazyTree edgeTrie . tails -- or init . tails
+
+suffixTree::String->Tr
+suffixTree = lazyTree edgeTree . tails
+\end{lstlisting}
+
+Below snippet is the result of constructing suffix Trie/tree for
+string ``mississippi''.
+
+\begin{verbatim}
+SuffixTree("mississippi")=Br [("i",Br [("ppi",Lf),("ssi",Br [("ppi",Lf),
+("ssippi",Lf)])]),("mississippi",Lf),("p",Br [("i",Lf),("pi",Lf)]),("s",
+Br [("i",Br [("ppi",Lf),("ssippi",Lf)]),("si",Br [("ppi",Lf),("ssippi",
+Lf)])])]
+SuffixTrie("mississippi")=Br [("i",Br [("p",Br [("p",Br [("i",Lf)])]),
+("s",Br [("s",Br [("i",Br [("p",Br [("p",Br [("i",Lf)])]),("s",Br [("s",
+Br [("i",Br [("p",Br [("p",Br [("i",Lf)])])])])])])])])]),("m",Br [("i",
+Br [("s",Br [("s",Br [("i",Br [("s",Br [("s",Br [("i",Br [("p",Br [("p",
+Br [("i",Lf)])])])])])])])])])]),("p",Br [("i",Lf),("p",Br [("i",Lf)])]),
+("s",Br [("i",Br [("p",Br [("p",Br [("i",Lf)])]),("s",Br [("s",Br [("i",
+Br [("p",Br [("p",Br [("i",Lf)])])])])])]),("s",Br [("i",Br [("p",Br 
+[("p",Br [("i",Lf)])]),("s",Br [("s",Br [("i",Br [("p",Br [("p",Br 
+[("i",Lf)])])])])])])])])]
+\end{verbatim}
+
+Function lazyTree is common for all radix trees, the normal Patricia
+and Trie can also be constructed with it.
+
+\begin{lstlisting}
+trie::[String]->Tr
+trie = lazyTree edgeTrie
+
+patricia::[String]->Tr
+patricia = lazyTree edgeTree
+\end{lstlisting}
+
+Let's test it with some simple cases.
+
+\begin{lstlisting}
+trie ["zoo", "bool", "boy", "another", "an", "a"]
+patricia ["zoo", "bool", "boy", "another", "an", "a"]
+\end{lstlisting}
+
+The results are as below.
+
+\begin{verbatim}
+Br [("a",Br [("n",Br [("o",Br [("t",Br [("h",Br [("e",
+Br [("r",Lf)])])])])])]),("b",Br [("o",Br [("o",Br [("l",Lf)]),
+("y",Lf)])]),("z",Br [("o",Br [("o",Lf)])])]
+
+Br [("another",Lf),("bo",Br [("ol",Lf),("y",Lf)]),("zoo",Lf)]
+\end{verbatim}
+
+This is reason why I think the method is brute-force.
+
+\subsubsection*{Brute-force suffix tree construction in Scheme/Lisp}.
 
 % ================================================================
 %               Suffix tree applications
@@ -1554,6 +1716,18 @@ Liu Xinyu. ``Trie and Patricia, with Functional and imperative implementation''.
 
 \bibitem{trivial-stree-java}
 Suffix Tree (Java). http://en.literateprograms.org/Suffix\_tree\_(Java)
+
+\bibitem{GieKur97}
+Robert Giegerich and Stefan Kurtz. ``From Ukkonen to McCreight and Weiner: A Unifying View of Linear-Time Suffix Tree Construction''. Science of Computer Programming 25(2-3):187-218, 1995. http://citeseer.ist.psu.edu/giegerich95comparison.html
+
+\bibitem{GieKur95}
+Robert Giegerich and Stefan Kurtz. ``A Comparison of Imperative and Purely Functional Suffix Tree Constructions''. Algorithmica 19 (3): 331--353. doi:10.1007/PL00009177. www.zbh.uni-hamburg.de/pubs/pdf/GieKur1997.pdf
+
+\bibitem{Hackage-STree}
+Bryan O'Sullivan. ``suffixtree: Efficient, lazy suffix tree implementation''. http://hackage.haskell.org/package/suffixtree
+
+\bibitem{plt-stree}
+Danny. http://hkn.eecs.berkeley.edu/~dyoo/plt/suffixtree/
 
 \end{thebibliography}
 
