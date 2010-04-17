@@ -25,6 +25,7 @@
 #include <list>
 #include <algorithm>
 //#include "boost/tuple/tuple.hpp"
+#include "streeutil.hpp"
 
 //
 // Simulate boost::tie
@@ -219,21 +220,6 @@ STree* suffix_tree(std::string s){
 //
 // helper functions for output
 //
-
-// map (x+) coll in Haskell
-// boost lambda: transform(first, last, first, x+_1)
-template<class Iter, class T>
-void map_add(Iter first, Iter last, T x){
-  std::transform(first, last, first, 
-                 std::bind1st(std::plus<T>(), x));
-}
-
-// x ++ y in Haskell
-template<class Coll>
-void concat(Coll& x, Coll& y){
-  std::copy(y.begin(), y.end(), 
-            std::insert_iterator<Coll>(x, x.end()));
-}
 
 std::list<std::string> to_lines(Node* node){
   typedef std::list<std::string> Result;
