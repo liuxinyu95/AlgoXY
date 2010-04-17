@@ -14,7 +14,7 @@
 #     You should have received a copy of the GNU General Public License
 #     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-HEADER = stree.hpp
+HEADER = stree.hpp strie.hpp streeutil.hpp
 SOURCE = test.cpp
 CPP_TEST_OBJS = test.o
 CXX = g++ -Wall -ggdb -I/usr/include/boost-1_33_1
