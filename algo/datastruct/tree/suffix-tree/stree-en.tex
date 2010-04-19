@@ -1720,6 +1720,136 @@ This is reason why I think the method is brute-force.
 
 \subsubsection*{Brute-force suffix tree construction in Scheme/Lisp}.
 
+The Functional implementation in Haskell utilizes list comprehension, which
+is a handy syntax tool. In Scheme/Lisp, we use functions instead.
+
+In MIT scheme, there are special functions to manipulate strings, which
+is a bit different from list. Below are helper functions to simulate
+car and cdr function for string.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (string-car s)
+  (if (string=? s "")
+      ""
+      (string-head s 1)))
+
+(define (string-cdr s)
+  (if (string=? s "")
+      ""
+      (string-tail s 1)))
+\end{lstlisting}
+
+The edge functions will extract common prefix from a list of strings.
+For Trie, only the first common character will be extracted.
+
+\begin{lstlisting}
+;; (edge-trie '("an" "another" "and"))
+;;  ==> ("a" "n" "nother" "nd")
+(define (edge-trie ss)
+  (cons (string-car (car ss)) (map string-cdr ss)))
+\end{lstlisting}
+
+While for suffix tree, we need extract the longest common prefix.
+
+\begin{lstlisting}
+;; (edge-tree '("an" "another" "and"))
+;;   ==> ("an" "" "other" "d")
+(define (edge-tree ss)
+  (cond ((= 1 (length ss)) (cons (car ss) '()))
+	((prefix? ss)
+	 (let* ((res (edge-tree (map string-cdr ss)))
+		(prefix (car res))
+		(ss1 (cdr res)))
+	   (cons (string-append (string-car (car ss)) prefix) ss1)))
+	(else (cons "" ss))))
+
+;; test if a list of strings has common prefix
+;; (prefix '("an" "another" "and")) ==> true
+;; (prefix '("" "other" "d")) ==> false
+(define (prefix? ss)
+  (if (null? ss)
+      '()
+      (let ((c (string-car (car ss))))
+	(null? (filter (lambda (s) (not (string=? c (string-car s))))
+		       (cdr ss))))))
+\end{lstlisting}
+
+For some old version of MIT scheme, there isn't definition for
+partition function, so I defined one like below.
+
+\begin{lstlisting}
+;; overwite the partition if not supprt SRFI 1
+;; (partition (> 5) '(1 6 2 7 3 9 0))
+;;   ==>((6 7 9) 1 2 3 0)
+(define (partition pred lst)
+  (if (null? lst)
+      (cons '() '())
+      (let ((res (partition pred (cdr lst))))
+	(if (pred (car lst))
+	    (cons (cons (car lst) (car res)) (cdr res))
+	    (cons (car res) (cons (car lst) (cdr res)))))))
+\end{lstlisting}
+
+Function groups can group a list of strings based on the first
+letter of each string.
+
+\begin{lstlisting}
+;; group a list of strings based on first char
+;; ss shouldn't contains "" string, so filter should be done first.
+;; (groups '("an" "another" "bool" "and" "bar" "c"))
+;;  ==> (("an" "another" "and") ("bool" "bar") ("c"))
+(define (groups ss)
+  (if (null? ss) 
+      '()
+      (let* ((c (string-car (car ss)))
+	     (res (partition (lambda (x) (string=? c (string-car x))) (cdr ss))))
+	(append (list (cons (car ss) (car res)))
+		(groups (cdr res))))))
+\end{lstlisting}
+
+Function remove-empty can remove the empty string from the string list.
+
+\begin{lstlisting}
+(define (remove-empty ss)
+  (filter (lambda (s) (not (string=? "" s))) ss))
+\end{lstlisting}
+
+With all the above tools, the core brute-force algorithm can be implemented
+like the following.
+
+\begin{lstlisting}
+(define (make-tree edge ss)
+  (define (bld-group grp)
+    (let* ((res (edge grp))
+	   (prefix (car res))
+	   (ss1 (cdr res)))
+      (cons prefix (make-tree edge ss1))))
+  (let ((ss1 (remove-empty ss)))
+    (if (null? ss1) '()
+	(map bld-group (groups ss1)))))
+\end{lstlisting}
+
+The final suffix tree and suffix Trie construction algorithms can
+be given.
+
+\begin{lstlisting}
+(define (suffix-tree s)
+  (make-tree edge-tree (tails s)))
+
+(define (suffix-trie s)
+  (make-tree edge-trie (tails s)))
+\end{lstlisting}
+
+Below snippet are quick verification of this program.
+
+\begin{lstlisting}
+(suffix-trie "cacao") 
+;Value 66: (("c" ("a" ("c" ("a" ("o"))) ("o"))) ("a" ("c" ("a" ("o"))) ("o")) ("o")) 
+(suffix-tree "cacao") 
+;Value 67: (("ca" ("cao") ("o")) ("a" ("cao") ("o")) ("o")) 
+\end{lstlisting}
+
 % ================================================================
 %               Suffix tree applications
 % ================================================================
