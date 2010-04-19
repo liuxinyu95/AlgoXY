@@ -38,6 +38,9 @@
 (define (edge-trie ss)
   (cons (string-car (car ss)) (map string-cdr ss)))
 
+;; test if a list of strings has common prefix
+;; (prefix '("an" "another" "and")) ==> true
+;; (prefix '("" "other" "d")) ==> false
 (define (prefix? ss)
   (if (null? ss)
       '()
@@ -57,6 +60,8 @@
 	(else (cons "" ss))))
 
 ;; overwite the partition if not supprt SRFI 1
+;; (partition (> 5) '(1 6 2 7 3 9 0))
+;;   ==>((6 7 9) 1 2 3 0)
 (define (partition pred lst)
   (if (null? lst)
       (cons '() '())
@@ -67,6 +72,8 @@
 
 ;; group a list of strings based on first char
 ;; ss shouldn't contains "" string, so filter should be done first.
+;; (groups '("an" "another" "bool" "and" "bar" "c"))
+;;  ==> (("an" "another" "and") ("bool" "bar") ("c"))
 (define (groups ss)
   (if (null? ss) 
       '()
