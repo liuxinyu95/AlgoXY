@@ -29,6 +29,9 @@ class STree:
         self.infinity = len(s)+1000
         self.root = Node()
 
+    def substr(self, sref):
+        return substr(self.str, sref)
+
 #
 # In order to improve the efficiency by operation on-line
 # There is only one copy of the string. All sub strings are
