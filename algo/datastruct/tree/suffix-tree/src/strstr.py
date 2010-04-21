@@ -28,7 +28,7 @@ TERM2 = '#'
 # so I use the recursive version to simplify the logic for
 # illustration purpose
 def lookup_pattern(t, node, s):
-    f = (lambda x: x==0 and 1 or x)
+    f = (lambda x: 1 if x==0 else x)
     for _, (str_ref, tr) in node.children.items():
         edge = t.substr(str_ref)
         if string.find(edge, s)==0: #s `isPrefixOf` edge
