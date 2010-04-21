@@ -1860,6 +1860,7 @@ Suffix tree can help to solve a lot of string/DNA manipulation problems
 paticularly fast. For typical problems will be list in this section.
 
 \subsection{String/Pattern searching}
+\label{substring-lookup}
 
 There a plenty of string searching problems, among them includes the
 famous KMP algorithm. Suffix tree can perform same level as 
@@ -1878,10 +1879,17 @@ Note the facts of a $SuffixTree(S)$ that all internal nodes is corresponding
 to a repeating substring of $S$ and the number of leaves of the sub-tree of a
 node for string $P$ is the number of occurrence of $P$ in $S$.\cite{ukkonen-lec}
 
+\subsubsection*{Find number of substring occurrence in Python}
+
+The searching algorithm is almost as same as the Patricia looking 
+up \cite{lxy-trie}. In Ukkonen's algorithm, there is only one copy
+of string, and all edges are represent with index pairs. There are
+some changes because of this reason. 
+
 \lstset{language=Python}
 \begin{lstlisting}
 def lookup_pattern(t, node, s):
-    f = (lambda x: x==0 and 1 or x)
+    f = (lambda x: 1 if x==0 else x)
     for _, (str_ref, tr) in node.children.items():
         edge = t.substr(str_ref)
         if string.find(edge, s)==0: #s `isPrefixOf` edge
@@ -1891,9 +1899,103 @@ def lookup_pattern(t, node, s):
     return 0 # not found
 \end{lstlisting}
 
+I added a member function in STree to convert a string index
+pair to string as below.
+
+\begin{lstlisting}
+class STree:
+    #...
+    def substr(self, sref):
+        return substr(self.str, sref)
+\end{lstlisting}
+
+In lookup\_pattern() function, it takes a suffix tree which 
+is built from the string.
+A node is passed as the position to be looked up, it is root node when 
+starting. Parameter s is the string to be searched.
+
+The algorithm iterate all children of the node, it convert the string
+index reference pair to edge substring, and check if s is prefix of the
+the edge string, if matches, then the program can be terminated, the
+number of the branches of this node will be returned as the number
+of the occurrence of this substring. Note that no branch means there 
+is only 1 occurrence. In case the edge is prefix of s, we then
+recursively call the function to continue searching.
+
+Because construction of the suffix tree is expensive, so we only 
+do it when neccessary. We can do a lazy initialization as below.
+
+\begin{lstlisting}
+TERM1 = '$' # $: special terminator
+
+class STreeUtil:
+    def __init__(self):
+        self.tree = None
+
+    def find_pattern(self, str, pattern):
+        if self.tree is None or self.tree.str!=str+TERM1:
+            self.tree = stree.suffix_tree(str+TERM1)
+        return lookup_pattern(self.tree, self.tree.root, pattern)
+\end{lstlisting}
+
+We always append special terminator to the string, so that there won't
+be any suffix becomes the prefix of the other\cite{wiki-suffix-tree}.
+
+Some simple test cases are given to verify the program.
+
+\begin{lstlisting}
+class StrSTreeTest:
+    def run(self):
+        self.test_find_pattern()
+
+    def test_find_pattern(self):
+        util=STreeUtil()
+        self.__test_pattern__(util, "banana", "ana")
+        self.__test_pattern__(util, "banana", "an")
+        self.__test_pattern__(util, "banana", "anan")
+        self.__test_pattern__(util, "banana", "nana")
+        self.__test_pattern__(util, "banana", "ananan")
+
+    def __test_pattern__(self, u, s, p):
+        print "find pattern", p, "in", s, ":", u.find_pattern(s, p)
+\end{lstlisting}
+
+And the output is like the following.
+
+\begin{verbatim}
+find pattern ana in banana : 2
+find pattern an in banana : 2
+find pattern anan in banana : 1
+find pattern nana in banana : 1
+find pattern ananan in banana : 0
+\end{verbatim}
+
 for search pattern like ``a**n'' with suffix tree, please refer to \cite{ukkonen-lec} and \cite{ukkonen-search}.
 
 \subsection{Find the longest repeated substring}
+
+If we go one step ahead from \ref{substring-lookup}, below result can
+be found.
+
+{\em After adding a special terminater character to string S, The 
+longest repeated substring can be found by searching the 
+deepest branches in suffix tree.}
+
+Consider the example suffix tree shown in figure \ref{fig:stree-mississippis}
+
+\begin{figure}[htbp]
+   \begin{center}
+      \includegraphics[scale=0.5]{img/stree-mississippis.ps}
+      \caption{The suffix tree for `mississippi\$'} \label{fig:stree-mississippis}
+   \end{center}
+\end{figure}
+
+There are 3 branch nodes, A, B, and C which depth is 3. However, A represents
+the longest repeated substring ``issi''. B and C represent for ``si'', ``ssi'',
+they are all shorter than A. 
+
+This example tells us that the ``depth'' of the branch node should be measured
+by the number of characters traversed from the root.
 
 \subsection{Find the longest common substring}
 
