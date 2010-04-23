@@ -37,6 +37,16 @@ def lookup_pattern(t, node, s):
             return lookup_pattern(t, tr, s[len(edge):])
     return 0 # not found
 
+# search the longest repeating substring
+#  BFS approach
+def LRS(t, node):
+    queue = [node]
+    while len(queue)>0:
+        node = queue.pop(0)
+        for _, (str_ref, tr) in node.children.items():
+            if len(tr.children)>0:
+                queue.append(tr)
+
 class STreeUtil:
     def __init__(self):
         self.tree = None
