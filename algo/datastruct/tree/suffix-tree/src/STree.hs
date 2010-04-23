@@ -42,7 +42,7 @@ import Data.List
 data Tr = Lf | Br [(String, Tr)] deriving (Eq, Show)
 type EdgeFunc = [String]->(String, [String])
 
-alpha = ['a'..'z']++['A'..'Z']
+alpha = ['a'..'z']++['A'..'Z']++['#', '$']
 
 -- Create Lazy Radix Tree
 -- some helper comments
