@@ -19,10 +19,10 @@ SOURCE = test.cpp
 CPP_TEST_OBJS = test.o
 CXX = g++ -Wall -ggdb -I/usr/include/boost-1_33_1
 CXX_FLAGS = 
-HS_TEST_SRCS = STree.hs TestMain.hs
+HS_TEST_SRCS = STree.hs STreeStr.hs TestMain.hs
 HS_TEST_OBJS = $(HS_TEST_SRCS:.hs=.o)
 #HS_APP_SRCS = TestMain.hs
-HS_APP_OBJS = EDict.o Trie.o Patricia.o
+#HS_APP_OBJS = EDict.o Trie.o Patricia.o
 
 .SUFFIXES: .o .hs
 
