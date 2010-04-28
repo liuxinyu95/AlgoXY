@@ -19,6 +19,8 @@
 module Main where
 
 import qualified STree
+import qualified STreeStr
 
 main = do
   putStrLn STree.test
+  putStrLn STreeStr.testMain

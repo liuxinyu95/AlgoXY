@@ -18,14 +18,32 @@
 
 module STreeStr where
 
-import Stree
+import STree
 import Data.Function (on)
 
-biggest::(a->a->)->[a]->[a]
+-- Different from Data.List.maximumBy, returns all biggest elements
+maxBy::(Ord a)=>(a->a->Ordering)->[a]->[a]
+maxBy _ [] = []
+maxBy cmp (x:xs) = foldl maxBy' [x] xs where
+    maxBy' lst y = case cmp (head lst) y of
+                     GT -> lst
+                     EQ -> lst ++ [y]
+                     LT -> [y]
+
+isLeaf::Tr -> Bool
+isLeaf Lf = True
+isLeaf _ = False
 
 -- Search the longest repeated substring
-lrs::STree->String
-lrs Lf _ = ""
-lrs BR lst = find lst where
-    find [] = ""
-    find ((s, t):xs) = maximumBy (compare `on` length) (s ++ lrs t):(find xs)
+lrs::Tr->[String]
+lrs Lf = [""]
+lrs (Br lst) = find $ filter (not . isLeaf . snd) lst where
+    find [] = [""]
+    find ((s, t):xs) = maxBy (compare `on` length) 
+                             ((map (s++) (lrs t)) ++ (find xs))
+
+testLRS s = "LRS(" ++ s ++ ")=" ++ (show $ lrs $ suffixTree (s++"$")) ++ "\n"
+
+
+testMain = concat [ f s | s<-["mississippi", "banana", "cacao"],
+                          f<-[testLRS]]
