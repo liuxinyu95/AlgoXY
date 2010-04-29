@@ -20,6 +20,7 @@ module STreeStr where
 
 import STree
 import Data.Function (on)
+import Data.List (maximumBy)
 
 -- Different from Data.List.maximumBy, returns all biggest elements
 maxBy::(Ord a)=>(a->a->Ordering)->[a]->[a]
@@ -34,7 +35,8 @@ isLeaf::Tr -> Bool
 isLeaf Lf = True
 isLeaf _ = False
 
--- Search the longest repeated substring
+-- Search the longest repeated substringS
+--  returns all results if there are multiple repeated substr with same length
 lrs::Tr->[String]
 lrs Lf = [""]
 lrs (Br lst) = find $ filter (not . isLeaf . snd) lst where
@@ -42,8 +44,18 @@ lrs (Br lst) = find $ filter (not . isLeaf . snd) lst where
     find ((s, t):xs) = maxBy (compare `on` length) 
                              ((map (s++) (lrs t)) ++ (find xs))
 
+-- Search the longest repeated substring
+--  Only return the first result
+lrs'::Tr->String
+lrs' Lf = ""
+lrs' (Br lst) = find $ filter (not . isLeaf . snd) lst where
+    find [] = ""
+    find ((s, t):xs) = maximumBy (compare `on` length) [s++(lrs' t), find xs]
+
 testLRS s = "LRS(" ++ s ++ ")=" ++ (show $ lrs $ suffixTree (s++"$")) ++ "\n"
 
+testLRS' s = "LRS'(" ++ s ++ ")=" ++ (lrs' $ suffixTree (s++"$")) ++ "\n"
 
-testMain = concat [ f s | s<-["mississippi", "banana", "cacao"],
-                          f<-[testLRS]]
+
+testMain = concat [ f s | s<-["mississippi", "banana", "cacao", "foofooxbarbar"],
+                          f<-[testLRS, testLRS']]
