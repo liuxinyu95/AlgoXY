@@ -31,48 +31,77 @@ def lookup_pattern(t, node, s):
     f = (lambda x: 1 if x==0 else x)
     for _, (str_ref, tr) in node.children.items():
         edge = t.substr(str_ref)
-        if string.find(edge, s)==0: #s `isPrefixOf` edge
+        if string.find(edge, s)==0: #s `isPrefixOf` edger
             return f(len(tr.children))
         elif string.find(s, edge)==0: #edge `isPrefixOf` s
             return lookup_pattern(t, tr, s[len(edge):])
     return 0 # not found
 
-# search the longest repeating substring
+# search the longest repeating substringS
 #  BFS approach
-def LRS(t, node):
-    queue = [node]
+def lrs(t):
+    queue = [("", t.root)]
+    res = []
     while len(queue)>0:
-        node = queue.pop(0)
+        (s, node) = queue.pop(0)
         for _, (str_ref, tr) in node.children.items():
             if len(tr.children)>0:
-                queue.append(tr)
+                s1 = s+t.substr(str_ref)
+                queue.append((s1, tr))
+                res = update_max(res, s1)
+    return res
+
+def update_max(lst, x):
+    if lst ==[] or len(lst[0]) < len(x):
+        return [x]
+    elif len(lst[0]) == len(x):
+        return lst + [x]
+    else:
+        return lst
 
 class STreeUtil:
     def __init__(self):
         self.tree = None
 
-    def find_pattern(self, str, pattern):
+    def __lazy__(self, str):
         if self.tree is None or self.tree.str!=str+TERM1:
             self.tree = stree.suffix_tree(str+TERM1)
+
+    def find_pattern(self, str, pattern):
+        self.__lazy__(str)
         return lookup_pattern(self.tree, self.tree.root, pattern)
+
+    def find_lrs(self, str):
+        self.__lazy__(str)
+        return lrs(self.tree)
 
 class StrSTreeTest:
     def __init__(self):
         print "start string manipulation over suffix tree test"
+        self.util=STreeUtil()
 
     def run(self):
         self.test_find_pattern()
+        self.test_lrs()
 
     def test_find_pattern(self):
-        util=STreeUtil()
-        self.__test_pattern__(util, "banana", "ana")
-        self.__test_pattern__(util, "banana", "an")
-        self.__test_pattern__(util, "banana", "anan")
-        self.__test_pattern__(util, "banana", "nana")
-        self.__test_pattern__(util, "banana", "ananan")
+        self.__test_pattern__("banana", "ana")
+        self.__test_pattern__("banana", "an")
+        self.__test_pattern__("banana", "anan")
+        self.__test_pattern__("banana", "nana")
+        self.__test_pattern__("banana", "ananan")
 
-    def __test_pattern__(self, u, s, p):
-        print "find pattern", p, "in", s, ":", u.find_pattern(s, p)
+    def __test_pattern__(self, s, p):
+        print "find pattern", p, "in", s, ":", self.util.find_pattern(s, p)
+
+    def test_lrs(self):
+        self.__test_lrs__("mississippi")
+        self.__test_lrs__("banana")
+        self.__test_lrs__("cacao")
+        self.__test_lrs__("foofooxbarbar")
+
+    def __test_lrs__(self, s):
+        print "longest repeated substrings of", s, "=", self.util.find_lrs(s)
 
 if __name__ == "__main__":
     StrSTreeTest().run()
