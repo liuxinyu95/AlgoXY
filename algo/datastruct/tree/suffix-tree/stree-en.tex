@@ -2048,6 +2048,15 @@ a list contains all candidates with same length.
 \end{algorithmic}
 
 Note that the index of a list starts from 1 in this algorithm.
+This algorithm will first initialize a queue with a pair of an
+empty string and the root node. Then it will repeatly pop from
+the queue, examine the candidate node until the queue is empty.
+
+For each node, the algorithm will expand all children, if it is 
+a branch node (which is not a leaf), the node will be pushed back
+to the queue for future examine. And the substring represented
+by this node will be compared to see if it is a candidate of the
+longest repeated substring.
 
 \subsubsection*{Find the longest repeated substring in Python}
 The above algorithm can be translated into Python program as the following.
@@ -2098,17 +2107,122 @@ class StrSTreeTest:
 By running the test case, the result like below can be obtained.
 
 \begin{verbatim}
-find pattern ananan in banana : 0
 longest repeated substrings of mississippi = ['issi']
 longest repeated substrings of banana = ['ana']
 longest repeated substrings of cacao = ['ca']
 longest repeated substrings of foofooxbarbar = ['bar', 'foo']
 \end{verbatim}
 
-\subsubsection{Find the longest repeated substring in functional approach}
+\subsubsection*{Find the longest repeated substring in C++}
 TODO:
 
+\subsubsection{Find the longest repeated substring in functional approach}
+Searching the deepest branch can also be realized in functional way.
+If the tree is just a leaf node, empty string is returned, else the
+algorithm will try to find the longest repeated substring from the 
+children of the tree.
+
+\begin{algorithmic}
+\STATE $LONGEST-REPEATED-SUBSTRING'(T)$
+  \IF{$T$ is leaf}
+    \RETURN $Empty$
+  \ELSE
+    \RETURN $PROC(CHLDREN(T))$
+  \ENDIF
+
+\STATE $PROC(L)$
+  \IF{$L$ is empty}
+    \RETURN $Empty$
+  \ELSE
+    \STATE $(s, node) \leftarrow FIRST(L)$
+    \STATE $x \leftarrow s + LONGEST-REPEATED-SUBSTRING'(T)$
+    \STATE $y \leftarrow PROC(REST(L))$
+    \IF{$LENGTH(x) > LENGTH(y)$}
+      \RETURN $x$
+    \ELSE
+      \RETURN $y$
+    \ENDIF
+  \ENDIF
+\end{algorithmic}
+
+In $PROC$ function, the first element, which is a pair of edge string
+and a child node, will be examine firstly. We recursivly call the 
+algorithm to find the longest repeated substirng from the child node,
+and append it to the edge string. Then we compare this candidate
+sub string with the result obtained from the rest of the children.
+The longer one will be returned as the final result.
+
+Note that in case $x$ and $y$ have the same length, it is easy to
+modify the program to return both of them.
+
 \subsubsection*{Find the longest repeated substring in Haskell}
+We'll provide 2 versions of Haskell implementation. One version
+just reutrns the first candidate in case there are multiple substrings
+which have the same length as the longest substring. The other
+version returns all possible candidates.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+isLeaf::Tr -> Bool
+isLeaf Lf = True
+isLeaf _ = False
+
+lrs'::Tr->String
+lrs' Lf = ""
+lrs' (Br lst) = find $ filter (not . isLeaf . snd) lst where
+    find [] = ""
+    find ((s, t):xs) = maximumBy (compare `on` length) [s++(lrs' t), find xs]
+\end{lstlisting} %$
+
+In this version, we used the maximumBy function provided in Data.List
+module. it will only return the first maximum value in a list.
+In order to return all maximum candidates, we need provide a customized
+function.
+
+\begin{lstlisting}
+maxBy::(Ord a)=>(a->a->Ordering)->[a]->[a]
+maxBy _ [] = []
+maxBy cmp (x:xs) = foldl maxBy' [x] xs where
+    maxBy' lst y = case cmp (head lst) y of
+                     GT -> lst
+                     EQ -> lst ++ [y]
+                     LT -> [y]
+
+lrs::Tr->[String]
+lrs Lf = [""]
+lrs (Br lst) = find $ filter (not . isLeaf . snd) lst where
+    find [] = [""]
+    find ((s, t):xs) = maxBy (compare `on` length) 
+                             ((map (s++) (lrs t)) ++ (find xs))
+\end{lstlisting} %$
+
+We can feed some simple test cases and compare the results of 
+these 2 different program to see their difference.
+
+\begin{lstlisting}
+testLRS s = "LRS(" ++ s ++ ")=" ++ (show $ lrs $ suffixTree (s++"$")) ++ "\n"
+
+testLRS' s = "LRS'(" ++ s ++ ")=" ++ (lrs' $ suffixTree (s++"$")) ++ "\n"
+
+
+test = concat [ f s | s<-["mississippi", "banana", "cacao", "foofooxbarbar"],
+                      f<-[testLRS, testLRS']]
+\end{lstlisting} %$
+
+Below are the results printed out.
+
+\begin{verbatim}
+LRS(mississippi)=["issi"]
+LRS'(mississippi)=issi
+LRS(banana)=["ana"]
+LRS'(banana)=ana
+LRS(cacao)=["ca"]
+LRS'(cacao)=ca
+LRS(foofooxbarbar)=["bar","foo"]
+LRS'(foofooxbarbar)=foo
+\end{verbatim}
+
+\subsubsection*{Find the longest repeated substring in Scheme/Lisp}
 TODO:
 
 \subsection{Find the longest common substring}
