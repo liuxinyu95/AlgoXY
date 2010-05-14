@@ -59,6 +59,11 @@ def update_max(lst, x):
     else:
         return lst
 
+# search the longest common substring
+#  t = SuffixTree(s1#s2$)
+def lcs(t):
+    pass
+
 class STreeUtil:
     def __init__(self):
         self.tree = None
