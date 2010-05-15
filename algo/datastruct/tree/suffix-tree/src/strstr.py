@@ -62,7 +62,27 @@ def update_max(lst, x):
 # search the longest common substring
 #  t = SuffixTree(s1#s2$)
 def lcs(t):
-    pass
+    queue = [("", t.root)]
+    res = []
+    while len(queue)>0:
+        (s, node) = queue.pop(0)
+        if match_fork(t, node):
+            res = update_max(res, s)
+        for _, (str_ref, tr) in node.children.items():
+            if len(tr.children)>0:
+                s1 = s + t.substr(str_ref)
+                queue.append((s1, tr))
+    return res
+
+def match_fork(t, node):
+    match = False
+    if len(node.children)==2:
+        for _, (str_ref, tr) in node.children.items():
+            if len(tr.children)>0:
+                return False
+            if t.substr(str_ref).find(TERM2)!=-1:
+                match = True
+    return match
 
 class STreeUtil:
     def __init__(self):
@@ -80,6 +100,13 @@ class STreeUtil:
         self.__lazy__(str)
         return lrs(self.tree)
 
+    def find_lcs(self, s1, s2):
+        self.__lazy__(s1+TERM2+s2)
+        return lcs(self.tree)
+
+    def find_lpalindrome(self, s):
+        return self.find_lcs(s, s[::-1]) #l[::-1] = reverse(l)
+
 class StrSTreeTest:
     def __init__(self):
         print "start string manipulation over suffix tree test"
@@ -88,6 +115,8 @@ class StrSTreeTest:
     def run(self):
         self.test_find_pattern()
         self.test_lrs()
+        self.test_lcs()
+        self.test_lpalindrome()
 
     def test_find_pattern(self):
         self.__test_pattern__("banana", "ana")
@@ -107,6 +136,21 @@ class StrSTreeTest:
 
     def __test_lrs__(self, s):
         print "longest repeated substrings of", s, "=", self.util.find_lrs(s)
+
+    def test_lcs(self):
+        self.__test_lcs__("ababx", "baby")
+
+    def __test_lcs__(self, s1, s2):
+        print "longest common substring of", s1, "and", s2, "=", self.util.find_lcs(s1, s2)
+
+    def test_lpalindrome(self):
+        self.__test_lpalindrome__("mississippi")
+        self.__test_lpalindrome__("banana")
+        self.__test_lpalindrome__("cacao")
+        self.__test_lpalindrome__("Woolloomooloo")
+
+    def __test_lpalindrome__(self, s):
+        print "longest palindrome of", s, "=", self.util.find_lpalindrome(s)
 
 if __name__ == "__main__":
     StrSTreeTest().run()
