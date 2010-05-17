@@ -2018,14 +2018,14 @@ can be turned into a BFS (Bread First Search) in a suffix tree.
 
 \begin{algorithmic}
 \STATE $LONGEST-REPEATED-SUBSTRING(T)$
-  \STATE $Q \leftarrow {NIL, ROOT(T)}$
+  \STATE $Q \leftarrow (NIL, ROOT(T))$
   \STATE $R \leftarrow NIL$
   \WHILE{$Q$ is not empty}
     \STATE $(s, node) \leftarrow POP(Q)$
     \FOR{each $((l, r), node')$ in $CHILDREN(node)$}
       \IF{$node'$ is not leaf}
         \STATE $s' \leftarrow CONCATENATE(s, (l, r))$
-        \STATE $PUSH(Q, {s', node'})$
+        \STATE $PUSH(Q, (s', node'))$
         \STATE $UPDATE(R, s')$
       \ENDIF
     \ENDFOR
@@ -2226,7 +2226,119 @@ LRS'(foofooxbarbar)=foo
 TODO:
 
 \subsection{Find the longest common substring}
-TODO:
+The longest common substring of two strings, can also be quickly found
+by using suffix tree. A typical solution is to build a generalized suffix
+tree for two strings. If the two strings are denoted as $txt_1$ and 
+$txt_2$, a generalized suffix tree is $SuffixTree(txt_1\$_1txt_2\$_2)$.
+Where $\$_1$ is a special terminator character for $txt_1$, and
+$\$_2$ is another special terminator character for $txt_2$.
+
+The longest common substring is indicated by the deepest branch node, with
+two forks corresponding to both ``...$\$_1$...'' and ``...$\$_2$''.
+The definition of the {\em deepest} node is as same as the one for 
+the longest repeated substign, it is the number of characters traversed
+from root. 
+
+If a node has ``...$\$_1$...'' beneath it, then the node must represent
+to a substring of $txt_1$, as $\$_1$ is the terminator of $txt-1$. 
+On the other hand, since it also has ``...$\$_2$'' child, this node 
+must represent to a substring of $txt_2$ too. Because of it's a deepest
+one satisfied this criteria. The node indicates to the longest common
+substring.
+
+\subsubsection{Find the longest common substring imperatively}
+Based on the above analysis, a BFS (bread first search) algorithm 
+can be used to find the longest common substring.
+
+\begin{algorithmic}
+\STATE $LONGEST-COMMON-SUBSTRING(T)$
+  \STATE $Q \leftarrow (NIL, ROOT(T))$
+  \STATE $R \leftarrow NIL$
+  \WHILE{$Q$ is not empty}
+    \STATE $(s, node) \leftarrow POP(Q)$
+    \IF{$MATCH-FORK(node)$}
+      \STATE $UPDATE(R, s)$
+    \ENDIF
+    \FOR{each $((l, r), node')$ in $CHILDREN(node)$}
+      \IF{$node'$ is not leaf}
+        \STATE $s' \leftarrow CONCATENATE(s, (l, r))$
+        \STATE $PUSH(Q, (s', node'))$
+      \ENDIF
+    \ENDFOR
+  \ENDWHILE
+  \RETURN $R$
+\end{algorithmic}
+
+The most part is as same as the algorithm for finding the longest repeated
+substing. The function $MATCH-FORK()$ will check if the children of a 
+node satisfy the common substring criteria.
+
+\subsubsection*{Find the longest common substring in Python}
+By translate the imperative algorithm in Python, the following program can
+be obtained.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def lcs(t):
+    queue = [("", t.root)]
+    res = []
+    while len(queue)>0:
+        (s, node) = queue.pop(0)
+        if match_fork(t, node):
+            res = update_max(res, s)
+        for _, (str_ref, tr) in node.children.items():
+            if len(tr.children)>0:
+                s1 = s + t.substr(str_ref)
+                queue.append((s1, tr))
+    return res
+\end{lstlisting}
+
+Where we define the function match\_fork() as below.
+
+\begin{lstlisting}
+def match_fork(t, node):
+    match = False
+    if len(node.children)==2:
+        for _, (str_ref, tr) in node.children.items():
+            if len(tr.children)>0:
+                return False
+            if t.substr(str_ref).find(TERM2)!=-1:
+                match = True
+    return match
+\end{lstlisting}
+In this funciton, it checks if the two children of a node
+are both leaf, and one contains TERM2 character. This is because
+if one child node is a leaf, it will always contains TERM1
+character according to the defintion of suffix tree.
+
+Note, the main interface of the function is to add TERM2 to 
+the first string and append TERM1 to the second string.
+
+\begin{lstlisting}
+class STreeUtil:
+    def __init__(self):
+        self.tree = None
+
+    def __lazy__(self, str):
+        if self.tree is None or self.tree.str!=str+TERM1:
+            self.tree = stree.suffix_tree(str+TERM1)
+
+    def find_lcs(self, s1, s2):
+        self.__lazy__(s1+TERM2+s2)
+        return lcs(self.tree)
+\end{lstlisting}
+
+We can test this program like below:
+
+\begin{lstlisting}
+util = STreeUtil()
+print "longest common substring of ababx and baby =", util.find_lcs("ababx", "baby")
+\end{lstlisting}
+
+And the output will be something like:
+\begin{verbatim}
+longest common substring of ababx and baby = ['bab']
+\end{verbatim}
 
 \subsection{Find the longest palindrome in a string}
 TODO:
