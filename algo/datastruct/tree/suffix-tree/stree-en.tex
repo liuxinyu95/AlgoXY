@@ -2129,7 +2129,9 @@ children of the tree.
   \ELSE
     \RETURN $PROC(CHLDREN(T))$
   \ENDIF
+\end{algorithmic}
 
+\begin{algorithmic}
 \STATE $PROC(L)$
   \IF{$L$ is empty}
     \RETURN $Empty$
@@ -2343,11 +2345,101 @@ longest common substring of ababx and baby = ['bab']
 \subsubsection*{Find the longest common substring in C++}
 TODO:
 
-\subsubsection{Find the longest common substing recursively}
-TODO:
+\subsubsection{Find the longest common substring recursively}
+The longest common substring finding algorithm can also be
+realized in functional way.
+
+\begin{algorithmic}
+\STATE $LONGEST-COMMON-SUBSTRING'(T)$
+  \IF{$T$ is leaf}
+    \RETURN $Empty$
+  \ELSE
+    \RETURN $PROC(CHILDREN(T))$
+  \ENDIF
+\end{algorithmic}
+
+If the generalized suffix tree is just a leaf, empty string is
+returned to indicate the trivial result. In other case, we
+need process the children of the tree.
+
+\begin{algorithmic}
+\STATE $PROC(L)$
+  \IF{$L$ is empty}
+    \RETURN $Empty$
+  \ELSE
+    \STATE $(s, node) \leftarrow FIRST(L)$
+    \IF{$MATCH-FORK(node)$}
+      \STATE $x \leftarrow s$
+    \ELSE
+      \STATE $x \leftarrow s + LONGEST-COMMON-SUBSTRING'(node)$
+    \ENDIF
+    \STATE $y \leftarrow PROC(LEFT(L))$
+    \IF{$LENGTH(x) > LENGTH(y)$}
+      \RETURN $x$
+    \ELSE
+      \RETURN $y$
+    \ENDIF
+  \ENDIF
+\end{algorithmic}
+
+If the children list is empty, the algorithm returns empty 
+string. In other case, the first element, as a pair of edge
+string and a child node, is first picked, if this child node
+match the fork criteria (one is in pattern ``...$\$_1$...'',
+the other in pattern ``...$\$_2$''), then the edge string is
+a candidate. The algorithm will process the rest children 
+list and compare with this candidate. The longer one will 
+be returned as the final result.
+If it doesn't match the fork criteria, we need go on find the
+longest common substring from this child node recursively.
+and do the similar comparison afterwards.
 
 \subsubsection*{Find the longest common substring in Haskell}
-TODO:
+Similar as the longest repeated substring problem, there
+are two alternative, one is to just return the first longest
+common substring. The other is to return all the candidates.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+lcs::Tr->[String]
+lcs Lf = [""]
+lcs (Br lst) = find $ filter (not .isLeaf . snd) lst where
+    find [] = [""]
+    find ((s, t):xs) = maxBy (compare `on` length) 
+                       (if match t 
+                        then s:(find xs)
+                        else  (map (s++) (lcs t)) ++ (find xs))
+\end{lstlisting} %$
+
+Most of the program is as same as the one for fiding the longest
+repeated substring. The ``match'' function is defined to check
+the fork criteria.
+
+\begin{lstlisting}
+match (Br [(s1, Lf), (s2, Lf)]) = or $ map ("#" `isInfixOf`) [s1, s2]
+match _ = False
+\end{lstlisting} %$
+
+If the function ``maximumBy'' defined in Data.List is used, only
+the first candidate will be found.
+
+\begin{lstlisting}
+lcs'::Tr->String
+lcs' Lf = ""
+lcs' (Br lst) = find $ filter (not . isLeaf . snd) lst where
+    find [] = ""
+    find ((s, t):xs) = maximumBy (compare `on` length) 
+                       (if match t then [s, find xs]
+                           else [s++(lcs' t), find xs])
+\end{lstlisting} %$
+
+We can test this program by some simple cases, below are the
+sinppet of the result in GHCi.
+
+\begin{lstlisting}
+lcs $ suffixTree "baby#ababx$"
+["bab"]
+\end{lstlisting}
 
 \subsubsection*{Find the longest common substring in Scheme/Lisp}
 TODO:
@@ -2414,6 +2506,22 @@ longest palindrome of Woolloomooloo = ['loomool']
 \subsubsection*{Find the longest palindrome in C++}
 
 \subsubsection*{Find the longest palindrome in Haskell}
+Haskell program of finding the longest palindrome is implemented as below.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+longestPalindromes s = lcs $ suffixTree (s++"#"++(reverse s)++"$")
+\end{lstlisting}
+
+If some strings are fed to the program, results like the following can
+be obtained.
+
+\begin{verbatim}
+longest palindrome(mississippi)=["ississi"]
+longest palindrome(banana)=["anana"]
+longest palindrome(cacao)=["aca","cac"]
+longest palindrome(foofooxbarbar)=["oofoo"]
+\end{verbatim}
 
 \subsubsection*{Find the longest palindrome in Scheme/Lisp}
 
