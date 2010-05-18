@@ -20,7 +20,7 @@ module STreeStr where
 
 import STree
 import Data.Function (on)
-import Data.List (maximumBy)
+import Data.List (maximumBy, isInfixOf)
 
 -- Different from Data.List.maximumBy, returns all biggest elements
 maxBy::(Ord a)=>(a->a->Ordering)->[a]->[a]
@@ -44,6 +44,9 @@ lrs (Br lst) = find $ filter (not . isLeaf . snd) lst where
     find ((s, t):xs) = maxBy (compare `on` length) 
                              ((map (s++) (lrs t)) ++ (find xs))
 
+longestRepeatedSubstrings::String->[String]
+longestRepeatedSubstrings s = lrs $ suffixTree (s++"$")
+
 -- Search the longest repeated substring
 --  Only return the first result
 lrs'::Tr->String
@@ -52,10 +55,44 @@ lrs' (Br lst) = find $ filter (not . isLeaf . snd) lst where
     find [] = ""
     find ((s, t):xs) = maximumBy (compare `on` length) [s++(lrs' t), find xs]
 
+longestRepeatedSubstring :: String -> String
+longestRepeatedSubstring s = lrs' $ suffixTree (s++"$")
+
+-- Search the longest common substringS
+lcs::Tr->[String]
+lcs Lf = [""]
+lcs (Br lst) = find $ filter (not .isLeaf . snd) lst where
+    find [] = [""]
+    find ((s, t):xs) = maxBy (compare `on` length) 
+                       (if match t 
+                        then s:(find xs)
+                        else  (map (s++) (lcs t)) ++ (find xs))
+
+-- Search the longest common substring
+lcs'::Tr->String
+lcs' Lf = ""
+lcs' (Br lst) = find $ filter (not . isLeaf . snd) lst where
+    find [] = ""
+    find ((s, t):xs) = maximumBy (compare `on` length) 
+                       (if match t then [s, find xs]
+                           else [s++(lcs' t), find xs])
+
+match (Br [(s1, Lf), (s2, Lf)]) = or $ map ("#" `isInfixOf`) [s1, s2]
+match _ = False
+
+longestPalindromes s = lcs $ suffixTree (s++"#"++(reverse s)++"$")
+
+longestPalindrome s = lcs' $ suffixTree (s++"#"++(reverse s)++"$")
+
+-- tests
+
 testLRS s = "LRS(" ++ s ++ ")=" ++ (show $ lrs $ suffixTree (s++"$")) ++ "\n"
 
 testLRS' s = "LRS'(" ++ s ++ ")=" ++ (lrs' $ suffixTree (s++"$")) ++ "\n"
 
+testLCS s1 s2 = "LCS(" ++ s1 ++", "++ s2 ++")=" ++ (show $ lcs $ suffixTree (s1++"#"++s2++"$"))++"\n"
+
+testPalindrome s = "longest palindrome(" ++ s ++ ")=" ++ (show $ longestPalindromes s) ++ "\n"
 
 testMain = concat [ f s | s<-["mississippi", "banana", "cacao", "foofooxbarbar"],
-                          f<-[testLRS, testLRS']]
+                          f<-[testLRS, testLRS', testPalindrome]]
