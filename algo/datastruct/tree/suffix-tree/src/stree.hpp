@@ -67,7 +67,7 @@ struct StrRef: public std::pair<int, int>{
   std::string substr(){
     int l, r;
     tie(l, r) = *this;
-    return str.substr(l, r);
+    return str.substr(l, len());
   }
 
   int len(){ 
@@ -108,7 +108,8 @@ struct Node{
 struct STree{
   STree(std::string s):str(s), 
                        infinity(s.length()+1000), 
-                       root(new Node){}
+                       root(new Node)
+  { StrRef::str = str; }
 
   ~STree() { delete root; }
   std::string str;
@@ -244,7 +245,6 @@ std::list<std::string> to_lines(Node* node){
 }
 
 std::string to_str(STree* t){
-  StrRef::str = t->str;
   std::list<std::string> ls = to_lines(t->root);
   std::ostringstream s;
   std::copy(ls.begin(), ls.end(), 
