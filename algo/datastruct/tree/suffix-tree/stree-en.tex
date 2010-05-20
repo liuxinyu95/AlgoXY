@@ -2457,7 +2457,90 @@ longest common substring of ababx and baby = ['bab']
 \end{verbatim}
 
 \subsubsection*{Find the longest common substring in C++}
-TODO:
+In C++ implementation, we first define the special terminator
+characters for the generalized suffix tree of two strings.
+
+\lstset{language=C++}
+\begin{lstlisting}
+const char TERM1 = '$';
+const char TERM2 = '#';
+\end{lstlisting} %$
+
+Since the program need frequently test if a node is a branch
+node or leaf node, a helper function is provided.
+
+\begin{lstlisting}
+bool is_leaf(Node* node){
+  return node->children.empty();
+}
+\end{lstlisting}
+
+The criteria for a candidate node is that it has two children.
+One in pattern ``...#...'', the other in pattern ``...\$''. 
+
+\begin{lstlisting}
+bool match_fork(Node* node){
+  bool res(false);
+  if(node->children.size() == 2)
+    for(Node::Children::iterator it = node->children.begin();
+        it!=node->children.end(); ++it){
+      RefPair rp = it->second;
+      if(!is_leaf(rp.node()))
+         return false;
+      if(rp.str().substr().find(TERM2)!=std::string::npos)
+        res = true;
+    }
+  return res;
+}
+\end{lstlisting}
+
+The main program in BFS(Bread First Search) approach is given
+as below.
+
+\begin{lstlisting}
+Strings lcs(const STree* t){
+  std::queue<std::pair<std::string, Node*> > q;
+  Strings res;
+  q.push(std::make_pair(std::string(""), t->root));
+  while(!q.empty()){
+    std::string s;
+    Node* node;
+    tie(s, node) = q.front();
+    q.pop();
+    if(match_fork(node))
+      update_max(res, s);
+    for(Node::Children::iterator it = node->children.begin();
+        it!=node->children.end(); ++it){
+      RefPair rp = it->second;
+      if(!is_leaf(rp.node())){
+        std::string s1 = s + rp.str().substr();
+        q.push(std::make_pair(s1, rp.node()));
+      }
+    }
+  }
+  return res;
+}
+\end{lstlisting}
+
+After that we can finalize the interface in a lazy way as the following.
+
+\begin{lstlisting}
+class STreeUtil{
+public:
+  //...
+  Strings find_lcs(std::string s1, std::string s2){
+    lazy(s1+TERM2+s2);
+    return lcs(t);
+  }
+//...
+\end{lstlisting}
+
+This C++ program can generate similar result as the Python one if same
+test cases are given.
+
+\begin{verbatim}
+longest common substring of ababx, baby =[bab, ]
+\end{verbatim}
 
 \subsubsection{Find the longest common substring recursively}
 The longest common substring finding algorithm can also be
@@ -2618,6 +2701,45 @@ longest palindrome of Woolloomooloo = ['loomool']
 \end{verbatim}
 
 \subsubsection*{Find the longest palindrome in C++}
+C++ program is just delegate the call to longest common substring
+function.
+
+\begin{lstlisting}
+Strings find_lpalindrome(std::string s){
+  std::string s1(s);
+  std::reverse(s1.begin(), s1.end());
+  return find_lcs(s, s1);
+}
+\end{lstlisting}
+
+The test cases are added as the following.
+
+\begin{lstlisting}
+class StrSTreeTest{
+public:
+  //...
+  void test_lrs(){
+    __test_lrs("mississippi");
+    __test_lrs("banana");
+    __test_lrs("cacao");
+    __test_lrs("foofooxbarbar");
+  }
+private:
+  //...
+  void __test_lpalindrome(std::string s){
+    std::cout<<"longest palindrome of "<<s<<" ="
+             <<util.find_lpalindrome(s)<<"\n";
+  }
+\end{lstlisting}
+
+Running the test cases generate the same result.
+
+\begin{verbatim}
+longest palindrome of mississippi =[ississi, ]
+longest palindrome of banana =[anana, ]
+longest palindrome of cacao =[aca, cac, ]
+longest palindrome of Woolloomooloo =[loomool, ]
+\end{verbatim}
 
 \subsubsection*{Find the longest palindrome in Haskell}
 Haskell program of finding the longest palindrome is implemented as below.
