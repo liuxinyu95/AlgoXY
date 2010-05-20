@@ -36,6 +36,10 @@ void update_max(Strings& res, std::string s){
     res.push_back(s);
 }
 
+bool is_leaf(Node* node){
+  return node->children.empty();
+}
+
 // Search the longest repeated substringS
 Strings lrs(const STree* t){
   std::queue<std::pair<std::string, Node*> > q;
@@ -49,7 +53,7 @@ Strings lrs(const STree* t){
     for(Node::Children::iterator it = node->children.begin();
         it!=node->children.end(); ++it){
       RefPair rp = it->second;
-      if(!(rp.node()->children.empty())){
+      if(!is_leaf(rp.node())){
         std::string s1 = s + rp.str().substr();
         q.push(std::make_pair(s1, rp.node()));
         update_max(res, s1);
@@ -59,6 +63,43 @@ Strings lrs(const STree* t){
   return res;
 } 
 
+bool match_fork(Node* node){
+  bool res(false);
+  if(node->children.size() == 2)
+    for(Node::Children::iterator it = node->children.begin();
+        it!=node->children.end(); ++it){
+      RefPair rp = it->second;
+      if(!is_leaf(rp.node()))
+         return false;
+      if(rp.str().substr().find(TERM2)!=std::string::npos)
+        res = true;
+    }
+  return res;
+}
+
+Strings lcs(const STree* t){
+  std::queue<std::pair<std::string, Node*> > q;
+  Strings res;
+  q.push(std::make_pair(std::string(""), t->root));
+  while(!q.empty()){
+    std::string s;
+    Node* node;
+    tie(s, node) = q.front();
+    q.pop();
+    if(match_fork(node))
+      update_max(res, s);
+    for(Node::Children::iterator it = node->children.begin();
+        it!=node->children.end(); ++it){
+      RefPair rp = it->second;
+      if(!is_leaf(rp.node())){
+        std::string s1 = s + rp.str().substr();
+        q.push(std::make_pair(s1, rp.node()));
+      }
+    }
+  }
+  return res;
+}
+
 class STreeUtil{
 public:
   STreeUtil():t(0){}
@@ -67,6 +108,17 @@ public:
   Strings find_lrs(std::string s){
     lazy(s);
     return lrs(t);
+  }
+
+  Strings find_lcs(std::string s1, std::string s2){
+    lazy(s1+TERM2+s2);
+    return lcs(t);
+  }
+
+  Strings find_lpalindrome(std::string s){
+    std::string s1(s);
+    std::reverse(s1.begin(), s1.end());
+    return find_lcs(s, s1);
   }
 
 private:
@@ -94,6 +146,8 @@ public:
 
   void run(){
     test_lrs();
+    test_lcs();
+    test_lpalindrome();
   }
 
   void test_lrs(){
@@ -102,11 +156,34 @@ public:
     __test_lrs("cacao");
     __test_lrs("foofooxbarbar");
   }
+
+  void test_lcs(){
+    __test_lcs("ababx", "baby");
+  }
+
+  void test_lpalindrome(){
+    __test_lpalindrome("mississippi");
+    __test_lpalindrome("banana");
+    __test_lpalindrome("cacao");
+    __test_lpalindrome("Woolloomooloo");
+  }
+
 private:
   void __test_lrs(std::string s){
     std::cout<<"longest repeated substirng of "<<s<<"="
              <<util.find_lrs(s)<<"\n";
   }
+
+  void __test_lcs(std::string s1, std::string s2){
+    std::cout<<"longest common substring of "<<s1<<", "<<s2<<" ="
+             <<util.find_lcs(s1, s2)<<"\n";
+  }
+
+  void __test_lpalindrome(std::string s){
+    std::cout<<"longest palindrome of "<<s<<" ="
+             <<util.find_lpalindrome(s)<<"\n";
+  }
+
   STreeUtil util;
 };
 #endif //_STREE_STR_
