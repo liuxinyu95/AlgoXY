@@ -2114,7 +2114,121 @@ longest repeated substrings of foofooxbarbar = ['bar', 'foo']
 \end{verbatim}
 
 \subsubsection*{Find the longest repeated substring in C++}
-TODO:
+With C++, we can utilize the STL queue library in the implementation
+of BFS(Bread First Search). 
+
+\lstset{language=C++}
+\begin{lstlisting}
+typedef std::list<std::string> Strings;
+
+Strings lrs(const STree* t){
+  std::queue<std::pair<std::string, Node*> > q;
+  Strings res;
+  q.push(std::make_pair(std::string(""), t->root));
+  while(!q.empty()){
+    std::string s;
+    Node* node;
+    tie(s, node) = q.front();
+    q.pop();
+    for(Node::Children::iterator it = node->children.begin();
+        it!=node->children.end(); ++it){
+      RefPair rp = it->second;
+      if(!(rp.node()->children.empty())){
+        std::string s1 = s + rp.str().substr();
+        q.push(std::make_pair(s1, rp.node()));
+        update_max(res, s1);
+      }
+    }
+  }
+  return res;
+} 
+\end{lstlisting}
+
+Firstly, the empty string and root node is pushed to the queue
+as initialized value. Then the program repeatly pop from the queue,
+examin it to see if any child of the node is not a leaf node,
+push it back to the queue and check if it is the deepest one.
+
+The function ``update\_max()'' is implemented to record all the
+longest strings.
+
+\begin{lstlisting}
+void update_max(Strings& res, std::string s){
+  if(res.empty() || (*res.begin()).length() < s.length()){
+    res.clear();
+    res.push_back(s);
+    return;
+  }
+  if((*res.begin()).length() == s.length())
+    res.push_back(s);
+}
+\end{lstlisting}
+
+Since the cost of construction a suffix tree is big ($O(n)$ with
+Ukkonen's algorithm), some lazy intialization approach is used in
+the main entrance of the finding program.
+
+\begin{lstlisting}
+const char TERM1 = '$';
+
+class STreeUtil{
+public:
+  STreeUtil():t(0){}
+  ~STreeUtil(){ delete t; }
+
+  Strings find_lrs(std::string s){
+    lazy(s);
+    return lrs(t);
+  }
+
+private:
+  void lazy(std::string s){
+    if((!t) || t->str != s+TERM1){
+      delete t;
+      t = suffix_tree(s+TERM1);
+    }
+  }
+  STree* t;
+};
+\end{lstlisting} %$
+
+In order to verify the program, some test cases are provided. output
+for list of strings can be easily realized by overloading ``operator<<''.
+
+\begin{lstlisting}
+class StrSTreeTest{
+public:
+  StrSTreeTest(){
+    std::cout<<"start string manipulation over suffix tree test\n";
+  }
+
+  void run(){
+    test_lrs();
+  }
+
+  void test_lrs(){
+    __test_lrs("mississippi");
+    __test_lrs("banana");
+    __test_lrs("cacao");
+    __test_lrs("foofooxbarbar");
+  }
+private:
+  void __test_lrs(std::string s){
+    std::cout<<"longest repeated substirng of "<<s<<"="
+             <<util.find_lrs(s)<<"\n";
+  }
+  STreeUtil util;
+};
+\end{lstlisting}
+
+Running these test cases, we can obtain the following result.
+\begin{verbatim}
+start string manipulation over suffix tree test
+longest repeated substirng of mississippi=[issi, ]
+longest repeated substirng of banana=[ana, ]
+longest repeated substirng of cacao=[ca, ]
+longest repeated substirng of foofooxbarbar=[bar, foo, ]
+\end{verbatim}
 
 \subsubsection{Find the longest repeated substring in functional approach}
 Searching the deepest branch can also be realized in functional way.
