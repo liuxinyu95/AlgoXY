@@ -100,3 +100,6 @@
 
 (define (suffix-trie s)
   (make-tree edge-trie (tails s)))
+
+(define (test-suffix-tree)
+  (map suffix-tree '("cacao" "mississippi" "bananas")))
