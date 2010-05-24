@@ -46,6 +46,7 @@
       '()
       (fold-left update-max (list (car lst)) (cdr lst))))
 
+;; longest repeated stubstring searching.
 (define (lrs t)
   (define (find lst)
     (if (null? lst)
@@ -63,5 +64,40 @@
 (define (longest-repeated-substring s)
   (lrs (suffix-tree (string-append s "$"))))
 
-(define (test-lrs)
-  (map longest-repeated-substring '("mississippi" "banana" "cacao" "foofooxbarbar")))
+;; longest common substring searching
+
+;; Search in the tree
+(define (search-stree t match)
+  (define (find lst)
+    (if (null? lst)
+	'("")
+	(let ((s (edge (car lst)))
+	      (tr (children (car lst))))
+	  (max-by (compare-on string-length) 
+		  (if (match tr)
+		      (cons s (find (cdr lst)))
+		      (append
+		       (map (lambda (x) (string-append s x)) (search-stree tr match))
+		       (find (cdr lst))))))))
+  (if (leaf? t)
+      '("")
+      (find (filter (lambda (x) (not (leaf? x))) t))))
+
+(define (longest-repeated-substring1 s)
+  (search-stree (suffix-tree (string-append s "$")) (lambda (x) #f)))
+
+(define (longest-common-substring s1 s2)
+  (define (match-fork t)
+    (and (eq? 2 (length t)) 
+	 (and (leaf? (car t)) (leaf? (cadr t)))
+	 (or (substring? "#" (edge (car t)))
+	     (substring? "#" (edge (cadr t))))))
+  (search-stree (suffix-tree (string-append s1 "#" s2 "$")) match-fork))
+
+(define (test-main)
+  (let ((fs (list longest-repeated-substring longest-repeated-substring1)) 
+	(ss '("mississippi" "banana" "cacao" "foofooxbarbar")))
+    (map (lambda (f) (map f ss)) fs)))
+
+(define (test-lcs)
+  (longest-common-substring "xbaby" "ababa"))
