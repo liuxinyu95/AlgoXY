@@ -86,11 +86,16 @@
 (define (longest-repeated-substring1 s)
   (search-stree (suffix-tree (string-append s "$")) (lambda (x) #f)))
 
+(define (xor x y)
+  (cond ((and x y) #f)
+	((not (or x y)) #f)
+	(else #t)))
+
 (define (longest-common-substring s1 s2)
   (define (match-fork t)
     (and (eq? 2 (length t)) 
 	 (and (leaf? (car t)) (leaf? (cadr t)))
-	 (or (substring? "#" (edge (car t)))
+	 (xor (substring? "#" (edge (car t)))
 	     (substring? "#" (edge (cadr t))))))
   (search-stree (suffix-tree (string-append s1 "#" s2 "$")) match-fork))
 

@@ -72,13 +72,16 @@ lcs (Br lst) = find $ filter (not .isLeaf . snd) lst where
 lcs'::Tr->String
 lcs' Lf = ""
 lcs' (Br lst) = find $ filter (not . isLeaf . snd) lst where
-    find [] = ""
+    find [] = "" -- this means Nothing!!!
     find ((s, t):xs) = maximumBy (compare `on` length) 
                        (if match t then [s, find xs]
                            else [s++(lcs' t), find xs])
 
-match (Br [(s1, Lf), (s2, Lf)]) = or $ map ("#" `isInfixOf`) [s1, s2]
+match (Br [(s1, Lf), (s2, Lf)]) = ("#" `isInfixOf` s1) /= ("#" `isInfixOf` s2)
 match _ = False
+
+longestCommonSubstrings s1 s2 = lcs $ suffixTree (s1++"#"++s2++"$")
+longestCommonSubstring s1 s2 = lcs' $ suffixTree (s1++"#"++s2++"$")
 
 longestPalindromes s = lcs $ suffixTree (s++"#"++(reverse s)++"$")
 
