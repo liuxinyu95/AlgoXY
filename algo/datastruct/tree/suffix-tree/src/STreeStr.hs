@@ -70,14 +70,14 @@ lcs (Br lst) = find $ filter (not .isLeaf . snd) lst where
                         else  (map (s++) (lcs t)) ++ (find xs))
 
 -- Search the longest common substring
-lcs'::Tr->Maybe String
-lcs' Lf = Nothing
+lcs'::Tr->String
+lcs' Lf = ""
 lcs' (Br lst) = find $ filter (not . isLeaf . snd) lst where
-    find [] = Nothing
-    find ((s, t):xs) = Just (maximumBy (compare `on` length) 
-                       (map (maybe "" id)
-                                (if match t then [Just s, find xs]
-                                 else [(s++) `liftM` (lcs' t), find xs])))l
+    find [] = ""
+    find ((s, t):xs) = maximumBy (compare `on` length)
+                       (if match t then [s, find xs]
+                        else [tryAdd s (lcs' t), find xs])
+    tryAdd x y = if y=="" then "" else x++y
 
 match (Br [(s1, Lf), (s2, Lf)]) = ("#" `isInfixOf` s1) /= ("#" `isInfixOf` s2)
 match _ = False
