@@ -21,6 +21,7 @@ module STreeStr where
 import STree
 import Data.Function (on)
 import Data.List (maximumBy, isInfixOf)
+import Control.Monad (liftM)
 
 -- Different from Data.List.maximumBy, returns all biggest elements
 maxBy::(Ord a)=>(a->a->Ordering)->[a]->[a]
@@ -60,22 +61,23 @@ longestRepeatedSubstring s = lrs' $ suffixTree (s++"$")
 
 -- Search the longest common substringS
 lcs::Tr->[String]
-lcs Lf = [""]
+lcs Lf = []
 lcs (Br lst) = find $ filter (not .isLeaf . snd) lst where
-    find [] = [""]
+    find [] = []
     find ((s, t):xs) = maxBy (compare `on` length) 
                        (if match t 
                         then s:(find xs)
                         else  (map (s++) (lcs t)) ++ (find xs))
 
 -- Search the longest common substring
-lcs'::Tr->String
-lcs' Lf = ""
+lcs'::Tr->Maybe String
+lcs' Lf = Nothing
 lcs' (Br lst) = find $ filter (not . isLeaf . snd) lst where
-    find [] = "" -- this means Nothing!!!
-    find ((s, t):xs) = maximumBy (compare `on` length) 
-                       (if match t then [s, find xs]
-                           else [s++(lcs' t), find xs])
+    find [] = Nothing
+    find ((s, t):xs) = Just (maximumBy (compare `on` length) 
+                       (map (maybe "" id)
+                                (if match t then [Just s, find xs]
+                                 else [(s++) `liftM` (lcs' t), find xs])))l
 
 match (Br [(s1, Lf), (s2, Lf)]) = ("#" `isInfixOf` s1) /= ("#" `isInfixOf` s2)
 match _ = False
