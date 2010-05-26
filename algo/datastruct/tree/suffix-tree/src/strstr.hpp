@@ -64,17 +64,16 @@ Strings lrs(const STree* t){
 } 
 
 bool match_fork(Node* node){
-  bool res(false);
-  if(node->children.size() == 2)
-    for(Node::Children::iterator it = node->children.begin();
-        it!=node->children.end(); ++it){
-      RefPair rp = it->second;
-      if(!is_leaf(rp.node()))
-         return false;
-      if(rp.str().substr().find(TERM2)!=std::string::npos)
-        res = true;
-    }
-  return res;
+  if(node->children.size() == 2){
+    RefPair rp1, rp2;
+    Node::Children::iterator it = node->children.begin();
+    rp1 = (it++)->second;
+    rp2 = it->second;
+    return (is_leaf(rp1.node()) && is_leaf(rp2.node())) &&
+      (rp1.str().substr().find(TERM2)!=std::string::npos)!=
+      (rp2.str().substr().find(TERM2)!=std::string::npos);
+  }
+  return false;
 }
 
 Strings lcs(const STree* t){
@@ -158,7 +157,8 @@ public:
   }
 
   void test_lcs(){
-    __test_lcs("ababx", "baby");
+    __test_lcs("ababa", "baby");
+    __test_lcs("ff", "bb");
   }
 
   void test_lpalindrome(){

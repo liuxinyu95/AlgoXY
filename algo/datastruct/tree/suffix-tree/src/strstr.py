@@ -74,15 +74,16 @@ def lcs(t):
                 queue.append((s1, tr))
     return res
 
+def is_leaf(node):
+    return node.children=={}
+
 def match_fork(t, node):
-    match = False
     if len(node.children)==2:
-        for _, (str_ref, tr) in node.children.items():
-            if len(tr.children)>0:
-                return False
-            if t.substr(str_ref).find(TERM2)!=-1:
-                match = True
-    return match
+        [(_, (str_ref1, tr1)), (_, (str_ref2, tr2))]=node.children.items()
+        return is_leaf(tr1) and is_leaf(tr2) and \
+            (t.substr(str_ref1).find(TERM2)!=-1) != \
+            (t.substr(str_ref2).find(TERM2)!=-1)
+    return False
 
 class STreeUtil:
     def __init__(self):
@@ -138,7 +139,8 @@ class StrSTreeTest:
         print "longest repeated substrings of", s, "=", self.util.find_lrs(s)
 
     def test_lcs(self):
-        self.__test_lcs__("ababx", "baby")
+        self.__test_lcs__("ababa", "baby")
+        self.__test_lcs__("ff", "bb")
 
     def __test_lcs__(self, s1, s2):
         print "longest common substring of", s1, "and", s2, "=", self.util.find_lcs(s1, s2)

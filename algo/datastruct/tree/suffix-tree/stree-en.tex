@@ -2339,7 +2339,84 @@ LRS'(foofooxbarbar)=foo
 \end{verbatim}
 
 \subsubsection*{Find the longest repeated substring in Scheme/Lisp}
-TODO:
+Because the underground data structure is list in Scheme/Lisp, 
+in order to access the suffix tree components easily, some helper
+functions are provided.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (edge t)
+  (car t))
+
+(define (children t)
+  (cdr t))
+
+(define (leaf? t)
+  (null? (children t)))
+\end{lstlisting}
+
+Similar with the Haskell program, a function which can find all
+the maximum values on a special measurement rules are given.
+
+\begin{lstlisting}
+(define (compare-on func)
+  (lambda (x y) 
+    (cond ((< (func x) (func y)) 'lt)
+	  ((> (func x) (func y)) 'gt)
+	  (else 'eq))))
+
+(define (max-by comp lst)
+  (define (update-max xs x)
+    (case (comp (car xs) x)
+      ('lt (list x))
+      ('gt xs)
+      (else (cons x xs))))
+  (if (null? lst)
+      '()
+      (fold-left update-max (list (car lst)) (cdr lst))))
+\end{lstlisting}
+
+Then the main function for searching the longest repeated substrings
+can be implemented as the following.
+
+\begin{lstlisting}
+(define (lrs t)
+  (define (find lst)
+    (if (null? lst)
+	'("")
+	(let ((s (edge (car lst)))
+	      (tr (children (car lst))))
+	  (max-by (compare-on string-length) 
+		  (append
+		   (map (lambda (x) (string-append s x)) (lrs tr))
+		   (find (cdr lst)))))))
+  (if (leaf? t)
+      '("")
+      (find (filter (lambda (x) (not (leaf? x))) t))))
+
+(define (longest-repeated-substring s)
+  (lrs (suffix-tree (string-append s TERM1))))
+\end{lstlisting}
+
+Where TERM1 is defined as ``\$'' string.
+
+Same test cases can be used to verify the results.
+
+\begin{lstlisting}
+(define (test-main)
+  (let ((fs (list longest-repeated-substring)) 
+	(ss '("mississippi" "banana" "cacao" "foofooxbarbar")))
+    (map (lambda (f) (map f ss)) fs)))
+\end{lstlisting}
+
+This test program can be easily extended by adding new test
+functions as a element of fs list. the result of the above
+function is as below.
+
+\begin{lstlisting}
+(test-main) 
+;Value 16: ((("issi") ("ana") ("ca") ("bar" "foo")))
+\end{lstlisting}
 
 \subsection{Find the longest common substring}
 The longest common substring of two strings, can also be quickly found
@@ -2357,7 +2434,7 @@ from root.
 
 If a node has ``...$\$_1$...'' beneath it, then the node must represent
 to a substring of $txt_1$, as $\$_1$ is the terminator of $txt_1$. 
-On the other hand, since it also has ``...$\$_2$'' child, this node 
+On the other hand, since it also has ``...$\$_2$'' (without $\$_1$) child, this node 
 must represent to a substring of $txt_2$ too. Because of it's a deepest
 one satisfied this criteria. The node indicates to the longest common
 substring.
@@ -2412,18 +2489,21 @@ def lcs(t):
 Where we define the function match\_fork() as below.
 
 \begin{lstlisting}
+def is_leaf(node):
+    return node.children=={}
+
 def match_fork(t, node):
-    match = False
     if len(node.children)==2:
-        for _, (str_ref, tr) in node.children.items():
-            if len(tr.children)>0:
-                return False
-            if t.substr(str_ref).find(TERM2)!=-1:
-                match = True
-    return match
+        [(_, (str_ref1, tr1)), (_, (str_ref2, tr2))]=node.children.items()
+        return is_leaf(tr1) and is_leaf(tr2) and \
+            (t.substr(str_ref1).find(TERM2)!=-1) != \
+            (t.substr(str_ref2).find(TERM2)!=-1)
+    return False
 \end{lstlisting}
+
 In this funciton, it checks if the two children of a node
-are both leaf, and one contains TERM2 character. This is because
+are both leaf, and one contains TERM2 character, while the 
+other doesn't. This is because
 if one child node is a leaf, it will always contains TERM1
 character according to the defintion of suffix tree.
 
@@ -2448,7 +2528,7 @@ We can test this program like below:
 
 \begin{lstlisting}
 util = STreeUtil()
-print "longest common substring of ababx and baby =", util.find_lcs("ababx", "baby")
+print "longest common substring of ababa and baby =", util.find_lcs("ababa", "baby")
 \end{lstlisting}
 
 And the output will be something like:
@@ -2480,17 +2560,16 @@ One in pattern ``...\#...'', the other in pattern ``...\$''.
 
 \begin{lstlisting}
 bool match_fork(Node* node){
-  bool res(false);
-  if(node->children.size() == 2)
-    for(Node::Children::iterator it = node->children.begin();
-        it!=node->children.end(); ++it){
-      RefPair rp = it->second;
-      if(!is_leaf(rp.node()))
-         return false;
-      if(rp.str().substr().find(TERM2)!=std::string::npos)
-        res = true;
-    }
-  return res;
+  if(node->children.size() == 2){
+    RefPair rp1, rp2;
+    Node::Children::iterator it = node->children.begin();
+    rp1 = (it++)->second;
+    rp2 = it->second;
+    return (is_leaf(rp1.node()) && is_leaf(rp2.node())) &&
+      (rp1.str().substr().find(TERM2)!=std::string::npos)!=
+      (rp2.str().substr().find(TERM2)!=std::string::npos);
+  }
+  return false;
 }
 \end{lstlisting}
 
@@ -2539,7 +2618,7 @@ This C++ program can generate similar result as the Python one if same
 test cases are given.
 
 \begin{verbatim}
-longest common substring of ababx, baby =[bab, ]
+longest common substring of ababa, baby =[bab, ]
 \end{verbatim}
 
 \subsubsection{Find the longest common substring recursively}
@@ -2568,7 +2647,10 @@ need process the children of the tree.
     \IF{$MATCH-FORK(node)$}
       \STATE $x \leftarrow s$
     \ELSE
-      \STATE $x \leftarrow s + LONGEST-COMMON-SUBSTRING'(node)$
+      \STATE $x \leftarrow LONGEST-COMMON-SUBSTRING'(node)$
+      \IF{$x \neq Empty$}
+        \STATE $x \leftarrow s + x$
+      \ENDIF
     \ENDIF
     \STATE $y \leftarrow PROC(LEFT(L))$
     \IF{$LENGTH(x) > LENGTH(y)$}
@@ -2583,7 +2665,7 @@ If the children list is empty, the algorithm returns empty
 string. In other case, the first element, as a pair of edge
 string and a child node, is first picked, if this child node
 match the fork criteria (one is in pattern ``...$\$_1$...'',
-the other in pattern ``...$\$_2$''), then the edge string is
+the other in pattern ``...$\$_2$'' without $\$_1$), then the edge string is
 a candidate. The algorithm will process the rest children 
 list and compare with this candidate. The longer one will 
 be returned as the final result.
@@ -2599,21 +2681,21 @@ common substring. The other is to return all the candidates.
 \lstset{language=Haskell}
 \begin{lstlisting}
 lcs::Tr->[String]
-lcs Lf = [""]
+lcs Lf = []
 lcs (Br lst) = find $ filter (not .isLeaf . snd) lst where
-    find [] = [""]
+    find [] = []
     find ((s, t):xs) = maxBy (compare `on` length) 
                        (if match t 
                         then s:(find xs)
                         else  (map (s++) (lcs t)) ++ (find xs))
 \end{lstlisting} %$
 
-Most of the program is as same as the one for fiding the longest
+Most of the program is as same as the one for finding the longest
 repeated substring. The ``match'' function is defined to check
 the fork criteria.
 
 \begin{lstlisting}
-match (Br [(s1, Lf), (s2, Lf)]) = or $ map ("#" `isInfixOf`) [s1, s2]
+match (Br [(s1, Lf), (s2, Lf)]) = ("#" `isInfixOf` s1) /= ("#" `isInfixOf` s2)
 match _ = False
 \end{lstlisting} %$
 
@@ -2627,14 +2709,15 @@ lcs' (Br lst) = find $ filter (not . isLeaf . snd) lst where
     find [] = ""
     find ((s, t):xs) = maximumBy (compare `on` length) 
                        (if match t then [s, find xs]
-                           else [s++(lcs' t), find xs])
+                           else [tryAdd s (lcs' t), find xs])
+    tryAdd x y = if y=="" then "" else x++y
 \end{lstlisting} %$
 
 We can test this program by some simple cases, below are the
 sinppet of the result in GHCi.
 
 \begin{lstlisting}
-lcs $ suffixTree "baby#ababx$"
+lcs $ suffixTree "baby#ababa$"
 ["bab"]
 \end{lstlisting}
 
