@@ -62,7 +62,7 @@
       (find (filter (lambda (x) (not (leaf? x))) t))))
 
 (define (longest-repeated-substring s)
-  (lrs (suffix-tree (string-append s "$"))))
+  (lrs (suffix-tree (string-append s TERM1))))
 
 ;; longest common substring searching
 
@@ -70,7 +70,7 @@
 (define (search-stree t match)
   (define (find lst)
     (if (null? lst)
-	'("")
+	'()
 	(let ((s (edge (car lst)))
 	      (tr (children (car lst))))
 	  (max-by (compare-on string-length) 
@@ -80,16 +80,11 @@
 		       (map (lambda (x) (string-append s x)) (search-stree tr match))
 		       (find (cdr lst))))))))
   (if (leaf? t)
-      '("")
+      '()
       (find (filter (lambda (x) (not (leaf? x))) t))))
 
-(define (longest-repeated-substring1 s)
-  (search-stree (suffix-tree (string-append s "$")) (lambda (x) #f)))
-
 (define (xor x y)
-  (cond ((and x y) #f)
-	((not (or x y)) #f)
-	(else #t)))
+  (not (eq? x y)))
 
 (define (longest-common-substring s1 s2)
   (define (match-fork t)
@@ -97,10 +92,14 @@
 	 (and (leaf? (car t)) (leaf? (cadr t)))
 	 (xor (substring? "#" (edge (car t)))
 	     (substring? "#" (edge (cadr t))))))
-  (search-stree (suffix-tree (string-append s1 "#" s2 "$")) match-fork))
+  (search-stree (suffix-tree (string-append s1 TERM2 s2 TERM1)) match-fork))
+
+(define (longest-palindrome s)
+  (longest-common-substring (string-append s TERM2) 
+			    (string-append (reverse-string s) TERM1)))
 
 (define (test-main)
-  (let ((fs (list longest-repeated-substring longest-repeated-substring1)) 
+  (let ((fs (list longest-repeated-substring longest-palindrome)) 
 	(ss '("mississippi" "banana" "cacao" "foofooxbarbar")))
     (map (lambda (f) (map f ss)) fs)))
 
