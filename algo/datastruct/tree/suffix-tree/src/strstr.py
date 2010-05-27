@@ -25,16 +25,21 @@ TERM2 = '#'
 
 # find if a how many occurrence of a substring
 # the algorithm is similar to the standard patricia one.
-# so I use the recursive version to simplify the logic for
-# illustration purpose
 def lookup_pattern(t, node, s):
     f = (lambda x: 1 if x==0 else x)
-    for _, (str_ref, tr) in node.children.items():
-        edge = t.substr(str_ref)
-        if string.find(edge, s)==0: #s `isPrefixOf` edger
-            return f(len(tr.children))
-        elif string.find(s, edge)==0: #edge `isPrefixOf` s
-            return lookup_pattern(t, tr, s[len(edge):])
+    while True:
+        match = False
+        for _, (str_ref, tr) in node.children.items():
+            edge = t.substr(str_ref)
+            if string.find(edge, s)==0: #s `isPrefixOf` edge
+                return f(len(tr.children))
+            elif string.find(s, edge)==0: #edge `isPrefixOf` s
+                match = True
+                node = tr
+                s = s[len(edge):]
+                break
+        if not match:
+            return 0
     return 0 # not found
 
 # search the longest repeating substringS

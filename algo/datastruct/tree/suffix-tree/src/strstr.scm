@@ -46,7 +46,7 @@
       '()
       (fold-left update-max (list (car lst)) (cdr lst))))
 
-;; longest repeated stubstring searching.
+;; longest repeated substring searching.
 (define (lrs t)
   (define (find lst)
     (if (null? lst)
@@ -90,8 +90,8 @@
   (define (match-fork t)
     (and (eq? 2 (length t)) 
 	 (and (leaf? (car t)) (leaf? (cadr t)))
-	 (xor (substring? "#" (edge (car t)))
-	     (substring? "#" (edge (cadr t))))))
+	 (xor (substring? TERM2 (edge (car t)))
+	     (substring? TERM2 (edge (cadr t))))))
   (search-stree (suffix-tree (string-append s1 TERM2 s2 TERM1)) match-fork))
 
 (define (longest-palindrome s)
