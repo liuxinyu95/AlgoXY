@@ -1880,11 +1880,13 @@ to a repeating substring of $S$ and the number of leaves of the sub-tree of a
 node for string $P$ is the number of occurrence of $P$ in $S$.\cite{ukkonen-lec}
 
 \subsubsection{Find the number of substring occurrence in imperative approach}
+The algorithm is almost as same as the Patricia looking up algorithm, 
+please refer to \cite{lxy-trie} for detail, the only difference is that
+the number of the children is returned when a node matches the pattern.
 
 \subsubsection*{Find number of substring occurrence in Python}
 
-The searching algorithm is almost as same as the Patricia looking 
-up \cite{lxy-trie}. In Ukkonen's algorithm, there is only one copy
+In Ukkonen's algorithm, there is only one copy
 of string, and all edges are represent with index pairs. There are
 some changes because of this reason. 
 
@@ -1892,12 +1894,19 @@ some changes because of this reason.
 \begin{lstlisting}
 def lookup_pattern(t, node, s):
     f = (lambda x: 1 if x==0 else x)
-    for _, (str_ref, tr) in node.children.items():
-        edge = t.substr(str_ref)
-        if string.find(edge, s)==0: #s `isPrefixOf` edge
-            return f(len(tr.children))
-        elif string.find(s, edge)==0: #edge `isPrefixOf` s
-            return lookup_pattern(t, tr, s[len(edge):])
+    while True:
+        match = False
+        for _, (str_ref, tr) in node.children.items():
+            edge = t.substr(str_ref)
+            if string.find(edge, s)==0: #s `isPrefixOf` edge
+                return f(len(tr.children))
+            elif string.find(s, edge)==0: #edge `isPrefixOf` s
+                match = True
+                node = tr
+                s = s[len(edge):]
+                break
+        if not match:
+            return 0
     return 0 # not found
 \end{lstlisting}
 
@@ -1922,7 +1931,7 @@ the edge string, if matches, then the program can be terminated, the
 number of the branches of this node will be returned as the number
 of the occurrence of this substring. Note that no branch means there 
 is only 1 occurrence. In case the edge is prefix of s, we then
-recursively call the function to continue searching.
+updated the node and string to be searched and go on the searching.
 
 Because construction of the suffix tree is expensive, so we only 
 do it when neccessary. We can do a lazy initialization as below.
@@ -2722,7 +2731,61 @@ lcs $ suffixTree "baby#ababa$"
 \end{lstlisting}
 
 \subsubsection*{Find the longest common substring in Scheme/Lisp}
-TODO:
+It can be found from the Haskell program, that the common structure
+of the lrs and lcs are very similar to each other, this hint us
+that we can abstract to a common search function.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (search-stree t match)
+  (define (find lst)
+    (if (null? lst)
+	'()
+	(let ((s (edge (car lst)))
+	      (tr (children (car lst))))
+	  (max-by (compare-on string-length) 
+		  (if (match tr)
+		      (cons s (find (cdr lst)))
+		      (append
+		       (map (lambda (x) (string-append s x)) (search-stree tr match))
+		       (find (cdr lst))))))))
+  (if (leaf? t)
+      '()
+      (find (filter (lambda (x) (not (leaf? x))) t))))
+\end{lstlisting}
+
+This function takes a suffix tree and a function to test if a node
+match a centain criteria. It will filter out all leaf node first,
+then repeatedly check if each branch node match the criteria. If matches
+the function will compare the edge string to see if it is the longest one,
+else, it will recursively check the child node untill either failes or 
+matches.
+
+The longest common substring function can be then implemented with
+this function.
+
+\begin{lstlisting}
+(define (xor x y)
+  (not (eq? x y)))
+
+(define (longest-common-substring s1 s2)
+  (define (match-fork t)
+    (and (eq? 2 (length t)) 
+	 (and (leaf? (car t)) (leaf? (cadr t)))
+	 (xor (substring? TERM2 (edge (car t)))
+	     (substring? TERM2 (edge (cadr t))))))
+  (search-stree (suffix-tree (string-append s1 TERM2 s2 TERM1)) match-fork))
+\end{lstlisting}
+
+We can test this function with some simple cases:
+
+\begin{lstlisting}
+(longest-common-substring "xbaby" "ababa")
+;Value 11: ("bab")
+
+(longest-common-substring "ff" "bb")
+;Value: ()
+\end{lstlisting}
 
 \subsection{Find the longest palindrome in a string}
 A palindrome is a string, $S$, such that $S=reverse(S)$, for instance,
@@ -2843,6 +2906,32 @@ longest palindrome(foofooxbarbar)=["oofoo"]
 \end{verbatim}
 
 \subsubsection*{Find the longest palindrome in Scheme/Lisp}
+Scheme/Lisp program of finding the longest palindorme is realized as
+the following.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (longest-palindrome s)
+  (longest-common-substring (string-append s TERM2) 
+			    (string-append (reverse-string s) TERM1)))
+\end{lstlisting}
+
+We can just add this function to the fs list in test-main program, so
+that the test will automatically done.
+
+\begin{lstlisting}
+(define (test-main)
+  (let ((fs (list longest-repeated-substring longest-palindrome)) 
+	(ss '("mississippi" "banana" "cacao" "foofooxbarbar")))
+    (map (lambda (f) (map f ss)) fs)))
+\end{lstlisting}
+
+The relative result snippet is as below.
+
+\begin{lstlisting}
+(test-main)
+;Value 12: (... (("ississi") ("anana") ("aca" "cac") ("oofoo")))
+\end{lstlisting}
 
 \subsection{Others}
 TODO: Data compression, Burrows-Wheeler transform, LZW compression (LZSS)
