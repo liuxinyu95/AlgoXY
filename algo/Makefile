@@ -7,7 +7,7 @@ $(BOOK).pdf: $(SRC)
 	latex $(BOOK).tex
 	makeindex -o $(BOOK).ind $(BOOK).idx #must have \makeindex in tex file
 	latex $(BOOK).tex
-	dvipdfmx $(BOOK).dvi
+	dvipdfmx $(BOOK)
 
 clean:
 	rm -f *.aux *.toc *.lon *.lor *.lof *.ilg *.idx *.ind *.out *.log *.exa
