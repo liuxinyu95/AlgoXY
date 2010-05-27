@@ -1879,7 +1879,7 @@ Note the facts of a $SuffixTree(S)$ that all internal nodes is corresponding
 to a repeating substring of $S$ and the number of leaves of the sub-tree of a
 node for string $P$ is the number of occurrence of $P$ in $S$.\cite{ukkonen-lec}
 
-\subsubsection{Find the number of substring occurrence in imperative approach}
+\subsubsection{Algorithm of finding the number of substring occurrence}
 The algorithm is almost as same as the Patricia looking up algorithm, 
 please refer to \cite{lxy-trie} for detail, the only difference is that
 the number of the children is returned when a node matches the pattern.
@@ -1909,6 +1909,10 @@ def lookup_pattern(t, node, s):
             return 0
     return 0 # not found
 \end{lstlisting}
+
+In case a branch node matches the pattern, it means there is at least
+one occurrence even if the number of children is zero. That's why
+a local lambda function is defined.
 
 I added a member function in STree to convert a string index
 pair to string as below.
@@ -1982,16 +1986,151 @@ find pattern ananan in banana : 0
 \end{verbatim}
 
 \subsubsection*{Find the number of substring occurrence in C++}
-TODO:
+In C++, do-while is used as the repeat-until structure, the program
+is almost as same as the standard Patricia looking up function.
 
-\subsubsection{Find the number of substring occurrence in functional approach}
-TODO:
+\lstset{language=C++}
+\begin{lstlisting}
+int lookup_pattern(const STree* t, std::string s){
+  Node* node = t->root;
+  bool match(false);
+  do{
+    match=false;
+    for(Node::Children::iterator it = node->children.begin();
+        it!=node->children.end(); ++it){
+      RefPair rp = it->second;
+      if(rp.str().substr().find(s)==0){
+        int res = rp.node()->children.size();
+        return res == 0? 1 : res;
+      }
+      else if(s.find(rp.str().substr())==0){
+        match = true;
+        node = rp.node();
+        s = s.substr(rp.str().substr().length());
+        break;
+      }
+    }
+  }while(match);
+  return 0;
+}
+\end{lstlisting}
+
+An utility class is defined and it support lazy initialization to save
+the cost of construction of suffix tree.
+
+\begin{lstlisting}
+class STreeUtil{
+public:
+  STreeUtil():t(0){}
+  ~STreeUtil(){ delete t; }
+
+  int find_pattern(std::string s, std::string pattern){
+    lazy(s);
+    return lookup_pattern(t, pattern);
+  }
+private:
+  void lazy(std::string s){
+    if((!t) || t->str != s+TERM1){
+      delete t;
+      t = suffix_tree(s+TERM1);
+    }
+  }
+  STree* t;
+};
+\end{lstlisting}
+
+The same test cases can be feed to this C++ program.
+
+\begin{lstlisting}
+class StrSTreeTest{
+public:
+  void test_find_pattern(){
+    __test_pattern("banana", "ana");
+    __test_pattern("banana", "an");
+    __test_pattern("banana", "anan");
+    __test_pattern("banana", "nana");
+    __test_pattern("banana", "ananan");
+  }
+pivate:
+  void __test_pattern(std::string s, std::string ptn){
+    std::cout<<"find pattern "<<ptn<<" in "<<s<<": "
+             <<util.find_pattern(s, ptn)<<"\n";
+  }
+
+  STreeUtil util;
+};
+\end{lstlisting}
+
+And the same result will be obtained like the Python program.
 
 \subsubsection*{Find the number of substring occurrence in Haskell}
-TODO:
+The haskell program is just turn the looking up into recursive way.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+lookupPattern :: Tr -> String -> Int
+lookupPattern (Br lst) ptn = find lst where
+    find [] = 0
+    find ((s, t):xs)
+         | ptn `isPrefixOf` s = numberOfBranch t
+         | s `isPrefixOf` ptn = lookupPattern t (drop (length s) ptn)
+         | otherwise = find xs
+    numberOfBranch (Br ys) = length ys
+    numberOfBranch _ = 1
+
+findPattern :: String -> String -> Int
+findPattern s ptn = lookupPattern (suffixTree $ s++"$") ptn
+\end{lstlisting}
+
+To verify it, the test cases are fed to the program as the following
+\begin{lstlisting}
+testPattern = ["find pattern "++p++" in banana: "++
+               (show $ findPattern "banana" p)
+                   | p<- ["ana", "an", "anan", "nana", "anana"]]
+\end{lstlisting} %$
+
+Launching GHCi, evaluate the instruction can output the same result
+as the above programs.
+
+\begin{lstlisting}
+ putStrLn $ unlines testPattern
+\end{lstlisting} %$
 
 \subsubsection*{Find the number of substring occurrence in Scheme/Lisp}
-TODO:
+Because the underground data structure of suffix tree is list in
+Scheme/Lisp program, we needn't define a inner find functiona as
+in Haskell program.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (lookup-pattern t ptn)
+  (define (number-of-branches node)
+    (if (null? node) 1 (length node)))
+  (if (null? t) 0
+      (let ((s (edge (car t)))
+	    (tr (children (car t))))
+	(cond ((string-prefix? ptn s)(number-of-branches tr))
+	      ((string-prefix? s ptn)
+	       (lookup-pattern tr (string-tail ptn (string-length s))))
+	      (else lookup-pattern (cdr t) ptn)))))
+\end{lstlisting}
+
+The test cases are fed to this program via a list.
+
+\begin{lstlisting}
+(define (test-pattern)
+  (define (test-ptn t s)
+    (cons (string-append "find pattern " s " in banana" )
+	  (lookup-pattern t s)))
+  (let ((t (suffix-tree "banana")))
+    (map (lambda (x) (test-ptn t x)) '("ana" "an" "anan" "nana" "anana"))))
+\end{lstlisting}
+
+Evaluate this test function can generate a result list as the following.
+\begin{lstlisting}
+(test-pattern)
+;Value 16: (("find pattern ana in banana" . "ana") ("find pattern an in banana" . "an") ("find pattern anan in banana" . "anan") ("find pattern nana in banana" . "nana") ("find pattern anana in banana" . "anana"))
+\end{lstlisting}
 
 \subsubsection{Complete pattern search}
 For search pattern like ``a**n'' with suffix tree, please refer to \cite{ukkonen-lec} and \cite{ukkonen-search}.

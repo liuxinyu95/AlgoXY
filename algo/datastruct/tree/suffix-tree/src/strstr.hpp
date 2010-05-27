@@ -24,6 +24,29 @@
 const char TERM1 = '$';
 const char TERM2 = '#';
 
+int lookup_pattern(const STree* t, std::string s){
+  Node* node = t->root;
+  bool match(false);
+  do{
+    match=false;
+    for(Node::Children::iterator it = node->children.begin();
+        it!=node->children.end(); ++it){
+      RefPair rp = it->second;
+      if(rp.str().substr().find(s)==0){
+        int res = rp.node()->children.size();
+        return res == 0? 1 : res;
+      }
+      else if(s.find(rp.str().substr())==0){
+        match = true;
+        node = rp.node();
+        s = s.substr(rp.str().substr().length());
+        break;
+      }
+    }
+  }while(match);
+  return 0;
+}
+
 typedef std::list<std::string> Strings;
 
 void update_max(Strings& res, std::string s){
@@ -104,6 +127,11 @@ public:
   STreeUtil():t(0){}
   ~STreeUtil(){ delete t; }
 
+  int find_pattern(std::string s, std::string pattern){
+    lazy(s);
+    return lookup_pattern(t, pattern);
+  }
+
   Strings find_lrs(std::string s){
     lazy(s);
     return lrs(t);
@@ -144,9 +172,18 @@ public:
   }
 
   void run(){
+    test_find_pattern();
     test_lrs();
     test_lcs();
     test_lpalindrome();
+  }
+
+  void test_find_pattern(){
+    __test_pattern("banana", "ana");
+    __test_pattern("banana", "an");
+    __test_pattern("banana", "anan");
+    __test_pattern("banana", "nana");
+    __test_pattern("banana", "ananan");
   }
 
   void test_lrs(){
@@ -169,6 +206,11 @@ public:
   }
 
 private:
+  void __test_pattern(std::string s, std::string ptn){
+    std::cout<<"find pattern "<<ptn<<" in "<<s<<": "
+             <<util.find_pattern(s, ptn)<<"\n";
+  }
+
   void __test_lrs(std::string s){
     std::cout<<"longest repeated substirng of "<<s<<"="
              <<util.find_lrs(s)<<"\n";
