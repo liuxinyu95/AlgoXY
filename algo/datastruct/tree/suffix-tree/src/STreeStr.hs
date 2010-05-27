@@ -20,8 +20,7 @@ module STreeStr where
 
 import STree
 import Data.Function (on)
-import Data.List (maximumBy, isInfixOf)
-import Control.Monad (liftM)
+import Data.List (maximumBy, isInfixOf, isPrefixOf)
 
 -- Different from Data.List.maximumBy, returns all biggest elements
 maxBy::(Ord a)=>(a->a->Ordering)->[a]->[a]
@@ -35,6 +34,20 @@ maxBy cmp (x:xs) = foldl maxBy' [x] xs where
 isLeaf::Tr -> Bool
 isLeaf Lf = True
 isLeaf _ = False
+
+-- find the ocurrence of a pattern
+lookupPattern :: Tr -> String -> Int
+lookupPattern (Br lst) ptn = find lst where
+    find [] = 0
+    find ((s, t):xs)
+         | ptn `isPrefixOf` s = numberOfBranch t
+         | s `isPrefixOf` ptn = lookupPattern t (drop (length s) ptn)
+         | otherwise = find xs
+    numberOfBranch (Br ys) = length ys
+    numberOfBranch _ = 1
+
+findPattern :: String -> String -> Int
+findPattern s ptn = lookupPattern (suffixTree $ s++"$") ptn
 
 -- Search the longest repeated substringS
 --  returns all results if there are multiple repeated substr with same length
@@ -90,6 +103,9 @@ longestPalindromes s = lcs $ suffixTree (s++"#"++(reverse s)++"$")
 longestPalindrome s = lcs' $ suffixTree (s++"#"++(reverse s)++"$")
 
 -- tests
+testPattern = ["find pattern "++p++" in banana: "++
+               (show $ findPattern "banana" p)
+                   | p<- ["ana", "an", "anan", "nana", "anana"]]
 
 testLRS s = "LRS(" ++ s ++ ")=" ++ (show $ lrs $ suffixTree (s++"$")) ++ "\n"
 

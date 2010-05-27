@@ -30,6 +30,18 @@
 (define (leaf? t)
   (null? (children t)))
 
+;;find the ocurrence of a pattern in a string
+(define (lookup-pattern t ptn)
+  (define (number-of-branches node)
+    (if (null? node) 1 (length node)))
+  (if (null? t) 0
+      (let ((s (edge (car t)))
+	    (tr (children (car t))))
+	(cond ((string-prefix? ptn s)(number-of-branches tr))
+	      ((string-prefix? s ptn)
+	       (lookup-pattern tr (string-tail ptn (string-length s))))
+	      (else lookup-pattern (cdr t) ptn)))))
+
 (define (compare-on func)
   (lambda (x y) 
     (cond ((< (func x) (func y)) 'lt)
@@ -98,6 +110,7 @@
   (longest-common-substring (string-append s TERM2) 
 			    (string-append (reverse-string s) TERM1)))
 
+;; test
 (define (test-main)
   (let ((fs (list longest-repeated-substring longest-palindrome)) 
 	(ss '("mississippi" "banana" "cacao" "foofooxbarbar")))
@@ -105,3 +118,10 @@
 
 (define (test-lcs)
   (longest-common-substring "xbaby" "ababa"))
+
+(define (test-pattern)
+  (define (test-ptn t s)
+    (cons (string-append "find pattern " s " in banana" )
+	  (lookup-pattern t s)))
+  (let ((t (suffix-tree "banana")))
+    (map (lambda (x) (test-ptn t x)) '("ana" "an" "anan" "nana" "anana"))))
