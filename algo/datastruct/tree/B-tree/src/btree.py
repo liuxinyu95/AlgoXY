@@ -75,11 +75,11 @@ def B_tree_insert_nonfull(tr, key):
     else:
         i = len(tr.keys)
         while i>0 and key < tr.keys[i-1]:
-            i=i-1
+            i = i-1
         #disk_read(tr.children[i])
         if tr.children[i].is_full():
             tr.split_child(i)
-            if key> tr.keys[i-1]:
+            if key>tr.keys[i]:
                 i = i+1
         B_tree_insert_nonfull(tr.children[i], key)
     
