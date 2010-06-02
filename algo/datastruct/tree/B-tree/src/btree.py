@@ -51,6 +51,7 @@ def B_tree_create(t=TREE_2_3_4):
     #disk_write(x) 
     return x
 
+# insertion
 def B_tree_insert(tr, key): # + data parameter
     root = tr
     if root.is_full():
@@ -82,6 +83,11 @@ def B_tree_insert_nonfull(tr, key):
             if key>tr.keys[i]:
                 i = i+1
         B_tree_insert_nonfull(tr.children[i], key)
+
+# deletion
+def B_tree_delete(tr, key):
+    find = lambda lst, x: [x for i in lst if x==i]
+    if tr.leaf:
     
 def B_tree_to_str(tr):
     res = "("
