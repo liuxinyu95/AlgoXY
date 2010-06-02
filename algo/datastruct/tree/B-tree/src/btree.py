@@ -88,6 +88,8 @@ def B_tree_insert_nonfull(tr, key):
 def B_tree_delete(tr, key):
     find = lambda lst, x: [x for i in lst if x==i]
     if tr.leaf:
+        if find(tr.keys, key)!=[]:
+            tr.keys.remove(key)
     
 def B_tree_to_str(tr):
     res = "("
