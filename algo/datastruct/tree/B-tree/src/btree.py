@@ -151,7 +151,18 @@ def B_tree_delete(tr, key):
     return tr
     
 def B_tree_search(tr, key):
-    pass
+    for i in range(len(tr.keys)):
+        if key<= tr.keys[i]:
+            break
+    if key == tr.keys[i]:
+        return (tr, i)
+    if tr.leaf:
+        return None
+    else:
+        if key>tr.keys[-1]:
+            i=i+1
+        #disk_read
+        return B_tree_search(tr.children[i], key)
 
 def B_tree_to_str(tr):
     res = "("
@@ -177,6 +188,7 @@ class BTreeTest:
     def run(self):
         self.test_insert()
         self.test_delete()
+        self.test_search()
 
     def test_insert(self):
         lst = ["G", "M", "P", "X", "A", "C", "D", "E", "J", "K", \
@@ -213,6 +225,23 @@ class BTreeTest:
         tr = B_tree_delete(tr, key)
         print B_tree_to_str(tr)
         return tr
+
+    def test_search(self):
+        lst = ["G", "M", "P", "X", "A", "C", "D", "E", "J", "K", \
+               "N", "O", "R", "S", "T", "U", "V", "Y", "Z"]
+        tr = list_to_B_tree(lst, 3)
+        print "test search\n", B_tree_to_str(tr)
+        for i in lst:
+            self.__test_search__(tr, i)
+        self.__test_search__(tr, "W")
+
+    def __test_search__(self, tr, k):
+        res = B_tree_search(tr, k)
+        if res is None:
+            print k, "not found"
+        else:
+            (node, i) = res
+            print "found", node.keys[i]
 
 if __name__ == "__main__":
     BTreeTest().run()
