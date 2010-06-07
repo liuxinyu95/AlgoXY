@@ -18,7 +18,7 @@
 
 module BTree where
 
-import Data.List (intersperse)
+import Data.List (intersperse, partition)
 
 data BTree a = Node{ keys :: [a]
                    , children :: [BTree a]
@@ -29,27 +29,31 @@ empty deg = Node [] [] deg
 full::BTree a -> Bool
 full tr = (length $ keys tr) >= 2*(degree tr)-1
 
+-- take n [] == drop n[] == []
 insert :: (Ord a)=> BTree a -> a -> BTree a
-insert tr x = fix $ ins tr where
-    ins (Node ks [] t) = Node ([a|a<-ks, a<x]++[x]++[b|b<-ks, b>x]) [] t
-    ins (Node (k:ks) (c:cs) t)
-        | x < k = merge (ins $ Node [] [c] t) (Node (k:ks) cs t)
-        | otherwise = merge (Node [k] [c] t) (ins $ Node ks cs t)
-    ins (Node [] [c] t) = let c' = ins c in if full c' then split c' else Node [] [c'] t --fix $ Node [] [ins c] t
+insert (Node ks [] t) x = fix $ Node ([a|a<-ks, a<x]++[x]++[b|b<-ks, b>x]) [] t
+insert (Node ks cs t) x = fix $ merge left (insert c x) right
+    where
+      left  = (ks' , cs' )
+      right = (ks'', cs'')
+      (ks', ks'') = partition (< x) ks
+      cs' = take (length ks') cs
+      cs''= drop (length cs' +1) cs
+      c   = head $ drop (length cs') cs
 
 fix :: BTree a -> BTree a
-fix (Node [] [tr] _) = if full tr then split tr else tr -- Shrink height
+--fix (Node [] [tr] _) = if full tr then split tr else tr -- Shrink height
 fix tr = if full tr then split tr else tr
 
-merge :: BTree a -> BTree a -> BTree a
-merge (Node ks1 cs1 t) (Node ks2 cs2 _) = fix $ Node (ks1++ks2) (cs1++cs2) t
-
--- take n [] == drop n[] == []
 split :: BTree a -> BTree a
 split (Node ks cs t) = Node [k] [c1, c2] t where
     c1 = Node (take (t-1) ks) (take t cs) t
     c2 = Node (drop t ks) (drop t cs) t
     k  = head (drop (t-1) ks)
+
+merge :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
+merge (ks', cs') (Node [k] cs t) (ks'', cs'') = Node (ks'++[k]++ks'') (cs'++cs++cs'') t
+merge (ks', cs') c (ks'', cs'') = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
 
 toString :: (Show a)=>BTree a -> String
 toString (Node ks [] _) = "("++(concat $ intersperse "," (map show ks))++")"
@@ -61,5 +65,6 @@ listToBTree::(Ord a)=>[a]->Int->BTree a
 listToBTree lst t = foldl insert (empty t) lst
 
 --test
-testInsert = toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 3
+testInsert = (toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 3) ++"\n"++
+             (toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 2)
        
