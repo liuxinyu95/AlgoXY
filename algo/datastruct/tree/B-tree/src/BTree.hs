@@ -70,10 +70,10 @@ merge (ks', cs') c (ks'', cs'')
 borrow :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
 borrow ([], []) c ([], []) = c
 borrow ([], []) c ((k:ks), (c':cs)) = merge ([], []) 
-                                      (fix $ unsplit $ Node [k] [c, c'] (degree c))
+                                      (unsplit $ Node [k] [c, c'] (degree c))
                                       (ks, cs)
 borrow (ks, cs) c (ks', cs') = merge (init ks, init cs)
-                               (fix $ unsplit $ Node [last ks] [last cs, c] (degree c))
+                               (unsplit $ Node [last ks] [last cs, c] (degree c))
                                (ks' ,cs')
 
 
@@ -82,7 +82,7 @@ delete (Node ks [] t) x = Node (L.delete x ks) [] t
 delete (Node ks cs t) x = 
     case L.elemIndex x ks of
       Just i -> fix $ merge (take i ks, take i cs)
-                            (delete (unsplit $ Node [x] [cs !! i, cs !! (i+1)] t) x)
+                            (delete (unsplit $ Node [x] [cs !! i, cs !! (i+1)] t) x) --push x down
                             (drop (i+1) ks, drop (i+2) cs)
       Nothing -> fix $ merge left (delete c x) right
     where
