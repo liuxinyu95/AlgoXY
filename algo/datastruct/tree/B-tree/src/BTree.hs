@@ -73,12 +73,12 @@ delete (Node ks cs t) x =
       right = (ks'', cs'')
       (ks', ks'') = L.partition (<x) ks
       (cs', (c:cs'')) = L.splitAt (length ks') cs
-merge :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
-merge (ks', cs') (Node [k] cs@(_:_) t) (ks'', cs'') = Node (ks'++[k]++ks'') (cs'++cs++cs'') t
-merge (ks', cs') c (ks'', cs'') 
-    | low c = borrow (ks', cs') c (ks'', cs'')
-    | full c = merge (ks', cs') (split c) (ks'', cs'')
-    | otherwise = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
+      --merge :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
+      merge (ks', cs') (Node [k] cs@(_:_) t) (ks'', cs'') = Node (ks'++[k]++ks'') (cs'++cs++cs'') t
+      merge (ks', cs') c (ks'', cs'') 
+          | low c = borrow (ks', cs') c (ks'', cs'')
+          | full c = merge (ks', cs') (split c) (ks'', cs'')
+          | otherwise = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
 
 
 borrow :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
