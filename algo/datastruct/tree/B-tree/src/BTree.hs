@@ -42,7 +42,9 @@ insert (Node ks cs t) x = fix $ merge left (insert c x) right
       right = (ks'', cs'')
       (ks', ks'') = L.partition (< x) ks
       (cs', (c:cs'')) = L.splitAt (length ks') cs
-
+      merge :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
+      merge (ks', cs') (Node [k] cs t) (ks'', cs'') = Node (ks'++[k]++ks'') (cs'++cs++cs'') t
+      merge (ks', cs') c (ks'', cs'') = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
 
 fix :: BTree a -> BTree a
 fix tr = if full tr then split tr else tr
@@ -58,7 +60,19 @@ unsplit :: BTree a -> BTree a
 unsplit (Node [k] [c1, c2] t) = Node ((keys c1)++[k]++(keys c2))
                                 ((children c1)++(children c2)) t
 
-
+delete :: (Ord a)=> BTree a -> a -> BTree a
+delete (Node ks [] t) x = Node (L.delete x ks) [] t
+delete (Node ks cs t) x = 
+    case L.elemIndex x ks of
+      Just i -> fix $ merge (take i ks, take i cs)
+                            (delete (unsplit $ Node [x] [cs !! i, cs !! (i+1)] t) x) --push x down
+                            (drop (i+1) ks, drop (i+2) cs)
+      Nothing -> fix $ merge left (delete c x) right
+    where
+      left = (ks', cs')
+      right = (ks'', cs'')
+      (ks', ks'') = L.partition (<x) ks
+      (cs', (c:cs'')) = L.splitAt (length ks') cs
 merge :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
 merge (ks', cs') (Node [k] cs@(_:_) t) (ks'', cs'') = Node (ks'++[k]++ks'') (cs'++cs++cs'') t
 merge (ks', cs') c (ks'', cs'') 
@@ -76,20 +90,7 @@ borrow (ks, cs) c (ks', cs') = merge (init ks, init cs)
                                (unsplit $ Node [last ks] [last cs, c] (degree c))
                                (ks' ,cs')
 
-
-delete :: (Ord a)=> BTree a -> a -> BTree a
-delete (Node ks [] t) x = Node (L.delete x ks) [] t
-delete (Node ks cs t) x = 
-    case L.elemIndex x ks of
-      Just i -> fix $ merge (take i ks, take i cs)
-                            (delete (unsplit $ Node [x] [cs !! i, cs !! (i+1)] t) x) --push x down
-                            (drop (i+1) ks, drop (i+2) cs)
-      Nothing -> fix $ merge left (delete c x) right
-    where
-      left = (ks', cs')
-      right = (ks'', cs'')
-      (ks', ks'') = L.partition (<x) ks
-      (cs', (c:cs'')) = L.splitAt (length ks') cs
+-}
 
 toString :: (Show a)=>BTree a -> String
 toString (Node ks [] _) = "("++(L.intercalate "," (map show ks))++")"
@@ -105,10 +106,11 @@ testInsert = do
   putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 3
   putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 2
 
+{-
 testDelete = foldM delShow (listToBTree "GMPXACDEJKNORSTUVYZ" 3) "GAMUE" where
     delShow tr x = do
       let tr' = delete tr x
       putStrLn $ "delete "++(show x)
       putStrLn $ toString tr'
       return tr'
-       
+-}       
