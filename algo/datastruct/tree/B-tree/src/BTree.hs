@@ -19,6 +19,7 @@
 module BTree where
 
 import qualified Data.List as L
+import Control.Monad (foldM)
 
 data BTree a = Node{ keys :: [a]
                    , children :: [BTree a]
@@ -42,8 +43,8 @@ insert (Node ks cs t) x = fix $ merge left (insert c x) right
       (ks', ks'') = L.partition (< x) ks
       (cs', (c:cs'')) = L.splitAt (length ks') cs
 
+
 fix :: BTree a -> BTree a
---fix (Node [] [tr] _) = if full tr then split tr else tr -- Shrink height
 fix tr = if full tr then split tr else tr
 
 split :: BTree a -> BTree a
@@ -52,32 +53,43 @@ split (Node ks cs t) = Node [k] [c1, c2] t where
     c2 = Node (drop t ks) (drop t cs) t
     k  = head (drop (t-1) ks)
 
+
+unsplit :: BTree a -> BTree a
+unsplit (Node [k] [c1, c2] t) = Node ((keys c1)++[k]++(keys c2))
+                                ((children c1)++(children c2)) t
+
+
 merge :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
-merge (ks', cs') (Node [k] cs t) (ks'', cs'') = Node (ks'++[k]++ks'') (cs'++cs++cs'') t
+merge (ks', cs') (Node [k] cs@(_:_) t) (ks'', cs'') = Node (ks'++[k]++ks'') (cs'++cs++cs'') t
 merge (ks', cs') c (ks'', cs'') 
     | low c = borrow (ks', cs') c (ks'', cs'')
+    | full c = merge (ks', cs') (split c) (ks'', cs'')
     | otherwise = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
 
+
 borrow :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
-borrow ([], []) (Node ks cs t) ((k':ks'), (c':cs')) = 
-    Node ks' ((Node (ks++[k']) (cs++[c']) t):cs') t
-borrow (ks'@(k':_), cs'@(c':_)) (Node ks cs t) (ks'', cs'') = 
-    Node ((init ks')++ks'') 
-         ((init cs')++[Node ((last ks'):ks) ((last cs'):cs) t]++cs'') t
-borrow _ c _ = c
+borrow ([], []) c ([], []) = c
+borrow ([], []) c ((k:ks), (c':cs)) = merge ([], []) 
+                                      (fix $ unsplit $ Node [k] [c, c'] (degree c))
+                                      (ks, cs)
+borrow (ks, cs) c (ks', cs') = merge (init ks, init cs)
+                               (fix $ unsplit $ Node [last ks] [last cs, c] (degree c))
+                               (ks' ,cs')
+
 
 delete :: (Ord a)=> BTree a -> a -> BTree a
 delete (Node ks [] t) x = Node (L.delete x ks) [] t
-delete (Node ks cs t) x = merge left (delete c x) right
+delete (Node ks cs t) x = 
+    case L.elemIndex x ks of
+      Just i -> fix $ merge (take i ks, take i cs)
+                            (delete (unsplit $ Node [x] [cs !! i, cs !! (i+1)] t) x)
+                            (drop (i+1) ks, drop (i+2) cs)
+      Nothing -> fix $ merge left (delete c x) right
     where
-      (ks', ks'') = L.partition (<x) ks
-      (cs', cs'') = L.splitAt (length ks') cs
       left = (ks', cs')
-      right = if head ks'' == x then (tail ks'', drop 2 cs'')
-              else (ks'', tail cs'')
-      c = if head ks'' == x 
-          then fix $ Node ((keys c1)++(keys c2)) ((children c1)++(children c2)) t
-          else head cs''
+      right = (ks'', cs'')
+      (ks', ks'') = L.partition (<x) ks
+      (cs', (c:cs'')) = L.splitAt (length ks') cs
 
 toString :: (Show a)=>BTree a -> String
 toString (Node ks [] _) = "("++(L.intercalate "," (map show ks))++")"
@@ -89,8 +101,14 @@ listToBTree::(Ord a)=>[a]->Int->BTree a
 listToBTree lst t = foldl insert (empty t) lst
 
 --test
-testInsert = (toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 3) ++"\n"++
-             (toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 2)
+testInsert = do
+  putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 3
+  putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 2
 
---testDelete = foldl delete (listToBTree "GMPXACDEJKNORSTUVYZ" 3) lst
+testDelete = foldM delShow (listToBTree "GMPXACDEJKNORSTUVYZ" 3) "GAMUE" where
+    delShow tr x = do
+      let tr' = delete tr x
+      putStrLn $ "delete "++(show x)
+      putStrLn $ toString tr'
+      return tr'
        
