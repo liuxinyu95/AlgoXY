@@ -35,62 +35,83 @@ low tr = (length $ keys tr) < (degree tr)-1
 
 -- take n [] == drop n[] == []
 insert :: (Ord a)=> BTree a -> a -> BTree a
-insert (Node ks [] t) x = fix $ Node (L.insert x ks) [] t
-insert (Node ks cs t) x = fix $ merge left (insert c x) right
+insert tr x = fixRoot $ ins tr where
+    ins (Node ks [] t) = Node (L.insert x ks) [] t
+    ins (Node ks cs t) = make (ks', cs') (ins c) (ks'', cs'')
+    (ks', ks'') = L.partition (< x) (keys tr)
+    (cs', (c:cs'')) = L.splitAt (length ks') (children tr)
+
+fixRoot :: BTree a -> BTree a
+fixRoot (Node [] [tr] _) = tr -- shrink height
+fixRoot tr = if full tr then Node [k] [c1, c2] (degree tr) 
+             else tr 
     where
-      left  = (ks' , cs' )
-      right = (ks'', cs'')
-      (ks', ks'') = L.partition (< x) ks
-      (cs', (c:cs'')) = L.splitAt (length ks') cs
-      merge :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
-      merge (ks', cs') (Node [k] cs t) (ks'', cs'') = Node (ks'++[k]++ks'') (cs'++cs++cs'') t
-      merge (ks', cs') c (ks'', cs'') = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
+      (c1, k, c2) = split tr
 
-fix :: BTree a -> BTree a
-fix tr = if full tr then split tr else tr
-
-split :: BTree a -> BTree a
-split (Node ks cs t) = Node [k] [c1, c2] t where
+split :: BTree a -> (BTree a, a, BTree a)
+split (Node ks cs t) = (c1, k, c2) where
     c1 = Node (take (t-1) ks) (take t cs) t
     c2 = Node (drop t ks) (drop t cs) t
     k  = head (drop (t-1) ks)
 
+unsplit :: BTree a -> a -> BTree a -> BTree a
+unsplit c1 k c2 = Node ((keys c1)++[k]++(keys c2))
+                       ((children c1)++(children c2)) (degree c1)
 
-unsplit :: BTree a -> BTree a
-unsplit (Node [k] [c1, c2] t) = Node ((keys c1)++[k]++(keys c2))
-                                ((children c1)++(children c2)) t
+-- merge two nodes into one
+--  k1, k2, ..., kn          k1', k2', ..., km'
+--C1, C2, ..., Cn, C{n+1}  C1',C2', ..., Cm', C{m+1}
+-- recursively merge C{n+1} and C1' until both nodes are leaves
+merge :: BTree a -> BTree a -> BTree a
+merge (Node ks [] t) (Node ks' [] _) = Node (ks++ks') [] t
+merge (Node ks cs t) (Node ks' cs' _) = Node (ks++ks') 
+                                        ((init cs)++[merge (last cs) (head cs')]++(tail cs')) t
 
+-- delete x from a B-tree
+-- case 1:
+--  k1, k2,     ..., x,   ...,   kn
+--C1, C2, ..., C{i-1}, Ci,..., Cn, C{n+1}
+-- x devides the nodes into 3 parts: left, x, and right, merge left and right
+--
+-- case 2:
+-- k{i-1}<x<ki
+-- new node is:
+--  k1, k2, ..., k{i-1}, ki, ...,   kn
+--C1, C2, ..., C{i-1}, C'i, C{i+1}, ..., Cn, C{n+1}
+-- where C'i = recursive delte x from Ci
+-- then fix if keys are too little in C'i
 delete :: (Ord a)=> BTree a -> a -> BTree a
-delete (Node ks [] t) x = Node (L.delete x ks) [] t
-delete (Node ks cs t) x = 
-    case L.elemIndex x ks of
-      Just i -> fix $ merge (take i ks, take i cs)
-                            (delete (unsplit $ Node [x] [cs !! i, cs !! (i+1)] t) x) --push x down
-                            (drop (i+1) ks, drop (i+2) cs)
-      Nothing -> fix $ merge left (delete c x) right
+delete tr x = fixRoot $ del tr where
+    del (Node ks [] t) = Node (L.delete x ks) [] t
+    del (Node ks cs t) = 
+        case L.elemIndex x ks of
+          Just i -> merge (Node (take i ks) (take (i+1) cs) t) 
+                          (Node (drop (i+1) ks) (drop (i+1) cs) t)
+          Nothing -> make (ks', cs') (del c) (ks'', cs'')
+    (ks', ks'') = L.partition (<x) (keys tr)
+    (cs', (c:cs'')) = L.splitAt (length ks') (children tr)
+
+make :: (Eq a)=>([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
+make (ks', cs') c (ks'', cs'')
+    | full c = fixFull (ks', cs') c (ks'', cs'')
+    | low c  = fixLow  (ks', cs') c (ks'', cs'')
+    | otherwise = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
+
+fixFull :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
+fixFull (ks', cs') c (ks'', cs'') = Node (ks'++[k]++ks'')
+                                         (cs'++[c1,c2]++cs'') (degree c)
     where
-      left = (ks', cs')
-      right = (ks'', cs'')
-      (ks', ks'') = L.partition (<x) ks
-      (cs', (c:cs'')) = L.splitAt (length ks') cs
-      --merge :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
-      merge (ks', cs') (Node [k] cs@(_:_) t) (ks'', cs'') = Node (ks'++[k]++ks'') (cs'++cs++cs'') t
-      merge (ks', cs') c (ks'', cs'') 
-          | low c = borrow (ks', cs') c (ks'', cs'')
-          | full c = merge (ks', cs') (split c) (ks'', cs'')
-          | otherwise = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
+      (c1, k, c2) = split c
 
-
-borrow :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
-borrow ([], []) c ([], []) = c
-borrow ([], []) c ((k:ks), (c':cs)) = merge ([], []) 
-                                      (unsplit $ Node [k] [c, c'] (degree c))
-                                      (ks, cs)
-borrow (ks, cs) c (ks', cs') = merge (init ks, init cs)
-                               (unsplit $ Node [last ks] [last cs, c] (degree c))
-                               (ks' ,cs')
-
--}
+fixLow :: (Eq a)=>([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
+fixLow (ks', cs') c (ks'', cs'')
+    | ks' /= [] = make (init ks', init cs') 
+                  (unsplit (last cs') (last ks') c) 
+                  (ks'', cs'')
+    | ks''/= [] = make (ks', cs')
+                  (unsplit c (head ks'') (head cs''))
+                  (tail ks'', tail cs'')
+    | otherwise = c
 
 toString :: (Show a)=>BTree a -> String
 toString (Node ks [] _) = "("++(L.intercalate "," (map show ks))++")"
@@ -104,13 +125,11 @@ listToBTree lst t = foldl insert (empty t) lst
 --test
 testInsert = do
   putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 3
-  putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 2
+--  putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 2 BUG!!! stack overflow!
 
-{-
 testDelete = foldM delShow (listToBTree "GMPXACDEJKNORSTUVYZ" 3) "GAMUE" where
     delShow tr x = do
       let tr' = delete tr x
       putStrLn $ "delete "++(show x)
       putStrLn $ toString tr'
       return tr'
--}       
