@@ -19,7 +19,7 @@
 module BTree where
 
 import qualified Data.List as L
-import Control.Monad (foldM)
+import Control.Monad (foldM, mapM)
 
 -- Definition
 data BTree a = Node{ keys :: [a]
@@ -35,30 +35,33 @@ full tr = (length $ keys tr) > 2*(degree tr)-1
 low::BTree a -> Bool
 low tr = (length $ keys tr) < (degree tr)-1
 
-leaf::BTree a -> Bool
-leaf (Node _ [] _) = True
-leaf _ = False
-
 -- Insertion
 
 insert :: (Ord a)=> BTree a -> a -> BTree a
-insert (Node ks [] t) x = fixRoot $ Node (L.insert x ks) [] t
-insert (Node ks cs t) x = fixRoot $ make (ks', cs') (insert c x) (ks'', cs'') 
+insert tr x = fixRoot $ ins tr x
+
+ins :: (Ord a) => BTree a -> a -> BTree a
+ins (Node ks [] t) x = Node (L.insert x ks) [] t
+ins (Node ks cs t) x = make (ks', cs') (ins c x) (ks'', cs'') 
     where
       (ks', ks'') = L.partition (<x) ks
       (cs', (c:cs'')) = L.splitAt (length ks') cs
 
-delete :: (Ord a)=> BTree a -> a -> BTree a
-delete tr x = fixRoot $ del tr where
-    del (Node ks [] t) = Node (L.delete x ks) [] t
-    del (Node ks cs t) = 
-        case L.elemIndex x ks of
-          Just i -> merge (Node (take i ks) (take (i+1) cs) t) 
-                          (Node (drop (i+1) ks) (drop (i+1) cs) t)
-          Nothing -> make (ks', cs') (del c) (ks'', cs'')
-    (ks', ks'') = L.partition (<x) (keys tr)
-    (cs', (c:cs'')) = L.splitAt (length ks') (children tr)
+-- Deletion
 
+delete :: (Ord a) => BTree a -> a -> BTree a
+delete tr x = fixRoot $ del tr x
+
+del:: (Ord a) => BTree a -> a -> BTree a
+del (Node ks [] t) x = Node (L.delete x ks) [] t
+del (Node ks cs t) x = 
+    case L.elemIndex x ks of
+      Just i -> merge (Node (take i ks) (take (i+1) cs) t) 
+                      (Node (drop (i+1) ks) (drop (i+1) cs) t)
+      Nothing -> make (ks', cs') (del c x) (ks'', cs'')
+    where
+      (ks', ks'') = L.partition (<x) ks
+      (cs', (c:cs'')) = L.splitAt (length ks') cs
 
 -- Tree manipulation
 
@@ -97,10 +100,6 @@ make (ks', cs') c (ks'', cs'')
     | low c  = fixLow  (ks', cs') c (ks'', cs'')
     | otherwise = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
 
---make' :: ([a], [BTree a]) -> (BTree a, a, BTree a)->([a], [BTree a])->BTree a
---make' (ks', cs') (c1, k, c2) (ks'', cs'') = Node (ks'++[k]++ks'') 
---                                            (cs'++[c1,c2]++cs'') (degree c1)
-
 fixFull :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
 fixFull (ks', cs') c (ks'', cs'') = Node (ks'++[k]++ks'')
                                          (cs'++[c1,c2]++cs'') (degree c)
@@ -130,10 +129,16 @@ listToBTree lst t = foldl insert (empty t) lst
 
 --test
 testInsert = do
-  putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 3
+  putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZBFHIQW" 3
+  --testInsertV "GMPXACDEJKNORSTUVYZ" 3
   putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 2
+  --testInsertV "GMPXACDEJKNORSTUVYZ" 2
 
-testDelete = foldM delShow (listToBTree "GMPXACDEJKNORSTUVYZ" 3) "GAMUE" where
+-- verbose
+testInsertV lst t =
+  mapM (\x->putStrLn $ toString $ listToBTree x t) (tail $ L.reverse $ L.tails lst)
+
+testDelete = foldM delShow (listToBTree "GMPXACDEJKNORSTUVYZBFHIQW" 3) "EGAMU" where
     delShow tr x = do
       let tr' = delete tr x
       putStrLn $ "delete "++(show x)
