@@ -27,7 +27,7 @@ tex: image
 	latex $(OBJECT)
 
 html: image
-	htlatex.bat stree-en "html, imgdir:img/"
+	htlatex.bat $(OBJECT) "html, imgdir:img/"
 	mv *.png img/
 
 clean:
