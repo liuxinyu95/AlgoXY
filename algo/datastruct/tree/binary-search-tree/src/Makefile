@@ -4,11 +4,13 @@ SOURCE = bstree.cpp
 
 .PHONY: all
 
-all: $(HEADER)
+all: cpp haskell
+
+cpp: $(HEADER)
 	g++ $(CXX_FLAGS) $(SOURCE) -o main
 
 haskell:
 	ghc BSTree.hs -o bst
 
 clean:
-	rm *.o *~ main bst
+	rm *.o *.hi *.pyc *~ main bst
