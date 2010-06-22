@@ -1,16 +1,20 @@
 HEADER = 
-SOURCE = rbtree.cpp
-#CXX_FLAGS = -I/usr/include/boost-1_33_1
+SOURCE = rbtree-en.tex
+OBJECT = rbtree-en
+TEX = latex
 
 .PHONY: all
 
-all: $(HEADER)
-	g++ $(CXX_FLAGS) $(SOURCE) -o main
+all: pdf
+
+cpp:
+	make cpp -C src
 
 haskell:
-	ghc RBTree.hs -o rbt
+	make haskell -C src
 
 image:
+	#./create-image.sh
 	dot -Tps -o img/unbalanced.ps img/unbalanced.dot
 	dot -Tps -o img/insert-haskell.ps img/insert-haskell.dot
 	dot -Tps -o img/clrs-fig.13.4.ps img/clrs-fig.13.4.dot
@@ -23,5 +27,9 @@ image:
 	convert img/del-case3.png img/del-case3.eps
 
 html:
-	htlatex.bat rbtree-en "html, imgdir:img/"
+	htlatex.bat $(OBJECT) "html, imgdir:img/"
 	mv *.png img/
+
+clean:
+	rm -f *.o main rbt *.pyc *.hi *.4ct *.4tc *.aux *.css *.dvi *.html 
+	rm -f *.idv *.lg *.log *.out *.pdf *.tmp *.xref *.cache *.zip *~
