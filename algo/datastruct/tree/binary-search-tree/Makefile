@@ -1,18 +1,31 @@
 HEADER = 
-SOURCE = bstree.cpp
-#CXX_FLAGS = -I/usr/include/boost-1_33_1
+SOURCE = bstree-en.tex
+OBJECT = bstree-en
+TEX = latex
 
 .PHONY: all
 
-all: $(HEADER)
-	g++ $(CXX_FLAGS) $(SOURCE) -o main
+all: pdf
+
+cpp:
+	make cpp -C src
 
 haskell:
-	ghc BSTree.hs -o bst
+	make haskell -C src
 
 image:
 	convert img/tree.png img/tree.eps
 
+pdf: $(OBJECT).dvi
+	dvipdfmx $(OBJECT)
+
+tex: image
+	latex $(OBJECT)
+	latex $(OBJECT)
+
 html:
-	htlatex.bat bstree-en "html, imgdir:img/"
+	htlatex.bat $(OBJECT) "html, imgdir:img/"
 	mv *.png img/
+
+clean:
+	rm *.aux *.dvi *.log *.out *.pdf *~

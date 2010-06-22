@@ -10,3 +10,5 @@ all: $(HEADER)
 haskell:
 	ghc BSTree.hs -o bst
 
+clean:
+	rm *.o *~ main bst
