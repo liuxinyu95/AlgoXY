@@ -21,8 +21,8 @@ CXX = g++ -Wall -ggdb -I/usr/include/boost-1_33_1
 CXX_FLAGS = 
 HS_TEST_SRCS = BTree.hs TestMain.hs
 HS_TEST_OBJS = $(HS_TEST_SRCS:.hs=.o)
-#HS_APP_SRCS = TestMain.hs
-#HS_APP_OBJS = EDict.o Trie.o Patricia.o
+HS_TOOL_SRCS = BTree2dot.hs
+HS_TOOL_OBJS = BTree.o BTree2dot.o
 
 .SUFFIXES: .o .hs
 
@@ -40,15 +40,15 @@ $(CPP_TEST_OBJS): $(HEADER)
 c:
 	gcc trie.c -o triec
 
-haskell: htest #happ
+haskell: htest bt2dot
 
 # Makefile auto variable, $@, target; $< first prerequiste
 htest : $(HS_TEST_OBJS)
 	ghc -o $@ $(HS_TEST_OBJS)
 
 #ghc --make EDict -o edict
-#happ: $(HS_APP_OBJS)
-#	ghc -o $@ $(HS_APP_OBJS)
+bt2dot: $(HS_TOOL_OBJS)
+	ghc -o $@ $(HS_TOOL_OBJS)
 
 # Standard suffix rules
 %.o : %.hs
