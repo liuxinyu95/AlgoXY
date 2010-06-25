@@ -19,6 +19,26 @@
 module Main where
 
 import BTree
+import System.Environment (getArgs)
+import Text.ParserCombinators.Parsec
+
+parseArgs :: [String] -> (String, String)
+parseArgs [fname, s] = (fname, s)
+parseArgs _ = error "wrong usage\nexample:\nbt2dot output.dot \"((B, C), A, (D, E))\""
+
+leaf = do
+  char '('
+  ks <- key `sepBy` string ", "
+  char ')'
+  return ks
+
+branch = do 
+  char '('
+  xs <- 
+  char ')'
+
+key = many (noneOf ", ()")
 
 main = do
-  putStrLn "foo"
+  args <- getArgs
+  putStrLn $ show $ parseArgs args
