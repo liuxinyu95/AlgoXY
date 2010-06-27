@@ -21,8 +21,8 @@ CXX = g++ -Wall -ggdb -I/usr/include/boost-1_33_1
 CXX_FLAGS = 
 HS_TEST_SRCS = BTree.hs TestMain.hs
 HS_TEST_OBJS = $(HS_TEST_SRCS:.hs=.o)
-HS_TOOL_SRCS = BTree2dot.hs
-HS_TOOL_OBJS = BTree.o BTree2dot.o
+HS_TOOL_SRCS = BTr2dot.hs
+HS_TOOL_OBJS = BTr2dot.o
 
 .SUFFIXES: .o .hs
 
