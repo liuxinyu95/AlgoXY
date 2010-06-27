@@ -46,9 +46,9 @@ haskell: htest bt2dot
 htest : $(HS_TEST_OBJS)
 	ghc -o $@ $(HS_TEST_OBJS)
 
-#ghc --make EDict -o edict
+#ghc --make 
 bt2dot: $(HS_TOOL_OBJS)
-	ghc -o $@ $(HS_TOOL_OBJS)
+	ghc -o $@ $(HS_TOOL_SRCS) --make
 
 # Standard suffix rules
 %.o : %.hs
