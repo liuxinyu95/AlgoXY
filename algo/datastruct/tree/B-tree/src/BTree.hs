@@ -19,7 +19,7 @@
 module BTree where
 
 import qualified Data.List as L
-import Control.Monad (foldM, mapM)
+import Control.Monad (foldM_, mapM_)
 
 -- Definition
 data BTree a = Node{ keys :: [a]
@@ -136,9 +136,9 @@ testInsert = do
 
 -- verbose
 testInsertV lst t =
-  mapM (\x->putStrLn $ toString $ listToBTree x t) (tail $ L.reverse $ L.tails lst)
+  mapM_ (\x->putStrLn $ toString $ listToBTree x t) (tail $ L.reverse $ L.tails lst)
 
-testDelete = foldM delShow (listToBTree "GMPXACDEJKNORSTUVYZBFHIQW" 3) "EGAMU" where
+testDelete = foldM_ delShow (listToBTree "GMPXACDEJKNORSTUVYZBFHIQW" 3) "EGAMU" where
     delShow tr x = do
       let tr' = delete tr x
       putStrLn $ "delete "++(show x)
