@@ -119,7 +119,7 @@ fixLow _ c _ = c
 -- Printing functions
 
 toString :: (Show a)=>BTree a -> String
-toString (Node ks [] _) = "("++(L.intercalate "," (map show ks))++")"
+toString (Node ks [] _) = "("++(L.intercalate ", " (map show ks))++")"
 toString tr = "("++(toStr (keys tr) (children tr))++")" where
     toStr (k:ks) (c:cs) = (toString c)++", "++(show k)++", "++(toStr ks cs)
     toStr [] [c] = toString c
