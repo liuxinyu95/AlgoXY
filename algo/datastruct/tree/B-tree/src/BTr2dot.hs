@@ -20,6 +20,7 @@ module Main where
 
 import System.Environment (getArgs)
 import Text.ParserCombinators.Parsec
+import Control.Monad (mapM_)
 
 --auxiliar parser functions
 
@@ -63,6 +64,11 @@ key = many (noneOf ", ()")
 parseArgs :: [String] -> (String, String)
 parseArgs [fname, s] = (fname, s)
 parseArgs _ = error "wrong usage\nexample:\nbt2dot output.dot \"((B, C), A, (D, E))\""
+
+-- tests
+testParse = mapM_ (\x->putStrLn $ show $ (parse node "unknown" x))
+            ["((A, B), C, (D, E))", 
+             "(((A, B), C, (D, E, F), G, (H, I, J, K)), M, ((N, O), P, (Q, R, S), T, (U, V), W, (X, Y, Z)))"]
 
 main = do
   args <- getArgs
