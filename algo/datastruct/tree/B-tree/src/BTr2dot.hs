@@ -21,7 +21,7 @@ module Main where
 import System.Environment (getArgs)
 import Text.ParserCombinators.Parsec
 import Control.Monad (mapM_)
-import Data.List (intercalate)
+import Data.List (intercalate, zipWith)
 
 --auxiliar parser functions
 
@@ -66,14 +66,25 @@ parseArgs :: [String] -> (String, String)
 parseArgs [fname, s] = (fname, s)
 parseArgs _ = error "wrong usage\nexample:\nbt2dot output.dot \"((B, C), A, (D, E))\""
 
-toDot (Node ks []) prefix = prefix++ks++"[label=\""++(intercalate "|" ks)++"\"];\n"
-toDot (Node ks cs) prefix = 
+toDot (Node ks []) prefix = prefix'++"[label=\""++(intercalate "|" ks)++"\"];\n"
+toDot (Node ks cs) prefix = prefix'++"[label=\""++(defNode ks)++"\"];\n" ++
+                            (concat $ map (\c->toDot c prefix') cs) ++
+                            (defCons cs prefix')
+                                where prefix' = prefix ++ (concat ks)
+
+defNode :: [String] -> String
+defNode ks = "<C0>"++ (concat $ zipWith (\x y->"|"++y++"|<C"++(show x)++">")  [1..] ks)
+
+defCons :: (Show a)=>[Node a]->String->String
+defCons cs prefix = 
 
 -- tests
 testParse = mapM_ (\x->putStrLn $ show $ (parse node "unknown" x))
             ["((A, B), C, (D, E))", 
              "((A,B), C, (D,E))", 
              "(((A, B), C, (D, E, F), G, (H, I, J, K)), M, ((N, O), P, (Q, R, S), T, (U, V), W, (X, Y, Z)))"]
+
+testDefNode = map defineNode [["A"], ["A", "B", "C"]]
 
 main = do
   args <- getArgs
