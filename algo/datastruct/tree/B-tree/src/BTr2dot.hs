@@ -21,6 +21,7 @@ module Main where
 import System.Environment (getArgs)
 import Text.ParserCombinators.Parsec
 import Control.Monad (mapM_)
+import Data.List (intercalate)
 
 --auxiliar parser functions
 
@@ -49,7 +50,7 @@ node = (try leaf) <|> branch
 
 leaf = do
   char '('
-  ks <- key `sepBy` string ", "
+  ks <- key `sepBy` (string "," >> spaces)
   char ')'
   return (Node ks [])
 
@@ -65,9 +66,13 @@ parseArgs :: [String] -> (String, String)
 parseArgs [fname, s] = (fname, s)
 parseArgs _ = error "wrong usage\nexample:\nbt2dot output.dot \"((B, C), A, (D, E))\""
 
+toDot (Node ks []) prefix = prefix++ks++"[label=\""++(intercalate "|" ks)++"\"];\n"
+toDot (Node ks cs) prefix = 
+
 -- tests
 testParse = mapM_ (\x->putStrLn $ show $ (parse node "unknown" x))
             ["((A, B), C, (D, E))", 
+             "((A,B), C, (D,E))", 
              "(((A, B), C, (D, E, F), G, (H, I, J, K)), M, ((N, O), P, (Q, R, S), T, (U, V), W, (X, Y, Z)))"]
 
 main = do
