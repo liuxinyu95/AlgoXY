@@ -22,6 +22,7 @@ import System.Environment (getArgs)
 import Text.ParserCombinators.Parsec
 import Control.Monad (mapM_)
 import Data.List (intercalate, zipWith)
+import System.IO (writeFile)
 
 --auxiliar parser functions
 
@@ -66,17 +67,23 @@ parseArgs :: [String] -> (String, String)
 parseArgs [fname, s] = (fname, s)
 parseArgs _ = error "wrong usage\nexample:\nbt2dot output.dot \"((B, C), A, (D, E))\""
 
-toDot (Node ks []) prefix = prefix'++"[label=\""++(intercalate "|" ks)++"\"];\n"
+toDot (Node ks []) prefix = prefix++(concat ks)++"[label=\""++(intercalate "|" ks)++"\"];\n"
 toDot (Node ks cs) prefix = prefix'++"[label=\""++(defNode ks)++"\"];\n" ++
                             (concat $ map (\c->toDot c prefix') cs) ++
                             (defCons cs prefix')
                                 where prefix' = prefix ++ (concat ks)
 
 defNode :: [String] -> String
-defNode ks = "<C0>"++ (concat $ zipWith (\x y->"|"++y++"|<C"++(show x)++">")  [1..] ks)
+defNode ks = "<C0>"++ (concat $ zipWith (\i k->"|"++k++"|<C"++(show i)++">")  [1..] ks)
 
-defCons :: (Show a)=>[Node a]->String->String
-defCons cs prefix = 
+defCons cs prefix = concat $ zipWith f [0..] cs where
+    f i c = prefix++":C"++(show i)++"->"++prefix++(nodeName c)++";\n"
+    nodeName (Node ks _) = concat ks
+
+genDot fname (Right node) = writeFile fname dots >> putStrLn dots
+    where
+      dots = "digraph G{\n\tnode[shape=record]\n"++(addTab $ toDot node "t")++"}"
+      addTab s = unlines $ map ("\t"++) (lines s)
 
 -- tests
 testParse = mapM_ (\x->putStrLn $ show $ (parse node "unknown" x))
@@ -84,9 +91,11 @@ testParse = mapM_ (\x->putStrLn $ show $ (parse node "unknown" x))
              "((A,B), C, (D,E))", 
              "(((A, B), C, (D, E, F), G, (H, I, J, K)), M, ((N, O), P, (Q, R, S), T, (U, V), W, (X, Y, Z)))"]
 
-testDefNode = map defineNode [["A"], ["A", "B", "C"]]
+testDefNode = map defNode [["A"], ["A", "B", "C"]]
+
+testToDot = putStrLn $ toDot (Node ["C"] [Node ["A","B"] [],Node ["D","E"] []]) "t"
 
 main = do
   args <- getArgs
   let (fname, s) = parseArgs args
-  putStrLn $ show $ (parse node "unknown" s)
+  genDot fname (parse node "unknown" s)
