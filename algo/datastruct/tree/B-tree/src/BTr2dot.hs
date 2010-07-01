@@ -57,7 +57,7 @@ leaf = do
 
 branch = do 
   char '('
-  (cs, ks)<- everyOther node key (string ", ")
+  (cs, ks)<- everyOther node key (string "," >> spaces)
   char ')'
   return (Node ks cs)
 
