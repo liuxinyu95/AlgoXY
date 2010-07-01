@@ -1,5 +1,5 @@
 {-
-    BTree.hs, B-Tree in Haskell.
+    BTr2dot.hs, Convert a B-Tree description string to dot script.
     Copyright (C) 2010, Liu Xinyu (liuxinyu95@gmail.com)
 
     This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,8 @@ module Main where
 
 import System.Environment (getArgs)
 import Text.ParserCombinators.Parsec
-import Control.Monad (mapM_)
+import Control.Monad (mapM_, liftM2)
+import Control.Applicative ((<$>))
 import Data.List (intercalate, zipWith)
 import System.IO (writeFile)
 
@@ -28,21 +29,10 @@ import System.IO (writeFile)
 
 -- input: a1, b1, a2, b2, ... an, bn, a{n+1}
 -- output: ([a1, a2, ..., an, a{n+1}], [b1, b2, ..., bn])
-everyOther pa pb sep = do{ x <- pa
-                         ; sep
-                         ; (ys, xs)<- every2 pb pa sep
-                         ; return (x:xs, ys)}
--- input a1, b1, a2, b2, ... an, bn
--- output: ([a1, ..., an], [b1, ..., bn])
-every2 pa pb sep = scan where
-    scan = do { x<-pa
-              ; y<-(sep>>pb)
-              ; do {
-                ; (xs, ys)<-(sep>>scan)
-                ; return (x:xs, y:ys)
-                }
-              <|> return ([x], [y])
-              }
+everyOther pa pb sep = do
+  a <- pa
+  (bs, as) <- unzip <$> many(liftM2 (,) (sep>>pb) (sep>>pa))
+  return (a:as, bs)
 
 -- we needn't min-degree for B-Tree node definition here
 data Node a = Node [a] [Node a] deriving (Eq, Show)
