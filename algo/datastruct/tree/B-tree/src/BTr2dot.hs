@@ -24,6 +24,7 @@ import Control.Monad (mapM_, liftM2)
 import Control.Applicative ((<$>))
 import Data.List (intercalate, zipWith)
 import System.IO (writeFile)
+import Data.Char (isSpace)
 
 --auxiliar parser functions
 
@@ -41,13 +42,13 @@ node = (try leaf) <|> branch
 
 leaf = do
   char '('
-  ks <- key `sepBy` (string "," >> spaces)
+  ks <- key `sepBy` (char ',')
   char ')'
   return (Node ks [])
 
 branch = do 
   char '('
-  (cs, ks)<- everyOther node key (string "," >> spaces)
+  (cs, ks)<- everyOther node key (char ',')
   char ')'
   return (Node ks cs)
 
@@ -88,4 +89,4 @@ testToDot = putStrLn $ toDot (Node ["C"] [Node ["A","B"] [],Node ["D","E"] []]) 
 main = do
   args <- getArgs
   let (fname, s) = parseArgs args
-  genDot fname (parse node "unknown" s)
+  genDot fname (parse node "unknown" (filter (not.isSpace) s))
