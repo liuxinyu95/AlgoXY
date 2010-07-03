@@ -52,7 +52,7 @@ branch = do
   char ')'
   return (Node ks cs)
 
-key = many (noneOf ", ()")
+key = many (noneOf ",()")
 
 parseArgs :: [String] -> (String, String)
 parseArgs [fname, s] = (fname, s)
@@ -77,10 +77,11 @@ genDot fname (Right node) = writeFile fname dots >> putStrLn dots
       addTab s = unlines $ map ("\t"++) (lines s)
 
 -- tests
-testParse = mapM_ (\x->putStrLn $ show $ (parse node "unknown" x))
-            ["((A, B), C, (D, E))", 
-             "((A,B), C, (D,E))", 
-             "(((A, B), C, (D, E, F), G, (H, I, J, K)), M, ((N, O), P, (Q, R, S), T, (U, V), W, (X, Y, Z)))"]
+testParse = mapM_ (parseTest node) toks where
+    toks = map (filter (not.isSpace))
+           ["((A, B), C, (D, E))", 
+            "((A,B), C, (D,E))", 
+            "(((A, B), C, (D, E, F), G, (H, I, J, K)), M, ((N, O), P, (Q, R, S), T, (U, V), W, (X, Y, Z)))"]
 
 testDefNode = map defNode [["A"], ["A", "B", "C"]]
 
