@@ -1,5 +1,5 @@
 IMG_OBJECTS = 
-DOT_OBJECTS = btree-example btree-node
+DOT_OBJECTS = btree-example btree-node split-node-before
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
