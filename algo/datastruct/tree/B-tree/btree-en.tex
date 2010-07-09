@@ -178,11 +178,6 @@ Scheme/Lisp languages.
 All source code can be downloaded in appendix \ref{appendix}, please 
 refer to appendix for detailed information about build and run.
 
-% ================================================================
-%                 Insertion
-% ================================================================
-\section{Insertion}
-\label{btree-insertion}
 Insertion is the basic operation to B-tree, a B-tree can be created by inserting
 keys repeatly. The essential idea of insertion is similar to the binary
 search tree. If the keys to be inserted is x, we examine the keys in a 
@@ -233,12 +228,227 @@ with 2 children turn be the new root).
 \end{figure}
 
 Note that the split solution will push a key up to its parent node,
-so it is possible that the parent node be full again (greater than
-$2t-1$ keys) if it has already $2t-1$ keys.
+so it is possible that the parent node be full if it has already 
+$2t-1$ keys.
 
-So the CLRS book provides a solution to check every node from root
-along the path until leaf, in case there is a node in this path is 
-. the split is applied.
+Regarding to this issue, the CLRS book provides a solution to check 
+every node from root along the path until leaf, in case there is a 
+node in this path is full. the split is applied. Since the parent
+of this node has been examined except the root node, which ensure
+the parent node has less than $2t-1$ keys, the pushing up of one
+key won't make the parent full. This approach need only a single
+pass down the tree without need of any back-tracking.
+
+If we skip the disk accessing part as explained in \cite{CLRS}. The 
+imperative splitting algorithms can be shown as below.
+
+% ================================================================
+%                 Definition
+% ================================================================
+\section{Definition}
+\label{btree-definition}
+
+Similar as Binary search tree, B-tree can be defined recursively.
+Because there are multiple of keys and children, a collection container
+can be used to store them.
+
+\subsection*{Definition of B-tree in C++}
+TODO: ...
+
+\subsection*{Definition of B-tree in Python}
+
+If the minimum degree is 2, the B-tree is commonly called as 2-3-4 tree.
+For illustration purpose, I set 2-3-4 tree as default.
+
+\lstset{language=Python}
+\begin{lstlisting}
+TREE_2_3_4 = 2 #by default, create 2-3-4 tree
+
+class BTreeNode:
+    def __init__(self, t=TREE_2_3_4, leaf=True):
+        self.leaf = leaf
+        self.t = t
+        self.keys = [] #self.data = ...
+        self.children = []
+\end{lstlisting}
+
+It's quite OK for B-tree not only store keys, but also store satelite data.
+However, satelite data is omitted in this post.
+
+Also there are some auxiliary member functions defined
+
+\begin{lstlisting}
+class BTreeNode:
+    #...
+    def is_full(self):
+        return len(self.keys) == 2*self.t-1
+\end{lstlisting}
+
+This member function is used to test if a node is full.
+
+\subsection*{Definition of B-tree in Haskell}
+In Haskell, record syntax is used to define BTree, so that keys and children 
+can be access easily later on. Some auxiliary functions are also provided.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+data BTree a = Node{ keys :: [a]
+                   , children :: [BTree a]
+                   , degree :: Int} deriving (Eq, Show)
+
+-- Auxiliary functions
+empty deg = Node [] [] deg
+
+full::BTree a -> Bool
+full tr = (length $ keys tr) > 2*(degree tr)-1
+\end{lstlisting} %$
+
+\subsection*{Definition of B-tree in Scheme/Lisp}
+TODO: ...
+
+% ================================================================
+%                 Insertion
+% ================================================================
+\section{Insertion}
+\label{btree-insertion}
+Insertion is the basic operation to B-tree, a B-tree can be created by inserting
+keys repeatly. The essential idea of insertion is similar to the binary
+search tree. If the keys to be inserted is x, we examine the keys in a 
+node to find a position where all the keys on the left are less than x,
+while all the keys on the right hand are greater than x. after that
+we can recursively insert x to the child node at this position.
+
+However, this basic idea need to be fine tuned. The first thing is what
+the recursion termination criteria is. This problem can be easily solved
+by define the rule that, in case the node to be inserted is a leaf node.
+We needn't do inserting recursively. This is because leaf node don't have
+children at all. We can just put the x between all left hand keys and 
+right hand keys, which cause the keys number of a leaf node increased by one.
+
+The second thing is how to keep the balance properties of a B-tree when
+inserting. if a leaf has already $2t-1$ keys, it will break the rule of '
+each node can has at most $2t-1$ keys' after we insert x to it. Below
+sections will show 2 major methods to solve this problem. 
+
+%=========================================================================
+%       Splitting
+%=========================================================================
+\subsection{Splitting}
+\label{split}
+Regarding to the problem of insert a key to a node, which has already
+$2t-1$ keys, one solution is to split the node before insertion.
+
+In this case, we can devide the node into 3 parts as shown in 
+Figure \ref{fig:node-split}. the left part contains first $t-1$ keys
+and $t$ children, while the right part contains the last $t-1$ keys
+and $t$ children. Both left part and right part are valid B-tree
+nodes. the middle part is just the $t$-th key. It is pushed up
+to its parent node (if it already root node, then the $t$-th key,
+with 2 children turn be the new root).
+
+\begin{figure}[htbp]
+       \begin{center}
+       	  \includegraphics[scale=0.5]{img/split-node-before.ps}
+
+          a. Before split,
+
+          \includegraphics[scale=0.5]{img/split-node-after.ps}
+
+          b. After split, 
+        \caption{Split node} \label{fig:node-split}
+       \end{center}
+\end{figure}
+
+\subsubsection{Imperative splitting}
+If we skip the disk accessing part as explained in \cite{CLRS}. The 
+imperative splitting algorithms can be shown as below.
+
+\begin{algorithmic}
+\STATE $B-TREE-SPLIT-CHILD(node, i)$
+  \STATE $x \leftarrow CHILDREN(node)[i]$
+  \STATE $y \leftarrow CREATE-NODE()$
+  \STATE $INSERT(KEYS(node), i, KEYS(x)[t])$
+  \STATE $INSERT(CHILDREN(node), i+1, y)$
+  \STATE $KEYS(y) \leftarrow KEYS(x)[t+1 ... 2t-1]$
+  \STATE $KEYS(x) \leftarrow KEYS(x)[1 ... t-1]$
+  \IF{$y$ is not leaf}
+    \STATE $CHILDREN(y) \leftarrow CHILDREN(x)[t+1 ... 2t]$
+    \STATE $CHILDREN(x) \leftarrow CHILDREN(x)[1 ... t]$
+  \ENDIF
+\end{algorithmic}
+
+This algorithm take 2 parameters, one is a B-tree node, the other
+is the index to indicate which child of this node will be split.
+
+\subsubsection*{Split implemented in C++}
+TODO: ...
+
+\subsubsection*{Split implemented in Python}
+We can define splitting operation as a member method of B-tree
+as the following.
+
+\lstset{language=Python}
+\begin{lstlisting}
+class BTreeNode:
+    #...
+    def split_child(self, i):
+        t = self.t
+        x = self.children[i]
+        y = BTreeNode(t, x.leaf)
+        self.keys.insert(i, x.keys[t-1])
+        self.children.insert(i+1, y)
+        y.keys = x.keys[t:]
+        x.keys = x.keys[:t-1]
+        if not y.leaf:
+            y.children = x.children[t:]
+            x.children = x.children[:t]
+\end{lstlisting}
+
+\subsubsection{Functional splitting}
+TODO: ...
+
+\subsubsection*{Split implemented in Haskell}
+TODO: ...
+
+\subsubsection*{Split implemented in Scheme/Lisp}
+TODO: ...
+
+%=========================================================================
+%       Split before insertion
+%=========================================================================
+\subsection{Split before insert method}
+\label{split before insertion}
+
+Note that the split solution will push a key up to its parent node,
+so it is possible that the parent node be full if it has already 
+$2t-1$ keys.
+
+Regarding to this issue, the CLRS book provides a solution to check 
+every node from root along the path until leaf, in case there is a 
+node in this path is full. the split is applied. Since the parent
+of this node has been examined except the root node, which ensure
+the parent node has less than $2t-1$ keys, the pushing up of one
+key won't make the parent full. This approach need only a single
+pass down the tree without need of any back-tracking.
+
+The main insert algorithm will first check if the root node need
+split. If yes, it will create a new node, and set the root as the 
+only child, then performs splitting. and set the new node as the
+root. After that, the algorithm will try to insert the key to the
+non-full node.
+
+\begin{algorithmic}
+\STATE $B-TREE-INSERT(T, k)$
+  \STATE $r \leftarrow T$
+  \IF{$r$ is full}
+    \STATE $s \leftarrow CREATE-NODE()$
+    \STATE $APPEND(CHILDREN(s), r)$
+    \STATE $B-TREE-SPLIT-CHILD(s, 1)$
+    \STATE $r \leftarrow s$
+  \ENDIF
+  \STATE $B-TREE-INSERT-NONFULL(r, k)$
+  \RETURN $r$
+\end{algorithmic}
 
 % ================================================================
 %               Insert and fix method 
