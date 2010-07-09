@@ -405,10 +405,35 @@ class BTreeNode:
 \end{lstlisting}
 
 \subsubsection{Functional splitting}
-TODO: ...
+
+For functional algorithm, splitting will return a tuple, which contains the
+left part and right as B-Trees, along with a key.
+
+\begin{algorithmic}
+\STATE $B-TREE-SPLIT(node)$
+  \STATE $ks \leftarrow KEYS(node)[1 ... t-1]$
+  \STATE $ks' \leftarrow KEYS(node)[t+1 ... 2t-1]$
+  \IF{$node$ is not leaf}
+    \STATE $cs \leftarrow CHILDREN(node)[1 ... t]$
+    \STATE $cs' \leftarrow CHILDREN(node)[t ... 2t]$
+  \ENDIF
+  \RETURN $(CREATE-B-TREE(ks, cs), KEYS(node)[t], CREATE-B-TREE(ks', cs'))$
+\end{algorithmic}
 
 \subsubsection*{Split implemented in Haskell}
-TODO: ...
+Haskell prelude provide take/drop functions to get the part
+of the list. These functions just returns empty list if the 
+list passed in is empty. So there is no need to test if
+the node is leaf.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+split :: BTree a -> (BTree a, a, BTree a)
+split (Node ks cs t) = (c1, k, c2) where
+    c1 = Node (take (t-1) ks) (take t cs) t
+    c2 = Node (drop t ks) (drop t cs) t
+    k  = head (drop (t-1) ks)
+\end{lstlisting}
 
 \subsubsection*{Split implemented in Scheme/Lisp}
 TODO: ...
@@ -420,7 +445,7 @@ TODO: ...
 \label{split before insertion}
 
 Note that the split solution will push a key up to its parent node,
-so it is possible that the parent node be full if it has already 
+It is possible that the parent node be full if it has already 
 $2t-1$ keys.
 
 Regarding to this issue, the CLRS book provides a solution to check 
@@ -449,6 +474,41 @@ non-full node.
   \STATE $B-TREE-INSERT-NONFULL(r, k)$
   \RETURN $r$
 \end{algorithmic}
+
+The algorithm $B-TREE-INSERT-NONFUL$ assert that the node passed in
+is not full. If it is a leaf node, the new key is just inserted to 
+the proper postion based on its order. If it a branch node. The algorithm
+finds a proper child node to which the new key will be inserted.
+If this child node is full, the splitting will be performed firstly.
+
+\begin{algorithmic}
+\STATE $B-TREE-INSERT-NONFUL(T, k)$
+  \IF{$T$ is leaf}
+    \STATE $i \leftarrow 1$
+    \WHILE{$i \leq LENGTH(KEYS(T)) and k>KEYS(T)[i]$}
+      \STATE $i \leftarrow i+1$
+    \ENDWHILE
+    \STATE $INSERT(KEYS(T), i, k)$
+  \ELSE
+    \STATE $i \leftarrow LENGTH(KEYS(T))$
+    \WHILE{$i>1 and k < KEYS(T)[i]$}
+      \STATE $i \leftarrow i-1$
+    \ENDWHILE
+    \IF{$CHILDREN(T)[i]$ is full}
+      \STATE $B-TREE-SPLIT-CHILD(T, i)$
+      \IF{$k > KEYS(T)[i]$}
+        \STATE $i \leftarrow i+1$
+      \ENDIF
+    \ENDIF
+    \STATE $B-TREE-INSERT-NONFULL(CHILDREN(T)[i], k)$
+  \ENDIF
+\end{algorithmic}
+
+\subsubsection*{Insert implemented in C++}
+TODO: ...
+
+\subsubsection*{Insert implemented in Python}
+TOOD: ...
 
 % ================================================================
 %               Insert and fix method 
