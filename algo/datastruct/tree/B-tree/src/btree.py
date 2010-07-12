@@ -62,12 +62,6 @@ class BTreeNode:
     def can_remove(self):
         return len(self.keys) >= self.t
 
-# t: minimum degree
-def B_tree_create(t=TREE_2_3_4):
-    x = BTreeNode(t)
-    #disk_write(x) 
-    return x
-
 # insertion
 def B_tree_insert(tr, key): # + data parameter
     root = tr
@@ -176,7 +170,7 @@ def B_tree_to_str(tr):
     return res
 
 def list_to_B_tree(l, t=TREE_2_3_4):
-    tr = B_tree_create(t)
+    tr = BTreeNode(t)
     for x in l:
         tr = B_tree_insert(tr, x)
     return tr
