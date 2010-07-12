@@ -477,7 +477,7 @@ non-full node.
 
 The algorithm $B-TREE-INSERT-NONFUL$ assert that the node passed in
 is not full. If it is a leaf node, the new key is just inserted to 
-the proper postion based on its order. If it a branch node. The algorithm
+the proper postion based on its order. If it is a branch node. The algorithm
 finds a proper child node to which the new key will be inserted.
 If this child node is full, the splitting will be performed firstly.
 
@@ -504,11 +504,75 @@ If this child node is full, the splitting will be performed firstly.
   \ENDIF
 \end{algorithmic}
 
+Note that this algorithm is actually recursive. Consider B-tree typically
+has minimum degree t relative to magnetic disk structure, and it is balanced 
+tree, Even small depth can support huge amount of data 
+(with $t=10$, maximum to 10 billion data can be stored in a B-tree with height of 10).
+Of course it is easy to eliminate the recursive call to improve the algorithm.
+
+In the below language specific implementations, I'll eliminate recursion in 
+C++ program, and show the recurisve version in Pythono program.
+
 \subsubsection*{Insert implemented in C++}
 TODO: ...
 
 \subsubsection*{Insert implemented in Python}
-TOOD: ...
+Implement the above insertion algorithm in Python is not complete, we change
+the index starts from 0 instead of 1.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def B_tree_insert(tr, key): # + data parameter
+    root = tr
+    if root.is_full():
+        s = BTreeNode(root.t, False)
+        s.children.insert(0, root)
+        s.split_child(0)
+        root = s
+    B_tree_insert_nonfull(root, key)
+    return root
+\end{lstlisting}
+
+And the insertion to nonfull node is implemented as the following.
+
+\begin{lstlisting}
+def B_tree_insert_nonfull(tr, key):
+    if tr.leaf:
+        orderred_insert(tr.keys, key)
+        #disk_write(tr)
+    else:
+        i = len(tr.keys)
+        while i>0 and key < tr.keys[i-1]:
+            i = i-1
+        #disk_read(tr.children[i])
+        if tr.children[i].is_full():
+            tr.split_child(i)
+            if key>tr.keys[i]:
+                i = i+1
+        B_tree_insert_nonfull(tr.children[i], key)
+\end{lstlisting}
+
+Where the function ``orderred\_insert'' function is used to insert an element
+to an orderred list. Since Python standard list don't support order information.
+The program is witten as below.
+
+\begin{lstlisting}
+def orderred_insert(lst, x):
+    i = len(lst)
+    lst.append(x)
+    while i>0 and lst[i]<lst[i-1]:
+        (lst[i-1], lst[i]) = (lst[i], lst[i-1])
+        i=i-1
+\end{lstlisting}
+
+For the array based collection, append on the tail is much more effective than
+insert in abitary position, because the later takes $O(n)$ time, if the length
+of the collection is $n$. This program will first append the new element at
+the end of the existing collection, then iterate from the last element to
+the first one, and check if the current two elements next to each other
+is orderred, if not, these two elements will be swapped. 
+
+
 
 % ================================================================
 %               Insert and fix method 
