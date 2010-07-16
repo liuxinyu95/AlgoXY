@@ -60,7 +60,7 @@ struct BTree{
   bool full(){ return keys.size() == 2*t-1; }
 
   bool leaf(){
-    return (!keys.empty()) && children.empty();
+    return children.empty();
   }
 
   Keys keys;
@@ -77,6 +77,15 @@ BTree<K, t>* insert(BTree<K, t>* tr, K key){
     root = s;
   }
   return insert_nonfull(root, key);
+}
+
+//debug only
+//
+template<class Coll>
+void print_ss(const Coll& ss){
+  std::copy(ss.begin(), ss.end(),
+            std::ostream_iterator<typename Coll::value_type>(std::cout, ", "));
+  std::cout<<"\n";
 }
 
 template<class Coll>
@@ -169,6 +178,7 @@ private:
     std::copy(ss, ss+sizeof(ss)/sizeof(char*), 
               std::ostream_iterator<std::string>(std::cout, ", "));
     std::cout<<"\n"<<btree_to_str(tr234)<<"\n";
+    delete tr234;
   }
 };
 
