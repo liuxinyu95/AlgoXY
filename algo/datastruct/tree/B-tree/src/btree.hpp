@@ -51,7 +51,7 @@ struct BTree{
     children.insert(children.begin()+i+1, y);
     y->keys = Keys(x->keys.begin()+t, x->keys.end());
     x->keys = Keys(x->keys.begin(), x->keys.begin()+t-1);
-    if(!y->leaf()){
+    if(!x->leaf()){
       y->children = Children(x->children.begin()+t, x->children.end());
       x->children = Children(x->children.begin(), x->children.begin()+t);
     }
@@ -167,6 +167,8 @@ public:
 
   void run(){
     test_insert();
+    //__test_insert_verbose();
+    //__test_orderred_insert();
   }
 private:
   void test_insert(){
@@ -179,6 +181,33 @@ private:
               std::ostream_iterator<std::string>(std::cout, ", "));
     std::cout<<"\n"<<btree_to_str(tr234)<<"\n";
     delete tr234;
+  }
+
+  void __test_insert_verbose(){
+    const char* ss[] = {"G", "M", "P", "X", "A", "C", "D", "E", "J", "K", \
+                        "N", "O", "R", "S", "T", "U", "V", "Y", "Z"};
+    const int len = sizeof(ss)/sizeof(char*);
+    for(int i=1; i<len; ++i){
+      BTree<std::string, 2>* tr234=list_to_btree(ss, ss+i,
+                                                 new BTree<std::string, 2>);
+      std::cout<<"2-3-4 tree of ";
+      std::copy(ss, ss+i, 
+                std::ostream_iterator<std::string>(std::cout, ", "));
+      std::cout<<"\n"<<btree_to_str(tr234)<<"\n";
+      delete tr234;
+    }
+  }
+
+  void __test_orderred_insert(){
+    std::cout<<"test orderred insert...\n";
+    std::string s("beh");
+    std::cout<<"s="<<s<<"\n";
+    orderred_insert(s, 'a');
+    print_ss(s);
+    orderred_insert(s, 'c');
+    print_ss(s);
+    orderred_insert(s, 'x');
+    print_ss(s);
   }
 };
 
