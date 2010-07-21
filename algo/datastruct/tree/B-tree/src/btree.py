@@ -183,6 +183,7 @@ class BTreeTest:
         self.test_insert()
         self.test_delete()
         self.test_search()
+        #self.__test_insert_verbose()
 
     def test_insert(self):
         lst = ["G", "M", "P", "X", "A", "C", "D", "E", "J", "K", \
@@ -192,6 +193,14 @@ class BTreeTest:
         print B_tree_to_str(tr)
         print "B-tree with t=3 of", lst
         print B_tree_to_str(list_to_B_tree(lst, 3))
+
+    def __test_insert_verbose(self):
+        lst = ["G", "M", "P", "X", "A", "C", "D", "E", "J", "K", \
+               "N", "O", "R", "S", "T", "U", "V", "Y", "Z"]
+        for i in range(1, len(lst)):
+            print "2-3-4 tree of", lst[:i]
+            tr = list_to_B_tree(lst[:i])
+            print B_tree_to_str(tr)
 
     def test_delete(self):
         print "test delete"
