@@ -253,7 +253,43 @@ Because there are multiple of keys and children, a collection container
 can be used to store them.
 
 \subsection*{Definition of B-tree in C++}
-TODO: ...
+ISO C++ support using const integral number as template parameter.
+This feature can used to define B-tree with different minimum degree
+as different type.
+
+\lstset{language=C++}
+\begin{lstlisting}
+// t: minimum degree of B-tree
+template<class K, int t>
+struct BTree{
+  typedef K key_type;
+  typedef std::vector<K> Keys;
+  typedef std::vector<BTree*> Children;
+
+  BTree(){}
+
+  ~BTree(){
+    for(typename Children::iterator it=children.begin();
+        it!=children.end(); ++it)
+      delete (*it);
+  }
+
+  bool full(){ return keys.size() == 2*t-1; }
+
+  bool leaf(){
+    return children.empty();
+  }
+
+  Keys keys;
+  Children children; 
+};
+\end{lstlisting}
+
+In order to support ramdom access to keys and children, the
+inner data structure uses STL vector. The node will recursively
+release all its children. and a two simple auxiliary member
+functions ``full'' and ``leaf'' are provided to test if a node
+is full or is a leaf node.
 
 \subsection*{Definition of B-tree in Python}
 
@@ -381,7 +417,29 @@ This algorithm take 2 parameters, one is a B-tree node, the other
 is the index to indicate which child of this node will be split.
 
 \subsubsection*{Split implemented in C++}
-TODO: ...
+The algorithm can be implemented in C++ as a member function of
+B-tree node.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<class K, int t>
+struct BTree{
+
+  //...
+
+  void split_child(int i){
+    BTree<K, t>* x = children[i];
+    BTree<K, t>* y = new BTree<K, t>();
+    keys.insert(keys.begin()+i, x->keys[t-1]);
+    children.insert(children.begin()+i+1, y);
+    y->keys = Keys(x->keys.begin()+t, x->keys.end());
+    x->keys = Keys(x->keys.begin(), x->keys.begin()+t-1);
+    if(!x->leaf()){
+      y->children = Children(x->children.begin()+t, x->children.end());
+      x->children = Children(x->children.begin(), x->children.begin()+t);
+    }
+  }
+\end{lstlisting}
 
 \subsubsection*{Split implemented in Python}
 We can define splitting operation as a member method of B-tree
@@ -514,9 +572,155 @@ In the below language specific implementations, I'll eliminate recursion in
 C++ program, and show the recurisve version in Pythono program.
 
 \subsubsection*{Insert implemented in C++}
-TODO: ...
+The main insert program in C++ examine if the root is full and performs splitting
+accordingly. Then it will call insert\_nonfull to do the further process.
 
-TODO: result figures
+\lstset{language=C++}
+\begin{lstlisting}
+template<class K, int t>
+BTree<K, t>* insert(BTree<K, t>* tr, K key){
+  BTree<K, t>* root(tr);
+  if(root->full()){
+    BTree<K, t>* s = new BTree<K, t>();
+    s->children.push_back(root);
+    s->split_child(0);
+    root = s;
+  }
+  return insert_nonfull(root, key);
+}
+\end{lstlisting}
+
+The resursion is eliminated in insert\_nonfull function. If the current
+node is leaf, it will call orderred\_insert to insert the key to the correct
+position. If it is branch node, the program will find the proper child
+tree and set it as the current node in next loop. Splitting is performed
+if the child tree is full.
+
+\begin{lstlisting}
+template<class K, int t>
+BTree<K, t>* insert_nonfull(BTree<K, t>* tr, K key){
+  typedef typename BTree<K, t>::Keys Keys;
+  typedef typename BTree<K, t>::Children Children;
+
+  BTree<K, t>* root(tr);
+  while(!tr->leaf()){
+    unsigned int i=0;
+    while(i < tr->keys.size() && tr->keys[i] < key)
+      ++i;
+    if(tr->children[i]->full()){
+      tr->split_child(i);
+      if(key > tr->keys[i])
+        ++i;
+    }
+    tr = tr->children[i];
+  }
+  orderred_insert(tr->keys, key);
+  return root;
+}
+\end{lstlisting}
+
+Where the orderred\_insert is defined as the following.
+
+\begin{lstlisting}
+template<class Coll>
+void orderred_insert(Coll& coll, typename Coll::value_type x){
+  typename Coll::iterator it = coll.begin();
+  while(it != coll.end() && *it < x)
+    ++it;
+  coll.insert(it, x);
+}
+\end{lstlisting}
+
+For convenience, I defined auxiliar functions to convert a
+list of keys into the B-tree.
+
+\begin{lstlisting}
+template<class T>
+T* insert_key(T* t, typename T::key_type x){
+  return insert(t, x);
+}
+
+template<class Iterator, class T>
+T* list_to_btree(Iterator first, Iterator last, T* t){
+  return std::accumulate(first, last, t,
+                         std::ptr_fun(insert_key<T>));
+}
+\end{lstlisting}
+
+In order to print the result as human readable string, a recursive
+convert function is provided.
+
+\begin{lstlisting}
+template<class T>
+std::string btree_to_str(T* tr){
+  typename T::Keys::iterator k;
+  typename T::Children::iterator c;
+
+  std::ostringstream s;
+  s<<"(";
+  if(tr->leaf()){
+    k=tr->keys.begin();
+    s<<*k++;
+    for(; k!=tr->keys.end(); ++k)
+      s<<", "<<*k;
+  }
+  else{
+    for(k=tr->keys.begin(), c=tr->children.begin();
+        k!=tr->keys.end(); ++k, ++c)
+      s<<btree_to_str(*c)<<", "<<*k<<", ";
+    s<<btree_to_str(*c);
+  }
+  s<<")";
+  return s.str();
+}
+\end{lstlisting}
+
+With all the above defined program, some simple test cases can be
+fed to verfiy the program.
+
+\begin{lstlisting}
+    const char* ss[] = {"G", "M", "P", "X", "A", "C", "D", "E", "J", "K", \
+                        "N", "O", "R", "S", "T", "U", "V", "Y", "Z"};
+    BTree<std::string, 2>* tr234=list_to_btree(ss, ss+sizeof(ss)/sizeof(char*),
+                                               new BTree<std::string, 2>);
+    std::cout<<"2-3-4 tree of ";
+    std::copy(ss, ss+sizeof(ss)/sizeof(char*), 
+              std::ostream_iterator<std::string>(std::cout, ", "));
+    std::cout<<"\n"<<btree_to_str(tr234)<<"\n";
+    delete tr234;
+
+    BTree<std::string, 3>* tr = list_to_btree(ss, ss+sizeof(ss)/sizeof(char*),
+                                              new BTree<std::string, 3>);
+    std::cout<<"B-tree with t=3 of ";
+    std::copy(ss, ss+sizeof(ss)/sizeof(char*), 
+              std::ostream_iterator<std::string>(std::cout, ", "));
+    std::cout<<"\n"<<btree_to_str(tr)<<"\n";
+    delete tr;
+\end{lstlisting}
+
+Run these lines will generate the following result:
+
+\begin{verbatim}
+2-3-4 tree of G, M, P, X, A, C, D, E, J, K, N, O, R, S, T, U, V, Y, Z, 
+(((A), C, (D)), E, ((G, J, K), M, (N, O)), P, ((R), S, (T), U, (V), X, (Y, Z)))
+B-tree with t=3 of G, M, P, X, A, C, D, E, J, K, N, O, R, S, T, U, V, Y, Z, 
+((A, C), D, (E, G, J, K), M, (N, O), P, (R, S), T, (U, V, X, Y, Z))
+\end{verbatim}
+
+Figure \ref{fig:btree-insert} shows the result.
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[scale=0.5]{img/btree-insert-2-3-4.ps}
+
+    a. Insert result of a 2-3-4 tree,
+
+    \includegraphics[scale=0.5]{img/btree-insert-3.ps}
+
+    b. Insert result of a B-tree with minimum degree of 3. 
+    \caption{insert result} \label{fig:btree-insert}
+  \end{center}
+\end{figure}
 
 \subsubsection*{Insert implemented in Python}
 Implement the above insertion algorithm in Python is not complete, we change

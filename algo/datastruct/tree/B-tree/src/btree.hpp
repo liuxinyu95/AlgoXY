@@ -128,14 +128,6 @@ T* list_to_btree(Iterator first, Iterator last, T* t){
                          std::ptr_fun(insert_key<T>));
 }
 
-//generic auxiliary functions
-template<class T>
-std::string to_str(T x){
-  std::ostringstream s;
-  s<<x;
-  return s.str();
-}
-
 template<class T>
 std::string btree_to_str(T* tr){
   typename T::Keys::iterator k;
@@ -181,6 +173,14 @@ private:
               std::ostream_iterator<std::string>(std::cout, ", "));
     std::cout<<"\n"<<btree_to_str(tr234)<<"\n";
     delete tr234;
+
+    BTree<std::string, 3>* tr = list_to_btree(ss, ss+sizeof(ss)/sizeof(char*),
+                                              new BTree<std::string, 3>);
+    std::cout<<"B-tree with t=3 of ";
+    std::copy(ss, ss+sizeof(ss)/sizeof(char*), 
+              std::ostream_iterator<std::string>(std::cout, ", "));
+    std::cout<<"\n"<<btree_to_str(tr)<<"\n";
+    delete tr;
   }
 
   void __test_insert_verbose(){
