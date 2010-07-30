@@ -18,38 +18,37 @@
 
 import random
 
+def orderred_insert_by(f, lst, p):
+    for i in range(len(lst)):
+        if p == lst[i]:
+            return
+        if f(lst[i])>f(p):
+            lst.insert(i, p)
+            return
+    lst.append(p)
+    
 def ksum(k, xs, ys):
-    res = [xs[0]+ys[0]]
-    i = 1
-    while len(res)<k:
-        a = map((lambda x: ys[i]+x), xs[:i+1])
-        b = map((lambda y: xs[i]+y), ys[:i+1])
-        while a!=[] and b!=[] and len(res)<k:
-            if a[0]<b[0]:
-                res.append(a[0])
-                a.pop(0)
-            else:
-                res.append(b[0])
-                b.pop(0)
-        if a==[]:
-            res+=b
-        else:
-            res+=a
-        i=i+1
+    c=lambda (i, j): xs[i]+ys[j]
+    res = []
+    q = [(0, 0)]
+    while len(res)<k and q!=[]:
+        (i, j)=q.pop(0)
+        res.append(c((i, j)))
+        if i+1<len(xs):
+            orderred_insert_by(c, q, (i+1, j))
+        if j+1<len(ys):
+            orderred_insert_by(c, q, (i, j+1))
     return res[:k]
 
 def brute_force(k, xs, ys):
-    res=[]
-    for x in xs:
-        for y in ys:
-            res.append(x+y)
+    res= [x+y for x in xs for y in ys]
     res.sort()
-    return res[0:k]
+    return res[:k]
 
 def test():
-    for i in range(1):
-        n=20#n = random.randint(1, 1000)
-        k=5#k = random.randint(1, n)
+    for i in range(10):
+        n= random.randint(1, 1000)
+        k = random.randint(1, n)
         a = random.sample(range(10000), n)
         a.sort()
         b = random.sample(range(10000), n)
@@ -61,6 +60,7 @@ def test():
             print "k=", k
             print "brute-force:", brute_force(k, a, b)
             print "ksum:", ksum(k, a, b)
+            return
     print "OK"
 
 if __name__ == "__main__":
