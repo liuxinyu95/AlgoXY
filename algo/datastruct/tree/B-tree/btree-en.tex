@@ -679,23 +679,23 @@ With all the above defined program, some simple test cases can be
 fed to verfiy the program.
 
 \begin{lstlisting}
-    const char* ss[] = {"G", "M", "P", "X", "A", "C", "D", "E", "J", "K", \
-                        "N", "O", "R", "S", "T", "U", "V", "Y", "Z"};
-    BTree<std::string, 2>* tr234=list_to_btree(ss, ss+sizeof(ss)/sizeof(char*),
-                                               new BTree<std::string, 2>);
-    std::cout<<"2-3-4 tree of ";
-    std::copy(ss, ss+sizeof(ss)/sizeof(char*), 
-              std::ostream_iterator<std::string>(std::cout, ", "));
-    std::cout<<"\n"<<btree_to_str(tr234)<<"\n";
-    delete tr234;
+const char* ss[] = {"G", "M", "P", "X", "A", "C", "D", "E", "J", "K", \
+                    "N", "O", "R", "S", "T", "U", "V", "Y", "Z"};
+BTree<std::string, 2>* tr234=list_to_btree(ss, ss+sizeof(ss)/sizeof(char*),
+                                           new BTree<std::string, 2>);
+std::cout<<"2-3-4 tree of ";
+std::copy(ss, ss+sizeof(ss)/sizeof(char*), 
+          std::ostream_iterator<std::string>(std::cout, ", "));
+std::cout<<"\n"<<btree_to_str(tr234)<<"\n";
+delete tr234;
 
-    BTree<std::string, 3>* tr = list_to_btree(ss, ss+sizeof(ss)/sizeof(char*),
-                                              new BTree<std::string, 3>);
-    std::cout<<"B-tree with t=3 of ";
-    std::copy(ss, ss+sizeof(ss)/sizeof(char*), 
-              std::ostream_iterator<std::string>(std::cout, ", "));
-    std::cout<<"\n"<<btree_to_str(tr)<<"\n";
-    delete tr;
+BTree<std::string, 3>* tr = list_to_btree(ss, ss+sizeof(ss)/sizeof(char*),
+                                          new BTree<std::string, 3>);
+std::cout<<"B-tree with t=3 of ";
+std::copy(ss, ss+sizeof(ss)/sizeof(char*), 
+          std::ostream_iterator<std::string>(std::cout, ", "));
+std::cout<<"\n"<<btree_to_str(tr)<<"\n";
+delete tr;
 \end{lstlisting}
 
 Run these lines will generate the following result:
@@ -723,7 +723,7 @@ Figure \ref{fig:btree-insert} shows the result.
 \end{figure}
 
 \subsubsection*{Insert implemented in Python}
-Implement the above insertion algorithm in Python is not complete, we change
+Implement the above insertion algorithm in Python is straightforward, we change
 the index starts from 0 instead of 1.
 
 \lstset{language=Python}
@@ -838,6 +838,67 @@ to the C++ program outputs.
 %               Insert and fix method 
 % ================================================================
 \subsection{Insert then fix method}
+Another approach to implement B-tree insertion algorithm is just find
+the position for the new key and insert it. Since such insertion may
+violate B-tree properties. We can then apply a fixing procedure after
+that. If a leaf contains too much keys, we split it into 2 leafs and
+push a key up to the parent branch node. Of course this operation
+may cause the parent node violate the B-tree properties, so the 
+algorithm need traverse from leaf to root to perform the fixing.
+
+By using recursive implementation these fixing method can also be
+relized from top to bottom.
+
+\begin{algorithmic}
+\STATE $B-TREE-INSERT'(T, k)$
+  \RETURN $FIX-ROOT(RECURSIVE-INSERT(T, k))$
+\end{algorithmic}
+
+Where $FIX-ROOT$ examine if the root node contains too many keys,
+and do splitting if neccessary.
+
+\begin{algorithmic}
+\STATE $FIX-ROOT(T)$
+  \IF{$FULL?(T)$}
+    \STATE $T \leftarrow B-TREE-SPLIT(T)$
+  \ENDIF
+  \RETURN $T$
+\end{algorithmic}
+
+And the inner function $INSERT(T, k)$ will first check if $T$ 
+leaf node or branch node. It will do directly insertion for leaf
+and recursively do insertion for branch.
+
+\begin{algorithmic}
+\STATE $RECURSIVE-INSERT(T, k)$
+  \IF{$LEAF?(T)$}
+    \STATE $INSERT(KEYS(T), k)$
+  \ELSE
+    \STATE initialize empty arrays of $k', k'', c', c''$
+    \STATE $i \leftarrow 1$
+    \WHILE{$i<=LENGTH(KEYS(T))$ and $KEYS(T)[i]<k$}
+      \STATE $APPEND(k', KEYS(T)[i])$
+      \STATE $APPEND(c', CHILDREN(T)[i])$
+      \STATE $i \leftarrow i+1$
+    \ENDWHILE
+    \STATE $k'' \leftarrow KEYS(T)[i...LENGTH(KEYS(T))]$
+    \STATE $c'' \leftarrow CHILDREN(T)[i+1...LENGTH(CHILDREN(T))]]$
+    \STATE $c \leftarrow CHILDREN(T)[i]$
+    \STATE $left \leftarrow (k', c')$
+    \STATE $right \leftarrow (k'', c'')$
+    \STATE $MAKE-B-TREE(left, RECURSIVE-INSERT(c, k), right)$
+  \ENDIF
+\end{algorithmic}
+
+TODO: draw a picture liie this
+
+left-keys       insert(c, k)  right keys
+left children                 right children
+
+The procedure $MAKE-B-TREE$ take 3 arguments, one is a key-child list
+pair for the left part, the other is 
+
+
 
 % ================================================================
 %               Deletion
