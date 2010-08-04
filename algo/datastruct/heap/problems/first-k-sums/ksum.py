@@ -17,6 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import random
+import heapq
 
 # method 1:
 #   use binary heap (heapq in python lib)
@@ -65,12 +66,45 @@ def youngify(young, i, j):
         else:
             break
 
-def ksum(k, xs, ys):
+def ksum_ytab(k, xs, ys):
     young = lazy_yong_tableau(xs, ys)
     res=[]
     for i in range(k):
         res.append(young_pop(young))
     return res
+
+def ksum_heapq(k, xs, ys):
+    res = []
+    heap = [(x+ys[0], 0) for x in xs]
+    heapq.heapify(heap)
+    for _ in xrange(len(ys)):
+        v, i = heapq.heappop(heap)
+        res.append(v)
+        if i+1<len(ys):
+            heapq.heappush(heap, (v-ys[i]+ys[i+1], i+1))
+    return res[:k]
+
+def orderred_insert_by(f, lst, p):
+    for i in range(len(lst)):
+        if p == lst[i]:
+            return
+        if f(lst[i])>f(p):
+            lst.insert(i, p)
+            return
+    lst.append(p)
+
+def ksum_foo(k, xs, ys):
+    c=lambda (i, j): xs[i]+ys[j]
+    res = []
+    q = [(0, 0)]
+    while len(res)<k and q!=[]:
+        (i, j)=q.pop(0)
+        res.append(c((i, j)))
+        if i+1<len(xs):
+            orderred_insert_by(c, q, (i+1, j))
+        if j+1<len(ys):
+            orderred_insert_by(c, q, (i, j+1))
+    return res[:k] 
 
 # testing for verification
 
@@ -87,13 +121,13 @@ def test():
         a.sort()
         b = random.sample(range(10000), n)
         b.sort()
-        if ksum(k, a, b) != brute_force(k, a, b):
+        if ksum_heapq(k, a, b) != brute_force(k, a, b):
             print "fail!" 
             print "a=", a
             print "b=", b
             print "k=", k
             print "brute-force:", brute_force(k, a, b)
-            print "ksum:", ksum(k, a, b)
+            print "ksum:", ksum_heapq(k, a, b)
             return
     print "OK"
 
