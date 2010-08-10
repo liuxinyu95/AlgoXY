@@ -129,7 +129,7 @@ listToBTree lst t = foldl insert (empty t) lst
 
 --test
 testInsert = do
-  putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZBFHIQW" 3
+  putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 3
   --testInsertV "GMPXACDEJKNORSTUVYZ" 3
   putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 2
   --testInsertV "GMPXACDEJKNORSTUVYZ" 2

@@ -944,8 +944,119 @@ Where $FIX-FULL$ just calls splitting process.
   \RETURN $T$
 \end{algorithmic}
 
+Note that splitting may push one extra key up to the parent node.
+However, even the push-up causes the violation of B-tree property,
+it will be recusively fixed.
+
 \subsubsection*{Insert implemented in Haskell}
-TODO: Add haskell src
+Realize the above recursive algorithm in Haskell can implement this 
+insert-fixing program.
+
+The main program is provided as the following.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+insert :: (Ord a)=> BTree a -> a -> BTree a
+insert tr x = fixRoot $ ins tr x
+\end{lstlisting} %$
+
+It will just call an auxiliary function `ins' then examine and 
+fix the root node if contains too many keys.
+
+\begin{lstlisting}
+import qualified Data.List as L
+
+--...
+
+ins :: (Ord a) => BTree a -> a -> BTree a
+ins (Node ks [] t) x = Node (L.insert x ks) [] t
+ins (Node ks cs t) x = make (ks', cs') (ins c x) (ks'', cs'') 
+    where
+      (ks', ks'') = L.partition (<x) ks
+      (cs', (c:cs'')) = L.splitAt (length ks') cs
+\end{lstlisting}
+
+The `ins' function uses pattern matching to handle the two different
+cases. If the node to be inserted is leaf, it will call insert
+function defined in Haskell standard library, which can insert the
+new key $x$ into the proper position to keep the order of the keys.
+
+If the node to be inserted is a branch node, the program will recursively
+insert the key to the child which has the range of keys cover $x$.
+After that, it will call `make' function to combine the result
+together as a new node. the examine and fixing are performed also
+by `make' function.
+
+The function `fixRoot' first check if the root node contains too
+many keys, if it exceeds the limit, splitting will be applied.
+The split result will be used to make a new node, so the total
+height of the tree increases.
+
+\begin{lstlisting}
+fixRoot :: BTree a -> BTree a
+fixRoot (Node [] [tr] _) = tr -- shrink height
+fixRoot tr = if full tr then Node [k] [c1, c2] (degree tr) 
+             else tr 
+    where
+      (c1, k, c2) = split tr
+\end{lstlisting}
+
+The following is the implementation of `make' function.
+
+\begin{lstlisting}
+make :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
+make (ks', cs') c (ks'', cs'')
+    | full c = fixFull (ks', cs') c (ks'', cs'')
+    | otherwise = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
+\end{lstlisting}
+
+While `fixFull' are given like below.
+
+\begin{lstlisting}
+fixFull :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
+fixFull (ks', cs') c (ks'', cs'') = Node (ks'++[k]++ks'')
+                                         (cs'++[c1,c2]++cs'') (degree c)
+    where
+      (c1, k, c2) = split c
+\end{lstlisting}
+
+In order to print B-tree content out, an auxiliary function `toString'
+is provided to convert a B-tree to string.
+
+\begin{lstlisting}
+toString :: (Show a)=>BTree a -> String
+toString (Node ks [] _) = "("++(L.intercalate ", " (map show ks))++")"
+toString tr = "("++(toStr (keys tr) (children tr))++")" where
+    toStr (k:ks) (c:cs) = (toString c)++", "++(show k)++", "++(toStr ks cs)
+    toStr [] [c] = toString c
+\end{lstlisting}
+
+With all the above definition, the insertion program can be verified with
+some simple test cases.
+
+\begin{lstlisting}
+listToBTree::(Ord a)=>[a]->Int->BTree a
+listToBTree lst t = foldl insert (empty t) lst
+
+testInsert = do
+  putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 3
+  putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 2
+\end{lstlisting}
+
+Run `testInsert' will generate the following result.
+
+\begin{verbatim}
+(('A', 'C', 'D', 'E'), 'G', ('J', 'K'), 'M', ('N', 'O'), 'P', ('R', 'S'), 
+'T', ('U', 'V', 'X', 'Y', 'Z'))
+((('A'), 'C', ('D')), 'E', (('G', 'J', 'K'), 'M', ('N')), 'O', (('P'), 
+'R', ('S'), 'T', ('U'), 'V', ('X', 'Y', 'Z')))
+\end{verbatim}
+
+Compare the results output by C++ or Python progam with this one,
+we can found that there are different points. However, the B-tree
+built by Haskell program is still valid because all B-tree properties
+are satisfied. The main reason for this difference is because of
+the approaching change.
 
 \subsubsection*{Insert implemented in Scheme/Lisp}
 TODO:
