@@ -1038,15 +1038,113 @@ as a good reference when writing the pseudo code.
 
 \subsubsection{Merge before delete algorithm implemented imperatively}
 
-The first case is the trivial case, if the key $k$ to be deleted
+The first case is the trivial, if the key $k$ to be deleted
 can be located in node $x$ and $x$ is a leaf node. we can directly
-delete $k$ from $x$.
+remove $k$ from $x$.
 
-The reader may ask `what if the number of keys is less than $t-1$
-in this leaf node.?'. We needn't care about this issue at the moment.
-This is because we have already perform some merge operations already.
-So when this case happen, the leaf is either just a root node or
-contains enough keys.
+Note that this is a terminal case. For most B-trees which have
+not only a leaf node as the root. The program will first examine
+non-leaf nodes. 
+
+The second case states that, the key $k$ can be located in node $x$,
+however, $x$ isn't a leaf node. In this case, there are 3 sub cases.
+
+\begin{itemize}
+\item If the child node $y$ precedes $k$ contains enough keys (more than $t$). 
+We replace $k$ in node $x$ with $k'$, which is 
+the predecessor of $k$ in child $y$. And recursively remove $k'$
+from $y$.
+
+The predecessor of $k$ can be easily located as the last key of child
+$y$.
+
+\item If $y$ doesn't contains enough keys, while the child node $z$
+follows $k$ contains more than $t$ keys. We replace $k$ in node $x$
+with $k''$, which is the successor of $k$ in child $z$. And recursively 
+remove $k''$ from $z$.
+
+The successor of $k$ can be easily located as the first key of child $z$.
+
+\item Otherwise, if neither $y$, nor $z$ contains enough keys, we 
+can merge $y$, $k$ and $z$ into one new node, so that this new node
+contains $2t-1$ keys. After that, we can then recursively do the removing.
+
+Note that after merge, if the current node doesn't contain any keys,
+which means $k$ is the only key in $x$, $y$ and $z$ are the only two
+children of $x$. we need shrink the tree height by one.
+\end{itemize} 
+
+The case 2 is illustrated as in figure \ref{fig:btree-del-case2a}, 
+\ref{fig:btree-del-case2b}, and \ref{fig:btree-del-case2c}.
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[scale=0.5]{img/btree-del-case2a.eps}
+    \caption{case 2a. Replace and delete from predecessor.} \label{fig:btree-del-case2a}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[scale=0.5]{img/btree-del-case2b.eps}
+    \caption{case 2b. Replace and delete from successor.} \label{fig:btree-del-case2b}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[scale=0.5]{img/btree-del-case2c.eps}
+    \caption{case 2c. Merge and delete.} \label{fig:btree-del-case2c}
+  \end{center}
+\end{figure}
+
+Note that although we use recursive way to delete keys in case 2, the 
+resursion can be turned into pure imperative way. We'll show such
+program in C++ implementation.
+
+the last case states that, if $k$ can't be located in node $x$, the algorithm
+need try to find a child node $c_i$ of $x$, so that sub-tree $c_i$ may 
+contains $k$. Before the deletion is recursively applied in $c_i$, we
+need be sure that there are at least $t$ keys in $c_i$. If there are
+not enough keys, we need do the following adjustment.
+
+\begin{itemize}
+\item We check the two sibling of $c_i$, which are $c_{i-1}$ and $c_{i+1}$.
+If either one of them contains enough keys (at least $t$ keys), we move
+one key from $x$ down to $c_i$, and move one key from the sibling up to
+$x$. Also we need move the relative child from the sibling to $c_i$.
+
+This operation makes $c_i$ contains enough keys OK for deletion. we can
+next try to delete $k$ from $c_i$ recursively.
+
+\item In case neither one of the two sibling contains enough keys, we then 
+merge $c_i$, a key from $x$, and either one of the sibling into a new
+node, and do the deletion on this new node.
+\end{itemize}
+
+Case 3 is illustrated in figure \ref{fig:btree-del-case3a}, \ref{fig:btree-del-case3b},
+and \ref{fig:btree-del-case3c}.
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[scale=0.5]{img/btree-del-case3a.eps}
+    \caption{case 3a. Borrow from left sibling.} \label{fig:btree-del-case3a}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[scale=0.5]{img/btree-del-case3b.eps}
+    \caption{case 3b. Borrow from right sibling.} \label{fig:btree-del-case3b}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[scale=0.5]{img/btree-del-case3c.eps}
+    \caption{case 3c. Merge and delete.} \label{fig:btree-del-case3c}
+  \end{center}
+\end{figure}
 
 \begin{algorithmic}
 \STATE $B-TREE-DELETE(T, k)$
