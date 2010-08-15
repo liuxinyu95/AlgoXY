@@ -1,4 +1,5 @@
-IMG_OBJECTS = btree-del-case2a btree-del-case2b btree-del-case2c
+IMG_OBJECTS = btree-del-case2a btree-del-case2b btree-del-case2c \
+btree-del-case3a btree-del-case3b
 DOT_OBJECTS = btree-example btree-node split-node-before split-node-after \
 btree-insert-2-3-4 btree-insert-3 insert-before insert-after \
 btree-insert-fp-234 btree-insert-fp-3
