@@ -412,7 +412,7 @@ left part and right as B-Trees, along with a key.
     \State $cs \leftarrow CHILDREN(node)[1 ... t]$
     \State $cs' \leftarrow CHILDREN(node)[t ... 2t]$
   \EndIf
-  \Return $(CREATE-B-TREE(ks, cs), KEYS(node)[t], CREATE-B-TREE(ks', cs'))$
+  \State \Return $(CREATE-B-TREE(ks, cs), KEYS(node)[t], CREATE-B-TREE(ks', cs'))$
 \EndProcedure
 \end{algorithmic}
 
@@ -468,7 +468,7 @@ non-full node.
     \State $r \leftarrow s$
   \EndIf
   \State $B-TREE-INSERT-NONFULL(r, k)$
-  \Return $r$
+  \State \Return $r$
 \EndProcedure
 \end{algorithmic}
 
@@ -791,7 +791,7 @@ relized from top to bottom.
 
 \begin{algorithmic}[1]
 \Procedure{B-TREE-INSERT'}{$T, k$}
-  \Return $FIX-ROOT(RECURSIVE-INSERT(T, k))$
+  \State \Return $FIX-ROOT(RECURSIVE-INSERT(T, k))$
 \EndProcedure
 \end{algorithmic}
 
@@ -803,7 +803,7 @@ and do splitting if neccessary.
   \If{$FULL?(T)$}
     \State $T \leftarrow B-TREE-SPLIT(T)$
   \EndIf
-  \Return $T$
+  \State \Return $T$
 \EndProcedure
 \end{algorithmic}
 
@@ -815,7 +815,7 @@ and recursively do insertion for branch.
 \Procedure{RECURSIVE-INSERT}{$T, k$}
   \If{$LEAF?(T)$}
     \State $INSERT(KEYS(T), k)$
-    \Return $T$
+    \State \Return $T$
   \Else
     \State initialize empty arrays of $k', k'', c', c''$
     \State $i \leftarrow 1$
@@ -829,7 +829,7 @@ and recursively do insertion for branch.
     \State $c \leftarrow CHILDREN(T)[i]$
     \State $left \leftarrow (k', c')$
     \State $right \leftarrow (k'', c'')$
-    \Return $MAKE-B-TREE(left, RECURSIVE-INSERT(c, k), right)$
+    \State \Return $MAKE-B-TREE(left, RECURSIVE-INSERT(c, k), right)$
   \EndIf
 \EndProcedure
 \end{algorithmic}
@@ -867,12 +867,12 @@ to fix the problem by splitting.
 \begin{algorithmic}[1]
 \Procedure{MAKE-B-TREE}{$L, C, R$}
   \If{$FULL?(C)$}
-    \Return $FIX-FULL(L, C, R)$
+    \State \Return $FIX-FULL(L, C, R)$
   \Else
     \State $T \leftarrow CREATE-NEW-NODE()$
     \State $KEYS(T) \leftarrow KEYS(L) + KEYS(R)$
     \State $CHILDREN(T) \leftarrow CHILDREN(L)+[C]+CHILDREN(R)$
-    \Return $T$
+    \State \Return $T$
   \EndIf
 \EndProcedure
 \end{algorithmic}
@@ -885,7 +885,7 @@ Where $FIX-FULL$ just calls splitting process.
   \State $T \leftarrow CREATE-NEW-NODE()$
   \State $KEYS(T) \leftarrow KEYS(L)+[K]+KEYS(R)$
   \State $CHILDREN(T) \leftarrow CHILDREN(L)+[C', C'']+CHILDREN(R)$
-  \Return $T$
+  \State \Return $T$
 \EndProcedure
 \end{algorithmic}
 
@@ -1155,7 +1155,7 @@ on a B-tree.
 
 \begin{algorithmic}[1]
 \Function{CAN-DEL}{$T$}
-  \Return number of keys of  $T \ge t$
+  \State \Return number of keys of  $T \ge t$
 \EndFunction
 \end{algorithmic}
 
@@ -1183,33 +1183,49 @@ as below.
           \State $CHILDREN(T)[i] \leftarrow MERGE-CHILDREN(T, i, i+1)$
           \State $B-TREE-DELETE(CHILDREN(T)[i], k)$
           \If{$CHILDREN(T) = NIL$}
-            \State $T \leftarrow CHILDREN(T)[i]$ \Comment{shrinks height}
+            \State $T \leftarrow CHILDREN(T)[i]$ \Comment{Shrinks height}
           \EndIf
         \EndIf
       \EndIf
-      \Return $T$
+      \State \Return $T$
     \ElsIf{$k < KEYS(T)[i]$}
       \State $BREAK$
     \Else
       \State $i \leftarrow i-1$
     \EndIf
   \EndWhile
-
+  \Statex
   \If{$T$ is leaf}
-    \Return $T$ \Comment{$k$ doesn't exist in $T$ at all}
+    \State \Return $T$ \Comment{$k$ doesn't exist in $T$ at all}
   \EndIf
   \If{not $CAN-DEL(CHILDREN(T)[i])$}  \Comment{case 3}
-    \If{$i>1$ and $CAN-DEL(CHILDREN(T)[i-1])$} \Comment{left sibling}
-      \State $INSERT(KEYS(CHILDREN(T)[i]), KEYS(T)[i])$
-      \State $KEYS(T)[i] \leftarrow POP-FRONT(KEYS(CHILDREN(T)[i-1]))$
+    \If{$i>1$ and $CAN-DEL(CHILDREN(T)[i-1])$} \Comment{case 3a: left sibling}
+      \State $INSERT(KEYS(CHILDREN(T)[i]), KEYS(T)[i-1])$
+      \State $KEYS(T)[i-1] \leftarrow POP-BACK(KEYS(CHILDREN(T)[i-1]))$
       \If{$CHILDREN(T)[i]$ isn't leaf}
-        \STATE $c \leftarrow POP-FRONT(CHILDREN(CHILDREN(T)[i-1]))$
+        \State $c \leftarrow POP-BACK(CHILDREN(CHILDREN(T)[i-1]))$
         \State $INSERT(CHILDREN(CHILDREN(T)[i]), c)$
       \EndIf
-    \ElsIf{$i<=LENGTH(CHILDREN(T))$ and $CAN-DEL(CHILDREN(T)[i+1]$} \Comment{right sibling}
+    \ElsIf{$i<=LENGTH(CHILDREN(T))$ and $CAN-DEL(CHILDREN(T)[i+1]$} \Comment{case 3a: right sibling}
       \State $APPEND(KEYS(CHILDREN(T)[i]), KEYS(T)[i])$
+      \State $KEYS(T)[i] \leftarrow POP-FRONT(KEYS(CHILDREN(T)[i+1]))$
+      \If{$CHILDREN(T)[i]$ isn't leaf}
+        \State $c \leftarrow POP-FRONT(CHILDREN(CHILDREN(T)[i+1]))$
+        \State $APPEND(CHILDREN(CHILDREN(T)[i]), c)$
+      \EndIf
+    \Else \Comment{case 3b}
+      \If{$i>1$}
+        \State $MERGE-CHILDREN(T, i-1, i)$
+      \Else
+        \State $MERGE-CHILDREN(T, i, i+1)$
+      \EndIf
     \EndIf
   \EndIf
+  \State $B-TREE-DELETE(CHILDREN(T)[i], k)$ \Comment {recursive delete}
+  \If{$KEYS(T) = NIL$} \Comment {Shrinks height}
+    \State $T \gets CHILDREN(T)[1]$
+  \EndIf
+  \State \Return $T$
 \EndProcedure
 \end{algorithmic}
 
