@@ -24,6 +24,24 @@
 #include <numeric>    //std::accumulate
 #include <functional> //std::ptr_fun
 #include <vector>     //random access needed.
+#include <iterator>   //std::insert_iterator
+
+//generic auxilary functions
+// x ++ y in Haskell
+template<class Coll>
+void concat(Coll& x, Coll& y){
+  std::copy(y.begin(), y.end(), 
+            std::insert_iterator<Coll>(x, x.end()));
+}
+
+//debug only
+//
+template<class Coll>
+void print_ss(const Coll& ss){
+  std::copy(ss.begin(), ss.end(),
+            std::ostream_iterator<typename Coll::value_type>(std::cout, ", "));
+  std::cout<<"\n";
+}
 
 // t: minimum degree of B-tree
 template<class K, int t>
@@ -57,7 +75,27 @@ struct BTree{
     }
   }
 
+  // merge children[i], keys[i], and children[i+1] to one node
+  void merge_children(int i){
+    BTree<K, t>* x = children[i];
+    BTree<K, t>* y = children[i+1];
+    x->keys.push_back(keys[i]);
+    concat(x->keys, y->keys);
+    concat(x->children, y->children);
+    keys.erase(keys.begin()+i);
+    children.erase(children.begin()+i+1);
+    y->children.clear();
+    delete y;
+  }
+
+  key_type replace_key(i, key_type key){
+    keys[i]=key;
+    return key;
+  }
+
   bool full(){ return keys.size() == 2*t-1; }
+
+  bool can_remove(){ return keys.size() >=t; }
 
   bool leaf(){
     return children.empty();
@@ -77,15 +115,6 @@ BTree<K, t>* insert(BTree<K, t>* tr, K key){
     root = s;
   }
   return insert_nonfull(root, key);
-}
-
-//debug only
-//
-template<class Coll>
-void print_ss(const Coll& ss){
-  std::copy(ss.begin(), ss.end(),
-            std::ostream_iterator<typename Coll::value_type>(std::cout, ", "));
-  std::cout<<"\n";
 }
 
 template<class Coll>
@@ -114,6 +143,80 @@ BTree<K, t>* insert_nonfull(BTree<K, t>* tr, K key){
     tr = tr->children[i];
   }
   orderred_insert(tr->keys, key);
+  return root;
+}
+
+template<class K, int t>
+BTree<K, t>* del(BTree<k, t>* tr, K key){
+  BTree<K, t>* root(tr);
+  while(!tr->leaf()){
+    unsigned int i = 0;
+    bool located(false);
+    while(i < tr->keys.size()){
+      if(key == tr->keys[i]){
+        located = true;
+        if(tr->children[i]->can_remove()){ //case 2a
+          key = tr->replace_key(i, tr->children[i]->keys.back());
+          tr->children[i]->keys.pop_back();
+          tr = tr->children[i];
+        }
+        else if(tr->children[i+1]->can_remove()){ //case 2b
+          key = tr->replace_key(i, tr->children[i+1]->keys.front());
+          tr->children[i+1]->keys.erase(tr->children[i+1]->keys.begin());
+          tr = tr->children[i+1];
+        }
+        else{ //case 2c
+          tr->merge_children(i);
+          if(tr->keys.empty()){ //shrinks height
+            BTree<K, t>* temp = tr->children[0];
+            tr->children.clear();
+            delete tr;
+            tr = temp;
+          }
+        }
+        break;
+      }
+      else if(key > tr->keys[i])
+        i++;
+      else
+        break;
+    }
+    if(located)
+      continue;
+    if(!tr->children[i]->can_remove()){ //case 3
+      if(i>0 && tr->children[i-1]->can_remove()){ 
+        // case 3a: left sibling
+        tr->children[i]->keys.insert(tr->children[i]->keys.begin(),
+                                     tr->keys[i-1]);
+        tr->keys[i-1] = tr->children[i-1]->keys.back();
+        tr->children[i-1]->keys.pop_back();
+        if(!tr->children[i]->leaf()){
+          tr->children[i]->children.insert(tr->children[i]->children.begin(),
+                                           tr->children[i-1]->children.back());
+          tr->children[i-1]->children.pop_back();
+        }
+      }
+      else if(i<tr->children.size() && tr->children[i+1]->can_remove()){
+        // case 3a: right sibling
+        tr->children[i]->keys.push_back(tr->keys[i]);
+        tr->keys[i] = tr->children[i+1]->keys.front();
+        tr->children[i+1]->keys.erase(tr->children[i+1]->keys.begin());
+        if(!tr->children[i]->leaf()){
+          tr->children[i]->children.push_back(tr->children[i+1]->children.front());
+          tr->children[i+1]->children.erase(tr->children[i+1]->children.begin());
+        }
+      }
+      else{
+        if(i>0)
+          tr->merge_children(i-1);
+        else
+          tr->merge_children(i);
+      }
+    }
+    tr = tr->children[i];
+  }
+  tr->keys.erase(remove(tr->keys.begin(), tr->keys.end(), key), 
+                 tr->keys.end());
   return root;
 }
 
@@ -159,6 +262,7 @@ public:
 
   void run(){
     test_insert();
+    test_delete();
     //__test_insert_verbose();
     //__test_orderred_insert();
   }
@@ -208,6 +312,14 @@ private:
     print_ss(s);
     orderred_insert(s, 'x');
     print_ss(s);
+  }
+
+  void test_delete(){
+    std::cout<<"test delete...\n";
+    typedef BTree<std::string, 3> BTr;
+    BTr* tr = new BTr();
+    tr->keys.push_back("P");
+    tr->children
   }
 };
 
