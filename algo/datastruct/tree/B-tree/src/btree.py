@@ -109,7 +109,7 @@ def B_tree_delete(tr, key):
                     B_tree_delete(tr.children[i-1], key)
                 elif tr.children[i].can_remove(): # case 2b
                     key = tr.replace_key(i-1, tr.children[i].keys[0])
-                    B_tree_delete(tr.children[i], key1)
+                    B_tree_delete(tr.children[i], key)
                 else: # case 2c
                     tr.merge_children(i-1)
                     B_tree_delete(tr.children[i-1], key)
@@ -125,10 +125,10 @@ def B_tree_delete(tr, key):
         return tr #key doesn't exist at all
     if not tr.children[i].can_remove():
         if i>0 and tr.children[i-1].can_remove(): #left sibling
-            tr.children[i].keys.insert(0, tr.keys[i])
-            tr.keys[i] = tr.children[i-1].keys.pop()
+            tr.children[i].keys.insert(0, tr.keys[i-1])
+            tr.keys[i-1] = tr.children[i-1].keys.pop()
             if not tr.children[i].leaf:
-                tr.children[i].children.insert(tr.children[i-1].children.pop())
+                tr.children[i].children.insert(0, tr.children[i-1].children.pop())
         elif i<len(tr.children) and tr.children[i+1].can_remove(): #right sibling
             tr.children[i].keys.append(tr.keys[i])
             tr.keys[i]=tr.children[i+1].keys.pop(0)
@@ -220,7 +220,7 @@ class BTreeTest:
         tr.children[1].children[1].keys=["U", "V"]
         tr.children[1].children[2].keys=["Y", "Z"]
         print B_tree_to_str(tr)
-        lst = ["F", "M", "G", "D", "B"]
+        lst = ["F", "M", "G", "D", "B", "U"]
         reduce(self.__test_del__, lst, tr)
 
     def __test_del__(self, tr, key):

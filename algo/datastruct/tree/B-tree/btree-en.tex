@@ -482,7 +482,7 @@ If this child node is full, the splitting will be performed firstly.
 \Procedure{B-TREE-INSERT-NONFUL}{$T, k$}
   \If{$T$ is leaf}
     \State $i \leftarrow 1$
-    \While{$i \leq LENGTH(KEYS(T)) and k>KEYS(T)[i]$}
+    \While{$i \leq LENGTH(KEYS(T))$ and $k>KEYS(T)[i]$}
       \State $i \leftarrow i+1$
     \EndWhile
     \State $INSERT(KEYS(T), i, k)$
@@ -1150,19 +1150,66 @@ Case 3 is illustrated in figure \ref{fig:btree-del-case3a}, \ref{fig:btree-del-c
 By implementing the above 3 cases into pseudo code, the B-tree delete algorithm
 can be given as the following.
 
+First there are some auxiliary functions to do some simple test and operations
+on a B-tree.
+
+\begin{algorithmic}[1]
+\Function{CAN-DEL}{$T$}
+  \Return number of keys of  $T \ge t$
+\EndFunction
+\end{algorithmic}
+
+Function $CAN-DEL$ test if a B-tree node contains enough keys (no less than
+$t$ keys).
+
+With these helper functions, the main algorithm of B-tree deletion is described
+as below.
+
 \begin{algorithmic}[1]
 \Procedure{B-TREE-DELETE}{$T, k$}
   \State $i \leftarrow 1$
   \While{$i <= LENGTH(KEYS(T))$}
     \If{$k = KEYS(T)[i]$}
-      \If{$T$ is leaf}\Comment{case 1}
+      \If{$T$ is leaf} \Comment{case 1}
         \State $REMOVE(KYES(T), k)$
-      \Else
-        \Comment{case 2 a}
+      \Else \Comment{case 2}
+        \If{$CAN-DEL(CHILDREN(T)[i])$} \Comment{case 2a}
+          \State $KEYS(T)[i] \leftarrow LAST-KEY(CHILDREN(T)[i])$
+          \State $B-TREE-DELETE(CHILDREN(T)[i], KEYS(T)[i])$
+        \ElsIf{$CAN-DEL(CHILDREN(T)[i+1])$} \Comment{case 2b}
+          \State $KEYS(T)[i] \leftarrow FIRST-KEY(CHILDREN(T)[i+1])$
+          \State $B-TREE-DELETE(CHILDREN(T)[i+1], KEYS(T)[i])$
+        \Else \Comment{case 2c}
+          \State $CHILDREN(T)[i] \leftarrow MERGE-CHILDREN(T, i, i+1)$
+          \State $B-TREE-DELETE(CHILDREN(T)[i], k)$
+          \If{$CHILDREN(T) = NIL$}
+            \State $T \leftarrow CHILDREN(T)[i]$ \Comment{shrinks height}
+          \EndIf
+        \EndIf
       \EndIf
       \Return $T$
+    \ElsIf{$k < KEYS(T)[i]$}
+      \State $BREAK$
+    \Else
+      \State $i \leftarrow i-1$
     \EndIf
   \EndWhile
+
+  \If{$T$ is leaf}
+    \Return $T$ \Comment{$k$ doesn't exist in $T$ at all}
+  \EndIf
+  \If{not $CAN-DEL(CHILDREN(T)[i])$}  \Comment{case 3}
+    \If{$i>1$ and $CAN-DEL(CHILDREN(T)[i-1])$} \Comment{left sibling}
+      \State $INSERT(KEYS(CHILDREN(T)[i]), KEYS(T)[i])$
+      \State $KEYS(T)[i] \leftarrow POP-FRONT(KEYS(CHILDREN(T)[i-1]))$
+      \If{$CHILDREN(T)[i]$ isn't leaf}
+        \STATE $c \leftarrow POP-FRONT(CHILDREN(CHILDREN(T)[i-1]))$
+        \State $INSERT(CHILDREN(CHILDREN(T)[i]), c)$
+      \EndIf
+    \ElsIf{$i<=LENGTH(CHILDREN(T))$ and $CAN-DEL(CHILDREN(T)[i+1]$} \Comment{right sibling}
+      \State $APPEND(KEYS(CHILDREN(T)[i]), KEYS(T)[i])$
+    \EndIf
+  \EndIf
 \EndProcedure
 \end{algorithmic}
 
