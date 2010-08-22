@@ -105,11 +105,11 @@ struct BTree{
   Children children; 
 };
 
-template<class K, int t>
-BTree<K, t>* insert(BTree<K, t>* tr, K key){
-  BTree<K, t>* root(tr);
+template<class T>
+T* insert(T* tr, typename T::key_type key){
+  T* root(tr);
   if(root->full()){
-    BTree<K, t>* s = new BTree<K, t>();
+    T* s = new T;
     s->children.push_back(root);
     s->split_child(0);
     root = s;
@@ -125,12 +125,12 @@ void orderred_insert(Coll& coll, typename Coll::value_type x){
   coll.insert(it, x);
 }
 
-template<class K, int t>
-BTree<K, t>* insert_nonfull(BTree<K, t>* tr, K key){
-  typedef typename BTree<K, t>::Keys Keys;
-  typedef typename BTree<K, t>::Children Children;
+template<class T>
+T* insert_nonfull(T* tr, typename T::key_type key){
+  typedef typename T::Keys Keys;
+  typedef typename T::Children Children;
 
-  BTree<K, t>* root(tr);
+  T* root(tr);
   while(!tr->leaf()){
     unsigned int i=0;
     while(i < tr->keys.size() && tr->keys[i] < key)
@@ -146,9 +146,9 @@ BTree<K, t>* insert_nonfull(BTree<K, t>* tr, K key){
   return root;
 }
 
-template<class K, int t>
-BTree<K, t>* del(BTree<K, t>* tr, K key){
-  BTree<K, t>* root(tr);
+template<class T>
+T* del(T* tr, typename T::key_type key){
+  T* root(tr);
   while(!tr->leaf()){
     unsigned int i = 0;
     bool located(false);
@@ -168,7 +168,7 @@ BTree<K, t>* del(BTree<K, t>* tr, K key){
         else{ //case 2c
           tr->merge_children(i);
           if(tr->keys.empty()){ //shrinks height
-            BTree<K, t>* temp = tr->children[0];
+            T* temp = tr->children[0];
             tr->children.clear();
             delete tr;
             tr = temp;
@@ -218,7 +218,7 @@ BTree<K, t>* del(BTree<K, t>* tr, K key){
   tr->keys.erase(remove(tr->keys.begin(), tr->keys.end(), key), 
                  tr->keys.end());
   if(root->keys.empty()){ //shrinks height
-    BTree<K, t>* temp = root->children[0];
+    T* temp = root->children[0];
     root->children.clear();
     delete root;
     root = temp;
