@@ -88,7 +88,7 @@ struct BTree{
     delete y;
   }
 
-  key_type replace_key(i, key_type key){
+  key_type replace_key(int i, key_type key){
     keys[i]=key;
     return key;
   }
@@ -147,7 +147,7 @@ BTree<K, t>* insert_nonfull(BTree<K, t>* tr, K key){
 }
 
 template<class K, int t>
-BTree<K, t>* del(BTree<k, t>* tr, K key){
+BTree<K, t>* del(BTree<K, t>* tr, K key){
   BTree<K, t>* root(tr);
   while(!tr->leaf()){
     unsigned int i = 0;
@@ -217,6 +217,12 @@ BTree<K, t>* del(BTree<k, t>* tr, K key){
   }
   tr->keys.erase(remove(tr->keys.begin(), tr->keys.end(), key), 
                  tr->keys.end());
+  if(root->keys.empty()){ //shrinks height
+    BTree<K, t>* temp = root->children[0];
+    root->children.clear();
+    delete root;
+    root = temp;
+  }
   return root;
 }
 
@@ -254,6 +260,39 @@ std::string btree_to_str(T* tr){
   return s.str();
 }
 
+// quick and dirty helper function to change a B-tree description
+// string to a B-tree.
+template<class T>
+T* parse(std::string::iterator& first, std::string::iterator last){
+  T* tr = new T;
+  ++first; //'('
+  while(first!=last){
+    if(*first=='('){ //child
+      tr->children.push_back(parse<T>(first, last));
+    }
+    else if(*first == ',' || *first == ' ')
+      ++first; //skip deliminator
+    else if(*first == ')'){
+      ++first;
+      return tr;
+    }
+    else{ //key
+      typename T::key_type key;
+      while(*first!=',' && *first!=')')
+        key+=*first++;
+      tr->keys.push_back(key);
+    }
+  }
+  //should never runs here
+  return 0;
+}
+
+template<class T>
+T* str_to_btree(std::string s){
+  std::string::iterator first(s.begin());
+  return parse<T>(first, s.end());
+}
+
 class BTreeTest{
 public:
   BTreeTest(){
@@ -265,6 +304,7 @@ public:
     test_delete();
     //__test_insert_verbose();
     //__test_orderred_insert();
+    //__test_parse();
   }
 private:
   void test_insert(){
@@ -316,10 +356,34 @@ private:
 
   void test_delete(){
     std::cout<<"test delete...\n";
+    const char* s="(((A, B), C, (D, E, F), G, (J, K, L), M, (N, O)), "
+                  "P, ((Q, R, S), T, (U, V), X, (Y, Z)))";
     typedef BTree<std::string, 3> BTr;
-    BTr* tr = new BTr();
-    tr->keys.push_back("P");
-    tr->children
+    BTr* tr = str_to_btree<BTr>(s);
+    std::cout<<"before delete:\n"<<btree_to_str(tr)<<"\n";
+    const char* ks[] = {"F", "M", "G", "D", "B", "U"};
+    for(unsigned int i=0; i<sizeof(ks)/sizeof(char*); ++i)
+      tr=__test_del__(tr, ks[i]);
+    delete tr;
+  }
+
+  template<class T>
+  T* __test_del__(T* tr, typename T::key_type key){
+    std::cout<<"delete "<<key<<"==>\n";
+    tr = del(tr, key);
+    std::cout<<btree_to_str(tr)<<"\n";
+    return tr;
+  }
+
+  void __test_parse(){
+    std::cout<<"test parsing...\n";
+    const char* s="(((A, B), C, (D, E, F), G, (J, K, L), M, (N, O)), "
+      "P, ((Q, R, S), T, (U, V), X, (Y, Z)))";
+    typedef BTree<std::string, 3> BTr;
+    BTr* tr = str_to_btree<BTr>(s);
+    std::cout<<"string fed:\n"<<s<<"\n"
+             <<"parsed res:\n"<<btree_to_str(tr)<<"\n";
+    delete tr;
   }
 };
 
