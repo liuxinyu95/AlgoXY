@@ -2,7 +2,8 @@ IMG_OBJECTS = btree-del-case2a btree-del-case2b btree-del-case2c \
 btree-del-case3a btree-del-case3b
 DOT_OBJECTS = btree-example btree-node split-node-before split-node-after \
 btree-insert-2-3-4 btree-insert-3 insert-before insert-after \
-btree-insert-fp-234 btree-insert-fp-3
+btree-insert-fp-234 btree-insert-fp-3 btree-del-before btree-del-F \
+btree-del-M btree-del-G btree-del-D btree-del-B btree-del-U
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
