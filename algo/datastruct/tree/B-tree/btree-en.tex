@@ -1246,7 +1246,241 @@ as below.
 \end{algorithmic}
 
 \subsubsection{Merge before deletion algorihm implemented in C++}
-TODO:...
+The C++ implementation given here isn't simply translate the above
+pseudo code into C++. The recursion can be eliminated in a pure
+imperative program.
+
+In order to simplify some B-tree node operation, some auxiliary 
+member functions are added to the B-tree node class definition.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<class K, int t>
+struct BTree{
+  //...
+  // merge children[i], keys[i], and children[i+1] to one node
+  void merge_children(int i){
+    BTree<K, t>* x = children[i];
+    BTree<K, t>* y = children[i+1];
+    x->keys.push_back(keys[i]);
+    concat(x->keys, y->keys);
+    concat(x->children, y->children);
+    keys.erase(keys.begin()+i);
+    children.erase(children.begin()+i+1);
+    y->children.clear();
+    delete y;
+  }
+
+  key_type replace_key(int i, key_type key){
+    keys[i]=key;
+    return key;
+  }
+
+  bool can_remove(){ return keys.size() >=t; }
+  //...
+\end{lstlisting}
+
+Function `replace\_key' can update the $i$-th key of a node with a
+new value. Typically, this new value is pulled from a child node as
+described in deletion algorithm. It will return the new value.
+
+Function `can\_remove' will test if a node contains enough keys for
+further deletion.
+
+Function `merge\_children' can merge the $i$-th child, the $i$-th key,
+and the $i+1$-th children into one node. This operation is reverse
+operation of splitting, it can double the keys of a node, so that
+such adjustment can ensure a node has enough keys for further deleting.
+
+Note that, unlike the other languages equipped with GC, in C++ program,
+the memory must be released after merging.
+
+This funciton uses `concat' function to concatenate two collections.
+It is defined as the following.
+
+\begin{lstlisting}
+template<class Coll>
+void concat(Coll& x, Coll& y){
+  std::copy(y.begin(), y.end(), 
+            std::insert_iterator<Coll>(x, x.end()));
+}
+\end{lstlisting}
+
+With these helper functions, the main program of B-tree deleting
+is given as below.
+
+\begin{lstlisting}
+template<class T>
+T* del(T* tr, typename T::key_type key){
+  T* root(tr);
+  while(!tr->leaf()){
+    unsigned int i = 0;
+    bool located(false);
+    while(i < tr->keys.size()){
+      if(key == tr->keys[i]){
+        located = true;
+        if(tr->children[i]->can_remove()){ //case 2a
+          key = tr->replace_key(i, tr->children[i]->keys.back());
+          tr->children[i]->keys.pop_back();
+          tr = tr->children[i];
+        }
+        else if(tr->children[i+1]->can_remove()){ //case 2b
+          key = tr->replace_key(i, tr->children[i+1]->keys.front());
+          tr->children[i+1]->keys.erase(tr->children[i+1]->keys.begin());
+          tr = tr->children[i+1];
+        }
+        else{ //case 2c
+          tr->merge_children(i);
+          if(tr->keys.empty()){ //shrinks height
+            T* temp = tr->children[0];
+            tr->children.clear();
+            delete tr;
+            tr = temp;
+          }
+        }
+        break;
+      }
+      else if(key > tr->keys[i])
+        i++;
+      else
+        break;
+    }
+    if(located)
+      continue;
+    if(!tr->children[i]->can_remove()){ //case 3
+      if(i>0 && tr->children[i-1]->can_remove()){ 
+        // case 3a: left sibling
+        tr->children[i]->keys.insert(tr->children[i]->keys.begin(),
+                                     tr->keys[i-1]);
+        tr->keys[i-1] = tr->children[i-1]->keys.back();
+        tr->children[i-1]->keys.pop_back();
+        if(!tr->children[i]->leaf()){
+          tr->children[i]->children.insert(tr->children[i]->children.begin(),
+                                           tr->children[i-1]->children.back());
+          tr->children[i-1]->children.pop_back();
+        }
+      }
+      else if(i<tr->children.size() && tr->children[i+1]->can_remove()){
+        // case 3a: right sibling
+        tr->children[i]->keys.push_back(tr->keys[i]);
+        tr->keys[i] = tr->children[i+1]->keys.front();
+        tr->children[i+1]->keys.erase(tr->children[i+1]->keys.begin());
+        if(!tr->children[i]->leaf()){
+          tr->children[i]->children.push_back(tr->children[i+1]->children.front());
+          tr->children[i+1]->children.erase(tr->children[i+1]->children.begin());
+        }
+      }
+      else{
+        if(i>0)
+          tr->merge_children(i-1);
+        else
+          tr->merge_children(i);
+      }
+    }
+    tr = tr->children[i];
+  }
+  tr->keys.erase(remove(tr->keys.begin(), tr->keys.end(), key), 
+                 tr->keys.end());
+  if(root->keys.empty()){ //shrinks height
+    T* temp = root->children[0];
+    root->children.clear();
+    delete root;
+    root = temp;
+  }
+  return root;
+}
+\end{lstlisting}
+
+Please note how the recursion be eliminated. The main loop terminates
+only if the current node which is examined is a leaf. Otherwise, the
+program will go through the B-tree along the path which may contains
+the key to be deleted, and do proper adjustment including borrowing
+keys from other nodes, or merging to make the candidate nodes along
+this path all have enough keys to perform deleting.
+
+In order to verify this program, a quick and simple parsing function
+which can turn a B-tree description string into a B-tree is provided.
+Error handling of parsing is omitted for illusion purpose.
+
+\begin{lstlisting}
+template<class T>
+T* parse(std::string::iterator& first, std::string::iterator last){
+  T* tr = new T;
+  ++first; //'('
+  while(first!=last){
+    if(*first=='('){ //child
+      tr->children.push_back(parse<T>(first, last));
+    }
+    else if(*first == ',' || *first == ' ')
+      ++first; //skip deliminator
+    else if(*first == ')'){
+      ++first;
+      return tr;
+    }
+    else{ //key
+      typename T::key_type key;
+      while(*first!=',' && *first!=')')
+        key+=*first++;
+      tr->keys.push_back(key);
+    }
+  }
+  //should never run here
+  return 0;
+}
+
+template<class T>
+T* str_to_btree(std::string s){
+  std::string::iterator first(s.begin());
+  return parse<T>(first, s.end());
+}
+\end{lstlisting}
+
+After that, the testing can be performed as below.
+
+\begin{lstlisting}
+  void test_delete(){
+    std::cout<<"test delete...\n";
+    const char* s="(((A, B), C, (D, E, F), G, (J, K, L), M, (N, O)), "
+                  "P, ((Q, R, S), T, (U, V), X, (Y, Z)))";
+    typedef BTree<std::string, 3> BTr;
+    BTr* tr = str_to_btree<BTr>(s);
+    std::cout<<"before delete:\n"<<btree_to_str(tr)<<"\n";
+    const char* ks[] = {"F", "M", "G", "D", "B", "U"};
+    for(unsigned int i=0; i<sizeof(ks)/sizeof(char*); ++i)
+      tr=__test_del__(tr, ks[i]);
+    delete tr;
+  }
+
+  template<class T>
+  T* __test_del__(T* tr, typename T::key_type key){
+    std::cout<<"delete "<<key<<"==>\n";
+    tr = del(tr, key);
+    std::cout<<btree_to_str(tr)<<"\n";
+    return tr;
+  }
+\end{lstlisting}
+
+Run `test\_delete' will generate the below result.
+
+\begin{verbatim}
+test delete...
+before delete:
+(((A, B), C, (D, E, F), G, (J, K, L), M, (N, O)), P, ((Q, R, S), T, (U, V), X, (Y, Z)))
+delete F==>
+(((A, B), C, (D, E), G, (J, K, L), M, (N, O)), P, ((Q, R, S), T, (U, V), X, (Y, Z)))
+delete M==>
+(((A, B), C, (D, E), G, (J, K), L, (N, O)), P, ((Q, R, S), T, (U, V), X, (Y, Z)))
+delete G==>
+(((A, B), C, (D, E, J, K), L, (N, O)), P, ((Q, R, S), T, (U, V), X, (Y, Z)))
+delete D==>
+((A, B), C, (E, J, K), L, (N, O), P, (Q, R, S), T, (U, V), X, (Y, Z))
+delete B==>
+((A, C), E, (J, K), L, (N, O), P, (Q, R, S), T, (U, V), X, (Y, Z))
+delete U==>
+((A, C), E, (J, K), L, (N, O), P, (Q, R), S, (T, V), X, (Y, Z))
+\end{verbatim}
+
+Figure ??? shows this deleting test process step by step.
 
 \subsubsection{Merge before deletion algorithm implemented in Python}
 TODO:...
