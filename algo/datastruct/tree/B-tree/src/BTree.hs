@@ -75,8 +75,7 @@ unsplit :: BTree a -> a -> BTree a -> BTree a
 unsplit c1 k c2 = Node ((keys c1)++[k]++(keys c2))
                        ((children c1)++(children c2)) (degree c1)
 
--- merge two nodes into one
---  k1, k2, ..., kn          k1', k2', ..., km'
+-- merge two nodes into one--  k1, k2, ..., kn          k1', k2', ..., km'
 --C1, C2, ..., Cn, C{n+1}  C1',C2', ..., Cm', C{m+1}
 -- recursively merge C{n+1} and C1' until both nodes are leaves
 merge :: BTree a -> BTree a -> BTree a
@@ -133,6 +132,7 @@ testInsert = do
   --testInsertV "GMPXACDEJKNORSTUVYZ" 3
   putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 2
   --testInsertV "GMPXACDEJKNORSTUVYZ" 2
+  putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZBFHIQW" 3
 
 -- verbose
 testInsertV lst t =
