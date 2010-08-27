@@ -1882,7 +1882,184 @@ Function $UN-SPLIT$ defines as the invserse operation of splitting.
 \end{algorithmic}
 
 \subsubsection{Delete and fix algorithm implemented in Haskell}
-TODO:...
+Based on the analysis of delete-then-fixing approach, a Haskell
+program can be provided accordingly.
+
+The core deleting function is simple, it just call an internal
+removing function, then examine the root node to see if the 
+height of the tree can be shrinked.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+import qualified Data.List as L
+
+delete :: (Ord a) => BTree a -> a -> BTree a
+delete tr x = fixRoot $ del tr x
+
+del:: (Ord a) => BTree a -> a -> BTree a
+del (Node ks [] t) x = Node (L.delete x ks) [] t
+del (Node ks cs t) x = 
+    case L.elemIndex x ks of
+      Just i -> merge (Node (take i ks) (take (i+1) cs) t) 
+                      (Node (drop (i+1) ks) (drop (i+1) cs) t)
+      Nothing -> make (ks', cs') (del c x) (ks'', cs'')
+    where
+      (ks', ks'') = L.partition (<x) ks
+      (cs', (c:cs'')) = L.splitAt (length ks') cs
+\end{lstlisting} %$
+
+Let's focus on the `del' function, if try to delete a key from
+a leaf node, it just calls delete function defined in Data.List
+library. If the key doesn't exist at all, the pre-defined
+delete function will simply return the list without any modification.
+For the case of deleting a key from a branch node, it will first examine
+if the key can be located in this node, and apply recursive merge
+after remove this key. Otherwise, it will locate the proper child
+and do recursive delete-then-fixing on this child.
+
+Note that `partition' and 'splitAt' functions defined in Data.List
+can help to split the key and children list at the position that
+all elements on the left is less than the key while the right part
+are greater than the key.
+
+The resursive merge program has two patterns, merge two leaves and
+merge two branches. It is given as the following.
+
+\begin{lstlisting}
+merge :: BTree a -> BTree a -> BTree a
+merge (Node ks [] t) (Node ks' [] _) = Node (ks++ks') [] t
+merge (Node ks cs t) (Node ks' cs' _) = make (ks, init cs) 
+                                             (merge (last cs) (head cs'))
+                                             (ks', tail cs')
+\end{lstlisting}
+
+Where `init', `last', 'tail' functions are used to manipulate
+list which are defined in Haskell prelude.
+
+The fixing part of delete-then-fixing is defined insdie 'make' 
+function.
+
+\begin{lstlisting}
+make :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
+make (ks', cs') c (ks'', cs'')
+    | full c = fixFull (ks', cs') c (ks'', cs'')
+    | low c  = fixLow  (ks', cs') c (ks'', cs'')
+    | otherwise = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
+\end{lstlisting}
+
+Where function `low' is used to test if a node contains too few keys.
+
+\begin{lstlisting}
+low::BTree a -> Bool
+low tr = (length $ keys tr) < (degree tr)-1
+\end{lstlisting} %$
+
+The real fixing is implemented by try to borrow keys either from
+left sibling or right sibling as the following.
+
+\begin{lstlisting}
+fixLow :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
+fixLow (ks'@(_:_), cs') c (ks'', cs'') = make (init ks', init cs') 
+                                              (unsplit (last cs') (last ks') c) 
+                                              (ks'', cs'')
+fixLow (ks', cs') c (ks''@(_:_), cs'') = make (ks', cs')
+                                              (unsplit c (head ks'') (head cs''))
+                                              (tail ks'', tail cs'')
+fixLow _ c _ = c
+\end{lstlisting}
+
+Note that by using `x@(\_:\_)' like pattern can help to ensure 'x' is
+not empty. Here function `unsplit' is used which will do inverse
+splitting operation like below.
+
+\begin{lstlisting}
+unsplit :: BTree a -> a -> BTree a -> BTree a
+unsplit c1 k c2 = Node ((keys c1)++[k]++(keys c2))
+                       ((children c1)++(children c2)) (degree c1)
+\end{lstlisting}
+
+In order to verify the Haskell program, we can provide some simple
+test cases.
+
+\begin{lstlisting}
+import Control.Monad (foldM_, mapM_)
+
+testDelete = foldM_ delShow (listToBTree "GMPXACDEJKNORSTUVYZBFHIQW" 3) "EGAMU" 
+  where
+    delShow tr x = do
+      let tr' = delete tr x
+      putStrLn $ "delete "++(show x)
+      putStrLn $ toString tr'
+      return tr'
+\end{lstlisting}
+
+Where function `listToBTree' and `toString' are defined in previous section when we
+explain insertion algorithm.
+
+Run this function will generate the following result.
+
+\begin{verbatim}
+delete 'E'
+((('A', 'B'), 'C', ('D', 'F'), 'G', ('H', 'I', 'J', 'K')), 'M', 
+(('N', 'O'), 'P', ('Q', 'R', 'S'), 'T', ('U', 'V'), 'W', ('X', 'Y', 'Z')))
+delete 'G'
+((('A', 'B'), 'C', ('D', 'F'), 'H', ('I', 'J', 'K')), 'M', 
+(('N', 'O'), 'P', ('Q', 'R', 'S'), 'T', ('U', 'V'), 'W', ('X', 'Y', 'Z')))
+delete 'A'
+(('B', 'C', 'D', 'F'), 'H', ('I', 'J', 'K'), 'M', ('N', 'O'), 
+'P', ('Q', 'R', 'S'), 'T', ('U', 'V'), 'W', ('X', 'Y', 'Z'))
+delete 'M'
+(('B', 'C', 'D', 'F'), 'H', ('I', 'J', 'K', 'N', 'O'), 'P', 
+('Q', 'R', 'S'), 'T', ('U', 'V'), 'W', ('X', 'Y', 'Z'))
+delete 'U'
+(('B', 'C', 'D', 'F'), 'H', ('I', 'J', 'K', 'N', 'O'), 'P', 
+('Q', 'R', 'S', 'T', 'V'), 'W', ('X', 'Y', 'Z'))
+\end{verbatim}
+
+If we try to delete the same key from the same B-tree as in merge and fixing
+approach, we can found that the result is different by using delete-then-fixing
+methods. Although the results are not as same as each other, both satisfiy
+the B-tree properties, so they are all correct.
+
+\begin{figure}[htbp]
+    \begin{center}
+      \includegraphics[scale=0.5]{img/btree-del-fp-before.ps}
+
+      a. A B-tree before performing deleting;
+
+      \includegraphics[scale=0.5]{img/btree-del-fp-E.ps}
+
+      b. After delete key 'E'
+      \caption{Result of delete-then-fixing (1)} \label{fig:result-del-fp1}
+    \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+    \begin{center}
+      \includegraphics[scale=0.5]{img/btree-del-fp-G.ps}
+
+      c. After delete key 'G';
+
+      \includegraphics[scale=0.5]{img/btree-del-fp-A.ps}
+
+      d. After delete key 'A';
+      \caption{Result of delete-then-fixing (2)} \label{fig:result-del-fp2}
+    \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+    \begin{center}
+      \includegraphics[scale=0.5]{img/btree-del-fp-M.ps}
+
+      e. After delete key 'M';
+
+      \includegraphics[scale=0.5]{img/btree-del-fp-U.ps}
+
+      f. After delete key 'U';
+      \caption{Result of delete-then-fixing (3)} \label{fig:result-del-fp3}
+    \end{center}
+\end{figure}
+
 
 \subsubsection{Delete and fix algorithm implemented in Scheme/Lisp}
 TODO:...
