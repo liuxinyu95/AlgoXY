@@ -32,6 +32,10 @@
 	  (cons (car tr) (children (cdr tr)))
 	  (children (cdr tr)))))
 
+(define (leaf? tr)
+  (or (null? tr)
+      (not (list? (car tr)))))
+
 (define (full? tr t) ;; t: minimum degree
   (> (length (keys tr)) 
      (- (* 2 t) 1)))
@@ -41,7 +45,7 @@
      (- t 1)))
 
 (define (split tr t)
-  (if (null? (children tr))
+  (if (leaf? tr)
       (list (list-head tr (- t 1))
 	    (list-ref tr (- t 1))
 	    (list-tail tr t))
@@ -49,8 +53,31 @@
 	    (list-ref tr (- (* t 2) 1))
 	    (list-tail tr (* t 2)))))
 
+(define (un-split lst)
+  (let ((c1 (car lst))
+	(k (cadr lst))
+	(c2 (caddr lst)))
+    (append c1 (list k) c2)))
+
 (define (cons-pair c k lst)
   (cons c (cons k lst)))
+
+
+;; general tools
+(define (rest lst k)
+  (list-tail lst (- (length lst) k)))
+
+(define (except-rest lst k)
+  (list-head lst (- (length lst) k)))
+
+(define (first lst)
+  (if (null? lst) '() (car lst)))
+
+(define (last lst)
+  (if (null? lst) '() (car (last-pair lst))))
+
+(define (inits lst)
+  (if (null? lst) '() (except-last-pair lst)))
 
 ;; (c1 k1 c2 k2 ... c[i-1] k[i-1] ci ki ... cn kn c[n+1]) 
 ;; k[i-1] < k < k[i]
@@ -86,10 +113,10 @@
       (insert-by < lst x)))
 
 ;; insert a key into btree
-(define (insert tr x t)
+(define (btree-insert tr x t)
   (define (ins tr x)
-    (if (null? (children tr))
-	(orderred-insert (keys tr) x) ;;leaf
+    (if (leaf? tr)
+	(orderred-insert tr x) ;;leaf
 	(let* ((res (partition-by tr x))
 	       (left (car res))
 	       (c (cadr res))
@@ -97,24 +124,65 @@
 	  (make-btree left (ins c x) right t))))
   (fix-root (ins tr x) t))
 
+;; delete a key into btree
+(define (btree-delete tr x t)
+  (define (del tr x)
+    (if (leaf? tr)
+	(delete x tr)
+	(let* ((res (partition-by tr x))
+	       (left (car res))
+	       (c (cadr res))
+	       (right (caddr res)))
+	  (if (equal? (first right) x)
+	      (merge-btree (append left (list c)) (cdr right) t)
+	      (make-btree left (del c x) right t)))))
+  (fix-root (del tr x) t))
+			   
+;; make a btree from left, c, and right
+;; where
+;;  left = (c1 k1 c2 k2 ... ci ki)
+;;     c = c[i+1]
+;;  right= (k[i+1] ... cn kn c[n+1])
 (define (make-btree l c r t)
   (cond ((full? c t) (fix-full l c r t))
-	;;(low? c t) (fix-low l c r t)
+	((low? c t) (fix-low l c r t))
 	(else (append l (cons c r)))))
+
+;; merge two btree node into one.
+(define (merge-btree tr1 tr2 t)
+  (if (leaf? tr1)
+      (append tr1 tr2)
+      (make-btree (inits tr1)
+		  (merge-btree (last tr1) (car tr2) t)
+		  (cdr tr2)
+		  t)))
 
 ;; fixing
 
 (define (fix-full l c r t)
   (append l (split c t) r))
 
+(define (fix-low l c r t)
+  (cond ((not (null? (keys l)))
+	 (make-btree (except-rest l 2)
+		     (un-split (append (rest l 2) (list c)))
+		     r t))
+	((not (null? (keys r)))
+	 (make-btree l
+		     (un-split (cons c (list-head r 2)))
+		     (list-tail r 2) t))
+	(else c)))
+
 (define (fix-root tr t)
-  (cond ((full? tr t) (split tr t))
+  (cond ((null? tr) '()) ;; empty tree
+	((full? tr t) (split tr t))
+	((null? (keys tr)) (car tr)) ;; shrink height
 	(else tr)))
 
 ;; helper
 
 (define (list->btree lst t)
-  (fold-left (lambda (tr x) (insert tr x t)) '() lst))
+  (fold-left (lambda (tr x) (btree-insert tr x t)) '() lst))
 
 (define (str->slist s)
   (if (string-null? s)
@@ -124,3 +192,11 @@
 ;; testing
 (define (test-insert)
   (list->btree (str->slist "GMPXACDEJKNORSTUVYZBFHIQW") 3))
+
+(define (test-delete)
+  (define (del-and-show tr x)
+    (let ((r (btree-delete tr x 3)))
+      (begin (display r) (display "\n") r)))
+  (fold-left del-and-show
+	     (list->btree (str->slist "GMPXACDEJKNORSTUVYZBFHIQW") 3)
+	     (str->slist "EGAMU")))
