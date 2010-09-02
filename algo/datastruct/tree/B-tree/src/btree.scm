@@ -124,7 +124,7 @@
 	  (make-btree left (ins c x) right t))))
   (fix-root (ins tr x) t))
 
-;; delete a key into btree
+;; delete a key from btree
 (define (btree-delete tr x t)
   (define (del tr x)
     (if (leaf? tr)
