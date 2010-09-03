@@ -276,7 +276,46 @@ full tr = (length $ keys tr) > 2*(degree tr)-1
 \end{lstlisting} %$
 
 \subsection*{Definition of B-tree in Scheme/Lisp}
-TODO: ...
+In Scheme/Lisp, because a list can contain both children and keys at
+same time, we can organize a B-tree with children and keys interspersed
+in list. for instance, below list represents a B-tree, the root has one
+key ``c'' and two children, the left child is a leaf node, with keys ``A''
+and ``B'', while the right child is also a leaf with keys ``D'' and ``E''.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(("A" "B") "C" ("D" "E"))
+\end{lstlisting}
+
+However, this difinition doesn't hold the information of minimum degree $t$.
+The solution is to pass $t$ as a parameter for all operations.
+
+Some auxiliary functions are provided so that we can access and test a 
+B-tree easily.
+
+\begin{lstlisting}
+(define (keys tr)
+  (if (null? tr) 
+      '()
+      (if (list? (car tr))
+	  (keys (cdr tr))
+	  (cons (car tr) (keys (cdr tr))))))
+
+(define (children tr)
+  (if (null? tr)
+      '()
+      (if (list? (car tr))
+	  (cons (car tr) (children (cdr tr)))
+	  (children (cdr tr)))))
+
+(define (leaf? tr)
+  (or (null? tr)
+      (not (list? (car tr)))))
+\end{lstlisting}
+
+Here we assume the key is a simple value, such as a number, or a string, 
+but not a list. In case we find a element is a list, it represents a
+child B-tree. All above functions are defined based on this assumption. 
 
 % ================================================================
 %                 Insertion
@@ -432,7 +471,27 @@ split (Node ks cs t) = (c1, k, c2) where
 \end{lstlisting}
 
 \subsubsection*{Split implemented in Scheme/Lisp}
-TODO: ...
+As mentioned previously, the minimum degree $t$ is passed as a parameter.
+The splitting is performed according to $t$.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (split tr t)
+  (if (leaf? tr)
+      (list (list-head tr (- t 1))
+	    (list-ref tr (- t 1))
+	    (list-tail tr t))
+      (list (list-head tr (- (* t 2) 1)) 
+	    (list-ref tr (- (* t 2) 1))
+	    (list-tail tr (* t 2)))))
+\end{lstlisting}
+
+When splitting a leaf node, because there is no child at all, the
+program simply take the first $t-1$ keys and the last $t-1$ keys
+to form two child, and left the $t$-th key as the only key of the
+new node. It will return these 3 parts in a list. When splitting
+a branch node, children must be also taken into account, that's
+why the first $2t-1$ and the last $2t-1$ elements are taken.
 
 %=========================================================================
 %       Split before insertion
@@ -1018,8 +1077,135 @@ are satisfied. The main reason for this difference is because of
 the approaching change.
 
 \subsubsection*{Insert implemented in Scheme/Lisp}
-TODO:
+The main function for insertion in Scheme/Lisp is given as the 
+following.
 
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (btree-insert tr x t)
+  (define (ins tr x)
+    (if (leaf? tr)
+	(orderred-insert tr x) ;;leaf
+	(let* ((res (partition-by tr x))
+	       (left (car res))
+	       (c (cadr res))
+	       (right (caddr res)))
+	  (make-btree left (ins c x) right t))))
+  (fix-root (ins tr x) t))
+\end{lstlisting}
+
+The program simply calls an internal function and performs fixing
+on it. The internal `ins' function examine if the current node
+is a leaf node. In case the node is a leaf, it only contains keys,
+we can located the position and insert the new key there. Otherwise,
+we partition the node into 3 parts, the left part, the child which
+the recursive insertion will performed on, and the right part.
+The program will do the resurive insertion and then combine 
+these three part to a new node. fixing will be happend during the
+combination.
+
+Function `orderred-insert' can help to traverse a orderred list
+and inser the new key to proper position as below.
+
+\begin{lstlisting}
+(define (orderred-insert lst x)
+  (define (insert-by less-p lst x)
+    (if (null? lst)
+	(list x)
+	(if (less-p x (car lst))
+	    (cons x lst)
+	    (cons (car lst) (insert-by less-p (cdr lst) x)))))
+  (if (string? x)
+      (insert-by string<? lst x)
+      (insert-by < lst x)))
+\end{lstlisting}
+
+In order to deal with B-trees with key types both as string and
+as number, we abstract the less-than function as a parameter
+and pass it to an internal function.
+
+Function `partition-by' uses a similar approach.
+
+\begin{lstlisting}
+(define (partition-by tr x)
+  (define (part-by pred tr x)
+    (if (= (length tr) 1)
+	(list '() (car tr) '())
+	(if (pred (cadr tr) x)
+	    (let* ((res (part-by pred (cddr tr) x))
+		   (left (car res))
+		   (c (cadr res))
+		   (right (caddr res)))
+	      (list (cons-pair (car tr) (cadr tr) left) c right))
+	    (list '() (car tr) (cdr tr)))))
+  (if (string? x)
+      (part-by string<? tr x)
+      (part-by < tr x)))
+\end{lstlisting}
+
+Where `cons-pair' is a helper function which can put a key, a
+child in front of a B-tree.
+
+\begin{lstlisting}
+(define (cons-pair c k lst)
+  (cons c (cons k lst)))
+\end{lstlisting}
+
+In order to fixing the root of a B-tree, which contains too many
+keys, a `fix-root' funciton is provided.
+
+\begin{lstlisting}
+(define (full? tr t) ;; t: minimum degree
+  (> (length (keys tr)) 
+     (- (* 2 t) 1)))
+
+(define (fix-root tr t)
+  (cond ((full? tr t) (split tr t))
+	(else tr)))
+\end{lstlisting}
+
+When we turn the recursive insertion result to a new node, we
+need do fixing if the result node contains too many keys.
+
+\begin{lstlisting}
+(define (make-btree l c r t)
+  (cond ((full? c t) (fix-full l c r t))
+	(else (append l (cons c r)))))
+
+(define (fix-full l c r t)
+  (append l (split c t) r))
+\end{lstlisting}
+
+With all above facilities, we can test the program for verification.
+
+In order to build the B-tree easily from a list of keys, some simple
+helper functions are given.
+
+\begin{lstlisting}
+(define (list->btree lst t)
+  (fold-left (lambda (tr x) (btree-insert tr x t)) '() lst))
+
+(define (str->slist s)
+  (if (string-null? s)
+      '()
+      (cons (string-head s 1) (str->slist (string-tail s 1)))))
+\end{lstlisting}
+
+A same simple test case as the Haskell one is feed to our program.
+
+\begin{lstlisting}
+(define (test-insert)
+  (list->btree (str->slist "GMPXACDEJKNORSTUVYZBFHIQW") 3))
+\end{lstlisting}
+
+Evaluate `test-insert' function can get a B-tree.
+
+\begin{lstlisting}
+((("A" "B") "C" ("D" "E" "F") "G" ("H" "I" "J" "K")) "M" 
+(("N" "O") "P" ("Q" "R" "S") "T" ("U" "V") "W" ("X" "Y" "Z")))
+\end{lstlisting}
+
+It is as same as the result output by the Haskell program.
 
 % ================================================================
 %               Deletion
@@ -2062,7 +2248,157 @@ the B-tree properties, so they are all correct.
 
 
 \subsubsection{Delete and fix algorithm implemented in Scheme/Lisp}
-TODO:...
+In order to implement delete program in Scheme/Lisp, we provide an
+extra function to test if a node contains too few keys after deletion.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (low? tr t) ;; t: minimum degree
+  (< (length (keys tr)) 
+     (- t 1)))
+\end{lstlisting}
+
+And some general purpose list manipulation functions are defined.
+
+\begin{lstlisting}
+(define (rest lst k)
+  (list-tail lst (- (length lst) k)))
+
+(define (except-rest lst k)
+  (list-head lst (- (length lst) k)))
+
+(define (first lst)
+  (if (null? lst) '() (car lst)))
+
+(define (last lst)
+  (if (null? lst) '() (car (last-pair lst))))
+
+(define (inits lst)
+  (if (null? lst) '() (except-last-pair lst)))
+\end{lstlisting}
+
+Function `rest' can extract the last $k$ elements from a list, while
+`except-rest' used to extract all except the last $k$ elements.
+`first' can be treat as a safe `car', it will return empty list but not
+throw exception when the list is empty. Function `last' returns the
+last element of a list, and if the list is empty, it will return 
+empty result. Function `inits' returns all excluding the last element.
+
+And a inversion operation of splitting is provided.
+
+\begin{lstlisting}
+(define (un-split lst)
+  (let ((c1 (car lst))
+	(k (cadr lst))
+	(c2 (caddr lst)))
+    (append c1 (list k) c2)))
+\end{lstlising}
+
+The main function of deletion is defined as the following.
+
+\begin{lstlisting}
+(define (btree-delete tr x t)
+  (define (del tr x)
+    (if (leaf? tr)
+	(delete x tr)
+	(let* ((res (partition-by tr x))
+	       (left (car res))
+	       (c (cadr res))
+	       (right (caddr res)))
+	  (if (equal? (first right) x)
+	      (merge-btree (append left (list c)) (cdr right) t)
+	      (make-btree left (del c x) right t)))))
+  (fix-root (del tr x) t))
+\end{lstlisting}
+
+It is implemented in a similar way as the insertion, call an internal
+defined `del' function then apply fixing process on it. In the internal
+deletion fuction, if the B-tree is a leaf node, the standard list
+deleting function defined in standard library is applied. If it is
+a branch node, we call the `partition-by' function defined previously.
+This function will devide the node into 3 parts, all children and
+keys less than $x$ as the left part, a child node next, all keys not less
+than (greater than or equal to) $x$ and children s the right part.
+
+If the first key in right part is equal to $x$, it means $x$ can
+be located in this node, we remove $x$ from right and then
+call `merge-btree' to merge left+c, right-$x$ to one new node.
+
+\begin{lstlisting}
+(define (merge-btree tr1 tr2 t)
+  (if (leaf? tr1)
+      (append tr1 tr2)
+      (make-btree (inits tr1)
+		  (merge-btree (last tr1) (car tr2) t)
+		  (cdr tr2)
+		  t)))
+\end{lstlisting}
+
+Otherwise, $x$ may be located in c, so we need recursively try
+to delete $x$ from c.
+
+Function `fix-root' is updated to handle the cases for deletion
+as below.
+
+\begin{lstlisting}
+(define (fix-root tr t)
+  (cond ((null? tr) '()) ;; empty tree
+	((full? tr t) (split tr t))
+	((null? (keys tr)) (car tr)) ;; shrink height
+	(else tr)))
+\end{lstlisting}
+
+We added one case to handle if a node contains too few keys
+after deleting in `make-btree'.
+
+\begin{lstlisting}
+(define (make-btree l c r t)
+  (cond ((full? c t) (fix-full l c r t))
+	((low? c t) (fix-low l c r t))
+	(else (append l (cons c r)))))
+\end{lstlisting}
+
+Where `fix-low' is defined to try to borrow a key and a child
+either from left sibling or right sibling.
+
+\begin{lstlisting}
+(define (fix-low l c r t)
+  (cond ((not (null? (keys l)))
+	 (make-btree (except-rest l 2)
+		     (un-split (append (rest l 2) (list c)))
+		     r t))
+	((not (null? (keys r)))
+	 (make-btree l
+		     (un-split (cons c (list-head r 2)))
+		     (list-tail r 2) t))
+	(else c)))
+\end{lstlisting}
+
+In order to verify the the deleting program, a simple test is
+fed to the above defined function.
+
+\begin{lstlisting}
+(define (test-delete)
+  (define (del-and-show tr x)
+    (let ((r (btree-delete tr x 3)))
+      (begin (display r) (display "\n") r)))
+  (fold-left del-and-show
+	     (list->btree (str->slist "GMPXACDEJKNORSTUVYZBFHIQW") 3)
+	     (str->slist "EGAMU")))
+\end{lstlisting}
+
+Run the test will generate the following result.
+
+\begin{lstlisting}
+(((A B) C (D F) G (H I J K)) M ((N O) P (Q R S) T (U V) W (X Y Z)))
+(((A B) C (D F) H (I J K)) M ((N O) P (Q R S) T (U V) W (X Y Z)))
+((B C D F) H (I J K) M (N O) P (Q R S) T (U V) W (X Y Z))
+((B C D F) H (I J K N O) P (Q R S) T (U V) W (X Y Z))
+((B C D F) H (I J K N O) P (Q R S T V) W (X Y Z))
+\end{lstlisting}
+
+Compare with the output by the Haskell program in previous section,
+it can be found they are same.
 
 % ================================================================
 %               Searching
