@@ -227,6 +227,20 @@ T* del(T* tr, typename T::key_type key){
 }
 
 template<class T>
+std::pair<T*, unsigned int> search(T* t, typename T::key_type k){
+  for(;;){
+    unsigned int i(0);
+    for(; i < t->keys.size() && k > t->keys[i]; ++i);
+    if(i < t->keys.size() && k == t->keys[i])
+      return std::make_pair(t, i);
+    if(t->leaf())
+      break;
+    t = t->children[i];
+  }
+  return std::make_pair((T*)0, 0); //not found
+}
+
+template<class T>
 T* insert_key(T* t, typename T::key_type x){
   return insert(t, x);
 }
@@ -302,6 +316,7 @@ public:
   void run(){
     test_insert();
     test_delete();
+    test_search();
     //__test_insert_verbose();
     //__test_orderred_insert();
     //__test_parse();
@@ -373,6 +388,28 @@ private:
     tr = del(tr, key);
     std::cout<<btree_to_str(tr)<<"\n";
     return tr;
+  }
+
+  void test_search(){
+    std::cout<<"test search...\n";
+    const char* ss[] = {"G", "M", "P", "X", "A", "C", "D", "E", "J", "K", \
+                        "N", "O", "R", "S", "T", "U", "V", "Y", "Z"};
+    BTree<std::string, 3>* tr = list_to_btree(ss, ss+sizeof(ss)/sizeof(char*),
+                                              new BTree<std::string, 3>);
+    std::cout<<"\n"<<btree_to_str(tr)<<"\n";
+    for(unsigned int i=0; i<sizeof(ss)/sizeof(char*); ++i)
+      __test_search(tr, ss[i]);
+    __test_search(tr, "W");
+    delete tr;
+  }
+
+  template<class T>
+  void __test_search(T* t, typename T::key_type k){
+    std::pair<T*, unsigned int> res = search(t, k);
+    if(res.first)
+      std::cout<<"found "<<res.first->keys[res.second]<<"\n";
+    else
+      std::cout<<"not found "<<k<<"\n";
   }
 
   void __test_parse(){

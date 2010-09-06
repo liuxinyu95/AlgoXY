@@ -179,6 +179,20 @@
 	((null? (keys tr)) (car tr)) ;; shrink height
 	(else tr)))
 
+(define (btree-search tr x)
+  ;; find the smallest index where keys[i]>= x
+  (define (find-index tr x)
+    (let ((pred (if (string? x) string>=? >=)))
+      (if (null? tr)
+	  0
+	  (if (and (not (list? (car tr))) (pred (car tr) x))
+	      0
+	      (+ 1 (find-index (cdr tr) x))))))
+  (let ((i (find-index tr x)))
+    (if (and (< i (length tr)) (equal? x (list-ref tr i)))
+	(cons tr i)
+	(if (leaf? tr) #f (btree-search (list-ref tr (- i 1)) x)))))
+
 ;; helper
 
 (define (list->btree lst t)
@@ -200,3 +214,12 @@
   (fold-left del-and-show
 	     (list->btree (str->slist "GMPXACDEJKNORSTUVYZBFHIQW") 3)
 	     (str->slist "EGAMU")))
+
+(define (test-search)
+  (define (search-and-show tr x)
+    (if (btree-search tr x)
+	(display (list "found " x))
+	(display (list "not found " x))))
+  (let* ((lst (str->slist "GMPXACDEJKNORSTUVYZBFHIQW"))
+	 (tr (list->btree lst 3)))
+    (map (lambda (x) (search-and-show tr x)) (cons "L" lst))))

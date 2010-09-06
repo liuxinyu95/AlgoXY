@@ -23,3 +23,4 @@ import qualified BTree
 main = do
   BTree.testInsert
   BTree.testDelete
+  BTree.testSearch
