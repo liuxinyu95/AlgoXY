@@ -101,7 +101,7 @@
       (part-by < tr x)))
 
 ;; auxiliary function
-(define (orderred-insert lst x)
+(define (ordered-insert lst x)
   (define (insert-by less-p lst x)
     (if (null? lst)
 	(list x)
@@ -116,7 +116,7 @@
 (define (btree-insert tr x t)
   (define (ins tr x)
     (if (leaf? tr)
-	(orderred-insert tr x) ;;leaf
+	(ordered-insert tr x) ;;leaf
 	(let* ((res (partition-by tr x))
 	       (left (car res))
 	       (c (cadr res))

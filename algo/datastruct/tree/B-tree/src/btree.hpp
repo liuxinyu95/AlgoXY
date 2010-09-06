@@ -118,7 +118,7 @@ T* insert(T* tr, typename T::key_type key){
 }
 
 template<class Coll>
-void orderred_insert(Coll& coll, typename Coll::value_type x){
+void ordered_insert(Coll& coll, typename Coll::value_type x){
   typename Coll::iterator it = coll.begin();
   while(it != coll.end() && *it < x)
     ++it;
@@ -142,7 +142,7 @@ T* insert_nonfull(T* tr, typename T::key_type key){
     }
     tr = tr->children[i];
   }
-  orderred_insert(tr->keys, key);
+  ordered_insert(tr->keys, key);
   return root;
 }
 
@@ -318,7 +318,7 @@ public:
     test_delete();
     test_search();
     //__test_insert_verbose();
-    //__test_orderred_insert();
+    //__test_ordered_insert();
     //__test_parse();
   }
 private:
@@ -357,15 +357,15 @@ private:
     }
   }
 
-  void __test_orderred_insert(){
-    std::cout<<"test orderred insert...\n";
+  void __test_ordered_insert(){
+    std::cout<<"test ordered insert...\n";
     std::string s("beh");
     std::cout<<"s="<<s<<"\n";
-    orderred_insert(s, 'a');
+    ordered_insert(s, 'a');
     print_ss(s);
-    orderred_insert(s, 'c');
+    ordered_insert(s, 'c');
     print_ss(s);
-    orderred_insert(s, 'x');
+    ordered_insert(s, 'x');
     print_ss(s);
   }
 
