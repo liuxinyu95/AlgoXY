@@ -73,7 +73,7 @@ def B_tree_insert(tr, key): # + data parameter
     B_tree_insert_nonfull(root, key)
     return root
 
-def orderred_insert(lst, x):
+def ordered_insert(lst, x):
     i = len(lst)
     lst.append(x)
     while i>0 and lst[i]<lst[i-1]:
@@ -82,7 +82,7 @@ def orderred_insert(lst, x):
 
 def B_tree_insert_nonfull(tr, key):
     if tr.leaf:
-        orderred_insert(tr.keys, key)
+        ordered_insert(tr.keys, key)
         #disk_write(tr)
     else:
         i = len(tr.keys)
