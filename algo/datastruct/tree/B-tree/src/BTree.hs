@@ -63,6 +63,18 @@ del (Node ks cs t) x =
       (ks', ks'') = L.partition (<x) ks
       (cs', (c:cs'')) = L.splitAt (length ks') cs
 
+-- Search
+
+search :: (Ord a)=> BTree a -> a -> Maybe (BTree a, Int)
+search tr@(Node ks cs _) k 
+    | matchFirst k $ drop len ks = Just (tr, len)
+    | otherwise = if null cs then Nothing
+                  else search (cs !! len) k
+    where
+      matchFirst x (y:_) = x==y
+      matchFirst x _ = False
+      len = length $ filter (<k) ks
+
 -- Tree manipulation
 
 split :: BTree a -> (BTree a, a, BTree a)
@@ -144,3 +156,11 @@ testDelete = foldM_ delShow (listToBTree "GMPXACDEJKNORSTUVYZBFHIQW" 3) "EGAMU" 
       putStrLn $ "delete "++(show x)
       putStrLn $ toString tr'
       return tr'
+
+testSearch = mapM_ (showSearch (listToBTree lst 3)) $ lst++"L"
+    where
+      showSearch tr x = do
+        case search tr x of
+          Just (_, i) -> putStrLn $ "found" ++ (show x)
+          Nothing -> putStrLn $ "not found" ++ (show x)
+      lst = "GMPXACDEJKNORSTUVYZBFHIQW"
