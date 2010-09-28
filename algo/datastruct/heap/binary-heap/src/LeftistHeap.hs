@@ -21,17 +21,43 @@ module LeftistHeap where
 -- Definition
 
 data LHeap a = E -- Empty 
-             | Node{ r :: Int -- rank
-                   , elem :: a   -- element
-                   , left :: LHeap
-                   , right :: LHeap } deriving (Eq, Show)
+             | Node Int a (LHeap a) (LHeap a) -- rank, element, left, right
+               deriving (Eq, Show)
 
 merge::(Ord a)=>LHeap a -> LHeap a -> LHeap a
 merge E h = h
 merge h E = h
 merge h1@(Node _ x l r) h2@(Node _ y l' r') = 
-    if x < y then makeNode x l merge r h2
-    else makeNode y l' merge h1 r'
+    if x < y then makeNode x l (merge r h2)
+    else makeNode y l' (merge h1 r')
 
-makeNode:: a -> LHeap a -> LHeap a -> LHeap a
-makeNode x a b = if rank a < rank b then Node 
+makeNode::a -> LHeap a -> LHeap a -> LHeap a
+makeNode x a b = if rank a < rank b then Node (rank a + 1) x b a
+                 else Node (rank b + 1) x a b
+
+rank::LHeap a -> Int
+rank E = 0
+rank (Node r _ _ _) = r
+
+insert::(Ord a)=> LHeap a -> a -> LHeap a
+insert h x = merge (Node 1 x E E) h
+
+findMin :: LHeap a -> a
+findMin (Node _ x _ _) = x
+
+deleteMin :: (Ord a) => LHeap a -> LHeap a
+deleteMin (Node _ _ l r) = merge l r
+
+fromList :: (Ord a) => [a] -> LHeap a
+fromList xs = foldl insert E xs
+
+heapSort :: (Ord a) => [a] -> [a]
+heapSort = hsort . fromList where
+    hsort E = []
+    hsort h = (findMin h):(hsort $ deleteMin h)
+
+-- test
+
+testFromList = fromList [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+
+testHeapSort = heapSort [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
