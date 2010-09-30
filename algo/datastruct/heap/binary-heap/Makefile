@@ -1,6 +1,6 @@
 HEADER = 
-SOURCE = btree-en.tex
-OBJECT = btree-en
+SOURCE = bheap-en.tex
+OBJECT = bheap-en
 TEX = latex
 
 .PHONY: all
