@@ -16,6 +16,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 
+-- Based on Chris Okasaki's ``Purely Functional Datastructures''
+
 module LeftistHeap where
 
 -- Definition
