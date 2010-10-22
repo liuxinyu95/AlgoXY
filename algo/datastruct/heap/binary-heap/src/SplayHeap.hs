@@ -70,6 +70,33 @@ deleteMin (Node E x r) = r
 deleteMin (Node (Node E x' r') x r) = Node r' x r
 deleteMin (Node (Node l' x' r') x r) = Node (deleteMin l') x' (Node r' x r)
 
+-- splay by pattern matching
+splay :: (Eq a) => STree a -> a ->STree a
+-- zig-zig
+splay t@(Node (Node (Node a x b) p c) g d) y =
+    if x == y then Node a x (Node b p (Node c g d)) else t
+splay t@(Node a g (Node b p (Node c x d))) y =
+    if x == y then Node (Node (Node a g b) p c) x d else t
+-- zig-zag
+splay t@(Node (Node a p (Node b x c)) g d) y =
+    if x == y then Node (Node a p b) x (Node c g d) else t
+splay t@(Node a g (Node (Node b x c) p d)) y =
+    if x == y then Node (Node a g b) x (Node c p d) else t
+-- zig
+splay t@(Node (Node a x b) p c) y = if x == y then Node a x (Node b p c) else t
+splay t@(Node a p (Node b x c)) y = if x == y then Node (Node a p b) x c else t
+-- otherwise
+splay t _ = t
+
+-- insert by using pattern matching
+insert' :: (Ord a) => STree a -> a -> STree a
+insert' E y = Node E y E
+insert' (Node l x r) y 
+    | x < y     = splay (Node (insert l y) x r) y
+    | otherwise = splay (Node l x (insert r y)) y
+
+-- general part for heap
+
 fromList :: (Ord a) => [a] -> STree a
 fromList xs = foldl insert E xs
 
@@ -83,3 +110,9 @@ heapSort = hsort . fromList where
 testFromList = fromList [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
 
 testHeapSort = heapSort [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+
+testFromList' = do
+  putStrLn $ show $ tolst [16, 14, 10, 8, 7, 9, 3, 2, 4, 1] 
+  putStrLn $ show $ tolst [16, 10, 14, 8, 1, 7, 9, 3, 4, 2]
+           where
+             tolst = foldl insert' E 
