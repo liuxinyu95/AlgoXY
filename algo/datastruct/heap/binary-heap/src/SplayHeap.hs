@@ -20,6 +20,8 @@
 
 module SplayHeap where
 
+import System.Random -- only for testing
+
 -- Definition
 
 data STree a = E -- Empty
@@ -92,8 +94,15 @@ splay t _ = t
 insert' :: (Ord a) => STree a -> a -> STree a
 insert' E y = Node E y E
 insert' (Node l x r) y 
-    | x < y     = splay (Node (insert l y) x r) y
-    | otherwise = splay (Node l x (insert r y)) y
+    | x > y     = splay (Node (insert' l y) x r) y
+    | otherwise = splay (Node l x (insert' r y)) y
+
+lookup' :: (Ord a) => STree a -> a -> STree a
+lookup' E _ = E
+lookup' t@(Node l x r) y
+    | x == y    = t
+    | x > y     = splay (Node (lookup' l y) x r) y
+    | otherwise = splay (Node l x (lookup' r y)) y
 
 -- general part for heap
 
@@ -116,3 +125,12 @@ testFromList' = do
   putStrLn $ show $ tolst [16, 10, 14, 8, 1, 7, 9, 3, 4, 2]
            where
              tolst = foldl insert' E 
+
+
+--testSplay :: IO (STree Int)
+testSplay = do
+  xs <- sequence (replicate 100 (randomRIO(1, 10)))
+  putStrLn $ show (foldl lookup' t xs)
+      where 
+        t = foldl insert' (E::STree Int) [1..10]
+  
