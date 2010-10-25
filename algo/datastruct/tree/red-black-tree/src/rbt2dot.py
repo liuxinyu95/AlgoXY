@@ -19,6 +19,9 @@
 """
 transform the red black tree output result to dot script (graphviz)
 usage: rbt2dot.py -o filename.dot "((. 1:R .) 2:B .)"
+       R: red, B: black, BB: double-black, N: open branch, C: unknown color
+       Color can be omit, so for normal BST it can be use like:
+       rbt2dot.py -o filename.dot "((. 1 .) 2 .)"
 """
 
 import sys
@@ -28,7 +31,7 @@ import getopt
 class Node:
     def __init__(self):
         self.key = ""
-        self.color = "";
+        self.color = "C" #default color
         self.left = self.right =None
 
 def str_to_tree(ts):
@@ -36,20 +39,22 @@ def str_to_tree(ts):
     x = Node()
     state=""
     while True:
-        c=ts[0]
-        ts=ts[1:]
+        (c, ts)=(ts[0], ts[1:])
         if c== '.':
             return (None, ts)
         elif c =='(':
             (x.left, ts)=str_to_tree(ts)
             state = "parsing-key"
         elif c==' ':
-            if state=="parsing-color":
+            if state == "parsing-key":
+                (x.key, ts) = parsing_field(ts)
+                state = "parsing-color"
+            elif state=="parsing-color":
                 (x.right, ts)=str_to_tree(ts)
         elif c==')':
             return (x, ts)
         elif c==':':
-            state="parsing-color"
+            (x.color, ts) = parsing_field(ts)
         else:
             if state=="parsing-key":
                 x.key=x.key+c
@@ -58,6 +63,15 @@ def str_to_tree(ts):
             else:
                 print "[parsing error, state=", state, " c=", c,"]"
                 sys.exit()
+
+def parsing_field(ts):
+    res = ""
+    while ts!=[]:
+        (c, ts) = (ts[0], ts[1:])
+        if ":. ()".find(c)>=0:
+            return (res, c+ts)
+        res = res + c
+    return (res, ts)
 
 def define_connection(node, prefix):
     (left, leftstyle, right, rightstyle, res)=("", "\n", "", "\n", "")
