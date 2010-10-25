@@ -95,16 +95,19 @@ In this post, we use a general definition of heap, so that
 varies of under-ground data structures can be used for implementation.
 And binary heap is also extended to a wide concept under this definition.
 
-A heap is a data structure that satisifies the {\em heap property}.
+A heap is a data structure that satisifies the following {\em heap property}.
 \begin{itemize}
 \item Top operation always returns the minimum (maximum) element;
 \item Pop operation removes the top element from the heap while the heap
 property should be kept, so that the new top element is still the 
 minimum (maximum) one;
 \item Insert a new element to heap should keep the heap property. That
-the top is still the minimum (maximum) element;
+the new top is still the minimum (maximum) element;
 \item Other operations including merge etc should all keep the heap property.
 \end{itemize}
+
+This is a kind of recursive definition, while it doesn't limit the under
+ground data structure.
 
 We call the heap with top returns the minimum element {\em min-heap},
 while if top returns the maximum element, we call it {\em max-heap}.
@@ -134,16 +137,66 @@ refer to appendix for detailed information about build and run.
 \section{Implicit binary heap by array}
 \label{ibheap}
 
-TODO: General overview...
+Considering the heap definition in previous section, one option to 
+implement heap is by using trees. A straightforward solution is
+to store the minimum (maximum) element in the root node of the 
+tree, so for `top' operation, we simply return the root as the
+result. And for `pop' operation, we can remove the root and 
+rebuild the tree from the children.
+
+If the tree which is used to implement heap is a binary tree, we
+can call it {\em binary heap}. There are three types of binary
+heap implementation explained in this post. All of them are
+based on binary tree.
 
 % ================================================================
 %                 Definition
 % ================================================================
 \subsection{Definition}
 
-TODO: ...
+The first one is implicit binary tree indeed. Consider the problem
+how to represent a complete binary tree with array. (For example, try to 
+represent a complete binary tree in a programming language doesn't support structure
+or record data type, so that only array can be used). One solution
+is to pack all element from top level (root) down to bottom level (leaves).
 
-mapping rules
+Figure \ref{fig:tree-array-map} shows a complete binary tree and
+its corresponding array representation.
+
+\begin{figure}[htbp]
+       \begin{center}
+       	  \includegraphics[scale=0.5]{img/tree-array-map-tree.ps}
+          \includegraphics[scale=0.5]{img/tree-array-map-array.ps}
+        \caption{Mapping between a complete binary tree and array} \label{fig:tree-array-map}
+       \end{center}
+\end{figure}
+
+This mapping relationship between tree and array can be denote as 
+the following equations (Note that the array index starts from 1).
+
+\begin{algorithmic}[1]
+\Function{PARENT}{$i$}
+  \State \Return $\lfloor \frac{i}{2} \rfloor$
+\EndFunction
+\Statex
+\Function{LEFT}{$i$}
+  \State \Return $2i$
+\EndFunction
+\Statex
+\Function{LEFT}{$i$}
+  \State \Return $2i+1$
+\EndFunction
+\end{algorithmic}
+
+For a given tree node which is represented as the $i$-th element in an
+array, since the tree is complete, we can easily find its parent node
+as the $\lfloor i/2 \rfloor$-th element in the array; Its left child
+with index of $2i$ and right child with index of $2i+1$. If the index
+of the child exceeds the length of the array, it simply means this 
+node don't have such child.
+
+This mapping calculation can be performed fast if bit-wise operation
+is used.
 
 \subsection*{Definition of implicit binary heap by array in C++}
 TODO: ...
@@ -154,11 +207,19 @@ TODO: ...
 \end{lstlisting}
 
 \subsection*{Definition of implicit binary heap by array in Python}
-TODO: ...
+Similar as C/C++, the array index in Python starts from 0, so we provide
+the mapping functions as below.
 
 \lstset{language=Python}
 \begin{lstlisting}
-#...
+def parent(i):
+    return (i+1)//2-1
+
+def left(i):
+    return  2*i+1
+
+def right(i):
+    return 2*(i+1)
 \end{lstlisting}
 
 % ================================================================
@@ -166,7 +227,50 @@ TODO: ...
 % ================================================================
 \subsection{Heapify}
 
-TODO:
+The most important thing for heap algorithm is to maintain the heap
+property, that the top element should be the minimum (maximum) one.
+
+For the implicit binary heap by array, it means for a given node,
+which is represented as the $i$-th index, we must develop a algorithm
+to check if all its two children conform to this property and incase
+there is violation, we need swap the parent and child to fix the 
+problem. 
+
+In ``Introduction to Algorithms'' book\cite{CLRS}, this algorithm
+is given in a recursive way, here we show a pure imperative solution.
+Let's take min-heap for example.
+
+\begin{algorithmic}[1]
+\Function{HEAPIFY}{$A, i$}
+  \State $n \gets LENGTH(A)$
+  \Loop
+    \State $l \gets LEFT(i)$
+    \State $r \gets RIGHT(i)$
+    \State $smallest \gets i$
+    \If{$l < n$ and $A[l] < A[i]$}
+      \State $smallest \gets l$
+    \EndIf
+    \If{$r < n$ and $A[r] < A[smallest]$}
+      \State $smallest \gets r$
+    \EndIf
+    \If{$smallest \neq i$}
+      \State $exchange A[i] \leftrightarrow A[smallest]$
+      \State $i \gets smallest$
+    \Else
+      \State \Return
+    \EndIf
+  \EndLoop
+\EndFunction
+\end{algorithmic}
+
+This algorithm assume that for a given node, the children all conform to the heap property, however, we are not sure if the value of this node is the smallest compare to its
+tow children.
+
+For array $A$ and a given index $i$, we need check none its left child or right child
+is bigger than $A[i]$, in case we find violation, we pick the smallest one, and set
+it as the new value for $A[i]$, the previous value of $A[i]$ is then set as the
+new value of the child, and we need go along the child tree to repeat this check and fixing
+process until we either reach a leaf node or there is no heap property violation.
 
 \subsection*{Heapify in C++}
 
