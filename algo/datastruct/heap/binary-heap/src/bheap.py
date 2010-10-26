@@ -38,14 +38,14 @@ def heapify(x, i, less_p = MIN_HEAP):
     while True:
         l = left(i)
         r = right(i)
-        largest = i
+        smallest = i
         if l < n and less_p(x[l], x[i]):
-            largest = l
-        if r < n and less_p(x[r], x[largest]):
-            largest = r
-        if largest != i:
-            (x[i], x[largest])=(x[largest], x[i])
-            i  = largest
+            smallest = l
+        if r < n and less_p(x[r], x[smallest]):
+            smallest = r
+        if smallest != i:
+            (x[i], x[smallest])=(x[smallest], x[i])
+            i  = smallest
         else:
             break
 
