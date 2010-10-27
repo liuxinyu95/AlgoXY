@@ -26,6 +26,9 @@
 #include <vector>     //random access needed.
 #include <iterator>   //std::insert_iterator
 
+template<class T> struct MinHeap: public std::less<T>{};
+template<class T> struct MaxHeap: public std::greater<T>{};
+
 // auxiliary functions
 
 // T must support bit-shifting
@@ -38,42 +41,13 @@ T left(T i){ return (i<<1)+1; }
 template<typename T>
 T right(T i){ return (i+1)<<1; }
 
-// tricky template meta programming helpers
-template<class T>
-struct MinHeap{
-  typedef std::less<typename T::value_type> Comp;
-};
-
-template<class T> struct MinHeap<T*>{
-  typedef std::less<T> Comp;
-};
-
-template<class T>
-struct MaxHeap{
-  typedef std::greater<typename T::value_type> Comp;
-};
-
-template<class T> struct MaxHeap<T*>{
-  typedef std::greater<T> Comp;
-};
-
-template<class T>
-typename MinHeap<T>::Comp min_heap(T){
-  return typename MinHeap<T>::Comp();
-}
-
-template<class T>
-typename MaxHeap<T>::Comp max_heap(T){
-  return typename MaxHeap<T>::Comp();
-}
-
 // Heapify with range
-template<typename Array, typename Index, typename LessOp>
-void heapify(Array& a, Index i, Index n, LessOp lt){
+template<typename Array, typename LessOp>
+void heapify(Array& a, unsigned int i, unsigned int n, LessOp lt){
   while(true){
-    Index l=left(i);
-    Index r=right(i);
-    Index smallest=i;
+    unsigned int l=left(i);
+    unsigned int r=right(i);
+    unsigned int smallest=i;
     if(l < n && lt(a[l], a[i]))
       smallest = l;
     if(r < n && lt(a[r], a[smallest]))
@@ -85,6 +59,15 @@ void heapify(Array& a, Index i, Index n, LessOp lt){
     else
       break;
   }
+}
+
+// build heap
+// the last non-leaf node is:
+// left(i)>=n-1; ==> i>=(n-2)/2
+template<typename Array, typename LessOp>
+void build_heap(Array& a, unsigned int n, LessOp lt){
+  for(unsigned int i = (n-1)>>1; i>=0; --i)
+    heapify(a, i, n, lt);
 }
 
 /*
@@ -100,6 +83,13 @@ T* list_to_btree(Iterator first, Iterator last, T* t){
 }
 */
 
+template<typename Iter>
+void print_range(Iter first, Iter last){
+  for(; first!=last; ++first)
+    std::cout<<*first<<", ";
+  std::cout<<"\n";
+}
+
 class BHeapTest{
 public:
   BHeapTest(){
@@ -108,23 +98,30 @@ public:
 
   void run(){
     test_heapify();
-    //test_insert();
-    //test_delete();
+    test_build_heap();
   }
 
 private:
   void test_heapify(){
+    //test c-array
     int a[] = {16, 4, 10, 14, 7, 9, 3, 2, 8, 1};
-    int x[sizeof(a)/sizeof(int)];
-    std::copy(a, a+sizeof(a)/sizeof(int), x);
-    heapify(x, (unsigned int)1, sizeof(a)/sizeof(int), max_heap(x));
-    std::copy(x, x+sizeof(a)/sizeof(int), 
-              std::ostream_iterator<int>(std::cout, ", "));
+    const unsigned int n = sizeof(a)/sizeof(a[0]);
+    int x[n];
+    std::copy(a, a+n, x);
+    heapify(x, 1, n, MaxHeap<int>());
+    print_range(x, x+n);
     int r[] = {16, 14, 10, 8, 7, 9, 3, 2, 4, 1};
-    assert(std::equal(r, r+sizeof(r)/sizeof(int), x));
+    assert(std::equal(r, r+n, x));
+    //test random access container
+    std::vector<short> y;
+    std::copy(a, a+n, std::insert_iterator<std::vector<short> >(y, y.end()));
+    heapify(y, 1, n, MaxHeap<short>());
+    print_range(y.begin(), y.end());
+    assert(std::equal(r, r+n, y.begin()));
   }
 
-  void test_insert(){
+  void test_build_heap(){
+    //
   }
 
   void test_delete(){
