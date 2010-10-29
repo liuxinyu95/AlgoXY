@@ -60,7 +60,9 @@ def heap_top(x):
 
 # default apply to min-heap
 def heap_pop(x, less_p = MIN_HEAP):
-    top = x.pop(0)
+    top = heap_top(x)
+    x[0] = x[-1] # this is faster than top = x.pop(0)
+    x.pop()
     if x!=[]:
         heapify(x, 0, less_p)
     return top
