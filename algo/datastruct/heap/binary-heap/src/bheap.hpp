@@ -47,7 +47,7 @@ template<class T, unsigned int n> struct ValueType<T[n]>{
 
 // T must support bit-shifting
 template<class T>
-T parent(T i){ return (i+1)>>1-1; }
+T parent(T i){ return ((i+1)>>1)-1; }
 
 template<class T>
 T left(T i){ return (i<<1)+1; }
@@ -56,6 +56,12 @@ template<class T>
 T right(T i){ return (i+1)<<1; }
 
 // Heapify with range
+//
+// Liu Xinyu: in STL, Random access iterator and distance 
+// of the iterators are used to define the function. Although it's more
+// generic, I would rather like to use index of array instead 
+// because the algorithm itself looks clear.
+//
 template<class Array, class LessOp>
 void heapify(Array& a, unsigned int i, unsigned int n, LessOp lt){
   while(true){
@@ -92,10 +98,10 @@ template<class T>
 typename ValueType<T>::Result heap_top(T a){ return a[0]; }
 
 template<class T, class LessOp>
-typename ValueType<T>::Result heap_pop(T& a, unsigned int n, LessOp lt){
+typename ValueType<T>::Result heap_pop(T& a, unsigned int& n, LessOp lt){
   typename ValueType<T>::Result top = heap_top(a);
   a[0] = a[n-1];
-  heapify(a, 0, n-1, lt);
+  heapify(a, 0, --n, lt);
   return top;
 }
 
@@ -105,7 +111,7 @@ std::vector<typename ValueType<Array>::Result >
 heap_sort_slow(Array& a, unsigned int n, LessOp lt){
   std::vector<typename ValueType<Array>::Result > res;
   build_heap(a, n, lt);
-  for(; n>0; --n)
+  while(n>0)
     res.push_back(heap_pop(a, n, lt));
   return res;
 }
@@ -123,6 +129,7 @@ void heap_sort(Array& a, unsigned int n, GreaterOp gt){
 template<class Array, class LessOp>
 void heap_fix(Array& a, unsigned int i, LessOp lt){
   while(i>0 && lt(a[i], a[parent(i)])){
+    std::cout<<"i="<<i<<", parent="<<parent(i)<<"a[parent]="<<a[parent(i)]<<"\n";
     std::swap(a[i], a[parent(i)]);
     i = parent(i);
   }
@@ -132,10 +139,10 @@ template<class Array, class LessOp>
 void heap_decrease_key(Array& a, 
                        unsigned int i, 
                        typename ValueType<Array>::Result key,
-                       unsigned int n,
                        LessOp lt){
   if(lt(key, a[i])){
     a[i] = key;
+    std::cout<<"i="<<i<<", a[i]="<<a[i]<<"\n";
     heap_fix(a, i, lt);
   }
 }
@@ -148,27 +155,28 @@ void heap_decrease_key(Array& a,
 //     heap_push(a, n, MinHeap<int>());
 //   example 2:
 //     int a* = new int[11];
+//     int n = 10;
 //     // initialize a[0]~a[9]
-//     heap_push(a, 10, MinHeap<int>());
+//     heap_push(a, n, MinHeap<int>());
 template<class Array, class LessOp>
 void heap_push(Array& a, 
-               unsigned int n,
+               unsigned int& n,
                typename ValueType<Array>::Result key,
                LessOp lt){
   a[n] = key;
   heap_fix(a, n, lt);
+  ++n;
 }
 
-/*
 template<class Array, class LessOp>
 std::vector<typename ValueType<Array>::Result> 
-top_k(Array& a, unsigned int k, unsigned int k, LessOp lt){
+top_k(Array& a, unsigned int k, unsigned int n, LessOp lt){
   std::vector<typename ValueType<Array>::Result> res;
-  for(unsigned int i=0; i<k; ++i)
-    res.push_back(heap_pop(a, 
+  int count = std::min(k, n);
+  for(unsigned int i=0; i<count; ++i)
+    res.push_back(heap_pop(a, n, lt));
+  return res;
 }
-*/
-
 
 // helper function to print both STL containers and 
 // raw arrays
@@ -189,6 +197,9 @@ public:
     test_heapify();
     test_build_heap();
     test_heap_sort();
+    test_heap_decrease_key();
+    //test_heap_push();
+    //test_heap_top_k();
   }
 
 private:
@@ -252,6 +263,19 @@ private:
     heap_sort(y, n, MaxHeap<short>());
     print_range(y.begin(), y.end());
     assert(std::equal(r, r+n, y.begin()));
+  }
+
+  void test_heap_decrease_key(){
+    // CLRS Figure 6.5
+    std::cout<<"test heap decrease key\n";
+    const int a[] = {16, 14, 10, 8, 7, 9, 3, 2, 4, 1};
+    const unsigned int n = sizeof(a)/sizeof(a[0]);
+    int x[n];
+    std::copy(a, a+n, x);
+    heap_decrease_key(x, 8, 15, MaxHeap<int>());
+    print_range(x, x+n);
+    const int r[] = {16, 15, 10, 14, 7, 9, 3, 2, 8, 1};
+    assert(std::equal(r, r+n, x));
   }
 };
 
