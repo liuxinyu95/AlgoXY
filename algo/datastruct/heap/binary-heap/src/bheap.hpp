@@ -43,6 +43,33 @@ template<class T, unsigned int n> struct ValueType<T[n]>{
   typedef T Result; // c-array type
 };
 
+//
+// Range, (not Boost::Range), just a simplified version
+// [left, right)
+template<class RIter> // random access iterator
+struct Range{
+  typedef typename std::iterator_traits<RIter>::value_type value_type;
+  typedef typename std::iterator_traits<RIter>::difference_type size_t;
+  typedef typename std::iterator_traits<RIter>::reference  reference;
+  typedef RIter iterator;
+
+  Range(RIter left, RIter right):first(left), last(right){}
+
+  reference  operator[](size_t i){ return *(first+i); }
+  size_t size() const { return last-first; }
+  
+  RIter first;
+  RIter last;
+};
+
+template<class Iter>
+Range<Iter> range(Iter left, Iter right){ return Range<Iter>(left, right); }
+
+template<class Iter>
+Range<Iter> range(Iter left, typename Range<Iter>::size_t n){
+  return Range<Iter>(left, left+n);
+}
+
 // auxiliary functions
 
 // T must support bit-shifting
@@ -81,6 +108,28 @@ void heapify(Array& a, unsigned int i, unsigned int n, LessOp lt){
   }
 }
 
+// Heapify with Range abstraction
+template<class R, class LessOp>
+void heapify(R a, typename R::size_t i, LessOp lt){
+  typename R::size_t l, r, smallest;
+  while(true){
+    l = left(i);
+    r = right(i);
+    smallest = i;
+    if( l < a.size() && lt(a[l], a[i]))
+      smallest = l;
+    if( r < a.size() && lt(a[r], a[smallest]))
+      smallest = r;
+    if( smallest != i){
+      std::swap(a[i], a[smallest]);
+      i = smallest;
+    }
+    else
+      break;
+  }
+}
+
+
 // build heap
 // the last non-leaf node is:
 // left(i)>=n-1; ==> i>=(n-2)/2
@@ -90,6 +139,16 @@ void build_heap(Array& a, unsigned int n, LessOp lt){
   while(true){
     heapify(a, i, n, lt);
     if(i==0) break; // this is a trick: unsigned int always >=0
+    --i;
+  }
+}
+
+template<class RangeType, class LessOp>
+void build_heap(RangeType a, LessOp lt){
+  typename RangeType::size_t i = (a.size()-1)>>1;
+  while(true){
+    heapify(a, i, lt);
+    if(i==0) break;
     --i;
   }
 }
@@ -105,31 +164,57 @@ typename ValueType<T>::Result heap_pop(T& a, unsigned int& n, LessOp lt){
   return top;
 }
 
+// range is modified after pop, popped element is put to array[last]
+template<class R, class LessOp>
+typename R::value_type heap_pop(R& a, LessOp lt){
+  typename R::value_type top = heap_top(a);
+  std::swap(a[0], a[a.size()-1]);
+  --a.last;
+  heapify_(a, 0, lt);
+  return top;
+}
+
 // Sort by performing n pop
-template<class Array, class LessOp>
-std::vector<typename ValueType<Array>::Result > 
-heap_sort_slow(Array& a, unsigned int n, LessOp lt){
-  std::vector<typename ValueType<Array>::Result > res;
+template<class Iter, class Array, class LessOp>
+void heap_sort_slow(Iter res, Array& a, unsigned int n, LessOp lt){
   build_heap(a, n, lt);
   while(n>0)
-    res.push_back(heap_pop(a, n, lt));
-  return res;
+    *res++=heap_pop(a, n, lt);
+}
+
+// In-place sort by n-heapify with Range
+template<class R, class LessOp>
+void heap_sort_slow(R a, LessOp lt){
+  build_heap(a, lt);
+  do{
+    ++a.first;
+    heapify(a, 0, lt);
+  }while(a.size()>0);
 }
 
 // Robert W. Floyd method, inplace fast
 template<class Array, class GreaterOp>
 void heap_sort(Array& a, unsigned int n, GreaterOp gt){
-  build_heap(a, n, gt);
-  for(; n>1; --n){
+  for(build_heap(a, n, gt); n>1; --n){
     std::swap(a[0], a[n-1]);
     heapify(a, 0, n-1, gt);
+  }
+}
+
+// Floyd method with Range
+template<class R, class GreaterOp>
+void heap_sort(R a, GreaterOp gt){
+  build_heap(a, gt);
+  while(a.size()>1){
+    std::swap(a[0], a[a.size()-1]);
+    --a.last;
+    heapify(a, 0, gt);
   }
 }
 
 template<class Array, class LessOp>
 void heap_fix(Array& a, unsigned int i, LessOp lt){
   while(i>0 && lt(a[i], a[parent(i)])){
-    std::cout<<"i="<<i<<", parent="<<parent(i)<<"a[parent]="<<a[parent(i)]<<"\n";
     std::swap(a[i], a[parent(i)]);
     i = parent(i);
   }
@@ -142,7 +227,6 @@ void heap_decrease_key(Array& a,
                        LessOp lt){
   if(lt(key, a[i])){
     a[i] = key;
-    std::cout<<"i="<<i<<", a[i]="<<a[i]<<"\n";
     heap_fix(a, i, lt);
   }
 }
@@ -168,14 +252,30 @@ void heap_push(Array& a,
   ++n;
 }
 
-template<class Array, class LessOp>
-std::vector<typename ValueType<Array>::Result> 
-top_k(Array& a, unsigned int k, unsigned int n, LessOp lt){
-  std::vector<typename ValueType<Array>::Result> res;
-  int count = std::min(k, n);
+template<class R, class LessOp>
+void heap_push(R a, typename R::value_type key, LessOp lt){
+  *a.last++ = key;
+  heap_fix(a, a.size()-1, lt);
+}
+
+template<class Iter, class Array, class LessOp>
+void heap_top_k(Iter res, unsigned int k, 
+                Array& a, unsigned int& n, LessOp lt){
+  build_heap(a, n, lt);
+  unsigned int count = std::min(k, n);
   for(unsigned int i=0; i<count; ++i)
-    res.push_back(heap_pop(a, n, lt));
-  return res;
+    *res++=heap_pop(a, n, lt);
+}
+
+//in-place put the top-k elements in front of the range
+template<class R, class LessOp>
+void heap_top_k(R a, typename R::size_t k, LessOp lt){
+  typename R::size_t count = std::min(k, a.size());
+  build_heap(a, lt);
+  while(count--){
+    ++a.first;
+    heapify(a, 0, lt);
+  }
 }
 
 // helper function to print both STL containers and 
@@ -185,6 +285,11 @@ void print_range(Iter first, Iter last){
   for(; first!=last; ++first)
     std::cout<<*first<<", ";
   std::cout<<"\n";
+}
+
+template<class R>
+void print_range(R a){
+  print_range(a.first, a.last);
 }
 
 class BHeapTest{
@@ -198,14 +303,15 @@ public:
     test_build_heap();
     test_heap_sort();
     test_heap_decrease_key();
-    //test_heap_push();
-    //test_heap_top_k();
+    test_heap_push();
+    test_heap_top_k();
   }
 
 private:
   void test_heapify(){
     // CLRS Figure 6.2
     std::cout<<"test heapify\n";
+
     // test c-array
     const int a[] = {16, 4, 10, 14, 7, 9, 3, 2, 8, 1};
     const unsigned int n = sizeof(a)/sizeof(a[0]);
@@ -215,9 +321,9 @@ private:
     print_range(x, x+n);
     int r[] = {16, 14, 10, 8, 7, 9, 3, 2, 4, 1};
     assert(std::equal(r, r+n, x));
+
     // test random access container
-    std::vector<short> y;
-    std::copy(a, a+n, std::insert_iterator<std::vector<short> >(y, y.end()));
+    std::vector<short> y(a, a+n);
     heapify(y, 1, n, MaxHeap<short>());
     print_range(y.begin(), y.end());
     assert(std::equal(r, r+n, y.begin()));
@@ -226,6 +332,7 @@ private:
   void test_build_heap(){
     // CLRS Figure 6.3
     std::cout<<"test build heap\n";
+
     // test c-array
     const int a[] = {4, 1, 3, 2, 16, 9, 10, 14, 8, 7};
     const unsigned int n = sizeof(a)/sizeof(a[0]);
@@ -235,10 +342,10 @@ private:
     print_range(x, x+n);
     const int r[] = {16, 14, 10, 8, 7, 9, 3, 2, 4, 1};
     assert(std::equal(r, r+n, x));
+
     // test random access container
-    std::vector<short> y;
-    std::copy(a, a+n, std::insert_iterator<std::vector<short> >(y, y.end()));
-    build_heap(y, n, MaxHeap<short>());
+    std::vector<int> y(a, a+n);
+    build_heap(y, n, MaxHeap<int>());
     print_range(y.begin(), y.end());
     assert(std::equal(r, r+n, y.begin()));
     std::cout<<"top of x="<<heap_top(x)<<"\n"
@@ -253,14 +360,14 @@ private:
     const unsigned int n = sizeof(a)/sizeof(a[0]);
     int x[n];
     std::copy(a, a+n, x);
-    std::vector<int> x1 = heap_sort_slow(x, n, MinHeap<int>());
-    print_range(x1.begin(), x1.end());
-    assert(std::equal(r, r+n, x1.begin()));
+    int x1[n];
+    heap_sort_slow(x1, x, n, MinHeap<int>());
+    print_range(x1, x1+n);
+    assert(std::equal(r, r+n, x1));
 
     std::cout<<"test heap sort with Floyd method\n";
-    std::vector<short> y;
-    std::copy(a, a+n, std::insert_iterator<std::vector<short> >(y, y.end()));
-    heap_sort(y, n, MaxHeap<short>());
+    std::vector<int> y(a, a+n);
+    heap_sort(y, n, MaxHeap<int>());
     print_range(y.begin(), y.end());
     assert(std::equal(r, r+n, y.begin()));
   }
@@ -277,6 +384,133 @@ private:
     const int r[] = {16, 15, 10, 14, 7, 9, 3, 2, 8, 1};
     assert(std::equal(r, r+n, x));
   }
+
+  void test_heap_push(){
+    std::cout<<"test heap push\n";
+    const int a[] = {16, 14, 10, 8, 7, 9, 3, 2, 4, 1};
+    unsigned int n = sizeof(a)/sizeof(a[0]);
+    std::vector<int> x(a, a+n);
+    x.push_back(0);
+    heap_push(x, n, 17, MaxHeap<int>()); //n increased
+    print_range(x.begin(), x.end());
+    const int r[] = {17, 16, 10, 8, 14, 9, 3, 2, 4, 1, 7};
+    assert(std::equal(r, r+n, x.begin()));
+  }
+
+  void test_heap_top_k(){
+    std::cout<<"test top k elements\n";
+    const int a[] = {4, 1, 3, 2, 16, 9, 10, 14, 8, 7};
+    unsigned int n = sizeof(a)/sizeof(a[0]);
+    std::vector<int> x(a, a+n);
+    int y[3];
+    heap_top_k(y, 3, x, n, MaxHeap<int>());
+    print_range(y, y+3);
+    const int r[] = {16, 14, 10};
+    assert(std::equal(r, r+3, y));
+  }
 };
+
+class BHeapByRangeTest{
+public:
+  BHeapByRangeTest(){
+    std::cout<<"Implicit Binary Heap by Array with Range abstraction testing\n";
+  }
+
+  void run(){
+    test_heapify();
+    test_build_heap();
+    test_heap_sort();
+    test_heap_push();
+    test_heap_top_k();
+  }
+
+private:
+  void test_heapify(){
+    // CLRS Figure 6.2
+    std::cout<<"test heapify\n";
+
+    // test c-array
+    const int a[] = {16, 4, 10, 14, 7, 9, 3, 2, 8, 1};
+    const unsigned int n = sizeof(a)/sizeof(a[0]);
+    int x[n];
+    std::copy(a, a+n, x);
+    heapify(range(x, n), 1, MaxHeap<int>());
+    print_range(x, x+n);
+    int r[] = {16, 14, 10, 8, 7, 9, 3, 2, 4, 1};
+    assert(std::equal(r, r+n, x));
+
+    // test random access container
+    std::vector<int> y(a, a+n);
+    heapify(range(y.begin(), y.end()), 1, MaxHeap<int>());
+    print_range(y.begin(), y.end());
+    assert(std::equal(r, r+n, y.begin()));
+  }
+
+  void test_build_heap(){
+    // CLRS Figure 6.3
+    std::cout<<"test build heap\n";
+
+    // test c-array
+    const int a[] = {4, 1, 3, 2, 16, 9, 10, 14, 8, 7};
+    const unsigned int n = sizeof(a)/sizeof(a[0]);
+    int x[n];
+    std::copy(a, a+n, x);
+    build_heap(range(x, n), MaxHeap<int>());
+    print_range(x, x+n);
+    const int r[] = {16, 14, 10, 8, 7, 9, 3, 2, 4, 1};
+    assert(std::equal(r, r+n, x));
+
+    // test random access container
+    std::vector<int> y(a, a+n);
+    build_heap(range(y.begin(), y.end()), MaxHeap<short>());
+    print_range(y.begin(), y.end());
+    assert(std::equal(r, r+n, y.begin()));
+    std::cout<<"top of x="<<heap_top(x)<<"\n"
+             <<"top of y="<<heap_top(y)<<"\n";
+  }
+
+  void test_heap_sort(){
+    // CLRS Figure 6.4
+    std::cout<<"test heap sort with pop-n method\n";
+    const int a[] = {16, 14, 10, 8, 7, 9, 3, 2, 4, 1};
+    const int r[] = {1, 2, 3, 4, 7, 8, 9, 10, 14, 16};
+    const unsigned int n = sizeof(a)/sizeof(a[0]);
+    int x[n];
+    std::copy(a, a+n, x);
+    heap_sort_slow(range(x, n), MinHeap<int>());
+    print_range(range(x, n));
+    assert(std::equal(r, r+n, x));
+
+    std::cout<<"test heap sort with Floyd method\n";
+    std::vector<int> y(a, a+n);
+    heap_sort(range(y.begin(), y.end()), MaxHeap<int>());
+    print_range(y.begin(), y.end());
+    assert(std::equal(r, r+n, y.begin()));
+  }
+
+  void test_heap_push(){
+    std::cout<<"test heap push\n";
+    const int a[] = {16, 14, 10, 8, 7, 9, 3, 2, 4, 1};
+    unsigned int n = sizeof(a)/sizeof(a[0]);
+    std::vector<int> x(a, a+n);
+    x.push_back(0);
+    heap_push(range(x.begin(), n), 17, MaxHeap<int>());
+    print_range(x.begin(), x.end());
+    const int r[] = {17, 16, 10, 8, 14, 9, 3, 2, 4, 1, 7};
+    assert(std::equal(r, r+n, x.begin()));
+  }
+
+  void test_heap_top_k(){
+    std::cout<<"test top k elements\n";
+    const int a[] = {4, 1, 3, 2, 16, 9, 10, 14, 8, 7};
+    unsigned int n = sizeof(a)/sizeof(a[0]);
+    std::vector<int> x(a, a+n);
+    heap_top_k(range(x.begin(), x.end()), 3, MaxHeap<int>());
+    print_range(range(x.begin(), 3));
+    const int r[] = {16, 14, 10};
+    assert(std::equal(r, r+3, x.begin()));
+  }
+};
+
 
 #endif //_B_TREE_
