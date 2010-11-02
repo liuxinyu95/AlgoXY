@@ -199,12 +199,22 @@ This mapping calculation can be performed fast if bit-wise operation
 is used.
 
 \subsection*{Definition of implicit binary heap by array in C++}
-TODO: ...
+In C++ language, array index starts from zero, but not one. The mapping
+from array to binary tree should be adjusted accordingly.
 
 \lstset{language=C++}
 \begin{lstlisting}
-//...
+template<class T>
+T parent(T i){ return ((i+1)>>1)-1; }
+
+template<class T>
+T left(T i){ return (i<<1)+1; }
+
+template<class T>
+T right(T i){ return (i+1)<<1; }
 \end{lstlisting}
+
+The tepe T must support bit-wise operation.
 
 \subsection*{Definition of implicit binary heap by array in Python}
 Similar as C/C++, the array index in Python starts from 0, so we provide
@@ -274,7 +284,176 @@ process until we either reach a leaf node or there is no heap property violation
 
 \subsection*{Heapify in C++}
 
-TODO: with range
+For C++ program, we need it cover both traditional C compatible array, and
+the modern container abstraction. There are several options to realize this
+requirement.
+
+One method is to pass iterators as argument to heap algorithm. C++/STL
+implementation (at the time the author wrote this post) uses this approach.
+
+The advantage of using iterator is that some random access iterator is
+just implemented as C pointers, so it compatible with C array well.
+
+However, this method need us change the algorithm from a array index style
+to pointer operation style. It's hard to reflect the above pseudo code
+quite clear in such style. Because of this problem, we won't use this approach
+here. Reader can refer to STL source code for detailed information.
+
+Another option is to pass the array or container as well as the 
+number of elements as arguments. However, we need abstract the 
+comparison anyway so that the algorithm works for both max-heap
+and min-heap.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<class T> struct MinHeap: public std::less<T>{};
+template<class T> struct MaxHeap: public std::greater<T>{};
+\end{lstlisting}
+
+Here we define MinHeap and MaxHeap as a kind of alias of less-than
+and greater-than logic comparison functor template.
+
+The heapify algorithm can be implemented as the following.
+
+\begin{lstlisting}
+template<class Array, class LessOp>
+void heapify(Array& a, unsigned int i, unsigned int n, LessOp lt){
+  while(true){
+    unsigned int l=left(i);
+    unsigned int r=right(i);
+    unsigned int smallest=i;
+    if(l < n && lt(a[l], a[i]))
+      smallest = l;
+    if(r < n && lt(a[r], a[smallest]))
+      smallest = r;
+    if(smallest != i){
+      std::swap(a[i], a[smallest]);
+      i = smallest;
+    }
+    else
+      break;
+  }
+}
+\end{lstlisting}
+
+It is also possible to create a concept of range and realize the 
+algorithm with it. Some C++ library, such as boost has already
+support range. Here we can develop a light weight range only for
+random access container.
+
+\begin{lstlisting}
+template<class RIter> // random access iterator
+struct Range{
+  typedef typename std::iterator_traits<RIter>::value_type value_type;
+  typedef typename std::iterator_traits<RIter>::difference_type size_t;
+  typedef typename std::iterator_traits<RIter>::reference  reference;
+  typedef RIter iterator;
+
+  Range(RIter left, RIter right):first(left), last(right){}
+
+  reference  operator[](size_t i){ return *(first+i); }
+  size_t size() const { return last-first; }
+  
+  RIter first;
+  RIter last;
+};
+\end{lstlisting}
+
+For a given left index $l$, and right index $r$, a range represents
+$[l, r)$, So it is easy to construct a range with iterators as well
+as the pointer of the array and its length.
+
+Two overloaded auxiliary function templates are provided to create
+range easily.
+
+\begin{lstlisting}
+template<class Iter>
+Range<Iter> range(Iter left, Iter right){ return Range<Iter>(left, right); }
+
+template<class Iter>
+Range<Iter> range(Iter left, typename Range<Iter>::size_t n){
+  return Range<Iter>(left, left+n);
+}
+\end{lstlisting}
+
+The above algorithm can be implemented with range like below.
+
+\begin{lstlisting}
+template<class R, class LessOp>
+void heapify(R a, typename R::size_t i, LessOp lt){
+  typename R::size_t l, r, smallest;
+  while(true){
+    l = left(i);
+    r = right(i);
+    smallest = i;
+    if( l < a.size() && lt(a[l], a[i]))
+      smallest = l;
+    if( r < a.size() && lt(a[r], a[smallest]))
+      smallest = r;
+    if( smallest != i){
+      std::swap(a[i], a[smallest]);
+      i = smallest;
+    }
+    else
+      break;
+  }
+}
+\end{lstlisting}
+
+In order to verify the program, a same test case as in CLRS figure 6.2
+is fed to our function.
+
+\begin{lstlisting}
+// test c-array
+const int a[] = {16, 4, 10, 14, 7, 9, 3, 2, 8, 1};
+const unsigned int n = sizeof(a)/sizeof(a[0]);
+int x[n];
+std::copy(a, a+n, x);
+heapify(x, 1, n, MaxHeap<int>());
+print_range(x, x+n);
+
+// test random access container
+std::vector<short> y(a, a+n);
+heapify(y, 1, n, MaxHeap<short>());
+print_range(y.begin(), y.end());
+\end{lstlisting}
+
+The same test case can also be applied to the ``range'' version of
+program.
+
+\begin{lstlisting}
+heapify(range(x, n), 1, MaxHeap<int>());
+
+//...
+
+heapify(range(y.begin(), y.end()), 1, MaxHeap<short>());
+\end{lstlisting}
+
+Where ``print\_range'' is a helper function to output all elements
+in a container, a C array or a range.
+
+\begin{lstlisting}
+template<class Iter>
+void print_range(Iter first, Iter last){
+  for(; first!=last; ++first)
+    std::cout<<*first<<", ";
+  std::cout<<"\n";
+}
+
+template<class R>
+void print_range(R a){
+  print_range(a.first, a.last);
+}
+\end{lstlisting}
+
+The above test code can output a result as below:
+
+\begin{verbatim}
+16, 14, 10, 8, 7, 9, 3, 2, 4, 1, 
+16, 14, 10, 8, 7, 9, 3, 2, 4, 1,
+\end{verbatim}
+
+Figure \ref{fig:heapify} shows how this algorithm works.
 
 TODO: put CLRS figure 6.2 here
 
