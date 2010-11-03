@@ -282,6 +282,8 @@ it as the new value for $A[i]$, the previous value of $A[i]$ is then set as the
 new value of the child, and we need go along the child tree to repeat this check and fixing
 process until we either reach a leaf node or there is no heap property violation.
 
+Note that the $HEAPIFY$ algorithm takes $O(lg N)$ time.
+
 \subsection*{Heapify in C++}
 
 For C++ program, we need it cover both traditional C compatible array, and
@@ -335,6 +337,16 @@ void heapify(Array& a, unsigned int i, unsigned int n, LessOp lt){
   }
 }
 \end{lstlisting}
+
+The program accepts the reference of the array (both reference
+of the container, and reference to pointer are OK), the index
+from where we want to adjust so that all children of it confirms
+to the heap property; the number of elements in the array, and
+a comparison functor. It checks from the node which is indexed
+as $i$ down to the leaf until it find a node that both children are
+``less than'' the value of the node based on the comparison functor. 
+Otherwise, it will locate the ``smallest'' one and swap it with
+the node value.
 
 It is also possible to create a concept of range and realize the 
 algorithm with it. Some C++ library, such as boost has already
@@ -400,6 +412,9 @@ void heapify(R a, typename R::size_t i, LessOp lt){
 }
 \end{lstlisting}
 
+Almost everything is as same as the former one except that the number
+of elements can be given by the size of the range.
+
 In order to verify the program, a same test case as in CLRS figure 6.2
 is fed to our function.
 
@@ -455,12 +470,27 @@ The above test code can output a result as below:
 
 Figure \ref{fig:heapify} shows how this algorithm works.
 
-TODO: put CLRS figure 6.2 here
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[scale=0.3]{img/heapify-1.ps}
+
+    a. Step 1, 14 is the biggest element among 4, 14, and 7. Swap 4 with the left child;
+
+    \includegraphics[scale=0.3]{img/heapify-2.ps}
+
+    b. Step 2, 8 is the biggest element among 2, 4, and 8. Swap 4 with the right child;
+
+    \includegraphics[scale=0.3]{img/heapify-3.ps}
+
+    c. 4 is the leaf node. It hasn't any children. Process terminates.
+    \caption{Heapify example, a max-heap case.} \label{fig:heapify}
+  \end{center}
+\end{figure}
 
 \subsection*{Heapify in Python}
 
 In order to cover both min-heap and max-heap, we abstract the comparation
-as the following.
+as the following lambda expressions.
 
 \lstset{language = Python}
 \begin{lstlisting}
@@ -503,14 +533,162 @@ The result is something like this.
 [16, 14, 10, 8, 7, 9, 3, 2, 4, 1] 
 \end{verbatim}
 
+This result is as same as the one presented in \ref{fig:heapify}.
+
 % ================================================================
 %                 Build a heap
 % ================================================================
 \subsection{Build a heap}
 
-TODO:
+With heapify algorithm, it is easy to build a heap from an arbitary 
+array. Observe that the number of nodes in a complete binary tree
+for each level is a list like:
+
+$1, 2, 4, 8, ..., 2^i, ...$.
+
+The only exception is the last level. Since the tree may not full
+(note that complete binary tree doesn't mean full binary tree), the
+last level contains at most $2^{p-1}$ nodes, where $2^p \leq n$ and $n$
+is the length of the array.
+
+Heapify algorithm doesn't take any effect on leave node, which means
+we can skip applying heapify for all nodes. In other words,  
+all leaf nodes have already satisfied heap property. We only need 
+start checking and maintaining heap property from the last branch node.
+the Index of the last branch node is no greater than $\lfloor n/2 rfloor$.
+
+Based on this fact, we can build a heap with the following algorihm.
+(Assume the heap is min-heap).
+
+\begin{algorithmic}[1]
+\Function{BUILD-HEAP}{$A$}
+  \State $n \gets LENGTH(A)$
+  \For{$i \gets \lfloor n/2 \rfloor$ downto $1$}
+    \State $HEAPIFY(A, i)$
+  \EndFor
+\EndFunction
+\end{algorithmic}
+
+Altough the complexity of $HEAPIFY$ is $O(lg N)$, the running time
+of $BUILD\_HEAP$ doesn't bound to $O(N lg N)$ but to $O(N)$, so this
+is a linear time algorithm. Please refer to \cite{CLRS} for the 
+detailed proof.
 
 \subsection*{Build a heap in C++}
+
+The only adjustment in C++ program from the above algorithm is
+about the starting index from 1 to 0. 
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<class Array, class LessOp>
+void build_heap(Array& a, unsigned int n, LessOp lt){
+  unsigned int i = (n-1)>>1;
+  while(true){
+    heapify(a, i, n, lt);
+    if(i==0) break; // this is a trick: unsigned int always >=0
+    --i;
+  }
+}
+\end{lstlisting}
+
+Note that since the unsigned type is used to represent index,
+It can't lower than zero. We can't just use a for loop as below.
+
+\begin{lstlisting}
+for(unsigned int i = (n-1)>>1; i>=0; --i) //wrong, i always >=0
+\end{lstlisting}
+
+This program can be easily adjusted with range concept.
+
+\begin{lstlisting}
+template<class RangeType, class LessOp>
+void build_heap(RangeType a, LessOp lt){
+  typename RangeType::size_t i = (a.size()-1)>>1;
+  while(true){
+    heapify(a, i, lt);
+    if(i==0) break;
+    --i;
+  }
+}
+\end{lstlisting}
+
+We can test our program with the same data as in Figure 6.3 in \cite{CLRS}.
+
+\begin{lstlisting}
+// test c-array
+const int a[] = {4, 1, 3, 2, 16, 9, 10, 14, 8, 7};
+const unsigned int n = sizeof(a)/sizeof(a[0]);
+int x[n];
+std::copy(a, a+n, x);
+build_heap(range(x, n), MaxHeap<int>());
+print_range(x, x+n);
+
+// test random access container
+std::vector<int> y(a, a+n);
+build_heap(range(y.begin(), y.end()), MaxHeap<short>());
+print_range(y.begin(), y.end());
+\end{lstlisting}
+
+Running results are printed in console like the following.
+
+\begin{verbatim}
+16, 14, 10, 8, 7, 9, 3, 2, 4, 1, 
+16, 14, 10, 8, 7, 9, 3, 2, 4, 1,
+\end{verbatim}
+
+Figure \ref{fig:build-heap-1} and \ref{fig:build-heap-2} show the steps when build a heap from
+an arbitary array. The node in black color is the one we will apply
+$HEAPIFY$ algorithm, the nodes in gray color are swapped during
+$HEAPIFY$.
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[scale=0.3]{img/build-heap-array.ps}
+
+    a. An array in arbitary order before build-heap process;
+
+    \includegraphics[scale=0.3]{img/build-heap-1.ps}
+
+    b. Step 1, The array is mapped to binary tree. The first branch node, which is
+16 is to be examined;
+
+    \includegraphics[scale=0.3]{img/build-heap-2.ps}
+
+    c. Step 2, 16 is the largest element in current sub tree, next is to check node
+with value 2;
+    
+    \caption{} \label{fig:build-heap-1}
+  \end{center}
+\end{figure}
+
+\begin{figure}[htbp]
+  \begin{center}
+    \includegraphics[scale=0.3]{img/build-heap-3.ps}
+
+    d. Step 3, 14 is the largest value in the subtree, swap 14 and 2; next is to check
+node with value 3;
+
+    \includegraphics[scale=0.3]{img/build-heap-4.ps}
+
+    e. Step 4, 10 is the largest value in the subtree, swap 10 and 3; next is to check
+node with value 1;
+
+    \includegraphics[scale=0.3]{img/build-heap-5.ps}
+
+    f. Step 5, 16 is the largest value in current node, swap 16 and 1 first; then
+similarly, swap 1 and 7; next is to check the root node with value 4;
+
+    \includegraphics[scale=0.3]{img/build-heap-6.ps}
+
+    g. Step 6, Swap 4 and 16, then swap 4 and 14, and then swap 4 and 8; 
+And the whole build process finish.
+
+    \caption{Build a heap from an arbitary array. Gray nodes are changed in each step,
+black node is the one to be processed next step.} \label{fig:build-heap-2}
+  \end{center}
+\end{figure}
+
 
 \subsection*{Build a heap in Python}
 
