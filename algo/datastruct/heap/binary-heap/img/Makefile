@@ -1,5 +1,7 @@
 IMG_OBJECTS = 
-DOT_OBJECTS = tree-array-map-tree tree-array-map-array
+DOT_OBJECTS = tree-array-map-tree tree-array-map-array \
+heapify-1 heapify-2 heapify-3 build-heap-array build-heap-1 \
+build-heap-2 build-heap-3 build-heap-4 build-heap-5 build-heap-6
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
