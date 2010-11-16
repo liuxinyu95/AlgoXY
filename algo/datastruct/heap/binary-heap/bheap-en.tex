@@ -283,7 +283,7 @@ it as the new value for $A[i]$, the previous value of $A[i]$ is then set as the
 new value of the child, and we need go along the child tree to repeat this check and fixing
 process until we either reach a leaf node or there is no heap property violation.
 
-Note that the $HEAPIFY$ algorithm takes $O(lg N)$ time.
+Note that the $HEAPIFY$ algorithm takes $O(\lg{N})$ time.
 
 \subsection*{Heapify in C++}
 
@@ -570,8 +570,8 @@ Based on this fact, we can build a heap with the following algorihm.
 \EndFunction
 \end{algorithmic}
 
-Altough the complexity of $HEAPIFY$ is $O(lg N)$, the running time
-of $BUILD\_HEAP$ doesn't bound to $O(N lg N)$ but to $O(N)$, so this
+Altough the complexity of $HEAPIFY$ is $O(\lg{N})$, the running time
+of $BUILD\_HEAP$ doesn't bound to $O(N \lg{N})$ but to $O(N)$, so this
 is a linear time algorithm. Please refer to \cite{CLRS} for the 
 detailed proof.
 
@@ -738,7 +738,7 @@ from the heap, find the top N elements, decrease a key (note this
 is for min-heap, and it will be increase a key for max-heap), and
 insertion.
 
-For binary tree, most of this operation is bound to $O(lg N)$ worst-case,
+For binary tree, most of this operation is bound to $O(\lg{N})$ worst-case,
 some of them, such as top is $O(1)$ time.
 
 \subsubsection{Access the top element (minimum)}
@@ -852,15 +852,15 @@ array, then shrink the array size by one.
 \end{algorithmic}
 
 Note that remove the last element from the array takes 
-only $O(1)$ time, and $HEAPIFY$ is bound to $O(lg N)$.
-The whole algorithm is bound to $O(lg N)$ time.
+only $O(1)$ time, and $HEAPIFY$ is bound to $O(\lg{N})$.
+The whole algorithm is bound to $O(\lg{N})$ time.
 
 \subsubsection*{Pop in C++}
 
 In C++ program, we abstract the min-heap and max-heap as heap type
 template parameter, and pass it explicitly.
 
-First is the ``reference + size'' approach.
+First is the `reference + size' approach.
 
 \lstset{language=C++}
 \begin{lstlisting}
@@ -1052,7 +1052,6 @@ is less than the original key.
 \subsubsection*{Decrease key in C++}
 In order to support both min-heap and max-heap, the comparision
 function object is passed as a parameter in C++ implementation.
-First is the ``reference + size'' version.
 
 \lstset{language=C++}
 \begin{lstlisting}
@@ -1118,27 +1117,253 @@ In this max-heap example, we try to increase the key of the 9th node from
   \end{center}
 \end{figure}
 
-
 \subsubsection*{Decrease key in Python}
+The Python version decrease key program is similar as well. It first
+checks if the new key is ``less than'' the original one, if yes it
+modifies the value, and peforms the fixing process.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def heap_decrease_key(x, i, key, less_p = MIN_HEAP):
+    if less_p(key, x[i]):
+        x[i] = key
+        heap_fix(x, i, less_p)
+
+def heap_fix(x, i, less_p = MIN_HEAP):
+    while i>0 and less_p(x[i],x[parent(i)]):
+        (x[parent(i)], x[i]) = (x[i], x[parent(i)])
+        i = parent(i)
+\end{lstlisting}
+
+We can use the same test case to verify the program.
+
+\begin{lstlisting}
+l = [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+heap_decrease_key(l, 8, 15, MAX_HEAP)
+print l
+\end{lstlisting}
+
+It will output the same result as the C++ program.
+
+\begin{verbatim}
+[16, 15, 10, 14, 7, 9, 3, 2, 8, 1]
+\end{verbatim}
 
 \subsubsection{Insertion}
 
-TODO: direct insertion and insert by decresing key
+In \cite{CLRS}, insertion is implemented by using $DECREASE-KEY$.
+The approach is to first insert a node with infinity key. According
+to the min-heap property, the node should be the last element
+in the under ground array. After that, the key is decreased to
+the value to be inserted, so that we can call decrease-key to
+finish the process.
+
+Instead of reuse $DECREASE-KEY$, we can reuse $HEAP-FIX$ to implement
+insertion. The new key is directly appended at the end of the array,
+and the $HEAP-FIX$ is applied on this new node.
+
+\begin{algorithmic}[1]
+\Function{HEAP-PUSH}{$A, k$}
+  \State $APPEND(A, k)$
+  \State $HEAP-FIX(A, SIZE(A))$
+\EndFunction
+\end{algorithmic}
 
 \subsubsection*{Insertion by decreasing key method in C++}
+In C++, traditional C array is static sized, so appending a new element
+to the array has to be managed properly. In order to simplify the
+problem, we assume the neccessary has already been allocated (by
+client program).
+
+First is the ``reference + size'' version of program.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<class Array, class LessOp>
+void heap_push(Array& a, 
+               unsigned int& n,
+               typename ValueType<Array>::Result key,
+               LessOp lt){
+  a[n] = key; 
+  heap_fix(a, n, lt);
+  ++n;
+}
+\end{lstlisting}
+
+Note that the size is explicitly increased. so after calling this
+function, the count of the element is increased by one.
+
+It is also possible to prvoide equivalent program by using `range'.
+
+\begin{lstlisting}
+template<class R, class LessOp>
+void heap_push(R a, typename R::value_type key, LessOp lt){
+  *a.last++ = key;
+  heap_fix(a, a.size()-1, lt);
+}
+\end{lstlisting}
+
+We can test the insert program with a very simple case.
+
+\begin{lstlisting}
+const int a[] = {16, 14, 10, 8, 7, 9, 3, 2, 4, 1};
+unsigned int n = sizeof(a)/sizeof(a[0]);
+std::vector<int> x(a, a+n);
+x.push_back(0);
+heap_push(range(x.begin(), n), 17, MaxHeap<int>());
+print_range(x.begin(), x.end());
+\end{lstlisting}
+
+Note that, in cient program (this test program), we
+reserved the memory in advance, or it will cause
+access violation problem. 
+Running these lines will output the following result.
+
+\begin{verbatim}
+17, 16, 10, 8, 14, 9, 3, 2, 4, 1, 7,
+\end{verbatim}
+
+We can found the new element 17 is inserted at the proper
+position of the heap.
 
 \subsubsection*{Insertion directly in Python}
+
+In python program, append a new element to a list is build-in
+supported. So client program doesn't need to take care of the
+similar problem as described in C++ implementation.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def heap_insert(x, key, less_p = MIN_HEAP):
+    i = len(x)
+    x.append(key)
+    heap_fix(x, i, less_p)
+\end{lstlisting}
+
+If the same test case is fed to the above function, we can 
+get the output like the following.
+
+\begin{lstlisting}
+l = [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+heap_insert(l, 17, MAX_HEAP)
+print l
+\end{lstlisting}
+
+\begin{verbatim}
+[17, 16, 10, 8, 14, 9, 3, 2, 4, 1, 7
+\end{verbatim}
 
 % ================================================================
 %                 Heap sort
 % ================================================================
 \subsection{Heap sort}
 
-TODO: general way and Floyd algorithm
+Heap sort algorithm is an interesting application of heap. According
+to the heap property, the min(max) element can be easily accessed
+by from the top of the heap. So a straightforward way to sort an
+arbitary of values is to first build a heap from them, then continously
+pops the smallest element from the heap till the heap is empty.
+
+The algorithm based on this strategy is something like below.
+
+\begin{algorithmic}[1]
+\Function{HEAP-SORT}{$A$}
+  \State $R \gets NIL$
+  \State $BUILD-HEAP(A)$
+  \While{$A \neq NIL$}
+    \State $APPEND(R, HEAP-POP(A))$
+  \EndWhile
+  \State \Return $R$
+\EndFunction
+\end{algorithmic}
+
+Robert. W. Floyd found a very fast implementation of heap sort.
+The idea is to build a max-heap instead of min-heap, so the first
+element is the biggest one. Then this biggest element is swapped
+with the last element in the array, so that it is in the right
+position after sorting. Now the last element becomes the top
+of the heap, it may violate the heap property. We can perform
+$HEAPIFY$ on it with the heap size shrink by one. This process
+is repeated till there is only one element left in the heap.
+
+\begin{algorithmic}[1]
+\Function{HEAP-SORT-FAST}{$A$}
+  \State $BUILD-MAX-HEAP(A)$
+  \While{$SIZE(A) > 1$}
+    \State $Exchange A[1] \leftrightarrow A[SIZE(A)]$
+    \State $SIZE(A) \gets SIZE(A) - 1$
+    \State $HEAPIFY(A, 1)$
+  \EndWhile
+\EndFunction
+\end{algorithmic}
+
+Note that this algorithm is in-place algorithm. It's the
+fastest heap sort algorithm by far.
+
+In terms of complexity, $BUILD-HEAP$ is bound to $O(N)$. 
+Since $HEAPIFY$ is $O(\lg{N})$, and it
+is called $O(N)$ times, so both above algorithms take $O(N \lg{N})$
+timt to run.
 
 \subsection*{Floyd's heap sort algorithm in C++}
 
+Only Floyd's algorithm is given in C++ in this post. 
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<class Array, class GreaterOp>
+void heap_sort(Array& a, unsigned int n, GreaterOp gt){
+  for(build_heap(a, n, gt); n>1; --n){
+    std::swap(a[0], a[n-1]);
+    heapify(a, 0, n-1, gt);
+  }
+}
+\end{lstlisting}
+
+A very simple test case is used for verification.
+
+\begin{lstlisting}
+const int a[] = {16, 14, 10, 8, 7, 9, 3, 2, 4, 1};
+std::vector<int> y(a, a+n);
+heap_sort(range(y.begin(), y.end()), MaxHeap<int>());
+print_range(y.begin(), y.end());
+\end{lstlisting}
+
+The result is output as we expect.
+
+\begin{verbatim}
+1, 2, 3, 4, 7, 8, 9, 10, 14, 16,
+\end{verbatim}
+
 \subsection*{General heap sort algorithm in Python}
+
+Instead of Floyd method, we'll show the straightforward
+`popping $N$ times' algorithm in Python. Please refer
+to \cite{rosetta-heapsort} for Floyd algorithm in Python.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def heap_sort(x, less_p = MIN_HEAP):
+    res = []
+    build_heap(x, less_p)
+    while x!=[]:
+        res.append(heap_pop(x, less_p))
+    return res
+\end{lstlisting}
+
+And the test case is as same as the one we used in C++ program.
+
+\begin{lstlisting}
+l = [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+res = heap_sort(l)
+print res
+\end{lstlisting}
+
+The result is output as the following.
+
+\begin{verbatim}
+[1, 2, 3, 4, 7, 8, 9, 10, 14, 16]
+\end{verbatim}
 
 % ================================================================
 %                 Explicit binary heap
