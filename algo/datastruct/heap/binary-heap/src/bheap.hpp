@@ -247,7 +247,7 @@ void heap_push(Array& a,
                unsigned int& n,
                typename ValueType<Array>::Result key,
                LessOp lt){
-  a[n] = key;
+  a[n] = key; 
   heap_fix(a, n, lt);
   ++n;
 }
