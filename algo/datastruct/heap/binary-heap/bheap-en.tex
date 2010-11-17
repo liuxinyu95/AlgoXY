@@ -1022,7 +1022,7 @@ property.
 \begin{algorithmic}[1]
 \Function{HEAP-FIX}{$A, i$}
   \While{$i>1$ and $A[i] < A[PARENT[i]]$}
-    \State $Exchange A[i] \leftrightarrow A[PARENT[i]]$
+    \State Exchange $A[i] \leftrightarrow A[PARENT[i]]$
     \State $i \gets PARENT[i]$
   \EndWhile
 \EndFunction
@@ -1290,7 +1290,7 @@ is repeated till there is only one element left in the heap.
 \Function{HEAP-SORT-FAST}{$A$}
   \State $BUILD-MAX-HEAP(A)$
   \While{$SIZE(A) > 1$}
-    \State $Exchange A[1] \leftrightarrow A[SIZE(A)]$
+    \State Exchange $A[1] \leftrightarrow A[SIZE(A)]$
     \State $SIZE(A) \gets SIZE(A) - 1$
     \State $HEAPIFY(A, 1)$
   \EndWhile
@@ -1462,22 +1462,45 @@ to leaf is still 1.
 
 \subsubsection{Leftist property}
 
-With rank defined, we can follow up a 
+With rank defined, we can create a strategy when merging to make the 
+tree balanced.
 
-\subsubsection{Review the balance problem}
+\begin{itemize}
+\item Every time when merging, we always merge to right child; Denote the rank
+of the new right sub tree as $r_r$;
+\item Compare the ranks of the left and right children, if the rank of 
+left sub tree is $r_l$ and $r_l < r_r$, we swap the left and right children.
+\end{itemize}
 
-TODO: ...
+Why can this strategy make the tree balanced? As we merged the tree to 
+right side, the rank of right sub tree keep increasing. Once the rank
+of right side is greater than the left side, the tree tends to be 
+unbalanced if we go on merge to right. At this time we swapped left and
+right sub trees, so the previous left side gets opportunities to grow.
+From the long term of view, the tree turns to be balanced.
+
+Note that this is only a very unformal desciption without any strict
+proof.
 
 \subsection*{Definition of Leftist heap in Haskell}
 
-TODO: ...
+In Haskell the definition of Leftist tree is almost as same as the
+binary search tree except there is a rank field added.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
---...
+data LHeap a = E -- Empty 
+             | Node Int a (LHeap a) (LHeap a) -- rank, element, left, right
+               deriving (Eq, Show)
 \end{lstlisting}
 
-TODO: rank auxiliary function
+In order to access the rank feild, a helper function is provided.
+
+\begin{lstlisting}
+rank::LHeap a -> Int
+rank E = 0
+rank (Node r _ _ _) = r
+\end{lstlisting}
 
 \subsection*{Definition of Leftist heap in Scheme/Lisp}
 
@@ -1493,9 +1516,77 @@ TODO: ...
 % ================================================================
 \subsection{Merge}
 
-TODO:...
+In order to realize `merge', an auxiliary algorithm is given to 
+compare the ranks and do swapping if neccessary.
+
+\begin{algorithmic}[1]
+\Function{LEFTIFY}{$T$}
+  \State $l \gets LEFT(T), r \gets RIGHT(T)$
+  \State $k \gets KEY(T)$
+  \If{$RANK(l) < RANK(r)$}
+    \State $RANK(T) \gets RANK(L) + 1$
+  \Else
+    \State $RANK(T) \gets RANK(R) + 1$
+    \State Exchange $l \leftrightarrow r$
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+The algorithm compares the rank of the left and
+right sub trees, pick the less one and add it by one as the 
+rank of the modified node. If the rank of left side is greater,
+it will also swap the left and right children.
+
+The reason why rank need to be increased by one is because there
+is a new key added on top of the tree, which causes the rank 
+increase.
+
+With $LEFTIFY$ defined, merge algorithm can be provided as the
+following.
+
+\begin{algorithmic}[1]
+\Function{MERGE}{$L, R$}
+  \If{$L = NIL$}
+    \State \Return $R$
+  \ElsIf{$R = NIL$}
+    \State \Return $L$
+  \Else
+    \State $T \gets CREATE-NEW-NODE()$
+    \If{$KEY(L) < KEY(R)$}
+      \State $KEY(T) \gets KEY(L)$
+      \State $LEFT(T) \gets LEFT(L)$
+      \State $RIGHT(T) \gets MERGE(RIGHT(L), R)$
+    \Else
+      \State $KEY(T) \gets KEY(R)$
+      \State $LEFT(T) \gets LEFT(R)$
+      \State $RIGHT(T) \gets MERGE(L, RIGHT(R))$
+    \EndIf
+    \State $LEFTIFY(T)$
+  \EndIf
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
+
+Note that $MERGE$ algorithm is bound to $O(\lg N)$.
 
 \subsection*{Merge in Haskell}
+
+Translate the algorithm to Haskell lead to the following program.
+Here we modified the pesudo code to a pure funcitonal style.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+merge::(Ord a)=>LHeap a -> LHeap a -> LHeap a
+merge E h = h
+merge h E = h
+merge h1@(Node _ x l r) h2@(Node _ y l' r') = 
+    if x < y then makeNode x l (merge r h2)
+    else makeNode y l' (merge h1 r')
+
+makeNode::a -> LHeap a -> LHeap a -> LHeap a
+makeNode x a b = if rank a < rank b then Node (rank a + 1) x b a
+                 else Node (rank b + 1) x a b
+\end{lstlisting}
 
 \subsection*{Merge in Scheme/Lisp}
 
@@ -1509,6 +1600,8 @@ TODO:...
 %                 Basic heap operations
 % ================================================================
 \subsection{Basic heap operations}
+
+Most of the basic heap operations can be implemented easily with $MERGE$.
 
 \subsubsection{Find minimum (top) and delete minimum (pop)}
 
