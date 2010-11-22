@@ -1423,11 +1423,8 @@ to this strategy.
 \end{itemize}
 
 Both are correct result. One simplified solution is only merge on right
-sub tree. However, this approach may leads to a very unbalanced binary tree.
-In the worst case, the binary tree turns to be a linked list, which causes
-most of the operations from $O(\lg N)$ to $O(N)$.
-
-In order to solve the balance problem, one idea is to use `Leftist tree'.
+sub tree. Leftist tree provides a systematically approach based on this
+idea.
 
 % ================================================================
 %                 Definition
@@ -1437,15 +1434,13 @@ In order to solve the balance problem, one idea is to use `Leftist tree'.
 The heap implemented by Leftist tree is called Leftist heap. Leftist
 tree is first introduced by C. A. Crane in 1972\cite{wiki-leftist-tree}.
 
-Instead of giving formal definition of Leftist tree, we'll highlight
-how to solve the blance problem. After that, we'll review the Leftist
-property.
+\subsubsection{Rank (S-value)}
 
-\subsubsection{Rank}
+In Leftist tree, a rank value (or $S$ value) is defined to each node. 
+Rank is the distance to the nearest external node. Where external node
+is a NIL concept extended from leaf node.
 
-In order to measure the balance situation of a binary tree. A rank
-value is defined for each node. Rank is the distance to the nearest
-leaf node. For example, in figure \ref{fig:rank}, the rank of NIL 
+For example, in figure \ref{fig:rank}, the rank of NIL 
 is defined 0, consider the root node 4, The nearest leaf node is 
 the child of node 8. So the rank of root node 4 is 2. Becasue node 
 6 and node 8 are all only contain NIL, so the rank values are 1. 
@@ -1462,8 +1457,7 @@ to leaf is still 1.
 
 \subsubsection{Leftist property}
 
-With rank defined, we can create a strategy when merging to make the 
-tree balanced.
+With rank defined, we can create a strategy when merging.
 
 \begin{itemize}
 \item Every time when merging, we always merge to right child; Denote the rank
@@ -1472,15 +1466,18 @@ of the new right sub tree as $r_r$;
 left sub tree is $r_l$ and $r_l < r_r$, we swap the left and right children.
 \end{itemize}
 
-Why can this strategy make the tree balanced? As we merged the tree to 
-right side, the rank of right sub tree keep increasing. Once the rank
-of right side is greater than the left side, the tree tends to be 
-unbalanced if we go on merge to right. At this time we swapped left and
-right sub trees, so the previous left side gets opportunities to grow.
-From the long term of view, the tree turns to be balanced.
+We call this `Leftist property'. Gernerally speaking, a Lefitst tree always
+has the shortest path to an external node on the right.
 
-Note that this is only a very unformal desciption without any strict
-proof.
+A Leftist tree tends to be very unbalanced, However, it ensures an important
+property as specified in the following therom.
+
+If a Leftist tree $T$ contains $N$ internal nodes, the path from root to the
+rightmost external node contains at most $\lfloor \log{(N+1)} \rfloor$ nodes.
+
+For the proof of these therom, please refer to \cite{brono-book} and \cite{TAOCP}.
+
+With this therom, algorithms operate along this path are all bound to $O(\lg N)$.
 
 \subsection*{Definition of Leftist heap in Haskell}
 
@@ -1567,7 +1564,9 @@ following.
 \EndFunction
 \end{algorithmic}
 
-Note that $MERGE$ algorithm is bound to $O(\lg N)$.
+Note that $MERGE$ algorithm always operate on right side, and call
+$LEFITFY$ to ensure the `Leftist property', so that this algorithm
+is bound to $O(\lg N)$.
 
 \subsection*{Merge in Haskell}
 
@@ -1601,17 +1600,107 @@ makeNode x a b = if rank a < rank b then Node (rank a + 1) x b a
 % ================================================================
 \subsection{Basic heap operations}
 
-Most of the basic heap operations can be implemented easily with $MERGE$.
+Most of the basic heap operations can be implemented easily with $MERGE$
+algorithm define above.
 
 \subsubsection{Find minimum (top) and delete minimum (pop)}
+Since we keep the smallest element in root node, finding the minimum
+value (top element) is trivial. It's a $O(1)$ operation.
+
+\begin{algorithmic}[1]
+\Function{TOP}{$T$}
+  \State \Return $KEY(T)$
+\EndFunction
+\end{algorithmic}
+
+While if the top element popped, left and right children are merged
+so the heap updated.
+
+\begin{algorithmic}[1]
+\Function{POP}{$T$}
+  \State \Return $MERGE(LEFT(T), RIGHT(T))$
+\EndFunction
+\end{algorithmic}
+
+Note that pop operation on Leftist heap takes $O(\lg N)$ time.
 
 \subsubsection*{Find minimum (top) and delete minimum in Haskell}
+
+We skip the error handling of operation on an empty 
+Leftist heap.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+findMin :: LHeap a -> a
+findMin (Node _ x _ _) = x
+\end{lstlisting}
+
+\begin{lstlisting}
+deleteMin :: (Ord a) => LHeap a -> LHeap a
+deleteMin (Node _ _ l r) = merge l r
+\end{lstlisting}
 
 \subsubsection*{Find minimum (top) and delete minimum in Scheme/Lisp}
 
 \subsubsection{Insertion}
 
+To insert a new key to the heap, one solution is to create a signle
+leaf node from the key, and perfom merge with this leaf node and
+the Leftist tree.
+
+\begin{algorithmic}[1]
+\Function{INSERT}{$T, k$}
+  \State $x \gets CREATE-NEW-NODE()$
+  \State $KEY(x) \gets k$
+  \State $RAKN(x) \gets 1$
+  \State $LEFT(x), RIGHT(x) \gets NIL$
+  \State \Return $MERGE(x, T)$
+\EndFunction
+\end{algorithmic}
+
+Since insert still call merge insdie, the algorithm is bound to $O(\lg N)$
+time.
+
 \subsubsection*{Insertion in Haskell}
+
+Translating the above algorithm to Haskell is trivial.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+insert::(Ord a)=> LHeap a -> a -> LHeap a
+insert h x = merge (Node 1 x E E) h
+\end{lstlisting}
+
+In order to provide a convenient way to build a Leftist heap from
+a list, an auxiliary function is given as the following.
+
+\begin{lstlisting}
+fromList :: (Ord a) => [a] -> LHeap a
+fromList xs = foldl insert E xs
+\end{lstlisting}
+
+This function can be used like this.
+
+\begin{lstlisting}
+fromList [9, 4, 16, 7, 10, 2, 14, 3, 8, 1]
+\end{lstlisting}
+
+It will create a Leftist heap as below.
+
+\begin{verbatim}
+Node 1 1 (Node 3 2 (Node 2 4 (Node 2 7 (Node 1 16 E E) 
+(Node 1 10 E E)) (Node 1 9 E E)) (Node 2 3 (Node 1 14 E E) 
+(Node 1 8 E E))) E
+\end{verbatim}
+
+Figure \ref{fig:leftist-tree} shows the result respectively.
+
+\begin{figure}[htbp]
+   \begin{center}
+   	  \includegraphics[scale=0.5]{img/leftist-tree.ps}
+    \caption{A Lefitst tree.} \label{fig:leftist-tree}
+   \end{center}
+\end{figure}
 
 \subsubsection*{Insertion in Scheme/Lisp}
 
@@ -1762,6 +1851,13 @@ Sorting algorithms/Heapsort. Rosetta Code. http://rosettacode.org/wiki/Sorting\_
 
 \bibitem{wiki-leftist-tree}
 Leftist Tree, Wikipedia. http://en.wikipedia.org/wiki/Leftist\_tree
+
+\bibitem{brono-book}
+Bruno R. Preiss. Data Structures and Algorithms with Object-Oriented Design Patterns in Java. http://www.brpreiss.com/books/opus5/index.html
+
+\bibitem{TAOCP}
+Donald E. Knuth. ``The Art of Computer Programming. Volume 3: Sorting and Searching.''. Addison-Wesley Professional; 
+2nd Edition (October 15, 1998). ISBN-13: 978-0201485417
 
 \end{thebibliography}
 
