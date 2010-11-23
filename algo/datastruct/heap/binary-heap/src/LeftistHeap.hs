@@ -51,7 +51,7 @@ deleteMin :: (Ord a) => LHeap a -> LHeap a
 deleteMin (Node _ _ l r) = merge l r
 
 fromList :: (Ord a) => [a] -> LHeap a
-fromList xs = foldl insert E xs
+fromList = foldl insert E
 
 heapSort :: (Ord a) => [a] -> [a]
 heapSort = hsort . fromList where
