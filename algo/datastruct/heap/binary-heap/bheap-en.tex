@@ -53,8 +53,8 @@ heap and Python heapq.
 
 However, heaps can be generalized and implemented with varies
 of other data structure besides array. In this post, explicit
-binary tree is used to realize heaps. It leads to Leftist heaps
-and Splay heaps, which is suitable for pure functional implementation as shown
+binary tree is used to realize heaps. It leads to Leftist heaps, Skew heaps,
+and Splay heaps, which are suitable for pure functional implementation as shown
 by Okasaki\cite{okasaki-book}.
 
 There are multiple programming languages used, including
@@ -70,7 +70,7 @@ Please refer to http://www.gnu.org/copyleft/fdl.html for detail.
 \fi
 
 \vspace{3cm}
-{\bfseries Keywords:} Binary Heaps, Leftist Heaps, Splay Heaps
+{\bfseries Keywords:} Binary Heaps, Leftist Heaps, Skew Heaps, Splay Heaps
 
 %{\bfseries Corresponding Author:} Liu Xinyu
 
@@ -115,7 +115,7 @@ while if top returns the maximum element, we call it {\em max-heap}.
 In this post, I'll first give the definition of binary heap. Then
 I'll review the traditional imperative way of implicit heap by array.
 After that, by considering explicit heap by binary trees, I'll
-explain the Leftist heap, Splay heap, and provide pure functional implementation
+explain the Leftist heap, Skew heap, Splay heap, and provide pure functional implementation
 for them based on Okasaki's result\cite{okasaki-book}.
 
 As the last part, the computation complexity will be mentioned, and
@@ -1369,7 +1369,7 @@ The result is output as the following.
 % ================================================================
 %                 Explicit binary heap
 % ================================================================
-\section{Leftist heap, one of explicit binary heaps}
+\section{Leftist heap and Skew heap, explicit binary heaps}
 \label{ebheap}
 
 Instead of using implicit binary tree by array, it is natural to 
@@ -1566,7 +1566,7 @@ following.
 \end{algorithmic}
 
 Note that $MERGE$ algorithm always operate on right side, and call
-$LEFITFY$ to ensure the `Leftist property', so that this algorithm
+$LEFITFY$ to ensure the `Leftist property, so that this algorithm
 is bound to $O(\lg N)$.
 
 \subsection*{Merge in Haskell}
@@ -1707,6 +1707,8 @@ Figure \ref{fig:leftist-tree} shows the result respectively.
 
 \subsubsection*{Insertion in Scheme/Lisp}
 
+
+
 % ================================================================
 %                 Heap sort
 % ================================================================
@@ -1765,6 +1767,98 @@ It will output the same result as the following.
 
 \subsection*{Heap sort in Scheme/Lisp}
 
+TODO:
+
+% ================================================================
+%                 Skew Heap
+% ================================================================
+
+
+\subsection{Skew heaps}
+\label{skew-heap}
+
+The problem with Letist heap is that, it performs bad in some cases.
+For example, if we examine the Leftist heap behind the above heap
+sort test case, it's a very unbalanced binary tree as shown in figure
+\ref{fig:unbalanced-leftist-tree}\footnote{run Haskell Leftist tree
+function: fromList [16, 14, 10, 8, 7, 9, 3, 2, 4, 1] will generates
+the result: Node 1 1 (Node 2 2 (Node 1 3 (Node 2 7 (Node 1 8 (Node 1 10 (Node 1 14 (Node 1 16 E E) E) E) E) (Node 1 9 E E)) E) (Node 1 4 E E)) E}.
+
+\begin{figure}[htbp]
+   \begin{center}
+   	  \includegraphics[scale=0.3]{img/unbalanced-leftist-tree.ps}
+    \caption{A very unbalanced Leftitst tree build from list [16, 14, 10, 8, 7, 9, 3, 2, 4, 1].} \label{fig:unbalanced-leftist-tree}
+   \end{center}
+\end{figure}
+
+The binary tree is almost turned to be a linked-list. The worst case
+is when feed a orderred list for buidling Leftist tree, since the 
+tree changed to linked-list, the time bound degrade from $O(\lg N)$
+to $O(N)$.
+
+Skew heap (or {\em self-adjusting heap}) is one step ahead simplified Leftist heap \cite{wiki-skew-heap} \cite{adjusting-heaps}.
+
+Remind the Leftist heap, we swap the left and right children during merge
+when the rank on left side is less than right side. This comparision strategy 
+doens't work when one of the sub tree has only one child. Because
+in such case, the rank of the sub tree is always 1 no matter how
+big it is. A Brute-force approach is to swap the left and right children
+every time when merge. This idea leads to Skew heap.
+
+\subsubsection{Definition of Skew heap}
+
+A Skew heap is a heap impelemented with Skew tree. A Skew tree is a special 
+binary tree. The minimum element is stored in root node. Every sub tree is 
+also a skew tree.
+
+Based on above discussion, there is no use to keep the rank (or $S$-value)
+field, so the Skew heap difintion is as same as the binary tree from the
+programming language point of view.
+
+\subsubsection*{Definition of Skew heap in Haskell}
+
+After removing rank from Leftist heap definition, we can get the Skew
+heap one.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+data SHeap a = E -- Empty 
+             | Node a (SHeap a) (SHeap a) -- element, left, right
+               deriving (Eq, Show)
+\end{lstlisting}
+
+\subsubsection*{Definition of Skew heap in Scheme/Lisp}
+
+TODO:
+
+\subsubsection{Merge}
+
+The merge algorithm tends to be very simple. When we merge two Skew
+trees, we compare the root element of each tree, and pick the smaller
+one as the new root, we then merge the other tree contains bigger
+element onto the right sub tree and swap the left and right children.
+
+\begin{algorithmic}[1]
+\Function{MERGE}{$L, R$}
+  \If{$L = NIL$}
+    \State \Return $R$
+  \ElsIf{$R = NIL$}
+    \State \Return $L$
+  \Else
+    \State $T \gets CREATE-EMPTY-NODE()$
+    \If{$KEY(L) < KEY(R)$}
+      \State $KEY(T) \gets KEY(L)$
+      \State $LEFT(T) \gets MERGE(R, RIGHT(L))$
+      \State $RIGHT(T) \gets LEFT(L)$
+    \Else
+      \State $KEY(T) \gets KEY(R)$
+      \State $LEFT(T) \gets MERGE(L, RIGHT(R))$
+      \State $RIGHT(T) \gets LEFT(R)$
+    \EndIf
+    \State \Return $T$
+  \EndIf
+\EndFunction
+\end{algorithmic}
 
 % ================================================================
 %                 Splay Heap
@@ -1910,6 +2004,12 @@ Bruno R. Preiss. Data Structures and Algorithms with Object-Oriented Design Patt
 \bibitem{TAOCP}
 Donald E. Knuth. ``The Art of Computer Programming. Volume 3: Sorting and Searching.''. Addison-Wesley Professional; 
 2nd Edition (October 15, 1998). ISBN-13: 978-0201485417
+
+\bibitem{wiki-skew-heap}
+Skew heap, Wikipedia. http://en.wikipedia.org/wiki/Skew\_heap
+
+\bibitem{adjusting-heaps}
+Sleator, Daniel Dominic; Jarjan, Robert Endre. ``Self-adjusting heaps'' SIAM Journal on Computing 15(1):52-69. doi:10.1137/0215004 ISSN 00975397 (1986)
 
 \end{thebibliography}
 
