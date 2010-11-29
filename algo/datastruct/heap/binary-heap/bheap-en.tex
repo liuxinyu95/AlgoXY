@@ -1998,19 +1998,145 @@ Note this is the last step in splay operation.
 
 \end{itemize}
 
-Okasaki found a simple rule for Splaying, that every time we follow
+Okasaki found a simple rule for Splaying \cite{okasaki-book}, 
+that every time we follow
 two left branches in a row, or two right branches in a row, we rotate
 those two nodes.
 
+Based on this rule, the Splaying can be realized in such a way.
+When we access node for a key $x$ (can be during the process of 
+inserting a node, or looking up a node, or deleting a node), if
+we found we traverse two left branches (or two right branches), we
+partition the tree in two part $L$ and $R$, where $L$ contains all
+nodes smaller than $x$, and $R$ contains all nodes bigger than $x$.
+We can then create a new tree (for instance in insertion), 
+with $x$ as the root, $L$ as the left child and $R$ is the right child.
+Note the partition process is recurisve, because it will do splaying
+inside.
+
+\begin{algorithmic}[1]
+\Function{PARTITION}{$T, pivot$}
+  \If{$T = NIL$}
+    \State \Return $(NIL, NIL)$
+  \EndIf
+  \State $x \gets KEY(T)$
+  \State $l \gets LEFT(T)$
+  \State $r \gets RIGHT(T)$
+  \State $L \gets NIL$
+  \State $R \gets NIL$
+  \If{$x < pivot$}
+    \If{$r = NIL$}
+      \State $L \gets T$
+    \Else
+      \State $x' \gets KEY(r)$
+      \State $l' \gets LEFT(r)$
+      \State $r' \gets RIGHT(r)$
+      \If{$x' < pivot$}
+        \State $(small, big) \gets PARTITION(r', pivot)$
+        \State $L \gets CREATE-NODE(CREATE-NODE(l, x, r), x', small)$
+        \State $R \gets big$
+      \Else
+        \State $(small, big) \gets PARTITION(l', pivot)$
+        \State $L \gets CREATE-NODE(l, x, small)$
+        \State $R \gets CREATE-NODE(big, x', r')$
+      \EndIf
+    \EndIf
+  \Else
+    \If{$l = NIL$}
+      \State $L \gets NIL$
+    \Else
+      \State $x' \gets KEY(L)$
+      \State $l' \gets LEFT(L)$
+      \State $r' \gets RIGHT(L)$
+      \If{$x' > pivot$}
+        \State $(small, big) \gets PARTITION(l', pivot)$
+        \State $L \gets small$
+        \State $R \gets CREATE-NODE(l', x', CREATE-NODE(r', x, r))$
+      \Else
+        \State $(small, big) \gets PARTITION(r', pivot)$
+        \State $L \gets CREATE-NODE(l', x, small)$
+        \State $R \gets CREATE-NODE(big, x, r)$
+      \EndIf
+    \EndIf
+  \EndIf
+  \State \Return $(L, R)$
+\EndFunction
+
+\Function{CREATE-NODE}{$l, x, r$}
+  \State $T \gets CREATE-NEW-NODE()$
+  \State $KEY(T) \gets x$
+  \State $LEFT(T) \gets l$
+  \State $RIGHT(T) \gets r$
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
+
 \subsection*{Definition of Splay heap in Haskell}
 
-TODO: ...
-
-Okasaki's method and pattern matching method
+Since Splay tree is a special binary search tree, the defintion of
+them are same.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
---...
+data STree a = E -- Empty
+             | Node (STree a) a (STree a) -- left, element, right
+               deriving (Eq, Show)
+\end{lstlisting}
+
+Translate the above algorithm into Haskell gets the following partition
+program.
+
+\begin{lstlisting}
+partition :: (Ord a) => STree a -> a -> (STree a, STree a)
+partition E _ = (E, E)
+partition t@(Node l x r) y 
+    | x < y = 
+        case r of
+          E -> (t, E)
+          Node l' x' r' -> 
+              if x' < y then 
+                  let (small, big) = partition r' y in
+                  (Node (Node l x l') x' small, big)
+              else 
+                  let (small, big) = partition l' y in
+                  (Node l x small, Node big x' r')
+    | otherwise = 
+        case l of
+          E -> (E, t)
+          Node l' x' r' ->
+              if y < x' then
+                  let (small, big) = partition l' y in
+                  (small, Node l' x' (Node r' x r))
+              else
+                  let (small, big) = partition r' y in
+                  (Node l' x' small, Node big x r)
+\end{lstlisting}
+
+In a language which supports `pattern matching' such as Haskell,
+Splay can be implemented in a very simple and straightforward style
+by translating the figure \ref{fig:zig-zig}, \ref{fig:zig-zag} and
+\ref{fig:zig} directly into patterns. Note that for each step,
+there are two left-right symmetric cases.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+-- splay by pattern matching
+splay :: (Eq a) => STree a -> a ->STree a
+-- zig-zig
+splay t@(Node (Node (Node a x b) p c) g d) y =
+    if x == y then Node a x (Node b p (Node c g d)) else t
+splay t@(Node a g (Node b p (Node c x d))) y =
+    if x == y then Node (Node (Node a g b) p c) x d else t
+-- zig-zag
+splay t@(Node (Node a p (Node b x c)) g d) y =
+    if x == y then Node (Node a p b) x (Node c g d) else t
+splay t@(Node a g (Node (Node b x c) p d)) y =
+    if x == y then Node (Node a g b) x (Node c p d) else t
+-- zig
+splay t@(Node (Node a x b) p c) y = if x == y then Node a x (Node b p c) else t
+splay t@(Node a p (Node b x c)) y = if x == y then Node (Node a p b) x c else t
+-- otherwise
+splay t _ = t
 \end{lstlisting}
 
 \subsection*{Definition of Splay heap in Scheme/Lisp}
@@ -2027,11 +2153,66 @@ TODO: ...
 % ================================================================
 \subsection{Basic heap operations}
 
+There are two methods to implement basic heap operations for Splay
+heap. One is by using $PARTITION$ algorithm we defined, the other
+is to utilze a $SPLAY$ process, which can be realized in pattern matching
+way in languages equipped with this feature.
+
 \subsubsection{Insertion}
+
+If using $PARTITION$ algorithm, once we want to insert a new $x$ into
+a heap $T$, we can first partition it into two trees, $L$ and $R$. Where
+L contains all nodes smaller than $x$, and $R$ contains all bigger ones.
+We then construct a new node, with $x$ as the root and $L$, $R$ as children.
+
+\begin{algorithmic}[1]
+\Function{INSERT}{$T, x$}
+  \State $(L, R) \gets PARTITION(T, x)$
+  \State \Return $CREATE-NODE(L, x, R)$
+\EndFunction
+\end{algorithmic}
+
+If there is a $SPLAY$ algorithm defined, the insert can be done in a 
+recusive way as the following.
+
+\begin{algorithmic}[1]
+\Function{INSERT'}{$T, x$}
+  \If{$T = NIL$}
+    \State \Return $CREATE-NODE(NIL, x, NIL)$
+  \EndIf
+  \If{$KEY(T) < x$}
+    \State $LEFT(T) \gets INSERT'(LEFT(T), x)$
+  \Else
+    \State $RIGHT(T) \gets INSERT'(RIGHT(T), x)$
+  \EndIf
+  \State \Return $SPLAY(T, x)$
+\EndFunction
+\end{algorithmic}
 
 \subsubsection*{Insertion in Haskell}
 
+It's easy to translate the above algorithms into Haskell.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+insert :: (Ord a) => STree a -> a -> STree a
+insert t x = Node small x big where (small, big) = partition t x
+\end{lstlisting}
+
+And the pattern matching one is in recursive manner as below.
+
+\begin{lstlisting}
+insert' :: (Ord a) => STree a -> a -> STree a
+insert' E y = Node E y E
+insert' (Node l x r) y 
+    | x > y     = splay (Node (insert' l y) x r) y
+    | otherwise = splay (Node l x (insert' r y)) y
+\end{lstlisting}
+
 \subsubsection*{Insertion in Scheme/Lisp}
+
+\subsubsection{Verify how Splay improve the balance}
+TODO: add lookup and call it 1000 times
 
 \subsubsection{Find minimum (top) and delete minimum (pop)}
 
