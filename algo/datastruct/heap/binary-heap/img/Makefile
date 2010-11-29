@@ -3,7 +3,8 @@ DOT_OBJECTS = tree-array-map-tree tree-array-map-array \
 heapify-1 heapify-2 heapify-3 build-heap-array build-heap-1 \
 build-heap-2 build-heap-3 build-heap-4 build-heap-5 build-heap-6 \
 decrease-key-a decrease-key-b decrease-key-c decrease-key-d \
-lvr rank leftist-tree unbalanced-leftist-tree skew-tree
+lvr rank leftist-tree unbalanced-leftist-tree skew-tree \
+zig-zig-a zig-zig-b zig-zag-a zig-zag-b zig-a zig-b
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
