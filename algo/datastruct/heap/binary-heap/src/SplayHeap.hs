@@ -129,7 +129,7 @@ testFromList' = do
 
 --testSplay :: IO (STree Int)
 testSplay = do
-  xs <- sequence (replicate 100 (randomRIO(1, 10)))
+  xs <- sequence (replicate 1000 (randomRIO(1, 10)))
   putStrLn $ show (foldl lookup' t xs)
       where 
         t = foldl insert' (E::STree Int) [1..10]
