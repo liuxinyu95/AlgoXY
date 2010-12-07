@@ -1502,11 +1502,32 @@ rank (Node r _ _ _) = r
 
 \subsection*{Definition of Leftist heap in Scheme/Lisp}
 
-TODO: ...
+In Scheme/Lisp, list is used to represent the Leftist tree. In order
+to output the tree easily in in-order format, a node is arranged as
+(left rank element right). Some auxiliary functions are defined 
+to access these fields of a node.
 
 \lstset{language=lisp}
 \begin{lstlisting}
---...
+(define (left t)
+  (if (null? t) '() (car t)))
+
+(define (rank t)
+  (if (null? t) 0 (cadr t)))
+
+(define (elem t)
+  (if (null? t) '() (caddr t)))
+
+(define (right t)
+  (if (null? t) '() (cadddr t)))
+\end{lstlisting}
+
+And a construction function is provided so that a node can be 
+built explicitly.
+
+\begin{lstlisting}
+(define (make-tree l s x r) ;; l: left, s: rank, x: elem, r: right
+  (list l s x r))
 \end{lstlisting}
 
 % ================================================================
@@ -1590,6 +1611,22 @@ makeNode x a b = if rank a < rank b then Node (rank a + 1) x b a
 
 \subsection*{Merge in Scheme/Lisp}
 
+In Scheme/Lisp, the $LEFTIFY$ algorithm can be defined as an
+inner function inside $MERGE$.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (merge t1 t2)
+  (define (make-node x a b)
+    (if (< (rank a) (rank b))
+	(make-tree b (+ (rank a) 1) x a)
+	(make-tree a (+ (rank b) 1) x b)))
+  (cond ((null? t1) t2)
+	((null? t2) t1)
+	((< (elem t1) (elem t2)) (make-node (elem t1) (left t1) (merge (right t1) t2)))
+	(else (make-node (elem t2) (left t2) (merge t1 (right t2))))))
+\end{lstlisting}
+
 \subsubsection{Merge operation in implicit binary heap by array}
 
 TODO: $O(N)$ algorithm
@@ -1644,6 +1681,18 @@ deleteMin (Node _ _ l r) = merge l r
 \end{lstlisting}
 
 \subsubsection*{Find minimum (top) and delete minimum in Scheme/Lisp}
+
+With merge function defined, these operations are trivial to implement
+in Scheme/Lisp.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (find-min t)
+  (elem t))
+
+(define (delete-min t)
+  (merge (left t) (right t)))
+\end{lstlisting}
 
 \subsubsection{Insertion}
 
@@ -1707,7 +1756,38 @@ Figure \ref{fig:leftist-tree} shows the result respectively.
 
 \subsubsection*{Insertion in Scheme/Lisp}
 
+Based on the algorithm, once inserting a new element, a leaf node 
+is created and merge to the heap.
 
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (insert t x)
+  (merge (make-tree '() 1 x '()) t))
+\end{lstlisting}
+
+This function can be verified by continously insert all elements
+from a list so that a Leftist heap can be built as a result.
+
+\begin{lstlisting}
+(define (from-list lst)
+  (fold-left insert '() lst))
+\end{lstlisting}
+
+One example test case which is equivalent to the Haskell program
+is shown like the following.
+
+\begin{lstlisting}
+(define (test-from-list)
+  (from-list '(16 14 10 8 7 9 3 2 4 1)))
+\end{lstlisting}
+
+Evaluate this function yeilds a Leftist tree, which can be output
+in in-order as below.
+
+\begin{lstlisting}
+((((((((() 1 16 ()) 1 14 ()) 1 10 ()) 1 8 ()) 2 7 (() 1 9 ())) 1 3 
+()) 2 2 (() 1 4 ())) 1 1 ())
+\end{lstlisting}
 
 % ================================================================
 %                 Heap sort
@@ -1767,7 +1847,17 @@ It will output the same result as the following.
 
 \subsection*{Heap sort in Scheme/Lisp}
 
-TODO:
+In Scheme/Lisp program, we can first use `from-list' function
+to turn a list of element into a Leftist heap, then repeatly
+pop the smallest one to a result list.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (heap-sort lst)
+  (define (hsort t)
+    (if (null? t) '() (cons (find-min t) (hsort (delete-min t)))))
+  (hsort (from-list lst)))
+\end{lstlisting}
 
 % ================================================================
 %                 Skew Heap
