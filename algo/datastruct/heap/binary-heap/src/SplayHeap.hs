@@ -127,10 +127,16 @@ testFromList' = do
              tolst = foldl insert' E 
 
 
+toStr :: (Show a)=>(STree a) -> String
+toStr E = "."
+toStr (Node l x r) = "(" ++ (toStr l) ++ " " ++ 
+                     (show x) ++ " " ++ (toStr r) ++ ")"
+
+
 --testSplay :: IO (STree Int)
 testSplay = do
   xs <- sequence (replicate 1000 (randomRIO(1, 10)))
   putStrLn $ show (foldl lookup' t xs)
+  putStrLn $ show $ toStr (foldl lookup' t xs) -- in-order display
       where 
         t = foldl insert' (E::STree Int) [1..10]
-  

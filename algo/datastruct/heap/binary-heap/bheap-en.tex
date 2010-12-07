@@ -2235,7 +2235,7 @@ A lookup algorithm is provided with Spalying operation inside.
 
 Translate this algorithm into Haskell yeilds the following program.
 
-\lstset{langauge=Haskell}
+\lstset{language=Haskell}
 \begin{lstlisting}
 lookup' :: (Ord a) => STree a -> a -> STree a
 lookup' E _ = E
@@ -2261,8 +2261,8 @@ Run these test will make the tree quite balance. Below is an example
 result. Figure \ref{fig:splay-result} shows the tree after splaying.
 
 \begin{verbatim}
-Node (Node E 1 E) 2 (Node E 3 (Node E 4 (Node (Node E 5 (Node E 6 E)) 
-7 (Node E 8 (Node E 9 (Node E 10 E))))))
+Node (Node (Node (Node E 1 E) 2 E) 3 E) 4 (Node (Node E 5 E) 6 (Node 
+(Node (Node E 7 E) 8 E) 9 (Node E 10 E)))
 \end{verbatim}
 
 \begin{figure}[htbp]
@@ -2272,10 +2272,67 @@ Node (Node E 1 E) 2 (Node E 3 (Node E 4 (Node (Node E 5 (Node E 6 E))
    \end{center}
 \end{figure}
 
-
 \subsubsection{Find minimum (top) and delete minimum (pop)}
+Since Splay tree is just a special binary search tree, so the minimum
+element is stored in the left most node. We need keep traversing
+the left child.
+
+\begin{algorithmic}[1]
+\Function{FIND-MIN}{$T$}
+  \If{$LEFT(T) = NIL$}
+    \State \Return $KEY(T)$
+  \Else
+    \State \Return $FIND-MIN(LEFT(T))$
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+And for pop operation, the algorithm need keep traversing in left
+and also remove the minimum element from the tree. In case there
+are two left nodes traversed, a spalying operation should be performed.
+
+\begin{algorithmic}[1]
+\Function{DEL-MIN}{$T$}
+  \If{$LEFT(T) = NIL$}
+    \State \Return $RIGHT(T)$
+  \ElsIf{$LEFT(LEFT(T)) = NIL$}
+    \State $LEFT(T) \gets RIGHT(LEFT(T))$
+    \State \Return $T$
+  \Else
+    \Comment{Splaying}
+    \State $l \gets LEFT(T)$
+    \State $r \gets CREATE-NEW-NODE()$
+    \State $LEFT(r) \gets RIGHT(l)$
+    \State $KEY(r) \gets KEY(T)$
+    \State $RIGHT(r) \gets RIGHT(T)$
+    \State $T' \gets CREATE-NEW-NODE()$
+    \State $LEFT(T') \gets DEL-MIN(LEFT(l))$
+    \State $KEY(T') \gets KEY(l)$
+    \State $RIGHT(T') \gets r$
+    \State \Return $T'$
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+Note that the find minimum and delete minimum algorithms both are
+bound to $O(\lg N)$.
 
 \subsubsection*{Find minimum (top) and delete minimum in Haskell}
+
+When translate the above algorithms into Haskell, one option is to
+use pattern matching.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+findMin :: STree a -> a
+findMin (Node E x _) = x
+findMin (Node l x _) = findMin l
+
+deleteMin :: STree a -> STree a
+deleteMin (Node E x r) = r
+deleteMin (Node (Node E x' r') x r) = Node r' x r
+deleteMin (Node (Node l' x' r') x r) = Node (deleteMin l') x' (Node r' x r)
+\end{lstlisting}
 
 \subsubsection*{Find minimum (top) and delete minimum in Scheme/Lisp}
 
@@ -2284,18 +2341,38 @@ Node (Node E 1 E) 2 (Node E 3 (Node E 4 (Node (Node E 5 (Node E 6 E))
 % ================================================================
 \subsection{Heap sort}
 
-TODO: code reuse
+Since the internal implementation of the Splay heap is completely
+transparent to the heap interface, the heap sort algorithm can
+be reused. It means that the heap sort algorithm is generic no
+matter what the underground data structure is.
 
 % ================================================================
 %                 Short summary
 % ================================================================
 \section{Notes and short summary}
 
-TODO: ...
+In this post, we reviewed the definition of binary heap, and adjust it
+a bit so that as long as the heap property is maintained, all binary
+representation of data structures can be used to implement binary heap.
 
-Review to big-O, and balance problem.
-Intro of N-way heaps.
+This enable us not only limit to the popular implicit binary heap
+by array, but also extend to explicit binary heaps including Lefitst
+heap, Skew heap and Splay heap. Note that, the implicit binary heap
+by array is particularly convienient for imperative implementation
+because it intense uses random index access which can be mapped to
+a completely binary tree. It's hard to directly find functional
+counterpart in this way. 
 
+However, by using explicit binary tree, functional implementation
+can be easily achieved, most of them have $O(\lg N)$ worst case 
+performance, and some of them even reach $O(1)$ amortize time.
+Okasaki in \cite{okasaki-book} shows good analysis of these data
+structures.
+
+It's very natural to extend the concept from binary tree to
+N-ways tree, which leads to other useful heap concept such as
+Binomial heaps, Fibonacci heaps and paring heaps. I'll introduce
+them in a seperate post later.
 
 % ================================================================
 %                 Appendix
