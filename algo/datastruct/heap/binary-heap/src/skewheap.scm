@@ -1,5 +1,5 @@
 #|
-    leftist.scm, Leftist heap in Scheme.
+    skewheap.scm, Skew heap in Scheme.
     Copyright (C) 2010, Liu Xinyu (liuxinyu95@gmail.com)
 
     This program is free software: you can redistribute it and/or modify
@@ -16,41 +16,38 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 |#
 
-;; include some generic functions
-(load "genheap.scm")
-
-;; for pretty print purpose, the leftist tree is arranged as
-;; (left rank element right)
+;; for pretty print purpose, the skew tree is arranged as
+;; (left element right)
 
 ;; access functions
 
 (define (left t)
   (if (null? t) '() (car t)))
 
-(define (rank t)
-  (if (null? t) 0 (cadr t)))
-
 (define (elem t)
-  (if (null? t) '() (caddr t)))
+  (if (null? t) '() (cadr t)))
 
 (define (right t)
-  (if (null? t) '() (cadddr t)))
+  (if (null? t) '() (caddr t)))
 
-(define (make-tree l s x r) ;; l: left, s: rank, x: elem, r: right
-  (list l s x r))
+;; constructor
+(define (make-tree l x r) ;; l: left, x: element, r: right
+  (list l x r))
 
 (define (merge t1 t2)
-  (define (make-node x a b)
-    (if (< (rank a) (rank b))
-	(make-tree b (+ (rank a) 1) x a)
-	(make-tree a (+ (rank b) 1) x b)))
   (cond ((null? t1) t2)
 	((null? t2) t1)
-	((< (elem t1) (elem t2)) (make-node (elem t1) (left t1) (merge (right t1) t2)))
-	(else (make-node (elem t2) (left t2) (merge t1 (right t2))))))
+	((< (elem t1) (elem t2)) 
+	 (make-tree (merge (right t1) t2) 
+		    (elem t1)
+		    (left t1)))
+	(else 
+	 (make-tree (merge t1 (right t2))
+		    (elem t2)
+		    (left t2)))))
 
 (define (insert t x)
-  (merge (make-tree '() 1 x '()) t))
+  (merge (make-tree '() x '()) t))
 
 ;; find-min, delete-min, and heap-sort etc are defined in genheap.scm
 
