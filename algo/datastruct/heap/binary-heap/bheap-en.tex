@@ -1629,11 +1629,20 @@ inner function inside $MERGE$.
 
 \subsubsection{Merge operation in implicit binary heap by array}
 
-TODO: $O(N)$ algorithm
+In most cases implicit binary heap by array performs very fast, and
+it fits modern computer with cache technology well. However, merge
+is the algorithm bounds to $O(N)$ time. The best you can do is 
+concatenate two arrays together and make a heap of the result \cite{NIST}.
 
-\subsubsection*{Merge operation in implicit binary heap in C++}
+\begin{algorithmic}[1]
+\Function{MERGE-HEAP}{$A, B$}
+  $C \gets CONCAT(A, B)$
+  $BUILD-HEAP(C)$
+\EndFunction
+\end{algorithmic}
 
-\subsubsection*{Merge operation in implicit binary heap in Python}
+We omit the implementation of this algorithm in C++ and Python because 
+they are trvial.
 
 % ================================================================
 %                 Basic heap operations
@@ -1930,6 +1939,7 @@ data SHeap a = E -- Empty
 \end{lstlisting}
 
 \subsubsection*{Definition of Skew heap in Scheme/Lisp}
+\label{skew-heap-def-lisp}
 
 Since Skew heap is just a speical kind of binary tree, the definition is
 as same as binary tree's. In Scheme/Lisp, the inner data structure is
@@ -2309,11 +2319,90 @@ splay t _ = t
 
 \subsection*{Definition of Splay heap in Scheme/Lisp}
 
-TODO: ...
+Since Splay heap is essentially binary search tree. The definition 
+is same. In order to output the tree in in-order. we arrange it
+as (left element right) format.
+
+Some auxiliary functions to access left child, element, right
+child and constructor are defined as same as in ref{skew-heap-def-lisp}.
+
+The function which can partition the tree into 2 parts according to 
+a pivot value based on algorithm $PARTITION$ is defined as the following.
+It's a bit complex, but not hard. We compared the pivot and the element
+and traverse the tree based on binary search tree property. In case
+there are two left (or right) children traversed, the tree is rotated
+by splaying. It makes the tree more and more balanced.
 
 \lstset{language=lisp}
 \begin{lstlisting}
---...
+(define (partition t pivot)
+  (if (null? t) 
+      (cons '() '())
+      (let ((l (left t))
+	    (x (elem t))
+	    (r (right t)))
+	(if (< x pivot)
+	    (if (null? r)
+		(cons t '())
+		(let ((l1 (left r))
+		      (x1 (elem r))
+		      (r1 (right r)))
+		  (if (< x1 pivot)
+		      (let* ((p (partition r1 pivot))
+			     (small (car p))
+			     (big (cdr p)))
+			(cons (make-tree (make-tree l x l1) x1 small) big))
+		      (let* ((p (parition l1 pivot))
+			     (small (car p))
+			     (big (cdr p)))
+			(cons (make-tree l x small) (make-tree big x1 r1))))))
+	    (if (null? l)
+		(cons '() t)
+		(let ((l1 (left l))
+		      (x1 (elem l))
+		      (r1 (right l)))
+		  (if (> x1 pivot)
+		      (let* ((p (partition l1 pivot))
+			     (small (car p))
+			     (big (cdr p)))
+			(cons small (make-tree l1 x1 (make-tree r1 x r))))
+		      (let* ((p (partition r1 pivot))
+			     (small (car p))
+			     (big (cdr p)))
+			(cons (make-tree l1 x1 small) (make-tree big x r))))))))))
+\end{lstlisting}
+
+Altough there is no direct pattern matching langauge feature supporting in
+Scheme/Lisp, it possible to provide a splay function by guard clause.
+Compare to the Haskell one, it is a bit more complex.
+
+\begin{lstlisting}
+(define (splay l x r y)
+  (cond ((eq? y (elem (left l))) ;; zig-zig
+	 (make-tree (left (left l)) 
+		    (elem (left l))
+		    (make-tree (right (left l)) 
+			       (elem l) 
+			       (make-tree (right l) x r))))
+	((eq? y (elem (right r))) ;; zig-zig
+	 (make-tree (make-tree (make-tree l x (left r))
+			       (elem r)
+			       (left (right r)))
+		    (elem (right r))
+		    (right (right r))))
+	((eq? y (elem (right l))) ;; zig-zag
+	 (make-tree (make-tree (left l) (elem l) (left (right l)))
+		    (elem (right l))
+		    (make-tree (right (right l)) x r)))
+	((eq? y (elem (left r))) ;; zig-zag
+	 (make-tree (make-tree l x (left (left r)))
+		    (elem (left r))
+		    (make-tree (right (left r)) (elem r) (right r))))
+	((eq? y (elem l)) ;; zig
+	 (make-tree (left l) (elem l) (make-tree (right l) x r)))
+	((eq? y (elem r)) ;; zig
+	 (make-tree (make-tree l x (left r)) (elem r) (right r)))
+	(else (make-tree l x r))))
 \end{lstlisting}
 
 % ================================================================
@@ -2379,7 +2468,35 @@ insert' (Node l x r) y
 
 \subsubsection*{Insertion in Scheme/Lisp}
 
-TODO: ...
+By using partition method, when insert a new element to the Splay
+heap, we use this element as the pivot to partition the tree.
+After that we set this new element as the new root, the sub tree
+contains all elements smaller than root as the left child, and
+the others as the right child. Note that we intend not handle the
+duplicated elements case, because it quite possible to contains
+them in Splay heap.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (insert t x)
+  (let* ((p (partition t x))
+	 (small (car p))
+	 (big (cdr p)))
+    (make-tree small x big)))
+\end{lstlisting}
+
+And if use splay function, the insert can be implemented straightforward
+like binary search tree, except that we need apply splaying recursively 
+after that.
+
+\begin{lstlisting}
+(define (insert-splay t x)
+  (cond ((null? t) (make-tree '() x '()))
+	((> (elem t) x)
+	 (splay (insert-splay (left t) x) (elem t) (right t) x))
+	(else
+	 (splay (left t) (elem t) (insert-splay (right t) x) x))))
+\end{lstlisting}
 
 \subsubsection{Verify how Splay improve the balance}
 In order to show how Splaying improves the balance of binary search
@@ -2401,7 +2518,7 @@ A lookup algorithm is provided with Spalying operation inside.
 \EndFunction
 \end{algorithmic}
 
-Translate this algorithm into Haskell yeilds the following program.
+Translate this algorithm into Haskell yeilds the following program\footnote{$LOOKUP$ algorithm in other language is skipped.}.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -2439,6 +2556,7 @@ Node (Node (Node (Node E 1 E) 2 E) 3 E) 4 (Node (Node E 5 E) 6 (Node
           \caption{Splaying helps improving the balance.} \label{fig:splay-result}
    \end{center}
 \end{figure}
+
 
 \subsubsection{Find minimum (top) and delete minimum (pop)}
 Since Splay tree is just a special binary search tree, so the minimum
@@ -2503,6 +2621,30 @@ deleteMin (Node (Node l' x' r') x r) = Node (deleteMin l') x' (Node r' x r)
 \end{lstlisting}
 
 \subsubsection*{Find minimum (top) and delete minimum in Scheme/Lisp}
+
+In Scheme/Lisp, finding minimum element means keep traversing to left;
+while for max-heap, we need change the program to keep traversing to
+right.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (find-min t)
+  (if (null? (left t)) 
+      (elem t)
+      (find-min (left t))))
+\end{lstlisting}
+
+And for delete minimum program, except for trivial case, splaying also
+need be performed if we travere in left twice.
+
+\begin{lstlisting}
+(define (delete-min t)
+  (cond ((null? (left t)) (right t))
+	((null? (left (left t))) (make-tree (right (left t)) (elem t) (right t)))
+	(else (make-tree (delete-min (left (left t)))
+			 (elem (left t))
+			 (make-tree (right (left t)) (elem t) (right t)))))
+\end{lstlisting}
 
 % ================================================================
 %                 Heap sort
@@ -2621,6 +2763,9 @@ Splay tree, Wikipedia. http://en.wikipedia.org/wiki/Splay\_tree
 
 \bibitem{self-adjusting-trees}
 Sleator, Daniel D.; Tarjan, Robert E. (1985), ``Self-Adjusting Binary Search Trees'', Journal of the ACM 32(3):652 - 686, doi: 10.1145/3828.3835
+
+\bibitem{NIST}
+NIST, ``binary heap''. http://xw2k.nist.gov/dads//HTML/binaryheap.html
 
 \end{thebibliography}
 
