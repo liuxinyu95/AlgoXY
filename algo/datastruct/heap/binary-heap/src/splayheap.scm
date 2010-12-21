@@ -55,7 +55,7 @@
 			     (small (car p))
 			     (big (cdr p)))
 			(cons (make-tree (make-tree l x l1) x1 small) big))
-		      (let* ((p (parition l1 pivot))
+		      (let* ((p (partition l1 pivot))
 			     (small (car p))
 			     (big (cdr p)))
 			(cons (make-tree l x small) (make-tree big x1 r1))))))
@@ -83,7 +83,7 @@
 (define (merge t1 t2)
   (if (null? t1)
       t2
-      (let* ((p (partition t2))
+      (let* ((p (partition t2 (elem t1)))
 	     (small (car p))
 	     (big (cdr p)))
 	(make-tree (merge (left t1) small) (elem t1) (merge (right t1) big)))))
@@ -152,4 +152,12 @@
 (define (test-from-list-splay)
   (from-list-splay '(16 14 10 8 7 9 3 2 4 1)))
 	
-      
+;; random test of partition
+(define (test-partition)
+  (define (rand-list n)
+    (if (= n 0)
+	'()
+	(cons (random 10) (rand-list (- n 1)))))
+  (let ((a (from-list (rand-list 100)))
+	(b (from-list (rand-list 100))))
+    (merge a b)))
