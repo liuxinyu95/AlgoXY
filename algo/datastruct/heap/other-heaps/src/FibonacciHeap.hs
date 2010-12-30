@@ -33,8 +33,8 @@ data BiTree a = Node { rank :: Int
                      , root :: a
                      , children :: [BiTree a]} deriving (Eq, Show)
 
--- Different with Binomial heap, Fibnacci heap is consist of
--- unorderred binomial trees. Thus in order to access the
+-- Different with Binomial heap, Fibonacci heap is consist of
+-- unordered binomial trees. Thus in order to access the
 -- minimum value in O(1) time, we keep the record of the tree
 -- which holds the minimum value out off the other children trees.
 -- We also record the size of the heap, which is the sum of all ranks
@@ -47,7 +47,7 @@ data FibHeap a = E | FH { size :: Int
 -- Auxiliary functions
 
 
--- Singleton creates a leaf node and put it as only tree in the heap
+-- Singleton creates a leaf node and put it as the only tree in the heap
 
 singleton :: a -> FibHeap a
 singleton x = FH 1 (Node 1 x []) []
@@ -67,7 +67,7 @@ insert h x = merge h (singleton x)
 -- Merge, runs in O(1) time.
 
 -- Different from Binomial heap, we don't consolidate the sub trees
--- with same rank, we delayed it later when performing delete-Minimum.
+-- with the same rank, we delayed it later when performing delete-Minimum.
 
 merge:: (Ord a) => FibHeap a -> FibHeap a -> FibHeap a
 merge h E = h
@@ -83,7 +83,7 @@ findMin = root . minTree
 
 -- deleting, Amortized O(lg N) time
 
--- Auxilary function
+-- Auxiliary function
 
 -- Consolidate unordered Binomial trees by meld all trees in same rank
 --  O(lg N) time
@@ -99,7 +99,6 @@ consolidate ts = foldl meld [] ts where
 --   O(lg N) time
 
 extractMin :: (Ord a) => [BiTree a] -> (BiTree a, [BiTree a])
-extractMin [] = error "Empty tree list"
 extractMin [t] = (t, [])
 extractMin (t:ts) = if root t < root t' then (t, ts)
                         else (t', t:ts')
