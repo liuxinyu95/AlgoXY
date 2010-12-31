@@ -91,8 +91,9 @@ findMin = root . minTree
 consolidate :: (Ord a) => [BiTree a] -> [BiTree a]
 consolidate ts = foldl meld [] ts where
     meld [] t = [t]
-    meld (t':ts) t = if rank t' == rank t then meld ts (link t t')
-                     else t:t':ts
+    meld (t':ts) t | rank t == rank t' = meld ts (link t t')
+                   | rank t <  rank t' = t:t':ts
+                   | otherwise = t' : meld ts t
 
 -- Find the tree which contains the minimum element.
 -- Returns the minimum element tree and the left trees as a pair
