@@ -1,3 +1,6 @@
 #!/usr/bin/sh
 
-# TODO: I should write a K-ary tree to dot program.
+CONV="src/fr2dot"
+
+$CONV img/foo.dot "(12), (7, (25)), (15, (28, (41)), (33))"
+$CONV img/bar.dot "(18), (3, (37)), (6, (8, (30, (45, (55)), (32)), (23, (24)), (22)), (29, (48, (50)), (31)), (10, (17)), (44))"

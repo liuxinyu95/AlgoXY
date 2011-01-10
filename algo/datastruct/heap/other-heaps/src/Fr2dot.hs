@@ -21,30 +21,33 @@ module Main where
 import System.Environment (getArgs)
 import Text.ParserCombinators.Parsec
 import Control.Monad (mapM_)
-import Data.List (concatMap)
+import Data.List (concatMap, intercalate)
 import System.IO (writeFile)
 import Data.Char (isSpace)
 
 -- For each tree, it is described in pre-order.
 -- Example description string of a forest of CLRS Figure 19.5(a):
---   (12), (7, (25)), (15, ((28, (41)), 33))
--- 
+--   (12), (7, (25)), (15, (28, (41)), (33))
+
 
 -- Definition of K-ary node
-data Node a = Node a [Node a] deriving (Eq, Show)
+data Node a = Node { root :: a 
+                   , children :: [Node a]} deriving (Eq, Show)
 
 -- Definition of Forest
 type Forest a = [Node a]
 
+
 -- parsers
 
-forest = node `sepBy` (char ',')
+forest = do 
+  ts <- node `sepBy` (char ',')
+  return ts
 
 node = do
   char '('
-  elem <- key 
-  char ','
-  ts<- forest
+  elem <- key
+  ts <- (try (char ',')>>forest) <|> return []
   char ')'
   return (Node elem ts)
 
@@ -54,11 +57,30 @@ parseArgs :: [String] -> (String, String)
 parseArgs [fname, s] = (fname, s)
 parseArgs _ = error "wrong usage\nexample:\nfr2dot output.dot \"(12), (7, (25)), (15, ((28, (41)), 33))\""
 
--- convert a node to dot script format
-toDot (Node x ts) prefix = prefix'++"[label=\""++x++"\"];\n" ++
-                            (concatMap (\t->toDot t prefix') ts) ++
-                            (defCons ts prefix')
-                                where prefix' = prefix ++ x
+
+-- A simplified function to generate dot script from parsed result.
+toDot f = forestToDot f "t" True
+
+-- a handy function to convert children of a K-ary tree to dot script
+treesToDot ts prefix = forestToDot ts prefix False
+
+-- convert a forest to dot script
+forestToDot []  _ _ = ""
+forestToDot [t] prefix _ = nodeToDot t prefix
+forestToDot ts@(_:_:_) prefix lnk = 
+    (concatMap (\t->nodeToDot t prefix) ts) ++ consRoot
+    where
+      consRoot = "{rank=same " ++ ns ++ vis ++ "}\n" 
+      ns = intercalate "->" $ map (\t -> prefix ++ root t) ts
+      vis = if lnk then "" else "[style=invis]"
+
+
+-- convert a node to dot script
+nodeToDot (Node x ts) prefix = 
+    prefix'++"[label=\""++x++"\"];\n" ++
+    (treesToDot ts prefix') ++
+    (defCons ts prefix')
+        where prefix' = prefix ++ x
 
 -- define connections among nodes in dot format
 defCons ts prefix = concatMap f ts where
@@ -67,17 +89,21 @@ defCons ts prefix = concatMap f ts where
 -- generate dot script from a parsed forest
 genDot fname (Right f) = writeFile fname dots >> putStrLn dots
     where
-      dots = "digraph G{\n\tnode\n"++(addTab $ toDot f "t")++"}"
+      dots = "digraph G{\n\tnode[shape=circle]\n"++(addTab $ toDot f)++"}"
       addTab s = unlines $ map ("\t"++) (lines s)
 
 -- tests
-testParse = mapM_ (parseTest node) toks where
+testParse = mapM_ (parseTest forest) toks where
     toks = map (filter (not.isSpace))
-           ["(12), (7, (25)), (15, ((28, (41)), 33))"]
+           ["(12)", 
+            "(7, (25))",
+            "(15, (28, (41)), (33))",
+            "(12), (7, (25)), (15, (28, (41)), (33))"]
 
-testToDot = putStrLn $ toDot (Node "C" [Node "A" [],Node "B" []]) "t"
+testToDot = putStrLn $ toDot [Node "X" [], 
+                              Node "C" [Node "A" [],Node "B" []]]
 
 main = do
   args <- getArgs
   let (fname, s) = parseArgs args
-  genDot fname (parse node "unknown" (filter (not.isSpace) s))
+  genDot fname (parse forest "unknown" (filter (not.isSpace) s))
