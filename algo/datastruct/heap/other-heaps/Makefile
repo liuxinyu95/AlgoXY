@@ -16,6 +16,9 @@ c:
 haskell:
 	make haskell -C src
 
+tool:
+	make tool -C src
+
 image:
 	make -C img
 
