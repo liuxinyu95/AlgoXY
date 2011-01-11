@@ -1,5 +1,5 @@
 IMG_OBJECTS = 
-DOT_OBJECTS = foo bar
+DOT_OBJECTS = b0tree link-bitree
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
