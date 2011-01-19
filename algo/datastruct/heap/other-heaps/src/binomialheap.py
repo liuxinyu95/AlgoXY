@@ -56,25 +56,38 @@ def link(t1, t2):
     #release t2
     return t1
 
+# Insert a tree to the proper position in the heap
+# So that the trees are in monotonically increase order in rank
+# Implicit condition: the rank of tree is lower or equal to the
+# first tree in the heap
 def insert_tree(h, t):
-    head = h
-    p = None
-    while h is not None and t.rank > h.rank:
-        p = h
-        h = h.sibling
-    t.sibling = h
-    if p is not None:
-        p.sibling = t
-    else:
-        head = t
-    return head
+    while h is not None and  t.rank == h.rank:
+        (t1, h) = extract_first(h)
+        t = link(t, t1)
+    if h is not None and t.rank < h.rank:
+        t.sibling = h
+    return t
+
+# Append a tree to the heap, so that the trees are in
+# monotonically increase order in rank
+# Implicit condition: the rank of tree is equal to or bigger by 1 than
+# the last tree in the heap
+def append_tree(head, prev, tail, x):
+    if head is None:
+        return (x, None, x)
+    if tail.rank == x.rank:
+        tail = link(tail, x)
+        if prev is None:
+            return (tail, None, tail)
+        prev.sibling = tail
+        return (head, prev, tail)
 
 def merge(h1, h2):
     if h1 is None:
         return h2
     if h2 is None:
         return h1
-    h = None
+    (h, p) = (None, None)
     while h1 is not None and h2 is not None:
         t = None
         if h1.rank < h2.rank :
@@ -85,7 +98,7 @@ def merge(h1, h2):
             (t1, h1) = extract_first(h1)
             (t2, h2) = extract_first(h2)
             t = link(t1, t2)
-        h = insert_tree(h, t)
+        (h, p) = append(h, p, t)
     if h1 is not None:
         
 
