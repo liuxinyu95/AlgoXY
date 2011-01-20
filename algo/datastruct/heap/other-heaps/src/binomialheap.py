@@ -21,9 +21,9 @@
 
 # Use left child, right sibling approach
 class BinomialTree:
-    def __init__(self):
+    def __init__(self, x = None):
         rank = 0
-        key = None
+        key = x
         parent = None
         child = None
         sibling = None
@@ -37,27 +37,19 @@ def extract_first(h):
         t.sibling = None
     return (t, h)
 
-# Assume h is not empty
-def find_min(h):
-    x = h.key
-    while h.sibling is not None:
-        h = h.sibling
-        if h.key < x:
-            x = h.key
-    return x
-
 # Implicit condition that the rank of the two trees are same       
 def link(t1, t2):
     if t2.key < t1.key:
         (t1, t2) = (t2, t1)
-    t1.sibling = t2
+    t2.sibling = t1.child
+    t1.child = t2
     t2.parent = t1
     t1.rank = t1.rank + 1
     #release t2
     return t1
 
 # Insert a tree to the proper position in the heap
-# So that the trees are in monotonically increase order in rank
+# So that the trees are in monotonically increase order by rank
 # Implicit condition: the rank of tree is lower or equal to the
 # first tree in the heap
 def insert_tree(h, t):
@@ -68,10 +60,16 @@ def insert_tree(h, t):
         t.sibling = h
     return t
 
+# Insertion
+def insert(h, x):
+    return insert_tree(h, BinomialTree(x))
+
 # Append a tree to the heap, so that the trees are in
-# monotonically increase order in rank
+# monotonically increase order by rank
 # Implicit condition: the rank of tree is equal to or bigger by 1 than
-# the last tree in the heap
+# the last tree in the heap.
+# Because the tail tree in the heap may be changed, we need the 2nd last
+# tree as the argument
 def append_tree(head, prev, tail, x):
     if head is None:
         return (x, None, x)
@@ -80,71 +78,115 @@ def append_tree(head, prev, tail, x):
         if prev is None:
             return (tail, None, tail)
         prev.sibling = tail
-        return (head, prev, tail)
+    else:
+        tail.sibling = x
+        prev = tail
+        tail = x
+    return (head, prev, tail)
 
+# Helper function to append a heap to another one by repeatedly calling
+# append_tree()
+def append_trees(h, p, t, xs):
+    while xs is not None:
+        (x, xs) = extract_first(xs)
+        (h, p, t) = append_tree(h, p, t, x)
+    return (h, p, t)
+
+# Merge 2 heaps together. Use a merge sort like approach
 def merge(h1, h2):
     if h1 is None:
         return h2
     if h2 is None:
         return h1
-    (h, p) = (None, None)
+    (h, p, t) = (None, None, None)
     while h1 is not None and h2 is not None:
-        t = None
-        if h1.rank < h2.rank :
-            (t, h1) = extract_first(h1)
-        elif h2.rank < h1.rank :
-            (t, h2) = extract_first(h2)
+        x = None
+        if h1.rank < h2.rank:
+            (x, h1) = extract_first(h1)
+        elif h2.rank < h1.rank:
+            (x, h2) = extract_first(h2)
         else:
-            (t1, h1) = extract_first(h1)
-            (t2, h2) = extract_first(h2)
-            t = link(t1, t2)
-        (h, p) = append(h, p, t)
+            (x1, h1) = extract_first(h1)
+            (x2, h2) = extract_first(h2)
+            x = link(x1, x2)
+        (h, p, t) = append(h, p, t, x)
     if h1 is not None:
-        
+        (h, p, t) = append_trees(h, p, t, h1)
+    if h2 is not None:
+        (h, p, t) = append_trees(h, p, t, h2)
+    return h
 
-# default heap sort less to greater
-def heap_sort(x, less_p = MIN_HEAP):
+# Reverse the linked list
+def reverse(h):
+    prev = None
+    while h is not None:
+        x = h
+        x.sibling = prev
+        h = h.sibling
+    return prev
+
+# Extract the minimum binomial tree from the heap
+# returns (min tree, rest trees)
+def remove_min_tree(h):
+    (prev_min, min_t) = (None, None)
+    prev = None
+    while h is not None:
+        if min_t is None or h.key < min_t.key:
+            min_t = h
+            prev_min = prev
+        prev = h
+        h = h.sibling
+    if prev is not None:
+        prev.sibling = min_t.sibing
+    else:
+        h = min_t.sibling
+    min_t.sibling = None
+    return (min_t, h)    
+
+# Assume h is not empty
+def find_min(h):
+    min_t = None
+    while h is not None:
+        if min_t is None or h.key < min_t.key:
+            min_t = h
+        h = h.sibling
+    return min_t.key
+
+# Extract the min element, returns the (min, heap')
+def extract_min(h):
+    (min_t, h) = remove_min_tree(h)
+    h =merge(h, reverse(min_t.child))
+    min_t.child = None
+    return (min_t.key, h)
+
+# helper function
+def from_list(lst):
+    h = None
+    for x in lst:
+        h = insert(h, x)
+    return h
+
+def heap_sort(lst):
+    h = from_list(lst)
     res = []
-    build_heap(x, less_p)
-    while x!=[]:
-        res.append(heap_pop(x, less_p))
+    while h is not None:
+        (x, h) = extract_min(h)
+        res.append(x)
     return res
-
-def top_k(x, k, less_p = MIN_HEAP):
-    build_heap(x, less_p)
-    return [heap_pop(x, less_p) for i in range(min(k, len(x)))]
 
 class TestHeap:
     def __init__(self):
-        print "Implicit binary heap by array testing"
+        print "Binomial heap testing"
 
     def run(self):
-        self.test_heapify()
-        self.test_build_heap()
         self.test_heap_sort()
-        self.test_heap_decrease_key()
-        self.test_heap_insert()
-        self.test_top_k()
+        #self.test_heap_decrease_key()
 
     def __assert(self, p):
         if p:
             print "OK"
         else:
             print "Fail!"
-
-    def test_heapify(self):
-        # CLRS Figure 6.2
-        l = [16, 4, 10, 14, 7, 9, 3, 2, 8, 1]
-        heapify(l, 1, MAX_HEAP)
-        print l
-        self.__assert(l == [16, 14, 10, 8, 7, 9, 3, 2, 4, 1])
-
-    def test_build_heap(self):
-        # CLRS Figure 6.3
-        l = [4, 1, 3, 2, 16, 9, 10, 14, 8, 7]
-        build_heap(l, MAX_HEAP)
-        print l
-        self.__assert(l == [16, 14, 10, 8, 7, 9, 3, 2, 4, 1])
 
     def test_heap_sort(self):
         # CLRS Figure 6.4
@@ -153,24 +195,12 @@ class TestHeap:
         print res
         self.__assert(res == [1, 2, 3, 4, 7, 8, 9, 10, 14, 16])
 
-    def test_heap_decrease_key(self):
+    #def test_heap_decrease_key(self):
         # CLRS Figure 6.5
-        l = [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
-        heap_decrease_key(l, 8, 15, MAX_HEAP)
-        print l
-        self.__assert(l == [16, 15, 10, 14, 7, 9, 3, 2, 8, 1])
-
-    def test_heap_insert(self):
-        l = [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
-        heap_insert(l, 17, MAX_HEAP)
-        print l
-        self.__assert(l == [17, 16, 10, 8, 14, 9, 3, 2, 4, 1, 7])
-
-    def test_top_k(self):
-        l = [4, 1, 3, 2, 16, 9, 10, 14, 8, 7]
-        res = top_k(l, 3, MAX_HEAP)
-        print res
-        self.__assert(res == [16, 14, 10])
+        #l = [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+        #heap_decrease_key(l, 8, 15, MAX_HEAP)
+        #print l
+        #self.__assert(l == [16, 15, 10, 14, 7, 9, 3, 2, 8, 1])
 
 if __name__ == "__main__":
     TestHeap().run()
