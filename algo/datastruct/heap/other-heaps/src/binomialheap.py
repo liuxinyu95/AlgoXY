@@ -16,17 +16,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import random # for testing only
 
 # Assume the heap is min-heap
 
 # Use left child, right sibling approach
 class BinomialTree:
     def __init__(self, x = None):
-        rank = 0
-        key = x
-        parent = None
-        child = None
-        sibling = None
+        self.rank = 0
+        self.key = x
+        self.parent = None
+        self.child = None
+        self.sibling = None
 
 # Auxiliary function to extract the first tree
 def extract_first(h):
@@ -53,7 +54,7 @@ def link(t1, t2):
 # Implicit condition: the rank of tree is lower or equal to the
 # first tree in the heap
 def insert_tree(h, t):
-    while h is not None and  t.rank == h.rank:
+    while h is not None and t.rank == h.rank:
         (t1, h) = extract_first(h)
         t = link(t, t1)
     if h is not None and t.rank < h.rank:
@@ -109,7 +110,7 @@ def merge(h1, h2):
             (x1, h1) = extract_first(h1)
             (x2, h2) = extract_first(h2)
             x = link(x1, x2)
-        (h, p, t) = append(h, p, t, x)
+        (h, p, t) = append_trees(h, p, t, x)
     if h1 is not None:
         (h, p, t) = append_trees(h, p, t, h1)
     if h2 is not None:
@@ -121,13 +122,15 @@ def reverse(h):
     prev = None
     while h is not None:
         x = h
-        x.sibling = prev
         h = h.sibling
+        x.sibling = prev
+        prev = x
     return prev
 
 # Extract the minimum binomial tree from the heap
 # returns (min tree, rest trees)
 def remove_min_tree(h):
+    head = h
     (prev_min, min_t) = (None, None)
     prev = None
     while h is not None:
@@ -136,12 +139,12 @@ def remove_min_tree(h):
             prev_min = prev
         prev = h
         h = h.sibling
-    if prev is not None:
-        prev.sibling = min_t.sibing
+    if prev_min is not None:
+        prev_min.sibling = min_t.sibling
     else:
-        h = min_t.sibling
+        head = min_t.sibling
     min_t.sibling = None
-    return (min_t, h)    
+    return (min_t, head)    
 
 # Assume h is not empty
 def find_min(h):
@@ -155,7 +158,7 @@ def find_min(h):
 # Extract the min element, returns the (min, heap')
 def extract_min(h):
     (min_t, h) = remove_min_tree(h)
-    h =merge(h, reverse(min_t.child))
+    h = merge(h, reverse(min_t.child))
     min_t.child = None
     return (min_t.key, h)
 
@@ -174,12 +177,22 @@ def heap_sort(lst):
         res.append(x)
     return res
 
+def to_string(h):
+    s = ""
+    while h is not None:
+        s = s+ "(" + str(h.key)+", "+to_string(h.child)+"), "
+        h = h.sibling
+    return s
+
 class TestHeap:
     def __init__(self):
         print "Binomial heap testing"
 
     def run(self):
+        #self.test_insert()
+        #self.test_extract_min()
         self.test_heap_sort()
+        self.test_random_sort()
         #self.test_heap_decrease_key()
 
     def __assert(self, p):
@@ -188,12 +201,31 @@ class TestHeap:
         else:
             print "Fail!"
 
+    def test_insert(self):
+        l = [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+        print to_string(from_list(l))
+
+    def test_extract_min(self):
+        l = [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+        h = from_list(l)
+        (t, h) = extract_min(h)
+        print "t=", t
+        print "h=", to_string(h)
+
     def test_heap_sort(self):
         # CLRS Figure 6.4
         l = [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
         res = heap_sort(l)
         print res
         self.__assert(res == [1, 2, 3, 4, 7, 8, 9, 10, 14, 16])
+
+    def test_random_sort(self):
+        n = 1000
+        for i in range(100):
+            lst = random.sample(range(n), random.randint(0, n))
+            assert(heap_sort(lst) == sorted(lst))
+        print "OK"
+        
 
     #def test_heap_decrease_key(self):
         # CLRS Figure 6.5
