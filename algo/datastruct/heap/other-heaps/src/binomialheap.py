@@ -164,10 +164,7 @@ def extract_min(h):
 
 # helper function
 def from_list(lst):
-    h = None
-    for x in lst:
-        h = insert(h, x)
-    return h
+    return reduce(insert, lst, None)
 
 def heap_sort(lst):
     h = from_list(lst)
