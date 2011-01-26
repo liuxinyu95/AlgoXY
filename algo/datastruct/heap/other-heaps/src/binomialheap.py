@@ -46,7 +46,6 @@ def link(t1, t2):
     t1.child = t2
     t2.parent = t1
     t1.rank = t1.rank + 1
-    #release t2
     return t1
 
 # Insert a tree to the proper position in the heap
@@ -162,6 +161,22 @@ def extract_min(h):
     min_t.child = None
     return (min_t.key, h)
 
+def decrease_key(x, k):
+    assert(k < x.key)
+    x.key = k
+    p = x.parent
+    while p is not None and x.key < p.key:
+        (x.key, p.key) = (p.key, x.key)
+        x = p
+        p = p.parent
+
+# Delete node is trivial so I skip it in this program
+# A reference implementation:
+# function delete_node(h, x)
+#   decrease_key(x, -infinity)
+#   (_, h) = extract_min(h)
+#   return 
+
 # helper function
 def from_list(lst):
     return reduce(insert, lst, None)
@@ -181,6 +196,23 @@ def to_string(h):
         h = h.sibling
     return s
 
+# Auxiliary function to find a node contains specified 
+# key in the heap. This is an inefficent function only
+# for verification purpose
+def find_key(h, k):
+    while h is not None:
+        if h.key == k:
+            return h
+        else:
+            n = find_key(h.child, k)
+            if n is not None:
+                return n
+        h = h.sibling
+    return None
+
+def decrease_key_from(h, k1, k2):
+    decrease_key(find_key(h, k1), k2)
+
 class TestHeap:
     def __init__(self):
         print "Binomial heap testing"
@@ -190,7 +222,7 @@ class TestHeap:
         #self.test_extract_min()
         self.test_heap_sort()
         self.test_random_sort()
-        #self.test_heap_decrease_key()
+        self.test_heap_decrease_key()
 
     def __assert(self, p):
         if p:
@@ -219,17 +251,25 @@ class TestHeap:
     def test_random_sort(self):
         n = 1000
         for i in range(100):
-            lst = random.sample(range(n), random.randint(0, n))
+            lst = random.sample(range(n), random.randint(1, n))
             assert(heap_sort(lst) == sorted(lst))
         print "OK"
         
-
-    #def test_heap_decrease_key(self):
-        # CLRS Figure 6.5
-        #l = [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
-        #heap_decrease_key(l, 8, 15, MAX_HEAP)
-        #print l
-        #self.__assert(l == [16, 15, 10, 14, 7, 9, 3, 2, 8, 1])
+    def test_heap_decrease_key(self):
+        n = 1000
+        for i in range(100):
+            lst = random.sample(range(n), random.randint(1, n))
+            h = from_list(lst)
+            x = random.choice(lst)
+            y = x - random.randint(0, x) - 1
+            decrease_key_from(h, x, y)
+            res = []
+            while h is not None:
+                (e, h) = extract_min(h)
+                res.append(e)
+            lst[lst.index(x)] = y
+            assert(res == sorted(lst))
+        print "OK"
 
 if __name__ == "__main__":
     TestHeap().run()
