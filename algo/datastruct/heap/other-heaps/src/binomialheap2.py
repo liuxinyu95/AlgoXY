@@ -36,8 +36,8 @@ def link(t1, t2):
     if t2.key < t1.key:
         (t1, t2) = (t2, t1)
     t1.children.insert(0, t2)
+    t2.parent = t1
     t1.rank = t1.rank + 1
-    # release t2
     return t1
 
 # Insert a tree to the proper position in the heap
@@ -110,6 +110,19 @@ def extract_min(ts):
     min_t.children = []
     return (min_t.key, ts)
 
+# Decrease key of node x. 
+# We don't care how to get the pointer to node x.
+# It doesn't make sense to search a key in the heap
+# then returns the node of this key. 
+def decrease_key(x, k):
+    assert(k < x.key)
+    x.key = k
+    p = x.parent
+    while p is not None and x.key < p.key:
+        (x.key, p.key) = (p.key, x.key)
+        x = p
+        p = p.parent
+
 # helper function
 def from_list(lst):
     return reduce(insert, lst, [])
@@ -131,6 +144,22 @@ def to_string(ts):
         s = s+ ")"
     return s
 
+# Auxiliary function to find a node contains specified 
+# key in the heap. This is an inefficent function only
+# for verification purpose
+def find_key(ts, k):
+    for t in ts:
+        if t.key == k:
+            return t
+        else:
+            n = find_key(t.children, k)
+            if n is not None:
+                return n
+    return None
+
+def decrease_key_from(ts, k1, k2):
+    decrease_key(find_key(ts, k1), k2)
+
 class TestHeap:
     def __init__(self):
         print "Binomial heap testing"
@@ -139,13 +168,8 @@ class TestHeap:
         self.test_insert()
         self.test_heap_sort()
         self.test_random_sort()
-        #self.test_heap_decrease_key()
-
-    def __assert(self, p):
-        if p:
-            print "OK"
-        else:
-            print "Fail!"
+        self.test_heap_decrease_key()
+        self.test_heap_decrease_key_random()
 
     def test_insert(self):
         l = [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
@@ -156,7 +180,7 @@ class TestHeap:
         l = [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
         res = heap_sort(l)
         print res
-        self.__assert(res == [1, 2, 3, 4, 7, 8, 9, 10, 14, 16])
+        assert(res == [1, 2, 3, 4, 7, 8, 9, 10, 14, 16])
 
     def test_random_sort(self):
         n = 1000
@@ -165,13 +189,31 @@ class TestHeap:
             assert(heap_sort(lst) == sorted(lst))
         print "OK"
         
+    def test_heap_decrease_key(self):
+        l = [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+        h = from_list(l)
+        decrease_key_from(h, 8, 6)
+        res = []
+        while h!=[]:
+            (x, h) = extract_min(h)
+            res.append(x)
+        assert(res == [1, 2, 3, 4, 6, 7, 9, 10, 14, 16])
 
-    #def test_heap_decrease_key(self):
-        # CLRS Figure 6.5
-        #l = [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
-        #heap_decrease_key(l, 8, 15, MAX_HEAP)
-        #print l
-        #self.__assert(l == [16, 15, 10, 14, 7, 9, 3, 2, 8, 1])
+    def test_heap_decrease_key_random(self):
+        n = 1000
+        for i in range(100):
+            lst = random.sample(range(n), random.randint(0, n))
+            h = from_list(lst)
+            x = random.choice(lst)
+            y = x - random.randint(0, x) - 1
+            decrease_key_from(h, x, y)
+            res = []
+            while h != []:
+                (e, h) = extract_min(h)
+                res.append(e)
+            lst[lst.index(x)] = y
+            assert(res == sorted(lst))
+        print "OK"
 
 if __name__ == "__main__":
     TestHeap().run()
