@@ -123,6 +123,13 @@ def decrease_key(x, k):
         x = p
         p = p.parent
 
+# Delete node is trivial so I skip it in this program
+# A reference implementation:
+# function delete_node(h, x)
+#   decrease_key(x, -infinity)
+#   (_, h) = extract_min(h)
+#   return h
+
 # helper function
 def from_list(lst):
     return reduce(insert, lst, [])
@@ -185,7 +192,7 @@ class TestHeap:
     def test_random_sort(self):
         n = 1000
         for i in range(100):
-            lst = random.sample(range(n), random.randint(0, n))
+            lst = random.sample(range(n), random.randint(1, n))
             assert(heap_sort(lst) == sorted(lst))
         print "OK"
         
@@ -202,7 +209,7 @@ class TestHeap:
     def test_heap_decrease_key_random(self):
         n = 1000
         for i in range(100):
-            lst = random.sample(range(n), random.randint(0, n))
+            lst = random.sample(range(n), random.randint(1, n))
             h = from_list(lst)
             x = random.choice(lst)
             y = x - random.randint(0, x) - 1
