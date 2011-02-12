@@ -106,7 +106,7 @@ refer to appendix for detailed information about build and run.
 % ================================================================
 %                 Binomial heap
 % ================================================================
-\section{Binamial Heaps}
+\section{Binomial Heaps}
 \label{binomail-heap}
 
 
@@ -119,7 +119,7 @@ Binomial heap is more complex than most of the binary heaps. However,
 it has excellent merge performance which bound to $O(\lg N)$ time. A
 binomial heap is consist of a list of binomial trees.
 
-\subsubsection{Binomail tree}
+\subsubsection{Binomial tree}
 
 In order to explain why the name of the tree is `binomial', let's review
 the famouse Pascal's triangle (in China, we call it Yang Hui's triangle)
@@ -199,7 +199,7 @@ Observing the binomail trees reveals some interesting properties. For each rank 
 
 For instance for rank 4 binomail tree, there is 1 node as the root; and in the second level next to root, there are 4 nodes; and in 3rd level, there are 6 nodes; and in 4th level, there are 4 nodes; and the 5th level, there is 1 node. They are exactly 1, 4, 6, 4, 1 which is the 5th row in Pascal's triangle. That's why we call it binomial tree.
 
-Another interesting property is that the total number of node for a binomail tree with rank $N$ is $2^N$. This can be proved either by binomail theory or the recursive definition directly.
+Another interesting property is that the total number of node for a binomail tree with rank $N$ is $2^N$. This can be proved either by binomial theory or the recursive definition directly.
 
 \subsubsection{Binomial heap}
 
@@ -207,7 +207,7 @@ With binomial tree defined, we can introduce the definition of binomial heap. A 
 
 \begin{itemize}
 \item Each binomail tree in the heap conforms to {\em heap property}, that the key of a node is equal or greater than the key of its parent. Here the healp is actually min-heap, for max-heap, it changes to `equal or less than'. In this post, we only discuss about min-heap, and max-heap can be equally applied by changing the comparison condition.
-\item There is at most one binomail tree has the rank $r$. In other words, there are no two binomail trees have the same rank.
+\item There is at most one binomail tree which has the rank $r$. In other words, there are no two binomial trees have the same rank.
 \end{itemize}
 
 This definition leads to an important result that for a binomial heap contains $N$ elements, and if convert $N$ to binary format is $a_0, a_1, a_2, ..., a_m$, where $a_0$ is the LSB and $a_m$ is the MSB, then for each $0 \leq i \leq m$, if $a_i=0$, there is no binomial tree of rank $i$ and if $a_i = 1$, there must be a binomial tree of rank $i$.
@@ -302,18 +302,122 @@ bigger one. According to the definition of binomial tree and heap
 property that the root always contains the minimum key, we firstly
 compare the two root values, select the smaller one as the new
 root, and insert the other tree as the first child in front of
-all other children. This algorithm can be described like the 
-following.
+all other children. If we use `left child, right sibling' approach,
+this algorithm can be described like the following.
 
 \begin{algorithmic}[1]
 \Function{LINK}{$T_1, T_2$}
   \If{$KEY(T_2) < KEY(T_1)$}
     \State Exchange $T_1 \leftrightarrow T_2$
   \EndIf
+  \State $SIBLING(T_2) \gets CHILD(T_1)$
+  \State $CHILD(T_1) \gets T_2$
+  \State $PARENT(T_2) \gets T_1$
+  \State $RANK(T_1) \gets RANK(T_1) + 1$
+  \State \Return $T_1$
 \EndFunction
 \end{algorithmic}
 
+And if we use a container to manage all children of a node, the
+algorihtm is like below.
+
+\begin{algorithmic}[1]
+\Function{LINK'}{$T_1, T_2$}
+  \If{$KEY(T_2) < KEY(T_1)$}
+    \State Exchange $T_1 \leftrightarrow T_2$
+  \EndIf
+  \State $PARENT(T_2) \gets T_1$
+  \State $INSERT-BEFORE(CHILDREN(T_1), T_2)$
+  \State $RANK(T_1) \gets RANK(T_1) + 1$
+  \State \Return $T_1$
+\EndFunction
+\end{algorithmic}
+
+The $LINK$ operation takes $O(1)$ time.
+
+\subsubsection*{Link operation in C++}
+
+\subsubsection*{Link operation in Python}
+For the `left child, right sibling' approach, the Python version of $LINK$
+algorithm is implemented as below.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def link(t1, t2):
+    if t2.key < t1.key:
+        (t1, t2) = (t2, t1)
+    t2.sibling = t1.child
+    t1.child = t2
+    t2.parent = t1
+    t1.rank = t1.rank + 1
+    return t1
+\end{lstlisting}
+
+And we can use Python list to manage the children, so that the 
+algoritm turns to be the following.
+
+\begin{lstlisting}
+def link(t1, t2):
+    if t2.key < t1.key:
+        (t1, t2) = (t2, t1)
+    t2.parent = t1
+    t1.children.insert(0, t2)
+    t1.rank = t1.rank + 1
+    return t1
+\end{lstlisting}
+
+\subsubsection*{Link operation in Haskell}
+For Haskell program, we construct a new Node with the smaller root and
+build the children with the bigger root as the first child like below.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+link :: (Ord a) => BiTree a -> BiTree a -> BiTree a
+link t1@(Node r x c1) t2@(Node _ y c2) = 
+    if x<y then Node (r+1) x (t2:c1)
+    else Node (r+1) y (t1:c2)
+\end{lstlisting}
+
+\subsubsection*{Link operation in Scheme/Lisp}
+
 \subsubsection{Find the minimum element in the heap (top)}
+Among the forest as the binomial heap, each binomial tree conforms to
+heap property that the root contains the minimum element in that tree.
+In order to find the minimum element in the heap, we can select the 
+smallest root of these trees. Since there are $\lg N$ binomial trees
+where $N$ is the element number, this approach takes $O(\lg N)$ time.
+
+For the `left child, right sibling' approach, the algorithm can be
+decribed as the following.
+
+\begin{algorithmic}[1]
+\Function{FIND-MINUMUM}{$H$}
+  \State $T \gets HEAD(H)$
+  \State $min \gets \infty$
+  \While{$T \ne NIL$}
+    \If{$KEY(T) < min$}
+      \State $min \gets KEY(T)$
+    \EndIf
+    \State $T \gets SIBLING(T)$
+  \EndWhile
+  \State \Return $min$
+\EndFunction
+\end{algorithmic}
+
+While if we manage the children with collection containers, the link
+list iteration is abstract to find the minmum element among the list.
+
+\subsubsection{Find the minimum element in C++}
+
+\subsubsection{Find the minimum element in Python}
+`left child, right sibling'
+
+Python list
+
+\subsubsection{Find the minimum element in Haskell}
+Explain later together with extract min
+
+\subsubsection{Find the minimum element in Scheme/Lisp}
 
 \subsubsection{Merge two heaps}
 
