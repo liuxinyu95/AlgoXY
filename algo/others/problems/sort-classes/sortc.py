@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# TODO: state the problem clearly here...
+# TODO: License...
 
 import string
 
@@ -8,7 +8,6 @@ class Item:
     def __init__(self):
         self.key = ""
         self.pre = []
-        self.parent = None
 
 def create_item(s):
     (c, pres) = s.split(':')
