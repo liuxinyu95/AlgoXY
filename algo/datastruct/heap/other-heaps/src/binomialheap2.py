@@ -35,8 +35,8 @@ class BinomialTree:
 def link(t1, t2):
     if t2.key < t1.key:
         (t1, t2) = (t2, t1)
-    t1.children.insert(0, t2)
     t2.parent = t1
+    t1.children.insert(0, t2)
     t1.rank = t1.rank + 1
     return t1
 
