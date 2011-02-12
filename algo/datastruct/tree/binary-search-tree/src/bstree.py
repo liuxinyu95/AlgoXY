@@ -19,12 +19,24 @@
 
 # I tested that python doesn't support tail recursion.
 # as below:
+#
+# Program A
+#
 # def fsum(n):
 #     if(n==0):
 #         return 0
 #     else:
 #         return n+fsum(n-1)
-# if we call fsum(1000), the error is:
+#
+# Program B
+#
+# def fact(n, acc = 1):
+#        if n == 0:
+#                return acc
+#        else:
+#                return fact(n-1, acc*n)  
+# 
+# if we call fsum(1000) or fact(1000), the error is:
 # RuntimeError: maximum recursion depth exceeded
 
 import sys
