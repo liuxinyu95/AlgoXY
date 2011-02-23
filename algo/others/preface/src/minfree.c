@@ -20,7 +20,7 @@
 #include "randlist.h"
 #include "measure.h"
 
-#define N 100000 // 0.1 million
+#define N 1000000
 #define WORD_LENGTH sizeof(int)
 
 void setbit(unsigned int* bits, unsigned int i){
@@ -131,5 +131,10 @@ int main(){
  * n = 100,000   0.1 million
  * brute force: 5.4 [s]
  * flags: average time of flags method: 0.001860[s]
- * bitmap: 
+ * bitmap: average time of bitmap method: 0.001710[s]
+ *
+ * n = 1,000,000   1 million
+ * brute force: ???
+ * flags: average time of flags method: 0.034960[s]
+ * bitmap: average time of bitmap method: 0.022630[s]
  */
