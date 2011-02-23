@@ -129,6 +129,7 @@ $max(x_i) \geq N-1$. And we have the following fact.
 
 \be
 minfree(x_1, x_2, ..., x_N) \leq N
+\label{min-free}
 \ee
 
 One solution is to use an array of $N+1$ flags to mark either a number
@@ -181,7 +182,7 @@ minor improvement points.
 
 \lstset{language = C}
 \begin{lstlisting}
-#define N 100000 // 0.1 million
+#define N 1000000 // 1 million
 #define WORD_LENGTH sizeof(int)
 
 void setbit(unsigned int* bits, unsigned int i){
@@ -210,8 +211,85 @@ int min_free(int* xs, int n){
 This C program can handle 1,000,000 (1 million) IDs in just 0.023 second
 in my computer.
 
-\subsection{Improvement 2}
+\subsection{Improvement 2, Divide and Conquer}
+Although the above improvement looks perfect, it costs $O(N)$ extra
+spaces to keep a check list. if $N$ is huge number, which means
+the huge amount of spaces are need. 
 
+The typical divide and conquer strategy is to break the problem
+to some smaller ones, and solve them to get the final answer.
+
+Based on formula \ref{min-free}, if we halve the series of number
+at position $\lfloor N/2 \rfloor$, We can put all numbers $x_i \leq \lfloor N/2 \rfloor$ as the first half sub-list $A'$, put all the others as 
+the second half sub-list $A''$.
+If the length of $A'$ is exactly $\lfloor N/2 \rfloor$, which means
+the first half of numbers are `full', it indicates that the
+minimum free number must be in $A''$. We need recursively seek
+in the shorter list $A''$. Otherwise, it means the minimum free
+number is located in $A'$, which again leads to a smaller problem.
+
+When we search the minimum free number in $A''$, the condition changes
+a little bit, we are not searching the smallest free number from
+$0$, but actually from $\lfloor N/2 \rfloor + 1$ as the lower bound.
+So the algorithm is something like $minfree(A, l, u)$, where $l$ is
+the lower bound and $u$ is the upper bound index of the element.
+
+Note that there is a trivial case, that if the number list is
+empty, we merely return the lower bound as the result.
+
+\begin{algorithmic}[1]
+\Function{Min-Free}{$A$}
+  \State \Return \Call{Binary-Search}{$A, 0, LENGTH(A)-1)$}
+\EndFunction
+\Statex
+\Function{Binary-Search}{$A, l, u$}
+  \State $m \gets \lfloor (l + u)/2 \rfloor$
+  \State $A' \gets \{ \forall x \in A \wedge x \leq m \}$
+  \State $A'' \gets \{ \forall x \in A \wedge x > m \}$
+  \If{$|A'| = m - l + 1$}
+    \State \Return \Call{Binary-Search}{$A'', m+1, u$}
+  \Else
+    \State \Return \Call{Binary-Search}{$A', l, m$}
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+It is obvious that this algorithm doesn't need any extra
+spaces\footnote{Procedural programmer may note that it 
+actually takes $O(\lg N)$ stack spaces for book-keeping. As
+we'll see later, this can be eliminated either by tail
+recursion optimization, for instance gcc -O2. or by manually
+change the recursion to iteration}. In each call it
+performs $O(|A|)$ comparison to build $A'$ and $A''$.
+After that the problem scale havles.
+So the time need for this algorithm is $T(N) = T(N/2) + O(N)$
+which deduce to $O(N)$. Another way to analyze the performance
+is by observing that at the first time it takes $O(N)$
+to build $A'$ and $A''$ and in the second call, it takes
+$O(N/2)$, and $O(N/4)$ for the third time... The total
+time is $O(N + N/2 + N/4 + ...) = O(2N) = O(N)$ .
+
+In functional programming language such as Haskell, 
+partition list has already been provided in library. 
+This algorithm can be translated as the following.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+import Data.List
+
+minFree xs = bsearch xs 0 (length xs - 1)
+
+bsearch xs l u | xs == [] = l
+               | length as == m - l + 1 = bsearch bs (m+1) u
+               | otherwise = bsearch as l m
+    where
+      m = (l + u) `div` 2
+      (as, bs) = partition (<=m) xs
+\end{lstlisting}
+
+\subsection{Expressiveness V.S. Performance}
+
+\section{The number puzzle}
 % ================================================================
 %                 Short summary
 % ================================================================
