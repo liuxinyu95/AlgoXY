@@ -243,6 +243,9 @@ empty, we merely return the lower bound as the result.
 \EndFunction
 \Statex
 \Function{Binary-Search}{$A, l, u$}
+  \If{$A$ is empty}
+    \State \Return $l$
+  \EndIf
   \State $m \gets \lfloor (l + u)/2 \rfloor$
   \State $A' \gets \{ \forall x \in A \wedge x \leq m \}$
   \State $A'' \gets \{ \forall x \in A \wedge x > m \}$
@@ -288,6 +291,85 @@ bsearch xs l u | xs == [] = l
 \end{lstlisting}
 
 \subsection{Expressiveness V.S. Performance}
+The divide and conquer solution can be formally expressed
+as a function rather than the pseudo code.
+
+\[
+search(A, l, u) = \left \{ 
+       \begin{array}
+       {r@{\quad:\quad}l}
+       l & A \mbox{ is empty} \\
+       search(A'', m+1, u) &  |A'| = m - l + 1 \\
+       search(A',  l, m) & otherwise
+       \end{array}
+\right.
+\]
+
+where
+
+\[ \begin{array}{l}
+m = \lfloor \frac{l+u}{2} \rfloor \\
+A'  = \{ \forall x \in A \wedge x \leq m \} \\
+A'' = \{ \forall x \in A \wedge x > m \} \\
+\end{array} \]
+
+This way is much more expressive and we'll adopt a lot of
+such functions in the later series. Typically, we translate
+the functional algorithm or functions to Haskell code as
+implementation.
+
+Imperative language programmers may concern about the performance
+of this kind of implementation. For instance in this minimum
+free number problem, The function recursively called proportion
+to $O(\lg N)$, which means the stack size consumed is $O(\lg N)$.
+It's not free in terms of space.
+
+If we go one step ahead, we can eliminate the recursion by
+iteration which yeilds the following C program.
+
+\lstset{language=C}
+\begin{lstlisting}
+int min_free(int* xs, int n){
+  int l=0;
+  int u=n-1;
+  while(n){
+    int m = (l + u) / 2;
+    int right, left = 0;
+    for(right = 0; right < n; ++ right)
+      if(xs[right] <= m){
+	swap(xs[left], xs[right]);
+	++left;
+      }
+    if(left == m - l + 1){
+      xs = xs + left;
+      n  = n - left;
+      l  = m+1;
+    }
+    else{
+      n = left;
+      u = m;
+    }
+  }
+  return l;
+}
+\end{lstlisting}
+
+This program uses a `quick-sort' like approach to re-arrange the 
+array so that all the elements before $left$ are less than or equal
+to $m$; while the others between $left$ and $right$ are greater
+than $m$. This is shown in figure \ref{fig:divide}.
+
+\begin{figure}[htbp]
+       \begin{center}
+       	  \includegraphics[scale=0.5]{img/divide-by-m.ps}
+        \caption{Divide the array, all $x[i] \leq m$ where $0 \leq i < left$; while all $x[i] > m$ where $left \leq i < right$. The left elemnents are unknown.} \label{fig:divide}
+       \end{center}
+\end{figure}
+
+This program is fast and it doesn't need extra stack space. However,
+compare to the previous Haskell program, it's hard to read and the
+expressiveness decreased. We have to make balance between performance
+and expressiveness.
 
 \section{The number puzzle}
 % ================================================================

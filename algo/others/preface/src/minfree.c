@@ -86,6 +86,56 @@ int bitmap_min_free(int* xs, int n){
   return n; //shouldn't be here
 }
 
+// binary search
+//  xs: array, n: length of xs
+//  l: lower bound, u: upper bound
+int binary_search(int* xs, int n, int l, int u){
+  if(n==0) return l;
+  int m = (l + u) / 2;
+  int right, left = 0;
+  //0 ... <=m ... left ... >m ... right ...? ...
+  for(right = 0; right < n; ++ right)
+    if(xs[right] <= m){
+      swap(xs[left], xs[right]);
+      ++left;
+    }
+  if(left == m - l + 1)
+    return binary_search(xs+left, n-left, m+1, u);
+  else
+    return binary_search(xs, left, l, m);
+}
+
+// min-free, divide and conquer, with recursion.
+int dc_min_free(int* xs, int n){
+  return binary_search(xs, n, 0, n-1);
+}
+
+// min-free, divide and conquer, eliminate recursion.
+int dc_min_free_iter(int* xs, int n){
+  int l=0;
+  int u=n-1;
+  while(n){
+    int m = (l + u) / 2;
+    int right, left = 0;
+    //0 ... <=m ... left ... >m ... right ...? ...
+    for(right = 0; right < n; ++ right)
+      if(xs[right] <= m){
+	swap(xs[left], xs[right]);
+	++left;
+      }
+    if(left == m - l + 1){
+      xs = xs + left;
+      n  = n - left;
+      l  = m+1;
+    }
+    else{
+      n = left;
+      u = m;
+    }
+  }
+  return l;
+}
+
 int fire_brute_force(int x, int y){
   return brute_force((int*)x, y);
 }
@@ -96,6 +146,14 @@ int fire_flags(int x, int y){
 
 int fire_bits(int x, int y){
   return bitmap_min_free((int*)x, y);
+}
+
+int fire_dc_min_free(int x, int y){
+  return dc_min_free((int*)x, y);
+}
+
+int fire_dc_min_free_iter(int x, int y){
+  return dc_min_free_iter((int*)x, y);
 }
 
 double measure_min_free(Fun f){
@@ -121,6 +179,12 @@ int main(){
 
   printf("average time of bitmap method: %f[s]\n",
 	 measure_min_free(fire_bits));
+
+  printf("average time of divide and conquer: %f[s]\n",
+	 measure_min_free(fire_dc_min_free));
+
+  printf("average time of divide and conquer without recursion: %f[s]\n",
+	 measure_min_free(fire_dc_min_free_iter));
 
   return 0;
 }
