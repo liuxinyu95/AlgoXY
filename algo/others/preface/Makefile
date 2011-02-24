@@ -20,7 +20,7 @@ tool:
 	make tool -C src
 
 image:
-	#make -C img
+	make -C img
 
 pdf: $(OBJECT).dvi
 	dvipdfmx $(OBJECT)
