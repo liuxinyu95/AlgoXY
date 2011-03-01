@@ -27,11 +27,13 @@ def kmp_match(w, p):
     fallback = fprefix(p)
     k = 0 # how many elements have been matched so far.
     res = []
+    tm = 0
     for i in range(n):
-        #print "w[", i, "]=", w[i], "---\tp[", k, "]=", p[k]
         while k > 0 and p[k] != w[i]:
             k = fallback[k] #fall back
+            tm = tm + 1
         if p[k] == w[i]:
+            tm = tm + 1
             k = k + 1
         if k == m:
             res.append(i+1-m)
@@ -66,10 +68,6 @@ def naive_match(w, p):
     return res
 
 def test():
-    #assert(fprefix("abcdabd"), [0,0,0,0,1,2])
-    #print kmp_match("abc abcdab abcdabcdabde", "abcdabd")
-    #assert(kmp_match("abc abcdab abcdabcdabde", "abcdabd"),
-    #       naive_match("abc abcdab abcdabcdabde", "abcdabd"))
     for k in xrange(100):
         n = random.randint(10, 10000)
         w = [random.choice(string.ascii_lowercase) for i in xrange(n)]
