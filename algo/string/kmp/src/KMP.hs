@@ -16,36 +16,28 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 
--- Usage:
---  search "aab" "abaabbabaaba"
---    > ("abaab", "babaaba")
---  search "aab" "babaaba"
---    > ("babaab", "a")
---  search "aab" "a"
---    > ("", "a")
-search :: (Eq a) => [a] -> [a] -> ([a], [a])
-search pattern text = searchKMP fallback [] pattern [], text
-    where
-      fallback = build pattern
+module KMP where
 
-type Fallback a = [a] -> [a] -> [a] -> [a] -> ([a], [a], [a], [a])
+import Data.List
+import Data.Function (on)
 
--- searchKMP sp ps sx xs
---   where pattern = reverse sp ++ ps
---         text    = reverse xs ++ xs
-serachKMP :: (Eq a) => Fallback a -> [a] -> [a] -> [a] -> [a] -> ([a], [a])
-searchKMP _ _ _  sx [] = ([], reverse sx) -- failed by the end
-searchKMP _ _ [] sx xs = (reverse sx, xs) -- find a match
-searchKMP f sp (p:ps) sx (x:xs) =
-    if p == x then searchKMP (p:sp) ps (x:sx) xs
-    else searchKMP sp' ps' sx' xs' where
-        (sp', ps' sx' xs') = f sp (p:ps) sx (x:xs)
+kmpSearch pattern text = kmpSearch' next ([], pattern) ([], text)
 
--- build fall back function
-build :: (Eq a) => [a] -> Fallback a
+kmpSearch' _ (sp, []) (sw, []) = [length sw]
+kmpSearch' _ _ (_, []) = []
+kmpSearch' f (sp, []) (sw, ws) = length sw : kmpSearch' f (f sp []) (sw, ws)
+kmpSearch' f (sp, (p:ps)) (sw, (w:ws))
+    | p == w = kmpSearch' f ((p:sp), ps) ((w:sw), ws)
+    | otherwise = kmpSearch' f (f sp ps) (sw, (w:ws))
+                  
+next [] ps = ([], ps)
+next [p] ps = ([], p:ps)
+next sp ps = (sp', ps') where
+    prev = reverse sp
+    prefix = longest [xs | xs <- init $ tail $ inits prev,
+                           xs `isSuffixOf` prev]
+    sp' = reverse prefix
+    ps' = (prev ++ ps) \\ prefix
+    longest xs = if xs==[] then [] 
+                 else maximumBy (compare `on` length) xs
 
-
--- example fallback
--- fallback [] "aab" xs (y:ys) = ([], "aab", (y:xs), ys) : move ahead
--- fallback "a" "ab" xs (y:ys) = ([], "aab", (y:xs), ys) : move ahead
--- fallback "aa" "b" xs (y:ys) = ("a", "ab", xs, (y:ys)) : stay here
