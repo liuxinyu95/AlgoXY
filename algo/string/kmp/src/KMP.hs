@@ -20,16 +20,21 @@ module KMP where
 
 import Data.List
 import Data.Function (on)
+import Test.QuickCheck
 
-kmpSearch pattern text = kmpSearch' next ([], pattern) ([], text)
+-- Brute Force KMP
+kmpSearch1 ptn text = kmpSearch' next ([], ptn) ([], text)
 
 kmpSearch' _ (sp, []) (sw, []) = [length sw]
 kmpSearch' _ _ (_, []) = []
 kmpSearch' f (sp, []) (sw, ws) = length sw : kmpSearch' f (f sp []) (sw, ws)
 kmpSearch' f (sp, (p:ps)) (sw, (w:ws))
     | p == w = kmpSearch' f ((p:sp), ps) ((w:sw), ws)
-    | otherwise = kmpSearch' f (f sp ps) (sw, (w:ws))
-                  
+    | otherwise = if sp ==[] then kmpSearch' f (sp, (p:ps)) ((w:sw), ws)
+                  else kmpSearch' f (f sp (p:ps)) (sw, (w:ws))
+
+-- Why we said this solution is brute force is because
+--  we provide a brute-force prefix-function
 next [] ps = ([], ps)
 next [p] ps = ([], p:ps)
 next sp ps = (sp', ps') where
@@ -41,3 +46,71 @@ next sp ps = (sp', ps') where
     longest xs = if xs==[] then [] 
                  else maximumBy (compare `on` length) xs
 
+-- Improvement 1, 
+failure :: (Eq a)=> ([a], [a]) -> ([a], [a])
+failure ([], ys) = ([], ys)
+failure (xs, ys) = fallback (init xs) (last xs:ys) where
+    fallback as bs | as `isSuffixOf` xs = (as, bs)
+                   | otherwise = fallback (init as) (last as:bs)
+
+kmpSearch2 :: (Eq a) => [a] -> [a] ->[Int]
+kmpSearch2 ws txt = snd $ foldl f (([], ws), []) (zip txt [1..]) where
+    f (p@(xs, (y:ys)), ns) (x, n) | x == y = if ys==[] then ((xs++[y], ys), ns++[n])
+                                             else ((xs++[y], ys), ns)
+                                  | xs == [] = (p, ns)
+                                  | otherwise = f (failure p, ns) (x, n)
+    f (p, ns) e = f (failure p, ns) e
+
+-- Improvement 2,
+data State a = E | S a (State a) (State a) -- state, ok-state, fail-state
+               deriving (Eq, Show)
+
+build :: (Eq a)=>State ([a], [a]) -> State ([a], [a])
+build (S s@(xs, []) E E) = S (xs, []) (build (S (failure s) E E)) E
+build (S s@(xs, (y:ys)) E E) = S s l r where
+    l = build (S (failure s) E E) -- fail state
+    r = build (S (xs++[y], ys) E E)
+
+matched (S (_, []) _ _) = True
+matched _ = False
+
+kmpSearch3 :: (Eq a) => [a] -> [a] -> [Int]
+kmpSearch3 ws txt = snd $ foldl f (auto, []) (zip txt [1..]) where
+    auto = build (S ([], ws) E E)
+    f (s@(S (xs, ys) l r), ns) (x, n) 
+        | [x] `isPrefixOf` ys = if matched r then (r, ns++[n])
+                                else (r, ns)
+        | xs == [] = (s, ns)
+        | otherwise = f (l, ns) (x, n)
+
+-- Improvement 3,
+--   Remove the failure function completely
+--   suppose fails is a automata which can handle all failure state
+--   This is based on Richard Bird's result [1]
+kmpSearch4 :: (Eq a) => [a] -> [a] -> [Int]
+kmpSearch4 ws txt = snd $ foldl tr (root, []) (zip txt [1..]) where
+    root = build' E ([], ws)
+    build' fails (xs, []) = S (xs, []) fails E
+    build' fails s@(xs, (y:ys)) = S s fails succs where
+        succs = build' (fst (tr (fails, []) (y, 0))) (xs++[y], ys)
+    tr (E, ns) _ = (root, ns)
+    tr ((S (xs, ys) fails succs), ns) (x, n) 
+        | [x] `isPrefixOf` ys = if matched succs then (succs, ns++[n]) else (succs, ns)
+        | otherwise = tr (fails, ns) (x, n)
+
+
+-- naive search
+naiveSearch ws txt = map length $ filter (ws `isSuffixOf`) (inits txt)
+
+testKMP f = do
+  putStrLn $ show $ map (f ws) ts where
+         ws = "abababc"
+         ts = ["aaabababc", "aaabababcaaa", "ccaaabababababacca", "aaaabababcccaaabababababccaa"]
+
+prop_kmpSearch1 :: [Bool] -> [Bool] -> Bool
+prop_kmpSearch1 as bs = (kmpSearch1 as bs) == (naiveSearch as bs)
+
+quickTest = do
+  Test.QuickCheck.test prop_kmpSearch1
+
+--[1] Pearls of Functional algorithm design

@@ -27,13 +27,10 @@ def kmp_match(w, p):
     fallback = fprefix(p)
     k = 0 # how many elements have been matched so far.
     res = []
-    tm = 0
     for i in range(n):
         while k > 0 and p[k] != w[i]:
             k = fallback[k] #fall back
-            tm = tm + 1
         if p[k] == w[i]:
-            tm = tm + 1
             k = k + 1
         if k == m:
             res.append(i+1-m)
