@@ -237,25 +237,31 @@ the lower bound and $u$ is the upper bound index of the element.
 Note that there is a trivial case, that if the number list is
 empty, we merely return the lower bound as the result.
 
-\begin{algorithmic}[1]
-\Function{Min-Free}{$A$}
-  \State \Return \Call{Binary-Search}{$A, 0, LENGTH(A)-1)$}
-\EndFunction
-\Statex
-\Function{Binary-Search}{$A, l, u$}
-  \If{$A$ is empty}
-    \State \Return $l$
-  \EndIf
-  \State $m \gets \lfloor (l + u)/2 \rfloor$
-  \State $A' \gets \{ \forall x \in A \wedge x \leq m \}$
-  \State $A'' \gets \{ \forall x \in A \wedge x > m \}$
-  \If{$|A'| = m - l + 1$}
-    \State \Return \Call{Binary-Search}{$A'', m+1, u$}
-  \Else
-    \State \Return \Call{Binary-Search}{$A', l, m$}
-  \EndIf
-\EndFunction
-\end{algorithmic}
+The divide and conquer solution can be formally expressed
+as a function rather than the pseudo code.
+
+\[
+minfree(A) = search(A, 0, |A|-1)
+\]
+
+\[
+search(A, l, u) = \left \{ 
+       \begin{array}
+       {r@{\quad:\quad}l}
+       l & A \mbox{ is empty} \\
+       search(A'', m+1, u) &  |A'| = m - l + 1 \\
+       search(A',  l, m) & otherwise
+       \end{array}
+\right.
+\]
+
+where
+
+\[ \begin{array}{l}
+m = \lfloor \frac{l+u}{2} \rfloor \\
+A'  = \{ \forall x \in A \wedge x \leq m \} \\
+A'' = \{ \forall x \in A \wedge x > m \} \\
+\end{array} \]
 
 It is obvious that this algorithm doesn't need any extra
 spaces\footnote{Procedural programmer may note that it 
@@ -291,33 +297,6 @@ bsearch xs l u | xs == [] = l
 \end{lstlisting}
 
 \subsection{Expressiveness V.S. Performance}
-The divide and conquer solution can be formally expressed
-as a function rather than the pseudo code.
-
-\[
-search(A, l, u) = \left \{ 
-       \begin{array}
-       {r@{\quad:\quad}l}
-       l & A \mbox{ is empty} \\
-       search(A'', m+1, u) &  |A'| = m - l + 1 \\
-       search(A',  l, m) & otherwise
-       \end{array}
-\right.
-\]
-
-where
-
-\[ \begin{array}{l}
-m = \lfloor \frac{l+u}{2} \rfloor \\
-A'  = \{ \forall x \in A \wedge x \leq m \} \\
-A'' = \{ \forall x \in A \wedge x > m \} \\
-\end{array} \]
-
-This way is much more expressive and we'll adopt a lot of
-such functions in the later series. Typically, we translate
-the functional algorithm or functions to Haskell code as
-implementation.
-
 Imperative language programmers may concern about the performance
 of this kind of implementation. For instance in this minimum
 free number problem, The function recursively called proportion
@@ -361,7 +340,7 @@ than $m$. This is shown in figure \ref{fig:divide}.
 
 \begin{figure}[htbp]
        \begin{center}
-       	  \includegraphics[scale=0.5]{img/divide-by-m.ps}
+       	  \includegraphics[scale=1]{img/divide-by-m.ps}
         \caption{Divide the array, all $x[i] \leq m$ where $0 \leq i < left$; while all $x[i] > m$ where $left \leq i < right$. The left elemnents are unknown.} \label{fig:divide}
        \end{center}
 \end{figure}
@@ -372,6 +351,133 @@ expressiveness decreased. We have to make balance between performance
 and expressiveness.
 
 \section{The number puzzle}
+
+If the first problem, to find the minimum free number, is a some what
+useful in practice, this problem is a `pure' one for fun. The puzzle 
+is to find the 1,500th number, which only contains factor 2, 3 or 5.
+The first 3 numbers are of course 2, 3, and 5. Number $60 = 2^23^15^1$,
+However it is the 25th number. Number $21 = 2^03^17^1$, isn't a valid
+number because it contains a factor 7. The first 10 such numbers are list
+as the following.
+
+2,3,4,5,6,8,9,10,12,15
+
+If we consider $1=2^03^05^0$, then 1 is also a valid number and it is
+the first one.
+
+\subsection{The brute-force solution}
+It seems the solution is quite easy without need any serious algorithms.
+We can check all numbers from 1, then extract all factors of 2, 3 and 5
+to see if the left part is 1.
+
+\begin{algorithmic}[1]
+\Function{Get-Number}{$n$}
+  \State $x \gets 0$
+  \State $i \gets 0$
+  \Loop
+    \If{\Call{Valid?}{$x$}}
+      \State $i \gets i + 1$
+      \If{$i = n$}
+        \State \Return $x$
+      \EndIf
+    \EndIf
+  \EndLoop
+\EndFunction
+\Statex
+\Function{Valid?}{$x$}
+  \While{$x \bmod 2 = 0$}
+    \State $x \gets x / 2$
+  \EndWhile
+  \While{$x \bmod 3 = 0$}
+    \State $x \gets x / 3$
+  \EndWhile
+  \While{$x \bmod 5 = 0$}
+    \State $x \gets x / 5$
+  \EndWhile
+  \If{$x = 1$}
+    \State \Return $True$
+  \Else
+    \State \Return $False$
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+This `brute-force' algorithm works for most small $n$. However, to find
+the 1500th number, the C program based on this algorithm takes 40.39 seconds
+in my computer. I have to kill the program after 10 minutes when I
+increased $n$ to 15,000.
+
+\subsection{Improvement 1}
+Analysis of the above algorithm shows that modular and divide calculations
+are very expensive \cite{Bentley}. And they executed a lot in loops.
+Instead of checking a number contains only 2, 3, or 5 as factors, one
+alternative solution is to construct such number by these factors.
+
+We start from 1, and times it with 2, or 3, or 5 to generate rest numbers.
+The problem turns to be how to generate the candidate number in order?
+One handy way is to utilize the queue data structure.
+
+A queue data structure is used to push elements at one end, and pops
+them at the other end. So that the element be pushed first is also
+be popped out first. This property is called FIFO (First-In-First-Out).
+
+The idea is to push 1 as the only element to the queue, then we pop
+an element, times it with 2, 3, and 5, to get 3 new elements. We
+then push them back to the queue in order. Note that, the new elements may
+have already existed in the queue. In such case, we just drop the
+element. The new elment may also smaller than the others in the queue,
+so we must put them to the correct position. Figure \ref{fig:queues} 
+illustrates this idea.
+
+\begin{figure}[htbp]
+       \begin{center}
+       	  \includegraphics[scale=0.5]{img/q1.ps}
+       	  \includegraphics[scale=0.5]{img/q2.ps}
+       	  \includegraphics[scale=0.5]{img/q3.ps}
+       	  \includegraphics[scale=0.5]{img/q4.ps}
+        \caption{First 4 steps of constructing numbers with a queue. \newline
+        1. Queue is initialized with 1 as the only element;\newline
+        2. New elements 2, 3, and 5 are pushed back; \newline
+        3. New elements 4, 6, and 10, are pushed back in order; \newline
+        4. New elements 9 and 15 are pushed back, element 6 already exists.} \label{fig:queues}
+       \end{center}
+\end{figure}
+
+This algorithm is shown as the following.
+
+\begin{algorithmic}[1]
+\Function{Get-Number}{$n$}
+  \State $Q \gets NIL$
+  \State \Call{Push}{$Q, 1$}
+  \While{$n > 0$}
+    \State $x \gets$ \Call{Pop}{$Q$}
+    \State \Call{Unique-Insert}{$Q, 2x$}
+    \State \Call{Unique-Insert}{$Q, 3x$}
+    \State \Call{Unique-Insert}{$Q, 5x$}
+  \EndWhile
+  \State \Return $x$
+\EndFunction
+\Statex
+\Function{Unique-Insert}{$Q, x$}
+  \State $i \gets 0$
+  \While{$i < |Q| \wedge Q[i] < x$}
+    \State $i \gets i + 1$
+  \EndWhile
+  \If{$i < |Q| \wedge x = Q[i]$}
+    \State \Return
+  \EndIf
+  \State \Call{Insert}{$Q, i, x$}
+\EndFunction
+\end{algorithmic}
+
+The insert function takes $O(|Q|)$ time to find the proper position and insert
+it. If the element has already existed, it just returns.
+
+A rough esitmation tells that the length of the queue increase proportion to $n$,
+(less than 3 times), so the total running time is $O(3(1+2+3+...+n)) = O(n^2)$. 
+
+\subsection{Improvement 2}
+
 % ================================================================
 %                 Short summary
 % ================================================================
@@ -409,14 +515,11 @@ download position: http://sites.google.com/site/algoxy/otherheaps/otherheaps.zip
 \bibitem{Bird-book}
 Richard Bird. ``Pearls of functional algorithm design''. Cambridge University Press; 1 edition (November 1, 2010). ISBN-10: 0521513383
 
+\bibitem{Bentley}
+Jon Bentley. ``Programming Pearls(2nd Edition)''. Addison-Wesley Professional; 2 edition (October 7, 1999). ISBN-13: 978-0201657883
+
 \bibitem{okasaki-book}
 Chris Okasaki. ``Purely Functional Data Structures''. Cambridge university press, (July 1, 1999), ISBN-13: 978-0521663502
-
-\bibitem{wiki-pascal-triangle}
-Wikipedia, ``Pascal's triangle''. http://en.wikipedia.org/wiki/Pascal's\_triangle
-
-\bibitem{lxy-bheap}
-Liu Xinyu. ``Binary heaps with functional and imperative implementation'', https://sites.google.com/site/algoxy/bheap
 
 \end{thebibliography}
 
