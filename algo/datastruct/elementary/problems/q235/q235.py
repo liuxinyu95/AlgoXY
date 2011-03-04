@@ -8,7 +8,7 @@ def get(k):
         q = uniq_insert(q, x*3)
         q = uniq_insert(q, x*5)
         k = k - 1
-    return q.pop(0)
+    return x
 
 def uniq_insert(q, x):
     i = 0
