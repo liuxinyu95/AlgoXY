@@ -1,4 +1,4 @@
-IMG_OBJECTS = 
+IMG_OBJECTS = big-O-1q
 DOT_OBJECTS = divide-by-m q1 q2 q3 q4
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
