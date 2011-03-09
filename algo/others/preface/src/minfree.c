@@ -86,6 +86,22 @@ int bitmap_min_free(int* xs, int n){
   return n; //shouldn't be here
 }
 
+/* a small fine tuned version */
+int bitmap_min_free1(int* xs, int n){
+  int i, j, len = N/WORD_LENGTH+1;
+  for(i=0; i<len; ++i)
+    bits[i]=0;
+  for(i=0; i<n; ++i)
+    if(xs[i]<n)
+      setbit(bits, xs[i]);
+  for(i=0; ; ++i)
+    if(~bits[i] !=0 )
+      for(j=0; ; ++j)
+	if(!testbit(bits, i*WORD_LENGTH+j))
+	  return i*WORD_LENGTH+j;
+  return n; //shouldn't be here
+}
+
 // binary search
 //  xs: array, n: length of xs
 //  l: lower bound, u: upper bound
@@ -169,8 +185,35 @@ double measure_min_free(Fun f){
   return tm / 100.00;
 }
 
+typedef int (*MinFree)(int*, int);
+
+int verify_min_free(MinFree f){
+  int i;
+  printf("verify against brute-force method...\n");
+  for(i=0; i < 10; ++i){
+    shuffle(ids, 100);
+    if(brute_force(ids, 99) != f(ids, 99)){
+      printf("failed\n");
+      return 0;
+    }
+  }
+  printf("OK\n");
+  return 1;
+}
+
+void verify(){
+  printf("verify flags method: %d\n", verify_min_free(flag_map));
+  printf("verify bitmap method: %d\n", verify_min_free(bitmap_min_free));
+  printf("verify bitmap1 method: %d\n", verify_min_free(bitmap_min_free1));
+  printf("verify divide & conquer method: %d\n", verify_min_free(dc_min_free));
+  printf("verify divide & conquer iter method: %d\n", verify_min_free(dc_min_free_iter));
+}
+
 int main(){
   init_ids();
+
+  verify();
+
   /* printf("average time of brute-force method: %f[s]\n", */
   /* 	 measure_min_free(fire_brute_force)); */
 
