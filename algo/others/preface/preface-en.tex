@@ -258,7 +258,7 @@ minfree(A) = search(A, 0, |A|-1)
 search(A, l, u) = \left \{ 
        \begin{array}
        {r@{\quad:\quad}l}
-       l & A \mbox{ is empty} \\
+       l & A = \phi \\
        search(A'', m+1, u) &  |A'| = m - l + 1 \\
        search(A',  l, m) & otherwise
        \end{array}
@@ -500,8 +500,77 @@ The C program based on this algorithm takes only 0.016[s] to get the right answe
 859963392. Which is 2500 times faster than the brute force solution.
 
 %% Functional 1Q solution
+Improvement 1 can also be considered in recursive way. Suppose $X$ is the infinity
+series for all numbers which only contain factors of 2, 3, or 5. The following
+fomula shows an interesting relationship.
+
+\be
+  X = \{1\} \cup \{2x: \forall x \in X\} \cup \{3x: \forall x \in X \} \cup \{5x: \forall x \in X \}
+\ee
+
+Where we can define $\cup$ to a special form so that all elements are stored in order
+as well as unique to each other. Suppose that $X=\{x_1, x_2, x_3...\}$, $Y=\{y_1, y_2, y_3, ...\}$, $X' = \{x_2, x_3, ...\}$ and $Y'=\{y_2, y_3, ...\}$. We have
+
+\[
+X \cup Y = \left \{
+  \begin{array}{r@{\quad:\quad}l}
+  X & Y = \phi \\
+  Y & X = \phi \\
+  \{ x_1, X' \cup Y \} & x_1 < y_1 \\
+  \{ X' \cup Y' \} & x_1 = y_1 \\
+  \{ y_1, X \cup Y' \} & x_1 > y_1
+  \end{array}
+\right.
+\]
+
+In a functional programming language such as Haskell, which supports 
+lazy evaluation, The above infinity series functions can be translate
+into the following program.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+ns = 1:merge (map (*2) ns) (merge (map (*3) ns) (map (*5) ns))
+
+merge [] l = l
+merge l [] = l
+merge (x:xs) (y:ys) | x <y = x : merge xs (y:ys)
+                    | x ==y = x : merge xs ys
+                    | otherwise = y : merge (x:xs) ys
+\end{lstlisting}
+
+By evaluate ns !! (n-1), we can get the 1500th number as
+below.
+
+\begin{verbatim}
+>ns !! (1500-1)
+859963392
+\end{verbatim}
 
 \subsection{Improvement 2}
+Considering the above solution, although it is much faster than the brute-force one,
+It still has some drawbacks. It produces many duplicated numbers and they are
+finally dropped when examine the queue. Secondly, it does linear scan and insertion
+to keep the order of all elements in the queue, which degrade the ENQUEUE operation
+from $O(1)$ to $O(|Q|)$.
+
+If we use three queues instead of using only one, we can improve the solution one
+step ahead. Denote these queues as $Q_2$, $Q_3$, and $Q_5$, and we initialize
+them as $Q_2=\{ 2 \}$, $Q_3 = \{ 3\}$ and $Q_5 = \{ 5 \}$. Each time we DEQUEUEed
+the smallest one from $Q_2$, $Q_3$, and $Q_5$ as $x$. And do the following test:
+
+\begin{itemize}
+\item If $x$ comes from $Q_2$, we ENQUEUE $2x$, $3x$, and $5x$ back to 
+$Q_2$, $Q_3$, and $Q_5$ respectively;
+\item If $x$ comes from $Q_3$, we only need ENQUEUE $3x$ to $Q_3$, and $5x$ to $Q_5$;
+We needn't ENQUEUE $2x$ to $Q_2$, because $2x$ have already existed in $Q_3$;
+\item If $x$ comes from $Q_5$, we only need ENQUEUE $5x$ to $Q_5$; there is
+no need to ENQUEUE $3x$, $5x$ to $Q_3$, $Q_5$ because they have already been
+in them;
+\end{itemize}
+
+We repeatedly ENQUEUE the smallest one until we find the $n$-th element.
+
+
 
 % ================================================================
 %                 Short summary
