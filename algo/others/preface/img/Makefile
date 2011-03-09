@@ -1,5 +1,6 @@
 IMG_OBJECTS = big-O-1q
-DOT_OBJECTS = divide-by-m q1 q2 q3 q4
+DOT_OBJECTS = divide-by-m q1 q2 q3 q4 q235-1 q235-2 q235-3 \
+q235-4
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
