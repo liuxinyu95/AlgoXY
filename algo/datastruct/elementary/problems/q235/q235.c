@@ -19,6 +19,9 @@
 #include <stdio.h>
 #include <time.h> //for performance measurement
 
+#define MIN2(x, y) ((x)<(y)? (x):(y))
+#define MIN(x, y, z) MIN2(x, MIN2(y, z))
+
 typedef unsigned long Integer;
 
 typedef Integer (*Fun)(int);
@@ -94,6 +97,10 @@ Integer dequeue(struct queue* q){
   return x;
 }
 
+Integer head(struct queue* q){
+  return get_at(q, q->head);
+}
+
 void insert(struct queue* q, int i, Integer x){
   int j;
   for(j=q->tail; j>i; --j)
@@ -114,10 +121,15 @@ void ou_enqueue(struct queue* q, Integer x){
   insert(q, i, x);
 }
 
+void enqueue(struct queue* q, Integer x){
+  set_at(q, q->tail, x);
+  ++q->tail;
+}
+
 Integer get_number_q(int n){
   Integer x;
   struct queue q;
-  init_queue(&q, n*5);
+  init_queue(&q, n*3);
   ou_enqueue(&q, 1);
   while(n>0){
     x = dequeue(&q);
@@ -127,6 +139,39 @@ Integer get_number_q(int n){
     --n;
   }
   release_queue(&q);
+  return x;
+}
+
+Integer get_number_q235(int n){
+  if (n==1)
+    return 1;
+  struct queue Q2, Q3, Q5;
+  init_queue(&Q2, n);
+  init_queue(&Q3, n);
+  init_queue(&Q5, n);
+  enqueue(&Q2, 2);
+  enqueue(&Q3, 3);
+  enqueue(&Q5, 5);
+  Integer x;
+  while(n>1){
+    x = MIN(head(&Q2), head(&Q3), head(&Q5));
+    if(x == head(&Q2)){
+      dequeue(&Q2);
+      enqueue(&Q2, 2*x);
+      enqueue(&Q3, 3*x);
+      enqueue(&Q5, 5*x);
+    }
+    else if(x == head(&Q3)){
+      dequeue(&Q3);
+      enqueue(&Q3, 3*x);
+      enqueue(&Q5, 5*x);
+    }
+    else{
+      dequeue(&Q5);
+      enqueue(&Q5, 5*x);
+    }
+    --n;
+  }
   return x;
 }
 
@@ -166,6 +211,7 @@ int main(){
   printf("verify 1 queue solution: %d\n", verify(get_number_q));
   printf("1 queue method time: %f[s]\n", test(get_number_q, 1500));
   //performance(get_number_q);
+  printf("3 queues method time: %f[s]\n", test(get_number_q235, 1500));
   return 0;
 }
 

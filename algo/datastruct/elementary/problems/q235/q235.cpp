@@ -17,7 +17,7 @@
  */
 
 #include <iostream>
-#include <deque>
+#include <queue>
 #include <algorithm>
 #include <ctime>
 
@@ -27,29 +27,28 @@ using namespace std;
 Integer get_q235(int n){
   if(n==1) 
     return 1;
-  deque<Integer> Q2, Q3, Q5;
-  Q2.push_back(2);
-  Q3.push_back(3);
-  Q5.push_back(5);
+  queue<Integer> Q2, Q3, Q5;
+  Q2.push(2);
+  Q3.push(3);
+  Q5.push(5);
   Integer x;
-  while(n>1){
+  while(n-->1){
     x = min(min(Q2.front(), Q3.front()), Q5.front());
     if(x==Q2.front()){
-      Q2.pop_front();
-      Q2.push_back(x*2);
-      Q3.push_back(x*3);
-      Q5.push_back(x*5);
+      Q2.pop();
+      Q2.push(x*2);
+      Q3.push(x*3);
+      Q5.push(x*5);
     }
     else if(x==Q3.front()){
-      Q3.pop_front();
-      Q3.push_back(x*3);
-      Q5.push_back(x*5);
+      Q3.pop();
+      Q3.push(x*3);
+      Q5.push(x*5);
     }
     else{
-      Q5.pop_front();
-      Q5.push_back(x*5);
+      Q5.pop();
+      Q5.push(x*5);
     }
-    --n;
   }
   return x;
 }
@@ -61,12 +60,11 @@ double test(Fun f, int n){
   start = clock();
   Integer x = f(n);
   end=clock();
-  cout<<"the "<<n<<"th number = "<<x<<"\n";
-  cout<<"start="<<start<<"\tend="<<end<<"\n";
+  printf("the %d-th number = %d\n", n, x);
+  //printf("start = %d, end=%d, clocs per sec=%f\n", end, start, CLOCKS_PER_SEC);
   return ((double) (end - start)) * 1000000.0 / CLOCKS_PER_SEC;
 }
 
 int main(){
-  cout.precision(10);
-  cout<<"q235 method time: "<<test(get_q235, 15000)<<"[ms]\n";
+  printf("q235 method time: %f[us]\n", test(get_q235, 1500));
 }
