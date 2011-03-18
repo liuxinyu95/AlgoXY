@@ -10,11 +10,14 @@ all: pdf
 cpp:
 	make cpp -C src
 
+c:
+	make c -C src
+
 haskell:
 	make haskell -C src
 
 image:
-	convert img/tree.png img/tree.eps
+	make -C img
 
 pdf: $(OBJECT).dvi
 	dvipdfmx $(OBJECT)
@@ -23,7 +26,7 @@ tex: image
 	latex $(OBJECT)
 	latex $(OBJECT)
 
-html:
+html: image
 	htlatex.bat $(OBJECT) "html, imgdir:img/"
 	mv *.png img/
 
