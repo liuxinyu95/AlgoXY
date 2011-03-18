@@ -23,18 +23,16 @@
 
 template<class T>
 struct node{
-  node(T x):value(x), left(0), right(0), parent(0){}
+  node(T x):key(x), left(0), right(0), parent(0){}
   ~node(){ // for convinient, use functional approach
-    if(left)
-      delete left;
-    if(right)
-      delete right;
+    delete left;
+    delete right;
   }
 
   node* left; 
   node* right;
   node* parent; //parent is optional, it's helpful for succ/pred
-  T value;
+  T key;
 };
 
 // in-order tree walk
@@ -43,15 +41,15 @@ template<class T, class F>
 void in_order_walk(node<T>* t, F f){
   if(t){
     in_order_walk(t->left, f);
-    f(t->value);
+    f(t->key);
     in_order_walk(t->right, f);
   }
 }
 
 template<class T>
 node<T>* search(node<T>* t, T x){
-  while(t && t->value!=x){
-    if(x < t->value) t=t->left;
+  while(t && t->key!=x){
+    if(x < t->key) t=t->left;
     else t=t->right;
   }
   return t;
@@ -102,21 +100,21 @@ node<T>* pred(node<T>* x){
 }
 
 template<class T>
-node<T>* insert(node<T>* tree, T value){
+node<T>* insert(node<T>* tree, T key){
   node<T>* root(tree);
-  node<T>* x = new node<T>(value);
+  node<T>* x = new node<T>(key);
   node<T>* parent(0);
   while(tree){
     parent = tree;
-    if(value < tree->value)
+    if(key < tree->key)
       tree = tree -> left;
-    else //assert there is no duplicated value inserted.
+    else //assert there is no duplicated key inserted.
       tree = tree -> right;
   }
   x->parent = parent;
   if( parent == 0 ) //tree is empty
     return x;
-  else if( value < parent->value)
+  else if( key < parent->key)
     parent->left = x;
   else
     parent->right = x;
@@ -152,7 +150,7 @@ node<T>* del(node<T>* tree, node<T>* x){
     x = x->left;
   else{
     node<T>* y=min(x->right);
-    x->value = y->value;
+    x->key = y->key;
     if(y->parent != x)
       y->parent->left = y->right;
     else
@@ -190,7 +188,7 @@ template<class T>
 std::string tree_to_str(const node<T>* tree){
   if(tree){
     std::ostringstream s;
-    s<<"("<<tree_to_str(tree->left)<<"), "<<tree->value
+    s<<"("<<tree_to_str(tree->left)<<"), "<<tree->key
      <<", ("<<tree_to_str(tree->right)<<")";
     return s.str();
   }
@@ -200,7 +198,7 @@ std::string tree_to_str(const node<T>* tree){
 template<class T>
 node<T>* clone_tree(const node<T>* t, node<T>* parent=0){
   if(t){
-    node<T>* t1 = new node<T>(t->value);
+    node<T>* t1 = new node<T>(t->key);
     t1->left = clone_tree(t->left, t1);
     t1->right = clone_tree(t->right, t1);
     t1->parent = parent;
@@ -257,25 +255,25 @@ private:
   void test_min_max(){
     node<int>* empty(0);
     assert_("min(empty)=", min(empty), empty);
-    assert_("min(tree)=", min(tree)->value, 2);
+    assert_("min(tree)=", min(tree)->key, 2);
     assert_("max(empty)=",max(empty), empty);
-    assert_("max(tree)=", max(tree)->value, 20);
+    assert_("max(tree)=", max(tree)->key, 20);
   }
   
   void test_search(){
     node<int>* empty(0);
     assert_("search empty: ", search(empty, 3), empty);
-    std::cout<<"search exist value: "<<tree_to_str(search(tree, 18))<<"\n";
+    std::cout<<"search exist key: "<<tree_to_str(search(tree, 18))<<"\n";
     assert_("search non-exist: ", search(tree, 5), empty);
   }
 
   void test_succ_pred(){
     node<int>* empty(0);
-    assert_("succ 7: ", succ(search(tree, 7))->value, 9);
-    assert_("succ 13: ", succ(search(tree, 13))->value, 15);
+    assert_("succ 7: ", succ(search(tree, 7))->key, 9);
+    assert_("succ 13: ", succ(search(tree, 13))->key, 15);
     assert_("succ 20: ", succ(search(tree, 20)), empty);
-    assert_("pred 6: ", pred(search(tree, 6))->value, 4);
-    assert_("pred 7: ", pred(search(tree, 7))->value, 6);
+    assert_("pred 6: ", pred(search(tree, 6))->key, 4);
+    assert_("pred 7: ", pred(search(tree, 7))->key, 6);
     assert_("pred 2: ", pred(search(tree, 2)), empty);
   }
 
