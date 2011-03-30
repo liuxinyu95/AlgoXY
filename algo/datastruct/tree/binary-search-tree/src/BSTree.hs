@@ -16,6 +16,12 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  
 -}
+
+module BSTree where
+
+import Test.QuickCheck
+import Data.List (sort)
+
 data Tree a = Empty 
             | Node (Tree a) a (Tree a) deriving (Show)
 
@@ -101,10 +107,9 @@ predt t x = if not $ isEmpty leftNode
               
 -- Insert an element into a tree
 insert::(Ord a) => Tree a -> a -> Tree a
-insert Empty x = leaf x
-insert t x = if x < key(t) 
-             then (Node (insert (left t) x) (key t) (right t))
-             else (Node (left t) (key t) (insert (right t) x))
+insert Empty k = Node Empty k Empty
+insert (Node l x r) k | k < x = Node (insert l k) x r
+                      | otherwise = Node l x (insert r k)
 
 -- Delete an element from a tree
 -- The algorithm described in CLRS is not used here, I used the algorithm
@@ -121,12 +126,20 @@ delete (Node l k r) x | x < k = (Node (delete l x) k r)
                       | otherwise = (Node l k' (delete r k')) where k' = key $ mint r
 
 -- Helper to build a binary search tree from a list
-listToTree::(Ord a)=>[a] -> Tree a
-listToTree lst = foldl insert Empty lst
+fromList::(Ord a)=>[a] -> Tree a
+fromList = foldl insert Empty
+
+toList::(Ord a)=>Tree a -> [a]
+toList Empty = []
+toList (Node l x r) = toList l ++ [x] ++ toList r
+
+-- test
+prop_build :: (Ord a)=>[a] -> Bool
+prop_build xs = sort xs == (toList $ fromList xs)
 
 -- test data
 t1 = leaf 4
-t2 = listToTree [15, 6, 18, 3, 7, 17, 20, 2, 4, 13, 9]
+t2 = fromList [15, 6, 18, 3, 7, 17, 20, 2, 4, 13, 9]
 
 -- test tree creation
 testBuildTree = "\ntest create empty:\t"++ show (Empty::Tree Int)++
@@ -167,10 +180,13 @@ testDel = "\ntest del 17:\t"++ show (delete t2 17)++
           "\ntest del 15:\t"++ show (delete t2 15)++
           "\ntest del non-exist:\t" ++ show (delete t2 5)
 
-main = do
+oldTest = do
     putStrLn testBuildTree
     putStrLn testMinMax
     putStrLn testSearch
     putStrLn testTreeWalk
     putStrLn testSuccPred
     putStrLn testDel
+
+--newTest = do
+--    test prop_build
