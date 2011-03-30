@@ -68,7 +68,9 @@ int main(int, char** ){
 }
 \end{lstlisting}
 
-And we can run it to produce the word counting result as the following.
+And we can run it to produce the word counting result as the following
+\footnote{This is not unix unique command, in Windows OS, it can be archieved
+by: $type \quad bbe.txt | wordcount.exe > wc.txt$}.
 
 \begin{verbatim}
 $ g++ wordcount.cpp -o wordcount
@@ -130,20 +132,20 @@ ordering between them.
 
 Based on the recursive definition of binary search tree, we can draw the 
 data layout in procedural setting with pointer supported as in figure
-\ref{fig:node-layout}.
+\ref{fig:node-layout-parent}.
 
-\begin{figure}[htbp]
-       \begin{center}
-        \includegraphics[scale=0.8]{img/node-layout.ps}
-        \caption{Node layout.} \label{fig:node-layout}
-       \end{center}
-\end{figure}
+%\begin{figure}[htbp]
+%       \begin{center}
+%        \includegraphics[scale=0.8]{img/node-layout.ps}
+%        \caption{Node layout.} \label{fig:node-layout}
+%       \end{center}
+%\end{figure}
 
 The node contains a field of key, which can be augmented with sitellite
 data; a field contains a pointer to the left child and a field point to
 the right child. In order to back-track an ancestor easily, a parent
-field can be provided as well. Figure \ref{fig:node-layout-parent} shows
-the layout with parent field.
+field can be provided as well. 
+%Figure \ref{fig:node-layout-parent} shows the layout with parent field.
 
 \begin{figure}[htbp]
        \begin{center}
@@ -174,293 +176,144 @@ struct node{
 \end{lstlisting}
 
 There is another setting, for instance in Scheme/Lisp languages, the elementary
-data structure is linked-list.
+data structure is linked-list. Figure \ref{fig:lisp-layout} shows how a binary
+search tree node can be built on top of linked-list.
+
+\begin{figure}[htbp]
+       \begin{center}
+        \includegraphics[scale=0.8]{img/lisp-layout.ps}
+        \caption{Binary search tree node layout on top of linked list. Where `left...' and 'right ...' are either empty or binary search tree node composed in the same way.} \label{fig:lisp-layout}
+       \end{center}
+\end{figure}
+
+Because in pure functional setting, It's hard to use pointer for back tracking
+the ancesstors, (and typically, there is no need to do back tracking, since
+we can provide top-down solution in recursive way) there is not `parent' field
+in such layout.
+
+For simplifed reason, we'll skip the detailed layout in the future, and only 
+focus on the logic layout of data structures. For example, below is the definition
+of binary search tree node in Haskell.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
 data Tree a = Empty 
-            | Node (Tree a) a (Tree a) deriving (Show)
+            | Node (Tree a) a (Tree a)
 \end{lstlisting}
-
-In C++, null pointer, which is 0 in ISO C++, is used to represent for empty
-tree, while in Haskell, an explicit constructor Empty is used. The derivation
-of Show is just for easy printing the result.
-
-\subsubsection*{Python definition, imperative}
-\lstset{language=Python}
-\begin{lstlisting}
-class Node:
-    def __init__(self, key):
-        self.key = key
-        self.left = None
-        self.right = None
-        self.parent = None #optional
-\end{lstlisting}
-
-As same as C++, the parent member is optional, but it is quite helpful
-in finding the successor and predecessor of a node. Python provides
-'None' to represent empty concept.
-
-\subsubsection*{Scheme/Lisp definition}
-Scheme/lisp just use a list to represent the tree, it contains 3 elements,
-a left child, a key and a right child. there is no explicit definition
-in Scheme/Lisp.
 
 % ================================================================
-% Helper functions
+% Insert
 % ================================================================
-\subsection{Helper functions} \label{helper-fun}
+\section{Insertion}
 
-Besides the functions which are mentioned in CLRS\cite{CLRS}. I provided some
-extra helper functions. They typically helps do some common works such as 
-access element of a tree, creation leaf and release memory.
+To insert a key $k$ (may be along with a value in practice) to a binary search tree $T$, we can follow a quite straight forward way.
 
-\subsubsection{common helper functions}
+\begin{itemize}
+\item If the tree is empty, then construct a leave node with key=$k$;
+\item If $k$ is less than the key of root node, insert it to the left child;
+\item If $k$ is greater than the key of root, insert it to the right child;
+\end{itemize}
 
-\subsubsection*{C++ helper function.}
-\lstset{language=C++}
-\begin{lstlisting}
-// cut the node off the tree, then delete it.
-// it can prevent dtor removed children of a node
-template<class T>
-void remove_node(node<T>* x){
-  if(x)
-    x->left = x->right = 0;
-  delete x;
-}
-\end{lstlisting}
+There is an exceptional case that if $k$ is equal to the key of root, it means it has already existed, we can either overwrite the data, or just do nothing.
+For simple reason, this case is skipped in this post.
 
-The remove\_node() function can only release memory of a single node without recursively
-removing all its children. 
+This algorithm is described recursively. It is so simple that is why we 
+consider binary search tree is `hello world' data structure. Formally, 
+the algorithm can be represented with a recusive function.
 
-\begin{lstlisting}
-template<class T>
-std::string tree_to_str(const node<T>* tree){
-  if(tree){
-    std::ostringstream s;
-    s<<"("<<tree_to_str(tree->left)<<"), "<<tree->value
-     <<", ("<<tree_to_str(tree->right)<<")";
-    return s.str();
-  }
-  return "empty";
-}
+\be
+insert(T, k) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  node(\phi, k, \phi) & T = \phi \\
+  insert(left(T), k) & k < key(T) \\
+  insert(right(T), k) & otherwise
+  \end{array}
+\right.
+\ee 
 
-template<class T>
-node<T>* clone_tree(const node<T>* t, node<T>* parent=0){
-  if(t){
-    node<T>* t1 = new node<T>(t->value);
-    t1->left = clone_tree(t->left, t1);
-    t1->right = clone_tree(t->right, t1);
-    t1->parent = parent;
-    return t1;
-  }
-  return static_cast<node<T>*>(0);
-}
-\end{lstlisting}
+Where the node function creates a new node with given left sub-tree,
+a key and a right sub-tree as arguments. $\phi$ means NIL or Empty.
+function $left$, $right$ and $key$ are access functions which can 
+get the left sub-tree, right sub-tree and the key of a node.
 
-The tree\_to\_str() function can generate a string
-to represent the tree data. For empty data, it just prints (empty); in other case
-it prints (...left..., key, ...right...). This function is implemented in a
-functional way.
+Translate the above functions directly to Haskell yields the following
+program.
 
-The function clone\_tree() provides a way to duplicate a exist tree. This
-function is realized in a recursive manner.
-
-\subsubsection*{Haskell helper functions. (pattern-matching)}
 \lstset{language=Haskell}
 \begin{lstlisting}
-leaf::a -> Tree a
-leaf a = Node Empty a Empty
-
-left::Tree a -> Tree a
-left (Node l _ _) = l
-left _ = Empty
-
-right::Tree a -> Tree a
-right (Node _ _ r) = r
-right _ = Empty
-
-key::Tree a -> a
-key (Node _ k _) = k
-
-isEmpty::Tree a -> Bool
-isEmpty Empty = True
-isEmpty _ = False
+insert::(Ord a) => Tree a -> a -> Tree a
+insert Empty k = Node Empty k Empty
+insert (Node l x r) k | k < x = Node (insert l k) x r
+                      | otherwise = Node l x (insert r k)
 \end{lstlisting}
 
-leaf function can create a leaf node with specified value; left and right
-are used to get the left sub tree and right sub tree. key function is
-used to return the value of a node. isEmpty function can test if a node
-is an empty node.
+This program utilized the pattern matching features provided by the 
+language. However, even in functional settings without this feature,
+for instance, Scheme/Lisp, the program is still expressive.
 
-\subsubsection*{Python helper functions}
-\lstset{language=Python}
-\begin{lstlisting}
-def remove_node(x):
-    if (x is None): return
-    x.parent = x.left = x.right = None
-
-def clone_tree(t, parent = None):
-    n = None
-    if(t != None):
-        n = Node(t.key)
-        n.left = clone_tree(t.left, n)
-        n.right = clone_tree(t.right, n)
-        n.parent = parent
-    return n
-
-def tree_to_str(t):
-    if(t!=None):
-        return "("+tree_to_str(t.left)+"), " + str(t.key) + 
-               ", (" + tree_to_str(t.right)+")"
-    else:
-        return "empty"
-\end{lstlisting}
-
-Because Python support GC, there is no need to free the memory of a Node.
-remove\_node() function just set all members of a node to None. The other
-2 functions are as same as C++ version.
-
-\subsubsection*{Scheme/Lisp helper functions}
-\lstset{language=Lisp}
-\begin{lstlisting}
-(define (make-tree left key right)
-  (list left key right))
-
-(define (key tree) (cadr tree))
-(define (left tree) 
-  (if (null? tree) '() (car tree)))
-(define (right tree) 
-  (if (null? tree) '() (caddr tree)))
-\end{lstlisting}
-
-Scheme/Lisp helper functions can be treated as a kind of binary tree
-definition. make-tree provides a method to create a tree, the other
-3 functions are used to access the key, left child and right child.
-
-\subsubsection{collection to tree helper function} \label{list2tree}
-It is convenient to have a function which can turn a collection, such as
-an array, a list etc into a tree. The generation process has to call insertion
-function which will be defined in later section.
-
-\subsubsection*{C++ collection to tree}
-\lstset{language=C++}
-\begin{lstlisting}
-template<class Coll>
-node<typename Coll::value_type>* 
-build_tree(const Coll& coll){
-  node<typename Coll::value_type>* tree(0);
-  for(typename Coll::const_iterator it=coll.begin(); 
-      it!=coll.end(); ++it)
-    tree = insert(tree, *it);
-  return tree;
-}
-\end{lstlisting}
-
-The function build\_tree() can create a tree object from a STL collection 
-by calling insert(). insert() will be defined in later section. this function
-is written in a imperative way.
-
-\subsubsection*{Haskell list to tree}
-\lstset{language=Haskell}
-\begin{lstlisting}
-listToTree::(Ord a)=>[a] -> Tree a
-listToTree lst = foldl insert Empty lst
-\end{lstlisting}
-
-This function is implemented in a functional way by using foldl. This method
-is referred from 'literal programming' site \cite{literal-program}.
-
-\subsubsection*{Python list to tree}
-\lstset{language=Python}
-\begin{lstlisting}
-def list_to_tree(l):
-    tree = None
-    for x in l:
-        tree = tree_insert(tree, x)
-    return tree
-\end{lstlisting}
-
-Similar to C++ version, as far as the tree\_insert() is defined in imperative
-way, Python version of list to tree works by continue renewing the tree variable.
-
-\subsubsection*{Scheme/Lisp list to tree}
 \lstset{language=lisp}
 \begin{lstlisting}
-(define (list->tree lst)
-  (fold-left tree-insert '() lst))
+(define (insert tree x)
+  (cond ((null? tree) (list '() x '()))
+	((< x (key tree))
+	 (make-tree (insert (left tree) x)
+		    (key tree)
+		    (right tree)))
+	((> x (key tree))
+	 (make-tree (left tree)
+		    (key tree)
+		    (insert (right tree) x)))))
 \end{lstlisting}
 
-fold-left only available in Scheme $R^6RS$ \cite{wiki-fold}. For the older version of
-scheme, we have to define a similar fold helper function. for example in \cite{literal-program}.
+It is possible to turn the algorithm completely into imperative way
+without recursion. 
 
-To test if the function works properly, we can use the below test code.
-\subsubsection*{C++ test for build tree}
-\lstset{language=C++}
-\begin{lstlisting}
-const int buf[]={15, 6, 18, 3, 7, 17, 20, 2, 4, 13, 9};
-tree = build_tree(std::vector<int>(buf, 
-         buf+sizeof(buf)/sizeof(int)));
-std::cout<<tree_to_str(tree);
-\end{lstlisting}
+\begin{algorithmic}[1]
+\Function{Insert}{$T, k$}
+  \State $root \gets T$
+  \State $x \gets$ \Call{Create-Leaf}{$k$}
+  \State $parent \gets NIL$
+  \While{$T \neq NIL$}
+    \State $parent \gets T$
+    \If{$k <$ \Call{Key}{$T$}}
+      \State $T \gets $ \Call{Left}{$T$}
+    \Else
+      \State $T \gets $ \Call{Right}{$T$}
+    \EndIf
+  \EndWhile
+  \State \Call{Parent}{$x$} $\gets parent$
+  \If{$parent = NIL$} \Comment{tree $T$ is empty}
+    \State \Return $x$
+  \ElsIf{$k <$ \Call{Key}{$parent$}}
+    \State \Call{Left}{$parent$} $\gets x$
+  \Else
+    \State \Call{Right}{$parent$} $\gets x$
+  \EndIf
+  \State \Return $root$
+\EndFunction
+\Statex
+\Function{Create-Leaf}{k}
+  \State $x \gets $ \Call{Empty-Node}{}
+  \State \Call{Key}{$x$} $ \gets k$
+  \State \Call{Left}{$x$} $ \gets NIL$
+  \State \Call{Right}{$x$} $ \gets NIL$
+  \State \Call{Parent}{$x$} $ \gets NIL$
+  \State \Return $x$
+\EndFunction
+\end{algorithmic}
 
-This program will output:
-\begin{verbatim}
-((((empty), 2, (empty)), 3, ((empty), 4, (empty))), 6, ((empty), 
-7, (((empty), 9, (empty)), 13, (empty)))), 15, (((empty), 17, 
-(empty)), 18, ((empty), 20, (empty)))
-\end{verbatim}
+Compare with the functional algorithm, it is obviously that this one
+is more complex although it is fast and can handle very deep tree. A 
+complete C++ program and a python program are available along with this
+post for reference.
 
-\subsubsection*{Haskell test for listToTree}
-\lstset{language=Haskell}
-\begin{lstlisting}
-t2 = listToTree [15, 6, 18, 3, 7, 17, 20, 2, 4, 13, 9]
-
-main = do
-  putStrLn ("\ntest create from list:\t" ++ show t2)
-\end{lstlisting}
-
-This program will output:
-\begin{verbatim}
-test create from list:  Node (Node (Node (Node Empty 2 Empty) 3 
-(Node Empty 4 Empty)) 6 (Node Empty 7 (Node (Node Empty 9 Empty) 
-13 Empty))) 15 (Node (Node Empty 17 Empty) 18 (Node Empty 20 
-Empty))
-\end{verbatim}
-
-\subsubsection*{Python test for list to tree}
-\lstset{language=python}
-\begin{lstlisting}
-class Test:
-    def __init__(self):
-        self.tree = list_to_tree([15, 6, 18, 3, 7, 17, 
-                  20, 2, 4, 13, 9])
-        print tree_to_str(self.tree)
-\end{lstlisting}
-
-I created a Test class for the later testing of other tree operations.
-If we initialize an instance of this class, it will output as same as
-the above C++ result.
-
-\subsubsection*{Scheme/Lisp test for list->tree}
-\lstset{language=lisp}
-\begin{lstlisting}
-(define t1 (list->tree '(15 6 18 3 7 17 20 2 4 13 9)))
-\end{lstlisting}
-
-I defined this tree as t1 for later use, if we evaluate t1 in Scheme
-evaluator, it will print the result like the folowing.
-
-\begin{verbatim}
-t1
-;Value 12: ((((() 2 ()) 3 (() 4 ())) 6 (() 7 ((() 9 ()) 13 
-()))) 15 ((() 17 ()) 18 (() 20 ())))
-\end{verbatim}
-
-% ================================================================
-% In-order walk
-% ================================================================
+TODO: Change the title to `Traverse?'
 \subsection{In-order walk}
+
+TODO: add a exercise that given a pre-order traverse result and an in-order
+traverse result, please write the post-order traverse result. (re-construct
+the tree).
 
 There are 3 ways to traverse a binary tree, preorder tree walk, inorder 
 tree walk, and postorder tree walk; inorder tree walk is particularly helpful
