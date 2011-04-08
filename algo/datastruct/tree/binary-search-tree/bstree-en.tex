@@ -344,14 +344,56 @@ the elements in increase order, which is particularly helpful. The definition
 of binary search tree ensures this interesting property, while the
 proof of this fact is left as an excercise of this post.
 
-functional implementation. It is expressive.
-
-Inorder tree walk can be described as the following:
+In-order tree walk algorithm can be described as the following:
 \begin{itemize}
 \item If the tree is empty, just return;
-\item traverse the left child by inorder walk, then access the key, 
-finally traverse the right child by inorder walk.
+\item traverse the left child by in-order walk, then access the key, 
+finally traverse the right child by in-order walk.
 \end{itemize}
+
+Translate the above description yeilds a generic map function
+
+\be
+map(f, T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \phi & T = \phi \\
+  node(l', k', r') & otherwise
+  \end{array}
+\right .
+\ee
+
+where
+
+\[
+ \begin{array}{l}
+ l' = map(f, left(T)) \\
+ r' = map(f, right(T)) \\
+ k' = f(key(T))
+ \end{array}
+\]
+
+We can simplified this algorithm to define a function which turns a
+binary search tree to a sorted list by in-order traversing.
+
+\be
+toList(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \phi & T = \phi \\
+  toList(left(T)) \cup \{ key(T) \} \cup toList(right(T)) & otherwise
+  \end{array}
+\right .
+\ee
+
+Below is the Haskell program based on this definition.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+toList::(Ord a)=>Tree a -> [a]
+toList Empty = []
+toList (Node l x r) = toList l ++ [x] ++ toList r
+\end{lstlisting}
 
 \subsubsection*{C++ in-order walk. (functional)}
 \lstset{language=C++}
@@ -366,48 +408,8 @@ void in_order_walk(node<T>* t, F f){
   }
 }
 \end{lstlisting}
-
 The function takes a parameter f, it can be a real function, or a function
 object, this program will apply f to the node by inorder tree walk.
-
-\subsubsection*{Haskell in-order walk. (recursive)}
-\lstset{language=Haskell}
-\begin{lstlisting}
-inOrderWalk::Tree a -> (a->b) -> Tree b
-inOrderWalk Empty f = Empty
-inOrderWalk t f = (Node (inOrderWalk (left t) f) 
-            (f (key t)) (inOrderWalk (right t) f))
-\end{lstlisting}
-
-The Haskell version differs a bit, it doesn't return nothing after walking, 
-but generates a new tree, with the new keys transformed by function f.
-
-\subsubsection*{Python in-order walk. (recursive)}
-\lstset{language=Python}
-\begin{lstlisting}
-def in_order_walk(t, f):
-    if(t!=None):
-        in_order_walk(t.left, f)
-        f(t.key)
-        in_order_walk(t.right, f)
-\end{lstlisting}
-
-\subsubsection*{Scheme/Lisp in-order walk. (recursive)}
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (in-order-walk tree f)
-  (if (null? tree) 
-      tree
-      (make-tree (in-order-walk (left tree) f)
-		 (f (key tree))
-		 (in-order-walk (right tree) f))))
-\end{lstlisting}
-
-To test the result of this function, we need creat a tree first. Insertion
-must be provided for tree creation, please refer to later sections for the
-details of how to create a tree. I'll use the result directly here.
-
-In this article, I'll use an example tree as in figure \ref{fig:example-tree}.
 
 \begin{figure}[htbp]
        \begin{center}
@@ -417,109 +419,6 @@ In this article, I'll use an example tree as in figure \ref{fig:example-tree}.
 \end{figure}
 
 \subsubsection*{C++ in-order walk testing and it's result.}
-
-Suppose we have a pointer point to the tree contains data in figure 
-\ref{fig:example-tree}. It can be created by build\_tree() function.
-
-\lstset{language=C++}
-\begin{lstlisting}
-  struct Print{
-    template<class T>
-    void operator()(T x){ std::cout<<x<<", "; }
-  };
-
-  //...
-  std::cout<<"test in order walk with print functor: ";
-  in_order_walk(tree, Print());
-\end{lstlisting}
-
-In the above example, I created a function object Print, and pass an
-instance of it to in-order walk process, it will print all the node
-from less to greater with ',' as deliminator.
-
-\begin{verbatim}
-test in order walk with print functor: 2, 3, 4, 6, 7, 9, 13, 15, 
-17, 18, 20,
-\end{verbatim}
-
-If boost::lambda is used, the above test cases can be simplied
-a lot.
-\begin{lstlisting}
-//#include <boost/lambda/lambda.hpp> at the begin
-using namespace boost::lambda;
-std::cout<<"test in order walk with print functor: ";
-in_order_walk(tree, std::cout<<_1<<", ");
-\end{lstlisting}
-
-While the Haskell version can be tested as below:
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-testTreeWalk = "test tree in-order walk by apply (-):\t"++
-               show (inOrderWalk t2 (\x -> -x))
-
-main = do
-  putStrLn testTreeWalk
-\end{lstlisting}
-
-This test example 'maps' each keys in the tree to its negative value,
-so it can output a result as below:
-
-\begin{verbatim}
-test tree in-order walk by apply (-):   Node (Node (Node 
-(Node Empty (-2) Empty) (-3) (Node Empty (-4) Empty)) (-6) 
-(Node Empty (-7) (Node (Node Empty (-9) Empty) (-13) 
-Empty))) (-15) (Node (Node Empty (-17) Empty) (-18) (Node 
-Empty (-20) Empty))
-\end{verbatim}
-
-While for Python, because Lambda expression mustn't be statement,
-I defined a function print to apply to in-order walk for testing.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def my_print(x):
-    print x
-
-class Test:
-    #...
-    def test_in_order_walk(self):
-        print "test in order walk with my_print: "
-        in_order_walk(self.tree, my_print)
-\end{lstlisting}
-
-The result is:
-
-\begin{verbatim}
-test in order walk with my_print:
-2
-3
-4
-6
-7
-9
-13
-15
-17
-18
-20
-\end{verbatim}
-
-The Scheme/Lisp version testing is similar to Haskell very much as below.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (test-in-order-walk)
-  (in-order-walk t1 (lambda (x) (- 0 x))))
-\end{lstlisting}
-
-The result is:
-
-\begin{verbatim}
-(test-in-order-walk)
-;Value 11: ((((() -2 ()) -3 (() -4 ())) -6 (() -7 ((() -9 ()) 
--13 ()))) -15 ((() -17 ()) -18 (() -20 ())))
-\end{verbatim}
 
 TODO: add a exercise that given a pre-order traverse result and an in-order
 traverse result, please write the post-order traverse result. (re-construct
