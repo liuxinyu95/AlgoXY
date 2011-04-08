@@ -44,10 +44,10 @@ isEmpty::Tree a -> Bool
 isEmpty Empty = True
 isEmpty _ = False
 
--- in-order tree walk
-inOrderWalk::Tree a -> (a->b) -> Tree b
-inOrderWalk Empty f = Empty
-inOrderWalk t f = (Node (inOrderWalk (left t) f) (f (key t)) (inOrderWalk (right t) f))
+-- in-order tree traverse
+mapT::(a->b) -> Tree a -> Tree b
+mapT _ Empty = Empty
+mapT f (Node l x r)= Node (mapT f l) (f x) (mapT f r)
 
 -- Search in tree
 search::(Ord a)=> Tree a -> a -> Tree a
@@ -147,7 +147,7 @@ testBuildTree = "\ntest create empty:\t"++ show (Empty::Tree Int)++
                 "\ntest create from list:\t" ++ show t2
 
 -- test tree walk
-testTreeWalk = "\ntest tree in-order walk by apply (-):\t"++show (inOrderWalk t2 (\x -> -x))
+testTreeWalk = "\ntest tree in-order walk by apply (-):\t"++show (mapT negate t2)
 
 -- test min/max for tree
 testMinMax = "\ntest min empty:\t" ++ (show $ mint (Empty::Tree Int)) ++
