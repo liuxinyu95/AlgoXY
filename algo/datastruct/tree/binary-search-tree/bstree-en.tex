@@ -475,6 +475,8 @@ the binary tree from pre-order result and in-order result.
 
 \item Prove why in-order walk output the elements stored in a binary
 search tree in increase order?
+
+\item Can you analyze the performance of tree sort with big-O notation?
 \end{itemize}
 
 % ================================================================
@@ -482,171 +484,87 @@ search tree in increase order?
 % ================================================================
 \section{Querying a binary search tree}
 
-This section provides implementation of querying operations which are
-described in 12.2 of CLRS\cite{CLRS}
+There are three types of querying for binary search tree, searching
+a key in the tree, find the minimum or maximum element in the tree,
+and find the precedessor or successor of an element in the tree.
 
 \subsection{Searching}
-In CLRS\cite{CLRS}, searching is demonstrated in both recursive way and 
-imperative way. According to the definition of binary search tree, search
-a value in a tree can be realized in the following recursive manner.
+According to the definition of binary search tree, search
+a key in a tree can be realized as the following.
 
 \begin{itemize}
-\item If the tree is empty, just return empty (not-found);
-\item If the key of the root is equal to the value to be found, 
-return the root;
+\item If the tree is empty, the searching fails;
+\item If the key of the root is equal to the value to be found, the
+search succeed. The root is returned as the result;
 \item If the value is less than the key of the root, search in the left
 child.
 \item Else, which means that the value is greater than the key of the 
 root, search in the right child.
 \end{itemize}
 
-\subsubsection*{Haskell search implementation, recursive}
+This algorithm can be described with a recusive function as below.
+
+\be
+search(T, x) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \phi & T = \phi \\
+  T & key(T) = x \\
+  search(left(T), x) & x < key(T) \\
+  search(right(T), x) & otherwise
+  \end{array}
+\right .
+\ee
+
+In the real application, we may return the satellite data instead of the
+node as the search result. This algorithm is simiple and straightforward.
+Here is a translation of Haskell program.
+
 \lstset{language=Haskell}
 \begin{lstlisting}
 search::(Ord a)=> Tree a -> a -> Tree a
 search Empty _ = Empty
-search t x | key(t)==x = t
-           | x < key(t) = search (left t) x
-           | otherwise = search (right t) x
+search t@(Node l k r) x | k == x = t
+                        | x < k = search l x
+                        | otherwise = search r x
 \end{lstlisting}
 
-Haskell program of search is just translate the above recursive algorithm
-description into code. Since it uses less than operator '<', the type
-of the key value must be comparable. So the type variable is an instance 
-of Ord type class.
+If the binary search tree is well balanced, which means that almost
+all nodes have both non-NIL left child and right child, for $N$ elements,
+the search algorithm takes $O(\lg N)$ time to perform. This is not
+formal definition of balance. We'll show it in later post about red-black-tree.
+If the tree is poor balanced, the worst case takes $O(N)$ time to 
+search for a key.
 
-\subsubsection*{C++ search implementation, imperative}
+The search algorithm can also be realized without using recursion in 
+a procedural manner.
+
+\begin{algorithmic}[1]
+\Function{Search}{$T, x$}
+  \While{$T \neq NIL \wedge$ \Call{Key}{$T$} $ \neq x$}
+    \If{$x <$ \Call{Key}{$T$}}
+      \State $T \gets $ \Call{Left}{$T$}
+    \Else
+      \State $T \gets $ \Call{Right}{$T$}
+    \EndIf
+  \EndWhile
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
+
+Below is the C++ program based on this algorithm.
+
 \lstset{language=C++}
 \begin{lstlisting}
 template<class T>
 node<T>* search(node<T>* t, T x){
-  while(t && t->value!=x){
-    if(x < t->value) t=t->left;
+  while(t && t->key!=x){
+    if(x < t->key) t=t->left;
     else t=t->right;
   }
   return t;
 }
 \end{lstlisting}
-
-Search can also be implemented in an imperative way by replace the current
-node to left child if the value to be search less than the key or to right 
-child if greater than.
-
-\subsubsection*{Python search implementation, imperative}
-\lstset{language=Python}
-\begin{lstlisting}
-def tree_search(t, x):
-    while(t!=None and t.key != x):
-        if(x < t.key): t = t.left
-        else: t = t.right
-    return t
-\end{lstlisting}
-
-\subsubsection*{Scheme/Lisp search implementation, recursive}
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (tree-search tree x)
-  (cond ((null? tree) tree)
-	((equal? x (key tree)) tree)
-	((< x (key tree)) (tree-search (left tree) x))
-	(else (tree-search (right tree) x))))
-\end{lstlisting}
-
-To test search programs, for C++, I defined a special version of assert, named
-as assert\_(), it can write logs to stdout to tell if the test case ok or fail.
-
-here is C++ version of search testing.
-
-\lstset{language=c++}
-\begin{lstlisting}
-template<class T> void assert_(std::string msg, T x, T y){
-  std::cout<<msg;
-  if(x==y)
-    std::cout<<x<<" OK.\n";
-  else
-    std::cout<<x<<"!="<<y<<" Fail.\n";
-}
-
-node<int>* empty(0);
-assert_("search empty: ", search(empty, 3), empty);
-std::cout<<"search exist value: "
-         <<tree_to_str(search(tree, 18))<<"\n";
-assert_("search non-exist: ", search(tree, 5), empty);
-\end{lstlisting}
-
-The variable tree is created as describe in above section. This test example 
-gives the result as.
-\begin{verbatim}
-search empty: 0 OK.
-search exist value: ((empty), 17, (empty)), 18, ((empty), 20, (empty))
-search non-exist: 0 OK.
-\end{verbatim}
-
-Next is Haskell version of search testing.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-testSearch = "\ntest search empty tree:\t"++ show (search 
-                     (Empty::Tree Int) 3) ++
-             "\ntest search non exist node in tree:\t"++ 
-                     show (search t2 5)++
-             "\ntest search a node in tree:\t"++ show 
-                     (search t2 18)
-
-main = do
-  putStrLn testSearch
-\end{lstlisting}
-
-Where t2 is defined as the example tree, the result is:
-\begin{verbatim}
-test search empty tree: Empty
-test search non exist node in tree:     Empty
-test search a node in tree:     Node (Node Empty 17 Empty) 
-18 (Node Empty 20 Empty)
-\end{verbatim}
-
-For python, I also defined the helper assert function to output the test
-result.
-
-\lstset{language=Python}
-\begin{lstlisting}
-class Test:
-    # ...
-    def __assert(self, msg, x, y):
-        if(x == y): msg = msg + "OK."
-        else: msg = msg + str(x) + "!=" + str(y) + "Fail."
-        print msg
-
-    def test_search(self):
-        self.__assert("search empty: ", 
-                      tree_search(None, 3), None)
-        print tree_to_str(tree_search(self.tree, 18))
-        self.__assert("search non-exist: ", 
-                      tree_search(self.tree, 5), None)
-\end{lstlisting}
-
-By calling the test\_search(), it will generate a result as same as the one
-in C++.
-
-For Scheme, the test cases are list like this:
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (test-search)
-  (display (tree-search '() 3)) (newline)
-  (display (tree-search t1 5)) (newline)
-  (display (tree-search t1 18)))
-\end{lstlisting}
-
-And the results in evaluator gives:
-
-\begin{verbatim}
-(test-search)
-()
-()
-((() 17 ()) 18 (() 20 ()))
-;Unspecified return value
-\end{verbatim}
 
 \subsection{Minimum and maximum}
 
@@ -656,140 +574,31 @@ tree, less keys are always in left child, and greater keys are in right.
 For minimum, we can continue traverse the left sub tree until it is empty.
 While for maximum, we traverse the right.
 
-\subsubsection*{C++ version of max/min, imperative}
+\be
+min(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  key(T) & left(T) = \phi \\
+  min(left(T)) & otherwise
+  \end{array}
+\right .
+\ee
 
-\lstset{language=c++}
-\begin{lstlisting}
-template<class T>
-node<T>* min(node<T>* x){
-  while(x && x->left)
-    x = x->left;
-  return x;
-}
+\be
+max(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  key(T) & right(T) = \phi \\
+  max(right(T)) & otherwise
+  \end{array}
+\right .
+\ee
 
-template<class T>
-node<T>* max(node<T>* x){
-  while(x && x->right)
-    x = x->right;
-  return x;
-}
-\end{lstlisting}
+For the balanced binary search tree, $min$/$max$ are bound to $O(\lg N)$ time,
+while they are $O(N)$ in the worst cases.
 
-While in Haskell, in order not to conflict with the max/min functions 
-defined in prelude, I change the name to maxt/mint.
-
-\subsubsection*{Haskell version of max/min, recursive}
-\lstset{language=Haskell}
-\begin{lstlisting}
-mint::Tree a -> Tree a
-mint t = if isEmpty (left t) then t else mint (left t)
-
-maxt::Tree a -> Tree a
-maxt t = if isEmpty (right t) then t else maxt (right t)
-\end{lstlisting}
-
-In Python and Scheme/Lisp, I also renamed the functions to avoid
-conflict with predefined max/min.
-
-\subsubsection*{Python version of max/min, imperative}
-\lstset{language=Python}
-\begin{lstlisting}
-def tree_min(t):
-    while(t!=None and t.left != None):
-        t = t.left
-    return t
-
-def tree_max(t):
-    while(t!=None and t.right != None):
-        t = t.right
-    return t
-\end{lstlisting}
-
-\subsubsection*{Scheme/Lisp version of max/min, recursive}
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (tree-min tree)
-  (if (null? (left tree))
-      tree
-      (tree-min (left tree))))
-
-(define (tree-max tree)
-  (if (null? (right tree))
-      tree
-      (tree-max (right tree))))
-\end{lstlisting}
-
-\subsubsection*{test case and result in C++}
-\lstset{language=c++}
-\begin{lstlisting}
-node<int>* empty(0);
-assert_("min(empty)=", min(empty), empty);
-assert_("min(tree)=", min(tree)->value, 2);
-assert_("max(empty)=",max(empty), empty);
-assert_("max(tree)=", max(tree)->value, 20);
-\end{lstlisting}
-
-\begin{verbatim}
-min(tree)=2 OK.
-max(empty)=0 OK.
-max(tree)=20 OK.
-search empty: 0 OK.
-\end{verbatim}
-
-\subsubsection*{test case and result in Haskell}
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-testMinMax = "\ntest min empty:\t" ++ 
-               (show (mint (Empty::Tree Int))) ++
-             "\ntest min tree:\t" ++ show (mint t2) ++ 
-             "\ntest max empty:\t" ++ 
-               (show (maxt (Empty::Tree Int))) ++
-             "\ntest max tree:\t" ++ show (maxt t2)
-
-main = do
-    putStrLn testMinMax
-\end{lstlisting}
-
-\begin{verbatim}
-test min empty: Empty
-test min tree:  Node Empty 2 Empty
-test max empty: Empty
-test max tree:  Node Empty 20 Empty
-\end{verbatim}
-
-\subsubsection*{test case and result in Python}
-
-\lstset{language=Python}
-\begin{lstlisting}
-def test_min_max(self):
-    self.__assert("min(empty): ", tree_min(None), None)
-    self.__assert("min(tree): ", tree_min(self.tree).key, 2)
-    self.__assert("max(empty): ", tree_max(None), None)
-    self.__assert("max(tree): ", tree_max(self.tree).key, 20)
-\end{lstlisting}
-
-The output result is as same as the one in C++.
-
-\subsubsection*{test case and result in Scheme/Lisp}
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (test-min-max)
-  (display (tree-min '())) (newline)
-  (display (tree-min t1)) (newline)
-  (display (tree-max '())) (newline)
-  (display (tree-max t1)))
-\end{lstlisting}
-
-\begin{verbatim}
-(test-min-max)
-()
-(() 2 ())
-()
-(() 20 ())
-;Unspecified return value
-\end{verbatim}
+We skip translating them to programs, It's also possible to implement them 
+in pure procedural way without using recursion.
 
 \subsection{Successor and predecessor}
 
