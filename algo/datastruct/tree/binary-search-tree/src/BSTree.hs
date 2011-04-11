@@ -52,9 +52,9 @@ mapT f (Node l x r)= Node (mapT f l) (f x) (mapT f r)
 -- Search in tree
 search::(Ord a)=> Tree a -> a -> Tree a
 search Empty _ = Empty
-search t x | key(t)==x = t
-           | x < key(t) = search (left t) x
-           | otherwise = search (right t) x
+search t@(Node l k r) x | k == x = t
+                        | x < k = search l x
+                        | otherwise = search r x
 
 -- Tree Min
 mint::Tree a -> Tree a
