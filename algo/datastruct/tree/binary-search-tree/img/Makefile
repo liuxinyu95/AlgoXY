@@ -1,6 +1,7 @@
 IMG_OBJECTS = 
 DOT_OBJECTS = lvr btexample bst-1 node-layout node-layout-parent \
-lisp-layout
+lisp-layout del-leaf del-lc-before del-lc-after del-rc-before \
+del-rc-after del-branch-before del-branch-after
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
