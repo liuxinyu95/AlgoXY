@@ -21,6 +21,7 @@ module BSTree where
 
 import Test.QuickCheck
 import Data.List (sort)
+import Prelude hiding(lookup)
 
 data Tree a = Empty 
             | Node (Tree a) a (Tree a) deriving (Show)
@@ -49,12 +50,12 @@ mapT::(a->b) -> Tree a -> Tree b
 mapT _ Empty = Empty
 mapT f (Node l x r)= Node (mapT f l) (f x) (mapT f r)
 
--- Search in tree
-search::(Ord a)=> Tree a -> a -> Tree a
-search Empty _ = Empty
-search t@(Node l k r) x | k == x = t
-                        | x < k = search l x
-                        | otherwise = search r x
+-- Lookup in tree
+lookup::(Ord a)=> Tree a -> a -> Tree a
+lookup Empty _ = Empty
+lookup t@(Node l k r) x | k == x = t
+                        | x < k = lookup l x
+                        | otherwise = lookup r x
 
 -- Tree Min
 mint::Tree a -> Tree a
@@ -92,7 +93,7 @@ succt Empty _ = Empty
 succt t x = if not $ isEmpty rightNode
             then mint rightNode
             else findAncestor t x (>) where
-                rightNode = right (search t x)
+                rightNode = right (lookup t x)
 
 -- predecessor
 -- Performance is very low
@@ -101,7 +102,7 @@ predt Empty _ = Empty
 predt t x = if not $ isEmpty leftNode
             then maxt leftNode
             else findAncestor t x (<) where
-                leftNode = left (search t x)
+                leftNode = left (lookup t x)
 
 -- End of low efficiency functions
               
@@ -125,6 +126,15 @@ delete (Node l k r) x | x < k = (Node (delete l x) k r)
                       | isEmpty r = l
                       | otherwise = (Node l k' (delete r k')) where k' = key $ mint r
 
+-- Traverse a part of tree inside a range [a, b]
+mapR :: (Ord a)=>(a->b) -> a -> a -> Tree a -> Tree b
+mapR f a b t = map' t where
+    map' Empty = Empty
+    map' (Node l k r) | k < a = map' r
+                      | a <= k && k <= b = Node (map' l) (f k) (map' r)
+                      | k > b = map' l
+               
+
 -- Helper to build a binary search tree from a list
 fromList::(Ord a)=>[a] -> Tree a
 fromList = foldl insert Empty
@@ -136,6 +146,10 @@ toList (Node l x r) = toList l ++ [x] ++ toList r
 -- test
 prop_build :: (Ord a)=>[a] -> Bool
 prop_build xs = sort xs == (toList $ fromList xs)
+
+prop_mapR :: (Ord a) =>[a] -> a -> a -> Bool
+prop_mapR xs a b = filter (\x-> a<= x && x <=b) (sort xs) ==
+                   toList (mapR id a b (fromList xs))
 
 -- test data
 t1 = leaf 4
@@ -157,12 +171,12 @@ testMinMax = "\ntest min empty:\t" ++ (show $ mint (Empty::Tree Int)) ++
              "\ntest max leaf:\t" ++ show (maxt t1) ++
              "\ntest max tree:\t" ++ show (maxt t2)
 
--- test search in tree
-testSearch = "\ntest search empty tree:\t"++ show (search (Empty::Tree Int) 3) ++
-             "\ntest search in leaf:\t"++ show (search t1 4)++
-             "\ntest search non exist value in leaf:\t" ++ show (search t1 5)++
-             "\ntest search non exist node in tree:\t"++ show (search t2 5)++
-             "\ntest search a node in tree:\t"++ show (search t2 18)
+-- test lookup in tree
+testLookup = "\ntest lookup empty tree:\t"++ show (lookup (Empty::Tree Int) 3) ++
+             "\ntest lookup in leaf:\t"++ show (lookup t1 4)++
+             "\ntest lookup non exist value in leaf:\t" ++ show (lookup t1 5)++
+             "\ntest lookup non exist node in tree:\t"++ show (lookup t2 5)++
+             "\ntest lookup a node in tree:\t"++ show (lookup t2 18)
 
 -- test succ/pred
 testSuccPred = "\ntest succ of 7:\t"++ show (key (succt t2 7)) ++
@@ -183,7 +197,7 @@ testDel = "\ntest del 17:\t"++ show (delete t2 17)++
 oldTest = do
     putStrLn testBuildTree
     putStrLn testMinMax
-    putStrLn testSearch
+    putStrLn testLookup
     putStrLn testTreeWalk
     putStrLn testSuccPred
     putStrLn testDel
