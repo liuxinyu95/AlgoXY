@@ -497,7 +497,7 @@ There are three types of querying for binary search tree, searching
 a key in the tree, find the minimum or maximum element in the tree,
 and find the precedessor or successor of an element in the tree.
 
-\subsection{Searching}
+\subsection{Looking up}
 According to the definition of binary search tree, search
 a key in a tree can be realized as the following.
 
@@ -514,13 +514,13 @@ root, search in the right child.
 This algorithm can be described with a recusive function as below.
 
 \be
-search(T, x) = \left \{
+lookup(T, x) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   \phi & T = \phi \\
   T & key(T) = x \\
-  search(left(T), x) & x < key(T) \\
-  search(right(T), x) & otherwise
+  lookup(left(T), x) & x < key(T) \\
+  lookup(right(T), x) & otherwise
   \end{array}
 \right .
 \ee
@@ -531,11 +531,11 @@ Here is a translation of Haskell program.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-search::(Ord a)=> Tree a -> a -> Tree a
-search Empty _ = Empty
-search t@(Node l k r) x | k == x = t
-                        | x < k = search l x
-                        | otherwise = search r x
+lookup::(Ord a)=> Tree a -> a -> Tree a
+lookup Empty _ = Empty
+lookup t@(Node l k r) x | k == x = t
+                        | x < k = lookup l x
+                        | otherwise = lookup r x
 \end{lstlisting}
 
 If the binary search tree is well balanced, which means that almost
@@ -632,178 +632,60 @@ red-black-tree\cite{okasaki-blog}.
 In this section, we'll only present the imperative algorithm for finding
 the successor and predecessor in a binary search tree.
 
-TODO: add algorithm code here.
+When finding the successor of element $x$, which is the smallest one $y$
+that satisifies $y > x$, there are two cases. If the node with value $x$
+has non-NIL right child, the minimum element in right child is the answer;
+For example, in Figure \ref{fig:bst-example}, in order to find the successor
+of 8, we search it's right sub tree for the minimum one, which yields 9
+as the result. While if node $x$ don't have right child, we need 
+back-track to find the closest ancestors whose left child is also ancestor
+of $x$. In Figure \ref{fig:bst-example}, since 2 don't have right sub tree,
+we go back to its parent 1. However, node 1 don't have left child, so we
+go back again and reach to node 3, the left child of 3, is also ancestor
+of 2, thus, 3 is the successor of node 2.
 
-\subsubsection*{C++ version of succ/pred, imperative}
+Based on this description, the algorithm can be given as the following.
 
-\lstset{language=C++}
-\begin{lstlisting}
-template<class T>
-node<T>* succ(node<T>* x){
-  if(x){
-    if(x->right) return min(x->right);
-    //find an ancestor, whose left child contains x
-    node<T>* p = x->parent;
-    while(p && p->right==x){
-      x = p;
-      p = p->parent;
-    }
-    return p;
-  }
-  return 0;
-}
+\begin{algorithmic}[1]
+\Function{Succ}{$x$}
+  \If{\Call{Right}{$x$} $\neq NIL$}
+    \State \Return \textproc{Min}(\Call{Right}{$x$})
+  \Else
+    \State $p \gets $ \Call{Parent}{$x$}
+    \While{$p \neq NIL$ and $x =$ \Call{Right}{$p$}}
+      \State $x \gets p$
+      \State $p \gets $ \Call{Parent}{$p$}
+    \EndWhile
+    \State \Return $p$
+  \EndIf
+\EndFunction
+\end{algorithmic}
 
-template<class T>
-node<T>* pred(node<T>* x){
-  if(x){
-    if(x->left) return max(x->left);
-    //find an ancestor, whose right child contains x
-    node<T>* p = x->parent;
-    while(p && p->left==x){
-      x = p;
-      p = p->parent;
-    }
-    return p;
-  }
-  return 0;
-}
-\end{lstlisting}
+The predecessor case is quite similar to the successor algorithm, they
+are symmetrical to each other. 
 
-In function succ(), it takes a node in a tree, and tries to find the successor
-of this node. if the node to be found is empty, it just returns it.
+\begin{algorithmic}[1]
+\Function{Pred}{$x$}
+  \If{\Call{Left}{$x$} $\neq NIL$}
+    \State \Return \textproc{Max}(\Call{Left}{$x$})
+  \Else
+    \State $p \gets $ \Call{Parent}{$x$}
+    \While{$p \neq NIL$ and $x =$ \Call{Left}{$p$}}
+      \State $x \gets p$
+      \State $p \gets $ \Call{Parent}{$p$}
+    \EndWhile
+    \State \Return $p$
+  \EndIf
+\EndFunction
+\end{algorithmic}
 
-If the node has non-empty right child, the answer will be the min node in right
-sub tree. While if it hasn't right sub tree, we must back track the ancestors 
-of this node, try to find one, whose key is bigger. This can be approached 
-by testing if the left child of an ancestor contains our node.
-
-We can test the above program as below:
-
-\begin{lstlisting}
-assert_("succ 7: ", succ(search(tree, 7))->value, 9);
-assert_("succ 13: ", succ(search(tree, 13))->value, 15);
-assert_("succ 20: ", succ(search(tree, 20)), empty);
-assert_("pred 6: ", pred(search(tree, 6))->value, 4);
-assert_("pred 7: ", pred(search(tree, 7))->value, 6);
-assert_("pred 2: ", pred(search(tree, 2)), empty);
-\end{lstlisting}
-
-And the result is:
-\begin{verbatim}
-succ 7: 9 OK.
-succ 13: 15 OK.
-succ 20: 0 OK.
-pred 6: 4 OK.
-pred 7: 6 OK.
-pred 2: 0 OK.
-\end{verbatim}
-
-\subsubsection*{Haskell version of succ/pred, recursive}
-
-In Haskell implementation, since I don't record parent for a node, it's hard
-to find successor and predecessor in a easy way. I am not able to find a high
-efficient way to realize them.
-
-I defined some helper functions to find parent of a node in the tree, and filter
-out the ancestor of a node which satisfies a predication. 
-
-\lstset{language=Haskell}
-\begin{lstlisting}
--- Find parent of a value in tree
--- The performance is low: O(h)
-parent::(Ord a)=>Tree a -> a -> Tree a
-parent Empty _ = Empty
-parent t x | x < (key t) = if isParent (left t) x then t 
-                              else parent (left t) x
-           | x > (key t) = if isParent (right t) x then t 
-                              else parent (right t) x
-           | otherwise = Empty where
-               isParent Empty _ = False
-               isParent t x = (key t)==x
-
--- Find an ancestor of a value wich match a certain rule
--- Performance is very low.
-findAncestor::(Ord a)=>Tree a -> a ->(a->a->Bool)-> Tree a
-findAncestor t x f = checkParent t (parent t x) x f where
-    checkParent _ Empty _ _ = Empty
-    checkParent t p x f = if f (key p) x then p
-                          else checkParent t (parent t (key p)) x f
-\end{lstlisting}
-
-The helper function, parent, takes 2 parameters, one is a tree, the other
-is a value x. If the tree is empty, there is no parent, so the program returns
-empty. In other case, it will test from root recursively to check if x is equal to
-the key of the left sub tree root or right sub tree root.
-
-The other helper function, findAncestor will utilize parent function. it takes 3
-parameters, a tree, a value x, and a predicate function. the program will first 
-check the direct parent of x matches the predicate. If succeeds, the parent will
-be returned, else it will recursively check grand parent until finally reach to root.
-
-With these 2 helpers, succ/pred can be realized as the following:
-\begin{lstlisting}
--- Performance is very low.
-succt::(Ord a)=>Tree a -> a -> Tree a
-succt Empty _ = Empty
-succt t x = if not (isEmpty rightNode)
-            then mint rightNode
-            else findAncestor t x (>) where
-                rightNode = right (search t x)
-
--- Performance is very low
-predt::(Ord a)=>Tree a -> a -> Tree a
-predt Empty _ = Empty
-predt t x = if not (isEmpty leftNode)
-            then maxt leftNode
-            else findAncestor t x (<) where
-                leftNode = left (search t x)
-\end{lstlisting}
-
-For either cases, the program will fist call search function to locate the node
-which key value is equal to x. In order to find the successor of a node, we'll 
-check if the node has right child. If the right child isn't empty, the minimum 
-of right sub tree is the answer, else we'll track back to find the nearest 
-ancestor which is greater than x.
-
-The test cases and result are as below:
-\begin{lstlisting}
-testSuccPred = 
-  "\ntest succ of 7:\t"++ show (key (succt t2 7)) ++
-  "\ntest succ of 13:\t"++ show (key (succt t2 13)) ++
-  "\ntest pred of 6:\t"++ show (key (predt t2 6))++
-  "\ntest pred of 7:\t"++ show (key (predt t2 7))
-
-main = do
-    putStrLn testSuccPred
-    putStrLn testDel
-\end{lstlisting}
-
-\begin{verbatim}
-test succ of 7: 9
-test succ of 13:        15
-test pred of 6: 4
-test pred of 7: 6
-\end{verbatim}
-
-Note that there is a big problem in compute time of successor and predecessor 
-operations if I implement them as above. For the imperative version, the time
-is $O(h)$, where $h$ is the height of the tree ($h$ close to $log(N)$ if the
-binary search tree is balanced), while it is quite slow than this because each
-parent/ancestor finding operation takes $O(h)$ time. I am finding if there is 
-better solution.
-
-\subsubsection*{Python version of succ/pred, imperative}
-
-Python version can be implemented very similar to C++ version. I changed it
-a bit. When we seek for successor, in case a node hasn't right child, we have to find an ancestor of that
-node, which has the node in ancestor's left sub tree. The change can be seen
-in the while loop condition in below code.
+Below are the Python programs based on these algorithms. They are changed
+a bit in while loop conditions.
 
 \lstset{language=Python}
 \begin{lstlisting}
 def succ(x):
-    if(x is None): return None
-    if(x.right != None): return tree_min(x.right)
+    if x.right is not None: return tree_min(x.right)
     p = x.parent
     while(p != None and p.left != x):
         x = p
@@ -811,8 +693,7 @@ def succ(x):
     return p
 
 def pred(x):
-    if (x is None): return None
-    if (x.left != None): return tree_max(x.left)
+    if x.left is not None: return tree_max(x.left)
     p = x.parent
     while(p != None and p.right != x):
         x = p
@@ -820,212 +701,71 @@ def pred(x):
     return p
 \end{lstlisting}
 
-The test cases for Python program are:
-\begin{lstlisting}
-def test_succ_pred(self):
-    self.__assert("succ of 7: ", 
-        succ(tree_search(self.tree, 7)).key, 9)
-    self.__assert("succ of 13: ", 
-        succ(tree_search(self.tree, 13)).key, 15)
-    self.__assert("succ of 20: ", 
-        succ(tree_search(self.tree, 20)), None)
-    self.__assert("pred of 6: ", 
-        pred(tree_search(self.tree, 6)).key, 4)
-    self.__assert("pred of 7: ", 
-        pred(tree_search(self.tree, 7)).key, 6)
-    self.__assert("pred of 2: ", 
-        pred(tree_search(self.tree, 2)), None)
-\end{lstlisting}
+\subsection*{Exercise}
 
-The result is as same as the one output by C++ program.
-
-\subsubsection*{Scheme/Lisp version of succ/pred, imperative}
-
-\lstset{language=lisp}
-\begin{lstlisting}
-;; low efficiency functions
-(define (parent tree x) ; x is a node, not a value
-  (define (parent? t v)
-    (if (null? t) t (equal? (key t) v)))
-  (cond ((null? tree) tree)
-	((< (key x) (key tree)) (if (parent? (left tree) (key x))
-				    tree
-				    (parent (left tree) x)))
-	((> (key x) (key tree)) (if (parent? (right tree) (key x))
-				    tree
-				    (parent (right tree) x)))
-	(else '())))
-
-(define (find-ancestor tree x f) ; x is a node, not a value
-  (define (check-parent t p v f)
-    (if (f (key p) v)
-	p
-	(check-parent t (parent t p) v f)))
-  (check-parent tree (parent tree x) (key x) f))
-
-(define (succ tree x) ;x is a node, not a value
-  (if (null? (right x))
-      (find-ancestor tree x >)
-      (tree-min (right x))))
-
-(define (pred tree x)
-  (if (null? (left x))
-      (find-ancestor tree x <)
-      (tree-max (left x))))
-\end{lstlisting}
-
-Similar to the Haskell version, Scheme version of succ/pred I wrote is poor
-in term of performance. This is because there is no easy way to locate the
-parent of a node. Anyone who finds a better version, please feel free to 
-tell me.
-
-The test cases and results are:
-
-\begin{lstlisting}
-(define (test-succ-pred)
-  (display (key (succ t1 (tree-search t1 7)))) (newline)
-  (display (key (succ t1 (tree-search t1 13)))) (newline)
-  (display (key (pred t1 (tree-search t1 6)))) (newline)
-  (display (key (pred t1 (tree-search t1 7)))))
-\end{lstlisting}
-
-\begin{verbatim}
-(test-succ-pred)
-9
-15
-4
-6
-;Unspecified return value
-\end{verbatim}
-
-% ================================================================
-%                 Insertion and deletion
-% ================================================================
-\section{Insertion and deletion}
-
-Different with all above tree operations, insertion and deletion can mutate
-the tree. All functions I defined till now are 'read only' functions.
-
-\subsection{Insertion}
-Insertion is the necessary element to create a tree, one recursive description
-of insertion is like this.
-
-To insert a value x to a tree t,
 \begin{itemize}
-\item If the tree is empty, then return a leave with key=x;
-\item If x is less than the key of root node, insert x to the left child;
-\item If x is greater than the key of root, insert x to the right child.
+\item Can you figure out how to iterate a tree as a generic container
+by using $pred()$/$succ()$? What's the performance of such traversing
+process in terms of big-O?
+
+\item A reader discussed about traversing all elements inside a 
+range $[a, b]$. In C++, the algorithm looks like the below code:
+
+$\mathbf{for\_each} (m.lower\_bound(12), m.upper\_bound(26), f);$
+
+Can you provide the purely function solution for this problem?
 \end{itemize}
 
-\subsubsection*{Haskell tree insertion, recursive}
-By translate the above description into Haskell code, the program can be written
-as below.
 
-\begin{lstlisting}
-insert::(Ord a) => Tree a -> a -> Tree a
-insert Empty x = leaf x
-insert t x = if x < key(t) 
-             then (Node (insert (left t) x) (key t) (right t))
-             else (Node (left t) (key t) (insert (right t) x))
-\end{lstlisting}
+% ================================================================
+%                 Deletion
+% ================================================================
+\section{Deletion}
+Deletion is another `imperative only' topic for binary search tree.
+This is because deletion mutate the tree, while in purely functional
+settings, we don't modify the tree after building it in most 
+application.
 
-The testing of insertion can be found in section \ref{list2tree}
+However, One method of deleting element from binary search
+tree in purely funcitonal way is shown in this section. It's actually
+reconstructing the tree but not modifying the tree.
 
-\subsubsection*{C++ tree insertion, imperative}
+Deletion is the most complex operation for binary search tree. 
+this is because we must keep the BST property, that for any node,
+all keys in left sub tree are less than the key of this node, and
+they are all less than any keys in right sub tree. Deleting a node
+can break this property.
 
-By using imperacitve language such as C++, we can iterate to the sub-tree untill
-to the insertion point. There are some extra lines to set the parent of the node
-properly.
+In this post, different with the algorithm described in \cite{CLRS}, 
+A simpler one from SGI STL implementation is used.\cite{sgi-stl}
 
-\lstset{language=C++}
-\begin{lstlisting}
-template<class T>
-node<T>* insert(node<T>* tree, T value){
-  node<T>* root(tree);
-  node<T>* x = new node<T>(value);
-  node<T>* parent(0);
-  while(tree){
-    parent = tree;
-    if(value < tree->value)
-      tree = tree -> left;
-    else //assert there is no duplicated value inserted.
-      tree = tree -> right;
-  }
-  x->parent = parent;
-  if( parent == 0 ) //tree is empty
-    return x;
-  else if( value < parent->value)
-    parent->left = x;
-  else
-    parent->right = x;
-  return root;
-}
-\end{lstlisting}
-
-\subsubsection*{Python tree insertion, imperative}
-
-\lstset{language=Python}
-\begin{lstlisting}
-def tree_insert(t, key):
-    root = t
-    x = Node(key)
-    parent = None
-    while(t):
-        parent = t
-        if(key < t.key):
-            t = t.left
-        else:
-            t = t.right
-    x.parent = parent
-    if(parent == None): #tree is empty
-        return x
-    elif(key < parent.key):
-        parent.left = x
-    else:
-        parent.right = x
-    return root
-\end{lstlisting}
-
-\subsubsection*{Scheme/Lisp tree insertion, imperative}
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (tree-insert tree x)
-  (cond ((null? tree) (list '() x '()))
-	((< x (key tree))
-	 (make-tree (tree-insert (left tree) x)
-		    (key tree)
-		    (right tree)))
-	((> x (key tree))
-	 (make-tree (left tree)
-		    (key tree)
-		    (tree-insert (right tree) x)))))
-\end{lstlisting}
-
-The testing can be refer to section \ref{list2tree}.
-
-\subsection{Deletion}
-Deletion is the most complex operation for binary search tree. this is because we
-must keep the property, that left sub tree < key < right sub tree. Deleting a node
-can break this property very easy.
-
-I don't use the same algorithm described in CLRS\cite{CLRS}, I found a more simple
-one from 'Annotated STL'\cite{hj-stl}
-
-The algorithm can be described as below:
-
-To delete a node x from a tree.
+To delete a node $x$ from a tree.
 \begin{itemize}
-\item If x has no child or only one child, splice x out;
-\item If x has two children, use minimum of its right to replace x, 
-and splice the original minimum out.
+\item If $x$ has no child or only one child, splice x out;
+\item Otherwise ($x$ has two children), use minimum element of its right sub tree to replace $x$, and splice the original minimum element out.
 \end{itemize}
 
-\subsubsection*{Haskell deletion, recursive}
+The simplicity comes from the truth that, the minimum element is stored
+in a node in the right sub tree, which can't have two non-NIL children.
+It ends up in the trivial case, the the node can be directly splice
+out from the tree.
 
-Haskell version of deletion can be realized by translating the above description
-directly into code. But there is a different point, instead of pass a node to the
-function, I pass value to be deleted in it. So the program need perform search first.
+\begin{figure}[htbp]
+       \begin{center}
+	\includegraphics[scale=0.5]{img/del-leaf.ps} \\ 
+        $x$ can be spliced out. \\
+        \includegraphics[scale=0.5]{img/del-lc-before.ps} \includegraphics[scale=0.5]{img/del-lc-after.ps} \\
+        $x$ is spliced out, and replaced by its left child. \\
+        \includegraphics[scale=0.5]{img/del-rc-before.ps} \includegraphics[scale=0.5]{img/del-rc-after.ps} \\
+        $x$ is spliced out, and replaced by its right child.
+        \includegraphics[scale=0.5]{img/del-branch-before.ps} \includegraphics[scale=0.5]{img/del-branch-after.ps} \\
+        $x$ is replaced by splicing the minimum element from its right child.
+        \caption{Delete a node from binary search tree.} \label{fig:del-cases}
+       \end{center}
+\end{figure}
+
+
+TODO: Funtion defintion
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -1039,37 +779,6 @@ delete (Node l k r) x | x < k = (Node (delete l x) k r)
                       | otherwise = (Node l k' (delete r k')) 
                           where k' = key (mint r)
 \end{lstlisting}
-
-The test cases and result are shows as below.
-
-\begin{lstlisting}
-testDel = "\ntest del 17:\t"++ show (delete t2 17)++
-          "\ntest del 7:\t"++ show (delete t2 7)++
-          "\ntest del 6:\t" ++ show (delete t2 6)++
-          "\ntest del 15:\t"++ show (delete t2 15)++
-          "\ntest del non-exist:\t" ++ show (delete t2 5)
-
-main = do
-    putStrLn testDel
-\end{lstlisting}
-
-\begin{verbatim}
-test del 17:    Node (Node (Node (Node Empty 2 Empty) 3 (Node Empty 4 
-Empty)) 6 (Node Empty 7 (Node (Node Empty 9 Empty) 13 Empty))) 15 
-(Node Empty 18 (Node Empty 20 Empty))
-test del 7:     Node (Node (Node (Node Empty 2 Empty) 3 (Node Empty 4 
-Empty)) 6 (Node (Node Empty 9 Empty) 13 Empty)) 15 (Node (Node Empty 
-17 Empty) 18 (Node Empty 20 Empty))
-test del 6:     Node (Node (Node (Node Empty 2 Empty) 3 (Node Empty 4 
-Empty)) 7 (Node (Node Empty 9 Empty) 13 Empty)) 15 (Node (Node Empty 
-17 Empty) 18 (Node Empty 20 Empty))
-test del 15:    Node (Node (Node (Node Empty 2 Empty) 3 (Node Empty 4 
-Empty)) 6 (Node Empty 7 (Node (Node Empty 9 Empty) 13 Empty))) 17 
-(Node Empty 18 (Node Empty 20 Empty))
-test del non-exist:     Node (Node (Node (Node Empty 2 Empty) 3 (Node 
-Empty 4 Empty)) 6 (Node Empty 7 (Node (Node Empty 9 Empty) 13 Empty))) 
-15 (Node (Node Empty 17 Empty) 18 (Node Empty 20 Empty))
-\end{verbatim}
 
 \subsubsection*{C++ deletion, imperative}
 
@@ -1323,8 +1032,8 @@ Jon Bentley. ``Programming Pearls(2nd Edition)''. Addison-Wesley Professional; 2
 \bibitem{okasaki-blog}
 Chris Okasaki. ``Ten Years of Purely Functional Data Structures''. http://okasaki.blogspot.com/2008/02/ten-years-of-purely-functional-data.html
 
-\bibitem{hj-stl}
-Hou Jie. ``The annotated STL sources (using SGI STL)''. ISBN:7-5609-2699-1 http://press.hust.edu.cn. 2002.
+\bibitem{sgi-stl}
+SGI. ``Standard Template Library Programmer's Guide''. http://www.sgi.com/tech/stl/
 
 \bibitem{literal-program}
 http://en.literateprograms.org/Category:Binary\_search\_tree
