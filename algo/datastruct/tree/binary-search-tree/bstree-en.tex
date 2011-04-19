@@ -543,7 +543,8 @@ all nodes have both non-NIL left child and right child, for $N$ elements,
 the search algorithm takes $O(\lg N)$ time to perform. This is not
 formal definition of balance. We'll show it in later post about red-black-tree.
 If the tree is poor balanced, the worst case takes $O(N)$ time to 
-search for a key.
+search for a key. If we denote the height of the tree as $h$, we can
+uniform the performance of the algorithm as $O(h)$.
 
 The search algorithm can also be realized without using recursion in 
 a procedural manner.
@@ -603,6 +604,7 @@ max(T) = \left \{
 \right .
 \ee
 
+Both function bound to $O(h)$ time, where $h$ is the height of the tree.
 For the balanced binary search tree, $min$/$max$ are bound to $O(\lg N)$ time,
 while they are $O(N)$ in the worst cases.
 
@@ -687,7 +689,7 @@ a bit in while loop conditions.
 def succ(x):
     if x.right is not None: return tree_min(x.right)
     p = x.parent
-    while(p != None and p.left != x):
+    while p is not None and p.left != x:
         x = p
         p = p.parent
     return p
@@ -695,7 +697,7 @@ def succ(x):
 def pred(x):
     if x.left is not None: return tree_max(x.left)
     p = x.parent
-    while(p != None and p.right != x):
+    while p is not None and p.right != x:
         x = p
         p = p.parent
     return p
@@ -750,6 +752,9 @@ in a node in the right sub tree, which can't have two non-NIL children.
 It ends up in the trivial case, the the node can be directly splice
 out from the tree.
 
+Figure \ref{fig:del-leaf}, \ref{fig:del-1child}, and \ref{fig:del-branch}
+illustrate these different cases when deleting a node from the tree.
+
 \begin{figure}[htbp]
        \begin{center}
 	\includegraphics[scale=0.5]{img/del-leaf.ps}
@@ -775,8 +780,33 @@ out from the tree.
        \end{center}
 \end{figure}
 
+Based on this idea, the deletion can be defined as the below function.
 
-TODO: Funtion defintion
+\be
+delete(T, x) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \phi & T = \phi \\
+  node(delete(L, x), K, R) & x < K \\
+  node(L, K, delete(R, x)) & x > K \\
+  R & x = K \wedge L = \phi \\
+  L & x = K \wedge R = \phi \\
+  node(L, y, delete(R, y)) & otherwise
+  \end{array}
+\right .
+\ee
+
+Where
+\[
+\begin{array}{l}
+L = left(T) \\
+R = right(T) \\
+K = key(T) \\
+y = min(R)
+\end{array}
+\]
+
+Translating the function to Haskell yeilds the below program.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -788,248 +818,149 @@ delete (Node l k r) x | x < k = (Node (delete l x) k r)
                       | isEmpty l = r
                       | isEmpty r = l
                       | otherwise = (Node l k' (delete r k')) 
-                          where k' = key (mint r)
+                          where k' = min r
 \end{lstlisting}
 
-\subsubsection*{C++ deletion, imperative}
+Function `isEmpty' is used to test if a tree is empty ($\phi$).
+Note that the algorithm first performs search to locate the node
+where the element need be deleted, after that it execute the 
+deletion. This algorithm takes $O(h)$ time where $h$ is the height
+of the tree.
 
-C++ version is more complex because it need set the parent properly.
-While we can pass the pointer to the node which will be deleted to the function,
-so that search is no more needed. The function will return the root
-of the result tree.
+It's also possible to pass the node but not the element to the 
+algorithm for deletion. Thus the searching is no more needed.
 
-\lstset{language=C++}
-\begin{lstlisting}
-template<class T>
-node<T>* del(node<T>* tree, node<T>* x){
-  if(!x)
-    return tree;
+The imperative algorithm is more complex because it need set the 
+parent properly. The function will return the root of the result tree.
 
-  node<T>* root(tree);
-  node<T>* old_x(x);
-  node<T>* parent(x->parent);
+\begin{algorithmic}[1]
+\Function{Delete}{$T, x$}
+  \State $root \gets T$
+  \State $x' \gets x$ \Comment{save $x$}
+  \State $parent \gets $ \Call{Parent}{$x$}
+  \If{\Call{Left}{$x$} $= NIL$}
+    \State $x \gets $ \Call{Right}{$x$}
+  \ElsIf{\Call{Right}{$x$} $= NIL$}
+    \State $x \gets $ \Call{Left}{$x$}
+  \Else
+    \Comment{both children are non-NIL}
+    \State  $y \gets $ \textproc{Min}(\Call{Right}{$x$})
+    \State \Call{Key}{$x$} $\gets$ \Call{Key}{$y$}
+    \State Copy other satellite data from $y$ to $x$
+    \If{\Call{Parent}{$y$} $\neq x$}
+      \Comment{$y$ hasn't left sub tree}
+      \State \textproc{Left}(\Call{Parent}{$y$}) $\gets$ \Call{Right}{$y$}
+    \Else
+      \Comment{$y$ is the root of right child of $x$}
+      \State \Call{Right}{$x$} $\gets$ \Call{Right}{$y$}
+    \EndIf
+    \State Remove $y$
+    \State \Return $root$
+  \EndIf
+  \If{$x \neq NIL$}
+    \State \Call{Parent}{$x$} $\gets parent$ 
+  \EndIf
+  \If{$parent = NIL$}
+    \Comment{We are removing the root of the tree}
+    \State $root \gets x$
+  \Else
+    \If{\Call{Left}{$parent$} $= x'$}
+      \State \Call{Left}{$parent$} $\gets x$
+    \Else
+      \State \Call{Right}{$parent$} $\gets x$
+    \EndIf
+  \EndIf
+  \State Remove $x'$
+  \State \Return $root$
+\EndFunction
+\end{algorithmic}
 
-  if(x->left == 0)
-    x = x->right;
-  else if(x->right == 0)
-    x = x->left;
-  else{
-    node<T>* y=min(x->right);
-    x->value = y->value;
-    if(y->parent != x)
-      y->parent->left = y->right;
-    else
-      x->right = y->right;
+Here we assume the node to be deleted is not empty (otherwise we can 
+simply returns the original tree). In other cases, it will first record 
+the root of the tree, create copy pointers to $x$, and its parent.
 
-    remove_node(y);
-    return root;
-  }
+If either of the children is empty, the algorithm just splice $x$ out. 
+If it has two non-NIL children, we first located the minimum of right 
+child, replace the key of $x$ to $y$'s, copy the satellite data as
+well, then splice $y$ out. Note that there is a special case that $y$
+is the root node of $x$'s left sub tree.
 
-  if(x)
-    x->parent = parent;
-
-  if(!parent)
-    root = x; //remove node of a tree
-  else
-    if(parent->left == old_x)
-      parent->left = x;
-    else
-      parent->right = x;
-
-  remove_node(old_x);
-  return root;
-}
-\end{lstlisting}
-
-If the node to be deleted is empty, the function simply returns the original tree.
-In other cases, it will first record the root of the tree, create a copy pointer
-to x, and to its parent.
-
-If either of the children is empty, the program just splice x out. If it has two
-none-empty children, we first located the minimum of right child, replace the key
-of x to y's, then splice y out. Note that the helper function remove\_node() is
-used.
-
-Finally we reset the parent. If the parent pointer we copied before is empty, it
+Finally we need reset the stored parent if the original $x$ has only 
+one non-NIL child. 
+If the parent pointer we copied before is empty, it
 means that we are deleting the root node, so we need return the new root. After
 the parent is set properly, we finally remove the old x from memory.
 
-The test cases and result are shows as below.
-
-\begin{lstlisting}
-void test_del_n(int n){
-  node<int>* empty(0);
-  node<int>* t1=clone_tree(tree);
-  t1=del(t1, search(t1, n));
-  std::cout<<"del "<<n<<":\n"<<tree_to_str(t1)<<"\n";
-  assert_("search after del: ", search(t1, n), empty);
-  delete t1;
-}
-
-test_del_n(17);
-test_del_n(7);
-test_del_n(6);
-test_del_n(15);
-test_del_n(1); //try to del a non-exist val
-\end{lstlisting}
-
-Because the deletion function in C++ inplace change the tree, so I cloned the test 
-tree for each testing. The clone\_tree() function is defined in section \ref{helper-fun}.
-
-The result of these test case is as below.
-\begin{verbatim}
-del 17:
-((((empty), 2, (empty)), 3, ((empty), 4, (empty))), 6, ((empty), 7, 
-(((empty), 9, (empty)), 13, (empty)))), 15, ((empty), 18, ((empty), 
-20, (empty)))
-search after del: 0 OK.
-del 7:
-((((empty), 2, (empty)), 3, ((empty), 4, (empty))), 6, (((empty), 9, 
-(empty)), 13, (empty))), 15, (((empty), 17, (empty)), 18, ((empty), 
-20, (empty)))
-search after del: 0 OK.
-del 6:
-((((empty), 2, (empty)), 3, ((empty), 4, (empty))), 7, (((empty), 9, 
-(empty)), 13, (empty))), 15, (((empty), 17, (empty)), 18, ((empty), 
-20, (empty)))
-search after del: 0 OK.
-del 15:
-((((empty), 2, (empty)), 3, ((empty), 4, (empty))), 6, ((empty), 7, 
-(((empty), 9, (empty)), 13, (empty)))), 17, ((empty), 18, ((empty), 
-20, (empty)))
-search after del: 0 OK.
-del 1:
-((((empty), 2, (empty)), 3, ((empty), 4, (empty))), 6, ((empty), 7, 
-(((empty), 9, (empty)), 13, (empty)))), 15, (((empty), 17, (empty)), 
-18, ((empty), 20, (empty)))
-search after del: 0 OK.
-\end{verbatim}
-
-\subsubsection*{Python deletion, imperative}
-Python version is very similar to C++, but it needn't free memory because
-of GC support.
+The relative Python program for deleting algorithm is given as below.
+Because Python provides GC, we needn't explicitly remove the node
+from the memory.
 
 \lstset{language=Python}
 \begin{lstlisting}
 def tree_delete(t, x):
-    if (x is None): return t
+    if x is None: 
+        return t
     [root, old_x, parent] = [t, x, x.parent]
-    if (x.left is None):
+    if x.left is None:
         x = x.right
-    elif (x.right is None):
+    elif x.right is None:
         x = x.left
     else:
         y = tree_min(x.right)
         x.key = y.key
-        if (y.parent != x):
+        if y.parent != x:
             y.parent.left = y.right
         else:
             x.right = y.right
-        remove_node(y)
         return root
-    if (x != None):
+    if x is not None:
         x.parent = parent
-    if (parent != None):
+    if parent is None:
         root = x
     else:
-        if(parent.left == old_x): parent.left = x
-        else: parent.right = x
-    remove_node(old_x)
+        if parent.left == old_x: 
+            parent.left = x
+        else: 
+            parent.right = x
     return root
 \end{lstlisting}
 
-This function can be tested as below:
+Because the procedure seeks minimum element, it runs in $O(h)$ time on 
+a tree of height $h$.
 
-\begin{lstlisting}
-def __test_del_n(self, n):
-    t = clone_tree(self.tree)
-    t = tree_delete(t, tree_search(t, n))
-    print "del ", n, ": ", tree_to_str(t)
-    self.__assert("search after del: ", tree_search(t, n), None)
+\subsection*{Exercise}
 
-def test_del(self):
-    self.__test_del_n(17)
-    self.__test_del_n(7)
-    self.__test_del_n(6)
-    self.__test_del_n(15)
-    self.__test_del_n(1) #del a non-exist value
-\end{lstlisting}
+\begin{itemize}
+\item There is a symmetrical solution for deleting a node which has two
+non-NIL children, to replace the element by splicing the maximum one out
+off the left sub-tree. Write a program to implement this solution.
+\end{itemize}
 
-The test result is as same as C++.
+\section{Randomly build binary search tree}
+It can be found that all operations given in this post bound to $O(h)$
+time for a tree of height $h$. The height affects the performance 
+a lot. For a very unbalanced tree, $h$ tends to be $O(N)$, which leads
+to the worst case. While for balanced tree, $h$ close to $O(\lg N)$.
+We can gain the good performance. 
 
-\subsubsection*{Scheme/Lisp deletion, recursive}
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (tree-delete tree v)
-  (cond ((null? tree) tree)
-	((< v (key tree)) (make-tree (tree-delete (left tree) v)
-				     (key tree)
-				     (right tree)))
-	((> v (key tree)) (make-tree (left tree)
-				     (key tree)
-				     (tree-delete (right tree) v)))
-	((null? (left tree)) (right tree))
-	((null? (right tree)) (left tree))
-	(else (let ((newkey (key (tree-min (right tree)))))
-		(make-tree (left tree)
-			   newkey
-			   (tree-delete (right tree) newkey))))))
-\end{lstlisting}
-
-Test cases are like the following.
-
-\begin{lstlisting}
-(define (test-del)
-  (display (tree-delete t1 17)) (newline)
-  (display (tree-delete t1 7)) (newline)
-  (display (tree-delete t1 6)) (newline)
-  (display (tree-delete t1 15)) (newline)
-  (display (tree-delete t1 5)))
-\end{lstlisting}
-
-It will output the result in emulator as below.
-
-\begin{verbatim}
-(test-del)
-((((() 2 ()) 3 (() 4 ())) 6 (() 7 ((() 9 ()) 13 ()))) 15 (() 18 (() 20 ())))
-((((() 2 ()) 3 (() 4 ())) 6 ((() 9 ()) 13 ())) 15 ((() 17 ()) 18 (() 20 ())))
-((((() 2 ()) 3 (() 4 ())) 7 ((() 9 ()) 13 ())) 15 ((() 17 ()) 18 (() 20 ())))
-((((() 2 ()) 3 (() 4 ())) 6 (() 7 ((() 9 ()) 13 ()))) 17 (() 18 (() 20 ())))
-((((() 2 ()) 3 (() 4 ())) 6 (() 7 ((() 9 ()) 13 ()))) 15 ((() 17 ()) 18 (() 
-20 ())))
-;Unspecified return value
-\end{verbatim}
-
-\section{Randomly built binary search tree}
-In CRLS\cite{CLRS}, it described about randomly built binary search tree.
+How to make the binary search tree
+balanced will be discussed in next post. However, there exists a simple
+way. Binary search tree can be randomly built as described in \cite{CLRS}.
 Ramdomly building can help to avoid (decrease the possibility) unbalanced
-binary trees.
+binary trees. The idea is that before building the tree, we can call a random
+process, to shuffle the elements. 
 
-This can be easily implemented in imperative way, such as by C++ and Python.
-Before call build\_tree() or list\_to\_tree() function, we can call random
-process, to shuffle the list or collection. The same approach can also be
-used in Scheme/Lisp. While for pure functional programming language, such as
-Haskell, randomization violate the property of pure function. We have to
-use alternative approach such as Monad.
+\subsection*{Exercise}
 
-There are more solution to ensure the tree is balanced, such as red black tree,
-please refer to other posts for detailed implementation.
+\begin{itemize}
+\item Write a randomly building process for binary search tree.
+\end{itemize}
+
 
 \section{Appendix} \label{appendix}
 %\appendix
-All programs are provided along with this article. They are free for downloading.
-\begin{itemize}
-\item bstree.cpp, C++ version of binary seach tree, including all test cases. I 
-compiled and tested it with GUN G++ 3.4.4.
-\item BSTree.hs, Haskell version of binary search tree, with test cases. I compiled
-and tested it with GHC 6.10.4.
-\item bstree.py, Python version of the binary search tree, with test cases. Tested
-with Python 2.5.1
-\item bstree.scm, Scheme version of the binary search tree and test cases. Tested
-with MIT/Scheme 14.9
-\end{itemize}
-download position: http://sites.google.com/site/algoxy/bstree/bstree.zip
+All programs are provided along with this post. They are free for downloading.
+We provided C, C++, Python, Haskell, and Scheme/Lisp programs as example.
 
 \begin{thebibliography}{99}
 
