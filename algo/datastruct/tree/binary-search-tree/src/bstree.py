@@ -76,19 +76,19 @@ def tree_max(t):
     return t
 
 def succ(x):
-    if(x is None): return None
-    if(x.right != None): return tree_min(x.right)
+    if x is None: return None
+    if x.right is not None: return tree_min(x.right)
     p = x.parent
-    while(p != None and p.left != x):
+    while p is not None and p.left != x:
         x = p
         p = p.parent
     return p
 
 def pred(x):
-    if (x is None): return None
-    if (x.left != None): return tree_max(x.left)
+    if x is None: return None
+    if x.left is not None: return tree_max(x.left)
     p = x.parent
-    while(p != None and p.right != x):
+    while p is not None and p.right != x:
         x = p
         p = p.parent
     return p
@@ -119,28 +119,31 @@ def remove_node(x):
     x.parent = x.left = x.right = None
 
 def tree_delete(t, x):
-    if (x is None): return t
+    if x is None: 
+        return t
     [root, old_x, parent] = [t, x, x.parent]
-    if (x.left is None):
+    if x.left is None:
         x = x.right
-    elif (x.right is None):
+    elif x.right is None:
         x = x.left
     else:
         y = tree_min(x.right)
         x.key = y.key
-        if (y.parent != x):
+        if y.parent != x:
             y.parent.left = y.right
         else:
             x.right = y.right
         remove_node(y)
         return root
-    if (x != None):
+    if x is not None:
         x.parent = parent
-    if (parent != None):
+    if parent is None:
         root = x
     else:
-        if(parent.left == old_x): parent.left = x
-        else: parent.right = x
+        if parent.left == old_x: 
+            parent.left = x
+        else: 
+            parent.right = x
     remove_node(old_x)
     return root
 
