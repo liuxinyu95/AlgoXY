@@ -20,11 +20,11 @@
 module BSTree where
 
 import Test.QuickCheck
-import Data.List (sort)
+import Data.List (sort) -- for verification purpose only
 import Prelude hiding(lookup, min, max)
 
 data Tree a = Empty 
-            | Node (Tree a) a (Tree a) deriving (Show)
+            | Node (Tree a) a (Tree a) deriving (Show, Eq)
 
 -- Helper functions for tree
 leaf::a -> Tree a
@@ -38,8 +38,9 @@ right::Tree a -> Tree a
 right (Node _ _ r) = r
 right _ = Empty
 
-key::Tree a -> a
-key (Node _ k _) = k
+key::Tree a -> Maybe a
+key (Node _ k _) = Just k
+key _ = Nothing
 
 isEmpty::Tree a -> Bool
 isEmpty Empty = True
@@ -65,7 +66,7 @@ min (Node l _ _) = min l
 -- Tree Max
 max::Tree a -> a
 max (Node _ x Empty) = x
-max (Node _ _ r) = min r
+max (Node _ _ r) = max r
 
 -- Insert an element into a tree
 insert::(Ord a) => Tree a -> a -> Tree a
@@ -111,6 +112,23 @@ prop_build xs = sort xs == (toList $ fromList xs)
 prop_mapR :: (Ord a) =>[a] -> a -> a -> Bool
 prop_mapR xs a b = filter (\x-> a<= x && x <=b) (sort xs) ==
                    toList (mapR id a b (fromList xs))
+
+prop_map :: (Ord a) => [a] -> Bool
+prop_map xs = mapT id (fromList xs) == fromList xs
+
+prop_lookup :: (Ord a) => [a] -> a -> Bool
+prop_lookup xs x = f $ key $ lookup (fromList xs) x where
+    f Nothing  = not $ elem x xs
+    f (Just y) = x == y
+
+prop_min :: (Ord a)=>(Num a) => [a] -> Property
+prop_min xs = not (null xs) ==> minimum xs == min (fromList xs)
+
+prop_max :: (Ord a)=>(Num a) => [a] -> Property
+prop_max xs = not (null xs) ==> maximum xs == max (fromList xs)
+
+-- prop_del :: (Ord a)=>(Num a) => [a] -> a -> Property
+-- prop_del 
 
 -- test data
 t1 = leaf 4
