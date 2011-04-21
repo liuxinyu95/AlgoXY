@@ -117,16 +117,16 @@ prop_lookup xs x = f $ key $ lookup (fromList xs) x where
     f Nothing  = not $ elem x xs
     f (Just y) = x == y
 
-prop_min :: (Ord a)=>(Num a) => [a] -> Property
+prop_min :: (Ord a, Num a) => [a] -> Property
 prop_min xs = not (null xs) ==> minimum xs == min (fromList xs)
 
-prop_max :: (Ord a)=>(Num a) => [a] -> Property
+prop_max :: (Ord a, Num a) => [a] -> Property
 prop_max xs = not (null xs) ==> maximum xs == max (fromList xs)
 
-prop_del :: (Ord a)=>(Num a) => [a] -> a -> Bool
+prop_del :: (Ord a, Num a) => [a] -> a -> Bool
 prop_del xs x = L.sort (L.delete x xs) == toList (delete (fromList xs) x)
 
-prop_mapR :: (Ord a) =>[a] -> a -> a -> Bool
+prop_mapR :: (Ord a, Num a) =>[a] -> a -> a -> Bool
 prop_mapR xs a b = filter (\x-> a<= x && x <=b) (L.sort xs) ==
                    toList (mapR id a b (fromList xs))
 
