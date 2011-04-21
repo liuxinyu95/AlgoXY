@@ -19,12 +19,12 @@
 
 module BSTree where
 
-import Test.QuickCheck
-import Data.List (sort)
+import Test.QuickCheck -- QuickCheck v1 is used when this program created.
+import qualified Data.List as L -- for verification purpose only
 import Prelude hiding(lookup, min, max)
 
 data Tree a = Empty 
-            | Node (Tree a) a (Tree a) deriving (Show)
+            | Node (Tree a) a (Tree a) deriving (Show, Eq)
 
 -- Helper functions for tree
 leaf::a -> Tree a
@@ -38,8 +38,9 @@ right::Tree a -> Tree a
 right (Node _ _ r) = r
 right _ = Empty
 
-key::Tree a -> a
-key (Node _ k _) = k
+key::Tree a -> Maybe a
+key (Node _ k _) = Just k
+key _ = Nothing
 
 isEmpty::Tree a -> Bool
 isEmpty Empty = True
@@ -65,7 +66,7 @@ min (Node l _ _) = min l
 -- Tree Max
 max::Tree a -> a
 max (Node _ x Empty) = x
-max (Node _ _ r) = min r
+max (Node _ _ r) = max r
 
 -- Insert an element into a tree
 insert::(Ord a) => Tree a -> a -> Tree a
@@ -105,50 +106,35 @@ toList Empty = []
 toList (Node l x r) = toList l ++ [x] ++ toList r
 
 -- test
-prop_build :: (Ord a)=>[a] -> Bool
-prop_build xs = sort xs == (toList $ fromList xs)
+prop_build :: (Show a)=>(Ord a)=>[a] -> Bool
+prop_build xs = L.sort xs == (toList $ fromList xs)
+
+prop_map :: (Ord a) => [a] -> Bool
+prop_map xs = mapT id (fromList xs) == fromList xs
+
+prop_lookup :: (Ord a) => [a] -> a -> Bool
+prop_lookup xs x = f $ key $ lookup (fromList xs) x where
+    f Nothing  = not $ elem x xs
+    f (Just y) = x == y
+
+prop_min :: (Ord a)=>(Num a) => [a] -> Property
+prop_min xs = not (null xs) ==> minimum xs == min (fromList xs)
+
+prop_max :: (Ord a)=>(Num a) => [a] -> Property
+prop_max xs = not (null xs) ==> maximum xs == max (fromList xs)
+
+prop_del :: (Ord a)=>(Num a) => [a] -> a -> Bool
+prop_del xs x = L.sort (L.delete x xs) == toList (delete (fromList xs) x)
 
 prop_mapR :: (Ord a) =>[a] -> a -> a -> Bool
-prop_mapR xs a b = filter (\x-> a<= x && x <=b) (sort xs) ==
+prop_mapR xs a b = filter (\x-> a<= x && x <=b) (L.sort xs) ==
                    toList (mapR id a b (fromList xs))
 
--- test data
-t1 = leaf 4
-t2 = fromList [15, 6, 18, 3, 7, 17, 20, 2, 4, 13, 9]
-
--- test tree creation
-testBuildTree = "\ntest create empty:\t"++ show (Empty::Tree Int)++
-                "\ntest create leaf:\t" ++ show t1 ++ 
-                "\ntest create from list:\t" ++ show t2
-
--- test tree walk
-testTreeWalk = "\ntest tree in-order walk by apply (-):\t"++show (mapT negate t2)
-
--- test min/max for tree
-testMinMax = "\ntest min leaf:\t" ++  show (min t1) ++
-             "\ntest min tree:\t" ++ show (min t2) ++ 
-             "\ntest max leaf:\t" ++ show (max t1) ++
-             "\ntest max tree:\t" ++ show (max t2)
-
--- test lookup in tree
-testLookup = "\ntest lookup empty tree:\t"++ show (lookup (Empty::Tree Int) 3) ++
-             "\ntest lookup in leaf:\t"++ show (lookup t1 4)++
-             "\ntest lookup non exist value in leaf:\t" ++ show (lookup t1 5)++
-             "\ntest lookup non exist node in tree:\t"++ show (lookup t2 5)++
-             "\ntest lookup a node in tree:\t"++ show (lookup t2 18)
-
-testDel = "\ntest del 17:\t"++ show (delete t2 17)++
-          "\ntest del 7:\t"++ show (delete t2 7)++
-          "\ntest del 6:\t" ++ show (delete t2 6)++
-          "\ntest del 15:\t"++ show (delete t2 15)++
-          "\ntest del non-exist:\t" ++ show (delete t2 5)
-
-oldTest = do
-    putStrLn testBuildTree
-    putStrLn testMinMax
-    putStrLn testLookup
-    putStrLn testTreeWalk
-    putStrLn testDel
-
---newTest = do
---    test prop_build
+testAll = do 
+  quickCheck (prop_build::[Int]->Bool)
+  quickCheck (prop_map::[Int]->Bool)
+  quickCheck (prop_lookup::[Int]->Int->Bool)
+  quickCheck (prop_min::[Int]->Property)
+  quickCheck (prop_max::[Int]->Property)
+  quickCheck (prop_del::[Int]->Int->Bool)
+  quickCheck (prop_mapR::[Int]->Int->Int->Bool)
