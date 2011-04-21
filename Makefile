@@ -3,9 +3,12 @@ SRC = common-en.tex
 
 all: $(BOOK).pdf
 
+index:
+	makeindex $(BOOK)
+
 $(BOOK).pdf: $(SRC)
 	latex $(BOOK).tex
-	makeindex -o $(BOOK).ind $(BOOK).idx #must have \makeindex in tex file
+	makeindex $(BOOK).idx
 	latex $(BOOK).tex
 	dvipdfmx $(BOOK)
 
@@ -14,6 +17,4 @@ clean:
 
 distclean: clean
 	rm -f *.pdf *.dvi *~
-
-	
 
