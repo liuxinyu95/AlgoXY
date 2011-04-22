@@ -1,5 +1,6 @@
 BOOK = main-en
 SRC = common-en.tex
+CHAPTERS = others/preface
 
 all: $(BOOK).pdf
 
