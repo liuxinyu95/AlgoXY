@@ -14,7 +14,6 @@ haskell:
 	make haskell -C src
 
 image:
-	#./create-image.sh
 	make -C img
 
 pdf: $(OBJECT).dvi
