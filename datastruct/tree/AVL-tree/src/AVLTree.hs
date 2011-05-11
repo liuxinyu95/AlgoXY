@@ -35,7 +35,14 @@ insert t x = fst $ ins t where
 balance::(AVLTree a, Int) -> a -> (AVLTree a, Int) -> Int -> (AVLTree a, Int)
 balance (l, dl) k (r, dr) d = fix (Br l k r d', delta) where
     d' = d + dr - dl
-    delta = if d' ==0 then 0 else dr+dl
+    delta = deltaH d d' dl dr
+
+deltaH :: Int -> Int -> Int -> Int -> Int
+deltaH d d' dl dr 
+       | d >=0 && d' >=0 = dr
+       | d <=0 && d' >=0 = d+dr
+       | d >=0 && d' <=0 = dl - d
+       | otherwise = dl
 
 fix :: (AVLTree a, Int) -> (AVLTree a, Int)
 fix (Br (Br (Br a x b h) y c (-1)) z d (-2), _) = (Br (Br a x b h) y (Br c z d 0) 0, 0)
@@ -53,6 +60,10 @@ height :: (AVLTree a) -> Int
 height Empty = 0
 height (Br l _ r _) = 1 + max (height l) (height r)
 
+checkDelta :: (AVLTree a) -> Bool
+checkDelta Empty = True
+checkDelta (Br l _ r d) = and [checkDelta l, checkDelta r, d == (height r - height l)]
+
 -- Auxiliary functions to build tree from a list, as same as BST
 
 fromList::(Ord a)=>[a] -> AVLTree a
@@ -65,6 +76,9 @@ toList (Br l k r _) = toList l ++ [k] ++ toList r
 -- test
 prop_bst :: (Ord a, Num a) => [a] -> Bool
 prop_bst xs = (L.sort $ L.nub xs) == (toList $ fromList xs)
+
+prop_delta :: (Ord a, Num a) => [a] -> Bool
+prop_delta = checkDelta . fromList. L.nub
 
 prop_avl :: (Ord a, Num a) => [a] -> Bool
 prop_avl = isAVL . fromList . L.nub
