@@ -37,6 +37,8 @@ balance (l, dl) k (r, dr) d = fix (Br l k r d', delta) where
     d' = d + dr - dl
     delta = deltaH d d' dl dr
 
+-- delta(Height) = max(|R'|, |L'|) - max (|R|, |L|)
+--  where we denote height(R) as |R|
 deltaH :: Int -> Int -> Int -> Int -> Int
 deltaH d d' dl dr 
        | d >=0 && d' >=0 = dr
@@ -45,10 +47,14 @@ deltaH d d' dl dr
        | otherwise = dl
 
 fix :: (AVLTree a, Int) -> (AVLTree a, Int)
-fix (Br (Br (Br a x b h) y c (-1)) z d (-2), _) = (Br (Br a x b h) y (Br c z d 0) 0, 0)
-fix (Br (Br a x (Br b y c _)    1) z d (-2), _) = (Br (Br a x b 0) y (Br c z d 0) 0, 0)
-fix (Br a x (Br b y (Br c z d h)    1)    2, _) = (Br (Br a x b 0) y (Br c z d h) 0, 0)
-fix (Br a x (Br (Br b y c _) z d (-1))    2, _) = (Br (Br a x b 0) y (Br c z d 0) 0, 0)
+fix (Br (Br (Br a x b dx) y c (-1)) z d (-2), _) = (Br (Br a x b dx) y (Br c z d 0) 0, 0)
+fix (Br a x (Br b y (Br c z d dz)    1)    2, _) = (Br (Br a x b 0) y (Br c z d dz) 0, 0)
+fix (Br (Br a x (Br b y c dy)    1) z d (-2), _) = (Br (Br a x b dx') y (Br c z d dz') 0, 0) where
+    dx' = if dy ==  1 then -1 else 0
+    dz' = if dy == -1 then  1 else 0
+fix (Br a x (Br (Br b y c dy) z d (-1))    2, _) = (Br (Br a x b dx') y (Br c z d dz') 0, 0) where
+    dx' = if dy ==  1 then -1 else 0
+    dz' = if dy == -1 then  1 else 0
 fix (t, d) = (t, d)
 
 -- check if a AVLTree is valid
