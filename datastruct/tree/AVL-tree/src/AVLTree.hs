@@ -27,13 +27,13 @@ insert t x = fst $ ins t where
     -- result of ins is a pair (t, d), t: tree, d: increment of height
     ins Empty = (Br Empty x Empty 0, 1)
     ins (Br l k r d) 
-        | x < k     = balance (ins l) k (r, 0) d
+        | x < k     = node (ins l) k (r, 0) d
         | x == k    = (Br l k r d, 0)
-        | otherwise = balance (l, 0) k (ins r) d
+        | otherwise = node (l, 0) k (ins r) d
 
--- balance (left, increment on left) key (right, increment on right)
-balance::(AVLTree a, Int) -> a -> (AVLTree a, Int) -> Int -> (AVLTree a, Int)
-balance (l, dl) k (r, dr) d = fix (Br l k r d', delta) where
+-- params: (left, increment on left) key (right, increment on right)
+node::(AVLTree a, Int) -> a -> (AVLTree a, Int) -> Int -> (AVLTree a, Int)
+node (l, dl) k (r, dr) d = balance (Br l k r d', delta) where
     d' = d + dr - dl
     delta = deltaH d d' dl dr
 
@@ -46,16 +46,16 @@ deltaH d d' dl dr
        | d >=0 && d' <=0 = dl - d
        | otherwise = dl
 
-fix :: (AVLTree a, Int) -> (AVLTree a, Int)
-fix (Br (Br (Br a x b dx) y c (-1)) z d (-2), _) = (Br (Br a x b dx) y (Br c z d 0) 0, 0)
-fix (Br a x (Br b y (Br c z d dz)    1)    2, _) = (Br (Br a x b 0) y (Br c z d dz) 0, 0)
-fix (Br (Br a x (Br b y c dy)    1) z d (-2), _) = (Br (Br a x b dx') y (Br c z d dz') 0, 0) where
+balance :: (AVLTree a, Int) -> (AVLTree a, Int)
+balance (Br (Br (Br a x b dx) y c (-1)) z d (-2), _) = (Br (Br a x b dx) y (Br c z d 0) 0, 0)
+balance (Br a x (Br b y (Br c z d dz)    1)    2, _) = (Br (Br a x b 0) y (Br c z d dz) 0, 0)
+balance (Br (Br a x (Br b y c dy)    1) z d (-2), _) = (Br (Br a x b dx') y (Br c z d dz') 0, 0) where
     dx' = if dy ==  1 then -1 else 0
     dz' = if dy == -1 then  1 else 0
-fix (Br a x (Br (Br b y c dy) z d (-1))    2, _) = (Br (Br a x b dx') y (Br c z d dz') 0, 0) where
+balance (Br a x (Br (Br b y c dy) z d (-1))    2, _) = (Br (Br a x b dx') y (Br c z d dz') 0, 0) where
     dx' = if dy ==  1 then -1 else 0
     dz' = if dy == -1 then  1 else 0
-fix (t, d) = (t, d)
+balance (t, d) = (t, d)
 
 -- check if a AVLTree is valid
 isAVL :: (AVLTree a) -> Bool
