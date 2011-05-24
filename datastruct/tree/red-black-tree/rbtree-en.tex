@@ -316,83 +316,29 @@ red-black tree.
 All read only operations such as search, min/max are as same as in 
 binary search tree. While only the insertion and deletion are special.
 
-TODO:
+As we have shown in word occurrence example, many implementation of 
+set or map container are based on red-black tree. One example is the 
+C++ Standard library (STL)\cite{sgi-stl}. 
 
-Many implementation of set in the well known C++ Standard library
-(STL) are based on red black tree. In this post, SGI STL\cite{sgi-stl} is
-selected. There is a lot of the layers in the stl\_tree.h to conform
-to the STL concept, such as iterator etc, so that red black tree can
-also be treated like standard STL container. I try to high light the
-algorithm part rather than the OO and generic programing parts.
+As mentioned previously, the only change in data layout is that
+there is color information augumented to binary search tree.
+This can be represented as a data field in imperative languages
+such as Python like below.
 
-All completed source code can be downloaded in appendix \ref{appendix}, please refer to appendix for detailed information about build and run.
+TODO: change to C++ code
 
-The definition of red black tree is very similar to the binary search tree.
-In imperative implementation, it has one more color member to denote if the node is red or black. The parent member is critical in red black tree, because
-it need back-track in insertion and deletion to keep the balancing properties.
-I added some member functions to the definition to help simplify the operations
-in node connection change.
-
-\subsubsection*{Python definition, imperative}
-\lstset{language=python}
+\lstset{language=Python}
 \begin{lstlisting}
-RED = 0
-BLACK = 1
-
 class Node:
     def __init__(self, key, color = RED):
         self.key = key;
         self.color = color;
         self.left = self.right = self.parent = None
-
-    def set_left(self, x):
-        self.left = x
-        if x != None:
-            x.parent = self
-
-    def set_right(self, x):
-        self.right = x
-        if x != None:
-            x.parent = self
-
-    def set_children(self, x, y):
-        self.set_left(x)
-        self.set_right(y)
-
-    #parent<->self ==> parent<->y
-    def replace_by(self, y):    
-        if self.parent is None:
-            if y!= None: y.parent = None
-        elif self.parent.left == self:
-            self.parent.set_left(y)
-        else:
-            self.parent.set_right(y)
-        self.parent = None
-
-    def sibling(self):
-        if self.parent.left == self:
-            return self.parent.right
-        else:
-            return self.parent.left
-
-    def uncle(self):
-        return self.parent.sibling()
-
-    def grandparent(self):
-        return self.parent.parent
 \end{lstlisting}
 
-Note that, in case we set a node y as a child of node y, we don't only
-make the left or right child point to y, but also make y's parent point to x.
-So this is bi-directional assignment. The same thing happens in replace\_by()
-member function, when we try to replace a node x with another node y, we
-mean make y connect to x's parent as a child. I also provide sibling, uncle,
-and grandparent members, those meanings are straightforward.
-
-\subsubsection*{Haskell definition, recursive}
-Instead of provide 2 different constructors for red and black node, a color
-data is passed to node constructor. It makes the definition very similar to the 
-one in binary search tree.
+And in functional settings, we can add the color information
+in constructors, below is the Haskell example of red-black tree
+definition.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -401,187 +347,7 @@ data RBTree a = Empty
               | Node Color (RBTree a) a (RBTree a)
 \end{lstlisting}
 
-\subsubsection*{Scheme/Lisp definition}
-Scheme/lisp just use a list to represent the red black tree, it
-contains 4 elements, a color a left child, a key and a right
-child. there is no explicit definition in Scheme/Lisp. 
-
-\subsubsection*{C++ definition}
-SGI STL version of red black tree has many layers, but the core part
-contains all the necessary information of a red black tree, the
-color, the left and right children, the parent and the value.
-
-\lstset{language=c++}
-\begin{lstlisting}
-typedef bool _Rb_tree_Color_type;
-const _Rb_tree_Color_type _S_rb_tree_red = false;
-const _Rb_tree_Color_type _S_rb_tree_black = true;
-
-struct _Rb_tree_node_base
-{
-  typedef _Rb_tree_Color_type _Color_type;
-  typedef _Rb_tree_node_base* _Base_ptr;
-
-  _Color_type _M_color; 
-  _Base_ptr _M_parent;
-  _Base_ptr _M_left;
-  _Base_ptr _M_right;
-
-  //...
-
-template <class _Value>
-struct _Rb_tree_node : public _Rb_tree_node_base
-{
-  typedef _Rb_tree_node<_Value>* _Link_type;
-  _Value _M_value_field;
-};
-
-template <class _Tp, ...>
-struct _Rb_tree_base
-{
-  //...
-protected:
-  _Rb_tree_node<_Tp>* _M_header;
-  //...
-
-template <class _Key, class _Value, ... >
-class _Rb_tree : protected _Rb_tree_base<_Value, ...> {
-\end{lstlisting}
-
-The first layer is base class of red black tree node, it defines
-color, parent, left and right children members. The second layer
-defines the red black tree node, it defines the value field based on
-the base node class. The third layer define the base class of red
-black tree, it has a header member, which point to the tree node.
-This approach abstract the red black tree concept from the node
-concept. The last layer defines the red black tree and provided it
-finally as a concept of container. for the detail, please refer to \cite{sgi-stl}.
-
-% ================================================================
-% Rotation and helper functions
-% ================================================================
-\subsection{Rotation and helper functions} \label{helper-fun}
-
-Rotation is one of the key operations to in red black tree. we know that
-different binary search tree can have the data in same order by in-order walk.
-Rotation can keep the data order while changing the tree. 
-
-In functional implementation, we can use pattern matching and data construction.
-So there is no need to provide rotation functions at all (see below sections).
-While the imperative rotation can be simplified a lot by using the member functions we defined.
-
-\subsubsection*{Python rotation functions}
-\lstset{language=Python}
-\begin{lstlisting}
-# (a x (b y c)) ==> ((a x b) y c)
-def left_rotate(t, x):
-    (parent, y) = (x.parent, x.right)
-    (a, b, c)   = (x.left, y.left, y.right)
-    x.replace_by(y)
-    x.set_children(a, b)
-    y.set_children(x, c)
-    if parent is None:
-        t=y
-    return t
-
-# (a x (b y c)) <== ((a x b) y c)
-def right_rotate(t, y):
-    (parent, x) = (y.parent, y.left)
-    (a, b, c)   = (x.left, x.right, y.right)
-    y.replace_by(x)
-    y.set_children(b, c)
-    x.set_children(a, y)
-    if parent is None:
-        t = x
-    return t
-\end{lstlisting}
-
-I also provide a function for batch color setting. It accept two lists,
-one is list of nodes, the other is list of colors. It helps to set color
-to each node in order.
-
-\subsubsection*{Python helper function}
-\lstset{language=Python}
-\begin{lstlisting}
-def set_color(nodes, colors):
-    for (n, c) in zip(nodes, colors):
-        n.color = c
-\end{lstlisting}
-
-\subsubsection*{Scheme/Lisp helper functions}
-
-In order have a uniformed output like we defined the red black tree as a list of (left key color right).
-I defined some helper functions to construct the red black tree and access the element of the tree.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (make-rbtree c l k r) ;;color, left, key, right
-  (list l k c r))
-
-(define (key tree) (cadr tree))
-(define (color tree) (caddr tree))
-(define (left tree) 
-  (if (null? tree) '() (car tree)))
-(define (right tree)
-  (if (null? tree) '() (cadddr tree)))
-
-;; Test the color
-(define (red? t)
-  (if (null? t) '() (equal? (color t) "R")))
-
-(define (black? t)
-  (if (null? t) '() (equal? (color t) "B")))
-\end{lstlisting}
-
-\subsubsection*{C++ helper functions}
-
-Similar to Python like imperative implementation, C++ provides left
-and right rotation functions, here is the rotation program in SGI STL.
-
-\lstset{language=c++}
-\begin{lstlisting}
-inline void 
-_Rb_tree_rotate_left(_Rb_tree_node_base* __x, _Rb_tree_node_base*& __root)
-{
-  _Rb_tree_node_base* __y = __x->_M_right;
-  __x->_M_right = __y->_M_left;
-  if (__y->_M_left !=0)
-    __y->_M_left->_M_parent = __x;
-  __y->_M_parent = __x->_M_parent;
-
-  if (__x == __root)
-    __root = __y;
-  else if (__x == __x->_M_parent->_M_left)
-    __x->_M_parent->_M_left = __y;
-  else
-    __x->_M_parent->_M_right = __y;
-  __y->_M_left = __x;
-  __x->_M_parent = __y;
-}
-
-inline void 
-_Rb_tree_rotate_right(_Rb_tree_node_base* __x, _Rb_tree_node_base*& __root)
-{
-  _Rb_tree_node_base* __y = __x->_M_left;
-  __x->_M_left = __y->_M_right;
-  if (__y->_M_right != 0)
-    __y->_M_right->_M_parent = __x;
-  __y->_M_parent = __x->_M_parent;
-
-  if (__x == __root)
-    __root = __y;
-  else if (__x == __x->_M_parent->_M_right)
-    __x->_M_parent->_M_right = __y;
-  else
-    __x->_M_parent->_M_left = __y;
-  __y->_M_right = __x;
-  __x->_M_parent = __y;
-}
-\end{lstlisting}
-
-This code is more like the pseudo code presents in CLRS than the
-python code, because My python program provides some bi-directional
-assignment helper member functions.
+TODO: ...
 
 % ================================================================
 %                 Insertion
