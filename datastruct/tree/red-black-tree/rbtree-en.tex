@@ -397,19 +397,82 @@ So this is a bottom-up recursive fixing, the last step will make
 the root node red. According to property 2, root is always black. 
 Thus we need final fixing to revert the root color to black. 
 
-TODO: add function definition for this algorithm
+Observing that the 4 cases and the fixed result have strong pattern
+features, the fixing function can be defined by using the similar 
+method we mentioned in tree rotation.
 
-All 
-these can be implemented as the following Haskell code.
+\be
+balance(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  node(Red, node(Black, A, x, B), y, node(Black, C, z, D)) & match(T) \\
+  T & otherwise
+  \end{array}
+\right .
+\ee
+
+where function $node()$ can construct a red-black tree node with 4 parameters
+as color, the left child, the key and the right child. Function $match()$
+can test if a tree is one of the 4 possible patterns as the following.
+
+\[
+match(T) = \begin{array}{l}
+         pattern(T) = node(Black, node(Red, node(Red, A, x, B), y, C), z, D) \lor \\
+         pattern(T) = node(Black, node(Red, A, x, node(Red, B, y, C), z, D)) \lor \\
+         pattern(T) = node(Black, A, x, node(Red, B, y, node(Red, C, z, D))) \lor \\ 
+         pattern(T) = node(Black, A, x, node(Red, node(Red, B, y, C), z, D)) \\
+         \end{array}
+\]
+
+With function $balance()$ defined, we can modify the previous binary search tree
+insertion functions to make it work for red-black tree.
+
+\be
+insert(T, k) = makeBlack(ins(T, k))
+\ee
+
+where 
+
+\be
+ins(T, k) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  node(Red, \phi, k, \phi) & T = \phi \\
+  balance(node(insert(L, k), Key, R)) & k < Key \\
+  balance(node(L, Key, insert(R, k))) & otherwise
+  \end{array}
+\right.
+\ee 
+
+$L, R, Key$ represent the left child, right child and the key of a tree.
+
+\[
+  \begin{array}{l}
+  L = left(T) \\
+  R = right(T) \\
+  Key = key(T)
+  \end{array}
+\]
+
+
+Function $makeBlack()$ is defined as the following, it forces the color
+of a non-empty tree to be black.
+
+\be
+makeBlack(T) = node(Black, L, Key, R)
+\ee
+
+Summarise the above functions and use language supported pattern matching
+features, we can come to the following Haskell program.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
 insert::(Ord a)=>RBTree a -> a -> RBTree a
-insert t x = makeBlack(ins t x) where  --[1]
-    ins Empty x = Node R Empty x Empty --[2]
-    ins (Node color l k r) x 
-        | x < k     = balance color (ins l x) k r
-        | otherwise = balance color l k (ins r x) --[3]
+insert t x = makeBlack $ ins t where
+    ins Empty = Node R Empty x Empty
+    ins (Node color l k r)
+        | x < k     = balance color (ins l) k r
+        | otherwise = balance color l k (ins r) --[3]
     makeBlack(Node _ l k r) = Node B l k r
 
 balance::Color -> RBTree a -> a -> RBTree a -> RBTree a
@@ -422,124 +485,33 @@ balance B a x (Node R b y (Node R c z d)) =
 balance B a x (Node R (Node R b y c) z d) = 
                 Node R (Node B a x b) y (Node B c z d)
 balance color l k r = Node color l k r
-\end{lstlisting}
+\end{lstlisting} %$
 
-Here are some explanation. For [1], the program always set the root
-color as black, this is because of property 2; For [2], we always insert
-a red leaf to satisfy all properties except number 4; For [3], I assume, 
-there shouldn't be different nodes with equal key value. But it is not always
-applicable. for example in chapter 14, ``Augmenting Data Structures'' in CLRS\cite{CLRS}, it enables such case. The use of otherwise allows user to do this.
+This program doesn't handle the case of inserting a duplicated key.
+However, it is possible to handle it either by overwriting,
+or skipping. Another option is to augment the data with a linked 
+list\cite{CLRS}.
 
-In order to test this program, we can write something like below.
-
-\begin{lstlisting}
--- helper function to build a red black tree from a list
-
-listToRBTree::(Ord a)=>[a] -> RBTree a
-listToRBTree lst = foldl insert Empty lst
-
--- Helper function for pretty printing
-instance Show a => Show (RBTree a) where
-    show Empty = "."
-    show (Node c l k r) = "(" ++ show l ++ " " ++ 
-                          show k ++ ":" ++ show c ++ " " ++ 
-                          show r ++ ")"
-
-main = do
-  putStrLn (show (listToRBTree [11, 2, 14, 1, 7, 15, 5, 8, 4]))
-  putStrLn (show (listToRBTree [1, 2, 3, 4, 5, 6, 7, 8]))
-\end{lstlisting}
-
-This program will output:
-\begin{verbatim}
-(((. 1:B .) 2:B ((. 4:R .) 5:B .)) 7:B (((. 8:R .) 11:B .) 14:B (. 15:B .)))
-(((. 1:B .) 2:B (. 3:B .)) 4:B ((. 5:B .) 6:B (. 7:B (. 8:R .))))
-\end{verbatim}
-
-They are trees as shown below.
+Figure \ref{fig:insert-example} shows two red-black trees
+built from feeding list 11, 2, 14, 1, 7, 15, 5, 8, 4 and 1, 2, ..., 8.
 
 \begin{figure}[htbp]
        \begin{center}
 	\includegraphics[scale=0.4]{img/insert-haskell.ps}
-        \caption{Haskell insert results} 
+        \caption{insert results generated by the Haskell algorithm} \label{fig:insert-example}
        \end{center}
 \end{figure}
 
-\subsubsection*{Scheme/Lisp red black tree insertion, functional}
+This algorithm shows great simplicity by summerizing the uniform feature
+fromo the four different unbalanced cases. It is expressive over
+the traditional tree rotation approach, that even in programming languages
+which don't support pattern matching, the algorithm can still be
+implemented by manually check the pattern. A Scheme/Lisp program
+is available along with this book can be referenced as an example.
 
-Scheme/Lisp version of insert is very similar, since there is no pattern matching
-in Scheme, we use normal condition to do the similar things.
+TODO: skip the imperative insertion algorithm and discuss about deletion
 
-\lstset{language=Lisp}
-\begin{lstlisting}
-(define (rb-insert tree x)
-  (define (make-black t)
-    (make-rbtree "B" (left t) (key t) (right t)))
-  (define (ins t x)
-    (cond ((null? t) (make-rbtree "R" '() x '()))
-	  ((< x (key t)) (balance (color t) 
-                                  (ins (left t) x) (key t) (right t)))
-	  (else (balance (color t) (left t) (key t) (ins (right t) x)))))
-  (make-black (ins tree x)))
-\end{lstlisting}
-
-And the core function balance which can fix the red-red violation is as below.
-
-\begin{lstlisting}
-(define (balance c l k r)
-  (if (equal? c "B")
-      (cond ((and (red? l) (red? (left l)))
-	     (make-rbtree "R" 
-			  (make-rbtree "B" (left (left l)) 
-                                           (key (left l)) 
-                                           (right (left l)))
-			  (key l)
-			  (make-rbtree "B" (right l) k r)))
-	    ((and (red? l) (red? (right l)))
-	     (make-rbtree "R"
-			  (make-rbtree "B" (left l) (key l) (left (right l)))
-			  (key (right l))
-			  (make-rbtree "B" (right (right l)) k r)))
-	    ((and (red? r) (red? (right r)))
-	     (make-rbtree "R" 
-			  (make-rbtree "B" l k (left r))
-			  (key r)
-			  (make-rbtree "B" (left (right r)) 
-                                           (key (right r)) 
-                                           (right (right r)))))
-	    ((and (red? r) (red? (left r)))
-	     (make-rbtree "R"
-			  (make-rbtree "B" l k (left (left r)))
-			  (key (left r))
-			  (make-rbtree "B" (right (left r)) 
-                                           (key r) 
-                                           (right r))))
-	    (else (make-rbtree c l k r)))
-      (make-rbtree c l k r)))
-\end{lstlisting}
-
-This program can be test with a similar test cases as below:
-
-\begin{lstlisting}
-(define (list->rbtree lst)
-  (fold-left rb-insert '() lst))
-
-(define t1 (list->rbtree '(11 2 14 1 7 15 5 8 4)))
-(define t2 (list->rbtree '(1 2 3 4 5 6 7 8)))
-\end{lstlisting}
-
-If we evaluate t1 and t2, it will output the results like this.
-
-\begin{verbatim}
-t1
-;Value 11: (((() 1 "B" ()) 2 "B" ((() 4 "R" ()) 5 "B" ())) 7 "B" (((() 8 "R" ()) 
-11 "B" ()) 14 "B" (() 15 "B" ())))
-
-t2
-;Value 12: (((() 1 "B" ()) 2 "B" (() 3 "B" ())) 4 "B" ((() 5 "B" ()) 6 "B" (() 
-7 "B" (() 8 "R" ()))))
-\end{verbatim}
-
+TODO: list the imperative insertion/deletion algorithm for comparison purpose.
 
 \subsubsection*{Python red black tree insertion, imperative}
 
@@ -673,155 +645,7 @@ After insert element 4 into the first tree the result will be like in figure \re
        \end{center}
 \end{figure}
 
-\subsubsection*{C++ red black tree insertion}
-
-The C++ SGI STL implementation of red black tree also adopts the
-concept of the sentinel as described in CLRS. Every time we initialize
-an empty red black tree, it create such sentinel first.
-
-\lstset{language=c++}
-\begin{lstlisting}
-void _M_empty_initialize() {
-  _S_color(_M_header) = _S_rb_tree_red; // used to distinguish header from 
-                                      // __root, in iterator.operator++
-  _M_root() = 0;
-  _M_leftmost() = _M_header;
-  _M_rightmost() = _M_header;
-}
-\end{lstlisting}
-
-Where the left sides are accessor operators, which returns the
-reference of color, and other fields etc. There is a good explanation
-in \cite{hj-stl}.
-
-C++ SGI STL version of insertion provided two options,
-insert\_unique() and insert\_equal(), we only present one of them in
-this post.
-
-\begin{lstlisting}
-template <class _Key, class _Value, class _KeyOfValue, ...>
-typename _Rb_tree<_Key,_Value,_KeyOfValue, ...>::iterator
-_Rb_tree<_Key,_Value,_KeyOfValue, ...>
-  ::insert_equal(const _Value& __v)
-{
-  _Link_type __y = _M_header;
-  _Link_type __x = _M_root();
-  while (__x != 0) {
-    __y = __x;
-    __x = _M_key_compare(_KeyOfValue()(__v), _S_key(__x)) ? 
-            _S_left(__x) : _S_right(__x);
-  }
-  return _M_insert(__x, __y, __v);
-}
-\end{lstlisting}
-
-In order to focus on the algorithm itself, I replace the allocator and
-the compare template parameter with '...'. The insert will first use a 
-while loop to locate where the new value should be inserted. then it
-call \_M\_insert() function to do the real insertion. Where x is the
-the insert position, y point to the parent of x.
-
-Next, SGI STL will call the core insert function which is defined as
-the following.
-
-\begin{lstlisting}
-template <class _Key, class _Value, class _KeyOfValue, ...>
-typename _Rb_tree<_Key,_Value,_KeyOfValue, ...>::iterator
-_Rb_tree<_Key,_Value,_KeyOfValue, ...>
-  ::_M_insert(_Base_ptr __x_, _Base_ptr __y_, const _Value& __v)
-{
-  _Link_type __x = (_Link_type) __x_;
-  _Link_type __y = (_Link_type) __y_;
-  _Link_type __z;
-
-  if (__y == _M_header || __x != 0 || 
-      _M_key_compare(_KeyOfValue()(__v), _S_key(__y))) {
-    __z = _M_create_node(__v);
-    _S_left(__y) = __z;               // also makes _M_leftmost() = __z 
-                                      //    when __y == _M_header
-    if (__y == _M_header) {
-      _M_root() = __z;
-      _M_rightmost() = __z;
-    }
-    else if (__y == _M_leftmost())
-      _M_leftmost() = __z;   // maintain _M_leftmost() pointing to min node
-  }
-  else {
-    __z = _M_create_node(__v);
-    _S_right(__y) = __z;
-    if (__y == _M_rightmost())
-      _M_rightmost() = __z;  // maintain _M_rightmost() pointing to max node
-  }
-  _S_parent(__z) = __y;
-  _S_left(__z) = 0;
-  _S_right(__z) = 0;
-  _Rb_tree_rebalance(__z, _M_header->_M_parent);
-  ++_M_node_count;
-  return iterator(__z);
-}
-\end{lstlisting}
-
-Most codes in this function deal with the leftmost and rightmost
-members. They point to the minimum and maximum node in the tree. after
-create the node with allocator, the program calls rebalance function
-to fix the red-red violation.
-
-\begin{lstlisting}
-inline void 
-_Rb_tree_rebalance(_Rb_tree_node_base* __x, _Rb_tree_node_base*& __root)
-{
-  __x->_M_color = _S_rb_tree_red;
-  while (__x != __root && __x->_M_parent->_M_color == _S_rb_tree_red) {
-    if (__x->_M_parent == __x->_M_parent->_M_parent->_M_left) {
-      _Rb_tree_node_base* __y = __x->_M_parent->_M_parent->_M_right;
-      if (__y && __y->_M_color == _S_rb_tree_red) {
-        __x->_M_parent->_M_color = _S_rb_tree_black;
-        __y->_M_color = _S_rb_tree_black;
-        __x->_M_parent->_M_parent->_M_color = _S_rb_tree_red;
-        __x = __x->_M_parent->_M_parent;
-      }
-      else {
-        if (__x == __x->_M_parent->_M_right) {
-          __x = __x->_M_parent;
-          _Rb_tree_rotate_left(__x, __root);
-        }
-        __x->_M_parent->_M_color = _S_rb_tree_black;
-        __x->_M_parent->_M_parent->_M_color = _S_rb_tree_red;
-        _Rb_tree_rotate_right(__x->_M_parent->_M_parent, __root);
-      }
-    }
-    else {
-      _Rb_tree_node_base* __y = __x->_M_parent->_M_parent->_M_left;
-      if (__y && __y->_M_color == _S_rb_tree_red) {
-        __x->_M_parent->_M_color = _S_rb_tree_black;
-        __y->_M_color = _S_rb_tree_black;
-        __x->_M_parent->_M_parent->_M_color = _S_rb_tree_red;
-        __x = __x->_M_parent->_M_parent;
-      }
-      else {
-        if (__x == __x->_M_parent->_M_left) {
-          __x = __x->_M_parent;
-          _Rb_tree_rotate_right(__x, __root);
-        }
-        __x->_M_parent->_M_color = _S_rb_tree_black;
-        __x->_M_parent->_M_parent->_M_color = _S_rb_tree_red;
-        _Rb_tree_rotate_left(__x->_M_parent->_M_parent, __root);
-      }
-    }
-  }
-  __root->_M_color = _S_rb_tree_black;
-}
-\end{lstlisting}
-
-In the first line of this function, we always set the new added node as
-red color to keep all properties except number 1 and number 4.
-
-Note the last line of the fixing function, it force the color of root
-to be black in order to keep the red black tree property 1. Inside the
-while loop, there is a big if-else. All things in the if and else are
-very similar to each other except they are left-right symmetric. the
-logic conforms to the pseudo code in CLRS very well. I skip the detail
-explanation. Please refer to \cite{hj-stl} page 260 to find the test cases.
+TODO: discuss about the performance overhead
 
 If we compare the results from the functional implementation and from the imperative one, we can 
 find there is difference. Even if we insert the same element into the same red black tree, the

@@ -36,11 +36,11 @@ mint t = if isEmpty (left t) then t else mint $ left t
 
 -- Insertion/Deletion
 insert::(Ord a)=>RBTree a -> a -> RBTree a
-insert t x = makeBlack(ins t x) where  --[1]
-    ins Empty x = Node R Empty x Empty --[2]
-    ins (Node color l k r) x 
-        | x < k     = balance color (ins l x) k r
-        | otherwise = balance color l k (ins r x) --[3]
+insert t x = makeBlack $ ins t where  --[1]
+    ins Empty = Node R Empty x Empty  --[2]
+    ins (Node color l k r)
+        | x < k     = balance color (ins l) k r
+        | otherwise = balance color l k (ins r) --[3]
     makeBlack(Node _ l k r) = Node B l k r
 
 {- footnotes
