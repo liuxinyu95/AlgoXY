@@ -59,9 +59,9 @@ balance B a x (Node R (Node R b y c) z d) = Node R (Node B a x b) y (Node B c z 
 balance color l k r = Node color l k r
 
 delete::(Ord a)=>RBTree a -> a -> RBTree a
-delete t x = blackenRoot(del t x) where
+delete t x = blackenRoot (del t x) where
     del Empty _ = Empty
-    del (Node color l k r) x 
+    del (Node color l k r) x
         | x < k = fixDB color (del l x) k r
         | x > k = fixDB color l k (del r x)
         -- x == k, delete this node
