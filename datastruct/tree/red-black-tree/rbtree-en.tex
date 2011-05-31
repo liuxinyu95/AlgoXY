@@ -618,13 +618,13 @@ del(T, k) = \left \{
   fixDBlack(node(Color, L, Key, del(R, k))) & k > Key \\
   = \left \{
     \begin{array}{r@{\quad:\quad}l}
-    makeBlack(R) & Color = Black \\
+    makeBlack'(R) & Color = Black \\
     R & otherwise
     \end{array} 
   \right. & L = \phi \\
   = \left \{ 
     \begin{array}{r@{\quad:\quad}l}
-    makeBlack(L) & Color = Black \\
+    makeBlack'(L) & Color = Black \\
     L & otherwise
     \end{array} 
   \right.  & R = \phi \\
@@ -633,13 +633,22 @@ del(T, k) = \left \{
 \right.
 \ee
 
-And $k'$ is the key of the minimum of right sub-tree.
-
-\[
-  k' = key(min(R))
-\]
-
 The real deleting happens inside function $del$. 
+For the trivial case, that the tree is empty, the deletion
+result is $\phi$; If the key to be deleted is less
+than the key of the current node, we recursively 
+perform deletion on its left sub-tree; if it is bigger
+than the key of the current node, then we recursively
+delete the key from the right sub-tree; Because it
+may bring doubly-blackness, so we need fix it.
+
+If the key to be deleted is equal to the key of the 
+current node, we need splice it out. If one of its
+children is empty, we just replace the node by
+the other one and reserve the blackness of this
+node. otherwise we cut and past the minimum 
+element $k'=min(R)$ from the right sub-tree.
+
 Function $delete$ just forces the result tree of $del$
 to have a black root. This is realized by function
 $blackenRoot$.
@@ -654,27 +663,47 @@ blackenRoot(T) = \left \{
 \right .
 \ee
 
-Compare with the function $makeBlack$ defined in red-black
-insertion section, they are almost same, except for the case
-of empty tree. This is only valid in deletion, because 
-insertion can't result an empty tree, while deletion
-may.
+Compare with the $makeBlack$ function, which is defined in 
+red-black tree insertion section, they are almost same, 
+except for the case of empty tree. This is only valid in 
+deletion, because insertion can't result an empty tree, 
+while deletion may.
 
-TODO: first give Haskell code, then go on.
+Function $makeBlack'$ is defined to reserved the blackness
+of a node. If the node to be sliced isn't black, this function
+won't be applied, otherwise, it turns a red node to black
+and turns a black node to doubly-black. This function
+also marks an empty tree to doubly-black empty.
 
-TODO: add function definition for fixDBlack etc.
+\be
+makeBlack'(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & T = \phi \\
+  node(Black, L, Key, R) & Color = Red \\
+  node(Black^2, L, Key, R) & Color = Black \\
+  T & otherwise
+  \end{array}
+\right .
+\ee
+
+where $\Phi$ means doubly-black empty tree and $Black^2$
+is the doubly-black color.
+
+Summerizing the above funtions yields the following Haskell
+program.
 
 \begin{lstlisting}
 delete::(Ord a)=>RBTree a -> a -> RBTree a
 delete t x = blackenRoot(del t x) where
     del Empty _ = Empty
     del (Node color l k r) x 
-        | x < k = fixDB color (del l x) k r --[1]
+        | x < k = fixDB color (del l x) k r
         | x > k = fixDB color l k (del r x)
         -- x == k, delete this node
-        | isEmpty l = if color==B then makeBlack r else r --[2]
+        | isEmpty l = if color==B then makeBlack r else r
         | isEmpty r = if color==B then makeBlack l else l
-        | otherwise = fixDB color l k' (del r k') where k'= key (mint r)
+        | otherwise = fixDB color l k' (del r k') where k'= min r
     blackenRoot (Node _ l k r) = Node B l k r
     blackenRoot _ = Empty
 
@@ -684,6 +713,8 @@ makeBlack (Node _ l k r) = Node B l k r
 makeBlack Empty = BBEmpty
 makeBlack t = t
 \end{lstlisting}
+
+TODO: add function definition for fixDBlack etc.
 
 Let me explain it a bit. The mint function as shown in \cite{bst-lxy} can help to find the 
 minimum of a tree. While the isEmpty helper function can test if a node is empty. Let's review 
