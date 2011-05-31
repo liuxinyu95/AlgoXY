@@ -14,6 +14,12 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+module RBTree where
+
+import Test.QuickCheck -- QuickCheck v1
+import qualified Data.List as L -- for verification purpose only
+import Prelude hiding (min)
+
 data Color = R | B | BB deriving (Show, Eq) -- BB is doubly black, used for deletion
 data RBTree a = Empty
               | Node Color (RBTree a) a (RBTree a)
@@ -31,8 +37,10 @@ isEmpty::RBTree a -> Bool
 isEmpty Empty = True
 isEmpty _ = False
 
-mint::RBTree a -> RBTree a
-mint t = if isEmpty (left t) then t else mint $ left t
+-- Tree min, same as the one defined in BST
+min::RBTree a -> a
+min (Node _ Empty x _) = x
+min (Node _ l _ _) = min l
 
 -- Insertion/Deletion
 insert::(Ord a)=>RBTree a -> a -> RBTree a
@@ -67,7 +75,7 @@ delete t x = blackenRoot (del t x) where
         -- x == k, delete this node
         | isEmpty l = if color==B then makeBlack r else r
         | isEmpty r = if color==B then makeBlack l else l
-        | otherwise = fixDB color l k' (del r k') where k'= key $ mint r
+        | otherwise = fixDB color l k' (del r k') where k'= min r
     blackenRoot (Node _ l k r) = Node B l k r
     blackenRoot _ = Empty
 
@@ -100,10 +108,14 @@ fixDB B (Node R a x b) y c@(Node BB _ _ _) = fixDB B a x (fixDB R b y c)
 -- otherwise
 fixDB color l k r = Node color l k r
 
--- helper function to build a red black tree from a list
+-- Auxiliary functions
 
-listToRBTree::(Ord a)=>[a] -> RBTree a
-listToRBTree lst = foldl insert Empty lst
+fromList::(Ord a)=>[a] -> RBTree a
+fromList = foldl insert Empty
+
+toList :: (Ord a) => RBTree a -> [a]
+toList Empty = []
+toList (Node _ l x r) = toList l ++ [x] ++ toList r
 
 -- Helper function for pretty printing
 instance Show a => Show (RBTree a) where
@@ -116,8 +128,12 @@ instance Show a => Show (RBTree a) where
 leaf::Color -> a -> RBTree a
 leaf color x = Node color Empty x Empty
 
+-- test
+prop_build :: [Int] -> Bool
+prop_build xs = L.sort xs == (toList $ fromList xs)
+
 -- test cases
-t1=listToRBTree [11, 2, 14, 1, 7, 15, 5, 8, 4]
+t1=fromList [11, 2, 14, 1, 7, 15, 5, 8, 4]
 t2=Node B (Node R Empty 4 Empty) 5 Empty
 t3=Node R (Node B (leaf B 1) 2 Empty) 3 (Node B (Node R (leaf B 4) 5 (leaf B 6)) 7 (leaf B 8))
 --del t3 1 => (((. 2:B .) 3:B (. 4:B .)) 5:B ((. 6:B .) 7:B (. 8:B .)))
@@ -132,10 +148,12 @@ testDel = "\ntest del 4: " ++ show (delete t1 4) ++
           "\ntest del t3 2: " ++ show (delete t3 2) ++
           "\ntest del t3 1: " ++ show (delete t3 1)
 
+{-
 main = do
   putStrLn $ show t1
   putStrLn $ show (listToRBTree [1, 2, 3, 4, 5, 6, 7, 8])
-  putStrLn testDel
+  putStrLn testDel 
+-}
 
 {- Reference 
 [Chris Okasaki] Functional Pearls Red-Black trees in a functional setting.
