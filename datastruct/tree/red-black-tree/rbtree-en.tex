@@ -687,7 +687,7 @@ makeBlack'(T) = \left \{
 \right .
 \ee
 
-where $\Phi$ means doubly-black empty tree and $Black^2$
+where $\Phi$ means doubly-black empty node and $Black^2$
 is the doubly-black color.
 
 Summerizing the above funtions yields the following Haskell
@@ -714,92 +714,47 @@ makeBlack Empty = BBEmpty
 makeBlack t = t
 \end{lstlisting}
 
-TODO: add function definition for fixDBlack etc.
+The final attack to the red-black tree deletion algorithm is to
+realize the $fixDBlack$ function. The purpose of this function
+is to eliminate the `doubly-black' colored node by rotation and
+color changing.
 
-Let me explain it a bit. The mint function as shown in \cite{bst-lxy} can help to find the 
-minimum of a tree. While the isEmpty helper function can test if a node is empty. Let's review 
-them here:
+Let's solve the doubly-black empty node first. For any node, 
+If one of its child is doubly-black empty, and the other child is 
+non-empty, we can safely replace the doubly-black empty with a 
+normal empty node. 
 
-\begin{lstlisting}
--- helper functions
-key::RBTree a -> a
-key (Node _ _ k _) = k
+Like figure \ref{fig:db-fix-1-nil}, if we
+are going to delete the node 4 from the tree (Instead show the whole tree,
+only part of the tree is shown), the program will use a doubly-black empty node
+to replace node 4. Which means for node 5, it then has a doubly-black empty left child
+and has a right non-empty child (a leaf node with key 6). In such case we 
+can safely change the doubly-black empty to normal empty node. 
+which won't violate any red-black properties.
 
-left::RBTree a -> RBTree a
-left (Node _ l _ _) = l
-left _ = Empty
+\begin{figure}[htbp]
+   \centering
+   \subfloat[Delete 4 from the tree.]{\includegraphics[scale=0.4]{img/db-fix.ps}} \\
+   \subfloat[After 4 is sliced off, it is doubly-black empty.]{\includegraphics[scale=0.4]{img/db-fix-1-nil-before.ps}}
+   \subfloat[We can safely change it to normal NIL.]{\includegraphics[scale=0.4]{img/db-fix-1-nil-after.ps}}
+   \caption{One child is doubly-black empty node, the other child is non-empty} \label{fig:db-fix-1-nil}
+\end{figure}
 
-isEmpty::RBTree a -> Bool
-isEmpty Empty = True
-isEmpty _ = False
-
-mint::RBTree a -> RBTree a
-mint t = if isEmpty (left t) then t else mint (left t)
-\end{lstlisting}
-
-The blackenRoot function is used to keep the property 2, that the root of a red black tree
-must be black. In line [2], if the color of the sliced root is black, I'll make the root 
-of the sub-tree which will replace the deleted one be black. This can help to keep the property
-4, so the black-height will not decreased.
-
-For makeBlack() function, If the root is red, it will change it to black; if the root node is 
-already black, it will mark it as 'doubly-black', and if it is empty, it will mark it as a 
-doubly-black empty node by BBEmpty.
-
-Next, we must use a function to fix the 'doubly-black' by rotation and color changes.
-
-\begin{lstlisting}
--- Core function for delete, to solve the uniform black height violation.
--- refer to CLRS
-fixDB::Color -> RBTree a -> a -> RBTree a -> RBTree a
-fixDB color BBEmpty k Empty = Node BB Empty k Empty
-fixDB color BBEmpty k r = Node color Empty k r
-fixDB color Empty k BBEmpty = Node BB Empty k Empty
-fixDB color l k BBEmpty = Node color l k Empty
--- the sibling is black, and it has one red child
-fixDB color a@(Node BB _ _ _) x (Node B (Node R b y c) z d) = 
-      Node color (Node B (makeBlack a) x b) y (Node B c z d)
-fixDB color a@(Node BB _ _ _) x (Node B b y (Node R c z d)) = 
-      Node color (Node B (makeBlack a) x b) y (Node B c z d)
-fixDB color (Node B a x (Node R b y c)) z d@(Node BB _ _ _) = 
-      Node color (Node B a x b) y (Node B c z (makeBlack d))
-fixDB color (Node B (Node R a x b) y c) z d@(Node BB _ _ _) = 
-      Node color (Node B a x b) y (Node B c z (makeBlack d))
--- the sibling and its 2 children are all black, propagate the blackness up
-fixDB color a@(Node BB _ _ _) x (Node B b@(Node B _ _ _) y c@(Node B _ _ _))
-    = makeBlack (Node color (makeBlack a) x (Node R b y c))
-fixDB color (Node B a@(Node B _ _ _) x b@(Node B _ _ _)) y c@(Node BB _ _ _)
-    = makeBlack (Node color (Node R a x b) y (makeBlack c))
--- the sibling is red
-fixDB B a@(Node BB _ _ _) x (Node R b y c) = fixDB B (fixDB R a x b) y c
-fixDB B (Node R a x b) y c@(Node BB _ _ _) = fixDB B a x (fixDB R b y c)
--- otherwise
-fixDB color l k r = Node color l k r
-\end{lstlisting}
-
-The first 4 lines are used to fix the doubly black empty node by pattern matching.
-If one of the child is doubly black, and the other one isn't empty, we can safely
-recover the doubly black empty to normal empty node. Like the below figure, if we
-want to delete the node 4 from the sub tree, because left child of node 4 is empty, 
-and the color is black, so the program will make the right child of node 4 black.
-Since the right child of node 4 is also empty, so it will use a doubly black node
-to replace node 4. Which means for node 5, it then has a doubly empty left child
-and has a right child with root node 6. In such case we can safely change the
-double black empty to normal empty node. which won't violate any red black properties.
-
-On the other hand, if a node has an doubly black empty node and the other one is
-also empty, we have to push the doubly black up one level. For example, if we want
-to delete node 1 from the sub tree, because it's left child is empty, so the program
-will use a doubly black empty node to replace 1. Then node 2 has a left BBEmpty and
-has a right empty. In such case we must mark node 2 as doubly black after change its
+On the other hand, if a node has a doubly-black empty node and the other child is
+empty, we have to push the doubly-blackness up one level. For example, if we want
+to delete node 1 from the tree, the program will use a doubly-black empty node 
+to replace 1. Then node 2 has a doubly-black empty node and has an empty right
+node. In such case we must mark node 2 as doubly-black after change its
 left child back to empty.
 
 \begin{figure}[htbp]
-       \begin{center}
-	\includegraphics[scale=0.5]{img/db-fix.ps}
-        \caption{example sub tree} \label{fig:exmple-tree}
-       \end{center}
+   \centering
+   \subfloat[Delete 1 from the tree.]{\includegraphics[scale=0.4]{img/db-fix.ps}} \\
+   \subfloat[After 1 is sliced off, it is doubly-black empty.]{\includegraphics[scale=0.4]{img/db-fix-1-nil-before.ps}}
+   \subfloat[We must push the doubly-blackness up to node 2.]{\includegraphics[scale=0.4]{img/db-fix-1-nil-after.ps}}
+   \caption{One child is doubly-black empty node, the other child is empty.} \label{fig:db-fix-1-nil}
 \end{figure}
+
 
 After these 4 lines pattern matching program, there won't be any doubly black empty
 node in the tree, we can go down to process other cases.
@@ -866,6 +821,36 @@ which the program will stop at. One is the case 1, The doubly black node was eli
 other 2 cases may continuously propagate the doubly black node from bottom to top till the root.
 Finally the program will mark the root node as black anyway, so the doubly blackness will be
 removed.
+
+\begin{lstlisting}
+-- Core function for delete, to solve the uniform black height violation.
+-- refer to CLRS
+fixDB::Color -> RBTree a -> a -> RBTree a -> RBTree a
+fixDB color BBEmpty k Empty = Node BB Empty k Empty
+fixDB color BBEmpty k r = Node color Empty k r
+fixDB color Empty k BBEmpty = Node BB Empty k Empty
+fixDB color l k BBEmpty = Node color l k Empty
+-- the sibling is black, and it has one red child
+fixDB color a@(Node BB _ _ _) x (Node B (Node R b y c) z d) = 
+      Node color (Node B (makeBlack a) x b) y (Node B c z d)
+fixDB color a@(Node BB _ _ _) x (Node B b y (Node R c z d)) = 
+      Node color (Node B (makeBlack a) x b) y (Node B c z d)
+fixDB color (Node B a x (Node R b y c)) z d@(Node BB _ _ _) = 
+      Node color (Node B a x b) y (Node B c z (makeBlack d))
+fixDB color (Node B (Node R a x b) y c) z d@(Node BB _ _ _) = 
+      Node color (Node B a x b) y (Node B c z (makeBlack d))
+-- the sibling and its 2 children are all black, propagate the blackness up
+fixDB color a@(Node BB _ _ _) x (Node B b@(Node B _ _ _) y c@(Node B _ _ _))
+    = makeBlack (Node color (makeBlack a) x (Node R b y c))
+fixDB color (Node B a@(Node B _ _ _) x b@(Node B _ _ _)) y c@(Node BB _ _ _)
+    = makeBlack (Node color (Node R a x b) y (makeBlack c))
+-- the sibling is red
+fixDB B a@(Node BB _ _ _) x (Node R b y c) = fixDB B (fixDB R a x b) y c
+fixDB B (Node R a x b) y c@(Node BB _ _ _) = fixDB B a x (fixDB R b y c)
+-- otherwise
+fixDB color l k r = Node color l k r
+\end{lstlisting}
+
 
 we can test this delete program by using the following test cases:
 
