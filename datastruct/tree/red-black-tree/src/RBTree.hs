@@ -1,4 +1,4 @@
--- RBTree.hs
+-- RBTree.hs, Haskell Red-Black tree implementation
 -- Copyright (C) 2010 Liu Xinyu (liuxinyu95@gmail.com)
 -- 
 -- This program is free software: you can redistribute it and/or modify
@@ -13,6 +13,8 @@
 -- 
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+-- Most of the work comes from Okasaki's work in [1]
 
 module RBTree where
 
@@ -129,31 +131,43 @@ leaf::Color -> a -> RBTree a
 leaf color x = Node color Empty x Empty
 
 -- test
-prop_build :: [Int] -> Bool
-prop_build xs = L.sort xs == (toList $ fromList xs)
 
--- test cases
-t1=fromList [11, 2, 14, 1, 7, 15, 5, 8, 4]
-t2=Node B (Node R Empty 4 Empty) 5 Empty
-t3=Node R (Node B (leaf B 1) 2 Empty) 3 (Node B (Node R (leaf B 4) 5 (leaf B 6)) 7 (leaf B 8))
---del t3 1 => (((. 2:B .) 3:B (. 4:B .)) 5:B ((. 6:B .) 7:B (. 8:B .)))
+isRootBlack :: (RBTree a) -> Bool
+isRootBlack Empty = True
+isRootBlack (Node B _ _ _) = True
+isRootBlack _ = False
 
-testDel = "\ntest del 4: " ++ show (delete t1 4) ++
-          "\ntest del 5: " ++ show (delete t1 5) ++
-          "\ntest del 2: " ++ show (delete t1 2) ++
-          "\ntest del 7: " ++ show (delete t1 7) ++
-          "\ntest del 14: " ++ show (delete t1 14) ++
-          "\ntest del t2 4: " ++ show (delete t2 4) ++
-          "\nt3 = " ++ show t3 ++
-          "\ntest del t3 2: " ++ show (delete t3 2) ++
-          "\ntest del t3 1: " ++ show (delete t3 1)
+adjacentRed :: (RBTree a) -> Bool
+adjacentRed Empty = False
+adjacentRed (Node R l@(Node R _ _ _) _ _) = True
+adjacentRed (Node R _ _ r@(Node R _ _ _)) = True
+adjacentRed (Node _ l _ r) = adjacentRed l || adjacentRed r
 
-{-
-main = do
-  putStrLn $ show t1
-  putStrLn $ show (listToRBTree [1, 2, 3, 4, 5, 6, 7, 8])
-  putStrLn testDel 
--}
+eqBlack :: (RBTree a) -> Bool
+eqBlack Empty = True
+eqBlack (Node _ Empty _ r) = eqBlack r
+eqBlack (Node _ l _ Empty) = eqBlack l
+eqBlack (Node _ l _ r) = and [eqBlack l, eqBlack r, blackness l == blackness r]
+
+blackness :: (RBTree a) -> Int
+blackness Empty = 0
+blackness (Node R l _ r) = blackness l `max` blackness r
+blackness (Node B l _ r) = 1 + (blackness l `max` blackness r)
+
+isRedBlack :: (RBTree a) -> Bool
+isRedBlack t = and [isRootBlack t, not $ adjacentRed t, eqBlack t]
+
+prop_bst :: (Ord a, Num a) => [a] -> Bool
+prop_bst xs = (L.sort $ L.nub xs) == (toList $ fromList $ L.nub xs)
+
+prop_insert_redblack :: (Ord a, Num a) => [a] -> Bool
+prop_insert_redblack = isRedBlack . fromList . L.nub
+
+prop_del :: (Ord a, Num a) => [a] -> a -> Bool
+prop_del xs x = L.sort (L.delete x xs) == toList (delete (fromList xs) x)
+
+prop_del_redblack :: (Ord a, Num a) => [a] -> a -> Bool
+prop_del_redblack xs x = isRedBlack $ delete (fromList xs) x
 
 {- Reference 
 [Chris Okasaki] Functional Pearls Red-Black trees in a functional setting.
