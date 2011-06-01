@@ -3,7 +3,8 @@ IMG_OBJECTS = rb-insert-clrs del-case1 del-case2 del-case3 \
 DOT_OBJECTS = unbalanced insert-haskell clrs-fig.13.4 python-insert \
 db-fix unbalanced-2 unbalanced-3 unbalanced-zigzag rotate-l rotate-r \
 rbt-example insert-ll insert-lr insert-rr insert-rl insert-fixed \
-db-fix-1-nil-before db-fix-1-nil-after
+db-fix-1-nil-before db-fix-1-nil-after db-fix-2-nil-before \
+db-fix-2-nil-after case2-a case2-a1 case2-b case2-b1
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
