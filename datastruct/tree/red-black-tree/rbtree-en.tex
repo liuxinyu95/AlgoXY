@@ -331,17 +331,20 @@ C++ Standard library (STL)\cite{sgi-stl}.
 As mentioned previously, the only change in data layout is that
 there is color information augumented to binary search tree.
 This can be represented as a data field in imperative languages
-such as Python like below.
+such as C++ like below.
 
-TODO: change to C++ code
-
-\lstset{language=Python}
+\lstset{language=C++}
 \begin{lstlisting}
-class Node:
-    def __init__(self, key, color = RED):
-        self.key = key;
-        self.color = color;
-        self.left = self.right = self.parent = None
+enum Color {Red, Black};
+
+template <class T>
+struct node{
+  Color color;
+  T key;
+  node* left;
+  node* right;
+  node* parent;
+};
 \end{lstlisting}
 
 In functional settings, we can add the color information
@@ -530,6 +533,9 @@ the traditional tree rotation approach, that even in programming languages
 which don't support pattern matching, the algorithm can still be
 implemented by manually check the pattern. A Scheme/Lisp program
 is available along with this book can be referenced as an example.
+
+The insertion algorithm takes $O(\lg N)$ time to insert a key to
+a red-black tree which has $N$ nodes.
 
 \subsection*{Exercise}
 
@@ -954,8 +960,8 @@ fixDB B (Node R a x b) y c@(Node BB _ _ _) = fixDB B a x (fixDB R b y c)
 fixDB color l k r = Node color l k r
 \end{lstlisting}
 
-Compare to the insertion algorithm, we can find the difference in
-terms of complexity.
+The deletion algorithm takes $O(\lg N)$ time to delete a key from
+a red-black tree with $N$ nodes.
 
 \subsection*{Exercise}
 \begin{itemize}
@@ -966,16 +972,52 @@ number, a tree re-build is performed. Try to implement this
 method in your favorate programming language.
 \end{itemize}
 
-Basically, we finish this chapter. 
-TODO: list the imperative insertion/deletion algorithm for comparison purpose.
+\section{Imperative red-black tree algorithm $\star$}
 
-\subsubsection*{Python red black tree insertion, imperative}
+We almost finished all the content in this chapter. By induction
+the patterns, we can implement the red-black tree in a simple way
+compare to the imperative tree rotation solution. However, we 
+should show the comparator for completeness.
 
-The python version imperative implementation uses the method described in CLRS.
+For insertion, the basic idea is to use the similar algorithm
+as described in binary search tree. And then fix the balance
+problem by rotation and return the final result.
+
+\begin{algorithmic}[1]
+\Function{Insert}{$T, k$}
+  \State $root \gets T$
+  \State $x \gets$ \Call{Create-Leaf}{$k$}
+  \State \Call{Color}{$x$} $\gets RED$
+  \State $parent \gets NIL$
+  \While{$T \neq NIL$}
+    \State $parent \gets T$
+    \If{$k <$ \Call{Key}{$T$}}
+      \State $T \gets $ \Call{Left}{$T$}
+    \Else
+      \State $T \gets $ \Call{Right}{$T$}
+    \EndIf
+  \EndWhile
+  \State \Call{Parent}{$x$} $\gets parent$
+  \If{$parent = NIL$} \Comment{tree $T$ is empty}
+    \State \Return $x$
+  \ElsIf{$k <$ \Call{Key}{$parent$}}
+    \State \Call{Left}{$parent$} $\gets x$
+  \Else
+    \State \Call{Right}{$parent$} $\gets x$
+  \EndIf
+  \State \Return \Call{Insert-Fix}{$root, x$}
+\EndFunction
+\end{algorithmic}
+
+The only difference from the binary search tree insertion algorithm
+is that we set the color of the new node as red, and perform fixing
+before return. It is easy to translate the pseudo code to real 
+imperative programming language, for instance Python \footnote{C, 
+and C++ source codes are available along with this book}.
 
 \lstset{language=Python}
 \begin{lstlisting}
-def rb_insert(t, key): #returns the new root
+def rb_insert(t, key): 
     root = t
     x = Node(key)
     parent = None
@@ -994,9 +1036,61 @@ def rb_insert(t, key): #returns the new root
     return rb_insert_fix(root, x)
 \end{lstlisting}
 
-Compare the above source code and the one in binary search tree\cite{bst-lxy}. The only difference are we simplified the program by using set\_left()/set\_right() member functions, and there is a rb\_insert\_fix() function call to fix the red node violation.
+There are 3 base cases for fixing, and if we take the left-right 
+symmetric into consideration. there are total 6 cases. 
+Among them two cases can be merged together, because they all have 
+uncle node in red color, we can toggle the parent color and 
+uncle color to black and set grand parent color to red. 
+With this merging, the fixing algorithm can be realized as the following.
 
-There are 3 cases described in CLRS, and if we take the left-right symmetric into consideration. there are total 6 cases. Among them two cases can be merged together, because they are all have uncle node in red color, we can toggle the parent color and uncle color to black and set grand parent color to red. After this merge the 5 cases fixing version can be implemented as the following.
+\begin{algorithmic}[1]
+\Function{Insert-Fix}{$T, x$}
+  \While{\Call{Parent}{$x$} $\neq NIL$ and \textproc{Color}(\Call{Parent}{$x$}) $= RED$}
+    \If{\textproc{Color}(\Call{Uncle}{$x$}) $= RED$}
+      \Comment{Case 1, x's uncle is red}
+      \State \textproc{Color}(\Call{Parent}{$x$}) $\gets BLACK$
+      \State \textproc{Color}(\Call{GrandParent}{$x$}) $\gets RED$
+      \State \textproc{Color}(\Call{Uncle}{$x$}) $\gets BLACK$
+      \State $x \gets$ \Call{Grandparent}{$x$}
+    \Else
+      \Comment{x's uncle is black}
+      \If{\Call{Parent}{$x$} = \textproc{Left}(\Call{GrandParent}{$x$})}
+        \If{ $x =$ \textproc{Right}(\Call{Parent}{$x$})}
+          \Comment{Case 2, x is a right child}
+          \State $x \gets$ \Call{Parent}{$x$}
+          \State $T \gets$ \Call{Left-Rotate}{$T, x$}
+        \EndIf
+        \Comment{Case 3, x is a left child}
+        \State \textproc{Color}(\Call{Parent}{$x$}) $\gets BLACK$
+        \State \textproc{Color}(\Call{GrandParent}{$x$}) $\gets RED$
+        \State $T \gets$ \textproc{Right-Rotate}($T$, \Call{GrandParent}{$x$})
+      \Else
+         \If{ $x =$ \textproc{Left}(\Call{Parent}{$x$})}
+          \Comment{Case 2, Symmetric}
+          \State $x \gets$ \Call{Parent}{$x$}
+          \State $T \gets$ \Call{Right-Rotate}{$T, x$}
+        \EndIf
+        \Comment{Case 3, Symmetric}
+        \State \textproc{Color}(\Call{Parent}{$x$}) $\gets BLACK$
+        \State \textproc{Color}(\Call{GrandParent}{$x$}) $\gets RED$
+        \State $T \gets$ \textproc{Left-Rotate}($T$, \Call{GrandParent}{$x$})
+      \EndIf
+    \EndIf
+  \EndWhile
+  \State \Call{Color}{$T$} $\gets BLACK$
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
+
+This program takes $O(\lg N)$ time to insert a new key to the red-black tree.
+Compare this pseudo code and the $balance$ function we defined in previous
+section, we can see the difference. They differ not only in terms of
+simplicity, but also in logic. Even if we feed the same series of keys to 
+the two algorithms, they may build different red-black trees. There 
+is a bit performance overhead in the pattern matching algorithm. 
+Okasaki discussed about the difference in detail in his paper\cite{okasaki}. 
+
+Translate the above algorithm to Python yields the below program.
 
 \begin{lstlisting}
 # Fix the red->red violation
@@ -1028,16 +1122,41 @@ def rb_insert_fix(t, x):
     return t
 \end{lstlisting}
 
-TODO: discuss about the performance overhead
+Figure \ref{fig:imperative-insert} shows a result of repeatedly 
+feed keys 1, 2, ..., 8 to the above python insertion program. Compare it with
+figure \ref{fig:insert-example}, one can tell the difference clearly.
 
-If we compare the results from the functional implementation and from the imperative one, we can 
-find there is difference. Even if we insert the same element into the same red black tree, the
-results varies. This is because the functional way focus on expressive of the program, and there 
-is a bit performance overhead in it. Okasaki discussed about the difference in his paper\cite{okasaki}.
-And he show the result that the computation time is still $O(log n)$. It is possible to use a 
-similar way to the imperative implementation. And that's a kind of fine tune in the 'balance()'
-function. But it will loss the expressive merit.
+\begin{figure}[htbp]
+       \centering
+	\includegraphics[scale=0.5]{img/python-insert.ps}
+        \caption{Repeatedly insert 1,2, ..., 8 to a red-black tree} 
+        \label{fig:imperative-insert}
+\end{figure}
 
+We skip the red-black tree delete algorithm in imperative settings, becasue it
+is even more complex than the insertion. The implementation of deleting is
+left as an exercise of this chpater.
+
+\subsection*{Exercise}
+\begin{itemize}
+\item Implement the red-black tree deleting algorithm in your favorate
+imperative programming language. you can refer to \cite{CLRS} for algorithm
+details.
+\end{itemize}
+
+\section{More words}
+Red-black tree is the most popular implementation of balanced binary search
+tree. Another one is the AVL tree, which we'll introduce in next chapter. 
+Red-black tree can be a good start point for more data structures. If we
+extend the number of children from 2 to $K$, and keep the balance as well,
+it leads to B-tree, If we store the data along with edge but not inside
+node, it leads to Tries. However, the multiple cases handling and the long 
+program tends to make new comers think red-black tree is complex.
+
+Okasaki's work helps making the red-black tree much easily understand.
+There are many implementation in other programming languages in that 
+manner \cite{rosetta}. It's also inspired me to find the pattern matching
+solution for Splay tree and AVL tree etc.
 
 \begin{thebibliography}{99}
 
@@ -1058,10 +1177,10 @@ Wikipedia. ``Red-black tree''. http://en.wikipedia.org/wiki/Red-black\_tree
 Lyn Turbak. ``Red-Black Trees''. cs.wellesley.edu/~cs231/fall01/red-black.pdf Nov. 2, 2001.
 
 \bibitem{sgi-stl}
-http://www.sgi.com/tech/stl/
+SGI STL. http://www.sgi.com/tech/stl/
 
-\bibitem{hj-stl}
-Hou Jie. ``The annotated STL sources (using SGI STL)''. ISBN:7-5609-2699-1 http://press.hust.edu.cn. 2002.
+\bibitem{rosetta}
+Pattern matching. http://rosettacode.org/wiki/Pattern\_matching
 
 \end{thebibliography}
 
