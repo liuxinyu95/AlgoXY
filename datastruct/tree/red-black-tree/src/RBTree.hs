@@ -27,22 +27,14 @@ data RBTree a = Empty
               | Node Color (RBTree a) a (RBTree a)
               | BBEmpty -- doubly black empty
 
--- helper functions
-key::RBTree a -> a
-key (Node _ _ k _) = k
-
-left::RBTree a -> RBTree a
-left (Node _ l _ _) = l
-left _ = Empty
-
-isEmpty::RBTree a -> Bool
-isEmpty Empty = True
-isEmpty _ = False
-
 -- Tree min, same as the one defined in BST
 min::RBTree a -> a
 min (Node _ Empty x _) = x
 min (Node _ l _ _) = min l
+
+isEmpty :: (RBTree a) -> Bool
+isEmpty Empty = True
+isEmpty _ = False
 
 -- Insertion/Deletion
 insert::(Ord a)=>RBTree a -> a -> RBTree a
@@ -119,16 +111,12 @@ toList :: (Ord a) => RBTree a -> [a]
 toList Empty = []
 toList (Node _ l x r) = toList l ++ [x] ++ toList r
 
--- Helper function for pretty printing
+-- For pretty printing
 instance Show a => Show (RBTree a) where
     show Empty = "."
     show (Node c l k r) = "(" ++ show l ++ " " ++ 
                           show k ++ ":" ++ show c ++ " " ++ 
                           show r ++ ")"
-
--- Helper function to create leaf
-leaf::Color -> a -> RBTree a
-leaf color x = Node color Empty x Empty
 
 -- test
 
@@ -168,6 +156,12 @@ prop_del xs x = L.sort (L.delete x xs) == toList (delete (fromList xs) x)
 
 prop_del_redblack :: (Ord a, Num a) => [a] -> a -> Bool
 prop_del_redblack xs x = isRedBlack $ delete (fromList xs) x
+
+testAll = do
+  quickCheck (prop_bst::[Int]->Bool)
+  quickCheck (prop_insert_redblack::[Int]->Bool)
+  quickCheck (prop_del::[Int]->Int->Bool)
+  quickCheck (prop_del_redblack::[Int]->Int->Bool)
 
 {- Reference 
 [Chris Okasaki] Functional Pearls Red-Black trees in a functional setting.
