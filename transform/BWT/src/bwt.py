@@ -100,6 +100,34 @@ def ibwt2(t):
         i = trans[i]
     return s
 
+# Algorithm 4,
+#   Same as algorithm 3, but we sort on rots index
+#   The main improvement is in inverse BWT, the transform
+#   vector can be calculated as the following
+#
+#   T = snd $ sortBy (compare `on` fst) (zip(r, [1..])
+#
+def bwt3(s):
+    n = len(s)
+    ids = sorted(range(n), lambda x, y: rcmp(s, x, y))
+    last_colum = [s[(i-1)%n] for i in ids]
+    return ("".join(last_colum), ids.index(0))
+
+def rcmp(s, i, j):
+    x = s[i:]+s[:i]
+    y = s[j:]+s[:j]
+    return cmp(x, y)
+
+def ibwt3(p):
+    (r, i) = p
+    n = len(r)
+    trans = [ x for (c, x) in sorted(zip(r, range(n)))]
+    s = ""
+    for _ in range(n):
+        i = trans[i]
+        s = s + r[i]
+    return s
+
 def test():
     s = "this is the demo program of bwt transform in the real programming code"
     r = bwt(s)
@@ -111,6 +139,9 @@ def test():
     t = bwt2(s)
     print "bwt2(s) ==>", t
     print "ibwt2(r) ==>", ibwt2(t)
+    p = bwt3(s)
+    print "bwt3(s) ==>", p
+    print "ibwt3(r) ==>", ibwt3(p)
 
 if __name__ == "__main__":
     test()
