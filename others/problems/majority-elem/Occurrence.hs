@@ -20,3 +20,5 @@ find (x:xs) = Just $ maximumBy (compare `on` snd) $ (x, l):catMaybes
                 [find [ a| a<-xs, a < x], find [ a| a<-xs, a > x]]
   where
     l = length (x:[ a| a<-xs, a == x])
+
+-- Boyer-Moore linear time majority vote algorithm
