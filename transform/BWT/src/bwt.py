@@ -105,7 +105,7 @@ def ibwt2(t):
 #   The main improvement is in inverse BWT, the transform
 #   vector can be calculated as the following
 #
-#   T = snd $ sortBy (compare `on` fst) (zip(r, [1..])
+#   T = snd $ sort (zip(r, [1..])
 #
 def bwt3(s):
     n = len(s)
