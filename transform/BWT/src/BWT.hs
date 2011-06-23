@@ -26,14 +26,14 @@ bwt' :: (Ord a)=> [a] -> ([a], Int)
 bwt' s =  (l, i) where
     l = map (\i->s !! ((i-1) `mod` n)) ids
     (Just i) = elemIndex 0 ids
-    ids = map snd $ sortBy (compare `on` fst) $ zip rots [0..]
+    ids = map snd $ sort $ zip rots [0..]
     rots = init $ zipWith (++) (tails s) (inits s) -- only non-empties
     n = length s
 
 -- O( n^2 ) if (!!) takes O(n) time
 ibwt' :: (Ord a) => ([a], Int) -> [a]
 ibwt' (r, i) =  fst $ iterate f ([], i) !! n where
-    t = map snd $ sortBy (compare `on` fst) $ zip r [0..]
+    t = map snd $ sort $ zip r [0..]
     f (s, j) = let j' = t !! j in (s++[r !! j'], j')
     n = length r
 
