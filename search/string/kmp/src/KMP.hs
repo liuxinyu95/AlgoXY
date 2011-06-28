@@ -107,10 +107,12 @@ testKMP f = do
          ws = "abababc"
          ts = ["aaabababc", "aaabababcaaa", "ccaaabababababacca", "aaaabababcccaaabababababccaa"]
 
-prop_kmpSearch1 :: [Bool] -> [Bool] -> Bool
-prop_kmpSearch1 as bs = (kmpSearch1 as bs) == (naiveSearch as bs)
+prop_kmpSearch1 :: [Int] -> [Int] -> Property
+prop_kmpSearch1 as bs = all (not.null) [as, bs] ==> (kmpSearch1 as bs) == (naiveSearch as bs)
 
 quickTest = do
   Test.QuickCheck.test prop_kmpSearch1
+
+-- TODO: test is not completed!!!
 
 --[1] Pearls of Functional algorithm design

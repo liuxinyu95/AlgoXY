@@ -3,6 +3,7 @@ module BWT where
 import Data.List
 import Data.Function (on)
 import Data.Array
+import Test.QuickCheck
 
 -- Algorithm 1, Naive version
 
@@ -50,4 +51,18 @@ ibwt'' (r, i) =  fst $ iterate f ([], i) !! n where
 
 
 -- Algorithm 3, do we have ideal one?
---  One idea is to turn the transfomr vector into function.
+
+-- test
+
+prop_ibwt :: [Int] -> Property
+prop_ibwt xs = not (null xs) ==> xs == (ibwt $ bwt xs)
+
+prop_ibwt' :: [Int] -> Property
+prop_ibwt' xs = not (null xs) ==> xs == (ibwt' $ bwt' xs)
+
+prop_ibwt'' :: [Int] -> Property
+prop_ibwt'' xs = not (null xs) ==> xs == (ibwt'' $ bwt' xs)
+
+--prop_rbwt :: [Int] -> Property
+--prop_rbwt xs = not (null xs) ==> xs == (rbwt $ bwt xs)
+
