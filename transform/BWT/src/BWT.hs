@@ -2,6 +2,7 @@ module BWT where
 
 import Data.List
 import Data.Function (on)
+import Data.Array
 
 -- Algorithm 1, Naive version
 
@@ -37,4 +38,16 @@ ibwt' (r, i) =  fst $ iterate f ([], i) !! n where
     f (s, j) = let j' = t !! j in (s++[r !! j'], j')
     n = length r
 
+-- Algorithm 2', Array version.
+
+-- O( n \lg n), siince (!) takes constant O(1) time.
+ibwt'' :: (Ord a) => ([a], Int) -> [a]
+ibwt'' (r, i) =  fst $ iterate f ([], i) !! n where
+    t = listArray (0, n-1) $ map snd $ sort $ zip r [0..]
+    ra = listArray (0, n-1) r
+    f (s, j) = let j' = t ! j in (s++[ra ! j'], j')
+    n = length r
+
+
 -- Algorithm 3, do we have ideal one?
+--  One idea is to turn the transfomr vector into function.
