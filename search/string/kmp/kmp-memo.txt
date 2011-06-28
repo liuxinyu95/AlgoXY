@@ -1,0 +1,425 @@
+Hi,
+
+KMP算法大量使用offset或者指针来fallback，这样很难用纯FP的方式实现。我先给一个brute force方式的KMP FP实现，
+其复杂度不是O(m+n)。然后在逐渐改进，给出一个纯FP实现的Amortize为O(m+n)的KMP算法：
+
+import Data.List
+import Data.Function (on)
+
+-- Brute Force KMP
+kmpSearch ptn text = kmpSearch' next ([], ptn) ([], text)
+
+kmpSearch' _ (sp, []) (sw, []) = [length sw]
+kmpSearch' _ _ (_, []) = []
+kmpSearch' f (sp, []) (sw, ws) = length sw : kmpSearch' f (f sp [])
+(sw, ws)
+kmpSearch' f (sp, (p:ps)) (sw, (w:ws))
+    | p == w = kmpSearch' f ((p:sp), ps) ((w:sw), ws)
+    | otherwise = if sp ==[] then kmpSearch' f (sp, (p:ps)) ((w:sw),
+ws)
+                  else kmpSearch' f (f sp (p:ps)) (sw, (w:ws))
+
+next [] ps = ([], ps)
+next [p] ps = ([], p:ps)
+next sp ps = (sp', ps') where
+    prev = reverse sp
+    prefix = longest [xs | xs <- init $ tail $ inits prev,
+                           xs `isSuffixOf` prev]
+    sp' = reverse prefix
+    ps' = (prev ++ ps) \\ prefix
+    longest xs = if xs==[] then []
+                 else maximumBy (compare `on` length) xs
+
+今天先到这，明天给解释和改进
+-- 
+LIU
+Report abuse
+Post reply
+	
+me(Larry, LIU Xinyu change) 	
+Post reply
+Mar 3
+Translate message to English  
+Hi,
+
+先解释一下昨天给的算法。考虑下面的match过程：
+
+text:       t[1],t[2],....t[i-1],t[i],    t[i+1],t[i+2],...,   ...,
+t[n]
+pattern:          p[1], p[2], ...p[j],    p[j+1],p[j+2],..., p[m]
+
+假设此时我们检查t[i+1] 是否等于p[j+1]； 我们前面比较p[1],p[2],...p[j]都成功的match了。
+在这个时间点，我们记录:
+  sw = t[i],t[i-1],...t[2],t[1]
+  ws = t[i+1],t[i+2],..., t[n]
+  sp = p[j],p[j-1],..., p[2],p[1]
+  ps = p[j+1],p[j+2],..., p[m]
+
+也就是说
+  text = reverse sw ++ ws
+  pattern = reverse sp ++ ps
+简单起见，我们用(sw, ws)对代表text，(sp, ps)对代表pattern
+
+这么记录看起来非常奇怪，但是却有一个好处，我们知道在Functioal programming中，列表通常是linked list实现。故而当
+前的检查点向前一动一步可以
+非常方面的用这种对表示如下：
+  前进一个字符：
+　　　(sw, (w:ws)) ==> ((w:sw), ws)
+     (sp: (p:ps)) ==> ((p:sp), ps)
+  这样的操作用时为O(1)
+
+反之，如果我们用text = xs ++ ys来建模，那么前进一个字符表示为： (xs, (y:ys)) ==> (xs++[y], ys)。
+这一操作时O(length of xs)的。
+
+然后我们观察next函数，它实际上就是KMP中的状态转移函数。
+如果(sp, ps)匹配失败，也就是当前检查的字符x != head ps的话，我们要回退到(sp', ps')
+  其中sp' = longest { s: s 为reverse sp的某个前缀, 且 s `isSuffixOf` reverse
+sp }
+在Haskell中,longest可以用maximumBy . (compare `on`)来实现，但是缺点是maximumBy不能接受[]，
+故而我用了一个if-else来单独处理。
+
+有了next, KMP就可以这样实现了，它从([], patttern)和([], text)开始，每次检查head ws == head
+ps是否相等，如果不等，就调用
+next sp ps回退，每次检查到(sp, [])说明找到了一个匹配，它于是通过length sw记录下当前匹配结束的位置，然后继续向前查找
+知道消耗完
+全部text返回。
+
+这里的问题是next每次枚举reverse sp的全部前缀，找最长的，非常的慢。所以它的主函数虽然是KMP的思想，状态转移函数却很差，必须进行
+改进。
+
+--
+LIU
+- show quoted text -
+
+Report abuse
+Post reply
+	
+me(Larry, LIU Xinyu change) 	
+Post reply
+Mar 3
+Translate message to English  
+Hi,
+
+我们首先进行第一步改进----重写状态转移函数：
+这里为了清楚起见，我放弃了(sw, ws)这样的表示方法，而改回(xs, ys)的表示方法。将来调整performance时可以再改回去。
+
+-- Improvement 1,
+failure :: (Eq a)=> ([a], [a]) -> ([a], [a])
+failure ([], ys) = ([], ys)
+failure (xs, ys) = fallback (init xs) (last xs:ys) where
+    fallback as bs | as `isSuffixOf` xs = (as, bs)
+                   | otherwise = fallback (init as) (last as:bs)
+
+这里的思路是，如果(xs, ys)在匹配text中某个字符c时发生失败，也就是c != head ys；
+此时我们要找到longest {s: s is prefix of xs 且 s is suffix of xs }
+为此，我们可以先检查xs[1..length-1]，也就是 init xs，如果它是xs的suffix，则我们就找到了；
+如果它不是，我们就再回退，检查init (init xs)是否是xs的suffix，重复此步骤知道退回到空串。这个算法的复杂度是
+O(length xs)
+
+然后kmp主函数我们改进如下：
+kmpSearch2 :: (Eq a) => [a] -> [a] ->[Int]
+kmpSearch2 ws txt = snd $ foldl f (([], ws), []) (zip txt [1..]) where
+    f (p@(xs, (y:ys)), ns) (x, n) | x == y = if ys==[] then ((xs++[y],
+ys), ns++[n])
+                                             else ((xs++[y], ys), ns)
+                                  | xs == [] = (p, ns)
+                                  | otherwise = f (failure p, ns) (x,
+n)
+    f (p, ns) e = f (failure p, ns) e
+这里我用了一个小技巧，zip txt [1..]后，我们实际上就用1,2,3,...给每个字符加了一个index。然后我们从左侧开始扫描，
+其实状态是([], pattern)加上一个空结果[], 以后我们每找到一个匹配的位置，就把它加入到这个结果列表中。
+每个步骤的匹配函数f检查当前的字符x是否就是(xs, ys)中ys的第一个字符，也就是x == head ys ? 如果想等，就前进一步
+(xs, ys)--> (xs++[head ys], tail ys)，并且如果这是tail ys==[]，则说明我们找到了一个匹配，为此我
+们记录这个位置。
+否则的话，我们调用failure函数，进行状态转移，回退到某个(xs', ys')上去。注意xs==[]时的特殊处理。
+
+为了测试我们的结果是否正确，我还提供了一个naiveSearch函数：
+naiveSearch ws txt = map length $ filter (ws `isSuffixOf`) (inits txt)
+
+这个改进提高了状态转移的计算效率，但是仍然存在不足，它每次都重新计算状态转移，而其实某些计算明显是重复的。
+对比procedurial的算法，使用数组和转移表，这个算法效率仍然非常差，因此需要进一步改进。
+
+--
+LIU
+- show quoted text -
+
+Report abuse
+Post reply
+	
+me(Larry, LIU Xinyu change) 	
+Post reply
+Mar 3
+Translate message to English  
+Hi,
+
+现在进行第二部改进。
+
+由于我们在纯FP中，无法使用数组来给状态转移表建模，所以我们打算使用状态转移树。
+虽然树的random access效率低于数组，但是比前面的算法能有一定程度的提升
+
+状态转移树定义如下：
+-- Improvement 2,
+data State a = E | S a (State a) (State a) -- state, ok-state, fail-
+state
+               deriving (Eq, Show)
+
+一个状态，要么是一个空状态E, 要么是一个复合状态，其包含3个部分：
+  当前状态的值；
+  如果失败的话，当前状态转移到的新状态；
+  如果成功的话，当前状态转移到的新状态；
+我们发现这个定义和二叉树极为相似，我为此起了个名字，叫做：left-fail, right-success策略。
+
+然后，我们从一个pattern开始创建一个状态转移树：
+build :: (Eq a)=>State ([a], [a]) -> State ([a], [a])
+build (S s@(xs, []) E E) = S (xs, []) (build (S (failure s) E E)) E
+build (S s@(xs, (y:ys)) E E) = S s l r where
+    l = build (S (failure s) E E) -- fail state
+    r = build (S (xs++[y], ys) E E)
+
+我们一开始让左右两个新状态为E，然后build的时候会重新构造它们，针对失败情况，我们使用failure函数，找到新的状态的值，然后继续
+build
+针对成功情况，我们向前移动一个字符，然后继续build。
+
+注意！build永远不会结束。这是个无穷递归，但是我们得感谢Haskell的lazy evaluation，我们可以构造无穷大的树。事实上，如
+果不需要
+某个节点根本就不会被构造出来。
+
+这样的好处是，我们用无穷树代替了循环树，如果用带指针的语言来构造这个状态机，我们会用指针把某个状态指回以前的状态实现循环。
+在Haskell中，我们使用无穷来表达同样的意思。
+
+为了表示匹配成功你，我定义了一个帮助函数：
+matched (S (_, []) _ _) = True
+matched _ = False
+
+然后是KMP的主函数：
+kmpSearch3 :: (Eq a) => [a] -> [a] -> [Int]
+kmpSearch3 ws txt = snd $ foldl f (auto, []) (zip txt [1..]) where
+    auto = build (S ([], ws) E E)
+    f (s@(S (xs, ys) l r), ns) (x, n)
+        | [x] `isPrefixOf` ys = if matched r then (r, ns++[n])
+                                else (r, ns)
+        | xs == [] = (s, ns)
+        | otherwise = f (l, ns) (x, n)
+
+由于有了状态转移树，每次我们匹配失败，我们就前进到左侧的失败状态上，每次成功就前进到右侧的成功状态上。
+如果matched，就记录当前位置。
+
+缺点：这里我们仍然没有完全摆脱failure函数----一个相对低效的算法。我们下一个改进会完全抛弃它，从而实现一个更好的KMP。
+
+--
+LIU
+- show quoted text -
+
+Report abuse
+Post reply
+	
+me(Larry, LIU Xinyu change) 	
+Post reply
+Mar 3
+Translate message to English  
+Hi,
+
+接下来时最后一个改进。
+
+我们这里要充分使用递归和无穷的思想。首先我们回忆一下著名的Fabonacci数列的定义：
+fibs = 0 : 1 : zipWith (+) fibs (tail fibs)
+
+现在的问题是，我们能否甩开failure函数，利用递归和无穷构造出状态转移树？
+我们假设这个树已经构造好了，它能处理任何匹配失败的状态转移，我们不妨叫它fails。
+
+然后我们考虑状态转移函数：transfer, 我么简记为tr
+tr E _ = root
+tr (S (xs, ys) fails succs) x
+        | [x] `isPrefixOf` ys = succs
+        | otherwise = tr fails x
+
+如果有了fails，那么对任何状态s, 继续build s的子树方法如下：
+build' fails s@(xs, (y:ys)) = S s fails succs where
+        succs = build' (tr fails y) (xs++[y], ys)
+s的值就是它本身了，它的左子树，也就是处理失败的情况，我们直接用fails来处理，它的右侧子树需要递归构造。
+我们把字符前进一个(xs, ys)==>(xs++[head ys], tail ys)作为右子树的值s'，
+然后我们思考失败的具体情况，此时说明匹配y （我们记y=head ys）匹配不成功，我们要
+进行状态转移，由于fails可以处理任何失败状态转移，所以如果我们有转移函数的话，那么此时
+fails就可以更新为：
+  fails' = tr fails y
+然后我么将fails' 和新的s' 传给build，递归构造。
+
+好了，基本思想就是如此，我们已经可以给出最终版本的KMP了：
+kmpSearch4 :: (Eq a) => [a] -> [a] -> [Int]
+kmpSearch4 ws txt = snd $ foldl tr (root, []) (zip txt [1..]) where
+    root = build' E ([], ws)
+    build' fails (xs, []) = S (xs, []) fails E
+    build' fails s@(xs, (y:ys)) = S s fails succs where
+        succs = build' (fst (tr (fails, []) (y, 0))) (xs++[y], ys)
+    tr (E, ns) _ = (root, ns)
+    tr ((S (xs, ys) fails succs), ns) (x, n)
+        | [x] `isPrefixOf` ys = if matched succs then (succs, ns++[n])
+else (succs, ns)
+        | otherwise = tr (fails, ns) (x, n)
+
+这个版本的KMP，我们完全摆脱了低效的failure，所有的状态转移都是按需构造，从而保证了状态转移的构造过程是armotized O(m)
+整个算法是armortized O(n+m)的。
+
+缺点，我重新审视这几个算法，发现纯使用failure函数的是可读性最好的，通常FP可以带来更好的可读性，但是在KMP算法上，我的说，数组的解决
+方式是非常非常优雅的。
+我们再回顾一下：
+def kmp_match(w, p):
+    n = len(w)
+    m = len(p)
+    fallback = fprefix(p)
+    k = 0 # how many elements have been matched so far.
+    res = []
+    tm = 0
+    for i in range(n):
+        while k > 0 and p[k] != w[i]:
+            k = fallback[k] #fall back
+            tm = tm + 1
+        if p[k] == w[i]:
+            tm = tm + 1
+            k = k + 1
+        if k == m:
+            res.append(i+1-m)
+            k = fallback[k-1] # look for next
+    return res
+
+# Prepare the `prefix-function'
+#   t(i) = max {k: k<i and p[1, ..., k] `is suffix of` p[1, ..., i-1]}
+def fprefix(p):
+    m = len(p)
+    t = [0]*m  # fallback table
+    k = 0
+    for i in range(2, m):
+        while k>0 and p[i-1] != p[k]:
+            k = t[k-1] #fallback
+        if p[i-1] == p[k]:
+            k = k + 1
+        t[i] = k
+    return t
+
+
+告一段落。欢迎讨论。
+
+--
+LIU
+- show quoted text -
+
+Report abuse
+Post reply
+	
+me(Larry, LIU Xinyu change) 	
+Post reply
+Mar 3
+Translate message to English  
+Sorry, python中的tm是我为了测量程序performance时加上的，可以删掉。
+
+- show quoted text -
+> ...
+>
+> read more >>
+
+Report abuse
+Post reply
+	
+Andy 	
+Post reply
+Mar 4
+Re: [TL] Re: Purely Functional KMP(Knuth-Morris-Pratt) algorithm
+Translate message to English  
+先说，文章我没看懂，就只是注意到了这句话：
+
+“但是缺点是maximumBy不能接受[]”，《Real World Haskell》对这个问题是这样解决的：就是给list 加一个Nothing，保证list 永远不空。
+
+
+在 2011年3月3日 下午5:04，Larry, LIU Xinyu <liuxi...@gmail.com>写道：
+- show quoted text -
+
+Report abuse
+Post reply
+	
+Noodles 	
+Post reply
+Mar 4
+Re: [TL] Re: Purely Functional KMP(Knuth-Morris-Pratt) algorithm
+Translate message to English  
+Liu 大哥这个系列的文章我也是有点难懂
+
+如果有问题，有背景，一点一点的引出，我觉得很更好
+
+但这的确费时费力
+
+不过，坚持下来，实在是可敬了
+
+
+
+
+----
+Wang Fei
+M.Eng. in Telecommunications Engineering
+
+
+
+
+2011/3/4 Dong Guan <silu...@gmail.com>
+- show quoted text -
+
+Report abuse
+Post reply
+	
+me(Larry, LIU Xinyu change) 	
+Post reply
+Mar 4
+Translate message to English  
+Hi,
+
+简单的描述一下思想。还是看下面这个图：
+
+text:    t[1],t[2],....t[i-1],t[i],    t[i+1],t[i+2],...,   t[n]
+pattern:       p[1], p[2], ...p[j],    p[j+1],p[j+2],..., p[m]
+
+假设当前p[1]...p[j]都match了。接下来要比较t[i+1] ?= p[j+1]
+1. 如果t[i+1] == p[j+1]， 我们继续前进就可以了。
+     如果此时j+1 == m，也就是我们扫描到pattern的尾部了，就记录当前的i+1为一个匹配结果
+
+2. 否则，t[j+1] != p[j+1]
+     如果我们用naive search，我们就重新来过，比较p[1] ?= t[i+1], p[2], t[i+2], ...
+     但是我们前面的j个字符全部match这个成果就白白浪费了。
+     KMP的想法就是尽量利用p[1]...p[j]已经成功match的信息
+     此时，如果能有一个函数f,
+       f(p[1]...p[j], p[j+1]...p[m])=(p[1]...p[k], p[k+1]...p[m])
+     使得我们仅仅需要继续比较t[i+1] ?= p[k+1], t[i+2] ?= p[k+2], ...
+     那么我们就达到目的了。
+
+我前面的一系列post，无论是用failure函数，用状态转移树，无非就是实现一个f函数。
+这个函数的形式化定义就是：
+  f(xs, ys) = (xs', ys')
+  其中： 1. xs' = longest {s: s为xs的前缀， 且，s为xs的后缀}
+        2. pattern == xs++ys == xs'++ys'
+
+不知道这么描述一下，是否有助于理解？
+--
+LIU
+
+- show quoted text -
+> ...
+>
+> read more >>
+
+Report abuse
+Post reply
+	
+me(Larry, LIU Xinyu change) 	
+Post reply
+Mar 4
+Translate message to English  
+Hi,
+
+Sorry, 这句话应该是：
+  如果我们用naive search，我们就重新来过，比较p[1] ?= t[i-j+2], p[2] ?= t[i-j+3], ...
+
+--
+LIU
+
+- show quoted text -
+> ...
+>
+> read more >>

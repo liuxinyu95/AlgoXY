@@ -1,0 +1,403 @@
+Hi,
+
+BWT是bzip2的核心算法。最近打算用纯functional 实现之。
+
+首先看看naive的实现。
+比如我们打算压缩“banana"这个数据S，按照Burrow-Wheeler的原始描述，过程如下：
+将banana及其所有rotation列成矩阵M：
+
+1. banana
+2. ananab
+3. nanaba
+4. anaban
+5. nabana
+6. abanan
+
+然后将矩阵M的行，按照lexicalgraphic排序：
+sorted(s[i:]+s[:i] for i in range(len(s)))
+['abanan',
+ 'anaban',
+ 'ananab',
+ 'banana',
+ 'nabana',
+ 'nanaba']
+
+我们记这个矩阵为M'，然后取最后一列L="nnbaaa"，以及排序后原来数据"banana"在新矩阵中的行4，作为一对输出：
+(nnbaaa, 4)
+
+我们记为(L, I)
+
+可以看到，结果L的特点是，相同的元素被很多被排列(permutation)到了一起，特别方便用run-length或者move-to-
+front进行进一步编码和压缩。之所以有这个特点的原因可以参考wiki，写得很详细：
+http://en.wikipedia.org/wiki/Burrows%E2%80%93Wheeler_transform
+
+现在的问题是，解压缩时如何从BWT回复出最初的data？
+直观的答案是unsort(L)，但是，我们知道sort是不存在反函数的。但是实际上我们可以从(L, I)恢复出S。
+
+注意L中含有所有S中的字符（为什么？），而且L是把矩阵M的行排序后得到的最后一列。所以如果我们对
+L排序，就可以得到矩阵M'的第一列:
+  F = sort(L)
+由于M'矩阵的rotation特性，我们可以的到一个N*2的部分矩阵：
+  [L, F]
+再对其排序可以又获得一列，反复N次，就可恢复出M'了：
+    table = [""] * len(L)
+    for i in range(len(L)):
+        table = sorted(L[i] + table[i] for i in range(len(L)))
+
+然后，根据I，就可以得到原始数据S
+  S = row[I] of M'
+
+先到这里，我下面讲如何进一步优化，避免构造真个矩阵。
+
+--
+LIU
+https://github.com/liuxinyu95/AlgoXY
+
+Report abuse
+Post reply
+	
+me(Larry, LIU Xinyu change) 	
+Post reply
+Jun 22 (6 days ago)
+Translate message to English  
+Hi,
+
+下面进行第一步改进，我们观察到naive算法中，对矩阵M的行进行lexicalgraphic排序。
+矩阵M的行存在很多冗余信息，有可能仅仅对矩阵的上三角排序呢？这样就把对
+S的所有rotations的排序转换成了对S的所有suffix排序。
+
+这里的关键点是，给S后面增加一个字符EOF构成一个新的串S'：
+  S' = S + EOF
+其中EOF是S中从未出现过的字符，由于这个原因，对S'的所有rotation排序的结果和
+对S'的所有suffix的排序结果的顺序必定一致！我们看下面的例子：
+令S=banana, EOF = $，我们对比下两个结果：
+
+s="banana$"
+
+sorted(s[i:]+s[:i] for i in range(len(s)))
+sorted(s[i:] for i in range(len(s)))
+
+rots的排序结果，  suffixes的排序结果
+['$banana',           ['$',
+ 'a$banan',            'a$',
+ 'ana$ban',            'ana$',
+ 'anana$b',            'anana$',
+ 'banana$',            'banana$',
+ 'na$bana',            'na$',
+ 'nana$ba']            'nana$']
+
+可见他们一样，现在的新问题是，我们如何从后缀排序的结果中，得到M'的最后一列的信息？
+我们记suffixes排序后的第i个后缀为suffix[i]，观察下面的整数：
+ id = length(S') - length(suffix[i])
+
+我们发现S'[id-1]恰巧就是M'的最后一列的结果，我们列举如下：
+
+id, S'[id-1]
+6    a          ['$banana',           ['$',
+5    n           'a$banan',            'a$',
+3    n           'ana$ban',            'ana$',
+1    b           'anana$b',            'anana$',
+0    $           'banana$',            'banana$',
+4    a           'na$bana',            'na$',
+2    a           'nana$ba']            'nana$']
+
+采用EOF后，还带来另外一个好处，由于EOF是S中没有的字符，所以我们在将来做BWT逆变换的时候，
+可以根据EOF的位置来恢复出S，这样我们在做BWT变换的时候，就无需记录I这个位置了。
+
+采用上面的讨论的方法改进后，BWT和IBWT的程序可以实现如下：
+
+EOF = "\0"
+
+def bwt1(s):
+    s += EOF
+    l = len(s)
+    table = sorted(s[i:] for i in range(l))
+    last_colum = [s[l-len(row)-1] for row in table]
+    return "".join(last_colum)
+
+def ibwt(r):
+    table = [""] * len(r)
+    for i in range(len(r)):
+        table = sorted(r[i] + table[i] for i in range(len(r)))
+    s = [row for row in table if row.endswith(EOF)][0]
+    return s.rstrip(EOF)
+
+先到这里，我后面讲如何完全避免产生S' suffixes的copy，并且在逆变换中避免重构出M'。
+
+--
+LIU
+https://sites.google.com/site/algoxy/home
+- show quoted text -
+Report abuse
+Post reply
+	
+me(Larry, LIU Xinyu change) 	
+Post reply
+Jun 23 (5 days ago)
+Translate message to English  
+Hi,
+
+今天继续，讲一个比较复杂的improvement, 然后回退一小步，再前进一大步，给出最终的improvement。
+
+上次的改进中，我们使用了suffix代替了rotation. 但是在比较过程中，仍然构造了suffix的copy。如果我们完全
+使用index(在C中，为指针），就可以像suffix array那样，避免构造copy。
+
+为此，我们需要提供一个特殊的比较函数，它接受两个待比较的suffix的index，按照lexicalgraphic顺序一直
+比较到EOF。由于EOF实际并不存在，我们定义EOF = -\infinity.
+
+比较函数如下，我们用C的指针/地址语法，代码用Python,希望不引起误解：
+def scmp(char* s, int i, int j, int n):
+    if i == n: # s[i] is EOF
+        return -1
+    if j == n: # s[j] is EOF
+        return 1
+    return memcmp(s+i, s+j, min(n-i, n-j))
+
+有了这个比较函数，BWT编码就进一步改进为：
+def bwt2(s):
+    ids = sorted(range(len(s)+1), lambda x, y: scmp(s, x, y))
+    last_colum = [s[i-1] for i in ids]
+    ifst = ids.index(1) # the position of s[0] in last_colum
+    ieof = ids.index(0) # EOF, which is s[-1] virtually
+    return ("".join(last_colum), ifst, ieof)
+
+由于我们使用了virtual EOF，所以不能向之前那样，仅仅把矩阵的最后一列作为结果传回，我们需要标注EOF在哪个位置。
+这个位置的值实际是S[-1]，也就是S[n-1]。而并不是EOF，我们后面在inverse时要单独处理它。同时我们还把S[0]的位置
+记为ifst，也一并返回。所以最终返回值是一个triple: (L, iEOF, iFirst)
+
+接下来要进行解码，我们的改进目标是，在解码过程中，不重构出整个矩阵M'，而是直接获得S。
+我们首先获得的M'的最后一列L，这样M'，我们仍用banana距离，此时M'如下：
+      L
+??????a
+??????n
+??????n
+??????b
+??????$=(a)
+??????a
+??????a
+
+这里?表示未知。根据我们前面的分析，L含有S中的全部字符，如果对L排序，我们可以获得M'的第一列F,
+此时，M'表示如下：
+
+F     L
+$?????a
+a?????n
+a?????n
+a?????b
+b?????$=(a)
+n?????a
+n?????a
+
+由于我们知道M'的每一行都是S的rotation, 所以我们可以把上述矩阵向右rotate-shift一列，从而得到一个新矩阵：
+
+     LF
+?????a$=(a)
+?????na
+?????na
+?????ba
+?????$b
+?????an
+?????an
+
+观察最后两列，我们发现了一个事实：L含有S中的全部字符，LF两列告诉了我们S中的任何字符，其后继字符是什么。
+也就是说
+  for any i in [0 ~ n-1]
+    let c = S[i], d=S[i+1 % n]
+    if L[j] == c for some j, then
+      ==> F[j] == d
+
+这里读者不仅要问，要是针对某个字符c，在L中有多个位置上都有这个字符c，怎么办呢？对亏了lexicalgraphic sort。
+我们知道S中的第一个c，也对应L中的第一个c，第二个c，也对应L中的第二个c。
+
+同时，我们拥有 I 这个信息，也就是S中第一个字符在L中的位置，于是我们可以根据上述论断，找到第二个字符，进而第三个...
+重复N次后恢复出全部S
+
+为此，我们定义个一个转移向量(transform vector) T, T[i]=j，其定义了L, F之间字符位置的转换关系。有了T，我们就无需
+重构出整个M', 而解码出S了。代码如下：
+
+def ibwt2(t):
+    (r, ifst, ieof) = t
+    fst_colum = [r[ieof]]+sorted(r[:ieof]+r[ieof+1:]) # first element is EOF
+    ids = [False]+[True]*(len(r)-1)
+    trans=[0]*len(r)  # transform vector
+
+    for i in range(len(r)):
+        if i != ieof:
+            x = [j for j in range(len(r)) if ids[j] and fst_colum[j] == r[i]][0]
+            trans[x] = i
+            ids[x] = False
+    s = ""
+    i = ifst
+    for j in range(len(r)-1):
+        s = s+r[i]
+        i = trans[i]
+    return s
+
+先到这里，下一篇，我们回退一小步，然后给出最终的优化解法。
+--
+Larry, LIU Xinyu
+- show quoted text -
+Report abuse
+Post reply
+	
+me(Larry, LIU Xinyu change) 	
+Post reply
+Jun 23 (5 days ago)
+Translate message to English  
+Hi,
+
+下面给出最终的优化解法，上一个post中，我们已经发现了使用index，比较suffix，可以不用构造suffix的的copy。
+这进一步启发我们，使用index，或者指针，可以直接比较rotation，这样就可以避免使用虚拟的EOF，从而大大简化
+针对virtual EOF的处理。获得的简洁代码更具可读性，而性能上没有什么损失：
+
+def bwt3(s):
+    n = len(s)
+    ids = sorted(range(n), lambda x, y: rcmp(s, x, y))
+    last_colum = [s[(i-1)%n] for i in ids]
+    return ("".join(last_colum), ids.index(0))
+
+def rcmp(char* s, int i, int j, n):
+    for k in range(n):
+      x = s[i+k % n];
+      y = s[j+k % n];
+      if x < y:
+         return -1
+      else:
+         return 1
+    return 0
+
+同时，在解码时，我们是否存在快速构造T的方法么？
+我们再仔细看看L, F的关系。仍旧以banana为例，我们看看L
+
+行L
+0 n
+1 n
+2 b
+3 a
+4 a
+5 a
+
+排序后得到F，我们把原来的行号也跟着排序结果重新列，得到：
+
+原行 F L
+3   a n
+4   a n
+5   a b
+2   b a
+0   n a
+1   n a
+
+我们发现重排的行号，正好是转移向量T的值，于是BWT逆变化大大简化如下：
+
+def ibwt3(p):
+    (r, i) = p
+    n = len(r)
+    trans = [ x for (c, x) in sorted(zip(r, range(n)))]
+    s = ""
+    for _ in range(n):
+        i = trans[i]
+        s = s + r[i]
+    return s
+
+先到这里，下面我给出纯FP解法。
+- show quoted text -
+Report abuse
+Post reply
+	
+me(Larry, LIU Xinyu change) 	
+Post reply
+Jun 23 (5 days ago)
+Translate message to English  
+Hi,
+
+我们先给一个naive的FP解法：
+
+首先是bwt, 我们严格按照定义来：
+bwt :: (Ord a)=>[a]->([a], Int)
+bwt s = (map last m, i) where
+    m = sort [ drop i s ++ take i s | i<-[1..length s]]
+    (Just i) = elemIndex s m
+
+然后是逆变换：
+ibwt :: (Ord a)=> ([a], Int) -> [a]
+ibwt (r, i) = m !! i where
+    m = iterate f (replicate n []) !! n
+    f = sort . zipWith (:) r
+    n = length r
+
+略微解释下: m表示重构的矩阵M'， 起始值是nx1的空矩阵（replicate n []）
+他是反复将函数f， apply n次得到的，每次apply都把r的每个元素放到前面，然后重新排序。
+
+先到这里，下面我给出优化的FP解。
+- show quoted text -
+Report abuse
+Post reply
+	
+me(Larry, LIU Xinyu change) 	
+Post reply
+Jun 23 (5 days ago)
+Translate message to English  
+Hi,
+
+忘记给复杂度分析了。我们考虑最后一个改进的解。首先是BWT的复杂度：
+设数据的长度为N, 排序的复杂度是O(N \lg N)，但是参与排序的元素是S的rotations或者suffix，进行lexicographic比较需要O(N)。
+故这部分时间是propotion to O(N^2 \lg N)的。然后遍历一边排序结果，获得L需要O(N)。故总时间是：O(N^2 \lg N)
+
+然后是IBWT的复杂度
+对L排序一遍得到F，复杂度为O(N \lg N)，这里仅对元素排序，同时我们得到了T；然后从I开始，遍历T，得到S，这部分是O(N)的。
+故总时间是 O(N \lg N)
+- show quoted text -
+Report abuse
+Post reply
+	
+me(Larry, LIU Xinyu change) 	
+Post reply
+Jun 23 (4 days ago)
+Hi,
+
+优化失败：-（, 我仅仅得到了一个基于random access的解：
+-- Algorithm 2, Based on random access idea,
+--   However, it performs bad on list.
+
+-- O( n^2 \lg n) if (!!) takes O(n) time
+
+bwt' :: (Ord a)=> [a] -> ([a], Int)
+bwt' s =  (l, i) where
+    l = map (\i->s !! ((i-1) `mod` n)) ids
+    (Just i) = elemIndex 0 ids
+    ids = map snd $ sortBy (compare `on` fst) $ zip rots [0..]
+    rots = init $ zipWith (++) (tails s) (inits s) -- only non-empties
+    n = length s
+
+-- O( n^2 ) if (!!) takes O(n) time
+
+ibwt' :: (Ord a) => ([a], Int) -> [a]
+ibwt' (r, i) =  fst $ iterate f ([], i) !! n where
+    t = map snd $ sortBy (compare `on` fst) $ zip r [0..]
+    f (s, j) = let j' = t !! j in (s++[r !! j'], j')
+    n = length r
+- show quoted text -
+Report abuse
+Post reply
+	
+me(Larry, LIU Xinyu change) 	
+Post reply
+Jun 23 (4 days ago)
+发现 sortBy (compare `on` fst) == sort （这点和Python很像哈）, 所以：
+
+
+-- O( n^2 \lg n) if (!!) takes O(n) time
+bwt' :: (Ord a)=> [a] -> ([a], Int)
+bwt' s =  (l, i) where
+    l = map (\i->s !! ((i-1) `mod` n)) ids
+    (Just i) = elemIndex 0 ids
+    ids = map snd $ sort $ zip rots [0..]
+
+    rots = init $ zipWith (++) (tails s) (inits s) -- only non-empties
+    n = length s
+
+-- O( n^2 ) if (!!) takes O(n) time
+ibwt' :: (Ord a) => ([a], Int) -> [a]
+ibwt' (r, i) =  fst $ iterate f ([], i) !! n where
+    t = map snd $ sort $ zip r [0..]
+- show quoted text -
