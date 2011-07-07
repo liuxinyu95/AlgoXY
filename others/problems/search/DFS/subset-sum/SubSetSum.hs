@@ -1,4 +1,4 @@
-module Bar where
+module SubSetSum where
 
 import Data.Function (on)
 import Data.List
@@ -7,7 +7,4 @@ import Data.List
 solve as s | s == 0 = [[]]
            | otherwise = concat [ map (x:) (solve as (s-x)) |  
                                   x <- as, s-x >=0 ]
-
-mapCons x [] = [[x]]
-mapCons x ys = map (x:) ys
 

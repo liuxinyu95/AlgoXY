@@ -17,8 +17,21 @@ int power(int x, int n){
   return m;
 }
 
-// solve sum(select_from(a)) == s
-void solve(int* a, int n, int s){
+/**
+ * a Naive Brute-force method
+ *
+ * to solve sum(select_from(A)) == s
+ * Since for all element a in A, we have a >=1
+ * We at most select one element s times, and
+ * at least select it 0 times.
+ * so it is in range [0, s+1).
+ * The idea is to have a N digits (s+1) numeric
+ * system, loop from 0 to (s+1)^N where |A| = N
+ * For every number w = [w[n-1], w[n-2], ..., w[0]]
+ * we check if sum(w[i]*a[i]) == s
+ */
+
+void solve(const int* a, int n, int s){
   int* w = (int*) malloc(n * sizeof(int));
   int i, j, x, m;
   m=power(s+1, n);
@@ -36,13 +49,29 @@ void solve(int* a, int n, int s){
   free(w);
 }
 
-void dfs(int* a, int n, int s){
+/**
+ * DFS method 1
+ *
+ * Everytime, we pick one candidate from A, then
+ * recursively pick the rest from A until we have
+ * all picked numbers sum to s.
+ *
+ * Demerit:  
+ * 1. Although it's intuitive, the search
+ * depths is propotion to s, if |A| is far less
+ * than s, it performs bad.
+ * Example: A=[1], s=10000
+ * 2. It output duplicate results, actually
+ * the permutation of the answer. And we needn't
+ * care about the order of selected elements
+ */
+void dfs(const int* a, int n, int s){
   int i, j, depth=0;
   int back;
   int* w = (int*) malloc( (s+1)* sizeof(int) );
   int* z = (int*) malloc( (s+1)* sizeof(int) );
   z[depth]=0;
-  for(i=0; i<s; ++i)
+  for(i=0; i<s+1; ++i)
     w[i] = -1;
 
   while(depth>=0){
@@ -71,9 +100,46 @@ void dfs(int* a, int n, int s){
   free(w);
 }
 
+/**
+ * DFS method 2
+ */
+void dfs2(const int* a, int n, int s){
+  int i, j, k, depth=0;
+  int back;
+  int* w = (int*)malloc( n * sizeof(int) );
+  int* z = (int*)malloc( (n+1) * sizeof(int) );
+  for(i=0; i<n; ++i)
+    w[i] = -1;
+  z[0] = 0;
+
+  while(depth >= 0){
+    back = 1;
+    for(i=w[depth]+1; a[depth]*i+z[depth] <= s; ++i){
+      back = 0;
+      w[depth] = i;
+      z[depth+1] = z[depth] + a[depth]*i;
+      if(z[depth+1] == s){ //output 1 solution
+	for(j=0; j<=depth; ++j)
+	  for(k=0; k<w[j]; ++k)
+	    printf("%d, ", a[j]);
+	printf("\n");
+      }
+      else if(depth < n-1){
+	w[++depth] = -1;
+	break;
+      }
+    }
+    if(back)
+      --depth;
+  }
+  free(z);
+  free(w);
+}
+
 int main(int argc, char** argv){
   int i, x;
   const int a[] = {1,2,3,4,5,6,7,8,9,10};
   //solve(a, 10, 5);
-  dfs(a, 10, 5);
+  //dfs(a, 10, 5);
+  dfs2(a, 10, 5);
 }
