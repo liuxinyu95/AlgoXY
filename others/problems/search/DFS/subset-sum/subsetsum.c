@@ -102,6 +102,7 @@ void dfs(const int* a, int n, int s){
 
 /**
  * DFS method 2
+ * Suppose a = filter((<s), a)
  */
 void dfs2(const int* a, int n, int s){
   int i, j, k, depth=0;
