@@ -66,16 +66,20 @@ def solve2(xs):
     b = sum(map(lambda (a, b): a*a - b*b, ys))
     return ((b/a - a)/2, (a + b/a)/2)
 
-# method 3, contains bug
+# method 3, 
 def solve3(xs):
+    (miss, dup) = (-1, -1)
     for i in range(len(xs)):
         while xs[i] != i:
             j = xs[i]
             if xs[j] == xs[i]:
-                return (i, xs[i])
+                dup = xs[j]
+                miss = i
+                break
             else:
                 j = xs[i]
                 (xs[i], xs[j]) = (xs[j], xs[i])
+    return (miss, dup)
 
 def test_solve():
     for i in range(100):
@@ -88,7 +92,7 @@ def test_solve():
         random.shuffle(xs)
         assert(solve(xs[0:n]) == (lost, dup))
         assert(solve_inplace(xs[0:n]) == (lost, dup))
-        __assert(solve3(xs[0:n]), (lost, dup))
+        assert(solve3(xs[0:n]), (lost, dup))
 
 def __assert(x, y):
     if x != y:
