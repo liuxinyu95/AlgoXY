@@ -239,7 +239,7 @@ root may changes in range $[-1, 1]$, and the height may increase
 at most by one, which we need recursively use this information
 to update the $\delta$ value in upper level nodes. We can define
 the result of the insertion algorithm as a pair of data 
-$(T, \Delta H)$. Where $T$ is the new tree and $\Delta H$ is the
+$(T', \Delta H)$. Where $T'$ is the new tree and $\Delta H$ is the
 increament of height. Let's denote function $first(pair)$ which 
 can return the first element in a pair. We can modify
 the binary search tree insertion algorithm as the following to
@@ -260,6 +260,7 @@ ins(T, k) = \left \{
   (tree((L, 0), Key, ins(R, k)), \Delta) & otherwise
   \end{array}
 \right.
+\label{eq:ins}
 \ee 
 
 $L, R, Key, \Delta$ represent the left child, right child, the key and
@@ -289,19 +290,19 @@ pair like $(L', \Delta H_l)$, we need do balancing adjustment as well
 as updating the increment of height. Function $tree()$ is defined
 to dealing with this task. It takes 4 arguments as $(L', \Delta H_l)$,
 $Key$, $(R', \Delta H_r)$, and $\Delta$. The result of this function
-is defined as $(T', (\Delta H)')$, where $T'$ is the new tree after 
-adjustment, and $(\Delta H)'$ is the new increament of height which is 
+is defined as $(T', \Delta H)$, where $T'$ is the new tree after 
+adjustment, and $\Delta H$ is the new increament of height which is 
 defined as
 
 \be
-  (\Delta H)' = |T'| - |T|
+  \Delta H = |T'| - |T|
 \ee
 
 This can be further detailed deduced in 4 cases.
 
 \be
 \begin{array}{rl}
-  (\Delta H)' & = |T'| - |T| \\
+  \Delta H & = |T'| - |T| \\
               & = 1 + max(|R'|, |L'|) - (1 + max(|R|, |L|)) \\
               & = max(|R'|, |L'|) - max(|R|, |L|) \\
               & = \left \{
@@ -313,6 +314,52 @@ This can be further detailed deduced in 4 cases.
                   \end{array} \right .
 \end{array}
 \ee
+
+To prove this equation, note the fact that the height can't increase
+both in left and right with only one insertion.
+
+These 4 cases can be explained from the definition of balance factor
+definition that it equal to the difference from the right sub tree
+and left sub tree.
+
+\begin{itemize}
+\item If $Delta \geq 0$ and $\Delta \geq 0$, it means that the height
+of right sub tree isn't less than the height of left sub tree both
+before insertion and after insertion. In this case, the increment in
+height of the tree is only `contributed' from the right sub tree, which
+is $\Delta H_r$.
+
+\item If $\Delta \leq 0$, which means the height of left sub tree isn't
+less than the height of right sub tree before, and it becomes 
+$\Delta' \geq 0$,
+which means that the height of right sub tree increases due to insertion, 
+and the left side keeps same ($|L'|=|L|$). So the increment in height is
+\[
+\begin{array}{rll}
+\Delta H & = max(|R'|, |L'|) - max (|R|, |L|) & \{\Delta \leq 0 \land \Delta' \geq 0 \}\\
+         & = |R'|-|L'| & \{|L|=|L'| \}\\
+         & = |R|+\Delta H_r - |L| & \\
+         & = \Delta + \Delta H_r &
+\end{array}
+\]
+
+\item For the case $\Delta \geq 0 \land \Delta' \leq 0$, Similar as the
+second one, we can get.
+
+\[
+\begin{array}{rll}
+\Delta H & = max(|R'|, |L'|) - max (|R|, |L|) & \{\Delta \geq 0 \land \Delta' \leq 0 \}\\
+         & = |L'|-|R| & \\
+         & = |L|+\Delta H_l - |R| & \\
+         & = \Delta H_l - \Delta&
+\end{array}
+\]
+
+\item For the last case, the both $Delta$ and $\Delta'$ is no bigger than
+zero, which means the height left sub tree is always greater than or equal
+ to the right sub tree, so the increament in height is only `contributed'
+from the right sub tree, which is $\Delta H_l$.
+\end{itemize}
 
 The next problem in front of us is how to determin the new balancing
 factor value $\Delta'$ before performing balancing adjustment.
@@ -329,10 +376,56 @@ the following facts.
 \end{array}
 \ee
 
+With all these changes in height and balancing factor get clear, it's
+possible to define the $tree()$ function mentioned in (\ref{eq:ins}).
+
 \be
 tree((L', \Delta H_l), Key, (R', \Delta H_r), \Delta) = 
-  balance (node(L', Key, R', \Delta'), (\Delta H)')
+  balance (node(L', Key, R', \Delta'), \Delta H)
 \ee
+
+Before we moving into details of balancing adjustment, let's translate
+the aboving equations to real programs in Haskell.
+
+First is the insert function.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+insert::(Ord a)=>AVLTree a -> a -> AVLTree a
+insert t x = fst $ ins t where
+    ins Empty = (Br Empty x Empty 0, 1)
+    ins (Br l k r d) 
+        | x < k     = tree (ins l) k (r, 0) d
+        | x == k    = (Br l k r d, 0)
+        | otherwise = tree (l, 0) k (ins r) d
+\end{lstlisting} %$
+
+Here we also handle the case that inserting a duplicated key (which
+means the key has already existed.) as just overwriting.
+
+\begin{lstlisting}
+tree::(AVLTree a, Int) -> a -> (AVLTree a, Int) -> Int -> (AVLTree a, Int)
+tree (l, dl) k (r, dr) d = balance (Br l k r d', delta) where
+    d' = d + dr - dl
+    delta = deltaH d d' dl dr
+\end{lstlisting}
+
+And the definition of height increment is as below.
+
+\begin{lstlisting}
+deltaH :: Int -> Int -> Int -> Int -> Int
+deltaH d d' dl dr 
+       | d >=0 && d' >=0 = dr
+       | d <=0 && d' >=0 = d+dr
+       | d >=0 && d' <=0 = dl - d
+       | otherwise = dl
+\end{lstlisting}
+
+\subsection{Balancing adjustment}
+As the pattern matching approach is adopted in doing rebalancing.
+We need consider what kind of patterns violate the AVL tree property.
+
+TODO: add figures here.
 
 TODO:
   Traditional insertion
