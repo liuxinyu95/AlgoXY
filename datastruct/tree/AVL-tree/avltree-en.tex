@@ -689,9 +689,61 @@ Collect all the above results, we get the new balancing factors after fixing as 
     \end{array}
     \right.
   \end{array}
+  \label{eq:rl-result}
 \ee
 
 \subsubsection*{Left-right lean case}
+
+Left-right lean case is symmetric to the Right-left lean case. By using
+the similar deduction, we can find the new balancing factors are identical
+to the result in (\ref{eq:rl-result}).
+
+\subsection{Pattern Matching}
+All the problems have been solved and it's time to define the final
+pattern matching fixing function.
+
+\be
+balance(T, \Delta H) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (node(node(A, x, B, \delta(x)), y, node(C, z, D, 0), 0), 0) & P_{ll}(T) \\
+  (node(node(A, x, B, 0), y, node(C, z, D, \delta(z)), 0), 0) & P_{rr}(T) \\
+  (node(node(A, x, B, \delta'(x)), y, node(C, z, D, \delta'(z)), 0), 0) & P_{rl}(T) \lor P_{lr}(T) \\
+  (T, \Delta H) & otherwise
+  \end{array}
+\right. 
+\ee
+
+Where $P_{ll}(T)$ means the pattern of tree $T$ is left-left lean respectively. $\delta'(x)$ and $delta'(z)$ are defined in (\ref{eq:rl-result}). The four patterns are tested as below.
+
+\be
+\begin{array}{l}
+P_{ll}(T) = node(node(node(A, x, B, \delta(x)), y, C, -1), z, D, -2) \\
+P_{rr}(T) = node(A, x, node(B, y, node(C, z, D, \delta(z)), 1), 2) \\
+P_{rl}(T) = node(node(A, x, node(B, y, C, \delta(y)), 1), z, D, -2) \\
+P_{lr}(T) = node(A, x, node(node(B, y, C, \delta(y)), z, D, -1), 2) 
+\end{array}
+\ee
+
+Translating the above function definition to Haskell yields a simple
+and intuitive program.
+
+\begin{lstlisting}
+balance :: (AVLTree a, Int) -> (AVLTree a, Int)
+balance (Br (Br (Br a x b dx) y c (-1)) z d (-2), _) = 
+        (Br (Br a x b dx) y (Br c z d 0) 0, 0)
+balance (Br a x (Br b y (Br c z d dz)    1)    2, _) = 
+        (Br (Br a x b 0) y (Br c z d dz) 0, 0)
+balance (Br (Br a x (Br b y c dy)    1) z d (-2), _) = 
+        (Br (Br a x b dx') y (Br c z d dz') 0, 0) where
+    dx' = if dy ==  1 then -1 else 0
+    dz' = if dy == -1 then  1 else 0
+balance (Br a x (Br (Br b y c dy) z d (-1))    2, _) = 
+        (Br (Br a x b dx') y (Br c z d dz') 0, 0) where
+    dx' = if dy ==  1 then -1 else 0
+    dz' = if dy == -1 then  1 else 0
+balance (t, d) = (t, d)
+\end{lstlisting}
 
 TODO:
   Traditional insertion
