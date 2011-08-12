@@ -107,7 +107,7 @@ def avl_insert(t, key):
     else:
         parent.set_right(x)
         delta = 1
-    return avl_insert_fix(root, x, delta)
+    return avl_insert_fix(root, x.parent, delta)
 
 # bottom-up update delta and fixing
 def avl_insert_fix(t, x, delta):
@@ -124,14 +124,20 @@ def avl_insert_fix(t, x, delta):
     # case 3: |d| == 1, |d'| == 2, AVL violation,
     #    we need fixing by rotation.
     #
-    while x.parent is not None:
-        d1 = x.parent.delta
-        d2 = x.parent.delta + delta
-        x.parent.delta = d2
-        (p, l, r) = (x.parent, x.parent.left, x.parent.right)
+    while x is not None:
+        d1 = x.delta
+        d2 = x.delta + delta
+        x.delta = d2
+        (p, l, r) = (x, x.left, x.right)
         if abs(d1) == 1 and abs(d2) == 0:
             return t
         elif abs(d1) == 0 and abs(d2) == 1:
+            if x.parent is None:
+                break
+            if x == x.parent.left:
+                delta = -1
+            else:
+                delta = 1
             x = x.parent
         else: # abs(d1) == 1 and abs(d2) == 2
             if d2 == 2:
@@ -148,6 +154,8 @@ def avl_insert_fix(t, x, delta):
                 else: # l.delta == -1, Left-left case
                     right_rotate(t, p)
                     right_rotate(t, l)
+            break
+    return t
 
 # helpers
 
@@ -158,7 +166,13 @@ def to_list(t):
         return to_list(t.left)+[t.key]+to_list(t.right)
 
 def to_tree(l):
-    return reduce(avl_insert, l, None)
+    #t = reduce(avl_insert, l, None)
+    t = None
+    for x in l:
+        t = avl_insert(t, x)
+    print "xs=", l
+    print "t=", to_str(t)
+    assert(False)
 
 def to_str(t):
     if t is None:
