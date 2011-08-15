@@ -19,6 +19,7 @@
 import random # for test purpose
 import string # for debuging purpose
 
+# basicly as same as BST, except there is a balance factor, delta.
 class Node:
     def __init__(self, key):
         self.key = key
@@ -63,6 +64,9 @@ class Node:
 
 # rotations
 
+# reuse of the same rotation operations as in Red-black tree.
+# note that, rotation doesn't update delta at all.
+
 # (a x (b y c)) ==> ((a x b) y c)
 def left_rotate(t, x):
     (parent, y) = (x.parent, x.right)
@@ -98,19 +102,19 @@ def avl_insert(t, key):
             t = t.left
         else:
             t = t.right
-    delta = 0
     if parent is None: #tree is empty
         root = x
     elif key < parent.key:
         parent.set_left(x)
-        delta = - 1
     else:
         parent.set_right(x)
-        delta = 1
-    return avl_insert_fix(root, x.parent, delta)
+    return avl_insert_fix(root, x)
 
 # bottom-up update delta and fixing
-def avl_insert_fix(t, x, delta):
+# params: 
+#    t: the root of the tree
+#    x: the sub tree which height increases
+def avl_insert_fix(t, x):
     #
     # denote d = delta(t), d' = delta(t'), 
     #   where t' is the new tree after insertion.
@@ -124,37 +128,59 @@ def avl_insert_fix(t, x, delta):
     # case 3: |d| == 1, |d'| == 2, AVL violation,
     #    we need fixing by rotation.
     #
-    while x is not None:
-        d1 = x.delta
-        d2 = x.delta + delta
-        x.delta = d2
-        (p, l, r) = (x, x.left, x.right)
+    while x.parent is not None:
+        d2 = d1 = x.parent.delta
+        if x == x.parent.left:
+            d2 = d2 - 1
+        else:
+            d2 = d2 + 1
+        x.parent.delta = d2
+        (p, l, r) = (x.parent, x.parent.left, x.parent.right)
         if abs(d1) == 1 and abs(d2) == 0:
             return t
         elif abs(d1) == 0 and abs(d2) == 1:
-            if x.parent is None:
-                break
-            if x == x.parent.left:
-                delta = -1
-            else:
-                delta = 1
             x = x.parent
-        else: # abs(d1) == 1 and abs(d2) == 2
+        elif abs(d1)==1 and abs(d2) == 2:
             if d2 == 2:
-                if r.delta == -1: #Right-Left case
-                    right_rotate(t, r)
-                    left_rotate(t, p)
-                else: # r.delta == 1, Right-right case
-                    left_rotate(t, p)
-                    left_rotate(t, r)
-            else: # d2 == -2
-                if l.delta == 1: #Left-right case
-                    left_rotate(t, l)
-                    right_rotate(t, p)
-                else: # l.delta == -1, Left-left case
-                    right_rotate(t, p)
-                    right_rotate(t, l)
+                if r.delta == 1:  # Right-right case
+                    p.delta = 0
+                    r.delta = 0
+                    t = left_rotate(t, p)
+                if r.delta == -1: # Right-Left case
+                    dy = r.left.delta
+                    if dy == 1: 
+                        p.delta = -1
+                    else:
+                        p.delta = 0
+                    r.left.delta = 0
+                    if dy == -1:
+                        r.delta = 1
+                    else:
+                        r.delta = 0
+                    t = right_rotate(t, r)
+                    t = left_rotate(t, p)
+            if d2 == -2:
+                if l.delta == -1: # Left-left case
+                    p.delta = 0
+                    l.delta = 0
+                    t = right_rotate(t, p)
+                if l.delta == 1: # Left-right case
+                    dy = l.right.delta
+                    if dy == 1:
+                        l.delta = -1
+                    else:
+                        l.delta = 0
+                    l.right.delta = 0
+                    if dy == -1:
+                        p.delta = 1
+                    else:
+                        p.delta = 0
+                    t = left_rotate(t, l)
+                    t = right_rotate(t, p)
             break
+        else:
+            print "shouldn't be there! d1=", d1, "d2=", d2
+            assert(False)
     return t
 
 # helpers
@@ -166,19 +192,19 @@ def to_list(t):
         return to_list(t.left)+[t.key]+to_list(t.right)
 
 def to_tree(l):
-    #t = reduce(avl_insert, l, None)
-    t = None
-    for x in l:
-        t = avl_insert(t, x)
-    print "xs=", l
-    print "t=", to_str(t)
-    assert(False)
+    return reduce(avl_insert, l, None)
 
 def to_str(t):
     if t is None:
         return "."
     else:
-        return "("+to_str(t.left)+", ", str(t.key) + ":"+str(t.delta)+", "+to_str(t.right)+")"
+        return "(" + to_str(t.left)+ " " + str(t.key) + ":" + str(t.delta) + " " + to_str(t.right)+ ")"
+
+def height(t):
+    if t is None:
+        return 0
+    else:
+        return 1 + max(height(t.left), height(t.right))
 
 def is_avl(t):
     if t is None:
@@ -187,9 +213,8 @@ def is_avl(t):
         delta = height(t.right) - height(t.left)
         return is_avl(t.left) and is_avl(t.right) and abs(delta)<=1
 
-def is_bst(t):
-    xs = to_list(t)
-    return xs == sorted(xs)
+def is_bst(t, xs):
+    return to_list(t) == sorted(xs)
 
 def test_insert():
     print "test insert..."
@@ -198,7 +223,7 @@ def test_insert():
         k = random.randint(0, n)
         xs = random.sample(range(0, n), k)
         t = to_tree(xs)
-        __assert(is_bst, t)
+        __assert2(is_bst, t, xs)
         __assert(is_avl, t)
     print "OK"
 
@@ -206,6 +231,12 @@ def __assert(f, t):
     if not f(t):
         print to_str(t)
     assert(f(t))
+
+def __assert2(f, t, xs):
+    if not f(t, xs):
+        print "xs=", xs
+        print "t=", t
+        assert(False)
 
 def test():
     test_insert()
