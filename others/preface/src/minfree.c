@@ -1,5 +1,5 @@
 /*
- * minfree.h, find the minimum free number from a list
+ * minfree.c, find the minimum free number from a list
  * Copyright (C) 2011, Liu Xinyu (liuxinyu95@gmail.com)
 
  * This program is free software: you can redistribute it and/or modify
