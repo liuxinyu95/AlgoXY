@@ -21,6 +21,23 @@ C_TEST_OBJS = maintest.o
 CC = gcc -Wall
 CFLAGS =
 
+# Objective-C part
+#
+# Note, in order to pass GNUstep compile, the following modification is needed:
+# file: /usr/include/GNUstep/GNUstepBase/GSConfig.h
+#   before: #define BASE_NATIVE_OBJC_EXCEPTIONS   1
+#   after : #define BASE_NATIVE_OBJC_EXCEPTIONS   0
+#
+# And the OBJCFLAGS should as below, may `-lm' need.
+
+OBJC_HEADER =
+OBJC_SOURCE = foo.m
+OBJC_OBJ = foo
+OBJC_FLAGS = -I /usr/include/GNUstep/ -L /usr/lib/GNUstep/ -lgnustep-base -lz -fconstant-string-class=NSConstantString
+
+objc: $(OBJC_HEADER)
+	gcc $(OBJC_FLAGS) $(OBJC_SOURCE) -o $(OBJC_OBJ)
+
 # C++ part
 CXX_HEADER = 
 CXX_SOURCE =
