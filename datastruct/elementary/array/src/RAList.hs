@@ -20,15 +20,12 @@ module RAList where
 
 import Test.QuickCheck
 
--- Based on Chris Okasaki's ``Purely Functional Datastructures''
-
--- Different with Okasaki's original version, we denote leaf as 
--- Node 1 x Empty Empty, so that the definition of binary tree
--- is same as the normal binary tree with size augmented.
+-- Based on Chris Okasaki's ``Purely Functional Datastructures'', 
+--   Chapter 9, Numeric representation.
 
 -- Binary tree representation
 
-data Tree a = Empty 
+data Tree a = Leaf a
             | Node Int (Tree a) (Tree a) -- size, left, right
 
 -- Numeric representation, Binary numer
@@ -40,7 +37,7 @@ newtype RAList a = [Digit a]
 
 -- Auxilary functions
 size :: Tree a -> Int
-size Empty = 0
+size Leaf _ = 1
 size (Node sz _ _) = sz
 
 -- Precondition: rank t1 = rank t2
@@ -48,15 +45,61 @@ link :: Tree a -> Tree a -> Tree a
 link t1 t2 = Node (size t1 + size t2) t1 t2
 
 cons :: a -> RAList a -> RAList a
-cons x ts = insertTree ts (Leaf 1 x 0 0) 
+cons x ts = insertTree ts (Leaf x) 
 
 insertTree :: RAList a -> Tree a -> RAList a
 insertTree [] t = [One t]
 insertTree (Zero:ts) t = One t : ts
 insertTree (One t' :ts)= Zero : insertTree (link t t') ts
 
+-- Assert the RAList isn't empty
+extractTree :: RAList a -> (Tree a, RAList a)
+extractTree [One t] = (t, [])
+extractTree (One t:ts) = (t, Zero:ts)
+extractTree (Zero:ts) = (t1, One t2:ts') where
+    (Node _ t1 t2, ts') = extractTree ts
+
+head :: RAList a -> a
+head ts = x where (Leaf x, _) = extractTree ts
+
+tail :: RAList a -> RAList a
+tail ts = ts' where (_, ts') = extractTree ts
+
+getAt :: RAList a -> Int -> a
+getAt (Zero:ts) i = getAt ts i
+getAt (One t:ts) i = if i < size t then lookupTree t i
+                     else getAt ts (i - size t)
+
+lookupTree :: Tree a -> Int -> a
+lookupTree (Leaf x) 0 = x
+lookupTree (Node sz t1 t2) i = if i < sz `div` 2 then lookupTree t1 i
+                               else lookupTree t2 (i - sz `div` 2)
+
+setAt :: RAList a -> Int -> a -> RAList a
+setAt (Zero:ts) i x = Zero:setAt ts i x
+setAt (One t:ts) i x = if i < size t then One (updateTree t i x):ts
+                       else One t:setAt ts (i-size t) x
+
+updateTree :: Tree a -> Int -> a -> Tree a
+updateTree (Leaf _) 0 x = Leaf x
+updateTree (Node sz t1 t2) i x = if i < sz `div` 2 then updateTree t1 i x
+                                 else updateTree t2 (i - sz `div` 2) x
+
+-- Auxilary functions for flatten etc.
+
+fromList :: [a] -> RAList a
+fromList = foldl cons []
+
+toList :: RAList a -> [a]
+toList [] = []
+toList (Zero:ts) = toList ts
+toList (One t:ts) = (treeToList t) ++ toList ts where
+    treeToList (Leaf x) = [x]
+    treeToList (Node _ t1 t2) = (treeToList t1) ++ treeToList t2
 
 -- testing
+prop_cons :: [Int] -> Bool
+prop_cons xs = xs == (toList $ fromList xs)
 
 -- Reference
 -- [1]. Chris Okasaki. ``Purely Functional Random-Access Lists''. Functional Programming Languages and Computer Architecutre, June 1995, pages 86-95.
