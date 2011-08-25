@@ -83,8 +83,9 @@ setAt (One t:ts) i x = if i < size t then One (updateTree t i x):ts
 
 updateTree :: Tree a -> Int -> a -> Tree a
 updateTree (Leaf _) 0 x = Leaf x
-updateTree (Node sz t1 t2) i x = if i < sz `div` 2 then updateTree t1 i x
-                                 else updateTree t2 (i - sz `div` 2) x
+updateTree (Node sz t1 t2) i x = 
+    if i < sz `div` 2 then Node sz (updateTree t1 i x) t2
+    else Node sz t1 (updateTree t2 (i - sz `div` 2) x)
 
 -- Auxilary functions for flatten etc.
 
@@ -101,6 +102,15 @@ toList (One t:ts) = (treeToList t) ++ toList ts where
 -- testing
 prop_cons :: [Int] -> Bool
 prop_cons xs = xs == (toList $ fromList xs)
+
+prop_lookup :: [Int] -> Int -> Property
+prop_lookup xs i = (0 <=i && i < length xs) ==> (getAt (fromList xs) i) == (xs !! i)
+
+prop_update :: [Int] -> Int -> Int -> Property
+prop_update xs i y = (0 <=i && i< length xs) ==> toList (setAt (fromList xs) i y) == (updateAt xs i y) where
+    updateAt xs i y = as ++ [y] ++ bs
+    (as, (_:bs)) = splitAt i xs
+
 
 -- Reference
 -- [1]. Chris Okasaki. ``Purely Functional Random-Access Lists''. Functional Programming Languages and Computer Architecutre, June 1995, pages 86-95.
