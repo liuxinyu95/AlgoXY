@@ -27,17 +27,18 @@ import Test.QuickCheck
 
 data Tree a = Leaf a
             | Node Int (Tree a) (Tree a) -- size, left, right
+              deriving (Show)
 
 -- Numeric representation, Binary numer
 data Digit a = Zero
-             | One (Tree a)
+             | One (Tree a) deriving (Show)
 
 -- The random access list is represented as a forest of binary trees.
-newtype RAList a = [Digit a]
+type RAList a = [Digit a]
 
 -- Auxilary functions
 size :: Tree a -> Int
-size Leaf _ = 1
+size (Leaf _) = 1
 size (Node sz _ _) = sz
 
 -- Precondition: rank t1 = rank t2
@@ -50,7 +51,7 @@ cons x ts = insertTree ts (Leaf x)
 insertTree :: RAList a -> Tree a -> RAList a
 insertTree [] t = [One t]
 insertTree (Zero:ts) t = One t : ts
-insertTree (One t' :ts)= Zero : insertTree (link t t') ts
+insertTree (One t' :ts) t = Zero : insertTree ts (link t t')
 
 -- Assert the RAList isn't empty
 extractTree :: RAList a -> (Tree a, RAList a)
@@ -88,7 +89,7 @@ updateTree (Node sz t1 t2) i x = if i < sz `div` 2 then updateTree t1 i x
 -- Auxilary functions for flatten etc.
 
 fromList :: [a] -> RAList a
-fromList = foldl cons []
+fromList = foldr cons []
 
 toList :: RAList a -> [a]
 toList [] = []
