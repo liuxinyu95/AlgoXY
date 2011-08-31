@@ -20,7 +20,7 @@ module RAList where
 
 import Test.QuickCheck
 
--- Based on Chris Okasaki's ``Purely Functional Datastructures'', 
+-- Based on Chris Okasaki's ``Purely Functional Data structures'', 
 --   Chapter 9, Numeric representation.
 
 -- Binary tree representation
@@ -29,7 +29,7 @@ data Tree a = Leaf a
             | Node Int (Tree a) (Tree a) -- size, left, right
               deriving (Show)
 
--- Numeric representation, Binary numer
+-- Numeric representation, Binary number
 data Digit a = Zero
              | One (Tree a) deriving (Show)
 
@@ -60,11 +60,11 @@ extractTree (One t:ts) = (t, Zero:ts)
 extractTree (Zero:ts) = (t1, One t2:ts') where
     (Node _ t1 t2, ts') = extractTree ts
 
-head :: RAList a -> a
-head ts = x where (Leaf x, _) = extractTree ts
+head' :: RAList a -> a
+head' ts = x where (Leaf x, _) = extractTree ts
 
-tail :: RAList a -> RAList a
-tail ts = ts' where (_, ts') = extractTree ts
+tail' :: RAList a -> RAList a
+tail' ts = ts' where (_, ts') = extractTree ts
 
 getAt :: RAList a -> Int -> a
 getAt (Zero:ts) i = getAt ts i
@@ -87,7 +87,7 @@ updateTree (Node sz t1 t2) i x =
     if i < sz `div` 2 then Node sz (updateTree t1 i x) t2
     else Node sz t1 (updateTree t2 (i - sz `div` 2) x)
 
--- Auxilary functions for flatten etc.
+-- Auxiliary functions for flatten etc.
 
 fromList :: [a] -> RAList a
 fromList = foldr cons []
@@ -102,6 +102,11 @@ toList (One t:ts) = (treeToList t) ++ toList ts where
 -- testing
 prop_cons :: [Int] -> Bool
 prop_cons xs = xs == (toList $ fromList xs)
+
+prop_head :: [Int] -> Property
+prop_head xs = not (null xs) ==> xs == (rebuild $ fromList xs) where
+    rebuild [] = []
+    rebuild ts = head' ts : (rebuild $ tail' ts)
 
 prop_lookup :: [Int] -> Int -> Property
 prop_lookup xs i = (0 <=i && i < length xs) ==> (getAt (fromList xs) i) == (xs !! i)

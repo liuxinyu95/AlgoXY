@@ -43,17 +43,14 @@ cons a (Lf b) = Tr [a] Empty [b]
 cons a (Tr [b, c, d, e] m r) = Tr [a, b] (cons (Br3 c d e) m) r
 cons a (Tr f m r) = Tr (a:f) m r
 
--- Should fix for complex rear case
 uncons :: (Tree a) -> (a, Tree a)
 uncons (Lf a) = (a, Empty)
 uncons (Tr [a] Empty [b]) = (a, Lf b)
+uncons (Tr [a] Empty (r:rs)) = (a, Tr [r] Empty rs)
 uncons (Tr [a] m r) = (a, Tr (nodeToList f) m' r) where (f, m') = uncons m
 uncons (Tr f m r) = (head f, Tr (tail f) m r)
 
 -- auxiliary functions
-
---middle :: Tree a -> Tree (Node a)
-middle (Tr _ m _) = m
 
 fromList :: [a] -> Tree a
 fromList = foldr cons Empty
