@@ -112,8 +112,8 @@ prop_lookup :: [Int] -> Int -> Property
 prop_lookup xs i = (0 <=i && i < length xs) ==> (getAt (fromList xs) i) == (xs !! i)
 
 prop_update :: [Int] -> Int -> Int -> Property
-prop_update xs i y = (0 <=i && i< length xs) ==> toList (setAt (fromList xs) i y) == (updateAt xs i y) where
-    updateAt xs i y = as ++ [y] ++ bs
+prop_update xs i y = (0 <=i && i< length xs) ==> toList (setAt (fromList xs) i y) == xs' where
+    xs' = as ++ [y] ++ bs
     (as, (_:bs)) = splitAt i xs
 
 
