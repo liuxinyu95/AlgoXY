@@ -43,12 +43,37 @@ cons a (Lf b) = Tr [a] Empty [b]
 cons a (Tr [b, c, d, e] m r) = Tr [a, b] (cons (Br3 c d e) m) r
 cons a (Tr f m r) = Tr (a:f) m r
 
-uncons :: (Tree a) -> (a, Tree a)
+uncons :: Tree a -> (a, Tree a)
 uncons (Lf a) = (a, Empty)
 uncons (Tr [a] Empty [b]) = (a, Lf b)
 uncons (Tr [a] Empty (r:rs)) = (a, Tr [r] Empty rs)
 uncons (Tr [a] m r) = (a, Tr (nodeToList f) m' r) where (f, m') = uncons m
 uncons (Tr f m r) = (head f, Tr (tail f) m r)
+
+head' :: Tree a -> a
+head' = fst . uncons
+
+tail' :: Tree a -> Tree a
+tail' = snd . uncons
+
+snoc :: Tree a -> a -> Tree a
+snoc Empty a = Lf a
+snoc (Lf a) b = Tr [a] Empty [b]
+snoc (Tr f m [a, b, c, d]) e = Tr f (snoc m (Br3 a b c)) [d, e]
+snoc (Tr f m r) a = Tr f m (r++[a])
+
+unsnoc :: Tree a -> (Tree a, a)
+unsnoc (Lf a) = (Empty, a)
+unsnoc (Tr [a] Empty [b]) = (Lf a, b)
+unsnoc (Tr f@(_:_) Empty [a]) = (Tr (init f) Empty [last f], a)
+unsnoc (Tr f m [a]) = (Tr f m' (nodeToList r), a) where (m', r) = unsnoc m
+unsnoc (Tr f m r) = (Tr f m (init r), last r)
+
+last' :: Tree a -> a
+last' = snd . unsnoc
+
+init' :: Tree a -> Tree a
+init' = fst . unsnoc
 
 -- auxiliary functions
 
@@ -57,7 +82,7 @@ fromList = foldr cons Empty
 
 toList :: Tree a -> [a]
 toList Empty = []
-toList t = x:toList t' where (x, t') = uncons t
+toList t = (head' t):(toList $ tail' t)
 
 nodeToList :: Node a -> [a]
 nodeToList (Br2 a b) = [a, b]
@@ -66,6 +91,11 @@ nodeToList (Br3 a b c) = [a, b, c]
 -- testing
 prop_cons :: [Int] -> Bool
 prop_cons xs = xs == (toList $ fromList xs)
+
+prop_snoc :: [Int] -> Bool
+prop_snoc xs = xs == (toList' $ foldl snoc Empty xs) where
+    toList' Empty = []
+    toList' t = (toList' $ init' t)++[last' t]
 
 -- Reference
 -- [1]. Ralf Hinze and Ross Paterson. ``Finger Trees: A Simple General-purpose Data Structure." in Journal of Functional Programming16:2 (2006), pages 197-217. http://www.soi.city.ac.uk/~ross/papers/FingerTree.html
