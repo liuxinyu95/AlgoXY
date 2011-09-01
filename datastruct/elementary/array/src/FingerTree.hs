@@ -29,13 +29,7 @@ data Tree a = Empty
             | Tr [a] (Tree (Node a)) [a]
               deriving (Show)
 
--- Examples:
--- Empty
--- Lf a
--- Tr [b] Empty [a]
--- Tr [e, d, c, b] Empty [a]
--- Tr [f, e] Lf (Br3 d c b) [a]
--- 
+-- Operations at the front of the sequence
 
 cons :: a -> Tree a -> Tree a
 cons a Empty = Lf a
@@ -56,6 +50,8 @@ head' = fst . uncons
 tail' :: Tree a -> Tree a
 tail' = snd . uncons
 
+-- Operations at the rear of the sequence
+
 snoc :: Tree a -> a -> Tree a
 snoc Empty a = Lf a
 snoc (Lf a) b = Tr [a] Empty [b]
@@ -74,6 +70,24 @@ last' = snd . unsnoc
 
 init' :: Tree a -> Tree a
 init' = fst . unsnoc
+
+-- Concatenation
+
+concat' :: Tree a -> Tree a -> Tree a
+concat' t1 t2 = merge t1 [] t2
+
+merge :: Tree a -> [a] -> Tree a -> Tree a
+merge Empty ts t2 = foldr cons t2 ts
+merge t1 ts Empty = foldl snoc t1 ts
+merge (Lf a) ts t2 = merge Empty (a:ts) t2
+merge t1 ts (Lf a) = merge t1 (ts++[a]) Empty
+merge (Tr f1 m1 r1) ts (Tr f2 m2 r2) = Tr f1 (merge m1 (nodes (r1 ++ ts ++ f2)) m2) r2
+
+nodes :: [a] -> [Node a]
+nodes [a, b] = [Br2 a b]
+nodes [a, b, c] = [Br3 a b c]
+nodes [a, b, c, d] = [Br2 a b, Br2 c d]
+nodes (a:b:c:xs) = Br3 a b c:nodes xs
 
 -- auxiliary functions
 
@@ -96,6 +110,9 @@ prop_snoc :: [Int] -> Bool
 prop_snoc xs = xs == (toList' $ foldl snoc Empty xs) where
     toList' Empty = []
     toList' t = (toList' $ init' t)++[last' t]
+
+prop_concat :: [Int]->[Int]->Bool
+prop_concat xs ys = (xs ++ ys) == (toList $ concat' (fromList xs) (fromList ys))
 
 -- Reference
 -- [1]. Ralf Hinze and Ross Paterson. ``Finger Trees: A Simple General-purpose Data Structure." in Journal of Functional Programming16:2 (2006), pages 197-217. http://www.soi.city.ac.uk/~ross/papers/FingerTree.html
