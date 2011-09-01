@@ -22,7 +22,7 @@ import Test.QuickCheck
 
 -- Based on Ralf Hinze and Ross Paterson's work [1].
 
-data Node a = Br2 a a | Br3 a a a deriving (Show)
+data Node a = Br [a] deriving (Show)
 
 data Tree a = Empty 
             | Lf a
@@ -34,7 +34,7 @@ data Tree a = Empty
 cons :: a -> Tree a -> Tree a
 cons a Empty = Lf a
 cons a (Lf b) = Tr [a] Empty [b]
-cons a (Tr [b, c, d, e] m r) = Tr [a, b] (cons (Br3 c d e) m) r
+cons a (Tr [b, c, d, e] m r) = Tr [a, b] (cons (Br [c, d, e]) m) r
 cons a (Tr f m r) = Tr (a:f) m r
 
 uncons :: Tree a -> (a, Tree a)
@@ -55,7 +55,7 @@ tail' = snd . uncons
 snoc :: Tree a -> a -> Tree a
 snoc Empty a = Lf a
 snoc (Lf a) b = Tr [a] Empty [b]
-snoc (Tr f m [a, b, c, d]) e = Tr f (snoc m (Br3 a b c)) [d, e]
+snoc (Tr f m [a, b, c, d]) e = Tr f (snoc m (Br [a, b, c])) [d, e]
 snoc (Tr f m r) a = Tr f m (r++[a])
 
 unsnoc :: Tree a -> (Tree a, a)
@@ -84,10 +84,10 @@ merge t1 ts (Lf a) = merge t1 (ts++[a]) Empty
 merge (Tr f1 m1 r1) ts (Tr f2 m2 r2) = Tr f1 (merge m1 (nodes (r1 ++ ts ++ f2)) m2) r2
 
 nodes :: [a] -> [Node a]
-nodes [a, b] = [Br2 a b]
-nodes [a, b, c] = [Br3 a b c]
-nodes [a, b, c, d] = [Br2 a b, Br2 c d]
-nodes (a:b:c:xs) = Br3 a b c:nodes xs
+nodes [a, b] = [Br [a, b]]
+nodes [a, b, c] = [Br [a, b, c]]
+nodes [a, b, c, d] = [Br [a, b], Br [c, d]]
+nodes (a:b:c:xs) = (Br [a, b, c]):nodes xs
 
 -- auxiliary functions
 
@@ -99,8 +99,7 @@ toList Empty = []
 toList t = (head' t):(toList $ tail' t)
 
 nodeToList :: Node a -> [a]
-nodeToList (Br2 a b) = [a, b]
-nodeToList (Br3 a b c) = [a, b, c]
+nodeToList (Br xs) = xs
 
 -- testing
 prop_cons :: [Int] -> Bool
