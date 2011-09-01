@@ -22,84 +22,116 @@ import Test.QuickCheck
 
 -- Based on Ralf Hinze and Ross Paterson's work [1].
 
-data Node a = Br [a] deriving (Show)
+data Node a = Br Int [a] deriving (Show) -- size, branches
 
 data Tree a = Empty 
             | Lf a
-            | Tr [a] (Tree (Node a)) [a]
+            | Tr Int [a] (Tree (Node a)) [a] -- size, front, middle, rear
               deriving (Show)
+
+type FList a = Tree (Node a)
+
+size :: Node a -> Int
+size (Br s _) = s
+
+sizeT :: FList a -> Int
+sizeT Empty = 0
+sizeT (Lf a) = size a
+sizeT (Tr s _ _ _) = s
+
+wrap :: a -> Node a
+wrap x = Br 1 [x]
+
+unwrap :: Node a -> a
+unwrap (Br 1 [x]) = x
+
+wraps :: [Node a] -> Node (Node a)
+wraps xs = Br (sum $ map size xs) xs
+
+unwraps :: Node a -> [a]
+unwraps (Br _ xs) = xs
 
 -- Operations at the front of the sequence
 
-cons :: a -> Tree a -> Tree a
-cons a Empty = Lf a
-cons a (Lf b) = Tr [a] Empty [b]
-cons a (Tr [b, c, d, e] m r) = Tr [a, b] (cons (Br [c, d, e]) m) r
-cons a (Tr f m r) = Tr (a:f) m r
+cons :: a -> FList a -> FList a
+cons a t = cons' (wrap a) t
 
-uncons :: Tree a -> (a, Tree a)
-uncons (Lf a) = (a, Empty)
-uncons (Tr [a] Empty [b]) = (a, Lf b)
-uncons (Tr [a] Empty (r:rs)) = (a, Tr [r] Empty rs)
-uncons (Tr [a] m r) = (a, Tr (nodeToList f) m' r) where (f, m') = uncons m
-uncons (Tr f m r) = (head f, Tr (tail f) m r)
+cons' :: (Node a) -> FList a -> FList a
+cons' a Empty = Lf a
+cons' a (Lf b) = Tr (size a + size b) [a] Empty [b]
+cons' a (Tr s [b, c, d, e] m r) = Tr (s + size a) [a, b] (cons' (wraps [c, d, e]) m) r
+cons' a (Tr s f m r) = Tr (s + size a) (a:f) m r
 
-head' :: Tree a -> a
+uncons :: FList a -> (a, FList a)
+uncons ts = let (t, ts') = uncons' ts in (unwrap t, ts')
+
+uncons' :: FList a -> ((Node a), FList a)
+uncons' (Lf a) = (a, Empty)
+uncons' (Tr _ [a] Empty [b]) = (a, Lf b)
+uncons' (Tr s [a] Empty (r:rs)) = (a, Tr (s- size a) [r] Empty rs)
+uncons' (Tr s [a] m r) = (a, Tr (s - size a) (unwraps f) m' r) where (f, m') = uncons' m
+uncons' (Tr s (a:f) m r) = (a, Tr (s - size a) f m r)
+
+head' :: FList a -> a
 head' = fst . uncons
 
-tail' :: Tree a -> Tree a
+tail' :: FList a -> FList a
 tail' = snd . uncons
 
 -- Operations at the rear of the sequence
 
-snoc :: Tree a -> a -> Tree a
-snoc Empty a = Lf a
-snoc (Lf a) b = Tr [a] Empty [b]
-snoc (Tr f m [a, b, c, d]) e = Tr f (snoc m (Br [a, b, c])) [d, e]
-snoc (Tr f m r) a = Tr f m (r++[a])
+snoc :: FList a -> a -> FList a
+snoc t a = snoc' t (wrap a)
 
-unsnoc :: Tree a -> (Tree a, a)
-unsnoc (Lf a) = (Empty, a)
-unsnoc (Tr [a] Empty [b]) = (Lf a, b)
-unsnoc (Tr f@(_:_) Empty [a]) = (Tr (init f) Empty [last f], a)
-unsnoc (Tr f m [a]) = (Tr f m' (nodeToList r), a) where (m', r) = unsnoc m
-unsnoc (Tr f m r) = (Tr f m (init r), last r)
+snoc' :: FList a -> Node a -> FList a
+snoc' Empty a = Lf a
+snoc' (Lf a) b = Tr (size a + size b) [a] Empty [b]
+snoc' (Tr s f m [a, b, c, d]) e = Tr (s + size e) f (snoc' m (wraps [a, b, c])) [d, e]
+snoc' (Tr s f m r) a = Tr (s + size a) f m (r++[a])
 
-last' :: Tree a -> a
+unsnoc :: FList a -> (FList a, a)
+unsnoc ts = let (ts', t) = unsnoc' ts in (ts', unwrap t)
+
+unsnoc' :: FList a -> (FList a, (Node a))
+unsnoc' (Lf a) = (Empty, a)
+unsnoc' (Tr _ [a] Empty [b]) = (Lf a, b)
+unsnoc' (Tr s f@(_:_) Empty [a]) = (Tr (s - size a) (init f) Empty [last f], a)
+unsnoc' (Tr s f m [a]) = (Tr (s - size a) f m' (unwraps r), a) where (m', r) = unsnoc' m
+unsnoc' (Tr s f m r) = (Tr (s - size a) f m (init r), a) where a = last r
+
+last' :: FList a -> a
 last' = snd . unsnoc
 
-init' :: Tree a -> Tree a
+init' :: FList a -> FList a
 init' = fst . unsnoc
 
 -- Concatenation
 
-concat' :: Tree a -> Tree a -> Tree a
+concat' :: FList a -> FList a -> FList a
 concat' t1 t2 = merge t1 [] t2
 
-merge :: Tree a -> [a] -> Tree a -> Tree a
-merge Empty ts t2 = foldr cons t2 ts
-merge t1 ts Empty = foldl snoc t1 ts
+merge :: FList a -> [Node a] -> FList a -> FList a
+merge Empty ts t2 = foldr cons' t2 ts
+merge t1 ts Empty = foldl snoc' t1 ts
 merge (Lf a) ts t2 = merge Empty (a:ts) t2
 merge t1 ts (Lf a) = merge t1 (ts++[a]) Empty
-merge (Tr f1 m1 r1) ts (Tr f2 m2 r2) = Tr f1 (merge m1 (nodes (r1 ++ ts ++ f2)) m2) r2
+merge (Tr s1 f1 m1 r1) ts (Tr s2 f2 m2 r2) = 
+    Tr (s1 + s2 + (sum $ map size ts)) f1 (merge m1 (nodes (r1 ++ ts ++ f2)) m2) r2
 
-nodes :: [a] -> [Node a]
-nodes [a, b] = [Br [a, b]]
-nodes [a, b, c] = [Br [a, b, c]]
-nodes [a, b, c, d] = [Br [a, b], Br [c, d]]
-nodes (a:b:c:xs) = (Br [a, b, c]):nodes xs
+nodes :: [Node a] -> [Node (Node a)]
+nodes [a, b] = [Br (size a + size b) [a, b]]
+nodes [a, b, c] = [Br (size a + size b + size c) [a, b, c]]
+nodes [a, b, c, d] = [Br (size a + size b) [a, b], Br (size c + size d) [c, d]]
+nodes (a:b:c:xs) = (Br (size a + size b + size c) [a, b, c]):nodes xs
 
 -- auxiliary functions
 
-fromList :: [a] -> Tree a
+fromList :: [a] -> FList a
 fromList = foldr cons Empty
 
-toList :: Tree a -> [a]
+toList :: FList a -> [a]
 toList Empty = []
 toList t = (head' t):(toList $ tail' t)
-
-nodeToList :: Node a -> [a]
-nodeToList (Br xs) = xs
 
 -- testing
 prop_cons :: [Int] -> Bool
