@@ -1,3 +1,1026 @@
-binomail-heap
-fibonacci-heap
-pairing-heap
+Hi,
+今天介绍Binomial Heap，翻译成中文是"二项式堆"。
+在《算法导论》的第19章，有对Binomial Heap的介绍。这一章的最难点就是把两个Binomial Heap中的Binomail
+Tree按照类似 merge sort的算法，
+链接成一个link list，然后进行union操作，里面涉及4个复杂的case。
+
+在Chris Okasaki的《Purely Functional data structures》中给出了用纯FP实现Binomial
+heap的思路，对比CLRS中的imperative思路，这个
+方法特别的简洁。
+
+首先介绍Binomial Heap的概念：
+
+Binomial Heap看起来比Leftist Heap和Implicit Binary heap by array都复杂，然而他却在
+merge操作上非常占有优势，binary heap为了维持
+Heap property, 通常merge的复杂度达到O(N)，而Binomial Heap可以有O(lg N)。
+
+之所以叫二项式堆，是因为他和二项式定理的紧密联系，我们回忆一下著名的杨辉三角：
+      1
+     1 1
+    1 2 1
+   1 3 3 1
+  1 4 6 4 1
+  ...
+
+Binomial Heap是由一些列Binomail Tree组成的，Binomial Tree的定义是递归的，非常有趣：
+
+一个Rank为N的Binomail Tree，是由两个Rank为N-1的Binomail Tree组成的，组成方法是把root值较小的一个作为
+另一个tree的第一个子节点；
+Rank为0的Binomail tree只有一个节点。
+
+有了这个递归定义，就可以列出rank为0,1,2,...的binomail tree的形状了：
+
+x, (x, x), (x, (x, x), x), (x, (x, (x, x), x), (x, x), x), ...
+
+如果看这些x和括号不爽，可以参考CLRS的图19.2(b)或者http://en.wikipedia.org/wiki/
+Binomial_heap中的图。
+
+我们看binomail tree中任何一层的节点数恰好符合杨辉三角形。例如rank 为3的tree，root只有1个节点，第二层有3个节点，第
+3层有3个节点，第4层有1个节点。
+再隐身一步，任何rank为r的binomail tree，由于符合二项式定理的展开项，必然有2^r个节点。
+
+一个Binomail Heap，是由若干Binomail tree，组成的列表，其中任何一个rank的tree最多只有一个。
+这个有趣的定义，会引出一个有趣的结论：含有N个节点的Binomail Heap，如果把N表示成二进制形式a0,a1,a2, ... am，
+则若ai为0，则没有rank为2^i的tree，若为1，则有。
+
+例如含有5个元素的Binomial Heap，N=5,写成二进制是（LSB)101（MSB）则其含有2个Binomial tree，一个
+rank为0，另一个rank为2
+
+先到这里，待续
+
+
+Hi,
+现在进入代码时间：
+
+针对Binomail Tree的定义，我们给出其Haskell的定义代码：
+data BiTree a = Node { rank :: Int
+                     , root :: a
+                     , children :: [BiTree a]} deriving (Eq, Show)
+
+一个Binomail Tree包含3个部分，一个是rank，一个是root上的值（可比较），另一个是其子树列表。
+并且规定，一个Binomail tree的root上的值，是所有元素中的最小（大）值。
+
+而Binomail Heap则仅仅是Binomail Tree的一个列表：
+type BiHeap a = [BiTree a]
+
+这里有2个隐式限制条件：
+1， 这个列表中的tree的rank单调增
+2, 任何rank只最多出现一次
+
+如果标记rank为k的Binomial Tree为B_{k}，则递归定义中将两个B_{k}组成一个B_{k+1}的描述可用下面代码来表示：
+-- Link 2 trees with SAME rank R to a new tree of rank R+1
+link :: (Ord a) => BiTree a -> BiTree a -> BiTree a
+link t1@(Node r x c1) t2@(Node _ y c2) =
+    if x<y then Node (r+1) x (t2:c1)
+    else Node (r+1) y (t1:c2)
+
+我们比较两个树的根节点元素的大小，将较小的一个作为新的根，然后将较大的一个作为第一个儿子，并且将rank增加1.
+
+有了link，并且由于Binmial Heap是rank单调增的一系列tree的列表组成的这个事实，
+就可以实现把一个rank不小于Binomail Heap中第一个tree的新tree插入到其中的函数：
+-- Insert a Binomial tree into a Binomial heap
+--  Implicit condition: the rank of tree is either lower or equal to
+the first
+--  element tree in the heap.
+insertTree :: (Ord a) => BiHeap a -> BiTree a -> BiHeap a
+insertTree [] t = [t]
+insertTree ts@(t':ts') t = if rank t < rank t' then t:ts
+                           else insertTree ts' (link t t')
+
+方法很简单，先判断，待插入的树的rank是否小于heap中的第一个tree，如果小，则直接添加到列表开头。
+否则说明两个rank相等，我们用link生成一个rank增加1的新tree，然后递归插入到剩余列表中。
+注意这个link出的新tree，依然满足rank < or =的隐式限制条件。这是由于link只能将rank增1，而列表中tree的rank都
+是非负单调增的整数。
+
+有了这个辅助函数insert就非常方便实现了：
+insert :: (Ord a) => BiHeap a -> a -> BiHeap a
+insert h x = insertTree h (Node 0 x [])
+
+当试图把一个新值插入到heap中，我们只需要用这个新值建立一个rank为0的只有一个节点的树，然后将其插入到heap中即可。
+
+现在来测试一下：
+
+首先定义个辅助函数，将一个列表变成一个binomial heap。
+fromList :: (Ord a) => [a] -> BiHeap a
+fromList xs = foldl insert [] xs
+
+fromList [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]将输出：
+[Node 1 1 [Node 0 4 []],Node 3 2 [Node 2 8 [Node 1 14 [Node 0 16
+[]],Node 0 10 []],Node 1 7 [Node 0 9 []],Node 0 3 []]]
+
+把它画在纸上，大致如下：
+
+(1, 4) --> (2, (8, (14, 6), 10), (7, 9), 3)
+
+其由两个tree组成，一个rank为1，另外一个rank为3.
+
+merge的定义非常像merge sort:
+merge:: (Ord a) => BiHeap a -> BiHeap a -> BiHeap a
+merge ts1 [] = ts1
+merge [] ts2 = ts2
+merge ts1@(t1:ts1') ts2@(t2:ts2')
+    | rank t1 < rank t2 = t1:(merge ts1' ts2)
+    | rank t1 > rank t2 = t2:(merge ts1 ts2')
+    | otherwise = insertTree (merge ts1' ts2') (link t1 t2)
+
+现在思考deleteMin，由于heap由一系列binomail tree组成，每个tree的根节点都是最小（大）值，但是各个tree之间的根
+节点的大小并不确定。
+所以我们只要把heap列表中所有tree的根节点比较一下，找出最小的一个就可以了。
+
+接下来的问题就棘手了。假设某个heap是由如下的binomail tree组成： b0, b1, ..., bm， 并且bp的根节点最小。那么
+delete min后，
+bp的根节点就被拿走了，bp剩下了一堆儿子，共有p个。他们恰好也都是Binomial tree，rank分别是p-1, p-2, ...
+2, 1， 0。
+由于我们有O(lg N)的merge，所以一个可行的解决方案就是，把剩下的这p个儿子颠倒变成另外一个heap，然后和其余的tree merge
+到一起。
+
+根据这个思路，我们首先实现一个找到含有最小根节点的binomial tree的函数：
+removeMinTree :: (Ord a) => BiHeap a -> (BiTree a, BiHeap a)
+removeMinTree [t] = (t, [])
+removeMinTree (t:ts) = if root t < root t' then (t, ts)
+                       else (t', t:ts')
+    where
+      (t', ts') = removeMinTree ts
+
+这个函数把含有最小根节点的树和剩余的其他树的列表，以一个pair返回。
+
+有了这个辅助函数，findMin就非常容易了：
+findMin :: (Ord a) => BiHeap a -> a
+findMin = root . fst. removeMinTree
+
+delete的实现就是摘除最小根节点，然后儿子倒序merge回去：
+deleteMin :: (Ord a) => BiHeap a -> BiHeap a
+deleteMin h = merge (reverse $ children t) ts where
+    (t, ts) = removeMinTree h
+
+这样一个binomial heap就基本完成了，作为副产品，我们测试一下heap sort，测试代码和Leftist Heap的一样：
+
+
+heapSort :: (Ord a) => [a] -> [a]
+heapSort = hsort . fromList where
+    hsort [] = []
+
+    hsort h = (findMin h):(hsort $ deleteMin h)
+heapSort [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+
+输出：
+
+
+[1,2,3,4,7,8,9,10,14,16]
+今天先告一段落。就到这里吧
+
+Hi,
+多说一句，Binary Heap还应该加上Splay Heap， Splay Heap被发现是最快的Heap之一。
+过一阵我抽空介绍。
+
+另外Binomial Heap的insert和merge看似都是O(lg N)的复杂度，但是注意这是worst-case的复杂度，而
+amortized的复杂度是O(1)。
+
+今天给Fibonacci heap开个头。
+
+首先是为什么叫Fibonacci heap？其实Fibonacci heap的设计和实现与Fibonacci数列一点都没有关系。
+只有在证明其算法复杂度的时候才会用到Fibonacci数列的性质。于是作者（ Michael L. Fredman and Robert
+E. Tarjan）
+用Fibonacci来给这个数据结构命名。
+
+基础算法(elementary algorithms and data structures）中真正与Fibonacci有关的不多，还有一个著
+名的是Fibonacci search。
+理论上他的性能比binary search(二分查找)要好。Knuth在TAOCP的第3卷417-419页有所介绍。
+
+Fibonacci heap在CLRS第20章有所介绍，算法非常优美。但是略显复杂。本质上Fibonacci heap可以认为是一个lazy版
+的binomial heap。
+所以amortized复杂度分析出了delete min之外，都是O(1)。
+
+由于lazy这一策略，Fibonacci heap用支持lazy evaluation的方式存在一个特别优雅的实现：
+http://hackage.haskell.org/packages/archive/pqueue-mtl/1.0.7/doc/html/src/Data-Queue-FibQueue.html#FQueue
+感兴趣的可以和CLRS上的实现对比一下。
+
+我下面将逐步给出解释。
+
+Chris, Okasaki 在1995年对此有一个特别详细的解释。非常清楚：
+http://darcs.haskell.org/nofib/gc/fibheaps/orig
+
+整个解中，最困难的部分在于，不同于Binomial heap，各个子tree是按照rank排序的，Fibonacci的子tree可能是任意
+rank order的。
+为此引入了array来管理这些子tree。
+
+--
+LIU
+
+今天给出Fibonacci Heap的详细解释。
+如果读过CLRS（《算法导论》）第20章，恐怕读者都会觉得Fibonacci Heap挺麻烦的。
+
+其实，如果从Functional Programming的角度，就会发现Fibonacci Heap其实也是非常朴素的。理解起来一点也不困
+难。
+
+首先原理上说，Fibonacci Heap本质上是Binomial Heap的一个lazy实现。我们回顾一下Binomial Heap的性
+能：
+插入：O(lg N)
+merge: O(lg N)
+删除：O(lg N)
+
+我们的目标是：
+插入: O(1)
+merge: O(1)
+删除：O(lg N) amortized
+
+现在我们分析一下究竟Binomial插入时的瓶颈在哪里，Binomial heap在插入元素x时，把x作为一个只有一个叶子节点的
+binomail tree，merge进去。
+merge时，我们实际上是进行一次根据rank的有序序列插入，并且一旦发现有rank同样的，还要进行递归的合并。
+
+所以作为lazy的策略，我们在插入时，把这个有序序列插入以及合并的复杂计算推迟到以后，而直接把这个叶子节点扔进去。
+但是这样做的问题就是，我们在寻找堆顶的最小（大）元素时，复杂度就下来了，为了保持O(1)的复杂度，我们必须记录最小值元素所在的子树。
+
+基于这个策略，我们定义如下。
+
+首先是具体的树的定义，我们复用Binomial的定义：
+data BiTree a = Node { rank :: Int
+                     , root :: a
+                     , children :: [BiTree a]} deriving (Eq, Show)
+
+然后是Fibonacci Heap的定义。要么是空，要么包含3个部分，heap的size, 包含最小元素的树，和剩余的子树：
+data FibHeap a = E | FH { size :: Int
+                        , minTree :: BiTree a
+                        , trees :: [BiTree a]} deriving (Eq, Show)
+
+先到这，一会接着发。
+
+继续，为了方便。我提供一个singleton函数，用于从一个值，建立一个只有一个叶子节点的树，并放在heap里：
+singleton :: a -> FibHeap a
+singleton x = FH 1 (Node 1 x []) []
+
+把两个rank一样的树link到一起的函数可以复用Binomial heap的。
+link :: (Ord a) => BiTree a -> BiTree a -> BiTree a
+link t1@(Node r x c1) t2@(Node _ y c2)
+    | x<y = Node (r+1) x (t2:c1)
+    | otherwise = Node (r+1) y (t1:c2)
+
+注意，它可以保证树种最小的元素在root。
+
+insert几乎和Binamial heap一样，它只不过调用merge:
+
+insert :: (Ord a) => FibHeap a -> a -> FibHeap a
+insert h x = merge h (singleton x)
+
+下面看最关键的merge，它是实现lazy策略的最终地方：
+
+merge:: (Ord a) => FibHeap a -> FibHeap a -> FibHeap a
+merge h E = h
+merge E h = h
+merge h1@(FH sz1 minTr1 ts1) h2@(FH sz2 minTr2 ts2)
+    | root minTr1 < root minTr2 = FH (sz1+sz2) minTr1 (minTr2:ts2+
++ts1)
+    | otherwise = FH (sz1+sz2) minTr2 (minTr1:ts1++ts2)
+
+这样，就实现了O(1)的插入，合并。顺便给出找堆顶的元素的函数:
+
+findMin :: (Ord a) => FibHeap a -> a
+findMin = root . minTree
+
+先到这，下面给最困难的deleteMin
+
+Hi,
+deleteMin的实现思路为，把minTree的root扔掉。minTree的子tree和Heap里其他的tree，统一进行一次
+consolidate。
+以前lazy的工作，在这里统一要偿还。---出来混，一定要还的哈。
+
+CLRS上给了一个特别优美的算法，只用遍历一次就OK了，结果是所有的tree里，没有重复rank的。
+
+这个算法用FP实现需要twist一下mind。我终于想出一个，为了解释，我们先看一个简单的问题：
+
+下面这个列表：[2, 1, 1, 4, 8, 1, 1, 2, 4]
+如何把所有相同的值相加，并且相加后，如果有相同的值，还要继续相加。这个题目的答案是[8, 16]
+
+解法为：
+consolidate:: (Num a)=>[a] -> [a]
+consolidate xs = foldl meld [] xs where
+    meld :: (Num a)=>[a] -> a -> [a]
+    meld [] x = [x]
+    meld (x':xs) x = if x == x' then meld xs (x+x')
+                     else x:x':xs
+
+测试下：
+consolidate [2, 1, 1, 4, 8, 1, 1, 2, 4]
+输出：
+[8,16]
+
+我们的tree的consolidate也是这个原理。
+consolidate :: (Ord a) => [BiTree a] -> [BiTree a]
+consolidate ts = foldl meld [] ts where
+    meld [] t = [t]
+    meld (t':ts) t = if rank t' == rank t then meld ts (link t t')
+                     else t:t':ts
+
+注意他是O(lg N)的
+
+然后从merge好的tree中还要找出root最小的。函数如下：
+
+extractMin :: (Ord a) => [BiTree a] -> (BiTree a, [BiTree a])
+extractMin [t] = (t, [])
+extractMin (t:ts) = if root t < root t' then (t, ts)
+                        else (t', t:ts')
+    where
+      (t', ts') = extractMin ts
+
+最后是千呼万唤的deleteMin
+
+deleteMin :: (Ord a) => FibHeap a -> FibHeap a
+deleteMin (FH _ (Node _ x []) []) = E
+deleteMin h@(FH sz minTr ts) = FH (sz-1) minTr' ts' where
+    (minTr', ts') = extractMin $ consolidate (children minTr ++ ts)
+
+现在可以测试。测试代码和其他的Heap都一样。
+
+fromList :: (Ord a) => [a] -> FibHeap a
+
+
+fromList xs = foldl insert E xs
+heapSort :: (Ord a) => [a] -> [a]
+
+
+heapSort = hsort . fromList where
+    hsort E = []
+    hsort h = (findMin h):(hsort $ deleteMin h)
+-- test
+
+testFromList = fromList [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+
+testHeapSort = heapSort [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+
+
+*FibonacciHeap> testHeapSort
+[1,2,3,4,7,8,9,10,14,16]
+
+完
+
+今年写完K-ary Heap是不大可能了。我先预告一下，下面我会在TL的maillist上贴paring heap。
+这是一种非常神奇的heap。其算法复杂度除了deleteMin之外都达到了O(1)。deleteMin的复杂度至今无人能够证明，而是猜想是
+O(lg N)。
+事实证明，它是迄今为止性能最好的heap之一。并且非常实用。
+
+抱歉。昨天代码里有个bug。
+
+首先，用于示例的consolidate函数应该改动如下：
+
+
+consolidate xs = foldl meld [] xs where
+    meld [] x = [x]
+    meld (x':xs) x | x == x' = meld xs (x+x')
+                   | x < x'  = x:x':xs
+                   | otherwise = x': meld xs x
+
+这个bug的现象为：
+
+--------before fixing--------
+>consolidate [2, 1, 1, 32, 4, 8, 1, 1, 2, 4]
+>[16,4,32,4]
+
+--------after fixing----------
+>consolidate [2, 1, 1, 32, 4, 8, 1, 1, 2, 4]
+>[8, 16, 32]
+
+因此，用于consolidate子树的代码应该相应修改为：
+
+
+consolidate :: (Ord a) => [BiTree a] -> [BiTree a]
+consolidate ts = foldl meld [] ts where
+    meld [] t = [t]
+    meld (t':ts) t | rank t == rank t' = meld ts (link t t')
+                   | rank t <  rank t' = t:t':ts
+                   | otherwise = t' : meld ts t
+
+这个bug是昨天夜里睡醒时突然意识到的。早上半梦半醒之间的时候想到了答案。
+
+更新的代码可以在这里下载：
+https://sites.google.com/site/algoxy/otherheaps/otherheaps.zip
+
+Happy new year.
+
+Hi,
+开个pairing heap的头吧。
+
+pairing heap是目前已知的性能最好的heap之一，并且他的实现非常简洁，同时适用于imperative和functional。
+对于所有的操作如insert, find min, merge它的性能都是O(1),只有delete min(heap pop)的性能"可
+能"是O(lg N)。
+注意我用了引号，因为这仅仅是个假说，15年过去了，没有人能从数学上证明它，虽然大量数据显示它是O(lg N)的。
+
+不同于Binomial heap和Fibonacci heap，它们本质上是用森林来实现的，而pairing heap是实实在在的K-
+ary。
+也就是有多个分支的树。
+
+pairing heap的设计思路很简单：树根放置最小(大)值。其他东西统一扔到子树里。所以其定义为：
+
+data PHeap a = E | Node a [PHeap a] deriving (Eq, Show)
+
+也就是说，一个pairing heap，要么是空，要么是一个K-ary树，由一个一个值（最小值），和若干子树组成；
+
+merge的思路非常直白：
+一个空树和任何树h进行merge结果是h。
+否则选择根值较大的树当做另外一颗树的新的子树
+
+merge :: (Ord a) => PHeap a -> PHeap a -> PHeap a
+
+
+merge h E = h
+merge E h = h
+merge h1@(Node x hs1) h2@(Node y hs2) =
+    if x < y then Node x (h2:hs1) else Node y (h1:hs2)
+插入的话，就是把一个只有一个值的叶子树merge进去：
+insert :: (Ord a) => PHeap a -> a -> PHeap a
+insert h x = merge (Node x []) h
+
+返回最小值的时候，只要返回根就可以了。
+
+
+findMin :: PHeap a -> a
+findMin (Node x _) = x
+注意，上面都是O(1)的。下面进入真格的地方了：
+
+deleteMin的时候，根扔掉后，剩下了孤零零的一组子树，怎么处理呢？方法是把这些子树从左到右，两两通过merge配对。然后再从右到左全部
+merge起来。
+写成伪代码是：
+
+list = empty
+for each x, y in children
+    list.append(merge(x, y))
+
+t = empty
+for each i in reverse(list)
+    t = merge(t, i)
+
+return t
+
+但是，如果使用递归，会有一个特别优雅的算法，它和bottom up merge sort很像：
+deleteMin :: (Ord a) => PHeap a -> PHeap a
+deleteMin (Node _ hs) = mergePairs hs where
+    mergePairs [] = E
+    mergePairs [h] = h
+    mergePairs (h1:h2:hs) = merge (merge h1 h2) (mergePairs hs)
+
+好了，基本大功告成了，现在测试：
+
+fromList :: (Ord a) => [a] -> PHeap a
+
+
+fromList xs = foldl insert E xs
+heapSort :: (Ord a) => [a] -> [a]
+heapSort = hsort . fromList where
+    hsort E = []
+    hsort h = (findMin h):(hsort $ deleteMin h)
+-- test
+
+testFromList = fromList [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+testHeapSort = heapSort [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+--
+LIU
+
+Hi,
+
+今天给出Binomial Heap的imperative实现. python版本。
+CLRS上给的merge算法有些复杂，分了3个case，我把它化简了。
+
+另外，使用left-child, right sibling的策略来记录K-ary tree需要非常的小心。不然特别容易产生bug。
+我后面会给一个使用python的list或者STL的std::list的K-ary实现，估计会进一步简化。
+
+今天比较懒，直接贴代码吧。
+
+#!/usr/bin/python
+
+import random # for testing only
+
+# Assume the heap is min-heap
+
+# Use left child, right sibling approach
+class BinomialTree:
+    def __init__(self, x = None):
+        self.rank = 0
+        self.key = x
+        self.parent = None
+        self.child = None
+        self.sibling = None
+
+# Auxiliary function to extract the first tree
+def extract_first(h):
+    t = None
+    if h is not None:
+        t = h
+        h = h.sibling
+        t.sibling = None
+    return (t, h)
+
+# Implicit condition that the rank of the two trees are same       
+def link(t1, t2):
+    if t2.key < t1.key:
+        (t1, t2) = (t2, t1)
+    t2.sibling = t1.child
+    t1.child = t2
+    t2.parent = t1
+    t1.rank = t1.rank + 1
+    #release t2
+    return t1
+
+# Insert a tree to the proper position in the heap
+# So that the trees are in monotonically increase order by rank
+# Implicit condition: the rank of tree is lower or equal to the
+# first tree in the heap
+def insert_tree(h, t):
+    while h is not None and t.rank == h.rank:
+        (t1, h) = extract_first(h)
+        t = link(t, t1)
+    if h is not None and t.rank < h.rank:
+        t.sibling = h
+    return t
+
+# Insertion
+def insert(h, x):
+    return insert_tree(h, BinomialTree(x))
+
+# Append a tree to the heap, so that the trees are in
+# monotonically increase order by rank
+# Implicit condition: the rank of tree is equal to or bigger by 1 than
+# the last tree in the heap.
+# Because the tail tree in the heap may be changed, we need the 2nd last
+# tree as the argument
+def append_tree(head, prev, tail, x):
+    if head is None:
+        return (x, None, x)
+    if tail.rank == x.rank:
+        tail = link(tail, x)
+        if prev is None:
+            return (tail, None, tail)
+        prev.sibling = tail
+    else:
+        tail.sibling = x
+        prev = tail
+        tail = x
+    return (head, prev, tail)
+
+# Helper function to append a heap to another one by repeatedly calling
+# append_tree()
+def append_trees(h, p, t, xs):
+    while xs is not None:
+        (x, xs) = extract_first(xs)
+        (h, p, t) = append_tree(h, p, t, x)
+    return (h, p, t)
+
+# Merge 2 heaps together. Use a merge sort like approach
+def merge(h1, h2):
+    if h1 is None:
+        return h2
+    if h2 is None:
+        return h1
+    (h, p, t) = (None, None, None)
+    while h1 is not None and h2 is not None:
+        x = None
+        if h1.rank < h2.rank:
+            (x, h1) = extract_first(h1)
+        elif h2.rank < h1.rank:
+            (x, h2) = extract_first(h2)
+        else:
+            (x1, h1) = extract_first(h1)
+            (x2, h2) = extract_first(h2)
+            x = link(x1, x2)
+        (h, p, t) = append_trees(h, p, t, x)
+    if h1 is not None:
+        (h, p, t) = append_trees(h, p, t, h1)
+    if h2 is not None:
+        (h, p, t) = append_trees(h, p, t, h2)
+    return h
+
+# Reverse the linked list
+def reverse(h):
+    prev = None
+    while h is not None:
+        x = h
+        h = h.sibling
+        x.sibling = prev
+        prev = x
+    return prev
+
+# Extract the minimum binomial tree from the heap
+# returns (min tree, rest trees)
+def remove_min_tree(h):
+    head = h
+    (prev_min, min_t) = (None, None)
+    prev = None
+    while h is not None:
+        if min_t is None or h.key < min_t.key:
+            min_t = h
+            prev_min = prev
+        prev = h
+        h = h.sibling
+    if prev_min is not None:
+        prev_min.sibling = min_t.sibling
+    else:
+        head = min_t.sibling
+    min_t.sibling = None
+    return (min_t, head)    
+
+# Assume h is not empty
+def find_min(h):
+    min_t = None
+    while h is not None:
+        if min_t is None or h.key < min_t.key:
+            min_t = h
+        h = h.sibling
+    return min_t.key
+
+# Extract the min element, returns the (min, heap')
+def extract_min(h):
+    (min_t, h) = remove_min_tree(h)
+    h = merge(h, reverse(min_t.child))
+    min_t.child = None
+    return (min_t.key, h)
+
+# helper function
+def from_list(lst):
+    h = None
+    for x in lst:
+        h = insert(h, x)
+    return h
+
+def heap_sort(lst):
+    h = from_list(lst)
+    res = []
+    while h is not None:
+        (x, h) = extract_min(h)
+        res.append(x)
+    return res
+
+def to_string(h):
+    s = ""
+    while h is not None:
+        s = s+ "(" + str(h.key)+", "+to_string(h.child)+"), "
+        h = h.sibling
+    return s
+
+class TestHeap:
+    def __init__(self):
+        print "Binomial heap testing"
+
+    def run(self):
+        self.test_heap_sort()
+
+    def test_heap_sort(self):
+        n = 1000
+        for i in range(100):
+            lst = random.sample(range(n), random.randint(0, n))
+            assert(heap_sort(lst) == sorted(lst))
+        print "OK"
+        
+if __name__ == "__main__":
+    TestHeap().run()
+
+略微给上周的加些解释：
+
+首先看定义：
+
+# Use left child, right sibling approach
+class BinomialTree:
+    def __init__(self, x = None):
+        self.rank = 0
+        self.key = x
+        self.parent = None
+        self.child = None
+        self.sibling = None
+
+由于使用纯指针的left child, right sibling策略，这样就允许使用类似二叉树的形式实现K-ary树，如果一个节点有子树，则left指针指向第一个子树。
+所有的子树以一个单向链表来代表。每个子树通过right指针指向下一个兄弟节点。在实际定义中，为了避免left, right的混淆，我特意将他们命名为child和sibling。rank是binomial tree独有的。其定义为一个整数，key为该节点的值，parent指向父节点。目前的代码中暂时未用，在后续的decrease-key中，我们会利用它向上回溯到根节点。
+link是将两个rank相同的binomial tree连接成一个更大的树。 它比较待链接的两个树的根，选取较小的座位新树的根，然后将较大的树作为第一个子树插入到单向链表的表头。最后将rank增加1.
+# Implicit condition that the rank of the two trees are same       
+def link(t1, t2):
+    if t2.key < t1.key:
+        (t1, t2) = (t2, t1)
+    t2.sibling = t1.child
+    t1.child = t2
+    t2.parent = t1
+    t1.rank = t1.rank + 1
+    #release t2
+    return t1
+
+inert tree并非最终的insert函数，它也是一个辅助函数，它用来将一个binomial tree按照rank单调递增的顺序，插入到heap中， 由于heap本身是一个binomial tree的单调递增森林，并且以单链表表示。所以这个函数本身是一个针对单链表的插入函数。但是这里有一个隐含条件，就是待插入的树的rank要么小于表头的rank，要么相等。而针对相等的情况，需要做link，并且递归进行插入。我在这里消除了递归，变成了纯imperative实现。
+def insert_tree(h, t):
+    while h is not None and t.rank == h.rank:
+        (t1, h) = extract_first(h)
+        t = link(t, t1)
+    if h is not None and t.rank < h.rank:
+        t.sibling = h
+    return t
+
+有了上述的辅助函数，heap的插入就可以方便实现了，因为插入任何值，都可以认为是插入一个rank为0的叶子树。而任何heap的表头的rank一定大于等于0。
+# Insertion
+def insert(h, x):
+    return insert_tree(h, BinomialTree(x))
+
+下面主要实现merge，我们需要一个辅助函数，它把一个binomial tree添加到一个heap的末尾，这里也有一个隐含条件，就是待插入的树的rank，一定大于或等于链表末尾的节点rank。针对相等的情况，我们还需要link，由于表达为heap 的单链表的tree的rank是单调增的，所以link后的rank一定是最大的，因此我们不需要进行递归操作。
+另外，由于末尾发生link后，我们需要更新链表的指针，所以传入的参数包含表头，表尾，和指向表尾前一个的指针。
+def append_tree(head, prev, tail, x):
+    if head is None:
+        return (x, None, x)
+    if tail.rank == x.rank:
+        tail = link(tail, x)
+        if prev is None:
+            return (tail, None, tail)
+        prev.sibling = tail
+    else:
+        tail.sibling = x
+        prev = tail
+        tail = x
+    return (head, prev, tail)
+
+如果需要连续调用上述的append-tree会比较麻烦，为此我定义了一个帮助函数，用以连续调用： 
+def append_trees(h, p, t, xs):
+    while xs is not None:
+        (x, xs) = extract_first(xs)
+        (h, p, t) = append_tree(h, p, t, x)
+    return (h, p, t)
+
+
+在单向链表的操作中，我们经常要取出表头节点，然后返回剩余的链表，并且还需要切断表头和剩余部分的联系。为此我定义辅助函数：
+
+# Auxiliary function to extract the first tree
+def extract_first(h):
+    t = None
+    if h is not None:
+        t = h
+        h = h.sibling
+        t.sibling = None
+    return (t, h)
+
+
+有了这些辅助函数，merge就可以方便实现了。merge的策略非常像merge sort。由于连个被merge的heap，本质上是两个单项链表，并且是rank单调增的。
+所以我们每次从2个待合并heap中选取一个rank较小的，放到结果中，如果两个待合并heap的当前tree的rank相同，我们把他们link成一个rank增加1的较大的tree，然后append到结果中，注意这时可能会再次引发link，但append_tree会帮助我们处理好。当某个待合并的heap变成空时，我们连续调用append-tree将剩余的所有tree都放到结果中。
+# Merge 2 heaps together. Use a merge sort like approach
+def merge(h1, h2):
+    if h1 is None:
+        return h2
+    if h2 is None:
+        return h1
+    (h, p, t) = (None, None, None)
+    while h1 is not None and h2 is not None:
+        x = None
+        if h1.rank < h2.rank:
+            (x, h1) = extract_first(h1)
+        elif h2.rank < h1.rank:
+            (x, h2) = extract_first(h2)
+        else:
+            (x1, h1) = extract_first(h1)
+            (x2, h2) = extract_first(h2)
+            x = link(x1, x2)
+        (h, p, t) = append_trees(h, p, t, x)
+    if h1 is not None:
+        (h, p, t) = append_trees(h, p, t, h1)
+    if h2 is not None:
+        (h, p, t) = append_trees(h, p, t, h2)
+    return h
+
+下面要集中实现delete Min了，策略是在heap的单项链表中，找到root值最小的那个数，将其root去除，剩余的子树是一个rank单调减的链表。所以我们
+将它逆序，然后和剩余的其他森林merge到一起。
+
+为此我们需要实现一个单向链表逆序的函数，非常考验基本功： 
+def reverse(h):
+    prev = None
+    while h is not None:
+        x = h
+        h = h.sibling
+        x.sibling = prev
+        prev = x
+    return prev
+
+之后是将森林中最小树找出并剔除的函数
+def remove_min_tree(h):
+    head = h
+    (prev_min, min_t) = (None, None)
+    prev = None
+    while h is not None:
+        if min_t is None or h.key < min_t.key:
+            min_t = h
+            prev_min = prev
+        prev = h
+        h = h.sibling
+    if prev_min is not None:
+        prev_min.sibling = min_t.sibling
+    else:
+        head = min_t.sibling
+    min_t.sibling = None
+    return (min_t, head)    
+
+
+返回堆顶的函数就是找出最小树，并返回其根的值：
+def find_min(h):
+    min_t = None
+    while h is not None:
+        if min_t is None or h.key < min_t.key:
+            min_t = h
+        h = h.sibling
+    return min_t.key
+
+
+最后定义deleteMin, 由于我们返回最小值和更新的heap，故而我将名字改为extract-min。
+def extract_min(h):
+    (min_t, h) = remove_min_tree(h)
+    h = merge(h, reverse(min_t.child))
+    min_t.child = None
+    return (min_t.key, h)
+
+为了方便从列表构造堆，我定义了一个from-list函数，它重复调用insert函数，把列表中的所有元素插入到堆中。 
+def from_list(lst):
+    h = None
+    for x in lst:
+        h = insert(h, x)
+    return h
+
+heap sort可以先构造堆，然后依次弹出堆顶元素来实现。 
+def heap_sort(lst):
+    h = from_list(lst)
+    res = []
+    while h is not None:
+        (x, h) = extract_min(h)
+        res.append(x)
+    return res
+
+为了调试，我还定义了一个前序打印函数。 
+def to_string(h):
+    s = ""
+    while h is not None:
+        s = s+ "(" + str(h.key)+", "+to_string(h.child)+"), "
+        h = h.sibling
+    return s
+
+最后是测试： 
+
+Hi,
+
+果然如我所料，不使用left-child, right-sibling，而直接使用lib中的list或者array，可以获得一个比较简单的实现。库帮助避免了单向链表操作中容易出现的很多错误。
+
+看代码：
+#!/usr/bin/python
+
+# binomialheap2.py, binomial heap, implemented with list 
+# Copyright (C) 2011, Liu Xinyu (liuxi...@gmail.com)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+import random # for testing only
+
+# Assume the heap is min-heap
+
+# binomialheap.py uses ``left child, right sibling'' way as mentioned
+# in CLRS[1]. I think by replacing with list, it can be simplified
+# 改用list后，children用python的list代替。
+
+class BinomialTree:
+    def __init__(self, x = None):
+        self.rank = 0
+        self.key = x
+        self.children = []
+
+# Heap is list of [BinomialTree]
+# Heap的定义也就是一个Binomial tree的list
+
+
+# Implicit condition that the rank of the two trees are same       
+# 将2个rank一样的tree link到一起。把根较大的tree作为另一个tree的第一个child
+
+def link(t1, t2):
+    if t2.key < t1.key:
+        (t1, t2) = (t2, t1)
+    t1.children.insert(0, t2)
+
+    t1.rank = t1.rank + 1
+    # release t2
+    return t1
+
+# Insert a tree to the proper position in the heap
+# So that the trees are in monotonically increase order by rank
+# Implicit condition: the rank of tree is lower or equal to the
+# first tree in the heap
+# heap中的tree是rank单调增的，隐含条件是待增加的tree的rank小于或等于第一个tree。
+# 若rank相等，则需要link，并且递归继续把新link出的tree插入进去。注意这里消除了递归。
+def insert_tree(ts, t):
+    while ts !=[] and t.rank == ts[0].rank:
+        t = link(t, ts.pop(0))
+    ts.insert(0, t)
+    return ts
+
+# Insertion
+# 由于insert实际是插入一个叶子节点，其rank永远小于或等于heap中的第一个tree。故而可直接利用上述函数
+
+def insert(h, x):
+    return insert_tree(h, BinomialTree(x))
+
+# Append a tree to the heap, so that the trees are in
+# monotonically increase order by rank
+# Implicit condition: the rank of tree is equal to or bigger by 1 than
+# the last tree in the heap.
+# 将一个tree插入到heap尾部，隐含条件是待插入tree的rank大于或等于最后一个tree，
+# 相等时需要进行link
+def append_tree(ts, t):
+    if ts != [] and ts[-1].rank == t.rank:
+        ts[-1] = link(ts[-1], t)
+    else:
+        ts.append(t)
+    return ts
+
+
+# Helper function to append a heap to another one by repeatedly calling
+# append_tree()
+# 重复调用上述的append-tree可以通过fold left实现，python中的fold left未reduce
+def append_trees(ts1, ts2):
+    return reduce(append_tree, ts2, ts1)
+
+
+# Merge 2 heaps together. Use a merge sort like approach
+# 合并两个heap可以通过类似merge sort的算法来实现。
+def merge(ts1, ts2):
+    if ts1 == []:
+        return ts2
+    if ts2 == []:
+        return ts1
+    ts = []
+    while ts1 != [] and ts2 != []:
+        t = None
+        if ts1[0].rank < ts2[0].rank:
+            t = ts1.pop(0)
+        elif ts2[0].rank < ts1[0].rank:
+            t = ts2.pop(0)
+        else:
+            t = link(ts1.pop(0), ts2.pop(0))
+        ts = append_tree(ts, t)
+    ts = append_trees(ts, ts1)
+    ts = append_trees(ts, ts2)
+    return ts
+
+
+# Extract the minimum binomial tree from the heap
+# returns (min tree, rest trees)
+# 利用了python的min函数来获取根最小的树，并将其剔除heap。
+def remove_min_tree(ts):
+    min_t = min(ts, key=lambda t: t.key)
+    ts.remove(min_t)
+    return (min_t, ts)    
+
+# Assume ts is not empty
+# 返回堆顶
+def find_min(ts):
+    min_t = min(ts, key=lambda t: t.key)
+
+    return min_t.key
+
+# Extract the min element, returns the (min, heap')
+# 移除堆顶，首先找到根最小的tree，将其剔除，然后将其children逆序后合并入剩余的heap。
+def extract_min(ts):
+    (min_t, ts) = remove_min_tree(ts)
+    min_t.children.reverse()
+    ts = merge(ts, min_t.children)
+    min_t.children = []
+    return (min_t.key, ts)
+
+# helper function
+# 辅助函数，用以从list产生一个heap。
+def from_list(lst):
+    return reduce(insert, lst, [])
+
+# 堆排序
+
+def heap_sort(lst):
+    h = from_list(lst)
+    res = []
+    while h != []:
+
+        (x, h) = extract_min(h)
+        res.append(x)
+    return res
+
+class TestHeap:
+    def __init__(self):
+        print "Binomial heap testing"
+
+    def run(self):
+        self.test_random_sort()
+
+    def test_random_sort(self):
+
+        n = 1000
+        for i in range(100):
+            lst = random.sample(range(n), random.randint(0, n))
+            assert(heap_sort(lst) == sorted(lst))
+        print "OK"
+        
+if __name__ == "__main__":
+    TestHeap().run()
+
+# Reference
+# [1]. CLRS. Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest and Clifford Stein. ``Introduction to Algorithms, Second Edition''. The MIT Press, 2001. ISBN: 0262032937.
