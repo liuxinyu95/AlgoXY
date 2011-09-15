@@ -1,6 +1,6 @@
 IMG_OBJECTS = 
 DOT_OBJECTS = b0tree b1tree b2tree b3tree b4tree link-bitree \
-bheap2
+bheap2 link-bitree-xy link-bitree-lcrs lcrs
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
