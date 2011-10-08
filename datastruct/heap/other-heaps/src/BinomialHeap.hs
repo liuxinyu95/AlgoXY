@@ -82,7 +82,7 @@ deleteMin h = merge (reverse $ children t) ts where
 -- Helper functions
 
 fromList :: (Ord a) => [a] -> BiHeap a
-fromList xs = foldl insert [] xs
+fromList = foldl insert []
 
 heapSort :: (Ord a) => [a] -> [a]
 heapSort = hsort . fromList where
