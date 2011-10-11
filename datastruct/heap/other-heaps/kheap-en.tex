@@ -434,7 +434,7 @@ TODO: Imperative insertion algorithms...
 
 
 \subsubsection{Merge two heaps}
-
+\index{Binomial tree!merge}
 When merge two binomial heaps, we actually try to merge two forests
 of binomial trees. According to the definition, there can't be
 two trees with the same rank and the ranks are in monotically increasing
@@ -475,21 +475,102 @@ $H_1$, and $m_2$ trees in $H_2$. There are at most $m_1 + m_2$ trees in
 the merged result. If there are no two trees have the same rank, the
 merge operation is bound to $O(m_1 + m_2)$. While if there need linking
 for the trees with same rank, $insertT$ performs at most $O(m_1+m_2)$
-time. Consider the fact that $m_1 = \lg N_1$ and $m_2 = \lg N_2$, where
-$N_1$, $N_2$ are the numbers of nodes in each heap. the final performance
-of merging is $O(\lg N)$.
+time. Consider the fact that $m_1 = 1 + \lfloor \lg N_1 \rfloor$ and 
+$m_2 = 1 + \lfloor \lg N_2 \rfloor$, where
+$N_1$, $N_2$ are the numbers of nodes in each heap, and 
+$\lfloor \lg N_1 \rfloor + \lfloor \lg N_2 \rfloor \leq 2 \lfloor \lg N \rfloor$, where $N = N_1 + N_2$, is the total number of nodes. 
+the final performance of merging is $O(\lg N)$.
 
-TODO: stop here
+TODO: Add imperative merging algorithm
 
-\subsubsection{Find the minimum element in the heap (top)}
-Among the forest which forms the binomial heap, each binomial tree conforms to
-heap property that the root contains the minimum element in that tree.
-In order to find the minimum element in the heap, we can select the 
-smallest root of these trees. Since there are $\lg N$ binomial trees
-where $N$ is the element number, this approach takes $O(\lg N)$ time.
 
-For the `left child, right sibling' approach, the algorithm can be
-decribed as the following.
+\subsubsection{Pop}
+\index{Binomial heap!pop}
+Among the forest which forms the binomial heap, each binomial tree 
+conforms to heap property that the root contains the minimum element 
+in that tree. However, the order relationsihp of these roots can be
+arbitary. To find the minimum element in the heap, we can select the 
+smallest root of these trees. Since there are $\lg N$ binomial trees, 
+this approach takes $O(\lg N)$ time.
+
+However, after we locate the minimum element (which is also know as 
+the top element of a heap), we need remove it from the heap and keep
+the binomial property to accomplish heap-pop operation.
+Suppose the forest forms the binomial heap consists trees of 
+$B_i, B_j, ..., B_p, ..., B_m$, where $B_k$ is a binomial tree of
+rank $k$, and the minimum element is the root of $B_p$. If we 
+delete it, there will be $p$ children left, which are all
+binomial trees with ranks $p-1, p-2, ..., 0$.
+
+One tool at hand is that we have defined $O(\lg N)$ merge function.
+A possible approach is to reverse the $p$ children, so that their
+ranks change to monotonically increasing order, and forms a binomial
+heap $H_p$. The rest of trees is still a binomial
+heap, we represent it as $H' = H - B_p$. Merging $H_p$ and $H'$ given
+the final result of pop. Figure \ref{fig:bheap-del-min} illustrates
+this idea.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.5]{img/bheap-pop.eps}
+  \caption{Pop the minimum element from a binomial heap.}
+  \label{fig:bheap-del-min}
+\end{figure}
+
+In order to realize this algorithm, we first need to define an
+auxiliary function, which can extract the tree contains the minimum
+element at root from the forest.
+
+\be
+removeMinT(H) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (T, \phi) & \text{H is a singleton as } \{ T \} \\
+  (T_1, H') & Root(T_1) < Root(T') \\
+  (T', \{T_1\} \cup H'') & otherwise  
+  \end{array}
+\right .
+\ee
+
+where
+
+\[
+  \begin{array}{lr}
+  H = \{ T_1, T_2, ...\} & \text{for the non-empty forest case;} \\
+  H' = \{ T_2, T_3, ...\} & \text{is the forest without the first tree;} \\
+  (T', H'') = remvoeMinT(H')
+  \end{array}
+\]
+
+The result of this function is a tuple. The first part is the 
+tree which has the minimum element at root, the second part is
+the rest of the trees after remove the first part from the forest.
+
+This function examine each of the trees in the forest thus is bound
+to $O(\lg N)$ time.
+
+The relative Haskell program can be give respectively.
+
+\begin{lstlisting}
+removeMinTree :: (Ord a) => BiHeap a -> (BiTree a, BiHeap a)
+removeMinTree [t] = (t, [])
+removeMinTree (t:ts) = if root t < root t' then (t, ts) 
+                       else (t', t:ts')
+    where
+      (t', ts') = removeMinTree ts
+\end{lstlisting}
+
+With this funciton defined, to return the minimum element is trivial.
+
+\begin{lstlisting}
+findMin :: (Ord a) => BiHeap a -> a
+findMin = root . fst. removeMinTree
+\end{lstlisting}
+
+Of course, it's possible to just traverse forest and just pick the
+minimum root without remove the tree for this purpose. Below
+imperative algorithm describes it with `left child, right sibling' 
+approach.
 
 \begin{algorithmic}[1]
 \Function{FIND-MINUMUM}{$H$}
@@ -508,13 +589,10 @@ decribed as the following.
 While if we manage the children with collection containers, the link
 list iteration is abstract to find the minmum element among the list.
 
+Next we give the final pop function definition by using $removeMinT$.
 
 
-\subsubsection{Extract the minimum element from the heap (pop)}
-
-\subsubsection{Decrease an element}
-
-\subsubsection{Delete an element}
+TODO: stop here
 
 % ================================================================
 %                 Fibonacci heaps
