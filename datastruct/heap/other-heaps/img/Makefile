@@ -1,4 +1,4 @@
-IMG_OBJECTS = 
+IMG_OBJECTS = bheap-pop
 DOT_OBJECTS = b0tree b1tree b2tree b3tree b4tree link-bitree \
 bheap2 link-bitree-xy link-bitree-lcrs lcrs bheap-merge-1 \
 bheap-merge-2
