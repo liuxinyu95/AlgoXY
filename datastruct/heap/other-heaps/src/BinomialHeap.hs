@@ -20,6 +20,9 @@
 
 module BinomialHeap where
 
+import Test.QuickCheck
+import qualified Data.List as L -- for verification purpose only
+
 -- Definition
 
 data BiTree a = Node { rank :: Int
@@ -91,6 +94,16 @@ heapSort = hsort . fromList where
 
 -- test
 
-testFromList = fromList [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+prop_sort :: [Int] -> Bool
+prop_sort xs = heapSort xs == L.sort xs
 
-testHeapSort = heapSort [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+prop_binomial :: [Int] -> Bool
+prop_binomial = isBinomial . fromList where
+    isBinomial [] = True
+    isBinomial xs = all isBinomialT xs
+
+isBinomialT (Node 0 _ []) = True
+isBinomialT (Node r x cs) = all isBinomialT [t1, t2] && r == 1 + rank t2
+    where
+      t1 = head cs
+      t2 = Node (r-1) x (tail cs)
