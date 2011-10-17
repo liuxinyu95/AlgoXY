@@ -56,8 +56,7 @@ def insert_tree(h, t):
     while h is not None and t.rank == h.rank:
         (t1, h) = extract_first(h)
         t = link(t, t1)
-    if h is not None and t.rank < h.rank:
-        t.sibling = h
+    t.sibling = h
     return t
 
 # Insertion
