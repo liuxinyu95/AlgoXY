@@ -4,10 +4,9 @@ import random
 
 # DP solution based on [1].
 
-# assume xs is monotonically increasing
 class qtab:
     def __init__(self, n, low, up):
-        self.q = [[False]*(up-low+1)]*n
+        self.q = [[False]*(up-low+1) for x in xrange(n)] # this is tricky!!![[False]*(up-low+1)]*n
         self.l = low
         self.u = up
 
@@ -18,6 +17,13 @@ class qtab:
         if j<self.l or j>self.u:
             return False
         return self.q[i][j-self.l]
+
+    def output(self):
+        for i in xrange(0, len(self.q)):
+            for j in xrange(self.l, self.u+1):
+                if self.q[i][j-self.l]:
+                    print "(", i, j, ")",
+            print ""
 
 def solve(xs, s):
     low = sum([x for x in xs if x < 0])
@@ -47,20 +53,10 @@ def test():
         l = sum([x for x in xs if x<0])
         u = sum([x for x in xs if x>0])
         s = random.randint(l, u)
-        #assert(brute_force(xs, s) == solve(xs, s))
-        __assert(xs, s, brute_force(xs, s), solve(xs, s))
-
-def __assert(xs, s, r1, r2):
-    if r1!=r2:
-        print "xs=", xs, "s=", s
-        print "brute-force=", r1
-        print "dp=", r2
-        assert(r1==r2)
+        assert(brute_force(xs, s) == solve(xs, s))
 
 if __name__ == "__main__":
-    #test()
-    print solve([-7, -3, -2, 5, 8], 0)
-    print solve([-2, 44, 63], 63)
+    test()
 
 # Reference
 # [1]. http://en.wikipedia.org/wiki/Subset_sum_problem
