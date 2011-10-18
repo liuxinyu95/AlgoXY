@@ -18,13 +18,6 @@ class qtab:
             return False
         return self.q[i][j-self.l]
 
-    def output(self):
-        for i in xrange(0, len(self.q)):
-            for j in xrange(self.l, self.u+1):
-                if self.q[i][j-self.l]:
-                    print "(", i, j, ")",
-            print ""
-
 def solve(xs, s):
     low = sum([x for x in xs if x < 0])
     up  = sum([x for x in xs if x > 0])
