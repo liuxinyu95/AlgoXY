@@ -881,16 +881,96 @@ Write a program to reverse such linked-list in your favorate
 imperative programming language.
 \end{itemize}
 
+\subsubsection{More words about binomial heap}
+As what we have shown that insertion and merge are bound to $O(\lg N)$
+time. The results are all ensure for the {\em worst case}. The 
+armortized performance are $O(1)$. We skip the proof for this
+fact.
+
 % ================================================================
 %                 Fibonacci heaps
 % ================================================================
 \section{Fibonacci Heaps}
 \label{fib-heap}
 
+It's interesting that why the name is given as `Fibonacci heap'.
+In fact, there is no direct connection from the structure design
+to Fibonacci series. The inventors of `Fibonacci heap', Michael L.
+Fredman and Robert E. Tarjan, utilized the property of Fibonacci heap
+to prove the performance time bound, so they decided to use Fibonacci
+to name this data structure.\cite{CLRS} 
+
 % ================================================================
 %                 Definition
 % ================================================================
 \subsection{Definition}
+
+Fibonacci heap is essentially a lazy evaluated binomial heap. Note
+that, it doesn't mean implementing binomial heap in lazy evaluation
+settings, for instance Haskell, brings Fibonacci heap automatically.
+However, lazy evaluation setting does heap in realization. For example
+in \cite{hackage-fibq}, presents a elegant implementation.
+
+Fibonacci heap has excellent performance theoretically. All operations
+except for pop are bound to amortized $O(1)$ time. In this section,
+we'll give an algorithm different from some popular textbook\cite{CLRS}.
+Most of the ideas present here are based on Okasaki's work\cite{okasaki-fibh}.
+
+Let's review and compare the performance of binomial heap and Fibonacci
+heap (more precisely, the performance goal of Fibonacci heap).
+
+% \begin{table}
+% \caption{Performance goal of Fibonacci heap}
+\begin{tabular}{l | c | r}
+  \hline
+  operation & Binomial heap & Fibonacci heap \\
+  \hline
+  insertion & $O(\lg N)$ & $O(1)$ \\
+  merge & $O(\lg N)$ & $O(1)$ \\
+  top & $O(\lg N)$ & $O(1)$ \\
+  pop & $O(\lg N)$ & amortized $O(\lg N)$ \\
+  \hline
+\end{tabular}
+% \end{table}
+
+Consider where is the bottleneck of inserting a new element $x$ to 
+binomial heap. We actually wrap $x$ as a singleton leaf and merge
+it to the heap. In the merge operation, we inserted the tree in 
+monotically increasing order of rank, and once the rank is equal,
+recursively linking and inserting will happen, which lead to the
+$O(\lg N)$ time.
+
+As the lazy strategy, we can postpone the ordered-rank insertion and
+merging operations. On the contrary, we just drop the singleton
+leaf to the forest. The problem is that when we try to find the
+minimum element, for example the top operation, the performance
+will be bad, because we need check all trees in the forest, and 
+there aren't only $O(\lg N)$ trees any more.
+
+In order to locate the top element in constant time, we must remember
+where is the tree contains the minimum element as root.
+
+Based on this idea, we can reuse the definition of binomial tree
+and give the definition of Fibonacci heap as the following.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+data BiTree a = Node { rank :: Int
+                     , root :: a
+                     , children :: [BiTree a]}
+\end{lstlisting}
+
+The Fibonacci heap is either empty or a forest of binomail trees with
+the minimum element stored in a special one explicitly.
+
+\begin{lstlisting}
+data FibHeap a = E | FH { size :: Int
+                        , minTree :: BiTree a
+                        , trees :: [BiTree a]}
+\end{lstlisting}
+
+For convenient purpose, we also add a size field to record how many
+elements are there in a heap.
 
 % ================================================================
 %          Basic Heap operations       
@@ -987,8 +1067,11 @@ Chris Okasaki. ``Purely Functional Data Structures''. Cambridge university press
 \bibitem{wiki-pascal-triangle}
 Wikipedia, ``Pascal's triangle''. http://en.wikipedia.org/wiki/Pascal's\_triangle
 
-\bibitem{lxy-bheap}
-Liu Xinyu. ``Binary heaps with functional and imperative implementation'', https://sites.google.com/site/algoxy/bheap
+\bibitem{hackage-fibq}
+Hackage. ``An alternate implementation of a priority queue based on a Fibonacci heap.'', http://hackage.haskell.org/packages/archive/pqueue-mtl/1.0.7/doc/html/src/Data-Queue-FibQueue.html
+
+\bibitem{okasaki-fibh}
+Chris Okasaki. ``Fibonacci Heaps.'' http://darcs.haskell.org/nofib/gc/fibheaps/orig
 
 \end{thebibliography}
 
