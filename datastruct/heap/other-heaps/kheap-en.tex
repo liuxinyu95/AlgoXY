@@ -1055,12 +1055,153 @@ top(H) = root(T_{min})
 
 \subsubsection{Extract the minimum element from the heap (pop)}
 
-\subsubsection{Decrease an element}
+The pop (delete the minimum element) operation is the most complex
+one in Fibonacci heap. Since we postpone the tree consolidation
+in merge algorithm. We have to compensate it somewhere. Pop is 
+the only place left as we have defined, insert, merge, top already.
 
-\subsubsection{Delete an element}
+There is an elegant procedural algorithm to do the tree consolidation
+by using an auxiliary array\cite{CLRS}. We'll show it later in imperative
+approach section.
+
+In order to realize the purely functional consolidation algorithm, 
+let's first consider a similar number puzzle.
+
+Given a list of numbers, such as $\{2, 1, 1, 4, 8, 1, 1, 2, 4\}$, we want
+to add any two values if they are same. And repeat this procedure till 
+all numbers are unique. The result of the example list should be 
+$\{8, 16\}$ for instance.
+
+One solution to this problem will as the following.
+
+\be
+consolidate(L) = fold(meld, \phi, L)
+\ee
+
+Where $fold()$ function is defined to iterate all elements from a list,
+applying a specified function to the intermeidate result and each 
+element. it is sometimes called as {\em reducing}. Please refer to the
+chapter of binary search tree for it.
+
+$L=\{x_1, x_2, ..., x_n\}$, denotes a list of numbers; and we'll use
+$L'=\{x_2, x_3, ..., x_n\}$ to represent the rest of the list with the
+first element removed. Function $meld()$ is defined as below.
+
+\be
+meld(L, x) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{ x \} & L = \phi \\
+  meld(L', x+x_1) & x = x_1 \\
+  \{ x \} \cup L & x < x_1 \\
+  \{ x_1 \} \cup meld(L', x) & otherwise
+  \end{array}
+\right .
+\ee
+
+The $consolidate()$ function works as the follows. It maintains an 
+ordered result list $L$, contains only unique numbers, which is 
+initialized from an empty list $\phi$. Each time it process an 
+elment $x$, it firstly check if the first element in $L$ is equal
+to $x$, if so, it will add them together (which yields $2x$), 
+and repeatedly check if $2x$ is equal to the next element in $L$.
+This process won't stop until either the element to be melt is
+not equal to the head element in the rest of the list, or the 
+list becomes empty.
+
+The Haskell program can be give regardingly.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+consolidate = foldl meld [] where
+    meld [] x = [x]
+    meld (x':xs) x | x == x' = meld xs (x+x')
+                   | x < x'  = x:x':xs
+                   | otherwise = x': meld xs x
+\end{lstlisting}
+
+The running time of consolidate is bound to $O(\lg N)$. The
+proof of it is a bit complex and it need use property of 
+Fibonacci series. We'll explain it in next sub section.
+
+The tree consolidation is very similar to this algorithm except
+it performs based on rank. The only thing we need to do is to
+modify $meld()$ function a bit, so that it compare on ranks and
+do linking instead of adding.
+
+\be
+meld(L, x) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{ x \} & L = \phi \\
+  meld(L', link(x, x_1)) & rank(x) = rank(x_1) \\
+  \{ x \} \cup L & rank(x) < rank(x_1) \\
+  \{ x_1 \} \cup meld(L', x) & otherwise
+  \end{array}
+\right .
+\ee
+
+The final consolidate Haskell program changes to the below version.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+consolidate :: (Ord a) => [BiTree a] -> [BiTree a]
+consolidate = foldl meld [] where
+    meld [] t = [t]
+    meld (t':ts) t | rank t == rank t' = meld ts (link t t')
+                   | rank t <  rank t' = t:t':ts
+                   | otherwise = t' : meld ts t
+\end{lstlisting}
+
+After we merge all binomial trees, including the special tree
+record for the minimum element in root, in a Fibonacci heap, the heap
+becomes a Binomial heap. And we lost the special tree, which gives
+us the ability to return the top element in $O(1)$ time.
+
+It's neccessary to perform a $O(\lg N)$ time search to resume the
+special tree. We can reuse the function $removeMinT()$ defined for
+Binomial heap.
+
+It's time to give the final pop function for Fibonacci heap as all
+the sub problems have been solved. Let $T_{min}$ denote the special
+tree in the heap to record the minimum element in root; $\mathbb{T}$
+denote the forest contains all the other trees except for the 
+sepcial tree, $s$ represents the size of a heap, and function 
+$children()$ returns all sub trees except the root of a binomial
+tree.
+
+\be
+deleteMin(H) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \phi & \mathbb{T} = \phi \land children(T_{min})=\phi \\
+  FibHeap(s-1, T'_{min}, \mathbb{T}') & otherwise
+  \end{array}
+\right .
+\ee
+
+Where 
+
+\[
+  (T'_{min}, \mathbb{T}') = removeMinT(consolidate(children(T_{mim}) \cup \mathbb{T}))
+\]
+
+Translate to Haskell yeild the below program.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+deleteMin :: (Ord a) => FibHeap a -> FibHeap a
+deleteMin (FH _ (Node _ x []) []) = E
+deleteMin h@(FH sz minTr ts) = FH (sz-1) minTr' ts' where
+    (minTr', ts') = extractMin $ consolidate (children minTr ++ ts)
+\end{lstlisting} %$
+
+In order to make the meaning clear, we changed the function name from
+$removeMinTree$ to $extractMin$.
 
 \subsection{Running times}
 
+TODO: Formal proof of Fibonacci heap complexity...
 
 % ================================================================
 %                 Pairing Heaps

@@ -20,6 +20,9 @@
 
 module FibonacciHeap where
 
+import Test.QuickCheck
+import qualified Data.List as L -- for verification purpose only.
+
 -- Definition
 
 -- Since Fibonacci Heap can be achieved by applying lazy strategy
@@ -89,7 +92,7 @@ findMin = root . minTree
 --  O(lg N) time
 
 consolidate :: (Ord a) => [BiTree a] -> [BiTree a]
-consolidate ts = foldl meld [] ts where
+consolidate = foldl meld [] where
     meld [] t = [t]
     meld (t':ts) t | rank t == rank t' = meld ts (link t t')
                    | rank t <  rank t' = t:t':ts
@@ -116,7 +119,7 @@ deleteMin h@(FH sz minTr ts) = FH (sz-1) minTr' ts' where
 -- Helper functions
 
 fromList :: (Ord a) => [a] -> FibHeap a
-fromList xs = foldl insert E xs
+fromList = foldl insert E
 
 heapSort :: (Ord a) => [a] -> [a]
 heapSort = hsort . fromList where
@@ -125,6 +128,6 @@ heapSort = hsort . fromList where
 
 -- test
 
-testFromList = fromList [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+prop_sort :: [Int] -> Bool
+prop_sort xs = heapSort xs == L.sort xs
 
-testHeapSort = heapSort [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
