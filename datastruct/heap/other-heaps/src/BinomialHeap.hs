@@ -68,19 +68,19 @@ merge ts1@(t1:ts1') ts2@(t2:ts2')
 
 -- Auxiliary function for deleting
 
-removeMinTree :: (Ord a) => BiHeap a -> (BiTree a, BiHeap a)
-removeMinTree [t] = (t, [])
-removeMinTree (t:ts) = if root t < root t' then (t, ts) 
-                       else (t', t:ts')
+extractMin :: (Ord a) => BiHeap a -> (BiTree a, BiHeap a)
+extractMin [t] = (t, [])
+extractMin (t:ts) = if root t < root t' then (t, ts) 
+                    else (t', t:ts')
     where
-      (t', ts') = removeMinTree ts
+      (t', ts') = extractMin ts
 
 findMin :: (Ord a) => BiHeap a -> a
-findMin = root . fst. removeMinTree
+findMin = root . fst. extractMin
 
 deleteMin :: (Ord a) => BiHeap a -> BiHeap a
 deleteMin h = merge (reverse $ children t) ts where
-    (t, ts) = removeMinTree h
+    (t, ts) = extractMin h
 
 -- Helper functions
 
