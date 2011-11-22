@@ -118,9 +118,15 @@ deleteMin h@(FH sz minTr ts) = FH (sz-1) minTr' ts' where
 
 -- Helper functions
 
+-- This function performs badly because it actually create a linked-list
+-- The ideal way is to insert and delete randomly, so that the amortized
+-- performance dominate.
 fromList :: (Ord a) => [a] -> FibHeap a
 fromList = foldl insert E
 
+-- This testing has the same problem with fromList, as it actually
+-- first create a linked-list, then during deleteMin, it start merge
+-- them to Binomial heap, the first consolidation takes very long time.
 heapSort :: (Ord a) => [a] -> [a]
 heapSort = hsort . fromList where
     hsort E = []
