@@ -14,21 +14,38 @@
 #     You should have received a copy of the GNU General Public License
 #     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-HEADER = xxx.hpp
-SOURCE = xxx.cpp
-CPP_TEST_OBJS = xxx.o
-CXX = g++ -Wall -ggdb -I/usr/include/boost-1_33_1
-CXX_FLAGS = 
-#HS_TEST_SRCS = BinomialHeap.hs FibonacciHeap.hs PairingHeap.hs
-#HS_TEST_OBJS = $(HS_TEST_SRCS:.hs=.o)
-HS_TOOL_SRCS = Fr2Dot.hs
-HS_TOOL_OBJS = Fr2dot.o
+# C part
+CHEADER = 
+CSOURCE = fiboheap.c
+C_TEST_OBJS = fibheap.o
+CC = gcc -Wall
+CFLAGS = -I../../../tool/test
+
+# C++ part
+CXX_HEADER = 
+CXX_SOURCE =
+CPP_TEST_OBJS = test.o
+CXX = g++ -Wall -I/usr/include/boost-1_33_1
+CXX_FLAGS =
+
+# Haskell part 
+HS_TEST_SRCS = Foo.hs
+HS_TEST_OBJS = $(HS_TEST_SRCS:.hs=.o)
+HS_APP_SRCS = Bar.hs
+HS_APP_OBJS = Bar.o Foo.o
 
 .SUFFIXES: .o .hs
 
 .PHONY: all
 
-all: cpp haskell
+all: c lib cpp haskell
+
+c: ctest
+
+ctest: $(C_TEST_OBJS)
+	$(CC) $(CFLAGS) -o $@ $(C_TEST_OBJS)
+
+$(C_TEST_OBJS): $(CHEADER)
 
 cpp: cpptest
 
@@ -37,20 +54,15 @@ cpptest: $(CPP_TEST_OBJS)
 
 $(CPP_TEST_OBJS): $(HEADER)
 
-c:
-	gcc trie.c -o triec
-
-haskell: htest tool
+haskell: htest happ
 
 # Makefile auto variable, $@, target; $< first prerequiste
 htest : $(HS_TEST_OBJS)
 	ghc -o $@ $(HS_TEST_OBJS)
 
-#ghc --make 
-fr2dot: $(HS_TOOL_OBJS)
-	ghc -o $@ $(HS_TOOL_SRCS) --make
-
-tool: fr2dot
+#ghc --make EDict -o edict
+happ: $(HS_APP_OBJS)
+	ghc -o $@ $(HS_APP_OBJS)
 
 # Standard suffix rules
 %.o : %.hs
