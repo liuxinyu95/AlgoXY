@@ -104,7 +104,8 @@ Key top(struct FibHeap* h){
   return h->minTr->key;
 }
 
-/* merge. O(1)
+/* 
+ * merge. O(1)
  * note that the two heaps passed in are destroyed after merging.
  */
 struct FibHeap* merge(struct FibHeap* h1, struct FibHeap* h2){
@@ -122,6 +123,23 @@ struct FibHeap* merge(struct FibHeap* h1, struct FibHeap* h2){
   h->n = h1->n + h2->n;
   free(h1);
   free(h2);
+  return h;
+}
+
+/* 
+ * Extract the minimum element. (pop). 
+ * O(D(N)) = O(\lg N) amortized. 
+ */
+struct FibHeap* pop(struct FibHeap* h){
+  struct node* x = h->minTr;
+  struct node *y, *child;
+  if(x){
+    child = x->children;
+    while(child){
+      y = child;
+      child = child->next;
+    }
+  }
   return h;
 }
 
