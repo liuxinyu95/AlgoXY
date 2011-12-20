@@ -82,6 +82,10 @@ struct node* append(struct node* first, struct node* x){
   return first;
 }
 
+struct node* remove(struct node* first, struct node* x){
+  
+}
+
 struct FibHeap* add_tree(struct FibHeap* h, struct node* t){
   if(!h)
     h = empty();
@@ -137,8 +141,19 @@ struct FibHeap* pop(struct FibHeap* h){
     child = x->children;
     while(child){
       y = child;
+      append(h->roots, y);
+      y->parent = 0;
       child = child->next;
     }
+    h->roots = remove(h->roots, x);
+    if(x == x->next)
+      h->minTr = 0; /*empty*/
+    else{
+      h->minTr = x->next;
+      h->roots = consolidate(h->roots);
+    }
+    h->n--;
+    free(x);
   }
   return h;
 }
