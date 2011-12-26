@@ -1,3 +1,4 @@
+-- Bubble Sort
 module BSort where
 
 import Test.QuickCheck
