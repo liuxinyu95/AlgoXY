@@ -52,7 +52,7 @@ struct node* singleton(Key x){
   return t;
 }
 
-/* create an empty heap */
+/* Create an empty heap */
 struct FibHeap* empty(){
   struct FibHeap* h = (struct FibHeap*)malloc(sizeof(struct FibHeap));
   h->roots = 0;
@@ -61,6 +61,7 @@ struct FibHeap* empty(){
   return h;
 }
 
+/* Concatenate 2 doubly linked lists */
 struct node* concat(struct node* first1, struct node* first2){
   struct node* last1 = first1->prev;
   struct node* last2 = first2->prev;
@@ -71,6 +72,7 @@ struct node* concat(struct node* first1, struct node* first2){
   return first1;
 }
 
+/* Append a new node to the tail of a doubly linked list */
 struct node* append(struct node* first, struct node* x){
   if(!first)
     return x;
@@ -82,8 +84,20 @@ struct node* append(struct node* first, struct node* x){
   return first;
 }
 
+/* Remove a node from a doubly linkied list */
 struct node* remove(struct node* first, struct node* x){
-  
+  struct node *p, *n;
+  if(x->next == x)
+    first = 0; /* empty */
+  else{
+    p = x->prev;
+    n = x->next;
+    p->next = n;
+    n->prev = p;
+    if(x == first)
+      first = n;
+  }
+  return first;
 }
 
 struct FibHeap* add_tree(struct FibHeap* h, struct node* t){
@@ -130,6 +144,47 @@ struct FibHeap* merge(struct FibHeap* h1, struct FibHeap* h2){
   return h;
 }
 
+/*
+ * Link 2 trees to one bigger tree.
+ */
+
+void link(struct FibHeap* h, struct node* x, struct node* y){
+  struct node* p;
+  if(y->key < x->key){
+    p=y; y=x; x=p; //swap x and y
+  }
+  h->roots = remove(h->roots, y);
+  x->children = append(x->chidren, y);
+  y->parent = x;
+  x->degree++;
+  y->mark = 0;
+}
+
+/*
+ * Consolidate 
+ */
+
+void consolidate(struct FibHeap* h){
+  int D = max_degree(h->n)+1;
+  struct node *x, *y;
+  struct node** a = (struct node**)malloc(sizeof(struct node*)*D);
+  int i, d;
+  for(i=0; i<=D; ++i)
+    a[i] = 0;
+  x = h->roots;
+  do{
+    d= x->degree;
+    while(a[d]){ 
+      y = a[d];  /* Another node has the same degree as x */
+      link(h, x, y);
+      a[d++] = 0;
+    }
+    a[d] = x
+    x = x->next;
+  }while(x != h->roots);
+  free(a);
+}
+
 /* 
  * Extract the minimum element. (pop). 
  * O(D(N)) = O(\lg N) amortized. 
@@ -139,18 +194,19 @@ struct FibHeap* pop(struct FibHeap* h){
   struct node *y, *child;
   if(x){
     child = x->children;
-    while(child){
-      y = child;
-      append(h->roots, y);
-      y->parent = 0;
-      child = child->next;
-    }
+    if(child)
+      do{
+	y = child;
+	child = child->next;
+	append(h->roots, y);
+	y->parent = 0;
+      }while(child != x->children);
     h->roots = remove(h->roots, x);
     if(x == x->next)
       h->minTr = 0; /*empty*/
     else{
       h->minTr = x->next;
-      h->roots = consolidate(h->roots);
+      consolidate(h);
     }
     h->n--;
     free(x);
