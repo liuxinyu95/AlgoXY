@@ -61,6 +61,13 @@ struct FibHeap* empty(){
   return h;
 }
 
+/* swap two nodes */
+void swap(struct node** x, struct node** y){
+  struct node* p = *x;
+  *x = *y;
+  *y = p;
+}
+
 /* Concatenate 2 doubly linked lists */
 struct node* concat(struct node* first1, struct node* first2){
   struct node* last1 = first1->prev;
@@ -85,7 +92,7 @@ struct node* append(struct node* first, struct node* x){
 }
 
 /* Remove a node from a doubly linkied list */
-struct node* remove(struct node* first, struct node* x){
+struct node* remove_node(struct node* first, struct node* x){
   struct node *p, *n;
   if(x->next == x)
     first = 0; /* empty */
@@ -149,15 +156,35 @@ struct FibHeap* merge(struct FibHeap* h1, struct FibHeap* h2){
  */
 
 void link(struct FibHeap* h, struct node* x, struct node* y){
-  struct node* p;
-  if(y->key < x->key){
-    p=y; y=x; x=p; //swap x and y
-  }
-  h->roots = remove(h->roots, y);
-  x->children = append(x->chidren, y);
+  if(y->key < x->key)
+    swap(&x, &y);
+  h->roots = remove_node(h->roots, y);
+  x->children = append(x->children, y);
   y->parent = x;
   x->degree++;
   y->mark = 0;
+}
+
+/* 
+ * calculate the upper limit of maximum degree
+ *
+ * Corollary 20.4. in CLRS,
+ * For any node x in a N-node Fibonacci heap, 
+ *  N >= size(x) >= F_{k+2} >= \Phi^k
+ * Since N is an integer, we have k <= \lfloor \log_{\Phi} N \rfloor
+ *
+ * We can use Fibonacci sequence to calculate k.
+ */
+int max_degree(int n){
+  int k, F;
+  int F2 = 0; 
+  int F1 = 1;
+  for(F=F1+F2, k=2; F<n; ++k){
+    F2 = F1;
+    F1 = F;
+    F = F1 + F2;
+  }
+  return k-2;
 }
 
 /*
@@ -179,9 +206,17 @@ void consolidate(struct FibHeap* h){
       link(h, x, y);
       a[d++] = 0;
     }
-    a[d] = x
+    a[d] = x;
     x = x->next;
   }while(x != h->roots);
+  h->minTr = 0;
+  for(i=0; i<=D; ++i){
+    if(a[i]){
+      h->roots = append(h->roots, a[i]);
+      if(h->minTr == 0 || a[i]->key < h->minTr->key)
+	h->minTr = a[i];
+    }
+  }
   free(a);
 }
 
@@ -201,7 +236,7 @@ struct FibHeap* pop(struct FibHeap* h){
 	append(h->roots, y);
 	y->parent = 0;
       }while(child != x->children);
-    h->roots = remove(h->roots, x);
+    h->roots = remove_node(h->roots, x);
     if(x == x->next)
       h->minTr = 0; /*empty*/
     else{
