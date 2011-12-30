@@ -75,6 +75,42 @@ void destroy_tr(struct node* x){
   free(x);
 }
 
+/* Auxiliary functions for verification */
+
+void print_tr(struct node* t){
+  struct node* x;
+  if(t){
+    printf("%d", t->key);
+    if(t->mark)
+      printf("*");
+    if(t->children){
+      printf("-(");
+      x=t->children;
+      do{
+	print_tr(x);
+	printf(", ");
+	x = x->next;
+      }while(x!=t->children);
+      printf(")");
+    }
+  }
+}
+
+void print_heap(struct FibHeap* h){
+  struct node* x;
+  if(h->roots){
+    x=h->roots;
+    do{
+      if(x==h->minTr)
+	printf("[min]");
+      print_tr(x);
+      printf("-->");
+      x = x->next;
+    }while(x != h->roots);
+  }
+  printf(".\n");
+}
+
 /* Helper function to release a heap */
 void destroy_heap(struct FibHeap* h){
   struct node *x, *y;
@@ -129,6 +165,8 @@ struct node* remove_node(struct node* first, struct node* x){
     n = x->next;
     p->next = n;
     n->prev = p;
+    x->next = x;
+    x->prev = x;
     if(x == first)
       first = n;
   }
@@ -183,7 +221,7 @@ struct FibHeap* merge(struct FibHeap* h1, struct FibHeap* h2){
  * Link 2 trees to one bigger tree.
  */
 
-void link(struct FibHeap* h, struct node* x, struct node* y){
+struct node* link(struct FibHeap* h, struct node* x, struct node* y){
   if(y->key < x->key)
     swap(&x, &y);
   h->roots = remove_node(h->roots, y);
@@ -191,6 +229,7 @@ void link(struct FibHeap* h, struct node* x, struct node* y){
   y->parent = x;
   x->degree++;
   y->mark = 0;
+  return x;
 }
 
 /* 
@@ -220,9 +259,11 @@ int max_degree(int n){
  */
 
 void consolidate(struct FibHeap* h){
+  if(!h->roots)
+    return;
   int D = max_degree(h->n)+1;
   struct node *x, *y;
-  struct node** a = (struct node**)malloc(sizeof(struct node*)*D);
+  struct node** a = (struct node**)malloc(sizeof(struct node*)*(D+1));
   int i, d;
   for(i=0; i<=D; ++i)
     a[i] = 0;
@@ -231,20 +272,17 @@ void consolidate(struct FibHeap* h){
     d= x->degree;
     while(a[d]){ 
       y = a[d];  /* Another node has the same degree as x */
-      link(h, x, y);
+      x = link(h, x, y);
       a[d++] = 0;
     }
     a[d] = x;
     x = x->next;
   }while(x != h->roots);
   h->minTr = 0;
-  for(i=0; i<=D; ++i){
-    if(a[i]){
-      h->roots = append(h->roots, a[i]);
+  for(i=0; i<=D; ++i)
+    if(a[i])
       if(h->minTr == 0 || a[i]->key < h->minTr->key)
 	h->minTr = a[i];
-    }
-  }
   free(a);
 }
 
@@ -257,68 +295,42 @@ struct FibHeap* pop(struct FibHeap* h){
   struct node *y, *child;
   if(x){
     child = x->children;
-    if(child)
+    if(child){
       do{
 	y = child;
 	child = child->next;
 	append(h->roots, y);
 	y->parent = 0;
       }while(child != x->children);
-    h->roots = remove_node(h->roots, x);
-    if(x == x->next)
-      h->minTr = 0; /*empty*/
-    else{
-      h->minTr = x->next;
-      consolidate(h);
     }
+    h->roots = remove_node(h->roots, x);
+    h->minTr = 0;
     h->n--;
+    consolidate(h);
     free(x);
   }
   return h;
 }
 
-/* Auxiliary functions for verification */
+/* testing */
 
-void print_tr(struct node* t){
-  struct node* x;
-  if(t){
-    printf("%d(%d)", t->key, t->degree);
-    if(t->mark)
-      printf("*");
-    if(t->children){
-      printf("-(");
-      x=t->children;
-      do{
-	print_tr(x);
-	x = x->next;
-      }while(x!=t->children);
-      printf(")");
-    }
-  }
-}
-
-void print_heap(struct FibHeap* h){
-  struct node* x;
-  if(h->roots){
-    x=h->roots;
-    do{
-      if(x==h->minTr)
-	printf("[min]");
-      print_tr(x);
-      printf("-->");
-      x = x->next;
-    }while(x != h->roots);
-  }
-  printf(".\n");
-}
-
-int main(){
+int test_mergeable_operations(){
   int i;
   const int x[] = {3, 1, 2, 4, 0, 5};
   struct FibHeap* h = empty();
   for(i=0; i<sizeof(x)/sizeof(int); ++i)
     h = insert(h, x[i]);
   print_heap(h);
+  for(i=0; i<sizeof(x)/sizeof(int); ++i){
+    printf("pop %d\n", top(h));
+    h = pop(h);
+    print_heap(h);
+  }
   destroy_heap(h);
   return 0;
+}
+
+int main(){
+  int r = test_mergeable_operations();
+  return r;
 }
