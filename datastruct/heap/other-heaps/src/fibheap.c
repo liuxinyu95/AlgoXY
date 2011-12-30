@@ -61,6 +61,34 @@ struct FibHeap* empty(){
   return h;
 }
 
+/* Helper function to release a tree */
+void destroy_tr(struct node* x){
+  struct node *y, *z;
+  if(x->children){
+    y = x->children;
+    do{
+      z = y;
+      y = y->next;
+      destroy_tr(z);
+    }while(y != x->children);
+  }
+  free(x);
+}
+
+/* Helper function to release a heap */
+void destroy_heap(struct FibHeap* h){
+  struct node *x, *y;
+  if(h && h->roots){
+    x = h->roots;
+    do{
+      y = x;
+      x = x->next;
+      destroy_tr(y);
+    }while(x != h->roots);
+  }
+  free(h);
+}
+
 /* swap two nodes */
 void swap(struct node** x, struct node** y){
   struct node* p = *x;
@@ -118,7 +146,7 @@ struct FibHeap* add_tree(struct FibHeap* h, struct node* t){
 struct FibHeap* insert(struct FibHeap* h, Key x){
   struct node* t = singleton(x);
   h = add_tree(h, t);
-  if(h->minTr==0 || h->minTr->key < x)
+  if(h->minTr==0 || x < h->minTr->key)
     h->minTr = t;
   h->n++;
   return h;
@@ -249,6 +277,48 @@ struct FibHeap* pop(struct FibHeap* h){
   return h;
 }
 
+/* Auxiliary functions for verification */
+
+void print_tr(struct node* t){
+  struct node* x;
+  if(t){
+    printf("%d(%d)", t->key, t->degree);
+    if(t->mark)
+      printf("*");
+    if(t->children){
+      printf("-(");
+      x=t->children;
+      do{
+	print_tr(x);
+	x = x->next;
+      }while(x!=t->children);
+      printf(")");
+    }
+  }
+}
+
+void print_heap(struct FibHeap* h){
+  struct node* x;
+  if(h->roots){
+    x=h->roots;
+    do{
+      if(x==h->minTr)
+	printf("[min]");
+      print_tr(x);
+      printf("-->");
+      x = x->next;
+    }while(x != h->roots);
+  }
+  printf(".\n");
+}
+
 int main(){
+  int i;
+  const int x[] = {3, 1, 2, 4, 0, 5};
+  struct FibHeap* h = empty();
+  for(i=0; i<sizeof(x)/sizeof(int); ++i)
+    h = insert(h, x[i]);
+  print_heap(h);
+  destroy_heap(h);
   return 0;
 }
