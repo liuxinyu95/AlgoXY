@@ -75,6 +75,27 @@ void destroy_tr(struct node* x){
   free(x);
 }
 
+/* Helper function to release a heap */
+void destroy_heap(struct FibHeap* h){
+  struct node *x, *y;
+  if(h && h->roots){
+    x = h->roots;
+    do{
+      y = x;
+      x = x->next;
+      destroy_tr(y);
+    }while(x != h->roots);
+  }
+  free(h);
+}
+
+/* swap two nodes */
+void swap(struct node** x, struct node** y){
+  struct node* p = *x;
+  *x = *y;
+  *y = p;
+}
+
 /* Auxiliary functions for verification */
 
 void print_tr(struct node* t){
@@ -109,27 +130,6 @@ void print_heap(struct FibHeap* h){
     }while(x != h->roots);
   }
   printf(".\n");
-}
-
-/* Helper function to release a heap */
-void destroy_heap(struct FibHeap* h){
-  struct node *x, *y;
-  if(h && h->roots){
-    x = h->roots;
-    do{
-      y = x;
-      x = x->next;
-      destroy_tr(y);
-    }while(x != h->roots);
-  }
-  free(h);
-}
-
-/* swap two nodes */
-void swap(struct node** x, struct node** y){
-  struct node* p = *x;
-  *x = *y;
-  *y = p;
 }
 
 /* Concatenate 2 doubly linked lists */
@@ -279,10 +279,13 @@ void consolidate(struct FibHeap* h){
     x = x->next;
   }while(x != h->roots);
   h->minTr = 0;
+  h->roots = 0;
   for(i=0; i<=D; ++i)
-    if(a[i])
+    if(a[i]){
+      h->roots = append(h->roots, a[i]);
       if(h->minTr == 0 || a[i]->key < h->minTr->key)
 	h->minTr = a[i];
+    }
   free(a);
 }
 
@@ -290,7 +293,7 @@ void consolidate(struct FibHeap* h){
  * Extract the minimum element. (pop). 
  * O(D(N)) = O(\lg N) amortized. 
  */
-struct FibHeap* pop(struct FibHeap* h){
+void pop(struct FibHeap* h){
   struct node* x = h->minTr;
   struct node *y, *child;
   if(x){
@@ -309,21 +312,71 @@ struct FibHeap* pop(struct FibHeap* h){
     consolidate(h);
     free(x);
   }
-  return h;
+}
+
+void heap_sort(int* xs, int n){
+  int i;
+  struct FibHeap* h = 0;
+  printf("sart heap sort...");
+  for(i=0; i<n; ++i)
+    h = insert(h, xs[i]);
+  print_heap(h);
+  for(i=0; i<n; ++i){
+    xs[i] = top(h);
+    printf("%d\n", xs[i]);
+    pop(h);
+    print_heap(h);
+  }
+  printf("\n");
+  destroy_heap(h);
 }
 
 /* testing */
 
+int sorted(const int* xs, int n){
+  int i;
+  for(i=0; i<n-1; ++i)
+    if(xs[i+1] < xs[i])
+      return 0;
+  return 1;
+}
+
+void print_lst(const int* xs, int n){
+  int i;
+  for(i=0; i<n; ++i)
+    printf("%d, ", xs[i]);
+  printf("\n");
+}
+
+int test_heap_sort(){
+  int m = 100;
+  int i, n, *xs, res;
+  do{
+    n = 1 + rand() % 10;
+    printf("xs[%d]=", n);
+    xs = (int*)malloc(sizeof(int)*n);
+    for(i=0; i<n; ++i)
+      xs[i] = rand() % 100;
+    print_lst(xs, n);
+    heap_sort(xs, n);
+    printf("sort to: ");
+    print_lst(xs, n);
+    res = sorted(xs, n);
+    free(xs);
+  }while(res && m--);
+  return res;
+}
+
 int test_mergeable_operations(){
   int i;
   const int x[] = {3, 1, 2, 4, 0, 5};
-  struct FibHeap* h = empty();
+  struct FibHeap* h = 0;
   for(i=0; i<sizeof(x)/sizeof(int); ++i)
     h = insert(h, x[i]);
   print_heap(h);
   for(i=0; i<sizeof(x)/sizeof(int); ++i){
     printf("pop %d\n", top(h));
-    h = pop(h);
+    pop(h);
     print_heap(h);
   }
   destroy_heap(h);
@@ -331,6 +384,7 @@ int test_mergeable_operations(){
 }
 
 int main(){
+  //int r = test_heap_sort(); 
   int r = test_mergeable_operations();
   return r;
 }
