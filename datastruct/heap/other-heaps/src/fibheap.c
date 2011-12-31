@@ -25,6 +25,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define BIG_RAND()  (rand() % 10000) /* for verification purpose only. */
+
 typedef int Key;
 
 /* Definition of tree */
@@ -158,7 +160,7 @@ struct node* append(struct node* first, struct node* x){
 /* Remove a node from a doubly linkied list */
 struct node* remove_node(struct node* first, struct node* x){
   struct node *p, *n;
-  if(x->next == x)
+  if(x->next == x && first == x)
     first = 0; /* empty */
   else{
     p = x->prev;
@@ -221,10 +223,9 @@ struct FibHeap* merge(struct FibHeap* h1, struct FibHeap* h2){
  * Link 2 trees to one bigger tree.
  */
 
-struct node* link(struct FibHeap* h, struct node* x, struct node* y){
+struct node* link(struct node* x, struct node* y){
   if(y->key < x->key)
     swap(&x, &y);
-  h->roots = remove_node(h->roots, y);
   x->children = append(x->children, y);
   y->parent = x;
   x->degree++;
@@ -267,17 +268,17 @@ void consolidate(struct FibHeap* h){
   int i, d;
   for(i=0; i<=D; ++i)
     a[i] = 0;
-  x = h->roots;
-  do{
+  while(h->roots){
+    x = h->roots;
+    h->roots = remove_node(h->roots, x);
     d= x->degree;
     while(a[d]){ 
       y = a[d];  /* Another node has the same degree as x */
-      x = link(h, x, y);
+      x = link(x, y);
       a[d++] = 0;
     }
     a[d] = x;
-    x = x->next;
-  }while(x != h->roots);
+  }
   h->minTr = 0;
   h->roots = 0;
   for(i=0; i<=D; ++i)
@@ -317,17 +318,12 @@ void pop(struct FibHeap* h){
 void heap_sort(int* xs, int n){
   int i;
   struct FibHeap* h = 0;
-  printf("sart heap sort...");
   for(i=0; i<n; ++i)
     h = insert(h, xs[i]);
-  print_heap(h);
   for(i=0; i<n; ++i){
     xs[i] = top(h);
-    printf("%d\n", xs[i]);
     pop(h);
-    print_heap(h);
   }
-  printf("\n");
   destroy_heap(h);
 }
 
@@ -352,39 +348,23 @@ int test_heap_sort(){
   int m = 100;
   int i, n, *xs, res;
   do{
-    n = 1 + rand() % 10;
-    printf("xs[%d]=", n);
+    n = 1 + BIG_RAND();
     xs = (int*)malloc(sizeof(int)*n);
     for(i=0; i<n; ++i)
-      xs[i] = rand() % 100;
-    print_lst(xs, n);
+      xs[i] = BIG_RAND();
     heap_sort(xs, n);
-    printf("sort to: ");
-    print_lst(xs, n);
     res = sorted(xs, n);
     free(xs);
   }while(res && m--);
   return res;
 }
 
-int test_mergeable_operations(){
-  int i;
-  const int x[] = {3, 1, 2, 4, 0, 5};
-  struct FibHeap* h = 0;
-  for(i=0; i<sizeof(x)/sizeof(int); ++i)
-    h = insert(h, x[i]);
-  print_heap(h);
-  for(i=0; i<sizeof(x)/sizeof(int); ++i){
-    printf("pop %d\n", top(h));
-    pop(h);
-    print_heap(h);
-  }
-  destroy_heap(h);
-  return 0;
+int test_merge(){
+  /* TODO: test merge operation*/
+  return 1;
 }
 
 int main(){
-  //int r = test_heap_sort(); 
-  int r = test_mergeable_operations();
+  int r = test_heap_sort() && test_merge(); 
   return r;
 }
