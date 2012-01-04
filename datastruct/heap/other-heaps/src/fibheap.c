@@ -1,6 +1,6 @@
 /*
  * fibheap.c, Fibonacci heap
- * Copyright (C) 2011, Liu Xinyu (liuxinyu95@gmail.com)
+ * Copyright (C) 2012, Liu Xinyu (liuxinyu95@gmail.com)
 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -106,42 +106,6 @@ void swap(struct node** x, struct node** y){
   struct node* p = *x;
   *x = *y;
   *y = p;
-}
-
-/* Auxiliary functions for verification */
-
-void print_tr(struct node* t){
-  struct node* x;
-  if(t){
-    printf("%d", t->key);
-    if(t->mark)
-      printf("*");
-    if(t->children){
-      printf("-(");
-      x=t->children;
-      do{
-	print_tr(x);
-	printf(", ");
-	x = x->next;
-      }while(x!=t->children);
-      printf(")");
-    }
-  }
-}
-
-void print_heap(struct FibHeap* h){
-  struct node* x;
-  if(h->roots){
-    x=h->roots;
-    do{
-      if(x==h->minTr)
-	printf("[min]");
-      print_tr(x);
-      printf("-->");
-      x = x->next;
-    }while(x != h->roots);
-  }
-  printf(".\n");
 }
 
 /* Concatenate 2 doubly linked lists */
@@ -396,13 +360,6 @@ int sorted(const int* xs, int n){
     if(xs[i+1] < xs[i])
       return 0;
   return 1;
-}
-
-void print_lst(const int* xs, int n){
-  int i;
-  for(i=0; i<n; ++i)
-    printf("%d, ", xs[i]);
-  printf("\n");
 }
 
 int check_sum(const int* xs, int n){
