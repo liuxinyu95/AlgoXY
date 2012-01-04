@@ -25,7 +25,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define BIG_RAND()  (rand() % 10000) /* for verification purpose only. */
+/* For verification purpose only. */
+#include <assert.h> 
+
+#define BIG_RAND()  (rand() % 10000) 
+#define ODD(x)      ((x) & 1)
+#define EVEN(x)     (!ODD(x))
+/* End of verification purpose only part */
 
 typedef int Key;
 
@@ -61,6 +67,10 @@ struct FibHeap* empty(){
   h->minTr = 0;
   h->n = 0;
   return h;
+}
+
+int is_empty(struct FibHeap* h){
+  return (!h) || (!h->roots);
 }
 
 /* Helper function to release a tree */
@@ -203,9 +213,9 @@ Key top(struct FibHeap* h){
  */
 struct FibHeap* merge(struct FibHeap* h1, struct FibHeap* h2){
   struct FibHeap* h;
-  if(!h1)
+  if(is_empty(h1))
     return h2;
-  if(!h2)
+  if(is_empty(h2))
     return h1;
   h = empty();
   h->roots = concat(h1->roots, h2->roots);
@@ -344,27 +354,64 @@ void print_lst(const int* xs, int n){
   printf("\n");
 }
 
-int test_heap_sort(){
+int check_sum(const int* xs, int n){
+  int x = 0;
+  while(n>0)
+    x ^= xs[--n];
+  return x;
+}
+
+void test_heap_sort(){
   int m = 100;
-  int i, n, *xs, res;
-  do{
+  int i, n, c, *xs;
+  while(m--){
     n = 1 + BIG_RAND();
     xs = (int*)malloc(sizeof(int)*n);
     for(i=0; i<n; ++i)
       xs[i] = BIG_RAND();
+    c = check_sum(xs, n);
     heap_sort(xs, n);
-    res = sorted(xs, n);
+    assert(sorted(xs, n));
+    assert(c == check_sum(xs, n));
     free(xs);
-  }while(res && m--);
-  return res;
+  }
 }
 
-int test_merge(){
-  /* TODO: test merge operation*/
-  return 1;
+void test_merge(){
+  int m = 100;
+  int i, n, c, *xs;
+  struct FibHeap *h1, *h2, *h;
+  while(m--){
+    h1 = h2 = 0;
+    n = 1 + BIG_RAND();
+    xs = (int*)malloc(sizeof(int)*n);
+    for(i=0; i<n; ++i){
+      xs[i] = BIG_RAND();
+      h1 = insert(h1, xs[i]);
+      if(ODD(xs[i]) && (!is_empty(h1))){
+	h2 = insert(h2, top(h1));
+	pop(h1);
+      }
+      if(EVEN(xs[i]) && (!is_empty(h2))){
+	h1 = insert(h1, top(h2));
+	pop(h2);
+      }
+    }
+    c = check_sum(xs, n);
+    h = merge(h1, h2);
+    for(i=0; i<n; ++i){
+      xs[i] = top(h);
+      pop(h);
+    }
+    assert(sorted(xs, n));
+    assert(c == check_sum(xs, n));
+    free(xs);
+    destroy_heap(h);
+  }
 }
 
 int main(){
-  int r = test_heap_sort() && test_merge(); 
-  return r;
+  test_heap_sort();
+  test_merge();
+  return 0;
 }
