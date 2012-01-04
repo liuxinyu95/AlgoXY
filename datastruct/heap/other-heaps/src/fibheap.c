@@ -193,13 +193,16 @@ struct FibHeap* add_tree(struct FibHeap* h, struct node* t){
 }
 
 /* Insertion. O(1) */
-struct FibHeap* insert(struct FibHeap* h, Key x){
-  struct node* t = singleton(x);
-  h = add_tree(h, t);
-  if(h->minTr==0 || x < h->minTr->key)
-    h->minTr = t;
+struct FibHeap* insert_node(struct FibHeap* h, struct node* x){
+  h = add_tree(h, x);
+  if(h->minTr==0 || x->key < h->minTr->key)
+    h->minTr = x;
   h->n++;
   return h;
+}
+
+struct FibHeap* insert(struct FibHeap* h, Key x){
+  return insert_node(h, singleton(x));
 }
 
 /* top, finding the minimum element. O(1) */
@@ -337,6 +340,54 @@ void heap_sort(int* xs, int n){
   destroy_heap(h);
 }
 
+/* cut a node from its parent and append it to root list. */
+void cut(struct FibHeap* h, struct node* x){
+  struct node* p = x->parent;
+  p->children = remove_node(p->children, x);
+  p->degree--;
+  h->roots = append(h->roots, x);
+  x->parent = 0;
+  x->mark = 0;
+}
+
+/* 
+ * Cut a node from its's parent and append to root list as soon as
+ * the second child has been lost.
+ */
+void cascading_cut(struct FibHeap* h, struct node* x){
+  struct node* p = x->parent;
+  if(p){
+    if(!x->mark)
+      x->mark = 1;
+    else{
+      cut(h, x);
+      cascading_cut(h, p);
+    }
+  }
+}
+
+/*
+ * Decreasing a key
+ * Amortized O(1) time.
+ */
+void decrease_key(struct FibHeap* h, struct node* x, Key k){
+  /* Assert k < x->key */
+  struct node* p = x->parent;
+  x->key = k;
+  if(p && k < p->key){
+    cut(h, x);
+    cascading_cut(h, p);
+  }
+  if(k < h->minTr->key)
+    h->minTr = x;
+}
+
+/* 
+ * Delete is omitted as it can be realized as:
+ *  1. decrease key to -infinity;
+ *  2. performs pop.
+ */
+
 /* testing */
 
 int sorted(const int* xs, int n){
@@ -410,8 +461,42 @@ void test_merge(){
   }
 }
 
+void test_decrease_key(){
+  int m = 100;
+  int i, n, c, *xs;
+  struct FibHeap* h;
+  struct node** ns;
+  while(m--){
+    h = 0;
+    n = 1 + BIG_RAND();
+    xs = (int*)malloc(sizeof(int)*n);
+    ns = (struct node**)malloc(sizeof(struct node*)*n);
+    for(i=0; i<n; ++i){
+      xs[i] = BIG_RAND();
+      ns[i] = singleton(xs[i]);
+      h = insert_node(h, ns[i]);
+    }
+    consolidate(h);
+    for(i=0; i<n; ++i){
+      xs[i] -= BIG_RAND();
+      decrease_key(h, ns[i], xs[i]);
+    }
+    c = check_sum(xs, n);
+    for(i=0; i<n; ++i){
+      xs[i] = top(h);
+      pop(h);
+    }
+    assert(sorted(xs, n));
+    assert(c == check_sum(xs, n));
+    free(xs);
+    free(ns);
+    destroy_heap(h);
+  }
+}
+
 int main(){
   test_heap_sort();
   test_merge();
+  test_decrease_key();
   return 0;
 }
