@@ -1494,8 +1494,134 @@ to the target node.
 In imperative setting, we can define the algorithm as 
 \textproc{Decrease-Key}($H, x, k$). Here $x$ is a node in heap $H$, which
 we want to decrease its key to $k$. We needn't perform a search, as
-we have $x$ at hand. It's possible to give a amortized $O(1)$ solution.
+we have $x$ at hand. It's possible to give an amortized $O(1)$ solution.
 
+When we decreased the key of a node, if it's not a root, this operation
+may violate the property Binomial tree that the key of parent is
+less than all keys of children. So we need to compare the decreased key
+with the parent node, and if this case happens, we can cut this node
+and append it to the root list. (Remind the recursive swapping solution
+for binary heap which leads to $O(\lg N)$)
+
+\begin{figure}[htbp]
+  \centering
+  \setlength{\unitlength}{1cm}
+  \begin{picture}(12, 7)
+    \put(0, 0){\includegraphics[scale=0.7]{img/cut-fib-tree.ps}}
+    \put(6.7, 3){\line(1, 1){0.5}}
+    \put(6.7, 3.5){\line(1, -1){0.5}}
+  \end{picture}
+  \caption{$x<y$, cut tree $x$ from its parent, and add $x$ to root list.} \label{fig:cut-fib-tree}
+\end{figure}
+
+Figure \ref{fig:cut-fib-tree} illustrates this situation. After decreasing
+key of node $x$, it is less than $y$, we cut $x$ off its parent $y$, and
+'past' the whole tree rooted at $x$ to root list.
+
+Although we recover the property of that parent is less than all children,
+the tree isn't any longer a Binomial tree after it losses some sub tree.
+If a tree losses too many of its children because of cutting, we can't ensure
+the performance of mergeable heap operations. Fibonacci Heap adds another
+constraints to avoid such problem:
+
+{\em If a node losses its second child, it is immediately cut from parent,
+and added to root list}
+
+The final \textproc{Decrease-Key} algorithm is given as below.
+
+\begin{algorithmic}
+\Function{Decrease-Key}{$H, x, k$}
+  \State \Call{Key}{$x$} $\gets k$
+  \State $p \gets $ \Call{Parent}{$x$}
+  \If{$p \neq NIL \land k < $ \Call{Key}{$p$}}
+    \State \Call{Cut}{$H, x$}
+    \State \Call{Cascading-Cut}{$H, p$}
+  \EndIf
+  \If{$k <$ \Call{Key}{$T_{min}(H)$}}
+    \State $T_{min}(H) \gets x$
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+Where function \textproc{Cascading-Cut} uses the mark to determin 
+if the node is losing the second child. the node is marked after
+it losses the first child. And the mark is cleared in \textproc{Cut} 
+function.
+
+\begin{algorithmic}
+\Function{Cut}{$H, x$}
+  \State $p \gets $ \Call{Parent}{$x$}
+  \State remove $x$ from $p$
+  \State \Call{Degree}{$p$} $\gets$ \Call{Degree}{$p$} - 1
+  \State add $x$ to root list of $H$
+  \State \Call{Parent}{$x$} $\gets NIL$
+  \State \Call{Mark}{$x$} $\gets FALSE$
+\EndFunction
+\end{algorithmic}
+
+During cascading cut process, if $x$ is marked, which means it has
+already lost one child. We recursively performs cut and cascading cut
+on its parent till reach to root.
+
+\begin{algorithmic}
+\Function{Cascading-Cut}{$H, x$}
+  \State $p \gets $ \Call{Parent}{$x$}
+  \If{$p \neq NIL$}
+    \If{\Call{Mark}{$x$} $= FALSE$}
+      \State \Call{Mark}{$x$} $\gets TRUE$
+    \Else
+      \State \Call{Cut}{$H, x$}
+      \State \Call{Cascading-Cut}{$H, p$}
+    \EndIf
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+The relevant ANSI C decreasing key program is given as the following.
+
+\lstset{language=C}
+\begin{lstlisting}
+void decrease_key(struct FibHeap* h, struct node* x, Key k){
+  struct node* p = x->parent;
+  x->key = k;
+  if(p && k < p->key){
+    cut(h, x);
+    cascading_cut(h, p);
+  }
+  if(k < h->minTr->key)
+    h->minTr = x;
+}
+
+void cut(struct FibHeap* h, struct node* x){
+  struct node* p = x->parent;
+  p->children = remove_node(p->children, x);
+  p->degree--;
+  h->roots = append(h->roots, x);
+  x->parent = 0;
+  x->mark = 0;
+}
+
+void cascading_cut(struct FibHeap* h, struct node* x){
+  struct node* p = x->parent;
+  if(p){
+    if(!x->mark)
+      x->mark = 1;
+    else{
+      cut(h, x);
+      cascading_cut(h, p);
+    }
+  }
+}
+\end{lstlisting}
+
+\subsection{The name of Fibonacci Heap}
+It's time to reveal the reason why the data structure is named
+as 'Fibonacci Heap'.
+
+There is only one undefined algorithm so far, \textproc{Max-Degree}($N$).
+Which can determin the upper bound of degree for any node in a $N$ nodes 
+Fibonacci Heap. We'll give the proof by using Fibonacci series and
+finally realize \textproc{Max-Degree} algorithm.
 
 % ================================================================
 %                 Pairing Heaps
