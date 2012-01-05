@@ -8,6 +8,7 @@ CONV="src/fr2dot"
 #$CONV img/b3tree.dot "(3, (2, (1, (0)), (0)), (1, (0)), (0))"
 #$CONV img/b4tree.dot "(4, (3, (2, (1, (0)), (0)), (1, (0)), (0)), (2, (1, (0)), (0)), (1, (0)), (0))"
 #$CONV img/link-bitree.dot "(Bk, (Bk, (1), (2), (etc), (k)), (1), (2), (etc), (k))"
+#$CONV img/cut-fib-tree.dot "(new), (r, (p, (x, (x1), (x2), (xe), (xn))), (2), (e), (n))"
 
 
 #$CONV img/foo.dot "(12), (7, (25)), (15, (28, (41)), (33))"

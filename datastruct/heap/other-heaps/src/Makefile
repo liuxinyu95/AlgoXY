@@ -29,10 +29,10 @@ CXX = g++ -Wall -I/usr/include/boost-1_33_1
 CXX_FLAGS =
 
 # Haskell part 
-HS_TEST_SRCS = Foo.hs
+HS_TEST_SRCS = 
 HS_TEST_OBJS = $(HS_TEST_SRCS:.hs=.o)
-HS_APP_SRCS = Bar.hs
-HS_APP_OBJS = Bar.o Foo.o
+HS_APP_SRCS = Fr2dot.hs
+HS_APP_OBJS = Fr2dot.o
 
 .SUFFIXES: .o .hs
 
