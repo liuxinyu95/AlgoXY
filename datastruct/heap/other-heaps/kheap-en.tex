@@ -1614,6 +1614,9 @@ void cascading_cut(struct FibHeap* h, struct node* x){
 }
 \end{lstlisting}
 
+\subsubsection*{Exercise}
+Prove that \textproc{Decrease-Key} algorithm is amortized $O(1)$ time.
+
 \subsection{The name of Fibonacci Heap}
 It's time to reveal the reason why the data structure is named
 as 'Fibonacci Heap'.
@@ -1622,6 +1625,130 @@ There is only one undefined algorithm so far, \textproc{Max-Degree}($N$).
 Which can determin the upper bound of degree for any node in a $N$ nodes 
 Fibonacci Heap. We'll give the proof by using Fibonacci series and
 finally realize \textproc{Max-Degree} algorithm.
+
+\begin{lemma}
+\label{lemma:Fib-degree}
+For any node $x$ in a Fibonacci Heap, denote $k = degree(x)$, and
+$|x| = size(x)$, then
+\be
+  |x| \geq F_{k+2}
+\ee
+
+Where $F_k$ is Fibonacci series defined as the following.
+\[
+F_k = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  0 & k = 0 \\
+  1 & k = 1 \\
+  F_{k-1} + F_{k-2} & k \geq 2 
+  \end{array}
+\right.
+\]
+\end{lemma}
+
+\begin{proof}
+Consider all $k$ children of node $x$, we denote them as $y_1, y_2, ..., y_k$
+in the order of time when they were linked to $x$. Where $y_1$ is the
+oldest, and $y_k$ is the youngest.
+
+Obviously, $y_i \geq 0$. When we link $y_i$ to $x$, children $y_1, y_2, ..., y_{i-1}$ have already been there. And algorithm \textproc{LINK} only links
+nodes with the same degree. Which indicates at that time, we have
+
+\[
+  degree(y_i) = degree(x) = i - 1
+\]
+
+After that, node $y_i$ can at most
+lost 1 child, (due to the decreasing key operation) otherwise, if it
+will be immediately cut off and append to root list after the second
+child loss. Thus we conclude 
+
+\[
+degree(y_i) \geq i-2
+\]
+
+For any $i = 2, 3, ..., k$.
+
+Let $s_k$ be the {\em minimum possible size} of node $x$, where 
+$degree(x) = k$. For trivial cases, $s_0 = 1$, $s_1 = 2$, and we have
+
+\bean
+|x| & \geq & s_k \\
+    & =   & 2 + \sum_{i=2}^{k} s_{degree(y_i)} \qquad \\
+    & \geq & 2 + \sum_{i=2}^{k} s_{i-2}
+\eean
+
+We next show that $s_k > F_{k+2}$. This can be proved by induction.
+For trivial cases, we have $s_0 = 1 \geq F_2 = 1$, and $s_1 = 2 \geq F_3 = 2$.
+For induction case $k \geq 2$. We have
+
+\bean
+|x| & \geq & s_k \\
+    & \geq & 2 + \sum_{i=2}^{k} s_{i-2} \\
+    & \geq & 2 + \sum_{i=2}^{k} F_i \\
+    & =    & 1 +  \sum_{i=0}^{k} F_i \\
+\eean
+
+At this point, we need prove that
+
+\be
+F_{k+2} = 1 +  \sum_{i=}^{k} F_i
+\ee
+
+This can also be proved by using induction:
+\begin{itemize}
+\item Trivial case, $F_2 = 1 + F_0 = 2$
+\item Induction case, 
+\bean
+  F_{k+2} & = & F_{k+1} + F_k \\
+         & = & 1 + \sum_{i=0}^{k-1}F_i + F_k \\
+         & = & 1 + \sum_{i=0}^{k} F_i
+\eean
+\end{itemize}
+
+Summarize all above we have the final result.
+\be
+N \geq |x| \geq F_k+2
+\ee
+\end{proof}
+
+Recall the result of AVL tree, that $F_k \geq \Phi^k$, where
+$\Phi = \frac{1+\sqrt{5}}{2}$ is the golden ratio. We also proved
+that pop operation is amortized $O(\lg N)$ algorithm.
+
+The \textproc{Max-Degree} algorithm can be realized by using Fibonacci
+sequences.
+
+\begin{algorithmic}
+\Function{Max-Degree}{$N$}
+  \State $F_0 \gets 0$
+  \State $F_1 \gets 1$
+  \State $k \gets 2$
+  \Repeat
+    \State $F_k \gets F_{k_1} + F_{k_2}$
+    \State $k \gets k+1$
+  \Until{$F_k < N$}
+  \State \Return $k-2$
+\EndFunction
+\end{algorithmic}
+
+Translate the algorithm to ANSI C given the following program.
+
+\lstset{language=C}
+\begin{lstlisting}
+int max_degree(int n){
+  int k, F;
+  int F2 = 0; 
+  int F1 = 1;
+  for(F=F1+F2, k=2; F<n; ++k){
+    F2 = F1;
+    F1 = F;
+    F = F1 + F2;
+  }
+  return k-2;
+}
+\end{lstlisting}
 
 % ================================================================
 %                 Pairing Heaps
