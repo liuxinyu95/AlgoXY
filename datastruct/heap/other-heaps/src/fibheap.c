@@ -285,7 +285,6 @@ void pop(struct FibHeap* h){
       }while(child != x->children);
     }
     h->roots = remove_node(h->roots, x);
-    h->minTr = 0;
     h->n--;
     consolidate(h);
     free(x);
