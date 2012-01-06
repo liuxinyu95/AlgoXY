@@ -216,7 +216,7 @@ struct node* link(struct node* x, struct node* y){
  * Corollary 20.4. in CLRS,
  * For any node x in a N-node Fibonacci heap, 
  *  N >= size(x) >= F_{k+2} >= \Phi^k
- * Since N is an integer, we have k <= \lfloor \log_{\Phi} N \rfloor
+ * Since N is an integer, we have k <= 1 + \lfloor \log_{\Phi} N \rfloor
  *
  * We can use Fibonacci sequence to calculate k.
  */
