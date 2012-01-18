@@ -20,6 +20,9 @@
 
 module PairingHeap where
 
+import Test.QuickCheck
+import qualified Data.List as L -- for verification purpose only
+
 -- Definition
 
 data PHeap a = E | Node a [PHeap a] deriving (Eq, Show)
@@ -61,6 +64,5 @@ heapSort = hsort . fromList where
 
 -- test
 
-testFromList = fromList [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
-
-testHeapSort = heapSort [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+prop_sort :: [Int] -> Bool
+prop_sort xs = heapSort xs == L.sort xs
