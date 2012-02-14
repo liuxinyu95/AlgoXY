@@ -16,8 +16,8 @@
 
 # C part
 CHEADER = 
-CSOURCE = fiboheap.c
-C_TEST_OBJS = fibheap.o
+CSOURCE = fiboheap.c pairingheap.c
+C_TEST_OBJS = fibheap.o pairingheap.o
 CC = gcc -Wall -g
 CFLAGS = -I../../../tool/test
 
@@ -40,7 +40,7 @@ HS_APP_OBJS = Fr2dot.o
 
 all: c lib cpp haskell
 
-c: fibheap
+c: fibheap pairingheap
 
 ctest: $(C_TEST_OBJS)
 	$(CC) $(CFLAGS) -o $@ $(C_TEST_OBJS)
