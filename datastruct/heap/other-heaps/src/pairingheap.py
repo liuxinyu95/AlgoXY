@@ -47,8 +47,8 @@ def insert(h, x):
 def top(h):
     return h.key
 
-# Python itertools and receipe provides plenty of
-# tools, which help for iter over pairs.
+# Python itertools and receipe provide plenty of
+# tools, which help for iterating over pairs.
 # They are not used here, so fresh python user
 # can read the code.
 def pop(h):
