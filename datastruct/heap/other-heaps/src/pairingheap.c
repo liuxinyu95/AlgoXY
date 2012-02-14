@@ -56,10 +56,11 @@ struct node* singleton(Key x){
  */
 void destroy_heap(struct node* h){
   struct node* t;
-  while(h && (t=h->children) != NULL){
-    h->children = h->children->next;
-    destroy_heap(t);
-  }
+  if(h)
+    while((t=h->children) != NULL){
+      h->children = h->children->next;
+      destroy_heap(t);
+    }
   free(h);
 }
 

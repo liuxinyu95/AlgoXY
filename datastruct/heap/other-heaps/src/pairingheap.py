@@ -16,7 +16,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#
+# Based on Michael L. Fredman, Robert Sedgewick, Daniel D. Sleator, 
+# and Robert E. Tarjan. ``The Pairing Heap: A New Form of Self-Adjusting 
+# Heap'' Algorithmica (1986) 1: 111-129
+#
+
 import random # for testing only
+from collections import deque # for right to left merge only
 
 # Assume the heap is min-heap
 class KTree:
@@ -52,15 +59,15 @@ def top(h):
 # They are not used here, so fresh python user
 # can read the code.
 def pop(h):
-    lst = []
+    lst = deque()
     x = None
     for y in h.children:
         if x is None:
             x = y
         else:
-            lst.append(merge(x, y))
+            lst.appendleft(merge(x, y))
             x = None
-    for y in reversed(lst):
+    for y in lst:
         x = merge(x, y)
     return x
         
