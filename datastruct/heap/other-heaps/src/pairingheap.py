@@ -25,10 +25,15 @@
 import random # for testing only
 from collections import deque # for right to left merge only
 
+#
 # Assume the heap is min-heap
+#   If we don't realize decrease-key operation, there is no need
+#   to use the parent pointer.
+#
 class KTree:
     def __init__(self, x = None):
         self.key = x
+        self.parent = None
         self.children = []
 
 # O(1) time merge two heaps
@@ -46,6 +51,7 @@ def merge(t1, t2):
     if t2.key < t1.key:
         (t1, t2) = (t2, t1)
     t1.children.append(t2)
+    t2.parent = t1
     return t1
 
 def insert(h, x):
@@ -53,6 +59,13 @@ def insert(h, x):
 
 def top(h):
     return h.key
+
+def decrease_key(h, x, key):
+    x.key = key # assume key <= x.key
+    if x.parent is not None:
+        x.parent.children.remove(x) # Sadly, this is O(N) operation.
+        x.parent = None
+    return merge(x, h)
 
 # Python itertools and receipe provide plenty of
 # tools, which help for iterating over pairs.
@@ -91,12 +104,37 @@ def to_str(h):
     return s
 
 # testing
-def test():
+def test_sort():
     n = 1000
     for i in range(n):
         lst = random.sample(range(n), random.randint(1, n))
         assert(heap_sort(lst) == sorted(lst))
-    print n, "test cases are OK."
+    print "heap-sort:", n, "test cases are OK."
+
+# helper function to test decrease-key
+def insert_node(h, x):
+    return merge(h, x)
+
+def test_decrease_key():
+    n = 1000
+    m = 16 # too slow for big m
+    for i in range(m):
+        xs = random.sample(range(n), random.randint(1, n))
+        ns = [KTree(x) for x in xs]
+        h = reduce(insert_node, ns, None)
+        xs = [x - random.randint(1, n) for x in xs]
+        for node, x in zip(ns, xs):
+            h = decrease_key(h, node, x)
+        ys = []
+        while h is not None:
+            ys.append(top(h))
+            h = pop(h)
+        assert(ys == sorted(xs))
+    print "decrease-key:", m, "test cases are OK."
+
+def test():
+    test_sort()
+    test_decrease_key()
 
 if __name__ == "__main__":
     test()
