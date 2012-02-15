@@ -36,17 +36,18 @@ typedef int Key;
 /* 
  * Definition of K-ary tree node
  * left child, right sibling approach.
+ * parent pointer is only used for decrease-key operation.
  */
 struct node{
   Key key;
-  struct node *next, *children;
+  struct node *next, *children, *parent;
 };
 
 /* Auxiliary functions */
 struct node* singleton(Key x){
   struct node* t = (struct node*)malloc(sizeof(struct node));
   t->key = x;
-  t->next = t->children = NULL;
+  t->next = t->children = t->parent = NULL;
   return t;
 }
 
@@ -77,6 +78,18 @@ struct node* push_front(struct node* lst, struct node* x){
   return x;
 }
 
+/* Remove a node from a linked-list */
+struct node* remove_node(struct node* lst, struct node* x){
+  struct node* p=lst;
+  if(x == lst)
+    return x->next;
+  while(p && p->next != x)
+    p = p->next;
+  if(p)
+    p->next = x->next;
+  return lst;
+}
+
 /* 
  * Merge
  * O(1) time by inserting one heap as the first
@@ -91,6 +104,7 @@ struct node* merge(struct node* h1, struct node* h2){
     swap(&h1, &h2);
   h2->next = h1->children;
   h1->children = h2;
+  h2->parent = h1;
   h1->next = NULL; /*Break previous link if any*/
   return h1;
 }
@@ -100,10 +114,30 @@ struct node* insert(struct node* h, Key x){
   return merge(h, singleton(x));
 }
 
+#define insert_node(h, x) merge((h), (x))
+
 /* Top, finding the minimum element. O(1) time */
 Key top(struct node* h){
   return h->key;
 }
+
+
+/* 
+ * Decrease-key, O(1) time if
+ *   we can remove a child in constant time, this is true
+ *   if the children are managed in doubly linked list.
+ *   However, since we use single linked-list, we need
+ *   traverse the children to perform removing. which
+ *   degrades the running time.
+ */
+struct node* decrease_key(struct node* h, struct node* x, Key key){
+  x->key = key; /* Assume key <= x->key */
+  if(x->parent)
+    x->parent->children = remove_node(x->parent->children, x);
+  x->parent = NULL;
+  return merge(h, x);
+}
+
 
 /* 
  * Pop, delete the minimum element.
@@ -169,7 +203,40 @@ void test_heap_sort(){
   }
 }
 
+void test_decrease_key(){
+  int m = 100;
+  int i, n, c, *xs;
+  struct node* h;
+  struct node** ns;
+  while(m--){
+    h = NULL;
+    n = 1 + BIG_RAND();
+    xs = (int*)malloc(sizeof(int)*n);
+    ns = (struct node**)malloc(sizeof(struct node*)*n);
+    for(i=0; i<n; ++i){
+      xs[i] = BIG_RAND();
+      ns[i] = singleton(xs[i]);
+      h = insert_node(h, ns[i]);
+    }
+    for(i=0; i<n; ++i){
+      xs[i] -= BIG_RAND();
+      h = decrease_key(h, ns[i], xs[i]);
+    }
+    c = check_sum(xs, n);
+    for(i=0; i<n; ++i){
+      xs[i] = top(h);
+      h = pop(h);
+    }
+    assert(sorted(xs, n));
+    assert(c == check_sum(xs, n));
+    free(xs);
+    free(ns);
+    destroy_heap(h);
+  }
+}
+
 int main(){
   test_heap_sort();
+  test_decrease_key();
   return 0;
 }

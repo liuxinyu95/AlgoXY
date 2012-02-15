@@ -53,7 +53,7 @@ struct FibHeap{
 struct node* singleton(Key x){
   struct node* t = (struct node*)malloc(sizeof(struct node));
   t->key = x;
-  t->parent = t->children = 0;
+  t->parent = t->children = NULL;
   t->prev = t->next = t;
   t->degree = 0;
   t->mark = 0;
@@ -63,8 +63,7 @@ struct node* singleton(Key x){
 /* Create an empty heap */
 struct FibHeap* empty(){
   struct FibHeap* h = (struct FibHeap*)malloc(sizeof(struct FibHeap));
-  h->roots = 0;
-  h->minTr = 0;
+  h->roots = h->minTr = NULL;
   h->n = 0;
   return h;
 }
@@ -135,7 +134,7 @@ struct node* append(struct node* first, struct node* x){
 struct node* remove_node(struct node* first, struct node* x){
   struct node *p, *n;
   if(x->next == x && first == x)
-    first = 0; /* empty */
+    first = NULL; /* empty */
   else{
     p = x->prev;
     n = x->next;
@@ -159,7 +158,7 @@ struct FibHeap* add_tree(struct FibHeap* h, struct node* t){
 /* Insertion. O(1) */
 struct FibHeap* insert_node(struct FibHeap* h, struct node* x){
   h = add_tree(h, x);
-  if(h->minTr==0 || x->key < h->minTr->key)
+  if(h->minTr == NULL || x->key < h->minTr->key)
     h->minTr = x;
   h->n++;
   return h;
@@ -244,7 +243,7 @@ void consolidate(struct FibHeap* h){
   struct node** a = (struct node**)malloc(sizeof(struct node*)*(D+1));
   int i, d;
   for(i=0; i<=D; ++i)
-    a[i] = 0;
+    a[i] = NULL;
   while(h->roots){
     x = h->roots;
     h->roots = remove_node(h->roots, x);
@@ -252,16 +251,15 @@ void consolidate(struct FibHeap* h){
     while(a[d]){ 
       y = a[d];  /* Another node has the same degree as x */
       x = link(x, y);
-      a[d++] = 0;
+      a[d++] = NULL;
     }
     a[d] = x;
   }
-  h->minTr = 0;
-  h->roots = 0;
+  h->minTr = h->roots = NULL;
   for(i=0; i<=D; ++i)
     if(a[i]){
       h->roots = append(h->roots, a[i]);
-      if(h->minTr == 0 || a[i]->key < h->minTr->key)
+      if(h->minTr == NULL || a[i]->key < h->minTr->key)
 	h->minTr = a[i];
     }
   free(a);
@@ -281,7 +279,7 @@ void pop(struct FibHeap* h){
 	y = child;
 	child = child->next;
 	append(h->roots, y);
-	y->parent = 0;
+	y->parent = NULL;
       }while(child != x->children);
     }
     h->roots = remove_node(h->roots, x);
@@ -293,7 +291,7 @@ void pop(struct FibHeap* h){
 
 void heap_sort(int* xs, int n){
   int i;
-  struct FibHeap* h = 0;
+  struct FibHeap* h = NULL;
   for(i=0; i<n; ++i)
     h = insert(h, xs[i]);
   for(i=0; i<n; ++i){
@@ -309,7 +307,7 @@ void cut(struct FibHeap* h, struct node* x){
   p->children = remove_node(p->children, x);
   p->degree--;
   h->roots = append(h->roots, x);
-  x->parent = 0;
+  x->parent = NULL;
   x->mark = 0;
 }
 
@@ -389,7 +387,7 @@ void test_merge(){
   int i, n, c, *xs;
   struct FibHeap *h1, *h2, *h;
   while(m--){
-    h1 = h2 = 0;
+    h1 = h2 = NULL;
     n = 1 + BIG_RAND();
     xs = (int*)malloc(sizeof(int)*n);
     for(i=0; i<n; ++i){
@@ -423,7 +421,7 @@ void test_decrease_key(){
   struct FibHeap* h;
   struct node** ns;
   while(m--){
-    h = 0;
+    h = NULL;
     n = 1 + BIG_RAND();
     xs = (int*)malloc(sizeof(int)*n);
     ns = (struct node**)malloc(sizeof(struct node*)*n);
