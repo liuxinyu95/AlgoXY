@@ -1845,10 +1845,10 @@ int max_degree(int n){
 \label{pairing-heap}
 Although Fibonacci Heaps provide excellent performance theoritically,
 it is complex to realize. People find that the constant behind the
-big-O is big. Actually, Fibonacci Heaps is more significant in theory
+big-O is big. Actually, Fibonacci Heap is more significant in theory
 than in practice.
 
-In this section, we'll introduce another solution, Pairing heaps,
+In this section, we'll introduce another solution, Pairing heap,
 which is one of the best heaps ever known in terms of performance. 
 Most operations including insertion, finding minimum element (top), 
 merging are all bounds to $O(1)$ time, while deleting minimum element (pop)
@@ -1858,7 +1858,7 @@ a conjecture for 15 years by the time I write this chapter. Nobody has been
 proven it although there are much experimental data support the
 $O(\lg N)$ amortized result.
 
-Besides that, pairing heaps is simple. There exist both elegant 
+Besides that, pairing heap is simple. There exist both elegant 
 imperative and functional implementations. 
 
 % ================================================================
@@ -1869,7 +1869,7 @@ imperative and functional implementations.
 
 Both Binomial Heaps and Fibonacci Heaps are realized with forest. 
 While a pairing heaps is essentially a K-ary tree. The minimum element
-is stored in root. All other elements are stroed in sub trees.
+is stored at root. All other elements are stored in sub trees.
 
 The following Haskell program defines pairing heap.
 
@@ -1881,7 +1881,27 @@ data PHeap a = E | Node a [PHeap a]
 This is a recursive definition, that a pairing heap is either empty
 or a K-ary tree, which is consist of a root node, and a list of sub trees.
 
-TODO: add imperative definition
+Pairing heap can also be defined in procedural langauges, for example
+ANSI C as below. For illustration purpose, all heaps we mentioned later
+are minimum-heap, and we assume the type of key is integer \footnote{We
+can parameterize the key type with C++ template, but this is beyound
+our scope, please refer to the example programs along with
+this book}. We use same linked-list based left-child, right-sibling 
+approach (aka, binary tree representation\cite{CLRS}).
+
+\lstset{language=C}
+\begin{lstlisting}
+typedef int Key;
+
+struct node{
+  Key key;
+  struct node *next, *children, *parent;
+};
+\end{lstlisting}
+
+Note that the parent field does only make sense for decreasing key
+operation, which will be explained later on. we can omit it for the
+time being. 
 
 
 % ================================================================
@@ -1946,7 +1966,49 @@ merge h1@(Node x hs1) h2@(Node y hs2) =
     if x < y then Node x (h2:hs1) else Node y (h1:hs2)
 \end{lstlisting}
 
-TODO: Add imperative implementation
+Merge can also be realized imperatively. With left-child, right
+sibling approach, we can just link the heap, which is in fact a
+K-ary tree, with larger key as the first new child of the other.
+This is constant time operation as described below.
+
+\begin{algorithmic}
+\Function{Merge}{$H_1, H_2$}
+  \If{$H_1 = $ NIL}
+    \State \Return $H_2$
+  \EndIf
+  \If{$H_2 = $ NIL}
+    \State \Return $H_1$
+  \EndIf
+  \If{\Call{Key}{$H_2$} $<$ \Call{Key}{$H_1$}}
+    \State \Call{Exchange}{$H_1 \leftrightarrow H_2$}
+  \EndIf
+  \State Insert $H_2$ in front of \Call{Children}{$H_1$}
+  \State \Call{Parent}{$H_2$} $\gets H_1$
+  \State \Return $H_1$
+\EndFunction
+\end{algorithmic}
+
+Note that we also update the parent field accordingly. The ANSI C
+example program is given as the following.
+
+\lstset{language=C}
+\begin{lstlisting}
+struct node* merge(struct node* h1, struct node* h2){
+  if(h1 == NULL)
+    return h2;
+  if(h2 == NULL)
+    return h1;
+  if(h2->key < h1->key)
+    swap(&h1, &h2);
+  h2->next = h1->children;
+  h1->children = h2;
+  h2->parent = h1;
+  h1->next = NULL; /*Break previous link if any*/
+  return h1;
+}
+\end{lstlisting}
+
+Where function swap() is defined in a similar way as Fibonacci Heap.
 
 With merge defined, insertioh can be realized as same as Fibonacci Heap 
 in Equation \ref{eq:fib-insert}. Definitely it's $O(1)$ time operatoin.
@@ -1961,6 +2023,49 @@ Same as the other two above operations, it's bound to $O(1)$ time.
 \subsubsection*{Exercise}
 Implement the insertion and top operation in your favorate programming
 language.
+
+\subsubsection{Decrease key}
+There is another trivial operation, to decrease key of a given node,
+which only make sense in imperative settings as we explained in Fibonacci
+Heap section.
+
+The solution is simple, that we can cut the node with the new smaller
+key from it's parent along with all its children. Then merge it again
+to the heap. The only special case is that if the given node is the 
+root, then we can directly set the new key without do anything else.
+
+The following algorithm describes this procedure for a given node $x$, with
+new key $k$.
+
+\begin{algorithmic}
+\Function{Decrease-Key}{$H, x, k$}
+  \State \Call{Key}{$x$} $\gets k$
+  \If{\Call{Parent}{$x$} $\neq$ NIL}
+    \State Remove $x$ from \textproc{Children}(\Call{Parent}{$x$})
+  \EndIf
+  \Call{Parent}{$x$} $\gets$ NIL
+  \State \Return \Call{Merge}{$H, x$}
+\EndFunction
+\end{algorithmic}
+
+The following ANSI C program translates this algorithm.
+
+\lstset{language=C}
+\begin{lstlisting}
+struct node* decrease_key(struct node* h, struct node* x, Key key){
+  x->key = key; /* Assume key <= x->key */
+  if(x->parent)
+    x->parent->children = remove_node(x->parent->children, x);
+  x->parent = NULL;
+  return merge(h, x);
+}
+\end{lstlisting}
+
+\subsubsection*{Exercise}
+Implement the program of removing a node from the children of its
+parent in your favorite imperative programming language. Consider
+how can we ensure the overall performance of decreasing key is 
+O(1) time? Is left-child, right sibling approach enough?
 
 \subsubsection{Delete the minimum element from the heap (pop)}
 Since the minimum element is always stored at root, after delete it
