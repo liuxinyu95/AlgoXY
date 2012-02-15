@@ -57,6 +57,9 @@ def merge(t1, t2):
 def insert(h, x):
     return merge(h, KTree(x))
 
+def insert_node(h, x):
+    return merge(h, x)
+
 def top(h):
     return h.key
 
@@ -64,7 +67,7 @@ def decrease_key(h, x, key):
     x.key = key # assume key <= x.key
     if x.parent is not None:
         x.parent.children.remove(x) # Sadly, this is O(N) operation.
-        x.parent = None
+    x.parent = None
     return merge(x, h)
 
 # Python itertools and receipe provide plenty of
@@ -110,10 +113,6 @@ def test_sort():
         lst = random.sample(range(n), random.randint(1, n))
         assert(heap_sort(lst) == sorted(lst))
     print "heap-sort:", n, "test cases are OK."
-
-# helper function to test decrease-key
-def insert_node(h, x):
-    return merge(h, x)
 
 def test_decrease_key():
     n = 1000
