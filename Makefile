@@ -3,7 +3,7 @@ SRC = common-en.tex
 CHAPTERS = others/preface/preface-en datastruct/tree/binary-search-tree/bstree-en \
 datastruct/tree/red-black-tree/rbtree-en datastruct/tree/trie/trie-en \
 datastruct/tree/suffix-tree/stree-en datastruct/tree/B-tree/btree-en \
-datastruct/heap/binary-heap/bheap-en
+datastruct/heap/binary-heap/bheap-en datastruct/heap/other-heaps/kheap-en
 CHAPTER_OBJS = $(foreach file, $(CHAPTERS), $(file).dvi)
 
 all: $(BOOK).pdf
