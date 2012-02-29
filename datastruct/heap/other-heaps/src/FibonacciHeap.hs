@@ -70,7 +70,7 @@ insert h x = merge h (singleton x)
 -- Merge, runs in O(1) time.
 
 -- Different from Binomial heap, we don't consolidate the sub trees
--- with the same rank, we delayed it later when performing delete-Minimum.
+-- with the same rank, we delay it later when performing delete-Minimum.
 
 merge:: (Ord a) => FibHeap a -> FibHeap a -> FibHeap a
 merge h E = h
@@ -88,7 +88,7 @@ findMin = root . minTree
 
 -- Auxiliary function
 
--- Consolidate unordered Binomial trees by meld all trees in same rank
+-- Consolidate unordered Binomial trees by melding all trees in same rank
 --  O(lg N) time
 
 consolidate :: (Ord a) => [BiTree a] -> [BiTree a]
