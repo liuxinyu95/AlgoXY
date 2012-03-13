@@ -47,6 +47,36 @@ def insert(xs, x):
         xs[i], xs[i-1] = xs[i-1], xs[i] #swap
         i = i - 1
 
+# improvement 1
+#  Using binary search for insertion, 
+#    Compare O(N * lg N)
+#    Move O(N^2)
+
+def isort2(xs):
+    n = len(xs)
+    for i in range(1, n):
+        # insert xs[i] to xs[0..i-1]
+        x = xs[i]
+        p = binary_search(xs[:i], x)
+        for j in range(i, p, -1):
+            xs[j] = xs[j-1]
+        xs[p] = x
+    return xs
+
+# modified binary search, x may not exist in xs
+def binary_search(xs, x):
+    l = 0
+    u = len(xs)
+    while l < u:
+        m = (l+u)/2
+        if xs[m] == x:
+            return m # find a duplicated element
+        elif xs[m] < x:
+            l = m + 1
+        else:
+            u = m
+    return l
+
 # As insertion sort is O(N^2), we limited the number of N
 # to save time
 def test():
@@ -55,6 +85,7 @@ def test():
         xs = [random.randint(0, n) for _ in range(n)]
         assert(isort(list(xs)) == sorted(xs))
         assert(isort1(list(xs)) == sorted(xs))
+        assert(isort2(list(xs)) == sorted(xs))
 
 # internal use only, need remove
 def assertEqual(xs, ys):
@@ -64,5 +95,5 @@ def assertEqual(xs, ys):
         exit(1)
     
 if __name__ == "__main__":
-    print isort1([5,1,2,4,3,3])
+    print isort2([5,1,2,4,3,3])
     test()
