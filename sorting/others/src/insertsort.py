@@ -77,15 +77,42 @@ def binary_search(xs, x):
             u = m
     return l
 
-# As insertion sort is O(N^2), we limited the number of N
-# to save time
+# improvement 2,
+#   Using linked-list to gain constant time, O(1), insert operation.
+#   Instead of using pointer based linked-list, we can use
+#   index based linked-list
+
+def isort3(xs):
+    n = len(xs)
+    next = [-1]*(n+1)
+    for i in range(n):
+        insert1(xs, next, i)
+    return reorder(xs, next)
+
+def insert1(xs, next, i):
+    j = -1
+    while next[j] != -1 and xs[next[j]] < xs[i]:
+        j = next[j]
+    next[j], next[i] = i, next[j]
+
+def reorder(xs, next):
+    i, j = -1, 0
+    ys = []
+    while next[i] != -1:
+        ys.append(xs[next[i]])
+        i = next[i]
+        j = j+1
+    return ys
+
 def test():
     for _ in xrange(100):
         n = random.randint(0, 100)
         xs = [random.randint(0, n) for _ in range(n)]
-        assert(isort(list(xs)) == sorted(xs))
-        assert(isort1(list(xs)) == sorted(xs))
-        assert(isort2(list(xs)) == sorted(xs))
+        ys = sorted(xs)
+        assert(isort(list(xs)) == ys)
+        assert(isort1(list(xs)) == ys)
+        assert(isort2(list(xs)) == ys)
+        assert(isort3(list(xs)) == ys)
 
 # internal use only, need remove
 def assertEqual(xs, ys):
@@ -95,5 +122,5 @@ def assertEqual(xs, ys):
         exit(1)
     
 if __name__ == "__main__":
-    print isort2([5,1,2,4,3,3])
+    #print isort3([5,1,2,4,3,3])
     test()
