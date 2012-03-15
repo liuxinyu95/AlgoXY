@@ -19,10 +19,20 @@ module InsertionSort where
 import Test.QuickCheck
 import qualified Data.List as L
 
+insert :: (Ord a) => [a] -> a -> [a]
+insert [] x = [x]
+insert (y:ys) x = if x < y then x:y:ys else y:insert ys x
+
+-- Version 1
 isort [] = []
-isort (x:xs) = insert x $ isort xs where
-    insert x [] = [x]
-    insert x (y:ys) = if x < y then x:y:ys else y:insert x ys
+isort (x:xs) = insert (isort xs) x
+
+-- Version 2
+isort' :: (Ord a) => [a] -> [a]
+isort' = foldl insert []
 
 prop_sort :: (Ord a, Num a) => [a] -> Bool
 prop_sort xs = L.sort xs == isort xs
+
+prop_sort' :: (Ord a, Num a) => [a] -> Bool
+prop_sort' xs = L.sort xs == isort' xs
