@@ -41,6 +41,65 @@ void isort(Key* xs, int n){
       swap(xs, j, j+1);
 }
 
+/* Linked list version*/
+
+struct node{
+  Key key;
+  struct node* next;
+};
+
+struct node* insert(struct node* lst, struct node* x){
+  struct node *p, *head;
+  p = NULL;
+  for(head = lst; lst && x->key > lst->key; lst = lst->next)
+    p = lst;
+  x->next = lst;
+  if(!p)
+    return x;
+  p->next = x;
+  return head;
+}
+
+struct node* isort1(struct node* lst){
+  struct node *p, *r;
+  r = NULL;
+  while(lst){
+    p = lst;
+    lst = lst->next;
+    r = insert(r, p);
+  }
+  return r;
+}
+
+/* Auxiliary functions */
+
+struct node* to_list(const Key* xs, int n){
+  struct node* p;
+  if(n==0)
+    return NULL;
+  p=(struct node*)malloc(sizeof(struct node));
+  p->key = xs[0];
+  p->next = to_list(xs+1, n-1);
+  return p;
+}
+
+void to_array(struct node* lst, Key* xs, int n){
+  int i;
+  for(i=0; i<n; ++i, lst = lst->next)
+    xs[i] = lst->key;
+}
+
+void release_list(struct node* lst){
+  struct node* p;
+  while(lst){
+    p = lst;
+    lst = lst->next;
+    free(p);
+  }
+}
+
+/* Verification */
+
 int sorted(const Key* xs, int n){
   int i;
   for(i=0; i<n-1; ++i)
@@ -69,9 +128,19 @@ void test_sort(){
     for(i=0; i<n; ++i)
       xs[i] = BIG_RAND();
     c = check_sum(xs, n);
+
+    /* test array version*/
     isort(xs, n);
     assert(sorted(xs, n));
     assert(c == check_sum(xs, n));
+
+    /* test linked-list version*/
+    struct node* ys = to_list(xs, n);
+    ys = isort1(ys);
+    to_array(ys, xs, n);
+    assert(c == check_sum(xs, n));
+    release_list(ys);
+
     free(xs);
   }
   printf("OK\n");
