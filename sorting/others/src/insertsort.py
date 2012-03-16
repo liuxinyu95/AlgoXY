@@ -96,12 +96,11 @@ def insert1(xs, next, i):
     next[j], next[i] = i, next[j]
 
 def reorder(xs, next):
-    i, j = -1, 0
+    i = -1
     ys = []
     while next[i] != -1:
         ys.append(xs[next[i]])
         i = next[i]
-        j = j+1
     return ys
 
 def test():
