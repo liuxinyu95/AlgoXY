@@ -10,7 +10,7 @@
 %
 %-----------------------------------------------------------------------------
 %\input{../../../common.tex}
-\input{../../../common-en.tex}
+\input{../../common-en.tex}
 
 \setcounter{page}{1}
 
@@ -59,111 +59,84 @@ we reach the best bound of comparison based sorting algorithms, $O(N \lg N)$,
 by evoluting to tree sort. And we finally show the connection between
 the 'hello world' data structure and 'hello world' sorting algorithm. 
 
-Figure \ref{fig:binary-tree-example} shows this concept and an example binary tree.
+The idea of insertion sort can be vivid illustrated by a real life
+poker game\cite{CLRS}. Suppose the cards are shuffled, and a player starts 
+taking card one by one.
+
+At any time, all cards in player's hand are well sorted. When the player
+gets a new card, he insert it in proper position according to the order
+of points. Figure \ref{fig:hand-of-cards} shows this insertion example.
 
 \begin{figure}[htbp]
   \centering
-  \subfloat[Concept of binary tree]{\includegraphics[scale=0.5]{img/lvr.ps}} \\
-  \subfloat[An example binary tree]{\includegraphics[scale=0.5]{img/btexample.ps}}
-  \caption{Binary tree concept and an example.} 
-  \label{fig:binary-tree-example}
+  \includegraphics[scale=0.5]{img/hand-of-cards.eps}
+  \caption{Insert card 8 to proper position in a deck.} 
+  \label{fig:hand-of-cards}
 \end{figure}
 
-A binary search tree is a binary tree which satisfies the below criteria.
-for each node in binary search tree,
-\begin{itemize}
-\item all the values in left child tree are less than the value of of this node;
-\item the value of this node is less than any values in its right child tree.
-\end{itemize}
+Based on this idea, the algorithm of insertion sort can be directly
+given as the following.
 
-Figure \ref{fig:bst-example} shows an example of binary search tree. Compare with
-Figure \ref{fig:binary-tree-example} we can see the difference about the key 
-ordering between them.
+\begin{algorithmic}
+\Function{Sort}{$A$}
+  \State $X \gets \Phi$
+  \For{each $x \in A$}
+    \State \Call{Insert}{$X, x$}
+  \EndFor
+  \State \Return $X$
+\EndFunction
+\end{algorithmic}
 
-\begin{figure}[htbp]
-       \begin{center}
-        \includegraphics[scale=0.5]{img/bst-1.ps}
-        \caption{A Binary search tree example.} \label{fig:bst-example}
-       \end{center}
-\end{figure}
+It's easy to express this process with folding, which we 
+mentioned in the chapter of binary search tree.
 
+\be
+  insert = foldL \quad insert \quad \Phi
+\ee
+
+Note that in above algorithm, we store the sorted result in $X$, 
+so this isn't in-place sorting. It's easy to change it to in-plance
+algorithm.
+
+\begin{algorithmic}
+\Function{Sort}{$A$}
+  \For{$i \gets 2$ to \Call{Length}{$A$}}
+    \State insert $A_i$ to sorted sequence $\{A'_1, A'_2, ..., A'_{i-1} \}$
+  \EndFor
+\EndFunction
+\end{algorithmic}
+
+TODO: add figure to illustrate the idea
+
+We can find there are recursive concept in this definition. Thus it can
+be expressed as the following.
+
+\be
+sort(A) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & A = \Phi \\
+  insert(sort(\{A_2, A_3, ...\}), A_1) & otherwise
+  \end{array}
+\right.  
+\ee
 
 % ================================================================
-% Data layout
+% Insertion
 % ================================================================
-\section{Data Layout}
-\index{binary search tree!data layout}
+\section{Insertion}
+\index{insertion sort!insertion}
 
-Based on the recursive definition of binary search tree, we can draw the 
-data layout in procedural setting with pointer supported as in figure
-\ref{fig:node-layout-parent}.
+We haven't answered the question about how to realize insertion however.
+It's a puzzle how does human locate the proper postion so quickly?
 
-%\begin{figure}[htbp]
-%       \begin{center}
-%        \includegraphics[scale=0.8]{img/node-layout.ps}
-%        \caption{Node layout.} \label{fig:node-layout}
-%       \end{center}
-%\end{figure}
+For computer, it's an obvious option to perform a scan. We can either 
+scan from left to right or vice versa. However, if the sequence is
+stored in plain array, it's neccessary to scan from right to left.
 
-The node contains a field of key, which can be augmented with satellite
-data; a field contains a pointer to the left child and a field point to
-the right child. In order to back-track an ancestor easily, a parent
-field can be provided as well. 
-%Figure \ref{fig:node-layout-parent} shows the layout with parent field.
+TODO: Add algorithm
 
-\begin{figure}[htbp]
-       \begin{center}
-        \includegraphics[scale=0.8]{img/node-layout-parent.ps}
-        \caption{Layout of nodes with parent field.} \label{fig:node-layout-parent}
-       \end{center}
-\end{figure}
-
-In this post, we'll ignore the satellite data for simple illustration purpose.
-Based on this layout, the node of binary search tree can be defined in a procedural
-language, such as C++ as the following.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<class T>
-struct node{
-  node(T x):key(x), left(0), right(0), parent(0){}
-  ~node(){ 
-    delete left;
-    delete right;
-  }
-
-  node* left; 
-  node* right;
-  node* parent; //parent is optional, it's helpful for succ/pred
-  T key;
-};
-\end{lstlisting}
-
-There is another setting, for instance in Scheme/Lisp languages, the elementary
-data structure is linked-list. Figure \ref{fig:lisp-layout} shows how a binary
-search tree node can be built on top of linked-list.
-
-\begin{figure}[htbp]
-       \begin{center}
-        \includegraphics[scale=0.8]{img/lisp-layout.ps}
-        \caption{Binary search tree node layout on top of linked list. Where `left...' and 'right ...' are either empty or binary search tree node composed in the same way.} \label{fig:lisp-layout}
-       \end{center}
-\end{figure}
-
-Because in pure functional setting, It's hard to use pointer for back tracking
-the ancestors, (and typically, there is no need to do back tracking, since
-we can provide top-down solution in recursive way) there is not `parent' field
-in such layout.
-
-For simplified reason, we'll skip the detailed layout in the future, and only 
-focus on the logic layout of data structures. For example, below is the definition
-of binary search tree node in Haskell.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-data Tree a = Empty 
-            | Node (Tree a) a (Tree a)
-\end{lstlisting}
+One may think scan from left to right is natural. However, 
 
 % ================================================================
 % Insert
@@ -731,34 +704,6 @@ out from the tree.
 
 Figure \ref{fig:del-leaf}, \ref{fig:del-1child}, and \ref{fig:del-branch}
 illustrate these different cases when deleting a node from the tree.
-
-\begin{figure}[htbp]
-       \begin{center}
-	\includegraphics[scale=0.5]{img/del-leaf.ps}
-        \caption{$x$ can be spliced out.} \label{fig:del-leaf}
-       \end{center}
-\end{figure}
-
-\begin{figure}[htbp]
-        \centering
-        \subfloat[Before delete $x$]{\includegraphics[scale=0.5]{img/del-lc-before.ps}} 
-        \subfloat[After delete $x$]{\includegraphics[scale=0.5]{img/del-lc-after.ps}} \\
-        $x$ is spliced out, and replaced by its left child. \\
-        \subfloat[Before delete $x$]{\includegraphics[scale=0.5]{img/del-rc-before.ps}} 
-        \subfloat[Before delete $x$]{\includegraphics[scale=0.5]{img/del-rc-after.ps}} \\
-        $x$ is spliced out, and replaced by its right child.
-        \caption{Delete a node which has only one non-NIL child.} 
-        \label{fig:del-1child}
-\end{figure}
-
-\begin{figure}[htbp]
-        \centering
-        \subfloat[Before delete $x$]{\includegraphics[scale=0.5]{img/del-branch-before.ps}}
-        \subfloat[After delete $x$]{ \includegraphics[scale=0.5]{img/del-branch-after.ps}} \\
-        $x$ is replaced by splicing the minimum element from its right child.
-        \caption{Delete a node which has both children.} 
-        \label{fig:del-branch}
-\end{figure}
 
 Based on this idea, the deletion can be defined as the below function.
 
