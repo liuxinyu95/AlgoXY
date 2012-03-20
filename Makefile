@@ -2,6 +2,7 @@ BOOK = main-en
 SRC = common-en.tex
 CHAPTERS = others/preface/preface-en \
 datastruct/tree/binary-search-tree/bstree-en \
+sorting/insertion-sort/isort-en \
 datastruct/tree/red-black-tree/rbtree-en datastruct/tree/AVL-tree/avltree-en \
 datastruct/tree/trie/trie-en \
 datastruct/tree/suffix-tree/stree-en datastruct/tree/B-tree/btree-en \
