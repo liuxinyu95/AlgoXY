@@ -44,11 +44,9 @@ instance Queue PairQueue where
     push (Q f r) x = balance $ Q f (x:r)
 
     -- Amortized O(1) time pop
-    --pop :: PairQueue a -> PairQueue a
     pop (Q [] _) = error "Empty"
     pop (Q (_:f) r) =  balance $ Q f r
 
-    --front :: PairQueue a -> a
     front (Q [] _) = error "Empty"
     front (Q (x:_) _) = x
 
