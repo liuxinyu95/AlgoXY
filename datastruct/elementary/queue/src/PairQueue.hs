@@ -27,48 +27,36 @@ import Test.QuickCheck
 -- A Queue is consist with two linked-list, front list and rear list.
 --   Add new element in tail, while extract element from head
 
-data PairQueue a = Q ([a], [a])
+data PairQueue a = Q [a] [a]
 
--- Note that, we can't use instance
+-- Note that type PairQueue a = ([a], [a]) won't work.
+-- Such type synonym can't be instance of Queue, even with
+-- -XTypeSynonymInstances etc pragmas.
+-- Neither we can use something like instance functor ((,) a) ...
+
 instance Queue PairQueue where
     -- Auxiliary functions
-    empty = Q ([], [])
+    empty = Q [] []
 
-    isEmpty (Q (f, _)) = null f
+    isEmpty (Q f _) = null f
 
     -- Amortized O(1) time push
-    --push :: PairQueue a -> a -> PairQueue a
-    push (Q (f, r)) x = balance $ Q (f, x:r)
+    push (Q f r) x = balance $ Q f (x:r)
 
     -- Amortized O(1) time pop
-    --pop :: Queue a -> Queue a
-    pop (Q ([], _)) = error "Empty"
-    pop (Q (_:f, r)) =  balance $ Q (f, r)
+    --pop :: PairQueue a -> PairQueue a
+    pop (Q [] _) = error "Empty"
+    pop (Q (_:f) r) =  balance $ Q f r
 
-    --front :: Queue a -> a
-    front (Q ([], _)) = error "Empty"
-    front (Q (x:_, _)) = x
+    --front :: PairQueue a -> a
+    front (Q [] _) = error "Empty"
+    front (Q (x:_) _) = x
 
 balance :: PairQueue a -> PairQueue a
-balance (Q ([], r)) = Q (reverse r, [])
+balance (Q [] r) = Q (reverse r) []
 balance q = q
 
 -- test
-
-{-
-proc :: [Int] -> Queue Int -> [Int]
-proc [] _ = []
-proc (x:xs) q | even x = proc xs (push q x)
-              | isEmpty q = proc xs q
-              | otherwise = front q : proc xs (pop q)
-
-proc' :: [Int] -> [Int] -> [Int]
-proc' [] _ = []
-proc' (x:xs) lst | even x = proc' xs (lst ++ [x])
-                 | null lst = proc' xs lst
-                 | otherwise = head lst : proc' xs (tail lst)
-
--}
 
 prop_queue :: [Int] -> Bool
 prop_queue xs = proc xs (empty::(PairQueue Int)) == proc' xs []
