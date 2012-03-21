@@ -1,5 +1,5 @@
 {-
-    Queue.hs, General type definition for Queue (FIFO)
+    Queue.hs, Batched Queue (FIFO)
     Copyright (C) 2012, Liu Xinyu (liuxinyu95@gmail.com)
 
     This program is free software: you can redistribute it and/or modify
@@ -16,21 +16,47 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 
--- Contains both general type definition and test utility.
+-- Batched Queue based on Chris Okasaki's ``Purely Functional Datastructures''
 
-module Queue where
+module PairQueue where
+
+import Queue
+import Test.QuickCheck
 
 -- Definition
-class Queue q where
-    empty :: q a
-    isEmpty :: q a -> Bool
-    push :: q a -> a -> q a -- aka 'snoc' or append, or push_back
-    pop :: q a -> q a -- aka 'tail' or pop_front
-    front :: q a -> a -- aka 'head'
+-- A Queue is consist with two linked-list, front list and rear list.
+--   Add new element in tail, while extract element from head
+
+data PairQueue a = Q ([a], [a])
+
+-- Note that, we can't use instance
+instance Queue PairQueue where
+    -- Auxiliary functions
+    empty = Q ([], [])
+
+    isEmpty (Q (f, _)) = null f
+
+    -- Amortized O(1) time push
+    --push :: PairQueue a -> a -> PairQueue a
+    push (Q (f, r)) x = balance $ Q (f, x:r)
+
+    -- Amortized O(1) time pop
+    --pop :: Queue a -> Queue a
+    pop (Q ([], _)) = error "Empty"
+    pop (Q (_:f, r)) =  balance $ Q (f, r)
+
+    --front :: Queue a -> a
+    front (Q ([], _)) = error "Empty"
+    front (Q (x:_, _)) = x
+
+balance :: PairQueue a -> PairQueue a
+balance (Q ([], r)) = Q (reverse r, [])
+balance q = q
 
 -- test
 
-proc :: (Queue q)=>[Int] -> q Int -> [Int]
+{-
+proc :: [Int] -> Queue Int -> [Int]
 proc [] _ = []
 proc (x:xs) q | even x = proc xs (push q x)
               | isEmpty q = proc xs q
@@ -42,3 +68,7 @@ proc' (x:xs) lst | even x = proc' xs (lst ++ [x])
                  | null lst = proc' xs lst
                  | otherwise = head lst : proc' xs (tail lst)
 
+-}
+
+prop_queue :: [Int] -> Bool
+prop_queue xs = proc xs (empty::(PairQueue Int)) == proc' xs []

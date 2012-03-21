@@ -1,0 +1,185 @@
+列一下关于Queue的outline，我把Queue和Sequence做为基本数据结构的最后一部分。
+Queue并非想象的那么简单，对于Queue的要求通常如下：
+
+Queue是满足FIFO的数据结构；
+在尾部能够在常数时间O(1)添加新元素；
+在头部能够在常数时间O(1)取走元素；
+
+如果再加上内存不受限制（类似于动态数组哪种）的要求，则似乎只存在一种实现方式：双向链表
+如果没有内存的动态要求，也可以使用数组来构造一个逻辑上环状的queue，使用两个下标head和tail来满足O(1)的访问。
+
+现在我们的问题是：如何实现一个纯FP的Queue？
+由于FP的底层数据结构是单向链表，故而我们只能在头部用O(1)时间取元素，而在尾部添加元素则需要O(N)时间，其中N是链表的长度；
+
+最简单的解法是使用2个链表front和rear来组成一个队列，两个链表的尾部和尾部对接起来，形成一个马蹄形磁铁状，两个链表的头部分别代表队列的两端。
+这样不管是添加还是取走元素都是O(1)的了。
+
+但是还有一些细节需要解决，如果连续取走元素造成front链表为空，而此时rear链表尚存在元素，我们就要重新构造队列：方法是吧rear逆序过来替换front。
+对应的Haskell代码如下：
+type Queue a = ([a], [a])
+
+empty = ([], [])
+
+balance :: Queue a -> Queue a
+balance ([], r) = (reverse r, [])
+balance q = q
+
+-- Amortized O(1) time push
+push :: Queue a -> a -> Queue a
+push (f, r) x = balance (f, x:r)
+
+-- Amortized O(1) time pop
+pop :: Queue a -> Queue a
+pop ([], _) = error "Empty"
+pop (_:f, r) =  balance (f, r)
+
+front :: Queue a -> a
+front ([], _) = error "Empty"
+front (x:_, _) = x
+
+这个实现，存在这一个有趣的对偶实现：
+在某些特别老旧的语言，例如BASIC中，只有数组，没有链表，那么怎么办呢？
+数组的特点是在尾部增加是O(1)的，但是在头部取走是O(N)的，原因是要shifting。
+
+我们可以把两个数组头对头接起来，组成马蹄形状的队列：
+class Queue:
+    def __init__(self):
+        self.front = []
+        self.rear = []
+
+def is_empty(q):
+    return q.front == [] and q.rear == []
+
+# O(1) time push
+def push(q, x):
+    q.rear.append(x)
+
+def pop(q):
+    if q.front == []:
+        q.rear.reverse()
+        (q.front, q.rear) = (q.rear, [])
+    return q.front.pop()
+
+问题看似解决了，但是实际上还有更复杂的问题，上述的pop和push本质上都是Amortized O(1)的，实际上某次的reverse可能非常耗时，这在实时系统有可能无法接受。
+Chris Okasaki在他的著作中累积给出了超过10中不同的Queue和Deque的实现。我稍后再加以介绍。
+
+
+为了完整，给出两个常见的Queue的实现。
+
+实现1：使用单向链表，和一个sentinel，借助head和tail两个fields来实现O(1)的入队和出队操作：
+
+typedef int Key; //也可以用C++的模版来抽象数据类型，我们使用C来简化语言方面的一些问题。
+
+struct Node{
+  Key key;
+  struct Node* next;
+};
+
+Key key(struct Node* x){ return x->key; }
+
+struct Queue{
+  struct Node *head, *tail;
+};
+
+struct Queue* create(){
+  struct Queue* q = (struct Queue*)malloc(sizeof(struct Queue));
+  struct Node* s = (struct Node*)malloc(sizeof(struct Node));
+  s->next = NULL;
+  q->head = q->tail = s; /* sentinel */
+  return q;
+}
+
+int empty(struct Queue* q){
+  return q->head == q->tail;
+}
+
+void destroy(struct Queue* q){
+  struct Node* p;
+  while(q->head){
+    p = q->head;
+    q->head = q->head->next;
+    free(p);
+  }
+  free(q);
+}
+
+如果想达到O(1)时间的入队和出队，最简单的方法是在链表的头部出队，在链表的尾部入队；
+如果采用相反的策略，则比较麻烦。
+
+struct Queue* enqueue(struct Queue* q, Key x){
+  struct Node* p = (struct Node*)malloc(sizeof(struct Node));
+  p->key = x;
+  p->next = NULL;
+  q->tail->next = p;
+  q->tail = p;
+  return q;
+}
+
+struct Node* head(struct Queue* q){ return q->head->next; }
+
+Key dequeue(struct Queue* q){
+  struct Node* p = head(q);
+  Key x = key(p);
+  q->head->next = p->next;
+  if(q->tail == p)
+    q->tail = q->head;
+  free(p);
+  return x;
+}
+
+另外一个方案是使用循环buffer，来实现Queue，如下：
+struct QueueBuf{
+  Key* buf;
+  int head, tail, size;
+};
+
+构造和释放：
+struct QueueBuf* createQ(int max){
+  struct QueueBuf* q = (struct QueueBuf*)malloc(sizeof(struct QueueBuf));
+  q->buf = (Key*)malloc(sizeof(Key)*max);
+  q->size = max;
+  q->head = q->tail = 0;
+  return q;
+}
+
+void destroyQ(struct QueueBuf* q){
+  free(q->buf);
+  free(q);
+}
+
+判空和判满：
+int fullQ(struct QueueBuf* q){
+  return q->tail + 1 == q->head ||
+         q->tail + 1 - q->size == q->head;
+}
+
+int emptyQ(struct QueueBuf* q){
+  return q->head == q->tail;
+}
+
+出队和入队：
+
+/* O(1) append to tail */
+void enQ(struct QueueBuf* q, Key x){
+  if(!fullQ(q)){
+    q->buf[q->tail++] = x;
+    q->tail -= q->tail< q->size ? 0 : q->size;
+  }
+}
+
+/* Assume queue isn't empty */
+Key headQ(struct QueueBuf* q){
+  return q->buf[q->head];
+}
+
+/* O(1) remove from head */
+Key deQ(struct QueueBuf* q){
+  Key x = headQ(q);
+  q->head++;
+  q->head -= q->head< q->size ? 0 : q->size;
+  return x;
+}
+
+虽然我们尽量避免一些语言的细节，但是语言或多或少会有一些影响，例如循环buffer的方案中，由于考虑到C语言中的 mod %的效率很低，故而我们使用了一些判断来避免取模。如果取模的效率不是问题的话，实现可以更加简洁。
+
+另外，这两个实现都是imperative only的，我们无法给出对应的Functional实现，列在这里，仅仅是作为参考。
