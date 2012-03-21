@@ -16,44 +16,44 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 
--- Batched Queue based on Chris Okasaki's ``Purely Functional Datastructures''
+-- Balanced Batched Queue based on Banker's Queue and Physicist's Queue in [1]. 
 
-module PairQueue where
+module BalanceQueue where
 
 import Queue
 import Test.QuickCheck
 
 -- Definition
--- A Queue is consist with two linked-list, front list and rear list.
+--   A Queue is consist with two linked-list, front list and rear list.
 --   Add new element in tail, while extract element from head
+--   In order to make the queue balanced for pop/push, we force the invariant
+--
+--     length(rear list) < length(front list)
+--
 
-data PairQueue a = Q [a] [a]
+data BalanceQueue a = BQ [a] Int [a] Int
 
--- Note that type PairQueue a = ([a], [a]) won't work.
--- Such type synonym can't be instance of Queue, even with
--- -XTypeSynonymInstances etc pragmas.
--- Neither we can use something like instance functor ((,) a) ...
+-- we skip the empty error for pop and front
+instance Queue BalanceQueue where
+    empty = BQ [] 0 [] 0
 
-instance Queue PairQueue where
-    -- Auxiliary functions
-    empty = Q [] []
-
-    isEmpty (Q f _) = null f
+    isEmpty (BQ _ lenf _ _) = lenf == 0
 
     -- Amortized O(1) time push
-    push (Q f r) x = balance f (x:r)
+    push (BQ f lenf r lenr) x = balance f lenf (x:r) (lenr + 1)
 
     -- Amortized O(1) time pop
-    pop (Q [] _) = error "Empty"
-    pop (Q (_:f) r) =  balance f r
+    pop (BQ (_:f) lenf r lenr) = balance f (lenf - 1) r lenr
 
-    front (Q [] _) = error "Empty"
-    front (Q (x:_) _) = x
+    front (BQ (x:_) _ _ _) = x
 
-balance [] r = Q (reverse r) []
-balance f r = Q f r
+balance f lenf r lenr 
+    | lenr <= lenf = BQ f lenf r lenr
+    | otherwise = BQ (f ++ (reverse r)) (lenf + lenr) [] 0
 
 -- test
 
 prop_queue :: [Int] -> Bool
-prop_queue xs = proc xs (empty::(PairQueue Int)) == proc' xs []
+prop_queue xs = proc xs (empty::(BalanceQueue Int)) == proc' xs []
+
+--[1]. Chris Okasaki's ``Purely Functional Datastructures''
