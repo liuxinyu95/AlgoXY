@@ -1,5 +1,5 @@
 {-
-    Queue.hs, Batched Queue (FIFO)
+    BalanceQueue.hs, Batched Queue (FIFO)
     Copyright (C) 2012, Liu Xinyu (liuxinyu95@gmail.com)
 
     This program is free software: you can redistribute it and/or modify
