@@ -26,18 +26,18 @@ import Test.QuickCheck
 -- Definition
 --   A Queue is consist with two linked-list, front list and rear list.
 --   Add new element in tail, while extract element from head
---   TODO: Add explaination
 
-data Reverse a = Empty 
-               | Reverse [a] [a]
-                 deriving (Show, Eq)
+--   State for increamental realization for f ++ reverse r
+--      field n: number of elements left in f
+data State a = Empty 
+             | Reverse Int [a] [a] [a] [a] -- n, f', acc_f' r, acc_r
+             | Append Int [a] [a]          -- n, rev_f', acc
+             | Done [a] -- reulst: f ++ reverse r
+               deriving (Show, Eq)
 
 -- front, length of front, on-goint reverse state, rear, length of reverse
-data RealtimeQueue a = RTQ [a] Int (Reverse a) [a] Int
+data RealtimeQueue a = RTQ [a] Int (State a) [a] Int
                      deriving (Show, Eq)
-
--- Auxiliary function to create stepped reverse state
-reverse' xs = Reverse xs []
 
 -- we skip the empty error for pop and front
 instance Queue RealtimeQueue where
@@ -45,29 +45,47 @@ instance Queue RealtimeQueue where
 
     isEmpty (RTQ _ lenf _ _ _) = lenf == 0
 
-    -- Amortized O(1) time push
+    -- O(1) time push
     push (RTQ f lenf s r lenr) x = balance f lenf s (x:r) (lenr + 1)
 
-    -- Amortized O(1) time pop
-    pop (RTQ (_:f) lenf s r lenr) = balance f (lenf - 1) s r lenr
+    -- O(1) time pop
+    pop (RTQ (_:f) lenf s r lenr) = balance f (lenf - 1) (abort s) r lenr
 
     front (RTQ (x:_) _ _ _ _) = x
 
 balance f lenf s r lenr 
     | lenr <= lenf =  step f lenf s r lenr
-    | otherwise = step f (lenf + lenr) (reverse' r) [] 0
+    | otherwise = step f (lenf + lenr) (Reverse 0 f [] r []) [] 0
 
--- execute reverse step by step
-step [] lenf (Reverse [] acc) r lenr = step acc lenf Empty r lenr
-step [] lenf s r lenr = step [] lenf (next s) r lenr
-step f lenf s r lenr = RTQ f lenf (next s) r lenr
+-- execute f ++ reverse r step by step
+step f lenf s r lenr =
+    case next $ next s of 
+      Done f' -> RTQ f' lenf Empty r lenr
+      s' -> RTQ f lenf s' r lenr
 
-next (Reverse (x:xs) acc) = Reverse xs (x:acc)
+-- realize of f ++ reverse r based on 2 increamental approaches
+--  1. reverse xs = reverse' xs [] where
+--        reverse' [] acc = acc
+--        reverse' (x:xs) acc = reverse' xs (x:acc)
+--  2. xs ++ ys = reverse' (reverse xs) ys
+next (Reverse n (x:f) f' (y:r) r') = Reverse (n+1) f (x:f') r (y:r')
+next (Reverse n [] f' [y] r') = Append n f' (y:r')
+next (Append 0 _ acc) = Done acc
+next (Append n (x:f') acc) = Append (n-1) f' (x:acc)
 next s = s
 
+-- Abort unneccessary appending as the element is popped
+abort (Append 0 _ (_:acc)) = Done acc -- tricky!
+abort (Append n f' acc) = Append (n-1) f' acc
+abort (Reverse n f f' r r') = Reverse (n-1) f f' r r'
+abort s = s
+
 -- test
+
+fromList :: [a] -> RealtimeQueue a
+fromList = foldl push (empty::RealtimeQueue a)
 
 prop_queue :: [Int] -> Bool
 prop_queue xs = proc xs (empty::(RealtimeQueue Int)) == proc' xs []
 
---[1]. Chris Okasaki's ``Purely Functional Datastructures''
+--[1]. Chris Okasaki's ``Purely Functional Data structures''
