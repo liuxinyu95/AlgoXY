@@ -49,7 +49,7 @@ instance Queue BalanceQueue where
 
 balance f lenf r lenr 
     | lenr <= lenf = BQ f lenf r lenr
-    | otherwise = BQ (f ++ (reverse r)) (lenf + lenr) [] 0
+    | otherwise = BQ (f ++ reverse r) (lenf + lenr) [] 0
 
 -- test
 
