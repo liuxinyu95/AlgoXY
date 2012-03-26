@@ -32,7 +32,7 @@ import Test.QuickCheck
 data State a = Empty 
              | Reverse Int [a] [a] [a] [a] -- n, f', acc_f' r, acc_r
              | Append Int [a] [a]          -- n, rev_f', acc
-             | Done [a] -- reulst: f ++ reverse r
+             | Done [a] -- result: f ++ reverse r
                deriving (Show, Eq)
 
 -- front, length of front, on-goint reverse state, rear, length of reverse
@@ -59,9 +59,10 @@ balance f lenf s r lenr
 
 -- execute f ++ reverse r step by step
 step f lenf s r lenr =
-    case next $ next s of 
+    case s' of 
       Done f' -> RTQ f' lenf Empty r lenr
       s' -> RTQ f lenf s' r lenr
+    where s' = if null f then next $ next s else next s
 
 -- realize of f ++ reverse r based on 2 increamental approaches
 --  1. reverse xs = reverse' xs [] where
@@ -74,8 +75,8 @@ next (Append 0 _ acc) = Done acc
 next (Append n (x:f') acc) = Append (n-1) f' (x:acc)
 next s = s
 
--- Abort unneccessary appending as the element is popped
-abort (Append 0 _ (_:acc)) = Done acc -- tricky!
+-- Abort unnecessary appending as the element is popped
+abort (Append 0 _ (_:acc)) = Done acc -- Note! we rollback 1 elem
 abort (Append n f' acc) = Append (n-1) f' acc
 abort (Reverse n f f' r r') = Reverse (n-1) f f' r r'
 abort s = s

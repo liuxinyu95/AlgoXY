@@ -183,3 +183,236 @@ Key deQ(struct QueueBuf* q){
 虽然我们尽量避免一些语言的细节，但是语言或多或少会有一些影响，例如循环buffer的方案中，由于考虑到C语言中的 mod %的效率很低，故而我们使用了一些判断来避免取模。如果取模的效率不是问题的话，实现可以更加简洁。
 
 另外，这两个实现都是imperative only的，我们无法给出对应的Functional实现，列在这里，仅仅是作为参考。
+
+给一个其他策略的O(1) amortize的queue实现：
+
+--   A Queue is consist with two linked-list, front list and rear list.
+--   Add new element in tail, while extract element from head
+--   In order to make the queue balanced for pop/push, we force the invariant
+--
+--     length(rear list) < length(front list)
+--
+
+data BalanceQueue a = BQ [a] Int [a] Int
+
+-- we skip the empty error for pop and front
+instance Queue BalanceQueue where
+    empty = BQ [] 0 [] 0
+
+    isEmpty (BQ _ lenf _ _) = lenf == 0
+
+
+    -- Amortized O(1) time push
+    push (BQ f lenf r lenr) x = balance f lenf (x:r) (lenr + 1)
+
+
+    -- Amortized O(1) time pop
+    pop (BQ (_:f) lenf r lenr) = balance f (lenf - 1) r lenr
+
+    front (BQ (x:_) _ _ _) = x
+
+balance f lenf r lenr
+    | lenr <= lenf = BQ f lenf r lenr
+    | otherwise = BQ (f ++ (reverse r)) (lenf + lenr) [] 0
+
+稍后给解释。
+
+Hi,
+
+昨天比较匆忙，今天给解释。
+
+首先回顾一下我们最初给的那个马蹄磁铁形状的Queue。虽然它是O(1) amortized的性能，但是worst case却非常差：
+  worst case: font列表包含一个元素，此后连续push了N个元素, N很大，然后执行了1次pop
+
+根据前面的策略，这N个元素全部加入了rear列表，pop后front列表为空，于是开始执行reverse(rear)，这是一个O(N)的操作，在N很大的时候，此次pop的性能非常差。
+
+究其原因，是因为font和rear严重不平衡，为了进行改善，我们增加了一个平衡条件:
+
+| rear | < | front |
+
+也就是说，一旦rear的长度超过 front的长度，我们就开始执行reverse(rear)，于是就有了昨天我给出的策略。
+
+但是这个reverse(rear)的性能，仍然是O(|rear|)的，在rear很长时，性能仍然无法接受，后面我会给出一个real time的解法。
+
+Real time Queue需要非常精细和巧妙的来实现，我们先给一个直观的，但是比较复杂的解。
+然后给一个不那么直观的但是简洁的解。后者如果有语言级别的lazy evaluation支持，会非常的简单。
+
+首先我们我们前面给的amortized O(1)queue, 我们其实把一个非常费时的操作 f ++ reverse r，分摊到各个pop和push中。
+只有当 | r | > | f | 的时候，我们才进行 f ++ reverse r的计算。考虑 |f |和|r |都是整数，也就是说
+当 | r | = | f | +1的时候，我们开始这个耗时的计算。
+
+如果要达到实时性能，我们不能一下子吧 f ++ reverse r算出来。我们需要手工的把这个耗时的计算，schedule到每个pop和push中。
+这样，虽然每个pop和push略微慢了，但是不会出现一个特别慢的push/pop操作。
+
+我们先观察 reverse 是怎么实现的。通常如下：
+
+reverse 空 = 空
+reverse (x:xs) = x : reverse xs
+
+但是，存在一个使用accumulator的reverses实现：
+reverse xs = reverse' xs 空 其中：
+  reverse' 空 acc = acc
+  reverse' (x:xs) acc = reverse' xs (x:acc)
+
+其中后者这个实现，明显具有尾递归（tail recursion）特点。我们很容易把它变成一步一步的(incremental)，而非一下子全部计算完。
+
+方法就是我们建立一个状态机，包含两个状态：正在reverse的状态和完成的状态。如下：
+data State a =
+             | Reverse [a] [a]
+             | Done [a]
+
+一步一步的reverse就可以通过状态转换来完成：
+step (Reverse [] xs) = Done xs
+step (Reverse (x:xs) acc) = Reverse xs (x:acc)
+
+效果如下：
+step $ Reverse "hello" [] = Reverse "ello" "h"
+step $ Reverse "ello" "h" = Reverse "llo" "eh"
+...
+step $ Reverse "o" "lleh" = Reverse [] "olleh"
+step $ Reverse [] "olleh" = Done "olleh"
+
+所以我们只要保证在每次pop和push的时候调用step就可以了。
+
+问题只完成了一半：f ++ reverse r，我们把后面的reverse分拆了。但是++操作也是很耗时的，O(|f|)数量级，我们必须分拆++为increment的。并把每个step平摊到pop/push中。
+
+继续：
+
+但是实现一个increment的append比较的困难。这里引入一个trick。我们发现其实 xs ++ ys，可以这样来实现：
+
+我们可以先把xs 颠倒过来变成sx, 然后从sx的头部一个一个的取元素，放到ys的前面。如下：
+
+     xs ++ ys
+== reverse (reverse xs) ++ ys
+== reverse' (reverse xs) [] ++ ys
+== reverse' sx ys
+
+于是，我们可以定义而外的state用来在reverse r后把结果append到f之后。策略如下：
+我们先同时颠倒f和r，得到f' = reverse f, r' = reverse r
+然后我们把f' increment 添加到r'的前面:
+
+data State a = Reverse [a] [a] [a] [a]
+             | Append [a] [a]
+             | Done [a]
+
+状态转换的步骤如下：
+next (Reverse (x:f) f' (y:r) r') = Reverse f (x:f') r (y:r')
+next (Reverse [] f' [y] r') = Append f' (y:r')
+next (Append 0 _ acc) = Done acc
+next (Append (x:f') acc) = Append f' (x:acc)
+
+只要把这些步骤，分摊到pop/push中，我们就实现了一个真正real time O(1)的纯函数式队列！
+
+OK, 我们已经成功了90%，但是我们还必须仔细想好一些细节。
+
+继续：
+
+我们到现在，需要仔细推算一下，究竟需要多少步骤，才能完成 f ++ reverse r的运算：
+注意到 | r | = | f | + 1，不妨令 m = | f |
+
+分步颠倒r需要 m+1次操作，同时，我们也在这m+1次操作中，完成了f的颠倒，此后，我们需要 m + 1次操作完成append的动作。
+故而我们总共进行了 2*m + 2次操作。
+
+问题是，有没有可能在这2*m + 2次操作没有完成时，由于push/pop引起不平衡，导致新的 f ++ reverse r的运算？
+非常庆幸的部分  push不会在上一个 2*m +2 完成前，引入新的 f ++ reverse r。
+
+这是由于，一旦发生了 f ++ reverse r，就意味着，在接下来的 2*m + 2操作后，新的 f‘ = f ++ reverse r就会诞生。
+而引发这一改变队列平衡状态的操作的发生条件是 | r' | = | f' | + 1 = | f | + |r| + 1 = 2*m +2
+也就是说，我们连续拼命push，当队列再次不平衡的时候，恰巧前面的2*m +2 次操作完成了。新的f'诞生了。
+我们可以接着进行 f' ++ reverse r'的操作。
+
+让我们感叹一下这个设计的巧妙！
+
+非常不幸的部分  pop可能在 2*m + 2次操作完成前发生。而这时 f' == f ++ reverse r还没有诞生。
+好在，我们可以弥补，看在reverse f的时候，我们可以保留一份f，用于应付前 m次 pop操作：
+
+这时的队列看起来如下 q == (f1, f2, ..., fm) (State f颠倒的中间结果, r颠倒的中间结果) [新push进来的元素]
+
+问题是，如果用户拼命pop，m次后，f的拷贝就耗光了。而此时 f ++ reverse r刚刚完成了reverse过程，append才开始。
+解法也很简单，既然这时f耗光了，我们干脆就不用append了。
+
+这一点给了我们一个重要的启示：append的时候，我们仅仅需要append没有被pop掉的f中的剩余元素。
+方法非常简单：我们可以维持一份记录，一开始f中有m个元素需append，
+每次pop的时候，我们就更新这个记录让它减少一，表示可以少append一个元素。
+当然，随着append，我们也要减少这个记录。当且仅当这个记录为0的时候，表示我们不用再append任何元素。
+
+考虑了worst case的连续push和连续pop后，我们可以很有信心的说，我们的方案没有问题。
+
+继续：
+
+下面给出real time queue的实现草稿：
+
+首先是状态定义：
+data State a = Empty
+             | Reverse Int [a] [a] [a] [a] -- n, f', acc_f' r, acc_r
+             | Append Int [a] [a]          -- n, rev_f', acc
+             | Done [a] -- reulst: f ++ reverse r
+               deriving (Show, Eq)
+
+然后是queue本身的定义：
+data RealtimeQueue a = RTQ [a] Int (State a) [a] Int
+                     deriving (Show, Eq)
+
+然后我们实现queue的接口：
+
+-- we skip the empty error for pop and front
+instance Queue RealtimeQueue where
+    empty = RTQ [] 0 Empty [] 0
+
+    isEmpty (RTQ _ lenf _ _ _) = lenf == 0
+
+    -- O(1) time push
+    push (RTQ f lenf s r lenr) x = balance f lenf s (x:r) (lenr + 1)
+
+    -- O(1) time pop
+    pop (RTQ (_:f) lenf s r lenr) = balance f (lenf - 1) (abort s) r lenr
+
+    front (RTQ (x:_) _ _ _ _) = x
+
+此后是修复queue平衡的函数：
+balance f lenf s r lenr
+    | lenr <= lenf =  step f lenf s r lenr
+    | otherwise = step f (lenf + lenr) (Reverse 0 f [] r []) [] 0
+
+然后是分步骤的 f ++ reverse r
+step f lenf s r lenr =
+    case next s of
+      Done f' -> RTQ f' lenf Empty r lenr
+      s' -> RTQ f lenf s' r lenr
+
+然后是状态转换：
+next (Reverse n (x:f) f' (y:r) r') = Reverse (n+1) f (x:f') r (y:r')
+next (Reverse n [] f' [y] r') = Append n f' (y:r')
+
+next (Append 0 _ acc) = Done acc
+next (Append n (x:f') acc) = Append (n-1) f' (x:acc)
+next s = s
+
+接下来，我们实现abort，其目的是在pop的时候，通知 incremental f ++ reverse r，可以少append 一个f的元素：
+-- Abort unneccessary appending as the element is popped
+abort (Append 0 _ (_:acc)) = Done acc --注意，我们rollback一个被append的元素
+abort (Append n f' acc) = Append (n-1) f' acc
+abort (Reverse n f f' r r') = Reverse (n-1) f f' r r'
+abort s = s
+
+似乎大功告成了。但是还有一个最tricky的问题呢。我们来看看是什么：
+let e = (empty::RealtimeQueue a)
+然后
+push e 1
+我们得到了一个结果：
+RTQ [] 1 (Append 0 [] [0]) [] 0
+
+如果这时我们pop，一定出错！我们发现f是空，虽然f ++ reverse r已经完成了。
+这是由于，状态转换，从append 0 [] xs 到done需要额外的一步，所以我们略微修补一下：
+step f lenf s r lenr =
+    case s' of
+      Done f' -> RTQ f' lenf Empty r lenr
+      s' -> RTQ f lenf s' r lenr
+    where s' = if null f then next $ next s else next s
+
+这个程序就可以通过invariant test了。
+
+注意，这个方法和Okasaki在其著作Purely Functional Data Structure中给出的实现不尽相同。
+Okasaki每次pop/push，执行两次step。而我的只需要一次。所以我的方法的性能，更加平均的分摊到各个操作中。
+
+今天先到这里。我稍后给出另一个一类lazy evaluation的real time queue实现。
