@@ -416,3 +416,130 @@ step f lenf s r lenr =
 Okasaki每次pop/push，执行两次step。而我的只需要一次。所以我的方法的性能，更加平均的分摊到各个操作中。
 
 今天先到这里。我稍后给出另一个一类lazy evaluation的real time queue实现。
+
+我正想说这个终极方法呢 ：-）
+
+由于Haskell本身是Lazy Evaluation的，所以用Haskell来表达这个方案会难以看出来。故而我用Scheme来说明。
+
+我们本质还是要分摊 f ++ reverse r 这个耗时的计算。
+
+我们假设rotate这个函数incremental的完成 f ++ reverse r。也就是：
+
+rotate xs ys acc == xs ++ (reverse ys) ++ acc
+
+rotate发生的条件仍然是 |f | + 1 = |r|，并且我们令rotate过程中这个条件一直满足。也就是：|xs| +1 == |ys|
+
+平凡情况：
+  rotate [] [y] acc == y:acc
+
+递归情况：
+  rotate (x:xs) (y:ys) acc
+== (x:xs) ++ (reverse (y:ys)) ++ acc
+== x : (xs ++ (reverse (y:ys)) ++ acc)
+== x : (xs ++ (reverse ys) ++ (y:acc))
+== x : (rotate xs ys (y:acc)
+
+总结上面两个得到rotate的解法：
+  rotate [] [y] acc = y:acc
+  rotate (x:xs) (y:ys) acc = x: rotate xs ys (y:acc)
+
+如果我们让上述的 cons 计算 : 是lazy的，也就是不立即计算，而是当pop或者front时，再计算cons，则存在把上述rotate分摊到每个push/pop操作的方法。
+
+这个方法描述如下：
+  队列定义为： 一个lazy的front, 一个rear，和一个计算lazy front的stream；
+  当我们发现 |f| + 1 == |r|时，创建一个lazy的rotate操作，其结果为新的f’，然后，我们令队列变为：front := f', rear := [] stream :=f'
+  此后，每次push/pop时，我们消耗stream中一个计算。也就是强迫一次cons操作，丢弃car，然后另cdr f'为新的stream。
+  当这个stream被消耗殆尽后，我们重新启动一次rotate。
+
+代码如下：
+;; Definition
+;;   A queue is consist of a front list, a rear list, and a stream
+;;   The stream is delayed incremental computation for
+;;       (append f (reverse r))
+(define (make-queue f r s)
+  (list f r s))
+
+;; Auxiliary functions
+(define (front-lst q) (car q))
+
+(define (rear-lst q) (cadr q))
+
+(define (rots q) (caddr q))
+
+;; Queue interfaces
+(define empty (make-queue '() '() '()))
+
+(define (empty? q) (stream-null? (front-lst q)))
+
+(define (push q x)
+  (balance (front-lst q) (cons x (rear q)) (rots q)))
+
+;; Skip the error handling
+(define (pop q)
+  (balance (stream-cdr (front-lst q)) (rear q) (rots q)))
+
+(define (front q) (stream-car (front-lst q)))
+
+(define (balance f r s)
+  (if (stream-null? s)
+      (let ((newf (rotate f r '())))
+    (make-queue newf '() newf))
+      (make-queue f r (stream-cdr s))))
+
+;; invariant: |xs| + 1 == |ys|
+(define (rotate xs ys acc)
+  (if (stream-null? xs)
+      (cons-stream (car ys) acc)
+      (cons-stream (stream-car xs)
+           (rotate (stream-cdr xs) (cdr ys)
+               (cons-stream (car ys) acc)))))
+
+
+其中Scheme中的cons-stream的定义为 (define (cons-stream a b) (cons a (delay b)))
+stream-car就是car，
+stream-cdr定义为：(define (stream-cdr s) (cdr (force s)))
+
+这段程序用Haskell写起来出奇的简单。原因是Haskell是lazy的：
+
+data LazyRTQueue a = LQ [a] [a] [a] -- front, rear, f ++ reverse r
+                     deriving (Show, Eq)
+
+-- we skip the empty error for pop and front
+instance Queue LazyRTQueue where
+    empty = LQ [] [] []
+
+    isEmpty (LQ f _ _) = null f
+
+    -- O(1) time push
+    push (LQ f r rot) x = balance f (x:r) rot
+
+    -- O(1) time pop
+    pop (LQ (_:f) r rot) = balance f r rot
+
+    front (LQ (x:_) _ _) = x
+
+balance f r [] = let f' = rotate f r [] in LQ f' [] f'
+balance f r (_:rot) = LQ f r rot
+
+rotate [] [y] acc = y:acc
+rotate (x:xs) (y:ys) acc = x : rotate xs ys (y:acc)
+
+Reverse 5个字段的含义如下：
+
+ Reverse Int [a] [a] [a] [a] -- n, f', acc_f' r, acc_r
+
+Reverse是要同时把 front 和 rear颠倒过来，颠倒的原理是：
+  reverse' [] acc = acc
+
+  reverse' (x:xs) acc = reverse xs (x:acc)
+
+所以上面Reverse的后面四个[a]的含义分别是：
+  front 还剩余的没有颠倒的部分；
+  front 已颠倒的部分；
+  rear 还剩余的没有颠倒的部分；
+  rear 已颠倒的部分；
+
+最后解释下第一个Int的含义。
+  由于一边颠倒，一边可能有元素被从front中pop掉，这些元素以后我们可以忽略；
+  所以我们要记录还有多少元素剩余在front中没被pop掉，每次pop我们就会将此计数器-1;
+  每次成功rotate一步，这个计数器就+1
