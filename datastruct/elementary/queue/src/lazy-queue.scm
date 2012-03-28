@@ -67,12 +67,28 @@
 (define (rand-seq n m)
   (map (lambda (x) (random m)) (iota n)))
 
+(define (test-proc lst q enqueue dequeue front-elem is-empty?)
+  (define (proc lst q)
+    (cond ((null? lst) '())
+	  ((even? (car lst)) (proc (cdr lst) (enqueue q (car lst))))
+	  ((is-empty? q) (proc (cdr lst) q))
+	  (else (cons (front-elem q) (proc (cdr lst) (dequeue q))))))
+  (proc lst q))
+
+(define (proc1 xs)
+  (test-proc xs '() 
+	     (lambda (lst x) (append lst (list x)))
+	     cdr car null?))
+
+(define (proc2 xs)
+  (test-proc xs empty push pop front empty?))
+
 ;; test n random test cases
 (define (test n)
   (define (assert exp)
     (if (not exp) (error "fail" exp)))
-  (define (test-sort i)
+  (define (test-queue i)
     (let* ((m (random 1000))
 	   (xs (rand-seq m 1000)))
-      (assert (equal? (heap-sort xs) (sort xs <)))))
-  (for-each test-sort (iota n)))
+      (assert (equal? (proc1 xs) (proc2 xs)))))
+  (for-each test-queue (iota n)))
