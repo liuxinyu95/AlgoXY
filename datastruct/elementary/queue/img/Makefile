@@ -1,5 +1,6 @@
 IMG_OBJECTS = 
-DOT_OBJECTS = empty-list
+DOT_OBJECTS = empty-list enq-list-before enq-list-after deq-list-before \
+deq-list-after
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
