@@ -1,6 +1,6 @@
-IMG_OBJECTS = 
+IMG_OBJECTS = ring-buffer
 DOT_OBJECTS = empty-list enq-list-before enq-list-after deq-list-before \
-deq-list-after
+deq-list-after ring-buf-1 ring-buf-2 ring-buf-3 ring-buf-4 ring-buf-5
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
