@@ -49,14 +49,14 @@ It seems that queues are relative simple. A queue provides FIFO (first-in,
 first-out) data manipulation support. There are many options to 
 realize queue includes singly linked-list, doubly linked-list,
 ring-buffer etc. However, we'll show that it's not so easy to 
-realize queue in purely funcitonal settings if it must satisify
+realize queue in purely funcitonal settings if it must satisfy
 abstract queue properties.
 
 In this chapter, we'll present several different approaches to 
 implement queue. And in next chapter, we'll explain how to realize
 sequence.
 
-A queue is a FIFO data strucutre satisifies the following performance
+A queue is a FIFO data structure satisfies the following performance
 constraints.
 
 \begin{itemize}
@@ -64,7 +64,7 @@ constraints.
 \item Element can be removed from the head of the queue in $O(1)$ constant time.
 \end{itemize}
 
-These two properties must be satisified. And it's common to add some extra
+These two properties must be satisfied. And it's common to add some extra
 targets, such as dynamic memory allocation etc.
 
 Of course such abstract queue interface can be implemented with 
@@ -79,15 +79,125 @@ give a simple and straightforward functional solution in the second
 section. While the performance is ensured in terms of amortized
 constant time, we need find realtime solution (or worst-time solution)
 for some special case. Such solution will be described in the third
-and the fourth section. Finally, we'll show a very simple realtime
+and the fourth section. Finally, we'll show a very simple real time
 queue which depends on lazy evaluation.
 
 % ================================================================
-%                 Binomial heap
+%                 Imperative queue
 % ================================================================
-\section{Binomial Heaps}
-\label{binomail-heap} \index{Binomial heap}
+\section{Queue by linked-list and ring buffer}
+\index{Queue!Singly linked-list}
+\index{Queue!Ring buffer}
 
+Queue can be implemented with singly linked-list. It's easy to add 
+and remove element at the front end of a linked-list in $O(1)$ time. 
+However, in
+order to keep the FIFO order, if we execute one operation on head,
+we must perform the inverse operation on tail.
+
+For plain singly linked-list, we must traverse the whole list before
+adding or removing. Travering is bound to $O(N)$ time, 
+where $N$ is the length of the list. This doesn't match the abstract
+queue properties.
+
+The solution is to use an extra record to store the tail of the linked-list.
+A sentinel is often used to simplify the boundery handling. The 
+following ANSI C code defines a queue realized by linked-list.
+
+\lstset{language=C}
+\begin{lstlisting}
+typedef int Key;
+
+struct Node{
+  Key key;
+  struct Node* next;
+};
+
+struct Queue{
+  struct Node *head, *tail;
+};
+\end{lstlisting}
+
+Figure \ref{fig:empty-list} illustrates an empty list. Both head
+and tail point to the sentinel NIL node.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=1.0]{img/empty-list.ps}
+  \caption{The empty queue, both head and tail point to sentinel node.} \label{fig:empty-list}
+\end{figure}
+
+We summarize the abstract queue interface as the following.
+
+\begin{algorithmic}
+\Function{Empty}{}
+  \Comment{Create an empty queue}
+\EndFunction
+\Function{Empty?}{$Q$}
+  \Comment{Test if $Q$ is empty}
+\EndFunction
+\Function{Enqueue}{$Q, x$}
+  \Comment{Add a new element $x$ to queue $Q$}
+\EndFunction
+\Function{Dequeue}{$Q$}
+  \Comment{Remove element from queue $Q$}
+\EndFunction
+\Function{Head}{$Q$}
+  \Comment{get the next element in queue $Q$ in FIFO order}
+\EndFunction
+\end{algorithmic}
+
+Note the difference between \textproc{Dequeue} and \textproc{Head}.
+\textproc{Head} only retrieve next element in FIFO order without removing
+it, while \textproc{Dequeue} performs removing.
+
+To ensure the constant time \textproc{Enqueue} and \textproc{Dequeue},
+we add new element to head and remove element from tail.\footnote{It's possible
+to add new element to the tail, while remove element from head, but the 
+operatoins are more complex than this approach.}
+
+\begin{algorithmic}
+\Function{Enqueue}{$Q, x$}
+  \State $p \gets $ \Call{Create-New-Node}{}
+  \State \Call{Key}{$p$} $\gets x$
+  \State \Call{Next}{$p$} $\gets NIL$
+  \State \textproc{Next}(\Call{Tail}{$Q$}) $\gets p$
+  \State \Call{Tail}{$Q$} $\gets p$
+\EndFunction
+\end{algorithmic}
+
+Note that, as we use the sentinel node, there are at least one node, the
+sentinel in the queue. That's why we needn't check the validation of
+of the tail before we append the new created node $p$ to it.
+
+\begin{algorithmic}
+\Function{Dequeue}{$Q$}
+  \State $x \gets $ \Call{Head}{$Q$}
+  \State \textproc{Next}(\Call{Head}{$Q$}) $\gets$ \Call{Next}{$x$}
+  \If{$x = $ \Call{Tail}{$Q$}} \Comment{$Q$ gets empty}
+    \State \Call{Tail}{$Q$} $\gets$ \Call{Head}{$Q$}
+  \EndIf
+  \State \Return \Call{Key}{$x$}
+\EndFunction
+\end{algorithmic}
+
+As we always put the sentinel node in front of all the other nodes,
+function \textproc{Head} actually returns the next node to the sentinel.
+
+This solution is simple and robust. It's easy to extend this solution 
+even to the concurrent environment (e.g. multi-cores). We can assign
+a lock to the head and use another lock to the tail. The sentinel 
+helps us from being dead-locked due to the empty case \cite{PODC96} \cite{SutterDDJ}.
+
+\begin{Exercise}
+\begin{itemize}
+\item Realize the \textproc{Empty?} and \textproc{Head} algorithms
+for linked-list queue.
+
+\item Implement the singly linked-list queue in your favorate imperative 
+programming language.
+\end{itemize}
+\end{Exercise}
 
 % ================================================================
 %                 Definition
@@ -132,25 +242,25 @@ $n$ as $B_n$.
 Figure \ref{fig:link-bitree} shows a $B_0$ tree and how to link 2 $B_{n-1}$
 trees to a $B_n$ tree.
 
-\begin{figure}[htbp]
-  \centering
-  \subfloat[A $B_0$ tree.]{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/b0tree.ps}\hspace{0.1\textwidth}} \\
-  \subfloat[Linking 2 $B_{n-1}$ trees yields a $B_n$ tree.]{\includegraphics[scale=0.5]{img/link-bitree.ps}}
-  \caption{Recursive definition of binomial trees} \label{fig:link-bitree}
-\end{figure}
+%\begin{figure}[htbp]
+%  \centering
+%  \subfloat[A $B_0$ tree.]{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/b0tree.ps}\hspace{0.1\textwidth}} \\
+%  \subfloat[Linking 2 $B_{n-1}$ trees yields a $B_n$ tree.]{\includegraphics[scale=0.5]{img/link-bitree.ps}}
+%  \caption{Recursive definition of binomial trees} \label{fig:link-bitree}
+%\end{figure}
 
 With this recursive definition, it easy to draw the form of binomial trees
 of rank 0, 1, 2, ..., as shown in figure \ref{fig:bitree-forms}
 
-\begin{figure}[htbp]
-  \centering
-  \subfloat[$B_0$ tree;]{\hspace{0.05\textwidth}\includegraphics[scale=0.5]{img/b0tree.ps}\hspace{0.05\textwidth}}
-  \subfloat[$B_1$ tree;]{\hspace{0.05\textwidth}\includegraphics[scale=0.5]{img/b1tree.ps}\hspace{0.05\textwidth}}
-  \subfloat[$B_2$ tree;]{\includegraphics[scale=0.5]{img/b2tree.ps}}
-  \subfloat[$B_3$ tree;]{\includegraphics[scale=0.5]{img/b3tree.ps}} \\
-  \subfloat[$B_4$ tree;]{\includegraphics[scale=0.5]{img/b4tree.ps}...}
-  \caption{Forms of binomial trees with rank = 0, 1, 2, 3, 4, ...} \label{fig:bitree-forms}
-\end{figure}
+%\begin{figure}[htbp]
+%  \centering
+%  \subfloat[$B_0$ tree;]{\hspace{0.05\textwidth}\includegraphics[scale=0.5]{img/b0tree.ps}\hspace{0.05\textwidth}}
+%  \subfloat[$B_1$ tree;]{\hspace{0.05\textwidth}\includegraphics[scale=0.5]{img/b1tree.ps}\hspace{0.05\textwidth}}
+%  \subfloat[$B_2$ tree;]{\includegraphics[scale=0.5]{img/b2tree.ps}}
+%  \subfloat[$B_3$ tree;]{\includegraphics[scale=0.5]{img/b3tree.ps}} \\
+%  \subfloat[$B_4$ tree;]{\includegraphics[scale=0.5]{img/b4tree.ps}...}
+%  \caption{Forms of binomial trees with rank = 0, 1, 2, 3, 4, ...} \label{fig:bitree-forms}
+%\end{figure}
 
 Observing the binomial trees reveals some interesting properties. For each rank $N$ binomial tree, if counting the number of nodes in each row, it can be found that it is the binomial number.
 
@@ -174,11 +284,11 @@ For example, if a binomial heap contains 5 element, as 5 is `(LSB)101(MSB)', the
 
 Figure \ref{fig:bheap2} shows a binomial heap which have 19 nodes, as 19 is `(LSB)11001(MSB)' in binary format, so there is a $B_0$ tree, a $B_1$ tree and a $B_4$ tree.
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.5]{img/bheap2.ps}
-  \caption{A binomial heap with 19 elements} \label{fig:bheap2}
-\end{figure}
+%% \begin{figure}[htbp]
+%%   \centering
+%%   \includegraphics[scale=0.5]{img/bheap2.ps}
+%%   \caption{A binomial heap with 19 elements} \label{fig:bheap2}
+%% \end{figure}
 
 \subsubsection{Data layout}
 \index{left child, right sibling}
@@ -190,11 +300,11 @@ child of this node, and use the right field to point to the sibling
 node of this node. All siblings are represented as a single directional
 linked list. Figure \ref{fig:lcrs} shows an example tree represented in this way.
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.5]{img/lcrs.ps}
-  \caption{Example tree represented in `left-child, right-sibling' way. $R$ is the root node, it has no sibling, so it right side is pointed to $NIL$. $C_1, C_2, ..., C_n$ are children of $R$. $C_1$ is linked from the left side of $R$, other siblings of $C_1$ are linked one next to each other on the right side of $C_1$. $C_2', ..., C_m'$ are children of $C_1$.} \label{fig:lcrs}
-\end{figure}
+%% \begin{figure}[htbp]
+%%   \centering
+%%   \includegraphics[scale=0.5]{img/lcrs.ps}
+%%   \caption{Example tree represented in `left-child, right-sibling' way. $R$ is the root node, it has no sibling, so it right side is pointed to $NIL$. $C_1, C_2, ..., C_n$ are children of $R$. $C_1$ is linked from the left side of $R$, other siblings of $C_1$ are linked one next to each other on the right side of $C_1$. $C_2', ..., C_m'$ are children of $C_1$.} \label{fig:lcrs}
+%% \end{figure}
 
 The other way is to use the library defined collection container, such
 as array or list to represent all children of a node.
@@ -290,11 +400,11 @@ Where
   \end{array}
 \]
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.5]{img/link-bitree-xy.ps}
-  \caption{Suppose $x < y$, insert $y$ as the first child of $x$.} \label{fig:link-xy}
-\end{figure}
+%% \begin{figure}[htbp]
+%%   \centering
+%%   \includegraphics[scale=0.5]{img/link-bitree-xy.ps}
+%%   \caption{Suppose $x < y$, insert $y$ as the first child of $x$.} \label{fig:link-xy}
+%% \end{figure}
 
 Note that the link operation is bound to $O(1)$ time if the $\cup$ is 
 a constant time operation. It's easy
@@ -327,11 +437,11 @@ Figure \ref{fig:link-lcrs} shows the result of one case.
 \EndFunction
 \end{algorithmic}
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.5]{img/link-bitree-lcrs.ps}
-  \caption{Suppose $x < y$, link $y$ to the left side of $x$ and link the original children of $x$ to the right side of $y$.} \label{fig:link-lcrs}
-\end{figure}
+%% \begin{figure}[htbp]
+%%   \centering
+%%   \includegraphics[scale=0.5]{img/link-bitree-lcrs.ps}
+%%   \caption{Suppose $x < y$, link $y$ to the left side of $x$ and link the original children of $x$ to the right side of $y$.} \label{fig:link-lcrs}
+%% \end{figure}
 
 And if we use a container to manage all children of a node, the
 algorithm is like below.
@@ -545,12 +655,12 @@ insert this new tree to the result of merging the rest trees.
 Figure \ref{fig:merge-bheaps} illustrates the idea of this algorithm. This 
 method is different from the one given in \cite{CLRS}.
 
-\begin{figure}[htbp]
-  \centering
-  \subfloat[Pick the tree with smaller rank to the result.]{\includegraphics[scale=0.7]{img/bheap-merge-1.ps}} \\
-  \subfloat[If two trees have same rank, link them to a new tree, and recursively insert it to the merge result of the rest.]{\includegraphics[scale=0.7]{img/bheap-merge-2.ps}}
-  \caption{Merge two heaps.} \label{fig:merge-bheaps}
-\end{figure}
+%% \begin{figure}[htbp]
+%%   \centering
+%%   \subfloat[Pick the tree with smaller rank to the result.]{\includegraphics[scale=0.7]{img/bheap-merge-1.ps}} \\
+%%   \subfloat[If two trees have same rank, link them to a new tree, and recursively insert it to the merge result of the rest.]{\includegraphics[scale=0.7]{img/bheap-merge-2.ps}}
+%%   \caption{Merge two heaps.} \label{fig:merge-bheaps}
+%% \end{figure}
 
 We can formalize this idea with a function. For non-empty cases, we 
 denote the two heaps as $H_1 = \{ T_1, T_2, ... \}$ and $H_2 = \{ T'_1, T'_2, ...\}$. Let $H'_1 = \{ T_2, T_3, ... \}$ and $H'_2 = \{ T'_2, T'_3, ... \}$.
@@ -734,12 +844,12 @@ heap, we represent it as $H' = H - B_p$. Merging $H_p$ and $H'$ given
 the final result of pop. Figure \ref{fig:bheap-del-min} illustrates
 this idea.
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.5]{img/bheap-pop.eps}
-  \caption{Pop the minimum element from a binomial heap.}
-  \label{fig:bheap-del-min}
-\end{figure}
+%% \begin{figure}[htbp]
+%%   \centering
+%%   \includegraphics[scale=0.5]{img/bheap-pop.eps}
+%%   \caption{Pop the minimum element from a binomial heap.}
+%%   \label{fig:bheap-del-min}
+%% \end{figure}
 
 In order to realize this algorithm, we first need to define an
 auxiliary function, which can extract the tree contains the minimum
@@ -1326,22 +1436,22 @@ Figure \ref{fig:fib-meld-a} and \ref{fig:fib-meld-b} show the steps of
 consolidation when processing a Fibonacci Heap contains different ranks
 of trees. Comparing with table \ref{tb:num-consolidate} reveals the similarity.
 
-\begin{figure}[htbp]
-  \centering
-  \subfloat[Before consolidation]{\includegraphics[scale=0.5]{img/fib-meld-01.ps}} \\
-  \subfloat[Step 1, 2]{\includegraphics[scale=0.5]{img/fib-meld-02.ps}}
-  \subfloat[Step 3, 'd' is firstly linked to 'c', then repeatedly linked to 'a'.]{ \hspace{0.1\textwidth} \includegraphics[scale=0.5]{img/fib-meld-03.ps} \hspace{0.1\textwidth}}
-  \subfloat[Step 4]{\includegraphics[scale=0.5]{img/fib-meld-04.ps}}
-  \caption{Steps of consolidation} \label{fig:fib-meld-a}
-\end{figure}
+%% \begin{figure}[htbp]
+%%   \centering
+%%   \subfloat[Before consolidation]{\includegraphics[scale=0.5]{img/fib-meld-01.ps}} \\
+%%   \subfloat[Step 1, 2]{\includegraphics[scale=0.5]{img/fib-meld-02.ps}}
+%%   \subfloat[Step 3, 'd' is firstly linked to 'c', then repeatedly linked to 'a'.]{ \hspace{0.1\textwidth} \includegraphics[scale=0.5]{img/fib-meld-03.ps} \hspace{0.1\textwidth}}
+%%   \subfloat[Step 4]{\includegraphics[scale=0.5]{img/fib-meld-04.ps}}
+%%   \caption{Steps of consolidation} \label{fig:fib-meld-a}
+%% \end{figure}
 
-\begin{figure}[htbp]
-  \centering
-  \subfloat[Step 5]{\includegraphics[scale=0.5]{img/fib-meld-05.ps}}
-  \subfloat[Step 6]{\includegraphics[scale=0.5]{img/fib-meld-06.ps}} \\
-  \subfloat[Step 7, 8, 'r' is firstly linked to 'q', then 's' is linked to 'q'.]{\includegraphics[scale=0.5]{img/fib-meld-07.ps}}
-  \caption{Steps of consolidation} \label{fig:fib-meld-b}
-\end{figure}
+%% \begin{figure}[htbp]
+%%   \centering
+%%   \subfloat[Step 5]{\includegraphics[scale=0.5]{img/fib-meld-05.ps}}
+%%   \subfloat[Step 6]{\includegraphics[scale=0.5]{img/fib-meld-06.ps}} \\
+%%   \subfloat[Step 7, 8, 'r' is firstly linked to 'q', then 's' is linked to 'q'.]{\includegraphics[scale=0.5]{img/fib-meld-07.ps}}
+%%   \caption{Steps of consolidation} \label{fig:fib-meld-b}
+%% \end{figure}
 
 After we merge all binomial trees, including the special tree
 record for the minimum element in root, in a Fibonacci heap, the heap
@@ -1451,26 +1561,26 @@ Feed a Fibonacci Heap shown in Figure \ref{fig:fib-meld-a} to the above algorith
 Figure \ref{fig:fib-cons-a}, \ref{fig:fib-cons-b} and \ref{fig:fib-cons-c}
 show the result trees stored in auxiliary array $A$ in every steps.
 
-\begin{figure}[htbp]
-  \centering
-  \subfloat[Step 1, 2]{\includegraphics[scale=0.5]{img/fib-cons-02.ps}}
-  \subfloat[Step 3, Since $A_0 \neq NIL$, 'd' is firstly linked to 'c', and clear $A_0$ to $NIL$. Again, as $A_1 \neq NIL$, 'c' is linked to 'a' and the new tree is stored in $A_2$.]{\includegraphics[scale=0.5]{img/fib-cons-03.ps}}
-  \subfloat[Step 4]{\includegraphics[scale=0.5]{img/fib-cons-04.ps}}
-  \caption{Steps of consolidation} \label{fig:fib-cons-a}
-\end{figure}
+%% \begin{figure}[htbp]
+%%   \centering
+%%   \subfloat[Step 1, 2]{\includegraphics[scale=0.5]{img/fib-cons-02.ps}}
+%%   \subfloat[Step 3, Since $A_0 \neq NIL$, 'd' is firstly linked to 'c', and clear $A_0$ to $NIL$. Again, as $A_1 \neq NIL$, 'c' is linked to 'a' and the new tree is stored in $A_2$.]{\includegraphics[scale=0.5]{img/fib-cons-03.ps}}
+%%   \subfloat[Step 4]{\includegraphics[scale=0.5]{img/fib-cons-04.ps}}
+%%   \caption{Steps of consolidation} \label{fig:fib-cons-a}
+%% \end{figure}
 
-\begin{figure}[htbp]
-  \centering
-  \subfloat[Step 5]{\includegraphics[scale=0.5]{img/fib-cons-05.ps}} \\
-  \subfloat[Step 6]{\includegraphics[scale=0.5]{img/fib-cons-06.ps}}
-  \caption{Steps of consolidation} \label{fig:fib-cons-b}
-\end{figure}
+%% \begin{figure}[htbp]
+%%   \centering
+%%   \subfloat[Step 5]{\includegraphics[scale=0.5]{img/fib-cons-05.ps}} \\
+%%   \subfloat[Step 6]{\includegraphics[scale=0.5]{img/fib-cons-06.ps}}
+%%   \caption{Steps of consolidation} \label{fig:fib-cons-b}
+%% \end{figure}
 
-\begin{figure}[htbp]
-  \centering
-  \subfloat[Step 7, 8, Since $A_0 \neq NIL$, 'r' is firstly linked to 'q', and the new tree is stored in $A_1$ ($A_0$ is cleared); then 's' is linked to 'q', and stored in $A_2$ ($A_1$ is cleared).]{\includegraphics[scale=0.5]{img/fib-cons-07.ps}}
-  \caption{Steps of consolidation} \label{fig:fib-cons-c}
-\end{figure}
+%% \begin{figure}[htbp]
+%%   \centering
+%%   \subfloat[Step 7, 8, Since $A_0 \neq NIL$, 'r' is firstly linked to 'q', and the new tree is stored in $A_1$ ($A_0$ is cleared); then 's' is linked to 'q', and stored in $A_2$ ($A_1$ is cleared).]{\includegraphics[scale=0.5]{img/fib-cons-07.ps}}
+%%   \caption{Steps of consolidation} \label{fig:fib-cons-c}
+%% \end{figure}
 
 
 Translate the above algorithm to ANSI C yields the below program.
@@ -1533,12 +1643,12 @@ the process works the following power.
 W = M \cdot g \cdot (h' - h) + W_f
 \]
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.5]{img/potential-energy.eps}
-  \caption{Gravity potential energy.}
-  \label{fig:potential-energy}
-\end{figure}
+%% \begin{figure}[htbp]
+%%   \centering
+%%   \includegraphics[scale=0.5]{img/potential-energy.eps}
+%%   \caption{Gravity potential energy.}
+%%   \label{fig:potential-energy}
+%% \end{figure}
 
 Figure \ref{fig:potential-energy} illustrated this concept.
 
@@ -1616,16 +1726,16 @@ with the parent node, and if this case happens, we can cut this node
 and append it to the root list. (Remind the recursive swapping solution
 for binary heap which leads to $O(\lg N)$)
 
-\begin{figure}[htbp]
-  \centering
-  \setlength{\unitlength}{1cm}
-  \begin{picture}(12, 7)
-    \put(0, 0){\includegraphics[scale=0.7]{img/cut-fib-tree.ps}}
-    \put(6.7, 3){\line(1, 1){0.5}}
-    \put(6.7, 3.5){\line(1, -1){0.5}}
-  \end{picture}
-  \caption{$x<y$, cut tree $x$ from its parent, and add $x$ to root list.} \label{fig:cut-fib-tree}
-\end{figure}
+%% \begin{figure}[htbp]
+%%   \centering
+%%   \setlength{\unitlength}{1cm}
+%%   \begin{picture}(12, 7)
+%%     \put(0, 0){\includegraphics[scale=0.7]{img/cut-fib-tree.ps}}
+%%     \put(6.7, 3){\line(1, 1){0.5}}
+%%     \put(6.7, 3.5){\line(1, -1){0.5}}
+%%   \end{picture}
+%%   \caption{$x<y$, cut tree $x$ from its parent, and add $x$ to root list.} \label{fig:cut-fib-tree}
+%% \end{figure}
 
 Figure \ref{fig:cut-fib-tree} illustrates this situation. After decreasing
 key of node $x$, it is less than $y$, we cut $x$ off its parent $y$, and
@@ -2123,22 +2233,22 @@ of this pair-merging.
 
 Figure \ref{fig:merge-pairs} and \ref{fig:merge-right} illustrate the procedure of pair-merging.
 
-\begin{figure}[htbp]
-  \centering
-  \subfloat[A pairing heap before pop.]{\includegraphics[scale=0.5]{img/pairing-hp.ps}} \\
-  \subfloat[After root element 2 being removed, there are 9 sub-trees left.]{\includegraphics[scale=0.5]{img/pairs.ps}} \\
-  \subfloat[Merge every two trees in pair, note that there are odd number trees, so the last one needn't merge.]{\includegraphics[scale=0.5]{img/pairs-merge.ps}} \\
-  \caption{Remove the root element, and merge children in pairs.} \label{fig:merge-pairs}
-\end{figure}
+%% \begin{figure}[htbp]
+%%   \centering
+%%   \subfloat[A pairing heap before pop.]{\includegraphics[scale=0.5]{img/pairing-hp.ps}} \\
+%%   \subfloat[After root element 2 being removed, there are 9 sub-trees left.]{\includegraphics[scale=0.5]{img/pairs.ps}} \\
+%%   \subfloat[Merge every two trees in pair, note that there are odd number trees, so the last one needn't merge.]{\includegraphics[scale=0.5]{img/pairs-merge.ps}} \\
+%%   \caption{Remove the root element, and merge children in pairs.} \label{fig:merge-pairs}
+%% \end{figure}
 
-\begin{figure}[htbp]
-  \centering
-  \subfloat[Merge tree with 9, and tree with root 6.]{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/right-merge-1.ps}\hspace{0.2\textwidth}}
-  \subfloat[Merge tree with root 7 to the result.]{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/right-merge-2.ps}\hspace{0.1\textwidth}} \\
-  \subfloat[Merge tree with root 3 to the result.]{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/right-merge-3.ps}\hspace{0.1\textwidth}}
-  \subfloat[Merge tree with root 4 to the result.]{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/right-merge-4.ps}\hspace{0.1\textwidth}}
-  \caption{Steps of merge from right to left.} \label{fig:merge-right}
-\end{figure}
+%% \begin{figure}[htbp]
+%%   \centering
+%%   \subfloat[Merge tree with 9, and tree with root 6.]{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/right-merge-1.ps}\hspace{0.2\textwidth}}
+%%   \subfloat[Merge tree with root 7 to the result.]{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/right-merge-2.ps}\hspace{0.1\textwidth}} \\
+%%   \subfloat[Merge tree with root 3 to the result.]{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/right-merge-3.ps}\hspace{0.1\textwidth}}
+%%   \subfloat[Merge tree with root 4 to the result.]{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/right-merge-4.ps}\hspace{0.1\textwidth}}
+%%   \caption{Steps of merge from right to left.} \label{fig:merge-right}
+%% \end{figure}
 
 The recursive pair-merging solution is quite similar to the bottom up
 merge sort\cite{okasaki-book}. Denote the children of a pairing 
@@ -2297,8 +2407,11 @@ sequence data structures, array and queue.
 
 \begin{thebibliography}{99}
 
-\bibitem{K-ary-tree}
-K-ary tree, Wikipedia. http://en.wikipedia.org/wiki/K-ary\_tree
+\bibitem{PODC96}
+Maged M. Michael and Michael L. Scott. ``Simple, Fast, and Practical Non-Blocking and Blocking Concurrent Queue Algorithms''. http://www.cs.rochester.edu/research/synchronization/pseudocode/queues.html
+
+\bibitem{SutterDDJ}
+Herb Sutter. ``Writing a Generalized Concurrent Queue''. Dr. Dobb's Oct 29, 2008. http://drdobbs.com/cpp/211601363?pgno=1
 
 \bibitem{CLRS}
 Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest and Clifford Stein. ``Introduction to Algorithms, Second Edition''. The MIT Press, 2001. ISBN: 0262032937.
