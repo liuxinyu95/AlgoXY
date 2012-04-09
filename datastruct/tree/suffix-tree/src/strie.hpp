@@ -51,8 +51,8 @@ namespace STrie{
     Node dummy;
     Node *node(top), *prev(&dummy);
     while(node && (node->children.find(c)==node->children.end())){
-      node->children[c] = new Node(node);
-      prev->suffix = node->children[c];
+      prev->suffix = node->children[c] = new Node(node);
+      prev = prev->suffix;
       node = node->suffix;
     }
     if(node)
