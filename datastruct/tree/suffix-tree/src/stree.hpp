@@ -158,11 +158,12 @@ Node* branch(STree* t, Node* node, StrRef str, Node::Key c){
 std::pair<Node*, int> canonize(STree* t, Node* node, StrRef str){
   int l, r;
   tie(l, r)=str;
-  if(!node)
+  if(!node){
     if(str.len()<=0)
       return std::make_pair(node, l);
     else
       return canonize(t, t->root, StrRef(l+1, r));
+  }
   while(l<=r){ //str isn't empty
     RefPair rp = node->children[t->str[l]];
     int l1, r1;
