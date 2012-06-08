@@ -153,6 +153,20 @@ Note the difference between \textproc{Dequeue} and \textproc{Head}.
 \textproc{Head} only retrieve next element in FIFO order without removing
 it, while \textproc{Dequeue} performs removing.
 
+Some porogramming languages, such as Haskell, and most Object-oriented
+languages, the above abstract queue interface can be ensured by some definition.
+For example, the following Haskell code specifies the abstract queue.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+class Queue q where
+    empty :: q a
+    isEmpty :: q a -> Bool
+    push :: q a -> a -> q a -- aka 'snoc' or append, or push_back
+    pop :: q a -> q a -- aka 'tail' or pop_front
+    front :: q a -> a -- aka 'head'
+\end{lstlisting}
+
 To ensure the constant time \textproc{Enqueue} and \textproc{Dequeue},
 we add new element to head and remove element from tail.\footnote{It's possible
 to add new element to the tail, while remove element from head, but the 
@@ -414,22 +428,22 @@ type Queue a = ([a], [a])
 empty = ([], [])
 \end{lstlisting}
 
-Suppose function $Front(Q)$ and $Rear(Q)$ return the front and rear
+Suppose function $front(Q)$ and $rear(Q)$ return the front and rear
 list in such setup, and $Queue(F, R)$ create a paired-list queue from
 two lists $F$ and $R$.
 The \textproc{EnQueue} (push) and \textproc{DeQueue} (pop) operation can
 be easily realized based on this setup.
 
 \be
-push(Q, x) = Queue(Front(Q), \{ X \} \cup Rear(Q))
+push(Q, x) = Queue(front(Q), \{ x \} \cup rear(Q))
 \ee
 
 \be
-pop(Q) = Queue(Tails(Front(Q)), Rear(Q))
+pop(Q) = Queue(tail(front(Q)), rear(Q))
 \ee
 
 where if a list $X =  \{ x_1, x_2, ..., x_n \}$, 
-function $Tail(X) = \{ x_2, x_3, ..., x_n \}$ returns the rest of the list
+function $tail(X) = \{ x_2, x_3, ..., x_n \}$ returns the rest of the list
 without the first element.
 
 However, we must next solve the problem that after several popping, the front
@@ -438,13 +452,13 @@ is to rebuild the queue by reversing the rear list, and use it to replace front
 list.
 
 Hence a balance operation will be execute after popping. Let's denote the
-front and rear list of a queue $Q$ as $F = Front(Q)$, and $R = Rear(Q)$.
+front and rear list of a queue $Q$ as $F = front(Q)$, and $R = fear(Q)$.
 
 \be
 balance(Q) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
-  Queue(Reverse(R), \Phi) & F = \Phi \\
+  Queue(reverse(R), \Phi) & F = \Phi \\
   Q & otherwise 
   \end{array}
 \right .
@@ -458,7 +472,7 @@ And the new enqueue and dequeue algorithm is updated to below.
 
 \be
 push(Q, x) = balance(F, \{ x \} \cup R) \\
-pop(Q) = balance(Queue(Tails(F), R))
+pop(Q) = balance(Queue(tail(F), R))
 \ee
 
 Sum up the above algorithms and translate them to Haskell yields the following
@@ -531,7 +545,8 @@ make a horseshoe shape queue like in figure \ref{fig:horseshoe-array}.
 
 We can define such paired-array queue like the following Python code \footnote{Legacy Basic
 code is not presented here. And we actually use list in Python to illustrate the idea.
-ANSI C and ISO C++ programs are provides along with this chapter.}
+ANSI C and ISO C++ programs are provides along with this chapter, they shows more
+in a purely array manner.}
 
 \lstset{language=Python}
 \begin{lstlisting}
@@ -625,6 +640,7 @@ by making them more balanced. One option is to add a balancing constraint.
 
 \be
   | R | < | F |
+\label{eq:balance-invariant}
 \ee
 
 Where $R = Rear(Q)$, $F = Front(Q)$, and $|L|$ is the length of list $L$. 
@@ -632,6 +648,77 @@ This constraint ensure the length
 of rear list is less than the length of front list. So that the reverse
 procedure will be executed once the rear list grows equal or longer than
 the front list.
+
+Here we need frequently access the length information of a list. Howerver,
+calculate the length takes linear time for singly linked-list. We can 
+record the length to a variable and update it as adding and removing elements.
+This approach enables us to get the length information in constant time.
+
+Below example shows the modified paired-list queue definition which is augmented 
+with length fields.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+data BalanceQueue a = BQ [a] Int [a] Int
+\end{lstlisting}
+
+As we keep the invariant as specified in (\ref{eq:balance-invariant}), we
+can easily tell if a queue is empty by testing the length of front list.
+
+\be
+  F = \Phi \Leftrightarrow |F| = 0
+\ee
+
+In the left part of this section, we suppose the length of a list $L$, can
+be retreived as $|L|$ in constant time.
+
+Push and pop are almost as same as before except that we check the balance
+invariant by passing length information and performs reversing accordingly.
+
+\be
+  push(Q, x) = balance(F, |F|, \{ x \} \cup R, |R| + 1) \\
+  pop(Q) = balabnce(tail(F), |F|-1, R, |R|)
+\ee
+
+Where functino $balance()$ is defined as the following.
+
+\be
+  balance(F, |F|, R, |R|) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  Queue(F, |F|, R, |R|) & |R| \leq |F| \\
+  Queue(F \cup reverse(R), |F| + |R|, \Phi, 0) & otherwise 
+  \end{array}
+\right .
+\ee
+
+Note that the function $Queue()$ takes four parameters, the front list along
+with its length (recorded), and the rear list along with its length, and
+form a paired-list queue augmented with length fields.
+
+We can easily translate the equations to Haskell program. And we can
+enforce the abstract queue interface by making the implementation
+an instance of the Queue type class.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+instance Queue BalanceQueue where
+    empty = BQ [] 0 [] 0
+
+    isEmpty (BQ _ lenf _ _) = lenf == 0
+
+    -- Amortized O(1) time push
+    push (BQ f lenf r lenr) x = balance f lenf (x:r) (lenr + 1)
+
+    -- Amortized O(1) time pop
+    pop (BQ (_:f) lenf r lenr) = balance f (lenf - 1) r lenr
+
+    front (BQ (x:_) _ _ _) = x
+
+balance f lenf r lenr
+    | lenr <= lenf = BQ f lenf r lenr
+    | otherwise = BQ (f ++ (reverse r)) (lenf + lenr) [] 0
+\end{lstlisting}
 
 TODO: Add algorithm description eqs
 
