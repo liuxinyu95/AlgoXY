@@ -720,13 +720,163 @@ balance f lenf r lenr
     | otherwise = BQ (f ++ (reverse r)) (lenf + lenr) [] 0
 \end{lstlisting}
 
-TODO: Add algorithm description eqs
-
 % ================================================================
 %                 Realtime Queue
 % ================================================================
-\section{One more step improvement, Realtime Queue}
+\section{One more step improvement, Real-time Queue}
 \index{Queue!Realtime Queue}
+
+Although the extremely worst case can be avoided by improve the balancing
+as what has been presented in previous section, the performance 
+of reversing rear list is still bound to $O(N)$, where $N = |R|$.
+So if the rear list is very long, the instant performance is still
+acceptable poor even if the amortized time is $O(1)$. It is particularly
+important in some real-time system to ensure the worst case performance.
+
+As we have analyzed, the bottleneck is the computation of $ F \cup reverse(R)$.
+This happens when $|R| > |F|$. Considering that $|F|$ and $|R|$ are
+all integers, so this computation happens when
+
+\be
+  |R| = |F| + 1
+\ee
+
+Both $F$ and the result of $reverse(R)$ are singlely linked-list, 
+It takes $O(|F|)$ time to concatenate them together, and it takex extra
+$O(|R|)$ time to reverse the rear list, so the total computation
+is bound to $O(|N|)$, where $N = |F| + |R|$. Which is proportion to the 
+total number of elements in queue.
+
+In order to realize a real-time queue, we can'tcomputing $ F \cup reverse(R)$
+monolithicially. Our strategy is to distribute this expensive computation to every
+pop and push operations. Thus although each pop and push get a bit slow,
+we may avoid the extremely slow pup or push case.
+
+Let's break down how functional reverse algorithms is implemented typically.
+
+\be
+  reverse(X) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & X = \Phi \\
+  reverse(X') \cup \{ x_1 \} & otherwise
+  \end{array}
+\right .
+\ee
+
+Where $X' = tail(X) = \{ x_2, x_3, ...\}$.
+
+This is a typical recursive algorithm, that if the list to be reversed is
+empty, the result is just an empty list. This is the edge case; otherwise, we 
+take the first element $x_1$ from the list, reverse the rest $\{x_2, x_3, ..., x_n \}$, 
+to $\{x_n, x_{n-1}, .., x_3, x_2 \}$ and append $x_1$ after it.
+
+However, this algorithm performs poor, as appending an element to the end of a list
+is proportion to the length of the list. So it's $O(N^2)$, but not a linear
+time reverse algorithm.
+
+There exists another implementation which utilizes an accumulator $A$, like below.
+
+\be
+  reverse(X) = reverse'(X, \Phi)
+\ee
+
+Where
+
+\be
+ reverse'(X, A) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  A & X = \Phi \\
+  reverse'(X', \{ x_1 \} \cup A) & otherwise
+  \end{array}
+\right .
+\ee
+
+We call $A$ as {\em accumulator} because it accumulates intermediate reverse result
+at any time. Every time we call $reverse'(X, A)$, list $X$ contains the rest of
+elements wait to be reversed, and $A$ holds all the reversed elements so far. For instance
+when we call $reverse'()$ at $i$-th time, $X$ and $A$ contains the following
+elements:
+
+\[
+  \begin{array}{r@{\quad}l}
+  X = \{x_i, x_{i+1}, ..., x_n \} & A = \{ x_{i-1}, x_{i-2}, ... x_1 \}
+  \end{array}
+\]
+
+In every non-trivial case, we takes the first element from $X$ in $O(1)$ time;
+then put it in front of the accumulator $A$, which is again $O(1)$ constant time.
+We repeat it $N$ times, so this is a linear time ($O(N)$) algorithm.
+
+The latter version of reverse is obviously a {\em tail-recursion} algorithm,
+see \cite{tail-call} and \cite {recursion} for detail. Such characteristic 
+is easy to change from monolithc algorithm to incremental manner.
+
+The solution is state transfering. We can use a state machine contains
+two types of stats: reversing state $S_r$ to indicate that the reverse
+is still on-going (not finished), and finish state $S_f$ to indicate
+the reverse has benn done (finished). In Haskell programming
+language, it can be defined as a type.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+data State a = | Reverse [a] [a]
+               | Done [a]
+\end{lstlisting}
+
+And we can schedule (slow-down) the above $reverse'(X, A)$ function with
+these two types of state.
+
+\be
+  step(S, X, A) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (S_f, A) & S = S_r \land X = \Phi \\
+  (S_r, X', \{ x_1 \} \cup A & S = S_r) \land X \neq \Phi \\
+  \end{array}
+\right .
+\ee
+
+Each step, we examine the state type first, if the current state is
+$S_r$ (on-going), and the rest elements to be reversed in $X$ is
+empty, we can turn the algorithm to finish $S_f$ state; otherwise,
+we take the first element from $X$, put it in front of $A$ just
+as same as above, but we do NOT perform recursion, but finish this
+step. We can store the current state as well as the resulted $X$ 
+and $A$, the reverse can be continued at any time when we call 'next' 
+$step$ function in the future with the stored state, $X$ and $A$ 
+passed in.
+
+Here is an exmple of this step-by-step reverse algorithm.
+
+\[
+\begin{array}{lcl}
+step(S_r, "hello", \Phi) & = & (S_r, "ello", "h") \\
+step(S_r, "ello", "h") & = & (S_r, "llo", "eh") \\
+... & & \\
+step(S_r, "o", "lleh") & = & (S_r, \Phi, "olleh") \\
+step(S_r, \Phi, "olleh") & = & (S_f, "olleh")
+\end{array}
+\]
+
+And in Haskell code manner, the example is like the following.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+step $ Reverse "hello" [] = Reverse "ello" "h"
+step $ Reverse "ello" "h" = Reverse "llo" "eh"
+...
+step $ Reverse "o" "lleh" = Reverse [] "olleh"
+step $ Reverse [] "olleh" = Done "olleh"
+\end{lstlisting}
+
+Now we can distribute the reverse into steps in every pop anbd push 
+operations. However, the problem is just half solved. We want to
+break down $ F \cup reverse(R)$, and we have broken $reverse(R)$
+into steps, we next need to schedule(slow-down) the list concatenation
+part $F \cup ...$, which is bound to $O(|F|)$, into incremental
+manner so that we can distribute it to pop and push operations.
 
 TODO: Realtime queue here...
 
@@ -755,6 +905,12 @@ Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest and Clifford Stein. ``I
 
 \bibitem{okasaki-book}
 Chris Okasaki. ``Purely Functional Data Structures''. Cambridge university press, (July 1, 1999), ISBN-13: 978-0521663502
+
+\bibitem{tail-call}
+Wikipedia. ``Tail-call''. http://en.wikipedia.org/wiki/Tail\_call
+
+\bibitem{recursion}
+Wikipedia. ``Recursion (computer science)''. http://en.wikipedia.org/wiki/Recursion\_(computer\_science)\#Tail-recursive\_functions
 
 \end{thebibliography}
 
