@@ -1051,12 +1051,149 @@ analysie.
 We first add an idle state $S_0$ to simplify some state transfer. Below Haskell program
 is an example of this modified state definition.
 
-TODO: Realtime queue here...
+\lstset{language=Haskell}
+\begin{lstlisting}
+data State a = Empty
+             | Reverse Int [a] [a] [a] [a] -- n, f', acc_f' r, acc_r
+             | Append Int [a] [a]          -- n, rev_f', acc
+             | Done [a] -- reulst: f ++ reverse r
+\end{lstlisting}
+
+And the data structure is defined with three parts, the front list (augmented with length);
+the on-going state of computing $F \cup reverse(R)$; and the rear list (augmented with length).
+
+Here is the Haskell definition of real-time queue.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+data RealtimeQueue a = RTQ [a] Int (State a) [a] Int
+\end{lstlisting}
+
+The empty queue is composed with empty front and rear list together with idle state $S_0$ as
+$Queue(\Phi, 0, S_0, \Phi, 0)$. And we can test if a queue is empty by checking if $|F| = 0$ 
+according
+to the balance invariant defined before. Push and pop are changed accordingly.
+
+\be
+  push(Q, x) = balance(F, |F|, \mathcal{S}, \{ x \} \cup R, |R|+1) \\
+  pop(Q) = balance(F', |F|-1, abort(\mathcal{S}), R, |R|)
+\ee
+
+The major difference is $abort()$ function. Based on our above analysis, when there
+is popping, we need decrease the counter, so that we can concatenate one element less.
+We define this as aborting. The details will be given after $balance()$ function.
+
+The $balance()$ function first check the balance invariant, if it's violated, we need
+start rebalance it by starting compute $F \cup reverse(R)$ incrementally; otherwise
+we just execute one step of the unfinished incremental computation. 
+
+\be
+  balance(F, |F|, \mathcal{S}, R, |R|) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  step(F, |F|, \mathcal{S}, R, |R|) & |R| \leq |F| \\
+  step(F, |F| + |R|, (S_r, 0, F, \Phi, R, \Phi) \Phi, 0) & otherwise
+  \end{array}
+\right .
+\ee
+
+The $step()$ function typically transfer the state machine one state ahead, and
+it will turn the state to idle ($S_0$) when the increamental computation finishes.
+
+\be
+  step(F, |F|, \mathcal{S}, R, |R|) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  Queue(F', |F|, S_0, R, |R|) &  S' = S_f \\
+  Queue(F, |F|, \mathcal{S}', R, |R|) & otherwise
+  \end{array}
+  \right .
+\ee
+
+Where $\mathcal{S}' = next(\mathcal{S})$ is the next state transferred; 
+$F' = F \cup reverse(R)$, is the final new front list result from the incremental
+computing. The real
+state transfering is implemented in $next()$ function as the following. It's different
+from previous version by adding the counter field $n$ to record how many elements left
+we need to concatenet.
+
+\be
+  next(\mathcal{S}) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (S_r, n+1, F', \{ f_1 \} \cup \overleftarrow{F}, R', \{ r_1 \} \cup \overleftarrow{R}) &
+      S = S_r \land F \neq \Phi \\
+  (S_c, n, \overleftarrow{F}, \{ r_1 \} \cup \overleftarrow{R}) &
+      S = S_r \land F = \Phi \\
+  (S_f, A) & S = S_c \land n = 0 \\
+  (S_c, n-1, X', \{ x_1 \} \cup A) & S = S_c \land n \neq 0 \\
+  \mathcal{S} & otherwise
+  \end{array}
+\right .
+\ee
+
+Function $abort()$ is used to tell the state machine, we can concatenate one element
+less since it is popped.
+
+\be
+  abort(\mathcal{S}) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (S_f, A') & S = S_c \land n = 0 \\
+  (S_c, n-1, X' A) & S = S_c \land n \neq 0 \\
+  (S_r, n-1, F, \overleftarrow{F}, R, \overleftarrow{R}) & S = S_r \\
+  \mathcal{S} & otherwise
+  \end{array}
+\right .
+\ee
+
+Note that when $n = 0$ we actually rollback when concatenated element by 
+return $A'$ as result but not $A$. (Why? this is left as an exercise.)
+
+It seems that we've done, however, there is still one tricky issue behind.
+If we push an element $x$ to an empty queue, the result queue will be:
+\[
+  Queue(\Phi, 1, (S_c, 0 \Phi \{ x \}), \Phi, 0)
+\]
+
+If we perform pop immediately, we'll get an error! We found that  
+the front list is empty although the previous computation of $F \cup reverse(R)$ 
+has been finished. This is because it takes one more extra step to
+transfer from the state $(S_c, 0, \Phi, A)$ to $(S_f, A)$. It's necessary
+to refine the $\mathcal{S}'$ in $step()$ function a bit.
+
+\be
+  \mathcal{S}' = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  next(next(\mathcal{S})) & F = \Phi \\
+  next(\mathcal{S}) & otherwise
+  \end{array}
+\right .
+\ee
+
+Note that this algorithm differs from the one given by Chris Okasaki in \cite{okasaki-book}.
+Okasaki's algorithm executes two steps per pop and push, while the one presents in 
+this chapter executes only one per pop and push, which leads to more distributed
+performance.
 
 \begin{Exercise}
-Realize the real-time queue with symmetric paired-array queue solution in your favorite 
+\begin{itemize}
+\item Why we need rollback one elment when $n=0$ in $abort()$ function?
+
+\item Realize the real-time queue with symmetric paired-array queue solution in your favorite 
 imperative programming language.
+\end{itemize}
 \end{Exercise}
+
+
+% ================================================================
+%                 Lazy Real-time queue
+% ================================================================
+\section{Lazy real-time queue}
+\index{Queue!Lazy real-time queue}
+
+TODO: add lazy real-time queue here.
 
 % ================================================================
 %                 Short summary
