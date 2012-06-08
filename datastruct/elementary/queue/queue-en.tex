@@ -720,6 +720,11 @@ balance f lenf r lenr
     | otherwise = BQ (f ++ (reverse r)) (lenf + lenr) [] 0
 \end{lstlisting}
 
+\begin{Exercise}
+Write the symmetric balance improvement solution for paired-array queue
+in your favorite imperative programming language.
+\end{Exercise}
+
 % ================================================================
 %                 Realtime Queue
 % ================================================================
@@ -751,6 +756,9 @@ In order to realize a real-time queue, we can'tcomputing $ F \cup reverse(R)$
 monolithicially. Our strategy is to distribute this expensive computation to every
 pop and push operations. Thus although each pop and push get a bit slow,
 we may avoid the extremely slow pup or push case.
+
+\subsubsection{Incremental reverse}
+\index{Queue!Incremental reverse}
 
 Let's break down how functional reverse algorithms is implemented typically.
 
@@ -833,7 +841,7 @@ these two types of state.
   \begin{array}
   {r@{\quad:\quad}l}
   (S_f, A) & S = S_r \land X = \Phi \\
-  (S_r, X', \{ x_1 \} \cup A & S = S_r) \land X \neq \Phi \\
+  (S_r, X', \{ x_1 \} \cup A) & S = S_r \land X \neq \Phi \\
   \end{array}
 \right .
 \ee
@@ -878,7 +886,177 @@ into steps, we next need to schedule(slow-down) the list concatenation
 part $F \cup ...$, which is bound to $O(|F|)$, into incremental
 manner so that we can distribute it to pop and push operations.
 
+\subsubsection{Incremental concatenate}
+\index{Queue!Incremental concatenate}
+
+It's a bit more challenge to implement incremental list concatenation
+than list reversing. However, it's possible to re-use the result
+we gained from increment reverse by a small trick: In order to 
+realzie $X \cup Y$, we can first reverse $X$ to $\overleftarrow{X}$,
+then take elements one by one from $\overleftarrow{X}$ and put
+them in front of $Y$ just as what we have done in $reverse'$.
+
+\be
+  \begin{array}{rcl}
+    X \cup Y & \equiv & reverse(reverse(X)) \cup Y \\
+             & \equiv & reverse'(reverse(X), \Phi) \cup Y \\
+             & \equiv & reverse'(reverse(X), Y) \\
+             & \equiv & reverse'(\overleftarrow{X}, Y)
+  \end{array}
+\ee
+
+This fact indicates us that we can use an extra state to instruct
+the $step()$ function to continously appeding the result to $F$
+after $R$ is reversed.
+
+The strategy is to do the total work in two phases:
+\begin{enumerate}
+\item Reverse both $F$ and $R$ in parallel to get $\overleftarrow{F} = reverse(F)$, and 
+$\overleftarrow{R} = reverse(R)$ incrementally;
+\item Incrementally take elements from $\overleftarrow{F}$ and put them in front of
+$\overleftarrow{R}$.
+\end{enumerate}
+
+So we define three types of states: $S_r$ represents reversing; $S_c$ represents
+concatenating; and $S_f$ represents finnish.
+
+In Haskell, these types of state are defined as the following.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+data State a = Reverse [a] [a] [a] [a]
+             | Concat [a] [a]
+             | Done [a]
+\end{lstlisting}
+
+Because we reverse $F$ and $R$ simultaneously, so reversnig state takes two
+pairs of lists and accumulators.
+
+The state transfer is defined according to the described two phases strategy.
+Denotes that $F = \{ f_1, f_2, ... \}$, $F' = tail(F) = \{f_2, f_3, ... \}$,
+$R = \{ r_1, r_2, ... \}$, $R' = tail(R) = \{ r_2, r_3, ... \}$. A state $\mathcal{S}$,
+contains it's type $S$, which has the value among $S_r$, $S_c$, and $S_f$. 
+Note that $\mathcal{S}$ also contains necessary 
+parameters such as $F$, $\overleftarrow{F}$, $X$, $A$ etc as intermediate results.
+These parameters vary according to the different state.
+
+\be
+  next(\mathcal{S}) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (S_r, F', \{ f_1 \} \cup \overleftarrow{F}, R', \{ r_1 \} \cup \overleftarrow{R}) & S = S_r \land F \neq \Phi \land R \neq \Phi \\
+  (S_c, \overleftarrow{F}, \{ r_1 \} \cup \overleftarrow{R}) & S = S_r \land F = \Phi \land R = \{ r_1 \} \\
+  (S_f, A) & S = S_c \land X = \Phi \\
+  (S_c, X', \{ x_1 \} \cup A) & S = S_c \land X \neq \Phi
+  \end{array}
+\right .
+\ee
+
+The relative Haskell program is list as below.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+next (Reverse (x:f) f' (y:r) r') = Reverse f (x:f') r (y:r')
+next (Reverse [] f' [y] r') = Concat f' (y:r')
+next (Concat 0 _ acc) = Done acc
+next (Concat (x:f') acc) = Concat f' (x:acc)
+\end{lstlisting}
+
+All left to us is to distribute these incremental steps into every pop and push
+operations to implement a real-time $O(1)$ purely functional queue.
+
+\subsubsection{Sum up}
+
+Before we dive into the final real-time queue implementation. Let's analyze how
+many incremental steps are taken to achieve the result of $F \cup reverse(R)$.
+According to the balance variant we used previously, $|R| = |F| + 1$, Let's 
+denotes $M = |F|$. 
+
+Once the queue gets unbalanced due to some push or pop operation, we start this
+incremental  $F \cup reverse(R)$.
+It needs $M + 1$ steps to reverse $R$, and at the same time, we finish reversing
+the list $F$ within these steps. After that, we need extra $M+1$ steps to execute
+the concatenation. So there are $2M + 2$ steps.
+
+It seems that distribute one step inside one pop or push operation is the natural
+solution, However, there is a critical 
+question must be answered: Is it possible that before we finish these $2M + 2$ steps,
+the queue gets unbalanced again due to a series push and pop?
+
+There are two facts about this question, one is good news and the other is bad news.
+
+Let's first show the good news, that luckly, continously pushing can't make the 
+queue unbalanced again before we finish these $2M + 2$ steps to achieve $F \cup reverse(R)$.
+This is because once we start rebalancing, we can get a new front list 
+$F' = F \cup reverse(R)$ after $2M + 2$ steps. While the next time unbalance
+is triggered when 
+
+\be
+  \begin{array}{rcl}
+  |R'| & = & |F'| + 1 \\
+       & = & |F| + |R| + 1 \\
+       & = & 2M + 2
+  \end{array}
+\ee
+
+That is to say, even we continously pushing as mush elements as possible after 
+the last unbalanced time, when the queue gets unbalanced again, the $2M+2$ steps
+exactly get finished at that time point. Which means the new front list $F'$ is
+calculated OK. We can safely go on to compute $F' \cup reverse(R')$. Thanks to the
+balance invariant which is designed in previous section.
+
+But, the bad news is that, pop operation can happen at anytime before these
+$2M+2$ steps finish. The situation is that once we want to extract element 
+from front list, the new front list $F' = F \cup reverse(R)$ hasn't been
+ready yet. We don't have a valid front list at hand.
+
+One solution to solve this problem is to keep a copy of original front list $F$,
+during the time we are calculating $reverse(F)$ which is described in phase 1 of
+our incremental computing strategy. So that we are still safe even if user
+continously performs first $M$ pop operations. So the queue looks like
+in table \ref{tab:pop-before-m} at some time after we start the incremental computation and before
+phase 1 (reverse $F$ and $R$ simultaneously) ending.
+
+\begin{table}
+\centering
+\begin{tabular}{l l l}
+  front copy & on-going computation & new rear \\
+  \hline
+  $\{ f_i, f_{i+1}, ..., f_m \}$ & $(S_r, \tilde{F}, ..., \tilde{R}, ...)$ & $ \{ ... \}$ \\
+  first $i-1$ elements popped & intermediate result $\overleftarrow{F}$ and $\overleftarrow{R}$ & new elements pushed
+\end{tabular}
+\caption{Intermedate state of a queue before first $M$ steps finish.}
+\label{tab:pop-before-m}
+\end{table}
+
+After these $M$ pop operations, the copy of $F$ is exhausted. And we just
+start incremental concatenation phase at that time. What if user gones
+on popping?
+
+The fact is that since $F$ is exhausted (becomes $\Phi$), we needn't do concatenation
+at all. Since $F \cup \overleftarrow{R} = \Phi \cup \overleftarrow{R} = \overleftarrow{R}$.
+
+It indicates us, when doing concatenation, we only need to concatenate those elements
+haven't been popped, which are still left in $F$. As user pops elements one by one
+continously from the head of front list $F$, one method is to use a counter,
+record how many elements there are still in $F$. The counter is initialized as $M$
+when we start computing $F \cup reverse(R)$, it's decreased every time when pop is
+performed, which means we can concatenate one element less; of course we need decrease
+this counter as well in every steps of concatenation. If and only if this counter
+becomes zero, we needn't do concatenations any more.
+
+We can give the realization of purely functional real-time queue according to the above
+analysie.
+
+We first add an idle state $S_0$ to simplify some state transfer. Below Haskell program
+is an example of this modified state definition.
+
 TODO: Realtime queue here...
+
+\begin{Exercise}
+Realize the real-time queue with symmetric paired-array queue solution in your favorite 
+imperative programming language.
+\end{Exercise}
 
 % ================================================================
 %                 Short summary

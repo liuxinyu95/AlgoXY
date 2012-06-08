@@ -31,7 +31,7 @@ import Test.QuickCheck
 --      field n: number of elements left in f
 data State a = Empty 
              | Reverse Int [a] [a] [a] [a] -- n, f', acc_f' r, acc_r
-             | Append Int [a] [a]          -- n, rev_f', acc
+             | Concat Int [a] [a]          -- n, rev_f', acc
              | Done [a] -- result: f ++ reverse r
                deriving (Show, Eq)
 
@@ -70,14 +70,14 @@ step f lenf s r lenr =
 --        reverse' (x:xs) acc = reverse' xs (x:acc)
 --  2. xs ++ ys = reverse' (reverse xs) ys
 next (Reverse n (x:f) f' (y:r) r') = Reverse (n+1) f (x:f') r (y:r')
-next (Reverse n [] f' [y] r') = Append n f' (y:r')
-next (Append 0 _ acc) = Done acc
-next (Append n (x:f') acc) = Append (n-1) f' (x:acc)
+next (Reverse n [] f' [y] r') = Concat n f' (y:r')
+next (Concat 0 _ acc) = Done acc
+next (Concat n (x:f') acc) = Concat (n-1) f' (x:acc)
 next s = s
 
 -- Abort unnecessary appending as the element is popped
-abort (Append 0 _ (_:acc)) = Done acc -- Note! we rollback 1 elem
-abort (Append n f' acc) = Append (n-1) f' acc
+abort (Concat 0 _ (_:acc)) = Done acc -- Note! we rollback 1 elem
+abort (Concat n f' acc) = Concat (n-1) f' acc
 abort (Reverse n f f' r r') = Reverse (n-1) f f' r r'
 abort s = s
 
