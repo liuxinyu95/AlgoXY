@@ -1255,6 +1255,63 @@ imperative programming language.
 \section{Lazy real-time queue}
 \index{Queue!Lazy real-time queue}
 
+The key to realize a real-time queue is to break down the expensive
+$F \cup reverse(R)$ to avoid monolithic computation. Lazy evaluation
+is particually helpful in such case. In this section, we'll explore
+if there is some more elegant solution by exploit laziness.
+
+Suppose that there exits a function $rotate()$,
+which can compute $F \cup reverse(R)$ incrementally. that's to say,
+with some accumulator $A$, the following two functions are equivalant.
+
+\be
+  rotate(X, Y, A) \equiv X \cup reverse(Y) \cup A
+  \label{eq:rot-def}
+\ee
+
+Where we initialized $X$ as the front list $F$, $Y$ as the rear list $R$,
+and the accumulator $A$ is initialized as empty $\Phi$.
+
+The trigger of rotation is still as same as before when $|F| + 1 = |R|$.
+Let's keep this constraint as an invariant during the whole rotation process,
+that $|X| + 1 = |Y|$ always holds.
+
+It's obvisous to deduce to the trivial case:
+
+\be
+  rotate(\Phi, \{ y_1 \}, A) = \{ y_1 \} \cup A
+\ee
+
+Denote $X = \{ x_1, x_2, ... \}$, $Y = \{ y_1, y_2, ...\}$, and
+$X' = \{ x_2, x_3, ...  \}$, $Y' = \{ y_2, y_3, ...\}$ are the rest
+of the lists without the first element for $X$ and $Y$ respectly.
+The recursion case is ruled out as the following.
+
+\be
+  \begin{array}{rcll}
+  rotate( X, Y, A ) & \equiv & X \cup reverse(Y) \cup A & \mbox{Definition of (}\ref{eq:rot-def} \mbox{)} \\
+  & \equiv & \{ x_1 \} \cup (X' \cup reverse(Y) \cup A) & \mbox{Associcative of } \cup \\
+  & \equiv & \{ x_1 \} \cup (X' \cup reverse(Y') \cup (\{ y_1 \} \cup A)) & \mbox{Nature of reverse and associative of }  \cup \\
+  & \equiv & \{ x_1 \} \cup rotate(X', Y', \{ y_1 \} \cup A) & \mbox{Definition of (} \ref{eq:rot-def} \mbox{)}
+  \end{array}
+\ee
+
+Summarize the above two cases, yields the final incremental rotate algorithm.
+
+\be
+rotate(X, Y, A) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{ y_1 \} \cup A & X = \Phi \\
+  \{ x_1 \} \cup rotate(X', Y', \{ y_1 \} \cup A) & otherwise
+  \end{array}
+\right .
+\ee
+
+If we execute $\cup$ lazily instead of strictly, that is, execute $\cup$
+once pop or push operation is performed, the computation of $rotate$ can
+be distribute to push and pop naturually.
+
 TODO: add lazy real-time queue here.
 
 % ================================================================
