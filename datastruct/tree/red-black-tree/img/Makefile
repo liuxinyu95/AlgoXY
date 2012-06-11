@@ -1,4 +1,4 @@
-IMG_OBJECTS = rb-insert-clrs del-case1 del-case2 del-case3 \
+IMG_OBJECTS = del-case1 del-case2 del-case3 \
 
 DOT_OBJECTS = unbalanced insert-haskell clrs-fig.13.4 python-insert \
 db-fix unbalanced-2 unbalanced-3 unbalanced-zigzag rotate-l rotate-r \
