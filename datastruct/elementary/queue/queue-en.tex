@@ -1312,7 +1312,187 @@ If we execute $\cup$ lazily instead of strictly, that is, execute $\cup$
 once pop or push operation is performed, the computation of $rotate$ can
 be distribute to push and pop naturually.
 
-TODO: add lazy real-time queue here.
+Based on this idea, we modify the paired-list queue definition to change
+the front list to a lazy list, and augment it with a computation stream.
+\cite{SICP}. When the queue triggers re-balance constraint by some
+pop/push, that
+$|F| + 1 = |R|$, The algorithm creates a lazy rotation computation,
+the use this lazy ratation as the new front list $F'$; the new rear
+list becomes $\Phi$, and a copy of $F'$ is maintained as a stream.
+
+After that, when we performs every push and pop; we consume the 
+stream by forcing a $\cup$ operation. This results us advancing one
+step along the stream, $ \{ x \} \cup F''$, where $F' = tail(F')$.
+We can discard $x$, and replace the stream $F'$ with $F''$.
+
+Once all of the stream is exhausted, we can start another rotation.
+
+In order to illustrate this idea clearly, we turns to Scheme/Lisp
+programming language to show example codes, because it give us
+explicit control of laziness.
+
+In Scheme/Lisp, we have the following three tools to deal with lazy
+stream.
+
+\lstset{language=Lisp}
+\begin{lstlisting}
+(define (cons-stream a b) (cons a (delay b)))
+
+(define stream-car car)
+
+(define (stream-cdr s) (cdr (force s)))
+\end{lstlisting}
+
+So 'cons-stream' constructs a 'lazy' list from an element $x$
+and an existing list $L$ without really evaluating
+the value of $L$; The evaluation is actually delayed to 
+'stream-cdr', where the computation is forced. delaying can 
+be realized by lambda calculus, please refer to \cite{SICP} for
+detail.
+
+The lazy paired-list queue is defined as the follwing.
+
+\lstset{language=Lisp}
+\begin{lstlisting}
+(define (make-queue f r s)
+  (list f r s))
+
+;; Auxiliary functions
+(define (front-lst q) (car q))
+
+(define (rear-lst q) (cadr q))
+
+(define (rots q) (caddr q))
+\end{lstlisting}
+
+A queue is consist of three parts, a front list, a rear list,
+and a stream which represents the computation of $F \cup reverse(R)$.
+Create an empty queue is trivial as making all these three parts
+null.
+
+\begin{lstlisting}
+(define empty (make-queue '() '() '()))
+\end{lstlisting}
+
+Note that the front-list is also lazy stream actually, so we need use
+stream related functions to manipulate them. For example, the following
+function test if the queue is empty by checking the front lazy list stream.
+
+\begin{lstlisting}
+(define (empty? q) (stream-null? (front-lst q)))
+\end{lstlisting}
+
+The push function is almost as same as the one given in previous section.
+That we put the new element in front of the rear list; and then examine
+the balance invariant and do neccessary balancing works.
+
+\be
+push(Q, x) = balance(\mathcal{F}, \{ x \} \cup R, \mathcal{R}_s)
+\ee
+
+Where $\mathcal{R}$ represents the lazy stream of front list; $\mathcal{R}_s$ is 
+the stream of rotation computation. The relative Scheme/Lisp
+code is give below.
+
+\begin{lstlisting}
+(define (push q x)
+  (balance (front-lst q) (cons x (rear q)) (rots q)))
+\end{lstlisting}
+
+While pop is a bit different, because the front list is actually lazy stream,
+we need force an evaluation. All the others are as same as before.
+
+\be
+pop(Q) = balance(\mathcal{F}', R, \mathcal{R}_s)
+\ee
+
+Here $\mathcal{F}'$, force one evaluation to $\mathcal{F}$, the Scheme/Lisp
+code regarding to this equation is as the following. 
+
+\begin{lstlisting}
+(define (pop q)
+  (balance (stream-cdr (front-lst q)) (rear q) (rots q)))
+\end{lstlisting}
+
+For illustration purpose, we skip the error handling (such as pop from
+an empty queue etc) here.
+
+And one must access the top element in the queue by force evaluation 
+of the front list stream as well.
+
+\begin{lstlisting}
+(define (front q) (stream-car (front-lst q)))
+\end{lstlisting}
+
+The balance function first check if the computation stream is completely
+exhausted, and start new rotation accordingly; otherwise, it just comsumes
+one evaluation by enforce the lazy stream.
+
+\be
+balance(Q) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  Queue(\mathcal{F}', \Phi, \mathcal{F}') & \mathcal{R}_s = \Phi \\
+  QUeue(\mathcal{F}, R, \mathcal{R}_s') & otherwise
+  \end{array}
+\right .
+\ee
+
+Here $\mathcal{F}'$ is defined to start a new rotation.
+
+\be
+  \mathcal{F}' = rotate(F, R, \Phi)
+\ee
+
+The relative Scheme/Lisp program is listed accordingly.
+
+\begin{lstlisting}
+(define (balance f r s)
+  (if (stream-null? s)
+      (let ((newf (rotate f r '())))
+    (make-queue newf '() newf))
+      (make-queue f r (stream-cdr s))))
+\end{lstlisting}
+
+The implementation of incremental rotate function is just as same as
+what we analyzed above.
+
+\begin{lstlisting}
+(define (rotate xs ys acc)
+  (if (stream-null? xs)
+      (cons-stream (car ys) acc)
+      (cons-stream (stream-car xs)
+           (rotate (stream-cdr xs) (cdr ys)
+               (cons-stream (car ys) acc)))))
+\end{lstlisting}
+
+We used explicit lazy evaluation in Scheme/Lisp. Actually, this program
+can be very short by using implicit programming languages, for example,
+Haskell.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+data LazyRTQueue a = LQ [a] [a] [a] -- front, rear, f ++ reverse r
+
+instance Queue LazyRTQueue where
+    empty = LQ [] [] []
+
+    isEmpty (LQ f _ _) = null f
+
+    -- O(1) time push
+    push (LQ f r rot) x = balance f (x:r) rot
+
+    -- O(1) time pop
+    pop (LQ (_:f) r rot) = balance f r rot
+
+    front (LQ (x:_) _ _) = x
+
+balance f r [] = let f' = rotate f r [] in LQ f' [] f'
+balance f r (_:rot) = LQ f r rot
+
+rotate [] [y] acc = y:acc
+rotate (x:xs) (y:ys) acc = x : rotate xs ys (y:acc)
+\end{lstlisting}
 
 % ================================================================
 %                 Short summary
@@ -1345,6 +1525,9 @@ Wikipedia. ``Tail-call''. http://en.wikipedia.org/wiki/Tail\_call
 
 \bibitem{recursion}
 Wikipedia. ``Recursion (computer science)''. http://en.wikipedia.org/wiki/Recursion\_(computer\_science)\#Tail-recursive\_functions
+
+\bibitem{SICP}
+Harold Abelson, Gerald Jay Sussman, Julie Sussman. ``Structure and Interpretation of Computer Programs, 2nd Edition''. MIT Press, 1996, ISBN 0-262-51087-1
 
 \end{thebibliography}
 
