@@ -1,0 +1,643 @@
+第一个版本的randoma access sequence, 基于Okasaki的论文：
+O(\lg N)的random access，O(1)的头部插入。
+缺点： append和split未实现。
+
+{-
+    RAList.hs, Random Access List
+    Copyright (C) 2011, Liu Xinyu (liuxinyu95@gmail.com)
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-}
+
+module RAList where
+
+import Test.QuickCheck
+
+-- Based on Chris Okasaki's ``Purely Functional Data structures'',
+--   Chapter 9, Numeric representation.
+
+-- Binary tree representation
+
+data Tree a = Leaf a
+            | Node Int (Tree a) (Tree a) -- size, left, right
+              deriving (Show)
+
+-- Numeric representation, Binary number
+data Digit a = Zero
+             | One (Tree a) deriving (Show)
+
+-- The random access list is represented as a forest of binary trees.
+type RAList a = [Digit a]
+
+-- Auxilary functions
+size :: Tree a -> Int
+size (Leaf _) = 1
+size (Node sz _ _) = sz
+
+-- Precondition: rank t1 = rank t2
+link :: Tree a -> Tree a -> Tree a
+link t1 t2 = Node (size t1 + size t2) t1 t2
+
+cons :: a -> RAList a -> RAList a
+cons x ts = insertTree ts (Leaf x)
+
+insertTree :: RAList a -> Tree a -> RAList a
+insertTree [] t = [One t]
+insertTree (Zero:ts) t = One t : ts
+insertTree (One t' :ts) t = Zero : insertTree ts (link t t')
+
+-- Assert the RAList isn't empty
+extractTree :: RAList a -> (Tree a, RAList a)
+extractTree [One t] = (t, [])
+extractTree (One t:ts) = (t, Zero:ts)
+extractTree (Zero:ts) = (t1, One t2:ts') where
+    (Node _ t1 t2, ts') = extractTree ts
+
+head :: RAList a -> a
+head ts = x where (Leaf x, _) = extractTree ts
+
+tail :: RAList a -> RAList a
+tail ts = ts' where (_, ts') = extractTree ts
+
+getAt :: RAList a -> Int -> a
+getAt (Zero:ts) i = getAt ts i
+getAt (One t:ts) i = if i < size t then lookupTree t i
+                     else getAt ts (i - size t)
+
+lookupTree :: Tree a -> Int -> a
+lookupTree (Leaf x) 0 = x
+lookupTree (Node sz t1 t2) i = if i < sz `div` 2 then lookupTree t1 i
+                               else lookupTree t2 (i - sz `div` 2)
+
+setAt :: RAList a -> Int -> a -> RAList a
+setAt (Zero:ts) i x = Zero:setAt ts i x
+setAt (One t:ts) i x = if i < size t then One (updateTree t i x):ts
+                       else One t:setAt ts (i-size t) x
+
+updateTree :: Tree a -> Int -> a -> Tree a
+updateTree (Leaf _) 0 x = Leaf x
+updateTree (Node sz t1 t2) i x =
+    if i < sz `div` 2 then Node sz (updateTree t1 i x) t2
+    else Node sz t1 (updateTree t2 (i - sz `div` 2) x)
+
+-- Auxiliary functions for flatten etc.
+
+fromList :: [a] -> RAList a
+fromList = foldr cons []
+
+toList :: RAList a -> [a]
+toList [] = []
+toList (Zero:ts) = toList ts
+toList (One t:ts) = (treeToList t) ++ toList ts where
+    treeToList (Leaf x) = [x]
+    treeToList (Node _ t1 t2) = (treeToList t1) ++ treeToList t2
+
+-- testing
+prop_cons :: [Int] -> Bool
+prop_cons xs = xs == (toList $ fromList xs)
+
+prop_lookup :: [Int] -> Int -> Property
+prop_lookup xs i = (0 <=i && i < length xs) ==> (getAt (fromList xs) i) == (xs !! i)
+
+prop_update :: [Int] -> Int -> Int -> Property
+prop_update xs i y = (0 <=i && i< length xs) ==> toList (setAt (fromList xs) i y) == (updateAt xs i y) where
+    updateAt xs i y = as ++ [y] ++ bs
+    (as, (_:bs)) = splitAt i xs
+
+
+-- Reference
+-- [1]. Chris Okasaki. ``Purely Functional Random-Access Lists''. Functional Programming Languages and Computer Architecutre, June 1995, pages 86-95.
+
+Hi,
+
+昨天我比较匆忙，我今天仔细解说一下。
+
+其实目前已经有点跑题了，题目应该是：“实现一个数据结构，支持random access，擅长在头部插入，并且在任何位置的删除操作也很快。”
+数组和链表都不满足要求：
+
+数组，虽然支持O(1)的random access，但是不擅长在头部插入（O(N)），并且在任何位置的删除操作也很慢（平均O(N)）
+链表：虽然支持O(1)的头部插入，在任何位置删除操作也是O(1)的。但是random access平均是O(N)的
+
+昨天我跑题到：“在纯函数setting中，实现尽可能快的random access sequence，并且擅长在头部插入元素”
+
+我们知道纯函数setting中，基本数据结构是链表，当然也可以构建树，问题如何能实现尽量快的random access呢？
+我们可以用一组树来实现一个random access list。这组树就是一个树的列表(确切的说时链表)。
+[t1, t2, t3, ..., tm]，（确切的说时t1->t2->t3->...->tm） 如果每个元素t是一个完全binary tree，并且只有叶子节点能够存储元素，我们称这样的实现为:
+binary random access list
+
+下面我们来描述细节。首先完全binary tree的叶子个数为2^(i-1)，的形式，其中i为树的高度。
+所以对于N的元素的数组，我们把N分解如下：
+N = 2^0*e[0] + 2^1*e[1] + ... + 2^m*e[m]
+其中e[i]为0或者为1，也就是说把N表达为二进制。如果第i位不为0，就意味着存在一颗大小为2^i的binary tree。
+
+例如，6个元素的数组可以表达为2棵树[t1, t2]，其中t1大小为2，t2大小为4, 展开后写成：
+
+                    t2
+                  /    \
+                 /       \                 
+      t1        ^         ^
+    /    \    /    \     /    \
+  x1, x2, x3, x4  x5, x6
+
+当我们向list的头部插入一个元素x0时，我们将x0装入一个只有一个叶子节点的树t0中，然后看看list的第一个树t1是否大小为1，如果不是，我们就把t0添加到这个链表list的头部（耗时O(1)），否则我们把t0和t1构造出一个大小double的树t0'。另t0为t0'的左子树，t1为t0'的右子树。
+然后尝试把t0'插入到链表中。
+
+这样我们就实现了O(1)的在头部添加算法。
+
+下面说random access，如果在树的链表（或者说森林）中，寻找第i个元素，我们的策略如下：
+首先我们查看森林中的第一棵树t1的大小，如果它比i小，说明待查找元素不在第一棵树中，我们继续在森林中查找第i-size(t1)个元素。
+否则，说明我们待查找的元素在t1中，我们比较i和int(size(t1)/2)的大小，如果比一半小，说明待查找元素在左子树中，否则说明待查找元素在右子树中，我们在右子树中查找第i-size(t1)/2个元素。知道我们到达叶子节点为止。
+明显这一查找过程时O(\lg N)的。
+
+综合上面的结论，我们就有了一个纯用链表和树实现的具备O(\lg N)性能random access，和O(1)性能在头部插入的数据结构了。
+
+但是，仅仅根据上面的分析，我们得到的程序还略有不同，大致如下：
+
+首先是树的定义，这个就和普通的二叉树一样，但有两点区别：
+  -区别1： 只有叶子节点存储数据；
+  -区别2： 所有非叶子节点带有一个大小（size）作为augment data，当然这个size不是必须的，但是会带来方便。
+
+
+data Tree a = Leaf a
+            | Node Int (Tree a) (Tree a) -- size, left, right
+
+然后我们定义这样的树组成的森林，就是我们想要的数据结构：
+type BRAList a = [Tree a]
+
+其中BRAList是Binary Random Access List的简写。
+
+为了方便取得一棵树的大小，我们定义size函数如下：
+
+size (Leaf _) = 1
+size (Node sz _ _) = sz
+
+也就是说，叶子节点的大小为1，其他情况从定义中的augment data取得size。
+
+把两棵相等大小的树，double成一颗更大的树的函数如下：
+
+link t1 t2 = Node (size t1 + size t2) t1 t2
+
+然后就是在头部插入了，我们定义头部插入函数的名字为cons， 这样很酷 :-)
+
+cons x ts = insertTree ts (Leaf x)
+
+这个函数仅仅把待插入元素装入一个只有唯一叶子节点的树中，然后插入森林。
+
+插入森林的函数定义为：
+
+insertTree [] t = [t]
+insertTree (t':ts) t = if size t < size t' then  t:t':ts
+                       else insertTree ts (link t t')
+
+也就是说，如果森林为空，则这棵树就是森林中唯一的树，负责比较这棵树和森林中第一棵树的大小，若相等则double，否则这棵新树就变成森林中的第一棵树。（当然底层时链表插入，故O(1)）
+
+当然我们也可以定义cons的逆运算。首先我们要有办法从森林中拿出一片树叶：
+extractTree (t@(Leaf x):ts) = (t, ts)
+extractTree (t@(Node _ t1 t2):ts) = extractTree (t1:t2:ts)
+
+如果森林中的第一棵树，就是仅有一片树叶，我们把它取出来就可以了，否则我们把第一棵树不断砍掉一半，直到拿到第一片树叶。
+
+我们可以定义head和tail了,它们一个返回BRAList的第一个存储元素，一个返回剩下的其他元素：
+
+head' ts = x where (Leaf x, _) = extractTree ts
+tail' = snd . extractTree
+
+下面是random access，性能O(\lg N)
+getAt (t:ts) i = if i < size t then lookupTree t i
+
+                 else getAt ts (i - size t)
+
+其中lookupTree定义为：
+
+lookupTree (Leaf x) 0 = x
+lookupTree (Node sz t1 t2) i = if i < sz `div` 2 then lookupTree t1 i
+                               else lookupTree t2 (i - sz `div` 2)
+
+和上文叙述的算法一样。
+
+当然，我们也可以更改一个指定位置上的元素的值：
+setAt (t:ts) i x = if i < size t then (updateTree t i x):ts
+                   else t:setAt ts (i-size t) x
+
+其中
+
+updateTree (Leaf _) 0 x = Leaf x
+updateTree (Node sz t1 t2) i x =
+    if i < sz `div` 2 then Node sz (updateTree t1 i x) t2
+    else Node sz t1 (updateTree t2 (i - sz `div` 2) x)
+
+到此为止，上文的数据结构就全部实现完了。
+
+我们发现一个重要事实，上上篇中，我们说：
+
+>>>
+所以对于N的元素的数组，我们把N分解如下：
+N = 2^0*e[0] + 2^1*e[1] + ... + 2^m*e[m]
+其中e[i]为0或者为1，也就是说把N表达为二进制。
+如果第i位不为0，就意味着存在一颗大小为2^i的binary tree。
+<<<
+
+这提示我们，可以用二进制数字和森林建立明确的对应关系。
+如果一个位上为0，我们明确告知这一位没有树，定义为Zero
+否则，我们明确告知这一位有大小为2^i的树，定义为One t，具体说就是One (Node sz left right)，其中size = 2^i.
+
+这样，我们可以对cons等算法做出明确的优化，我们无需再比较待插入树的大小是否和森林中第一棵树的大小的关系。
+因为这一过程可以表示为一个二进制数的增加（加一），如果第一位是0，我们直接放入One t，否则我们把这位变成0，
+然后再进位。
+
+于是我们就有了我昨天给出的程序。时间关系，我不细说了，请读者仔细品味吧。
+
+下周我给出终极解法finger tree，支持O(\lg N)的split和Amortize O(1)的catenation，从而实现性能优异的move-to-front
+
+周末愉快！
+
+Hi,
+
+Finger Tree今天终于work out了。的确有些复杂，我慢慢道来。
+
+我们这里采用论文[1]中的结论。但是为了简单，我们不使用Monoid，而使用最朴素的方法。
+
+底层数据结构为平衡2-3树(2-3 tree)，我们把最左侧的非叶子节点单独提取出来作为front finger；
+把最右侧的非叶子节点单独提取出来作为rear finger。
+
+我们首先把普通的数组的性能列在下面：
+
+头部插入： O(N)
+头部删除： O(N)
+尾部插入： O(1)
+尾部删除： O(1)
+连接(concatenation)：O(N) （假设第二个数组的大小是O(N)的）
+索引和update： O(1) （类似C++的const和不带const的T& operator[](int i)）
+截断（split at）： O(N)
+
+ 然后我们把普通链表的性能列出：
+
+头部插入： O(1)
+头部删除： O(1)
+尾部插入： O(N) （假设链表不是循环双向链表，且不是带有tail指针的情况）
+尾部删除： O(N)
+连接(concatenation)：O(N)
+索引和update： O(N)
+截断（split at）： O(N)
+
+我们的目标是：
+
+头部插入： O(1)
+头部删除： O(1)
+尾部插入： O(1)
+尾部删除： O(1)
+连接(concatenation)：O(\lg N)
+索引和update： O(\lg N)
+截断（split at）： O(\lg N)
+
+
+我们分两步走，首先我们先实现O(1)的头部插入和删除，O(1)的尾部插入和删除，以及O(\lg N)的concatenation操作；
+接下来，我们给tree augment一个size的cache，从而实现O(\lg N)的split操作，进而实现O(\lg N)的索引和update操作。以及实现我们最初的目的： O(\lg N)的move to front操作。
+
+[Reference]
+[1]. Ralf Hinze and Ross Paterson. ``Finger Trees: A Simple General-purpose Data Structure." in Journal of Functional Programming16:2 (2006), pages 197-217. http://www.soi.city.ac.uk/~ross/papers/FingerTree.html
+
+我们首先尝试实现O(1)的头部插入和删除
+
+由于finger tree的底层采用平衡2-3 tree，所以我们先定义2-3 tree的节点：
+
+data Node a = Br2 a a | Br3 a a a deriving (Show)
+
+也就是说，一个节点要么有2个分支，要么有3个分支。
+
+然后我们定义Finger Tree，我们把最左侧的非叶子节点提上来作front finger，最右侧的提上来做rear finger
+根据定义，我们知道每个finger，含有2~3个叶子，故而，我们可以用一个叶子列表表示finger。
+
+data Tree a = Empty
+            | Lf a
+            | Tr [a] (Tree (Node a)) [a]
+              deriving (Show)
+
+也就是说，一个Finger Tree要么是空树，要么是指含有唯一叶子的树，要么是更复杂的情况，也就是说一个front finger，一个更为深的Finger Tree，和一个rear finger
+
+我们给一些例子：
+
+空树： Empty
+只有一个叶子的树： Lf a
+front finger含有一个元素，rear finger含有一个元素，中间的更为深的树为空： [b] Empty [a]
+同上，只不过左侧finger含有4个元素，这说明已经不平衡了，超出了2~3树的上限： [e, d, c, b] Empty [a]
+数据同上，我们恢复了2~3树的平衡，此时front finger含有2个元素，中间的更为深的树含有一个叶子，这个叶子是一个3个分支的节点： [f, e] Lf (Br3 d c b) [a]
+
+请注意Tree (Node a)这样的递归定义，每深入一层，Node就被嵌套一次，第一层的元素类型是a，第2层的元素类型是Node a，第3层的元素类型是Node (Node a)，..., 第n层的元素类型是Node^n a， 这里^n表示apply Node n次。
+
+上面的例子，其实演示了我们注意把元素插入到一个Finger tree的过程，我们归纳一下，就可以写出insert to head的视线。
+这里我们给这个函数起名cons (LISP程序员们要笑了，哈哈，就是这个名字，我们沿用LISP的历史约定)
+
+cons :: a -> Tree a -> Tree a
+cons a Empty = Lf a
+cons a (Lf b) = Tr [a] Empty [b]
+cons a (Tr [b, c, d, e] m r) = Tr [a, b] (cons (Br3 c d e) m) r
+cons a (Tr f m r) = Tr (a:f) m r
+
+除了递归的那行，很明显操作都是O(1)的，递归那行的最差结果是O(h)，其中h是树的深度，由于是平衡树，所以h=\lg N。
+但是我们说整个操作的amortize的性能是O(1)的。递归那行的插入，可以分摊到其他3行中。严格证明请参阅Chirs Okasaki的论文。
+我这里略去了。
+
+有了cons，我们可以很方便地逐行写出它的逆操作：
+
+uncons :: Tree a -> (a, Tree a)
+uncons (Lf a) = (a, Empty)
+uncons (Tr [a] Empty [b]) = (a, Lf b)
+uncons (Tr [a] Empty (r:rs)) = (a, Tr [r] Empty rs)
+uncons (Tr [a] m r) = (a, Tr (nodeToList f) m' r) where (f, m') = uncons m
+uncons (Tr f m r) = (head f, Tr (tail f) m r)
+
+其中nodeToList定义为：
+nodeToList :: Node a -> [a]
+nodeToList (Br2 a b) = [a, b]
+nodeToList (Br3 a b c) = [a, b, c]
+
+如果觉得cons和uncons太LISP了，我们可以搞出一个head和tail来：
+head' :: Tree a -> a
+head' = fst . uncons
+
+tail' :: Tree a -> Tree a
+tail' = snd . uncons
+
+并且，我们还可以利用已有成果方便从普通的列表生成Finger Tree或者从Finger Tree输出普通的列表：
+fromList :: [a] -> Tree a
+fromList = foldr cons Empty
+
+toList :: Tree a -> [a]
+toList Empty = []
+toList t = (head' t):(toList $ tail' t)
+
+我们可以测试一下，搞个invariant testing
+import Test.QuickCheck
+
+然后：
+
+prop_cons :: [Int] -> Bool
+prop_cons xs = xs == (toList $ fromList xs)
+
+随机生成100个列表，全部测试成功。
+
+先到这里，后续我讲如何进行尾部的O(1)的插入和删除。
+
+源代码可以到这里下：
+https://github.com/liuxinyu95/AlgoXY/blob/algoxy/datastruct/elementary/array/src/FingerTree.hs
+
+Hi,
+
+由于数据结构是左右对称的，所以尾部的操作其实和头部的操作几乎完全一样，只不过左右symmetric。
+
+我们仍然遵循LISP的命名历史沿革，尾部增加起名snoc，这是cons颠倒过来的产生的词。
+
+snoc :: Tree a -> a -> Tree a
+snoc Empty a = Lf a
+snoc (Lf a) b = Tr [a] Empty [b]
+snoc (Tr f m [a, b, c, d]) e = Tr f (snoc m (Br3 a b c)) [d, e]
+snoc (Tr f m r) a = Tr f m (r++[a])
+
+其逆操作命名为unsnoc
+
+unsnoc :: Tree a -> (Tree a, a)
+unsnoc (Lf a) = (Empty, a)
+unsnoc (Tr [a] Empty [b]) = (Lf a, b)
+unsnoc (Tr f@(_:_) Empty [a]) = (Tr (init f) Empty [last f], a)
+unsnoc (Tr f m [a]) = (Tr f m' (nodeToList r), a) where (m', r) = unsnoc m
+unsnoc (Tr f m r) = (Tr f m (init r), last r)
+
+然后是init和last，分别和head, tail对应：
+last' :: Tree a -> a
+last' = snd . unsnoc
+
+init' :: Tree a -> Tree a
+init' = fst . unsnoc
+
+下面给出concatenate操作。我们先不考虑平方情况，如果两棵树t1, t2分别是如下形式
+
+f1 m1 r1 和 f2 m2 r2
+
+一个自然的思路是，把f1作为最终的front finger， 把r2作为最终的rear finter
+然后把m1 r1 以及 f2 和 m2 合并为最终的middle
+
+再进一步观察，发现r1和f2的类型完全一样，都是finger，也就是一组node的列表。所以我们只要事先一个函数
+
+merge m1 (r1++f2) m2 产生最终的m就可以了。
+
+思路如下：
+merge :: Tree a -> [a] -> Tree a -> Tree a
+merge Empty ts t2 = foldr cons t2 ts
+merge t1 ts Empty = foldl snoc t1 ts
+merge (Lf a) ts t2 = merge Empty (a:ts) t2
+merge t1 ts (Lf a) = merge t1 (ts++[a]) Empty
+merge (Tr f1 m1 r1) ts (Tr f2 m2 r2) = Tr f1 (merge m1 (nodes (r1 ++ ts ++ f2)) m2) r2
+
+其中辅助函数nodes实现为：
+
+nodes :: [a] -> [Node a]
+nodes [a, b] = [Br2 a b]
+nodes [a, b, c] = [Br3 a b c]
+nodes [a, b, c, d] = [Br2 a b, Br2 c d]
+nodes (a:b:c:xs) = Br3 a b c:nodes xs
+
+于是，最终的concat就可以给出了：
+concat' :: Tree a -> Tree a -> Tree a
+concat' t1 t2 = merge t1 [] t2
+
+我们给出concat以及上面给出的snoc的测试：
+prop_snoc :: [Int] -> Bool
+prop_snoc xs = xs == (toList' $ foldl snoc Empty xs) where
+    toList' Empty = []
+    toList' t = (toList' $ init' t)++[last' t]
+
+prop_concat :: [Int]->[Int]->Bool
+prop_concat xs ys = (xs ++ ys) == (toList $ concat' (fromList xs) (fromList ys))
+
+下面我们逐步攻破最困难的random access
+
+首先我们要给tree增加一个size chache，这样方便我们后面分而治之。
+
+data Tree a = Empty
+            | Lf a
+            | Tr Int [a] (Tree (Node a)) [a] -- size, front, middle, rear
+
+              deriving (Show)
+
+
+问题是如何写出一个函数，计算tree的大小？有两种情况比较简单：
+
+sizeT Empty = 0
+sizeT (Lf a) = ???
+sizeT (Tr s _ _ _) = s
+
+
+问题是???的部分，我们能写1么？显然不可以，这是由于Lf的内容a，可能是一个元素，也可能是一个复合的node
+这两种情况无法统一处理。为此我们决定统一这两种情况，对于普通元素的情形，我们anyway用一个node把它wrap起来。
+于是，上述的sizeT就可以这样写：
+
+sizeT Empty = 0
+sizeT (Lf a) = size a
+
+sizeT (Tr s _ _ _) = s
+
+其中size函数用来计算node的大小。
+
+现在我们的node的含义变了，它可能含有2~3个分支，也可能只含有一个元素(wrap的结果)。所以我们给出一个node的新定义：
+
+data Node a = Br Int [a] deriving (Show) -- size, branches
+
+然后size就可以如下写出了：
+
+size :: Node a -> Int
+
+size (Br s _) = s
+
+为了方便，我还提供一个sizeL，用以计算一个node列表的大小：
+
+sizeL :: [Node a] -> Int
+
+sizeL = sum .(map size)
+
+还有一个重要的变化，以前一个list，其本质类型定义是Tree a，现在由于anyway被wrap了一下，所以其本质类型变成了Tree (Node a)，
+为了方便我们显示给出Finger Tree List的定义：
+
+type FList a = Tree (Node a)
+
+
+我们的cons变成：
+
+cons :: a -> FList a -> FList a
+cons a t = cons' (wrap a) t
+
+然后cons'和前面的类似，但是略有改动：
+
+cons' :: (Node a) -> FList a -> FList a
+cons' a Empty = Lf a
+cons' a (Lf b) = tree [a] Empty [b]
+
+cons' a (Tr _ [b, c, d, e] m r) = tree [a, b] (cons' (wraps [c, d, e]) m) r
+
+cons' a (Tr _ f m r) = tree (a:f) m r
+
+其中tree是一个辅助函数，用于从f m r生成一个带有size的Tree，其定义为：
+
+tree :: [Node a] -> FList (Node a) -> [Node a] -> FList a
+
+tree f Empty [] = foldr cons' Empty f
+
+tree [] Empty r = foldr cons' Empty r
+
+tree [] m r = let (f, m') = uncons' m in tree (unwraps f) m' r
+
+tree f m [] = let (m', r) = unsnoc' m in tree f m' (unwraps r)
+
+tree f m r = Tr (sizeL f + sizeT m + sizeL r) f m r
+
+于是前面的函数全部跟着做出改变。不再赘述，具体请参见：
+https://github.com/liuxinyu95/AlgoXY/blob/algoxy/datastruct/elementary/array/src/FingerTree.hs
+
+有了size，就非常方便将FingerTree在某个点i， 一分为二了。
+确切的说，是一分为三，我们把i前面的作为left, i位置上的作为x，i位置后面的座位right，定义splitAt 函数：
+
+splitAt' :: Int -> FList a -> (FList a, Node a, FList a)
+
+splitAt' _ (Lf x) = (Empty, x, Empty)
+
+splitAt' i (Tr _ f m r)
+
+    | i < szf = let (xs, y, ys) = splitNodesAt i f
+
+                in ((foldr cons' Empty xs), y, tree ys m r)
+
+    | i < szf + szm = let (m1, t, m2) = splitAt' (i-szf) m
+
+                          (xs, y, ys) = splitNodesAt (i-szf - sizeT m1) (unwraps t)
+
+                      in (tree f m1 xs, y, tree ys m2 r)
+
+    | otherwise = let (xs, y, ys) = splitNodesAt (i-szf -szm) r
+
+                  in (tree f m xs, y, foldr cons' Empty ys)
+
+    where
+      szf = sizeL f
+
+      szm = sizeT m
+
+
+对于非平凡情况，如果我们打算在第i位置split，我们先比较i和front finger的大小，如果小于，则说明断点在front finger内
+否则我们比较i是否落在front finger + middle的大小内。如果在，则在middle内进行split，否则在rear finger内进行split。
+
+如果split在finger上，由于finger本质是node的列表。所以我们额外写一个函数划分列表：
+
+splitNodesAt :: Int -> [Node a] -> ([Node a], Node a, [Node a])
+
+splitNodesAt 0 [x] = ([], x, [])
+
+splitNodesAt i (x:xs) | i < size x = ([], x, xs)
+
+                      | otherwise = let (xs', y, ys) = splitNodesAt (i-size x) xs
+
+                                    in (x:xs', y, ys)
+
+划分的思路仍然是分而治之。
+注意整个划分中，只有对middle进行划分是递归的，而递归的次数是O(h)， 其中h是树的高度，由于树是平衡的，所以复杂度是O(\lg N)
+
+有了split，random access就可以轻易实现了：
+
+getAt :: FList a -> Int -> a
+
+getAt t i = unwrap x where (_, x, _) = splitAt' i t
+
+
+extractAt :: FList a -> Int -> (a, FList a)
+
+extractAt t i = let (l, x, r) = splitAt' i t in (unwrap x, concat' l r)
+
+
+setAt :: FList a -> Int -> a -> FList a
+
+setAt t i x = let (l, _, r) = splitAt' i t in concat' l (cons x r)
+
+最酷的是我们还可以实现move to front:
+
+moveToFront :: FList a -> Int -> FList a
+
+moveToFront t i = let (a, t') = extractAt t i in cons a t'
+
+测试一下：
+
+prop_lookup :: [Int] -> Int -> Property
+prop_lookup xs i = (0 <=i && i < length xs) ==> (getAt (fromList xs) i) == (xs !! i)
+
+prop_update :: [Int] -> Int -> Int -> Property
+prop_update xs i y = (0 <=i && i < length xs) ==> toList (setAt (fromList xs) i y) == xs' where
+
+    xs' = as ++ [y] ++ bs
+    (as, (_:bs)) = splitAt i xs
+
+prop_mtf :: [Int] -> Int -> Property
+
+prop_mtf xs i = (0 <=i && i < length xs) ==> (toList $ moveToFront (fromList xs) i) == mtf
+
+    where
+      mtf = b : as ++ bs
+
+      (as, (b:bs)) = splitAt i xs
+
+Hi,
+
+整个系列基本告一段落了。
+
+我手里还有两篇论文，都是关于imperative情况下Finger Tree的实现的。
+看我有没有时间了。习惯Python，C/C++, Java/C#等imperative语言的同学请耐心等待吧。
+
+后面我可能先把K-ary Heap的章节写完，然后再回到这个题目上。
