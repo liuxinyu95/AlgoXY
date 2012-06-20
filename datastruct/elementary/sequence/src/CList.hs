@@ -48,9 +48,10 @@ balance f r (_:s) = Q f r s
 rotate [] [y] acc = y:acc
 rotate (x:xs) (y:ys) acc = x : rotate xs ys (y:acc)
 
+-- folding right like
 foldQ :: (a -> b -> b) -> b -> Queue a -> b
 foldQ f z q | isEmptyQ q = z
-            | otherwise = foldQ f ((front q) `f` z) (pop q)
+            | otherwise = (front q) `f` foldQ f z (pop q)
                           
 -- Catenable list
 
@@ -73,7 +74,7 @@ snoc xs x = xs ++ singleton x -- a.k.a append
 head (CList x _) = x -- we skip the error handling for empty list
 tail (CList _ q) = linkAll q
 
--- folding like function
+-- folding right like function
 linkAll = foldQ link Empty
 
 linkAll' q | isEmptyQ q = Empty
