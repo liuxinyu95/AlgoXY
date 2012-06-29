@@ -15,10 +15,7 @@ import sys
 
 def valid(a, b, n):
     if n == 1:
-        if b == 1 and a !=1:
-            return False
-        else:
-            return True
+        return a == 1 and b != 1
     else:
         if b % n == 0 and not valid(a, b/n, n-1):
             return False
@@ -27,7 +24,7 @@ def valid(a, b, n):
         else:
             return valid(a, b, n-1)
             
-# Solution 2:
+# Solution 2: (This can pass ZOJ)
 #   If there exists a decomposition for both a and b ==> a
 #   else if there exists a decomposition for b ==> b
 #   otherwise ==> a

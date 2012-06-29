@@ -6,7 +6,7 @@
 --  for any valide factor decomposition of b, there exists a valid decomposition of a => a
 --  Otherwise => b
 
-valid a b [] = if b == 1 && a /= 1 then False else True
+valid a b [] = a ==1 || b /= 1
 valid a b (x:xs) | b `mod` x == 0 && (not $ valid a (b `div` x) xs) = False
                  | a `mod` x == 0 && valid (a `div` x) b xs = True
                  | otherwise = valid a b xs
