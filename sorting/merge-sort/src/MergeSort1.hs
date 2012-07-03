@@ -16,6 +16,8 @@
 
 module MergeSort1 where
 
+-- This is the basic version according to merge sort definition.
+
 mergesort [] = []
 mergesort [x] = [x]
 mergesort xs = merge (mergesort as) (mergesort bs) where
