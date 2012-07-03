@@ -16,6 +16,8 @@
 
 module MergeSort where
 
+-- This version record the number of swaps which happens during sorting.
+
 --merge :: (Ord a)=>([a], Int)->([a], Int) -> ([a], Int)
 merge ([], n) (ys, m) = (ys, n+m)
 merge (xs, n) ([], m) = (xs, n+m)
