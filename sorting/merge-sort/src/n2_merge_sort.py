@@ -1,13 +1,32 @@
 #!/usr/bin/python
 
+# n2_merge_sort.py
+# Copyright (C) 2012 Liu Xinyu (liuxinyu95@gmail.com)
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 # Nature 2-way merge sort, refer to [1]
 # [1], Donald E Knuth, `The art of computer programming, Volume 3, sorting and searching'
+
+import random
 
 def sort(xs):
     n = len(xs)
     if n < 2:
         return xs
-    ys = [-1 for _ in xs]
+    ys = [x for x in xs]
     while True:
         (l, i, j, r) = (0, 1, n-1, n)
         while True:
@@ -62,6 +81,7 @@ def verbose_test(xs):
     
 
 def test():
+    
     verbose_test([])
     verbose_test([1])
     verbose_test([1, 2])
