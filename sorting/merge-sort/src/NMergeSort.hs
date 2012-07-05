@@ -22,11 +22,13 @@ module NMergeSort where
 import Data.List
 import Test.QuickCheck
 
-mergesort = sort' . groupBy' (<=)
+mergesort = concat . mergePairs . groupBy' (<=) where
+  mergePairs (xs:ys:xss) = mergePairs ((merge xs ys) : (mergePairs xss))
+  mergePairs xss = xss
 
-sort' [xs] = xs
-sort' xss = mergesort (foldl merge [] xss)
-
+mergesort' :: (Ord a) => [a] -> [a]
+mergesort' = foldl merge [] . groupBy' (<=)
+  
 merge xs [] = xs
 merge [] ys = ys
 merge (x:xs) (y:ys) | x < y = x : merge xs (y:ys)
@@ -45,3 +47,6 @@ groupBy' f (x:xs@(x':_)) | f x x' = (x:ys):yss
 
 prop_sort :: [Int] -> Bool
 prop_sort xs = mergesort xs == sort xs
+
+prop_sort' :: [Int] -> Bool
+prop_sort' xs = mergesort' xs == sort xs
