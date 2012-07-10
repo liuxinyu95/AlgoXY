@@ -18,36 +18,68 @@
 
 
 # Nature 2-way merge sort, refer to [1]
-# [1], Donald E Knuth, `The art of computer programming, Volume 3, sorting and searching'
+# [1], Donald E Knuth, `The art of computer programming, Volume 3, sorting and searching', 5.2.4
 
 import random
 
+#
+#  sort xs in-plance
+#
+#  xs = xs[0], xs[1], ...xs[a], ..., xs[b], ... xs[c], ..., xs[d], ...xs[n-1]
+#     range xs[a,b] is monotonic increase; 
+#     range xs[c,d] is monotonic decrease;
+#
+#  ys = ys[0], ys[1], ...ys[front], ..., ..., ys[rear], .... ys[n-1]
+#     range ys[0, front] is monotonic increase;
+#     range ys[rear, n-1] is monotonic decrease;
+#
+#  Repeatedly merge xs[a, b] and xs[c, d] to ys[target], where target = front and rear in turn.
+#  till b overlaps c, then repeat the whole process till xs[a, b] == xs
+#
+
 def sort(xs):
-    n = len(xs)
-    if n < 2:
-        return xs
-    ys = [x for x in xs]
-    while True:
-        (l, i, j, r) = (0, 1, n-1, n)
-        while True:
-            while i < j and xs[i] < xs[i+1]:
-                i = i + 1
-            while i < j and xs[j-1] < xs [j]:
-                j = j - 1
-            if i > j:
-                i = j
-            print i, j
-            merge(xs[l:i], xs[j:r], ys, l + n - r)
-            if i == j:
-                break
-            (l, i, j, r) = (i, i+1, j-1 , j)
-        (xs, ys) = (ys, xs)
-        if i >= n - 1:
-            break
+    ordered = False
+    while not ordered:
+        (ordered, xs) = proc(xs)
     return xs
 
-def merge(xs, ys, zs, k):
-    print xs, ys, zs, k
+# take one pass
+def proc(xs):
+    n = len(xs)
+    ys = [0]*n  #[xs[0]]*n
+    (a, b) = (0, 0)
+    (c, d) = (n, n)
+    (f, r) = (0, n-1)
+    t = True # put result from left if true, else put result from right
+    while b < c:
+        # span [a, b) as much as possible
+        while True:
+            b = b + 1
+            if b == c - 1 or xs[b] < xs[b-1]:
+                break
+        # span [c, d) as much as possible
+        while b < c:
+            c = c - 1
+            if c < n and xs[c-1] < xs[c]:
+                break
+        print "span [a, b)==>", a, b, "span [c, d) ==>", c, d
+        if t:
+            f = merge(xs[a:b], xs[c:d], ys, f, t)
+        else:
+            r = merge(xs[a:b], xs[c:d], ys, r, t)
+        (a, d) = (b, c)
+        t = not t
+    print "pass result:", ys
+    return (b - a - 1 == n, ys)
+
+# TODO: merge ys from right to left!!!
+def merge(xs, ys, zs, k, t):
+    print "merge", xs, ys, zs, k, t
+
+    delta = 1
+    if not t:
+        delta = -1
+
     while xs != [] and ys != []:
         if xs[0] < ys[0]:
             zs[k] = xs[0]
@@ -55,39 +87,27 @@ def merge(xs, ys, zs, k):
         else:
             zs[k] = ys[0]
             ys = ys[1:]
-        k = k + 1
+        k = k + delta
     if xs != []:
         for x in xs:
             zs[k] = x
-            k = k + 1
+            k = k + delta
     if ys != []:
         for y in ys:
             zs[k] = y
-            k = k + 1
-    print "merge res:", zs
-
-def __assert(xs0, xs, ys):
-    if xs != ys:
-        print "sort", xs0, "=>", xs, "!=", ys
-        exit()
-
-def verbose_test(xs):
-    zs = [x for x in xs]
-    ys = sorted(xs)
-    xs = sort(xs)
-    if xs != ys:
-        print "sort", zs, "=>", xs, "!=", ys
-        exit()
-    
+            k = k + delta
+    print "merge result:", zs
+    return k
 
 def test():
-    
-    verbose_test([])
-    verbose_test([1])
-    verbose_test([1, 2])
-    verbose_test([2, 1])
-    verbose_test([1, 3, 2])
-    verbose_test([1, 3, 2, 4])
+    for i in range(100):
+        print i
+        xs = random.sample(range(100), random.randint(0, 100))
+        print xs
+        assert(sorted(xs) == sort(xs))
+
 
 if __name__ == "__main__":
-    test()
+    #print sort([2, 1, 3])
+    print sort([78, 70, 99, 33, 88, 17, 62, 51, 18, 19, 47, 1, 63, 46, 53, 21, 69, 48, 55, 67, 13, 25, 98, 29])
+    #test()
