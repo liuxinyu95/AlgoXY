@@ -38,6 +38,8 @@ import random
 #
 
 def sort(xs):
+    if len(xs) < 2:
+        return xs
     ordered = False
     while not ordered:
         (ordered, xs) = proc(xs)
@@ -46,68 +48,65 @@ def sort(xs):
 # take one pass
 def proc(xs):
     n = len(xs)
-    ys = [0]*n  #[xs[0]]*n
+    ys = [xs[0]]*n
     (a, b) = (0, 0)
     (c, d) = (n, n)
     (f, r) = (0, n-1)
     t = True # put result from left if true, else put result from right
     while b < c:
         # span [a, b) as much as possible
-        while True:
+        while b < c:
             b = b + 1
-            if b == c - 1 or xs[b] < xs[b-1]:
+            if b < n and xs[b] < xs[b-1]:
                 break
         # span [c, d) as much as possible
         while b < c:
             c = c - 1
             if c < n and xs[c-1] < xs[c]:
                 break
-        print "span [a, b)==>", a, b, "span [c, d) ==>", c, d
+        if b - a == n:
+            return (True, xs)
         if t:
-            f = merge(xs[a:b], xs[c:d], ys, f, t)
+            f = merge(xs, a, b, c, d, ys, f, 1)
         else:
-            r = merge(xs[a:b], xs[c:d], ys, r, t)
+            r = merge(xs, a, b, c, d, ys, r, -1)
         (a, d) = (b, c)
         t = not t
-    print "pass result:", ys
-    return (b - a - 1 == n, ys)
+    return (False, ys)
 
-# TODO: merge ys from right to left!!!
-def merge(xs, ys, zs, k, t):
-    print "merge", xs, ys, zs, k, t
-
-    delta = 1
-    if not t:
-        delta = -1
-
-    while xs != [] and ys != []:
-        if xs[0] < ys[0]:
-            zs[k] = xs[0]
-            xs = xs[1:]
+def merge(xs, a, b, c, d, ys, k, delta):
+    while a < b and c < d:
+        if xs[a] < xs[d-1]:
+            ys[k] = xs[a]
+            a = a + 1
         else:
-            zs[k] = ys[0]
-            ys = ys[1:]
+            ys[k] = xs[d-1]
+            d = d - 1
         k = k + delta
-    if xs != []:
-        for x in xs:
-            zs[k] = x
-            k = k + delta
-    if ys != []:
-        for y in ys:
-            zs[k] = y
-            k = k + delta
-    print "merge result:", zs
+    while a < b:
+        ys[k] = xs[a]
+        k = k + delta
+        a = a + 1
+    while c < d:
+        ys[k] = xs[d-1]
+        k = k + delta
+        d = d - 1
     return k
 
 def test():
     for i in range(100):
-        print i
         xs = random.sample(range(100), random.randint(0, 100))
-        print xs
-        assert(sorted(xs) == sort(xs))
+        __assert_sort(xs)
 
+def __assert_sort(xs):
+    zs = [x for x in xs]
+    ys = sorted(xs)
+    xs = sort(xs)
+    if ys != xs:
+        print "before sort: ", zs
+        print "expected: ", ys
+        print "got     : ", xs
+        exit()
 
 if __name__ == "__main__":
-    #print sort([2, 1, 3])
-    print sort([78, 70, 99, 33, 88, 17, 62, 51, 18, 19, 47, 1, 63, 46, 53, 21, 69, 48, 55, 67, 13, 25, 98, 29])
-    #test()
+    test()
