@@ -256,7 +256,7 @@ Here we use the Lisp tradition to name the function that insert an element befor
 
 \subsubsection{Remove the element from the head of the sequence}
 
-It's not complex to realize the revert operation of `cons', which can remove element from the
+It's not complex to realize the inverse operation of `cons', which can remove element from the
 head of the sequence.
 
 \begin{itemize}
@@ -290,8 +290,111 @@ extractTree (t@(Leaf x):ts) = (t, ts)
 extractTree (t@(Node _ t1 t2):ts) = extractTree (t1:t2:ts)
 \end{lstlisting}
 
+With this function defined, it's convenient to give `head' and `tail', the former returns
+the first element in the sequence, the latter return the rest.
+
+\be
+head(S) = key(first(extractTree(S)))
+\ee
+
+\be
+tail(S) = second(extractTree(S))
+\ee
+
+Where function `first' returns the first element in a paired-value (as known as tuple); 
+`second' returns the second element respectively. function `key' is used to access the
+elements inside a leaf. Below are Haskell programs corresponding to these two euqations.
+
+\begin{lstlisting}
+head' ts = x where (Leaf x, _) = extractTree ts
+tail' = snd . extractTree
+\end{lstlisting}
+
+Note that as `head' and `tail' functions have already been defined in Haskell standard
+library, we given them apostrophes to make them distinct. (another option is to hide
+the standard ones by importing. We skip the details as they are language specific).
+
 \subsubsection{Random access the element in binary}
 \index{Binary Random Access List!Random access}
+
+As trees in the forest help managing the elements in blocks, giving an arbitrary index,
+it's easy to locate which tree this element are stored, after that performing a search 
+in the tree yields the result. As all trees are binary (more accurate, complete binary
+tree), the search is essentially binary search, which is bound to the logarithme
+of the tree size. This brings us a faster random access capability than linear search
+in linked-list setting.
+
+Given an index $i$, and a sequence $S$, which is actually a forest of trees, the 
+algorithm is executed as the following.
+
+\begin{enumerate}
+\item Compare $i$ with the size of the first tree $T_1$ in the forest, if $i$ is 
+less than the size, the element exists in $T_1$, perform looking up in $T_1$;
+\item Otherwise, decrease $i$ by the size of $T_1$, and repeat the previous step
+in the rest of the trees in the forest.
+\end{enumerate}
+
+This algorithm can be represented as the below equation.
+
+\be
+get(S, i) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  lookupTree(T_1, i) & i < size(T_1) \\
+  get(S', i-size(T_1)) & otherwise
+  \end{array}
+\right .
+\ee
+
+Where $S' = \{ T_2, T_3, ... \}$ is the rest of trees without the first one in the
+forest. Note that we don't handle out of bound error cases, this is left as an exercise
+to the reader.
+
+Function `lookupTree' is just a binary search, if the index $i$ is 0, we just return the root
+of the tree, otherwise, we halve the tree by unlinking, if $i$ is less than the size
+of the halved tree, we recursively perform looking up the left tree, otherwise, we
+look up the right tree.
+
+\be
+lookupTree(T, i) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  root(T) & i = 0 \\
+  lookupTree(left(T)) & i < \lfloor \frac{size(T)}{2} \rfloor \\
+  lookupTree(right(T)) & otherwise
+  \end{array}
+\right .
+\ee
+
+Where function `left' returns the left tree $T_l$ of $T$, while `right` returns $T_r$.
+
+The corresponding Haskell program is given as below.
+
+\begin{lstlisting}
+getAt (t:ts) i = if i < size t then lookupTree t i
+                 else getAt ts (i - size t)
+
+lookupTree (Leaf x) 0 = x
+lookupTree (Node sz t1 t2) i = if i < sz `div` 2 then lookupTree t1 i
+                               else lookupTree t2 (i - sz `div` 2)
+\end{lstlisting}
+
+TODO: setAt and updateTree.
+
+\begin{Exercise}
+\begin{enumerate}
+\item The random access algorithm given in this section doesn't handle the error such as
+out of bound index at all. Modify the algorithm to handle such cases, and implement
+it in your favorate programming langauge.
+
+\item It's quite possible to realize the binary random access list in imperative settings,
+which is benefited with fast operation on the head of the sequence. the random access
+can be realized in two steps: firstly locate the tree, secondly use the capability of
+constant random access of array. Write a program to implement it in your favorate imperative
+programming language.
+\end{enumerate}
+\end{Exercise}
+
 
 TODO: Memory overhead of forest solution.
 
