@@ -1,6 +1,6 @@
 IMG_OBJECTS = 
 FIG_OBJECTS = 
-DOT_OBJECTS = bi-tree-sequence
+DOT_OBJECTS = bi-tree-sequence clist clist1
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
