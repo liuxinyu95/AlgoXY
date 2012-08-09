@@ -78,7 +78,7 @@ tail (CList _ q) = linkAll q
 linkAll = foldQ link Empty
 
 linkAll' q | isEmptyQ q = Empty
-           | otherwise = link (front q) (linkAll (pop q))
+           | otherwise = link (front q) (linkAll' (pop q))
                         
 -- Auxiliary functions for flatten etc.
 
