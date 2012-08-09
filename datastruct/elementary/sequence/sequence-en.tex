@@ -640,7 +640,139 @@ Figure \ref{fig:clist} illustrates this data structure.
   \caption{Data structure for concatenate-able list} \label{fig:clist}
 \end{figure}
 
-TODO: Add the figure to illustrate the data structure.
+Such recurisvely designed data structure can be defined in the following
+Haskell code.
+
+\begin{lstlisting}
+data CList a = Empty | CList a (Queue (CList a)) deriving (Show, Eq)
+\end{lstlisting}
+
+It means that a concatenate-able list is either empty or a K-ary tree, which
+again consists of a queue of concatenate-able sub-lists and a root element.
+Here we reuse the realization of real-time queue mentioned in previous
+chapter.
+
+Suppose function $clist(x, Q)$ constructs a concatenate-able list from
+an element $x$, and a queue of sub-lists $Q$. While function $root(s)$ 
+returns the root element of such K-ary tree implemented list. and
+function $queue(s)$ returns the queue of sub-lists respectively.
+We can implement the algorithm
+to concat two lists like this.
+
+\be
+concat(s_1, s_2) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  s_1 & s_2 = \Phi \\
+  s_2 & s_1 = \Phi \\
+  clist(x, push(Q, s_2)) & otherwise
+  \end{array}
+\right .
+\ee
+
+Where $x = root(s_1)$ and $Q = queue(s_1)$. The idea of concatenation is that
+if either one of the list to be concatenated is empty, the result is 
+just the other list; otherwise, we push the second list as the last
+child to the queue of the first list.
+
+Since the push operation is $O(1)$ constant time for a well realized
+real-time queue, the performance of concatenation is bound to $O(1)$.
+
+The $concat()$ function can be translated to the below Haskell program.
+
+\begin{lstlisting}
+concat x Empty = x
+concat Empty y = y
+concat (CList x q) y = CList x (push q y)
+\end{lstlisting}
+
+Besides the good performance of concatenation, this design also brings
+satisified featurs for adding element both on head and tail.
+
+\be
+cons(x, s) = concat(clist(x, \Phi), s)
+\ee
+
+\be
+append(s, x) = concat(s, clist(x, \Phi))
+\ee
+
+It's a bit complex to realize the algorithm that removes the first
+element from a concatenate-able list. This is because after the root,
+which is the first element in the sequence got removed, we have to 
+re-construct the rest things, a queue of sub-lists, to a K-ary
+tree.
+
+Before diving into the re-construction, let's solve the trivial
+part first. Getting the first element is just returning the root
+of the K-ary tree.
+
+\be
+head(s) = root(s)
+\ee
+
+As we mentioned above, after root being removed, there left
+all children of the K-ary tree. Note that all of them are also
+concatenate-able list, so that one naturual solution is to
+concatenate them all together to a big list. 
+
+\be
+concatAll(Q) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & Q = \Phi \\
+  concat(front(Q), concatAll(pop(Q))) & otherwise
+  \end{array}
+\right .
+\ee
+
+Where function $front()$ just return the first element from a
+queue without removing it, while $pop()$ doest the removing work.
+
+If the queue is empty, it means that there is no children at all, so
+the result is also an empty list; Otherwise, we pop the first child,
+which is a concatenate-able list, from the queue, and recursively
+concat all the rest children to a list; finally, we concat this list
+behind the already popped first children.
+
+With $concatAll()$ defined, we can then implement the algorithm 
+of removing the firest element from a list as below.
+
+\be
+tail(s) = linkAll(queue(s))
+\ee
+
+The corresponding Haskell program is given like the following.
+
+\begin{lstlisting}
+head (CList x _) = x 
+tail (CList _ q) = linkAll q
+
+linkAll q | isEmptyQ q = Empty
+          | otherwise = link (front q) (linkAll (pop q))
+\end{lstlisting}
+
+$linkAll()$ algorithm actually traverses the queue data structure,
+and reduces to a final result. This remind us of {\em folding} mentioned
+in the chapter of binary search tree. readers can refer to the
+appendix of this book for the detailed description of folding.
+It's quite possible to define a folding algorithm for queue instead
+of list\footnote{Some function programming languageg, such as 
+Haskell, deinfed type class, which is a concept of monoid so that
+it's easy to support folding on a customized data structure.}
+\cite{learn-haskell}.
+
+\be
+foldQ(f, e, Q) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  e & Q = \Phi \\
+  f(front(Q), foldQ(f, e, pop(Q))) & otherwise
+  \end{array}
+\right .
+\ee
+
+TOOD: performance analysis of linkAll etc.
 
 \begin{Exercise}
 \begin{enumerate}
@@ -676,6 +808,9 @@ Chris Okasaki. ``Purely Functional Random-Access Lists''. Functional Programming
 
 \bibitem{CLRS}
 Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest and Clifford Stein. ``Introduction to Algorithms, Second Edition''. The MIT Press, 2001. ISBN: 0262032937.
+
+\bibitem{learn-haskell}
+Miran Lipovaca. ``Learn You a Haskell for Great Good! A Beginner's Guide''. No Starch Press; 1 edition April 2011, 400 pp. ISBN: 978-1-59327-283-8
 
 \end{thebibliography}
 
