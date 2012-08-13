@@ -947,6 +947,8 @@ the third level is $Node(Node(a))$, ..., the n-th level is
 $Node(Node(Node(...(a))...)) = Node^n(a)$, where $^n$ indicates the $Node()$
 is applied $N$ times.
 
+\subsection{Insert element to the head of sequence}
+
 The examples list above actually reveals the typical process that the
 elements are inserted one by one to a finger tree. It's possible to summarize
 these examples to some cases for insertion on head algorithm.
@@ -980,6 +982,116 @@ insertT(T, x) = \left \{
 \right .
 \ee
 
+The performance of this algorithm is dominated by the recursive case. All the
+other cases are constant $O(1)$ time. The recursion depth is proportion to
+the height of the tree, so the algorithm is bound to $O(h)$ time, where $h$ is
+the height. As we use 2-3 tree to ensure that the tree is well balanced,
+$h = O(\lg N)$, where $N$ is the number of elements stored in the finger tree.
+
+More analysis reveal that the amortized performance of $insertT()$ is $O(1)$
+because we can amortize the expensive recursion case to other trivial cases.
+Please refer to \cite{okasaki-book} and \cite{finger-tree-2006} for the detailed proof.
+
+Translating the algorithm yields the below Haskell program.
+
+\begin{lstlisting}
+cons :: a -> Tree a -> Tree a
+cons a Empty = Lf a
+cons a (Lf b) = Tr [a] Empty [b]
+cons a (Tr [b, c, d, e] m r) = Tr [a, b] (cons (Br3 c d e) m) r
+cons a (Tr f m r) = Tr (a:f) m r
+\end{lstlisting}
+
+Here we use the LISP naming convention to illustrate inserting a
+new element to a list. 
+
+\subsection{Remove element from the head of sequence}
+
+It's easy to implement the reverse operation
+that remove the first element from the list by line by line
+reverse the $insertT()$ algorithm.
+
+Let's denote $F = \{f_1, f_2, ...\}$ is the front finger list, 
+$M$ is the middle part inner finger tree. $R = \{r_1, r_2, ...\}$ 
+is the rear finger list of a finger tree,
+and $R' = \{r_2, r_3, ... \}$ is the rest of element with the first one
+removed from $R$. 
+
+\be
+extractT(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (x, \Phi) & T = leaf(x) \\
+  (x, leaf(y)) & T = tree(\{x\}, \Phi, \{y\}) \\
+  (x, tree(\{r_1\}, \Phi, R')) & T = tree(\{x\}, \Phi, R) \\
+  (x, tree(toList(F'), M', R)) & T = tree(\{x\}, M, R), (F', M') = extractT(M)\\
+  (f_1, tree(\{f_1, f_2, ...\}, M, R)) & otherwise
+  \end{array}
+\right .
+\ee
+
+Where function $toList(T)$ converts a 2-3 tree to plain list as the
+following.
+
+\be
+toList(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{x, y\} & T = tr2(x, y) \\
+  \{x, y, z\} & T = tr3(x, y, z)
+  \end{array}
+\right .
+\ee
+
+Here we skip the error handling such as trying to remove element from
+empty tree etc. If the finger tree is a leaf, the result after removal
+is an empty tree; If the finger tree contains two elements, one in the 
+front rear, the other in rear, we return the element stored in front rear
+as the first element, and the resulted tree after removal is a leaf;
+If there is only one element in front finger, the middle part inner tree
+is empty, and the rear finger isn't empty, we return the only element
+in front finger, and borrow one element from the rear finger to
+front; If there is only one element in front finger, however, the
+middle part inner tree isn't empty, we can recursively remove a node
+from the inner tree, and falttern it to a plain list to replace the
+front finger, and remove the orignal only element in front finger;
+The last case says that if the front finger contains more than one
+element, we can just remove the first element from front finger
+and keep all the other part unchanged.
+
+Below is the corresponding Haskell program for `uncons'.
+
+\begin{lstlisting}
+uncons :: Tree a -> (a, Tree a)
+uncons (Lf a) = (a, Empty)
+uncons (Tr [a] Empty [b]) = (a, Lf b)
+uncons (Tr [a] Empty (r:rs)) = (a, Tr [r] Empty rs)
+uncons (Tr [a] m r) = (a, Tr (nodeToList f) m' r) where (f, m') = uncons m
+uncons (Tr f m r) = (head f, Tr (tail f) m r)
+\end{lstlisting}
+
+And the function $nodeToList$ is defined like this.
+
+\begin{lstlisting}
+nodeToList :: Node a -> [a]
+nodeToList (Br2 a b) = [a, b]
+nodeToList (Br3 a b c) = [a, b, c]
+\end{lstlisting}
+
+Similar as above, we can define $head$ and $tail$ function from
+$uncons$.
+
+\begin{lstlisting}
+head = fst . uncons
+tail = snd . uncons
+\end{lstlisting}
+
+\subsection{append element to the tail of the sequence}
+
+\subsection{remove element from the tail of the sequence}
+
+\subsection{concatenate}
+ 
 TODO: Finger tree
 
 
