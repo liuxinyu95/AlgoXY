@@ -1059,6 +1059,8 @@ The last case says that if the front finger contains more than one
 element, we can just remove the first element from front finger
 and keep all the other part unchanged.
 
+TODO: Add figures to illustrate the delete process
+
 Below is the corresponding Haskell program for `uncons'.
 
 \begin{lstlisting}
@@ -1103,7 +1105,70 @@ appendT(T, x) = \left \{
 \right .
 \ee
 
+Generally speaking, if the rear finger is still valid 2-3 tree, that the number of elements
+is not greater than 4, the new elements is directly appended to rear finger.
+Otherwise, we break the rear finger, take the first 3 element in rear finger to create a 
+new 2-3 tree, and recursively append it to the middle part inner tree.
+If the finger tree is empty or a singleton leaf, they are handled in the first two cases.
+
+Translating the equation to Haskell yields the below program.
+
+\begin{lstlisting}
+snoc :: Tree a -> a -> Tree a
+snoc Empty a = Lf a
+snoc (Lf a) b = Tr [a] Empty [b]
+snoc (Tr f m [a, b, c, d]) e = Tr f (snoc m (Br3 a b c)) [d, e]
+snoc (Tr f m r) a = Tr f m (r++[a])
+\end{lstlisting}
+
+Function name `snoc' is mirror of 'cons', which indicates the symmetric relationship.
+
 \subsection{remove element from the tail of the sequence}
+
+Similar to $appendT()$, we can realize the algorithm which remove the last element from
+finger tree in symmetric manner of $extractT()$.
+
+We denote the none-empty, none-leaf finger tree as $tree(F, M, R)$, where $F$ is the
+front finger, $M$ is the middle part inner tree, and $R$ is the rear finger.
+
+\be
+removeT(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (\Phi, x) & T = leaf(x) \\
+  (leaf(y), x) & T = tree(\{y\}, \Phi, \{x\}) \\
+  (tree(init(F), \Phi, last(F)), x) & T = tree(F, \Phi, \{x\}) \land F \neq \Phi \\
+  (tree(F, M', toList(R')), x) & T = tree(F, M, \{x\}), (M', R') = removeT(M) \\
+  (tree(F, M, init(R)), last(R)) & otherwise
+  \end{array}
+\right .
+\ee
+
+Function $toList(T)$ is used to flattern a 2-3 tree to plain list, which is defined
+previously. Function $init(L)$ returns all elements except for the last one in list $L$,
+that if $L = \{a_1, a_2, ..., a_{n-1}, a_n\}$, $init(L) = \{a_1, a_2, ..., a_{n-1}\}$.
+And Function $last(L)$ returns the last element, so that $init(L) = a_n$. Please
+refer to the appendix of this book for their implementation.
+
+Algorithm $removeT()$ can be translated to the following Haskell program, we name
+it as `unsnoc' to indicate it's the reverse function of `snoc'.
+
+\begin{lstlisting}
+unsnoc :: Tree a -> (Tree a, a)
+unsnoc (Lf a) = (Empty, a)
+unsnoc (Tr [a] Empty [b]) = (Lf a, b)
+unsnoc (Tr f@(_:_) Empty [a]) = (Tr (init f) Empty [last f], a)
+unsnoc (Tr f m [a]) = (Tr f m' (nodeToList r), a) where (m', r) = unsnoc m
+unsnoc (Tr f m r) = (Tr f m (init r), last r)
+\end{lstlisting}
+
+And we can define a special function `last' and 'init' for finger tree which is similar
+to their counterpart for list.
+
+\begin{lstlisting}
+last = snd . unsnoc
+init = fst . unsnoc
+\end{lstlisting}
 
 \subsection{concatenate}
  
