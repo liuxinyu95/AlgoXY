@@ -1171,11 +1171,111 @@ init = fst . unsnoc
 \end{lstlisting}
 
 \subsection{concatenate}
+
+Consider the none-trivial case that concatenate two finger tree $T_1 = tree(F_1, M_1, R_1)$ and
+$T_2 = tree(F_2, M_2, R_2)$. One natural idea is to use $F_1$ as the new front finger for the 
+cacatenated result, and keep $R_2$ is the new rear finger. The rest of work is to merge
+$M_1$, $R_1$, $F_2$ and $M_2$ to a new middle part inner tree.
+
+Note that both $R_1$ and $F_2$ are plain lists of node, so the sub-problem is to realize a 
+algorithm like this.
+
+\[
+merge(M_1, R_1 \cup F_2, M_2) = ?
+\]
+
+More observation reveals that both $M_1$ and $M_2$ are also finger trees, except that they
+are one level deeper than $T_1$ and $T_2$ in terms of $Node(a)$, where $a$ is the type of 
+element stored in the tree. We can recursively use the strategy that keep the front finger
+of $M_1$ and the rear finger of $M_2$, then merge the middle part inner tree of $M_1$, $M_2$,
+as well as the rear finger of $M_1$ and front finger of $M_2$.
+
+If we denote function $front(T)$ returns the front finger, $rear(T)$ returns the rear finger,
+$mid(T)$ returns the middle part inner tree. the above $merge()$ algorithm can be
+expressed for none-trivial case as the following.
+
+\be
+\begin{array}{l}
+merge(M_1, R_1 \cup F_2, M_2) = tree(front(M_1), S, rear(M_2)) \\
+S = merge(mid(M_1), rear(M_1) \cup R_1 \cup F_2 \cup front(M_2), mid(M_2))
+\end{array}
+\label{eq:merge-recursion}
+\ee
+
+If we look back to the original concatenate soltuion, which can be expressed as.
+
+\be
+concat(T_1, T_2) = tree(F_1, merge(M_1, R_1 \cup R_2, M_2), R_2)
+\ee
+
+And compare it with equation \ref{eq:merge-recursion}, it's easy to note the fact that 
+concatenating is essentally merging. So we have the final algorithm as this.
+
+\be
+concat(T_1, T_2) = merge(T_1, \Phi, T_2)
+\ee
+
+By adding edge cases, the $merge()$ algorithm can be completed as below.
+
+\be
+merge(T_1, S, T_2) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  foldR(insertT, T_2, S) & T_1 = \Phi \\
+  foldL(appendT, T_1, S) & T_2 = \Phi \\
+  merge(\Phi, \{x\} \cup S, T_2) & T_1 = leaf(x) \\
+  merge(T_1, S \cup \{x\}, \Phi) & T_2 = leaf(x) \\
+  tree(F_1, merge(M_1, nodes(R_1 \cup S \cup F_2), M2), R_2) & otherwise
+  \end{array}
+\right .
+\ee
+
+Most of them are straightforward, if any one of $T_1$ or $T_2$ is empty, the algorithm
+repeatedly insert/append all elements in $S$ to the other tree; Function $foldL$ and
+$foldR$ are kinds of for-each process in imperative settings. The difference is that
+$foldL$ process the list $S$ from left to right while $foldR$ process from right to left.
+
+Here are their definition. Suppose list $L=\{ a_1, a_2, ..., a_{n-1}, a_n\}$, 
+$L' = \{ a_2, a_3, ..., a_{n-1}, a_n\}$ is the rest of elements except for the first one.
+
+\be
+foldL(f, e, L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  e & L = \Phi \\
+  foldL(f, f(e, a_1), L') & otherwise
+  \end{array}
+\right .
+\ee
+
+\be
+foldR(f, e, L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  e & L = \Phi \\
+  f(a_1, foldR(f, e, L')) & otherwise
+  \end{array}
+\right .
+\ee
+
+They are detailed explained in the appendix of this book.
+
+If either one of the tree is a leaf, we can insert or append the element of this leaf to
+$S$, so that it becomes the trivial case of concatenate one empty tree with another.
+
+Function $nodes()$ is used to wrap a plain list to a 2-3 tree. TODO: Explain why.
  
 TODO: Finger tree
 
 
 TODO: Memory overhead of forest solution.
+
+\begin{Exercise}
+\begin{enumerate}
+\item Try to implement concatenation algorithm without using folding. You can either use
+recursive methos, or use imperative for-each method.
+\end{enumerate}
+\end{Exercise}
 
 
 
