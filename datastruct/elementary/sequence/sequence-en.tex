@@ -1263,12 +1263,75 @@ They are detailed explained in the appendix of this book.
 If either one of the tree is a leaf, we can insert or append the element of this leaf to
 $S$, so that it becomes the trivial case of concatenate one empty tree with another.
 
-Function $nodes()$ is used to wrap a plain list to a 2-3 tree. TODO: Explain why.
- 
-TODO: Finger tree
+Function $nodes()$ is used to wrap a list of elements to a list of 2-3 trees. 
+This is because the contents of middle part inner tree, compare to the
+contents of finger are one level deeper in terms of $Node()$. Consider the
+time point that transforms from recursive case to edget case. Let's suppose
+$M_1$ is empty at that time, we then need repeatedly insert all elements from
+$R_1 \cup S \cup F_2$ to $M_2$. However, we can't directly do the insertion.
+If the element type is $a$, we can only insert $Node(a)$ which is 2-3 tree
+to $M_2$. This is just like what we did in the $insertT()$ algorithm,
+take out the last 3 elements, wrap them in a 2-3 tree, and recursive
+perform $insertT()$. Here is the definition of $nodes()$.
 
+\be
+nodes(L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{tr2(x_1, x_2)\} & L = \{x_1, x_2\} \\
+  \{tr3(x_1, x_2, x_3)\} & L = \{x_1, x_2, x_3\} \\
+  \{tr2(x_1, x_2), tr2(x_3, x_4)\} & L = \{x_1, x_2, x_3, x_4\} \\
+  \{tr3(x_1, x_2, x_3)\} \cup nodes(\{x_4, x_5, ...\}) & otherwise
+  \end{array}
+\right .
+\ee
 
-TODO: Memory overhead of forest solution.
+Function $nodes()$ follows the constraint of 2-3 tree, that if there are
+only 2 or 3 elements in the list, it just wrap them in singleton list
+contains a 2-3 tree; If there are 4 elements in the lists, it split them
+into two trees each is consist of 2 branches; Otherwise, if there are
+more elements than 4, it wraps the first three in to one tree with 3 branches,
+and recursively call $nodes()$ to process the rest.
+
+The performance of concatenation is determined by merging. Analyze the 
+recursive case of merging reveals that the depth of recursion is 
+proportion to the smaller height of the two trees. As the tree is
+ensured to be balanced by using 2-3 tree. it's height is bound to 
+$O(\lg N')$ where $N'$ is the number of elements. The edge
+case of merging performs as same as insertion, (It calls $insertT()$
+at most 8 times) which is amortized $O(1)$ time, and $O(\lg M)$
+at worst case, where $M$ is the difference in height of the two trees.
+So the overall performance is bound to $O(\lg N)$, where $N$ is
+the total number of elements contains in two finger trees.
+
+The following Haskell program impelements the concatenation algorithm.
+
+\begin{lstlisting}
+concat :: Tree a -> Tree a -> Tree a
+concat t1 t2 = merge t1 [] t2
+\end{lstlisting}
+
+Note that there is `concat' function defined in prelude standard library,
+so we need distinct them either by hiding import or take a different name.
+
+\begin{lstlisting}
+merge :: Tree a -> [a] -> Tree a -> Tree a
+merge Empty ts t2 = foldr cons t2 ts
+merge t1 ts Empty = foldl snoc t1 ts
+merge (Lf a) ts t2 = merge Empty (a:ts) t2
+merge t1 ts (Lf a) = merge t1 (ts++[a]) Empty
+merge (Tr f1 m1 r1) ts (Tr f2 m2 r2) = Tr f1 (merge m1 (nodes (r1 ++ ts ++ f2)) m2) r2
+\end{lstlisting}
+
+And the implementation of $nodes()$ is as below.
+
+\begin{lstlisting}
+nodes :: [a] -> [Node a]
+nodes [a, b] = [Br2 a b]
+nodes [a, b, c] = [Br3 a b c]
+nodes [a, b, c, d] = [Br2 a b, Br2 c d]
+nodes (a:b:c:xs) = Br3 a b c:nodes xs
+\end{lstlisting}
 
 \begin{Exercise}
 \begin{enumerate}
@@ -1277,7 +1340,7 @@ recursive methos, or use imperative for-each method.
 \end{enumerate}
 \end{Exercise}
 
-
+\subsection{Random access of finger tree}
 
 % ================================================================
 %                 Short summary
