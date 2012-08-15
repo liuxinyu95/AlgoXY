@@ -1342,6 +1342,119 @@ recursive methos, or use imperative for-each method.
 
 \subsection{Random access of finger tree}
 
+\subsubsection{size augmentation}
+The strategy to provide fast random access, is to turn the looking up into tree-search.
+In order to avoid calculating the size of tree many times, we augment an extra field 
+to trees and nodes. The definition should be modified accordingly, for example the
+following Haskell definition added size field in its constructor.
+
+\begin{lstlisting}
+data Tree a = Empty
+            | Lf a
+            | Tr Int [a] (Tree (Node a)) [a]
+\end{lstlisting}
+
+Suppose the function $tree(s, F, M, R)$ creates a finger tree from size $s$, front
+finger $F$, rear finger $R$, and middle part inner tree $M$.
+When the size of the tree is needed, we can call a $size(T)$ function. It will be
+someting like this.
+
+\[
+size(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  0 & T = \Phi \\
+  ? & T = leaf(x) \\
+  s & T = tree(s, F, M, R)
+  \end{array}
+\right .
+\]
+
+If the tree is empty, the size is definately zero; and if it can be expressed as $tree(s, F, M, R$,
+the size is $s$; however, what if the tree is a singleton leaf? is it 1? No, it 
+can be 1 only if $T = leaf(a)$ and $a$ isn't a tree node, but an element stored in finger tree.
+In most cases, the size is not 1, because $a$ can be again a tree node. That's why we
+put a `?' in above equation.
+
+The correct way is to call some size function on the tree node as the following.
+
+\be
+size(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  0 & T = \Phi \\
+  size'(x) & T = leaf(x) \\
+  s & T = tree(s, F, M, R)
+  \end{array}
+\right .
+\ee
+
+Note that this isn't a resurive definition since $size \neq size'$, the argument to $size'$
+is either a tree node, which is a 2-3 tree, or a plain element stored in the finger tree.
+To uniform these two cases, we can anyway wrap the single plain element to a tree node
+of only one element. So that we can express all the situation as a tree node augmented
+with a size field. The following Haskell program modifies the definition of tree node.
+
+\begin{lstlisting}
+data Node a = Br Int [a]
+\end{lstlisting}
+
+Suppose function $tr(s, L)$, create such a node (either one element being wrapped or a 2-3 tree)
+from a size information $s$, and a list $L$. Here are some example.
+
+\[
+\begin{array}{ll}
+tr(1, \{x\}) & \text{a tree contains only one element} \\
+tr(2, \{x, y\}) & \text{a 2-3 tree contains two elements} \\
+tr(3, \{x, y, z\}) & \text{a 2-3 tree contains three elements}
+\end{array}
+\]
+
+So the function $size'$ can be implemented as returning the size information of a tree node.
+We have $size'(tr(s, L)) = s$.
+
+Wrapping an element $x$ is just calling $tr(1, \{x\})$. We can define auxiliary functions
+$wrap$ and $unwrap$, for instance.
+
+\be
+\begin{array}{l}
+wrap(x) = tr(1, \{x\}) \\
+unwrap(n) = x \quad:\quad n = tr(1, \{x\})
+\end{array}
+\ee
+
+As both front finger and rear finger are list of tree nodes, in order to calculate the 
+total size of finger, we can provide a $size''(L)$ function, which sums up size of all
+nodes stored in the list. Denote $L = \{ a_1, a_2, ... \}$ and $L' = \{ a_2, a_3, ... \}$.
+
+\be
+size''(L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  0 & L = \Phi \\
+  size'(a_1) + size''(L') & otherwise
+  \end{array}
+\right .
+\ee
+
+It's quite OK to define $size''(L)$ by using folding.
+
+\be
+size'' = fold \circ + \circ 0
+\ee
+
+And we can turn a list of tree nodes into one deeper 2-3 tree and vice-versa.
+
+\be
+\begin{array}{l}
+wraps(L) = tr(size''(L), L) \\
+unwraps(n) = L \quad:\quad n = tr(s, L) \\
+\end{array}
+\ee
+
+\subsubsection{Modification due to the augmented size}
+
+
 % ================================================================
 %                 Short summary
 % ================================================================
