@@ -1626,6 +1626,86 @@ Where $M_l, x, M_r, A, B$ are calculated as the following.
 \end{array}
 \]
 
+And the function $splitAtL()$ is just a linear traverse, since the length of list
+is limited not to exceed the constraint of 2-3 tree, the performance is still
+ensured to be constant $O(1)$ time. Denote $L = \{x_1, x_2, ... \}$ and 
+$L' = \{ x_2, x_3, ...\}$.
+
+\be
+splitAtL(i, L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (\Phi, x_1, \Phi) & i = 0 \land L = \{x_1\} \\
+  (\Phi, x_1, L') & i < size'(x_1) \\
+  (\{x_1\} \cup A, x, B) & otherwise, (A, x, B) = splitAtL(i-size'(x_1), L')
+  \end{array}
+\right .
+\ee
+
+The solution of splitting is a typical divide and conquer strategy. The performance
+of this algorithm is determined by the recursive case of searching in middle part
+inner tree. Other cases are all constant time as we've analyzed. The depth of
+recursion is proportion to the height of the tree $h$, so the algorithm is bound
+to $O(h)$. Because the tree is well balanced (by using 2-3 tree, and all the 
+insertion/removal algorithms keep the tree balanced), so $h = O(\lg N)$ where
+$N$ is the number of elements stored in finger tree. The overall performance
+of spliting is $O(\lg N)$.
+
+Let's first give the Haskell program for $splitAtL()$ function
+
+\begin{lstlisting}
+splitNodesAt 0 [x] = ([], x, [])
+splitNodesAt i (x:xs) | i < size x = ([], x, xs)
+                      | otherwise = let (xs', y, ys) = splitNodesAt (i-size x) xs
+                                    in (x:xs', y, ys)
+\end{lstlisting}
+
+Then the program for $splitAt()$, as there is already function defined in standard
+libary with this name, we slightly change the name by adding a apostrophe.
+
+\begin{lstlisting}
+splitAt' _ (Lf x) = (Empty, x, Empty)
+splitAt' i (Tr _ f m r)
+    | i < szf = let (xs, y, ys) = splitNodesAt i f
+                in ((foldr cons' Empty xs), y, tree ys m r)
+    | i < szf + szm = let (m1, t, m2) = splitAt' (i-szf) m
+                          (xs, y, ys) = splitNodesAt (i-szf - sizeT m1) (unwraps t)
+                      in (tree f m1 xs, y, tree ys m2 r)
+    | otherwise = let (xs, y, ys) = splitNodesAt (i-szf -szm) r
+                  in (tree f m xs, y, foldr cons' Empty ys)
+    where
+      szf = sizeL f
+      szm = sizeT m
+\end{lstlisting}
+
+\subsubsection{Random access}
+
+With the help of splitting at any arbitrary position, it's trivial to realize random
+access in $O(\lg N)$ time. Denote function $mid(x)$ returns the 2-nd element of a tuple,
+$left(x)$, and $right(x)$ return the first element and the 3-rd element of the tuple
+respectively.
+
+\be
+getAt(S, i) = unwrap(mid(splitAt(i, S)))
+\ee
+
+It first splits the sequence at position $i$, then unwraps the node to get the element
+stored inside it. When mutate the $i$-th element of sequence $S$ represented by finger tree,
+we first split it at $i$, then we replace the middle to what
+we want to mutate, and re-construct them to one finger tree by using concatenation.
+
+\be
+setAt(S, i, x) = concat(L, insertT(x, R))
+\ee
+
+where
+\[
+(L, y, R) = splitAt(i, S)
+\]
+
+What's more, we can also realize a $removeAt(S, i)$ function, which can remove the 
+$i$-th element from sequence $S$.
+
 \begin{Exercise}
 \begin{enumerate}
 \item Another way to realize $insertT'()$ is to force increasing the size field by one, so
