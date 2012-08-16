@@ -1500,14 +1500,23 @@ also be modified to add size information of these three arguments.
 tree'(F, M, R) =  \left \{
   \begin{array}
   {r@{\quad:\quad}l}
-  foldR(insertT', \Phi, F) & M = \Phi \land R = \Phi \\
-  foldR(insertT', \Phi, R) & M = \Phi \land F = \Phi \\
+  fromL(F) & M = \Phi \land R = \Phi \\
+  fromL(R) & M = \Phi \land F = \Phi \\
   tree'(unwraps(F'), M', R) & F = \Phi, (F', M') = extractT'(M) \\
   tree'(F, M', unwraps(R')) & R = \Phi, (M', R') = removeT'(M) \\
   tree(size''(F) + size(M) + size''(R), F, M, R) & otherwise
   \end{array}
 \right .
 \ee
+
+Where $fromL()$ helps to turn a list of nodes to a finger tree by repeatedly 
+inserting all the element one by one to an empty tree.
+
+\[
+fromL(L) = foldR(insertT', \Phi, L)
+\]
+
+Of course it can be implemented in pure recursive manner without using folding as well.
 
 The last case is the most straightforward one. If none of $F$, $M$, and $R$ is empty,
 it adds the size of these three part and construct the tree along with this size information
@@ -1564,18 +1573,20 @@ reader.
 With size information augmented, it's easy to locate a node at given position by performing
 a tree search. What's more, as the finger tree is constructed from three part $F$, $M$, and
 $R$; and it's nature of recursive, it's also possible to split it into three sub parts with
-a given position $i$: the left, the node at $i$, and the right part.
+a given position $i$: the left, the node at $i$, and the right part \footnote{We following the
+tradition that the index $i$ starts from 1 in algorithm description; while it starts from
+0 in most programming languages}.
 
 The idea is straight forward. Since we have the size information for $F$, $M$, and $R$. Denote
 these three sizes as $S_f$, $S_m$, and $S_r$. if the given position $i \leq S_f$, the node must
-be stored in $F$, we can go on seeking the node inside $F$; if $S_f < i leq S_f + S_m $, the
+be stored in $F$, we can go on seeking the node inside $F$; if $S_f < i \leq S_f + S_m $, the
 node must be stored in $M$, we need recursively perform serach in $M$; otherwise, the node
 should be in $R$, we need search inside $R$.
 
 If we skip the error handling of trying split an empty tree, there is only one edge case
 as below.
 
-\be
+\[
 splitAt(i, T) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
@@ -1583,7 +1594,37 @@ splitAt(i, T) = \left \{
   ... & otherwise
   \end{array}
 \right .
+\]
+
+Spliting a leaf results both the left and right parts empty, the node stored in leaf 
+is the resulting node.
+
+The recursive case handles the three sub cases by comparing $i$ with the sizes.
+Suppose function $splitAtL(i, L)$ splits a list of nodes at given position $i$
+into three parts: $(A, x, B) = splitAtL(i, L)$, where $x$ is the $i$-th node
+in $L$, $A$ is a sub list contains all nodes before position $i$, and $B$ is
+a sub list contains all rest nodes after $i$.
+
+\be
+splitAt(i, T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (\Phi, x, \Phi) & T = leaf(x) \\
+  (fromL(A), x, tree'(B, M, R) & i \leq S_f, (A, x, B) = splitAtL(i, F) \\
+  (tree'(F, M_l, A), x, tree'(B, M_r, R) & S_f < i \leq S_f + S_m \\
+  (tree'(F, M, A), x, fromL(B)) & otherwise, (A, x, B) = splitAtL(i-S_f-S_m, R)
+  \end{array}
+\right .
 \ee
+
+Where $M_l, x, M_r, A, B$ are calculated as the following.
+
+\[
+\begin{array}{l}
+(M_l, t, M_r) = splitAt(i-S_f, M) \\
+(A, x, B) = splitAtL(i-S_f-size(M_l), unwraps(t))
+\end{array}
+\]
 
 \begin{Exercise}
 \begin{enumerate}
