@@ -971,7 +971,7 @@ elements $a, b, c$; while $tr2(a, b)$ creates a 2-3 tree from 2 elements
 $a$ and $b$.
 
 \be
-insertT(T, x) = \left \{
+insertT(x, T) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   leaf(x) & T = \Phi \\
@@ -1452,8 +1452,126 @@ unwraps(n) = L \quad:\quad n = tr(s, L) \\
 \end{array}
 \ee
 
+These helper functions are translated to the following Haskell code.
+
+\begin{lstlisting}
+size (Br s _) = s
+
+sizeL = sum .(map size)
+
+sizeT Empty = 0
+sizeT (Lf a) = size a
+sizeT (Tr s _ _ _) = s
+\end{lstlisting}
+
+Here here are the wrap and unwrap auxiliary functions.
+
+\begin{lstlisting}
+wrap x = Br 1 [x]
+unwrap (Br 1 [x]) = x
+wraps xs = Br (sizeL xs) xs
+unwraps (Br _ xs) = xs
+\end{lstlisting}
+
+We omitted their type definitions for illustration purpose.
+
 \subsubsection{Modification due to the augmented size}
 
+The algorithms have been presented so far need to be modified to accomplish with the
+augmented size. For example the $insertT()$ function now inserts a tree node instead
+of a plain element.
+
+\be
+insertT(x, T) = insertT'(wrap(x), T)
+\ee
+
+The corresponding Haskell program is changed as below.
+
+\begin{lstlisting}
+cons a t = cons' (wrap a) t
+\end{lstlisting}
+
+After being wrapped, $x$ is augmented with size infomration of 1. In the implementation
+of previous insertion algorithm, function $tree(F, M, R)$ is used to create a finger tree
+from a front finger, a middle part inner tree and a rear finger. This function should
+also be modified to add size information of these three arguments.
+
+\be
+tree'(F, M, R) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  foldR(insertT', \Phi, F) & M = \Phi \land R = \Phi \\
+  foldR(insertT', \Phi, R) & M = \Phi \land F = \Phi \\
+  tree'(unwraps(F'), M', R) & F = \Phi, (F', M') = extractT'(M) \\
+  tree'(F, M', unwraps(R')) & R = \Phi, (M', R') = removeT'(M) \\
+  tree(size''(F) + size(M) + size''(R), F, M, R) & otherwise
+  \end{array}
+\right .
+\ee
+
+The last case is the most straightforward one. If none of $F$, $M$, and $R$ is empty,
+it adds the size of these three part and construct the tree along with this size information
+by calling $tree(s, F, M, R)$ function.
+If both the middle part innser tree and one of the finger is empty, the algorithm 
+repeatedly insert all elements stored in the other finger to an empty tree, so that
+the result is constructed from a list of tree node.
+If the middle part inner tree isn't empty, and one of the finger is empty, the 
+algorithm `borrows' one tree node from the middle part, either by extract from
+head if front finger is empty or remove from tail if rear finger is empty.
+Then the algorithm unwraps the `borrowed' tree node to a list, and recursively
+call $tree'()$ function to construct the result.
+
+This algorithm can be translated to the following Haskell code for example.
+
+\begin{lstlisting}
+tree f Empty [] = foldr cons' Empty f
+tree [] Empty r = foldr cons' Empty r
+tree [] m r = let (f, m') = uncons' m in tree (unwraps f) m' r
+tree f m [] = let (m', r) = unsnoc' m in tree f m' (unwraps r)
+tree f m r = Tr (sizeL f + sizeT m + sizeL r) f m r
+\end{lstlisting}
+
+Function $tree'()$ helps to minimize the modification. $insertT'()$ can be 
+realized by using it like the following.
+
+\be
+insertT'(x, T) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  leaf(x) & T = \Phi \\
+  tree'(\{x\}, \Phi, \{y\}) & T = leaf(x) \\
+  tree'(\{x, x_1\}, insertT'(wraps(\{x_2, x_3, x_4\}), M), R) & T = tree(s, \{x_1, x_2, x_3, x_4\}, M, R) \\
+  tree'(\{x\} \cup F, M, R) & otherwise
+  \end{array}
+\right .
+\ee
+
+And it's corresponding Haskell code is a line by line translation.
+
+\begin{lstlisting}
+cons' a Empty = Lf a
+cons' a (Lf b) = tree [a] Empty [b]
+cons' a (Tr _ [b, c, d, e] m r) = tree [a, b] (cons' (wraps [c, d, e]) m) r
+cons' a (Tr _ f m r) = tree (a:f) m r
+\end{lstlisting}
+
+For simplification purpose, we skipped the detailed description of what are modified in
+$extractT()'$, $appendT()$, and $removeT()$ algorithms. They are left as exercise to the
+reader.
+
+\subsubsection{Split a finger tree at a given position}
+
+\begin{Exercise}
+\begin{enumerate}
+\item Another way to realize $insertT'()$ is to force increasing the size field by one, so
+that we needn't write function $tree'()$. Try to realize the algorithm by using this idea.
+
+\item Try to handle the augment size information as well as in $insertT'()$ algorithm for
+the following algorithms: $extractT()'$, $appendT()$, and $removeT()$. The `head', `tail',
+`init' and `last' functions should be kept unchanged. Don't refer to the downloadable
+programs along with this book before you take a try.
+\end{enumerate}
+\end{Exercise}
 
 % ================================================================
 %                 Short summary
