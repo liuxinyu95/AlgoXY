@@ -1,7 +1,8 @@
 IMG_OBJECTS = 
 FIG_OBJECTS = 
 DOT_OBJECTS = bi-tree-sequence clist clist1 ftr-empty ftr-leaf ftr-ab \
-ftr-abcde ftr-abcdef bralst-1 bralst-2 bralst-3 bralst-4 bralst-5 bralst-6
+ftr-abcde ftr-abcdef bralst-1 bralst-2 bralst-3 bralst-4 bralst-5 bralst-6 \
+bralst-4l bralst-4lr
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
