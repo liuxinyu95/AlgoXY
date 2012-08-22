@@ -626,7 +626,7 @@ The numeric representation of the forest can be listed as the following.
   $2^m-1$ & 1, 1, ..., 1, 1 \\
   $2^m$ & 1, 0, 0, ..., 0, 0 \\
   \hline
-  bits changed & 1, 2, ... $2^{m-1}$. $2^m$ \\
+  bits changed & 1, 1, 2, ... $2^{m-1}$. $2^m$ \\
   \hline
 \end{tabular}
 
@@ -702,7 +702,7 @@ and all the elements togehter with the new element to be inserted are stored in
 this new created tree. What's more, all trees after position $i$ are kept same
 as before.
 
-Is there any good method to locate this $i$ position? As we can use binary number
+Is there any good methods to locate this $i$ position? As we can use binary number
 to represent the forest of $N$ element, after a new element is inserted, $N$
 increased to $N+1$. Compare the binary form of $N$ and $N+1$, we find that
 all bits before $i$ change from 1 to 0, the $i$-th bit flip from 0 to 1, and
@@ -722,6 +722,138 @@ this bit. Here is the algorithm.
 \State $i \gets $ \Call{Number-Of-Bits}{$N \oplus (N + 1)$}
 \end{algorithmic}
 
+And it can be easily implemented with bit shifting, for example the below ANSI C
+code.
+
+\begin{lstlisting}
+int nbits(int n) {
+  int i=0;
+  while(n >>= 1)
+    ++i;
+  return i;
+}
+\end{lstlisting}
+
+So the imperative insertion algorithm can be realized by first locating the bit which
+flip from 0 to 1, then creating a new array of size $2^i$ to represent a complete 
+binary tree, and moving content of all trees before this bit to this array as well
+as the new element to be inserted.
+
+\begin{algorithmic}
+\Function{Insert}{$L, x$}
+  \State $i \gets $ \Call{Number-Of-Bits}{$N \oplus (N + 1)$}
+  \State \Call{Tree}{$L$}[$i+1$] $\gets $ \Call{Create-Array}{$2^i$}
+  \State $l \gets 1$
+  \State  \Call{Tree}{$L$}[$i+1$][$l$]  $\gets x$
+  \For{$j \in [1, i]$}
+    \For{$k \in [1, 2^j]$}
+      \State $l \gets l + 1$
+      \State \Call{Tree}{$L$}[$i+1$][$l$]  $\gets$ \Call{Tree}{$L$}[$j$][$k$]
+    \EndFor
+    \State \Call{Tree}{$L$}[$j$] $\gets$ NIL
+  \EndFor
+  \State \Call{Size}{$L$} $\gets$ \Call{Size}{$L$} + 1
+  \State \Return $L$
+\EndFunction
+\end{algorithmic}
+
+The corresponding ANSI C program is given as the following.
+
+\begin{lstlisting}
+struct List insert(struct List a, Key x) {
+  int i, j, sz;
+  Key* xs;
+  i = nbits( (a.n+1) ^ a.n ); 
+  xs = a.tree[i] = (Key*)malloc(sizeof(Key)*(1<<i));
+  for(j=0, *xs++ = x, sz = 1; j<i; ++j, sz <<= 1) {
+    memcpy((void*)xs, (void*)a.tree[j], sizeof(Key)*(sz));
+    xs += sz;
+    free(a.tree[j]);
+    a.tree[j] = NULL;
+  }
+  ++a.n;
+  return a;
+}
+\end{lstlisting}
+
+However, the performance in theory isn't as good as before. This is because the 
+linking opreation downgrade from $O(1)$ constant time to linear array copying.
+
+We can again calculate the average (amortized) performance by using aggregation 
+analysis. When insert $N = 2^m$ elements to an empty list which is represented
+by implicit binary trees in arrays, the numeric presentation of the forest of
+arrays are as same as before except for the cost of bit flipping.
+
+\begin{tabular}{l | r}
+  \hline
+  i & forest (MSB ... LSB) \\
+  \hline
+  0 & 0, 0, ..., 0, 0 \\
+  1 & 0, 0, ..., 0, 1 \\
+  2 & 0, 0, ..., 1, 0 \\
+  3 & 0, 0, ..., 1, 1 \\
+  ... & ... \\
+  $2^m-1$ & 1, 1, ..., 1, 1 \\
+  $2^m$ & 1, 0, 0, ..., 0, 0 \\
+  \hline
+  bit change cost & $1 \times 2^m$, $1 \times 2^m$, $2 \times 2^{m-1}$, ... $2^{m-1} \times 2$, $2^m \times 1$ \\
+  \hline
+\end{tabular}
+
+The LSB of the forest changed every time when there is a new element inserted, this is
+as same as before; The next bit flips as half as the LSB, however, each time the bit
+gets flipped, it copies the first tree as well as the new element to the second tree.
+the the cost of fliping a bit in this bit is 2 unit, but not 1; For the MSB, it only
+flips at the last time, but the cost of flipping this bit, is copying all the previous
+trees to fill the array of size $2^m$.
+
+Suming all to cost and distributing them to the $N$ times of insertion yield the
+amortized performance as below.
+
+\be
+O(T/N) = O(\frac{1 \times 2^m + 1 \times 2^m + 2 \times 2^{m-1} + ... + 2^m \times 1}{2^m}) = O(m)
+\ee
+
+As $m = O(\lg N)$, so the amortized performance downgrade from constant time to logarithm,
+although it is still faster than the normal array insertion which is $O(N)$ in average.
+
+The random accessing gets a bit faster because we can use array indexing instead of tree
+search.
+
+\begin{algorithmic}
+\Function{Get}{$L, i$}
+  \For{each $t \in $ \Call{Trees}{$L$}}
+    \If{$t \neq$ NIL}
+      \If{$i \leq $ \Call{Size}{$t$}}
+        \State \Return $t$[i]
+      \Else
+        \State $i \gets i -$ \Call{Size}{$t$}
+      \EndIf
+    \EndIf
+  \EndFor
+\EndFunction
+\end{algorithmic}
+
+Here we skip the error handling such as out of bound indexing etc. The ANSI C program
+of this algorithm is like the following.
+
+\begin{lstlisting}
+Key get(struct List a, int i) {
+  int j, sz;
+  for(j = 0, sz = 1; j < M; ++j, sz <<= 1)
+    if(a.tree[j]) {
+      if(i < sz)
+	break;
+      i -= sz;
+    }
+  return a.tree[j][i];
+}
+\end{lstlisting}
+
+The imperative removal and random mutating algorithms are left as exercises to the reader.
+
+TODO: Add a sub section about tail-tail array solution.
+
 \begin{Exercise}
 \begin{enumerate}
 \item Please implement the random access algorithms, including looking up and updating,
@@ -730,6 +862,9 @@ language.
 
 \item Prove that the amortized performance of deletion is $O(1)$ constant time by
 using aggregation analysis.
+
+\item Design the implement the binary random access list by implicit array in your
+favorate imperative programming language.
 \end{enumerate}
 \end{Exercise}
 
