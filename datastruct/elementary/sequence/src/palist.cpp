@@ -20,7 +20,6 @@ struct List {
   vector<Key> rear;
 
   List() : n(0), m(0) {}
-
   int size() { return n + m; }
 };
 
@@ -37,17 +36,30 @@ void append(List<Key>& xs, Key x) {
   xs.rear.push_back(x);
 }
 
-/* Removing and balancing */
+/* 
+ * Removing and balancing 
+ * Skip error handling for illustratoin purpose.
+ */
+
+template<typename Key>
+void balance(List<Key>& xs) {
+  if(xs.n == 0) {
+    //front = reverse_copy(rear[0 ~ m/2]);
+    //rear = copy(rear[m/2+1 ~ m-2])
+  }
+}
 
 template<typename Key>
 void remove_head(List<Key>& xs) {
-  //TODO: balancing
+  if(xs.n == 0)
+    balance(xs);
   xs.front.pop_back();
 }
 
 template<typename Key>
 void remove_tail(List<Key>& xs) {
-  //TODO: balancing
+  if(xs.m == 0)
+    balance(ys);
   xs.rear.pop_back();
 }
 
@@ -90,8 +102,7 @@ void test_insert() {
     List<int> ys;
     for(int i=0; i<n; ++i) {
       int x = BIG_RAND();
-      bool dir = BIG_RAND() % 2 == 0;
-      if(dir) {
+      if(BIG_RAND()%2) {
         xs.push_back(x);
         append(ys, x);
       }
@@ -100,8 +111,12 @@ void test_insert() {
         insert(ys, x);
       }
     }
-    //copy(xs.begin(), xs.end(), ostream_iterator<int>(cout, ", "));
-    //print_list(ys);
+    /*
+    cout<<"\ndeque:\n";
+    copy(xs.begin(), xs.end(), ostream_iterator<int>(cout, ", "));
+    cout<<"\npalist:\n";
+    print_list(ys);
+    */
     assert_eq(xs, ys);
   }
 }
