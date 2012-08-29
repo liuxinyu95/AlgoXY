@@ -285,7 +285,7 @@ in the forest becomes two trees, we recursively halve the first tree until it tu
 leaf.
 \end{itemize}
 
-TOOD: Add figures to illustrate the remove process step by step.
+TODO: Add figures to illustrate the remove process step by step.
 
 If we assume the sequence isn't empty, so that we can skip the error handling such as trying 
 to remove an element from an empty sequence, this can be expressed with the following equation.
@@ -891,6 +891,24 @@ Figure \ref{fig:palist} shows the design of paired-array list. Tow arrays are li
 To insert a new element on the head of the sequence, the element is appended at the end of front list;
 To append a new element on the tail of the sequence, the element is appended at the end of rear list;
 
+Here is a ISO C++ code snippet to define the this data structure.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<typename Key>
+struct List {
+  int n, m;
+  vector<Key> front;
+  vector<Key> rear;
+
+  List() : n(0), m(0) {}
+  int size() { return n + m; }
+};
+\end{lstlisting}
+
+Here we use vector provides in standard library to cover the dynamic memory management issues, so
+that we can concentrate on the algorithm design.
+
 \subsection{Insertion and appending}
 Suppose function \textproc{Front}($L$) returns the front array, while \textproc{Rear}($L$) returns the 
 rear array. For illustration purpose, we assume the arrays are dynamic allocated. inserting and appending
@@ -910,22 +928,178 @@ can be realized as the following.
 \EndFunction
 \end{algorithmic}
 
-As all the above operations manipulate the front and rear array on tail, they are all constant $O(1)$ time.
+As all the above operations manipulate the front and rear array on tail, they are all constant $O(1)$ time. And the following are the corresponding ISO C++ programs.
+
+\begin{lstlisting}
+template<typename Key>
+void insert(List<Key>& xs, Key x) {
+  ++xs.n;
+  xs.front.push_back(x);
+}
+
+template<typename Key>
+void append(List<Key>& xs, Key x) {
+  ++xs.m;
+  xs.rear.push_back(x);
+}
+\end{lstlisting}
 
 \subsection{random access}
+As the inner data structure is array (dynamic array as vector), which support random access
+by nature, it's trivial to implement constant time indexing algorithm. 
+
+\begin{algorithmic}
+\Function{Get}{$L, i$}
+  \State $F \gets $ \Call{Front}{$L$}
+  \State $N \gets $ \Call{Size}{$F$}
+  \If{$i \leq N $}
+    \State \Return $F$[$N-i+1$]
+  \Else
+    \State \Call{Rear}{$L$}[$i-N$]
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+Here the index $i \in [1, |L|]$ starts from 1. If it is not greater than the size of front
+array, the element is stored in front. However, as front and rear arrays are connect head-to-head,
+so the elements in front array are in reverse order. We need locate the element by substract
+the size of front array by $i$; If the index $i$ is greater than the size of front array,
+the element is stored in rear array. Since elements are stored in normal order in rear,
+we just need substract the index $i$ by an offset which is the size of front array.
+
+Here is the ISO C++ program implements this algorithm.
+
+\begin{lstlisting}
+template<typename Key>
+Key get(List<Key>& xs, int i) {
+  if( i < xs.n )
+    return xs.front[xs.n-i-1];
+  else
+    return xs.rear[i-xs.n];
+}
+\end{lstlisting}
+
+The random mutating algorithm is left as an exercise for the reader.
 
 \subsection{removing and balancing}
+
+Removing isn't as simple as insertion and appending. This is because we must handle the 
+condition that one array (either front or rear) becomes empty due to removal, while the
+other still contains elements. In extreme case, the list turns to be quite unbalanced.
+So we must fix it to resume the balance.
+
+One idea is to trigger this fixing when either front or rear array becomes empty. We just
+cut the other array in half, and reverse the first half to form the new pair. The algorithm
+is decribed as the following.
+
+\begin{algorithmic}
+\Function{Balance}{$L$}
+  \State $F \gets$ \Call{Front}{$L$}, $R \gets$ \Call{Rear}{$L$}
+  \State $N \gets$ \Call{Size}{$F$}, $M \gets$ \Call{Size}{$R$}
+  \If{ $F = \Phi$}
+    \State $F \gets$ \Call{Reverse}{$R$[1 ... $\lfloor \frac{M}{2} \rfloor$]}
+    \State $R \gets R[\lfloor \frac{M}{2} \rfloor + 1 ... M]$
+  \ElsIf{ $R = \Phi$ }
+    \State $R \gets$ \Call{Reverse}{$F$[1 ... $\lfloor \frac{N}{2} \rfloor$]}
+    \State $F \gets F[\lfloor \frac{N}{2} \rfloor + 1 ... N]$
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+Actually, the operations are symmetric for the case front is empty and the case that
+rear is empty. Another approach is to swap the front and rear for one symmetric case
+and recursive resumes the balance, then swap the front and rear back. For example 
+the below ISO C++ program use this method.
+
+\begin{lstlisting}
+template<typename Key>
+void balance(List<Key>& xs) {
+  if(xs.n == 0) {
+    back_insert_iterator<vector<Key> > i(xs.front);
+    reverse_copy(xs.rear.begin(), xs.rear.begin() + xs.m/2, i);
+    xs.rear.erase(xs.rear.begin(), xs.rear.begin() +xs.m/2);
+    xs.n = xs.m/2;
+    xs.m -= xs.n;
+  }
+  else if(xs.m == 0) {
+    swap(xs.front, xs.rear);
+    swap(xs.n, xs.m);
+    balance(xs);
+    swap(xs.front, xs.rear);
+    swap(xs.n, xs.m);
+  }
+}
+\end{lstlisting}
+
+With \textproc{Balance} algorithm defined, it's trivial to implement remove algorithm
+both on head and on tail.
+
 \begin{algorithmic}
 \Function{Remove-Head}{$L$}
+  \State \Call{Balance}{$L$}
   \State $F \gets $ \Call{Front}{$L$}
-  \State \Call{Size}{$F$} $\gets $ \Call{Size}{$F$} - 1
+  \If{$F = \Phi$}
+    \State \Call{Remove-Tail}{$L$}
+  \Else
+    \State \Call{Size}{$F$} $\gets $ \Call{Size}{$F$} - 1
+  \EndIf
 \EndFunction
 \Statex
 \Function{Remove-Tail}{$L$}
+  \State \Call{Balance}{$L$}
   \State $R \gets $ \Call{Rear}{$L$}
-  \State \Call{Size}{$R$} $\gets $ \Call{Size}{$R$} - 1
+  \If{$R = \Phi$}
+    \State \Call{Remove-Head}{$L$}
+  \Else
+    \State \Call{Size}{$R$} $\gets $ \Call{Size}{$R$} - 1
+  \EndIf
 \EndFunction
 \end{algorithmic}
+
+There is an edge case for each, that is even after balancing, the array targeted to 
+perform removal is still empty. This happens that there is only one element stored 
+in the paired-array list. The solution is just remove this singleton left element,
+and the overall list results empty. Below is the ISO C++ program implements this 
+algorithm.
+
+\begin{lstlisting}
+template<typename Key>
+void remove_head(List<Key>& xs) {
+  balance(xs);
+  if(xs.front.empty())
+    remove_tail(xs); //remove the singleton elem in rear
+  else {
+    xs.front.pop_back();
+    --xs.n;
+  }
+}
+
+template<typename Key>
+void remove_tail(List<Key>& xs) {
+  balance(xs);
+  if(xs.rear.empty())
+    remove_head(xs); //remove the singleton elem in front
+  else {
+    xs.rear.pop_back();
+    --xs.m;
+  }
+}
+\end{lstlisting}
+
+It's obvious that the worst case performance is $O(N)$ where $N$ is the number of elements
+stored in paired-array list. This happens when balancing is triggered, and both reverse
+and shifting are linear operation. However, the amortized performance of removal is still
+$O(1)$, the proof is left as exercise to the reader.
+
+\begin{Exercise}
+\begin{enumerate}
+\item Implement the random mutating algorithm in your favorate imperative programming language.
+\item We utilized vector provided in standard library to manage memory dynamically, try to realize
+a version using plain array and manage the memory allocation manually. Compare this version and
+consider how does this affect the performance?
+\item Prove that the amortized performance of removal is $O(1)$ for paired-array list.
+\end{enumerate}
+\end{Exercise}
 
 \section{Concatenate-able list}
 \index{Sequence!Concatenate-able list}

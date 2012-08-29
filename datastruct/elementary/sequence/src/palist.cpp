@@ -83,7 +83,7 @@ template<typename Key>
 void remove_tail(List<Key>& xs) {
   balance(xs);
   if(xs.rear.empty())
-    remove_head(xs); //remove the singletone elem in front
+    remove_head(xs); //remove the singleton elem in front
   else {
     xs.rear.pop_back();
     --xs.m;
