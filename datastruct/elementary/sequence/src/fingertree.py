@@ -28,7 +28,7 @@ def wraps(xs):
     return Node(sizeNs(xs), xs)
 
 def fromNs(ns):
-    #alternative: return reduce(cons, reverse(ns), None)
+    #fold-right(cons, ns, None)
     t = None
     for n in reverse(ns):
         t = cons(n, t)
@@ -58,13 +58,12 @@ def insert(x, t):
 
 # inserting a node in single-pass manner
 def cons(n, t):
-    if t is None:
-        return Tree(n.size, [n], None, [])
     root = t
     prev = None
     while isFull(t):
         f = t.front
         t.front = [n, f[:1]]
+        t.size = t.size + n.size
         n = wraps(f[1:])
         prev = t
         t = t.mid
@@ -79,4 +78,56 @@ def cons(n, t):
     else:
         root = t
     return root
-        
+
+# extract the first node from tree
+# assume t is not None
+def uncons(t):
+    root = t
+    prev = None
+    x = t.front[0]
+    # a repeat - until loop
+    while True:
+        #TODO: update size
+        t.front = t.front[:1]
+        prev = t
+        t = t.mid
+        if t.mid is None or t.front != []:
+            break
+
+    if t.mid is None and t.front == []:
+        if t.rear == []:
+            t = None
+        elif len(t.rear) == 1:
+            t = Tree(t.rear, None, [])
+        else:
+            t = Tree(t.rear[:1], None, t.rear[:1])
+    if prev is not None:
+        prev.mid = t
+    else:
+        root = t
+    return (x, root)
+
+def head(t):
+    return t.front[0].children[0]
+
+def tail(t):
+    (_, t) = uncons(t)
+    return t
+
+# Auxiliary functions
+
+def fromList(xs):
+    # fold-right insert None xs
+    t = None
+    for x in xs:
+        t = insert(x, t)
+    return t
+
+def toList(t):
+    xs = []
+    while t is not None:
+        (x, t) = uncons(t)
+        xs.append(x)
+    return xs
+
+
