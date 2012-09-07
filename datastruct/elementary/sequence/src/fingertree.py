@@ -5,6 +5,12 @@ class Node:
         self.size = s
         self.children = xs
 
+    def str(self):
+        if self.size == 1:
+            return ", ".join([str(x) for x in self.children])
+        else:
+            return "(" + ", ".join([x.str() for x in self.children]) + ")"
+
 class Tree:
     def __init__(self, s, f, m, r):
         self.size = s
@@ -15,11 +21,26 @@ class Tree:
     def empty(self):
         return self.size == 0
 
+    def str(self):
+        if self.empty():
+            return "."
+        else:
+            s = "."
+            if self.mid is not None:
+                s = self.mid.str()
+            return "{" + ns2str(self.front) + " " +  s + " "+ ns2str(self.rear) + "}"
+
+def ns2str(ns):
+    return "[" + ", ".join([n.str() for n in ns]) + "]"
+
 def sizeNs(xs):
     return sum(map(lambda x: x.size, xs))
 
 def sizeT(t):
-    if t is None return 0 else return t.size
+    if t is None:
+        return 0 
+    else: 
+        return t.size
 
 def wrap(x):
     return Node(1, [x])
@@ -36,6 +57,9 @@ def fromNs(ns):
 
 def isFull(t):
     return t is not None and len(t.front) >= 3
+
+def isLeaf(t):
+    return t is not None and len(t.front) == 1 and t.rear ==[]
 
 def tree(f, m, r):
     while f == [] or r == []:
@@ -54,6 +78,7 @@ def tree(f, m, r):
     return Tree(sizeNs(f) + sizeT(m) + sizeNs(r), f, m, r)
 
 def insert(x, t):
+    print "insert" , x, "." if t is None else t.str()
     return cons(wrap(x), t)
 
 # inserting a node in single-pass manner
@@ -62,14 +87,14 @@ def cons(n, t):
     prev = None
     while isFull(t):
         f = t.front
-        t.front = [n, f[:1]]
+        t.front = [n] + f[:1]
         t.size = t.size + n.size
         n = wraps(f[1:])
         prev = t
         t = t.mid
     if t is None:
         t = Tree(n.size, [n], None, [])
-    elif len(t.front) == 1:
+    elif isLeaf(t):
         t = tree([n], None, t.front)
     else:
         t = tree([n]+t.front, t.mid, t.rear)
@@ -119,7 +144,7 @@ def tail(t):
 def fromList(xs):
     # fold-right insert None xs
     t = None
-    for x in xs:
+    for x in reversed(xs):
         t = insert(x, t)
     return t
 
@@ -130,4 +155,8 @@ def toList(t):
         xs.append(x)
     return xs
 
+def test():
+    print fromList(range(1, 21)).str()
 
+if __name__ == "__main__":
+    test()
