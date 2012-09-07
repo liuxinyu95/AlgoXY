@@ -25,13 +25,13 @@ class Tree:
         if self.empty():
             return "."
         else:
-            s = "."
-            if self.mid is not None:
-                s = self.mid.str()
-            return "{" + ns2str(self.front) + " " +  s + " "+ ns2str(self.rear) + "}"
+            return "{" + ns2str(self.front) + " " +  tr2str(self.mid) + " "+ ns2str(self.rear) + "}"
 
 def ns2str(ns):
     return "[" + ", ".join([n.str() for n in ns]) + "]"
+
+def tr2str(t):
+    return "." if t is None else t.str()
 
 def sizeNs(xs):
     return sum(map(lambda x: x.size, xs))
@@ -78,7 +78,6 @@ def tree(f, m, r):
     return Tree(sizeNs(f) + sizeT(m) + sizeNs(r), f, m, r)
 
 def insert(x, t):
-    print "insert" , x, "." if t is None else t.str()
     return cons(wrap(x), t)
 
 # inserting a node in single-pass manner
@@ -112,25 +111,26 @@ def uncons(t):
     x = t.front[0]
     # a repeat - until loop
     while True:
-        #TODO: update size
-        t.front = t.front[:1]
-        prev = t
-        t = t.mid
-        if t.mid is None or t.front != []:
+        t.size = t.size - t.front[0].size
+        t.front = t.front[1:]
+        if t.mid is not None and t.front == []:
+            prev = t
+            t = t.mid
+            prev.front = t.front[0].children
+        else:
             break
-
     if t.mid is None and t.front == []:
         if t.rear == []:
             t = None
         elif len(t.rear) == 1:
-            t = Tree(t.rear, None, [])
+            t = Tree(t.size, t.rear, None, [])
         else:
-            t = Tree(t.rear[:1], None, t.rear[:1])
+            t = Tree(t.size, t.rear[:1], None, t.rear[:1])
     if prev is not None:
         prev.mid = t
     else:
         root = t
-    return (x, root)
+    return (x.children[0], root)
 
 def head(t):
     return t.front[0].children[0]
@@ -155,8 +155,10 @@ def toList(t):
         xs.append(x)
     return xs
 
-def test():
-    print fromList(range(1, 21)).str()
+def test_head():
+    for i in range(100):
+        xs = range(i)
+        assert toList(fromList(xs)) == xs
 
 if __name__ == "__main__":
-    test()
+    test_head()
