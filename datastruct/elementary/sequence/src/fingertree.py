@@ -55,8 +55,11 @@ def fromNs(ns):
         t = cons(n, t)
     return t
 
-def isFull(t):
+def isFrontFull(t):
     return t is not None and len(t.front) >= 3
+
+def isRearFull(t):
+    return t is not None and len(t.rear) >= 3
 
 def isLeaf(t):
     return t is not None and len(t.front) == 1 and t.rear ==[]
@@ -84,7 +87,7 @@ def insert(x, t):
 def cons(n, t):
     root = t
     prev = None
-    while isFull(t):
+    while isFrontFull(t):
         f = t.front
         t.front = [n] + f[:1]
         t.size = t.size + n.size
@@ -94,9 +97,9 @@ def cons(n, t):
     if t is None:
         t = Tree(n.size, [n], None, [])
     elif isLeaf(t):
-        t = tree([n], None, t.front)
+        t = Tree(n.size + t.size, [n], None, t.front)
     else:
-        t = tree([n]+t.front, t.mid, t.rear)
+        t = Tree(n.size + t.size, [n]+t.front, t.mid, t.rear)
     if prev is not None:
         prev.mid = t
     else:
@@ -108,7 +111,7 @@ def cons(n, t):
 def uncons(t):
     root = t
     prev = None
-    x = t.front[0]
+    x = head(t)
     # a repeat - until loop
     while True:
         t.size = t.size - t.front[0].size
@@ -130,7 +133,7 @@ def uncons(t):
         prev.mid = t
     else:
         root = t
-    return (x.children[0], root)
+    return (x, root)
 
 def head(t):
     return t.front[0].children[0]
@@ -138,6 +141,62 @@ def head(t):
 def tail(t):
     (_, t) = uncons(t)
     return t
+
+def append(t, x):
+    return snoc(t, wrap(x))
+
+def snoc(t, n):
+    root = t
+    prev = None
+    while isRearFull(t):
+        r = t.rear
+        t.rear = r[-1:] + [n]
+        t.size = t.size + n.size
+        n = wraps(r[:-1])
+        prev = t
+        t = t.mid
+    if t is None:
+        t = Tree(n.size, [n], None, [])
+    elif len(t.rear) == 1 and t.front == []:
+        t = Tree(n.size + t.size, t.rear, None, [n])
+    else:
+        t = Tree(n.size + t.size, t.front, t.mid, t.rear + [n])
+    if prev is not None:
+        prev.mid = t
+    else:
+        root = t
+    return root
+
+def unsnoc(t):
+    root = t
+    prev = None
+    x = last(t)
+    if t.size == 1:
+        return (x, None)
+    while True:
+        t.size = t.size - t.rear[-1].size
+        t.rear = t.rear[:-1]
+        if t.mid is not None and t.rear == []:
+            prev = t
+            t = t.mid
+            prev.rear = t.rear[-1].children
+        else:
+            break
+    if t.mid is None and t.rear == []:
+        if t.front == []:
+            t = None
+        else:
+            t = Tree(t.size, t.front[:-1], None, t.front[-1:])
+    if prev is not None:
+        prev.mid = t
+    else:
+        root = t
+    return (x, root)
+
+def last(t):
+    if t.size == 1:
+        return head(t)
+    return t.rear[-1].children[-1]
 
 # Auxiliary functions
 
