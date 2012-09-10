@@ -64,6 +64,11 @@ def isRearFull(t):
 def isLeaf(t):
     return t is not None and len(t.front) == 1 and t.rear ==[]
 
+def normalize(t):
+    if t is not None and t.front == [] and len(t.rear) == 1:
+        (t.front, t.rear) = (t.rear, t.front)
+    return t
+
 def tree(f, m, r):
     while f == [] or r == []:
         if m is None:
@@ -179,6 +184,8 @@ def unsnoc(t):
         if t.mid is not None and t.rear == []:
             prev = t
             t = t.mid
+            if isLeaf(t):
+                t = Tree(t.size, [], None, t.front)
             prev.rear = t.rear[-1].children
         else:
             break
@@ -191,12 +198,16 @@ def unsnoc(t):
         prev.mid = t
     else:
         root = t
-    return (x, root)
+    return (x, normalize(root))
 
 def last(t):
     if t.size == 1:
         return head(t)
     return t.rear[-1].children[-1]
+
+def init(t):
+    (_, t) = unsnoc(t)
+    return t
 
 # Auxiliary functions
 
@@ -214,10 +225,26 @@ def toList(t):
         xs.append(x)
     return xs
 
+def fromList1(xs):
+    return reduce(append, xs, None)
+
+def toList1(t):
+    xs = []
+    while t is not None:
+        (x, t) = unsnoc(t)
+        xs.insert(0, x)
+    return xs
+
 def test_head():
     for i in range(100):
         xs = range(i)
         assert toList(fromList(xs)) == xs
 
+def test_tail():
+    for i in range(100):
+        xs = range(i)
+        assert toList1(fromList1(xs)) == xs
+
 if __name__ == "__main__":
     test_head()
+    test_tail()
