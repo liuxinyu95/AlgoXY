@@ -1,5 +1,8 @@
 #!usr/bin/python
 
+import random
+
+# definition
 class Node:
     def __init__(self, s, xs):
         self.size = s
@@ -27,12 +30,15 @@ class Tree:
         else:
             return "{" + ns2str(self.front) + " " +  tr2str(self.mid) + " "+ ns2str(self.rear) + "}"
 
+# Auxiliary functions for debugging
+
 def ns2str(ns):
     return "[" + ", ".join([n.str() for n in ns]) + "]"
 
 def tr2str(t):
     return "." if t is None else t.str()
 
+# Helper functions
 def sizeNs(xs):
     return sum(map(lambda x: x.size, xs))
 
@@ -48,25 +54,40 @@ def wrap(x):
 def wraps(xs):
     return Node(sizeNs(xs), xs)
 
-def fromNs(ns):
-    #fold-right(cons, ns, None)
-    t = None
-    for n in reverse(ns):
-        t = cons(n, t)
-    return t
+def nodes(xs):
+    res = []
+    while len(xs) > 4:
+        res.append(wraps(xs[:3]))
+        xs = xs[3:]
+    if len(xs) == 4:
+        res.append(wraps(xs[:2]))
+        res.append(wraps(xs[2:]))
+    elif xs != []:
+        res.append(wraps(xs))
+    return res
 
-def isFrontFull(t):
+def frontFull(t):
     return t is not None and len(t.front) >= 3
 
-def isRearFull(t):
+def rearFull(t):
     return t is not None and len(t.rear) >= 3
 
 def isLeaf(t):
     return t is not None and len(t.front) == 1 and t.rear ==[]
 
+def isBranch(t):
+    return t is not None and (not isLeaf(t))
+
 def normalize(t):
     if t is not None and t.front == [] and len(t.rear) == 1:
         (t.front, t.rear) = (t.rear, t.front)
+    return t
+
+def fromNs(ns):
+    #fold-right(cons, ns, None)
+    t = None
+    for n in reverse(ns):
+        t = cons(n, t)
     return t
 
 def tree(f, m, r):
@@ -92,7 +113,7 @@ def insert(x, t):
 def cons(n, t):
     root = t
     prev = None
-    while isFrontFull(t):
+    while frontFull(t):
         f = t.front
         t.front = [n] + f[:1]
         t.size = t.size + n.size
@@ -133,7 +154,7 @@ def uncons(t):
         elif len(t.rear) == 1:
             t = Tree(t.size, t.rear, None, [])
         else:
-            t = Tree(t.size, t.rear[:1], None, t.rear[:1])
+            t = Tree(t.size, t.rear[:1], None, t.rear[1:])
     if prev is not None:
         prev.mid = t
     else:
@@ -153,7 +174,7 @@ def append(t, x):
 def snoc(t, n):
     root = t
     prev = None
-    while isRearFull(t):
+    while rearFull(t):
         r = t.rear
         t.rear = r[-1:] + [n]
         t.size = t.size + n.size
@@ -209,7 +230,42 @@ def init(t):
     (_, t) = unsnoc(t)
     return t
 
-# Auxiliary functions
+def concat(t1, t2):
+    return merge(t1, [], t2)
+
+def merge(t1, ns, t2):
+    root = None
+    prev = Tree(0, [], None, []) #sentinel dummy tree
+    while isBranch(t1) and isBranch(t2):
+        t = Tree(t1.size + t2.size + sizeNs(ns), t1.front, None, t2.rear)
+        if root is None:
+            root = t
+        prev.mid = t
+        prev = t
+        ns = nodes(t1.rear + ns + t2.front)
+        t1 = t1.mid
+        t2 = t2.mid
+    if isLeaf(t1):
+        ns = t1.front + ns
+        t1 = None
+    if isLeaf(t2):
+        ns = ns + t2.front
+        t2 = None
+    t = None
+    if t1 is None:
+        t = t2
+        for n in reversed(ns):
+            t = cons(n, t)
+    elif t2 is None:
+        t = t1
+        for n in ns:
+            t = snoc(t, n)
+    prev.mid = t
+    if root is None:
+        root = t
+    return root
+
+# Auxiliary functions for verification
 
 def fromList(xs):
     # fold-right insert None xs
@@ -235,16 +291,27 @@ def toList1(t):
         xs.insert(0, x)
     return xs
 
-def test_head():
+def __assert(xs, ys):
+    if xs != ys:
+        print xs
+        print ys
+        quit()
+
+def test_rebuild():
     for i in range(100):
         xs = range(i)
         assert toList(fromList(xs)) == xs
-
-def test_tail():
-    for i in range(100):
-        xs = range(i)
+        assert toList(fromList1(xs)) == xs
+        assert toList1(fromList(xs)) ==xs
         assert toList1(fromList1(xs)) == xs
 
+def test_concat():
+    m = 100
+    for i in range(m):
+        xs = random.sample(range(m), random.randint(0, m))
+        ys = random.sample(range(m), random.randint(0, m))
+        assert toList(concat(fromList(xs), fromList(ys))) == (xs + ys)
+
 if __name__ == "__main__":
-    test_head()
-    test_tail()
+    test_rebuild()
+    test_concat()
