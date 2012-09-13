@@ -2,6 +2,12 @@
 
 import random
 
+# As there is no fold-right in python
+def foldR(f, xs, z):
+    for x in reversed(xs):
+        z = f(x, z)
+    return z
+
 # definition
 class Node:
     def __init__(self, s, xs):
@@ -54,6 +60,9 @@ def wrap(x):
 def wraps(xs):
     return Node(sizeNs(xs), xs)
 
+def leaf(x):
+    return Tree(x.size, [x], None, [])
+
 def nodes(xs):
     res = []
     while len(xs) > 4:
@@ -84,11 +93,7 @@ def normalize(t):
     return t
 
 def fromNs(ns):
-    #fold-right(cons, ns, None)
-    t = None
-    for n in reverse(ns):
-        t = cons(n, t)
-    return t
+    return foldR(cons, ns, None)
 
 def tree(f, m, r):
     while f == [] or r == []:
@@ -265,26 +270,46 @@ def merge(t1, ns, t2):
         root = t
     return root
 
+# TODO: getAt, setAt, splitAt, removeAt
+def getAt(t, i):
+    while t.size > 1:
+        szf = sizeNs(t.front)
+        szm = sizeT(t.mid)
+        if i < szf:
+            return lookupNs(t.front, i)
+        elif i < szf + szm:
+            t = t.mid
+            i = i - szf
+        else:
+            return lookupNs(t.rear, i - szf - szm)
+    return head(t)
+
+def lookupNs(ns, i):
+    while True:
+        for n in ns:
+            if n.size == 1:
+                return n.children[0]
+            if i < n.size:
+                ns = n.children
+                break
+            i = i - n.size
+
 # Auxiliary functions for verification
 
-def fromList(xs):
-    # fold-right insert None xs
-    t = None
-    for x in reversed(xs):
-        t = insert(x, t)
-    return t
+def fromListR(xs):
+    return foldR(insert, xs, None)
 
-def toList(t):
+def toListR(t):
     xs = []
     while t is not None:
         (x, t) = uncons(t)
         xs.append(x)
     return xs
 
-def fromList1(xs):
+def fromListL(xs):
     return reduce(append, xs, None)
 
-def toList1(t):
+def toListL(t):
     xs = []
     while t is not None:
         (x, t) = unsnoc(t)
@@ -300,10 +325,10 @@ def __assert(xs, ys):
 def test_rebuild():
     for i in range(100):
         xs = range(i)
-        assert toList(fromList(xs)) == xs
-        assert toList(fromList1(xs)) == xs
-        assert toList1(fromList(xs)) ==xs
-        assert toList1(fromList1(xs)) == xs
+        assert toListR(fromListR(xs)) == xs
+        assert toListR(fromListL(xs)) == xs
+        assert toListL(fromListR(xs)) ==xs
+        assert toListL(fromListL(xs)) == xs
 
 def test_concat():
     m = 100
@@ -312,6 +337,13 @@ def test_concat():
         ys = random.sample(range(m), random.randint(0, m))
         assert toList(concat(fromList(xs), fromList(ys))) == (xs + ys)
 
+def test_random_access():
+    xs = range(100)
+    t = fromListR(xs)
+    ys = [getAt(t, i) for i in xs]
+    assert xs == ys
+
 if __name__ == "__main__":
-    test_rebuild()
-    test_concat()
+    #test_rebuild()
+    #test_concat()
+    test_random_access()
