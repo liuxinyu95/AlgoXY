@@ -270,25 +270,41 @@ def merge(t1, ns, t2):
         root = t
     return root
 
-# TODO: getAt, setAt, splitAt, removeAt
+# TODO: setAt, splitAt, removeAt
+
 def getAt(t, i):
+    return applyAt(t, i, lambda x : x) # applying id function
+
+def setAt(t, i, x):
+    return applyAt(t, i, lambda y : x)
+
+# apply function f to the element at i position
+# return the original element before applying f
+def applyAt(t, i, f):
     while t.size > 1:
         szf = sizeNs(t.front)
         szm = sizeT(t.mid)
         if i < szf:
-            return lookupNs(t.front, i)
+            return lookupNs(t.front, i, f)
         elif i < szf + szm:
             t = t.mid
             i = i - szf
         else:
-            return lookupNs(t.rear, i - szf - szm)
-    return head(t)
+            return lookupNs(t.rear, i - szf - szm, f)
+    x = head(t)
+    t.front[0].children[0] = f(x)
+    return x
 
-def lookupNs(ns, i):
+# lookup in a list of node for position i, and 
+# apply function f to the element
+# return the original element before applying f
+def lookupNs(ns, i, f):
     while True:
         for n in ns:
-            if n.size == 1:
-                return n.children[0]
+            if n.size == 1 and i == 0:
+                x = n.children[0]
+                n.children[0] = f(x)
+                return x
             if i < n.size:
                 ns = n.children
                 break
@@ -318,6 +334,7 @@ def toListL(t):
 
 def __assert(xs, ys):
     if xs != ys:
+        print "assertion failed!"
         print xs
         print ys
         quit()
@@ -335,15 +352,19 @@ def test_concat():
     for i in range(m):
         xs = random.sample(range(m), random.randint(0, m))
         ys = random.sample(range(m), random.randint(0, m))
-        assert toList(concat(fromList(xs), fromList(ys))) == (xs + ys)
+        assert toListR(concat(fromListR(xs), fromListR(ys))) == (xs + ys)
 
 def test_random_access():
     xs = range(100)
     t = fromListR(xs)
     ys = [getAt(t, i) for i in xs]
     assert xs == ys
+    [setAt(t, i, 99 - xs[i]) for i in xs]
+    ys = [getAt(t, i) for i in xs]
+    xs.reverse()
+    __assert(xs, ys)
 
 if __name__ == "__main__":
-    #test_rebuild()
-    #test_concat()
+    test_rebuild()
+    test_concat()
     test_random_access()
