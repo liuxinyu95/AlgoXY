@@ -63,6 +63,9 @@ def wraps(xs):
 def leaf(x):
     return Tree(x.size, [x], None, [])
 
+def empty():
+    return Tree(0, [], None, [])
+
 def nodes(xs):
     res = []
     while len(xs) > 4:
@@ -93,7 +96,7 @@ def normalize(t):
     return t
 
 def fromNs(ns):
-    return foldR(cons, ns, None)
+    return foldR(prepand_node, ns, None)
 
 def tree(f, m, r):
     while f == [] or r == []:
@@ -104,18 +107,18 @@ def tree(f, m, r):
                 return fromNs(r)
         else:
             if r == []:
-                (m, r1) = unsnoc(m)
+                (m, r1) = extract_tail(m)
                 r = r1.children
             elif f == []:
-                (f1, m) = uncons(m)
+                (f1, m) = extract_head(m)
                 f=f1.children
     return Tree(sizeNs(f) + sizeT(m) + sizeNs(r), f, m, r)
 
 def insert(x, t):
-    return cons(wrap(x), t)
+    return prepend(wrap(x), t)
 
 # inserting a node in single-pass manner
-def cons(n, t):
+def prepand_node(n, t):
     root = t
     prev = None
     while frontFull(t):
@@ -139,7 +142,7 @@ def cons(n, t):
 
 # extract the first node from tree
 # assume t is not None
-def uncons(t):
+def extract_head(t):
     root = t
     prev = None
     x = head(t)
@@ -170,13 +173,13 @@ def head(t):
     return t.front[0].children[0]
 
 def tail(t):
-    (_, t) = uncons(t)
-    return t
+    (_, t1) = extract_head(t)
+    return t1
 
 def append(t, x):
-    return snoc(t, wrap(x))
+    return append_node(t, wrap(x))
 
-def snoc(t, n):
+def append_node(t, n):
     root = t
     prev = None
     while rearFull(t):
@@ -198,7 +201,7 @@ def snoc(t, n):
         root = t
     return root
 
-def unsnoc(t):
+def extract_tail(t):
     root = t
     prev = None
     x = last(t)
@@ -232,15 +235,15 @@ def last(t):
     return t.rear[-1].children[-1]
 
 def init(t):
-    (_, t) = unsnoc(t)
-    return t
+    (_, t1) = extract_tail(t)
+    return t1
 
 def concat(t1, t2):
     return merge(t1, [], t2)
 
 def merge(t1, ns, t2):
     root = None
-    prev = Tree(0, [], None, []) #sentinel dummy tree
+    prev = empty() #sentinel dummy tree
     while isBranch(t1) and isBranch(t2):
         t = Tree(t1.size + t2.size + sizeNs(ns), t1.front, None, t2.rear)
         if root is None:
@@ -260,17 +263,15 @@ def merge(t1, ns, t2):
     if t1 is None:
         t = t2
         for n in reversed(ns):
-            t = cons(n, t)
+            t = prepand_node(n, t)
     elif t2 is None:
         t = t1
         for n in ns:
-            t = snoc(t, n)
+            t = append_node(t, n)
     prev.mid = t
     if root is None:
         root = t
     return root
-
-# TODO: setAt, splitAt, removeAt
 
 def getAt(t, i):
     return applyAt(t, i, lambda x : x) # applying id function
@@ -310,6 +311,58 @@ def lookupNs(ns, i, f):
                 break
             i = i - n.size
 
+# TODO: splitAt, removeAt
+
+# split(t, i) ==> (t1, x, t2)
+def splitAt(t, i):
+    # 1st top-down pass
+    (t1_prev, t2_prev) = (empty(), empty())
+    (t1, t2) = (t1_prev, t2_prev)
+    (s1, s2) = (i, t.size - i - 1)
+    szf = szm = 0
+    while True:
+        szf = sizeNs(t.front)
+        szm = sizeT(t.mid)
+        if i < szf + szm:
+            fst = Tree(0, t.front, None, [])
+            snd = Tree(0, [], None, t.rear)
+            (t1_prev.mid, t2_prev.mid) = (fst, snd)
+            (t1_prev, t2_prev) = (t1_prev.mid, t2_prev.mid)
+            t = t.mid
+            i = i - szm
+        else:
+            break
+
+    if i < szf:
+        (xs, y, ys) = splitNs(t.front, i)
+        sz = t.size - sizeNs(xs) - y.size
+        (fst, n, snd) = (fromNodes(xs), y, Tree(sz, ys, t.mid, t.rear))
+    elif szf + szm <= i:
+        (xs, y, ys) = splitNs(t.rear, i - szf - szm)
+        sz = t.size - sizeNs(ys) - y.size
+        (fst, n, snd) = (Tree(sz, t.front, t.mid, xs), y, fromNodes(ys))
+    (t1_prev.mid, t2_prev.mid) = (fst, snd)
+
+    # 2nd top-down pass
+    (t1_prev, t2_prev) = (t1.mid, t2.mid)
+    i = i - fst.size
+    while i > 0 and y.size > 1:
+        (xs, y, ys) = splitNs(y.children, i)
+        (t1_prev.rear, t2_prev.front) = (xs, ys)
+        (t1_prev.size, t2_prev.size) = (s1, s2)
+        s1 = s1 - sizeNs(t1_prev.front) - sizeNs(t1_prev.rear)
+        s2 = s2 - sizeNs(t2_prev.front) - sizeNs(t2_prev.rear)
+        (t1_prev, t2_prev) = (t1_prev.mid, t2_prev.mid)
+
+    # compress one useless level if neccessary
+    if t1.size == 0 and t2.size == 0:
+        (t1, t2) = (t1.mid, t2.mid)
+    
+    return (t1, y.children[0], t2)
+
+def splitNs(ns, i):
+    pass
+
 # Auxiliary functions for verification
 
 def fromListR(xs):
@@ -318,7 +371,7 @@ def fromListR(xs):
 def toListR(t):
     xs = []
     while t is not None:
-        (x, t) = uncons(t)
+        (x, t) = extract_head(t)
         xs.append(x)
     return xs
 
@@ -328,9 +381,12 @@ def fromListL(xs):
 def toListL(t):
     xs = []
     while t is not None:
-        (x, t) = unsnoc(t)
+        (x, t) = extract_tail(t)
         xs.insert(0, x)
     return xs
+
+def fromNodes(ns):
+    return foldR(prepand_node, ns, None)
 
 def __assert(xs, ys):
     if xs != ys:
