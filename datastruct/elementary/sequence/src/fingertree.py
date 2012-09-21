@@ -95,30 +95,11 @@ def normalize(t):
         (t.front, t.rear) = (t.rear, t.front)
     return t
 
-def fromNs(ns):
-    return foldR(prepand_node, ns, None)
-
-def tree(f, m, r):
-    while f == [] or r == []:
-        if m is None:
-            if r == []:
-                return fromNs(f)
-            if f == []:
-                return fromNs(r)
-        else:
-            if r == []:
-                (m, r1) = extract_tail(m)
-                r = r1.children
-            elif f == []:
-                (f1, m) = extract_head(m)
-                f=f1.children
-    return Tree(sizeNs(f) + sizeT(m) + sizeNs(r), f, m, r)
-
 def insert(x, t):
-    return prepend(wrap(x), t)
+    return prepend_node(wrap(x), t)
 
 # inserting a node in single-pass manner
-def prepand_node(n, t):
+def prepend_node(n, t):
     root = t
     prev = None
     while frontFull(t):
@@ -145,7 +126,7 @@ def prepand_node(n, t):
 def extract_head(t):
     root = t
     prev = None
-    x = head(t)
+    x = head(t) #BUG!!!, as x = t.front[0].chlidren[0], but there might be multiple children
     # a repeat - until loop
     while True:
         t.size = t.size - t.front[0].size
@@ -263,7 +244,7 @@ def merge(t1, ns, t2):
     if t1 is None:
         t = t2
         for n in reversed(ns):
-            t = prepand_node(n, t)
+            t = prepend_node(n, t)
     elif t2 is None:
         t = t1
         for n in ns:
@@ -315,21 +296,23 @@ def lookupNs(ns, i, f):
 
 # split(t, i) ==> (t1, x, t2)
 def splitAt(t, i):
+    # TODO: handle leaf case???
     # 1st top-down pass
     (t1_prev, t2_prev) = (empty(), empty())
     (t1, t2) = (t1_prev, t2_prev)
     (s1, s2) = (i, t.size - i - 1)
     szf = szm = 0
     while True:
+        print "split", tr2str(t), "at", i
         szf = sizeNs(t.front)
         szm = sizeT(t.mid)
-        if i < szf + szm:
+        if szf <= i and i < szf + szm:
             fst = Tree(0, t.front, None, [])
             snd = Tree(0, [], None, t.rear)
             (t1_prev.mid, t2_prev.mid) = (fst, snd)
             (t1_prev, t2_prev) = (t1_prev.mid, t2_prev.mid)
             t = t.mid
-            i = i - szm
+            i = i - szf
         else:
             break
 
@@ -345,10 +328,11 @@ def splitAt(t, i):
 
     # 2nd top-down pass
     (t1_prev, t2_prev) = (t1.mid, t2.mid)
-    i = i - fst.size
+    i = i - sizeT(fst)
     while i > 0 and y.size > 1:
         (xs, y, ys) = splitNs(y.children, i)
-        (t1_prev.rear, t2_prev.front) = (xs, ys)
+        i = i - sizeNs(xs)
+        (t1_prev.rear, t2_prev.front) = (xs, ys) # What if xs or ys is [] ???
         (t1_prev.size, t2_prev.size) = (s1, s2)
         s1 = s1 - sizeNs(t1_prev.front) - sizeNs(t1_prev.rear)
         s2 = s2 - sizeNs(t2_prev.front) - sizeNs(t2_prev.rear)
@@ -358,11 +342,46 @@ def splitAt(t, i):
     if t1.size == 0 and t2.size == 0:
         (t1, t2) = (t1.mid, t2.mid)
     
-    return (t1, y.children[0], t2)
+    print "==>t1=", tr2str(t1), "x=", y.children[0], "t2=", tr2str(t2)
+    return (balance(t1), y.children[0], balance(t2))
 
 def splitNs(ns, i):
-    pass
+    print "split nodes", ns2str(ns), "at", i
+    for j in range(len(ns)):
+        if i < ns[j].size:
+            print "==>", ns2str(ns[:j]), ns[j].str(), ns2str(ns[j+1:])
+            return (ns[:j], ns[j], ns[j+1:])
+        i = i - ns[j].size
 
+def unbalanced(t):
+    return t.mid is not None and (t.front == [] or t.rear == [])
+
+def balance(t):
+    print "before balance", tr2str(t)
+    root = prev = empty()
+    prev.mid = t
+    while t is not None:
+        while unbalanced(t):
+            if t.front == []:
+                (n, t.mid) = extract_head(t.mid)
+                t.front = [n]
+                print "   after borrow: mid", tr2str(t.mid) 
+            elif t.rear == []:
+                (t.mid, n) = extrat_tail(t.mid)
+                t.rear = [n]
+        if t.mid is None:
+            if t.front == []:
+                prev.mid = t = foldR(prepend_node, t.rear, None)
+            elif t.rear == []:
+                prev.mid = t = foldR(prepend_node, t.front, None)
+        prev = t
+        t = t.mid
+    if root.size == 0:
+        root = root.mid
+    print "after balance", tr2str(root)
+    return root
+
+            
 # Auxiliary functions for verification
 
 def fromListR(xs):
@@ -386,7 +405,7 @@ def toListL(t):
     return xs
 
 def fromNodes(ns):
-    return foldR(prepand_node, ns, None)
+    return foldR(prepend_node, ns, None)
 
 def __assert(xs, ys):
     if xs != ys:
@@ -420,7 +439,18 @@ def test_random_access():
     xs.reverse()
     __assert(xs, ys)
 
+def test_split():
+    for i in range(100):
+        lst = range(100)
+        (xs, y, ys) = (lst[:i], lst[i], lst[i+1:])
+        t = fromListR(lst)
+        (t1, x, t2) = splitAt(t, i)
+        __assert(xs, toListR(t1))
+        __assert(ys, toListR(t2))
+        assert(x == y)
+
 if __name__ == "__main__":
-    test_rebuild()
-    test_concat()
-    test_random_access()
+    #test_rebuild()
+    #test_concat()
+    #test_random_access()
+    test_split()
