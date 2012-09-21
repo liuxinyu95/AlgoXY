@@ -121,12 +121,13 @@ def prepend_node(n, t):
         root = t
     return root
 
-# extract the first node from tree
+# extract the first NODE from tree
 # assume t is not None
+# TODO: handle ill-formed tree
 def extract_head(t):
     root = t
     prev = None
-    x = head(t) #BUG!!!, as x = t.front[0].chlidren[0], but there might be multiple children
+    x = first_node(t) 
     # a repeat - until loop
     while True:
         t.size = t.size - t.front[0].size
@@ -150,8 +151,13 @@ def extract_head(t):
         root = t
     return (x, root)
 
-def head(t):
-    return t.front[0].children[0]
+# return the first ELEMENT
+def first(t):
+    return first_node(t).children[0]
+
+# return the first NODE
+def first_node(t):
+    return t.front[0]
 
 def tail(t):
     (_, t1) = extract_head(t)
@@ -182,14 +188,15 @@ def append_node(t, n):
         root = t
     return root
 
+# TODO: handle ill-formed tree
 def extract_tail(t):
     root = t
     prev = None
-    x = last(t)
+    x = last_node(t)
     if t.size == 1:
         return (x, None)
     while True:
-        t.size = t.size - t.rear[-1].size
+        t.size = t.size - t.rear[-1].size # BUG: rear == [] ???
         t.rear = t.rear[:-1]
         if t.mid is not None and t.rear == []:
             prev = t
@@ -211,9 +218,12 @@ def extract_tail(t):
     return (x, normalize(root))
 
 def last(t):
-    if t.size == 1:
-        return head(t)
-    return t.rear[-1].children[-1]
+    return last_node(t).children[-1]
+
+def last_node(t):
+    if t.rear == [] and t.front != []:
+        return t.front[-1]
+    return t.rear[-1]
 
 def init(t):
     (_, t1) = extract_tail(t)
@@ -273,7 +283,7 @@ def applyAt(t, i, f):
             i = i - szf
         else:
             return lookupNs(t.rear, i - szf - szm, f)
-    x = head(t)
+    x = first(t)
     t.front[0].children[0] = f(x)
     return x
 
@@ -329,10 +339,10 @@ def splitAt(t, i):
     # 2nd top-down pass
     (t1_prev, t2_prev) = (t1.mid, t2.mid)
     i = i - sizeT(fst)
-    while i > 0 and y.size > 1:
+    while y.size > 1:
         (xs, y, ys) = splitNs(y.children, i)
         i = i - sizeNs(xs)
-        (t1_prev.rear, t2_prev.front) = (xs, ys) # What if xs or ys is [] ???
+        (t1_prev.rear, t2_prev.front) = (xs, ys) # Need further balance if xs or ys is []
         (t1_prev.size, t2_prev.size) = (s1, s2)
         s1 = s1 - sizeNs(t1_prev.front) - sizeNs(t1_prev.rear)
         s2 = s2 - sizeNs(t2_prev.front) - sizeNs(t2_prev.rear)
@@ -356,31 +366,32 @@ def splitNs(ns, i):
 def unbalanced(t):
     return t.mid is not None and (t.front == [] or t.rear == [])
 
+# TODO: eliminate recursion.
 def balance(t):
-    print "before balance", tr2str(t)
-    root = prev = empty()
-    prev.mid = t
-    while t is not None:
-        while unbalanced(t):
+    print "before balance:", tr2str(t)
+    if t is None:
+        print "after balance:", tr2str(t)
+        return t
+    else:
+        t.mid = balance(t.mid)
+        if unbalanced(t):
             if t.front == []:
                 (n, t.mid) = extract_head(t.mid)
-                t.front = [n]
-                print "   after borrow: mid", tr2str(t.mid) 
+                t.front = n.children
+                t.size = t.size + n.size
             elif t.rear == []:
-                (t.mid, n) = extrat_tail(t.mid)
-                t.rear = [n]
+                (t.mid, n) = extract_tail(t.mid)
+                t.rear = n.children
+                t.size = t.size + n.size
         if t.mid is None:
             if t.front == []:
-                prev.mid = t = foldR(prepend_node, t.rear, None)
+                t = fromNodes(t.rear)
             elif t.rear == []:
-                prev.mid = t = foldR(prepend_node, t.front, None)
-        prev = t
-        t = t.mid
-    if root.size == 0:
-        root = root.mid
-    print "after balance", tr2str(root)
-    return root
-
+                print "here"
+                t = fromNodes(t.front)
+                print "t=", tr2str(t)
+    print "after balance:", tr2str(t)
+    return t
             
 # Auxiliary functions for verification
 
@@ -390,8 +401,8 @@ def fromListR(xs):
 def toListR(t):
     xs = []
     while t is not None:
-        (x, t) = extract_head(t)
-        xs.append(x)
+        (n, t) = extract_head(t)
+        xs.append(n.children[0])
     return xs
 
 def fromListL(xs):
@@ -400,8 +411,8 @@ def fromListL(xs):
 def toListL(t):
     xs = []
     while t is not None:
-        (x, t) = extract_tail(t)
-        xs.insert(0, x)
+        (n, t) = extract_tail(t)
+        xs.insert(0, n.children[-1])
     return xs
 
 def fromNodes(ns):
@@ -450,7 +461,7 @@ def test_split():
         assert(x == y)
 
 if __name__ == "__main__":
-    #test_rebuild()
-    #test_concat()
-    #test_random_access()
+    test_rebuild()
+    test_concat()
+    test_random_access()
     test_split()
