@@ -24,9 +24,11 @@ class Tree:
     def __init__(self, s = 0, f = [], m = None, r = [], p = None):
         self.size = s
         self.front = f
-        self.rear = r
         self.mid = m
+        self.rear = r
         self.parent = p
+        if m is not None:
+            m.parent = self
 
     def set_mid(self, t):
         self.mid = t
@@ -137,7 +139,6 @@ def prepend_node(n, t):
 # extract the first element from tree
 # assume t is not empty
 def extract_head(t):
-    print "extract head from", tr2str(t), "size(t) =", 0 if t is None else t.size
     root = Tree()
     root.set_mid(t)
     while t.front == [] and t.mid is not None:
@@ -146,19 +147,16 @@ def extract_head(t):
         (t.front, t.rear) = (t.rear, t.front)
     n = wraps(t.front)
     while True: # a repeat-until loop
-        print "enter while, t=", tr2str(t), "size(t)=", t.size, "n=", n.str(), "size(n)", n.size
         ns = n.children
         n = ns[0]
         t.front = ns[1:]
         t.size = t.size - n.size
-        print "n = ", n.str(), "size(n)=", n.size, "t=", tr2str(t), "size(t)=", 0 if t is None else t.size
         t = t.parent
         if t.mid.size == 0:
             t.mid.parent = None
             t.mid = None
         if n.size == 1:
             break
-    print "==>", elem(n), tr2str(root.mid)
     return (elem(n), flat(root))
 
 # return the first element without remove it
@@ -247,8 +245,7 @@ def merge(t1, ns, t2):
     root = prev = Tree() #sentinel dummy tree
     while isBranch(t1) and isBranch(t2):
         t = Tree(t1.size + t2.size + sizeNs(ns), t1.front, None, t2.rear)
-        prev.mid = t
-        t.parent = mid
+        prev.set_mid(t)
         prev = t
         ns = nodes(t1.rear + ns + t2.front)
         t1 = t1.mid
@@ -268,7 +265,7 @@ def merge(t1, ns, t2):
         t = t1
         for n in ns:
             t = append_node(t, n)
-    prev.mid = t
+    prev.set_mid(t)
     return flat(root)
 
 def getAt(t, i):
@@ -439,6 +436,7 @@ def test_rebuild():
         assert toListR(fromListL(xs)) == xs
         assert toListL(fromListR(xs)) ==xs
         assert toListL(fromListL(xs)) == xs
+    print "rebuild tested"
 
 def test_concat():
     m = 100
@@ -446,6 +444,7 @@ def test_concat():
         xs = random.sample(range(m), random.randint(0, m))
         ys = random.sample(range(m), random.randint(0, m))
         assert toListR(concat(fromListR(xs), fromListR(ys))) == (xs + ys)
+    print "concat tested"
 
 def test_random_access():
     xs = range(100)
@@ -456,6 +455,7 @@ def test_random_access():
     ys = [getAt(t, i) for i in xs]
     xs.reverse()
     __assert(xs, ys)
+    print "random access tested"
 
 def test_split():
     for i in range(100):
