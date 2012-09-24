@@ -21,11 +21,17 @@ class Node:
             return "(" + ", ".join([x.str() for x in self.children]) + ")"
 
 class Tree:
-    def __init__(self, s, f, m, r):
+    def __init__(self, s = 0, f = [], m = None, r = [], p = None):
         self.size = s
         self.front = f
         self.rear = r
         self.mid = m
+        self.parent = p
+
+    def set_mid(self, t):
+        self.mid = t
+        if t is not None:
+            t.parent = self
 
     def empty(self):
         return self.size == 0
@@ -57,14 +63,15 @@ def sizeT(t):
 def wrap(x):
     return Node(1, [x])
 
+def elem(n):
+    assert n.size == 1
+    return n.children[0]
+
 def wraps(xs):
     return Node(sizeNs(xs), xs)
 
 def leaf(x):
     return Tree(x.size, [x], None, [])
-
-def empty():
-    return Tree(0, [], None, [])
 
 def nodes(xs):
     res = []
@@ -95,13 +102,21 @@ def normalize(t):
         (t.front, t.rear) = (t.rear, t.front)
     return t
 
+# remove unused senitel if there is
+def flat(t):
+    if t.size == 0:
+        t = t.mid
+    if t is not None:
+        t.parent = None
+    return t
+
 def insert(x, t):
     return prepend_node(wrap(x), t)
 
 # inserting a node in single-pass manner
 def prepend_node(n, t):
-    root = t
-    prev = None
+    root = prev = Tree()
+    prev.set_mid(t)
     while frontFull(t):
         f = t.front
         t.front = [n] + f[:1]
@@ -110,65 +125,65 @@ def prepend_node(n, t):
         prev = t
         t = t.mid
     if t is None:
-        t = Tree(n.size, [n], None, [])
+        t = leaf(n)
     elif isLeaf(t):
         t = Tree(n.size + t.size, [n], None, t.front)
     else:
         t = Tree(n.size + t.size, [n]+t.front, t.mid, t.rear)
-    if prev is not None:
-        prev.mid = t
-    else:
-        root = t
-    return root
+    prev.mid = t
+    t.parent = prev
+    return flat(root)
 
-# extract the first NODE from tree
-# assume t is not None
-# TODO: handle ill-formed tree
+# extract the first element from tree
+# assume t is not empty
 def extract_head(t):
-    root = t
-    prev = None
-    x = first_node(t) 
-    # a repeat - until loop
-    while True:
-        t.size = t.size - t.front[0].size
-        t.front = t.front[1:]
-        if t.mid is not None and t.front == []:
-            prev = t
-            t = t.mid
-            prev.front = t.front[0].children
-        else:
+    print "extract head from", tr2str(t), "size(t) =", 0 if t is None else t.size
+    root = Tree()
+    root.set_mid(t)
+    while t.front == [] and t.mid is not None:
+        t = t.mid
+    if t.front == [] and t.rear != []:
+        (t.front, t.rear) = (t.rear, t.front)
+    n = wraps(t.front)
+    while True: # a repeat-until loop
+        print "enter while, t=", tr2str(t), "size(t)=", t.size, "n=", n.str(), "size(n)", n.size
+        ns = n.children
+        n = ns[0]
+        t.front = ns[1:]
+        t.size = t.size - n.size
+        print "n = ", n.str(), "size(n)=", n.size, "t=", tr2str(t), "size(t)=", 0 if t is None else t.size
+        t = t.parent
+        if t.mid.size == 0:
+            t.mid.parent = None
+            t.mid = None
+        if n.size == 1:
             break
-    if t.mid is None and t.front == []:
-        if t.rear == []:
-            t = None
-        elif len(t.rear) == 1:
-            t = Tree(t.size, t.rear, None, [])
-        else:
-            t = Tree(t.size, t.rear[:1], None, t.rear[1:])
-    if prev is not None:
-        prev.mid = t
-    else:
-        root = t
-    return (x, root)
+    print "==>", elem(n), tr2str(root.mid)
+    return (elem(n), flat(root))
 
-# return the first ELEMENT
+# return the first element without remove it
 def first(t):
-    return first_node(t).children[0]
+    while t.front == [] and t.mid is not None:
+        t = t.mid
+    if t.front == [] and t.rear != []:
+        n = t.rear[0]
+    else:
+        n = t.front[0]
+    while n.size > 1:
+        n = n.children[0]
+    return elem(n)
 
-# return the first NODE
-def first_node(t):
-    return t.front[0]
-
+# Note this will mutate t.
 def tail(t):
-    (_, t1) = extract_head(t)
-    return t1
+    (_, t) = extract_head(t)
+    return t
 
 def append(t, x):
     return append_node(t, wrap(x))
 
 def append_node(t, n):
-    root = t
-    prev = None
+    root = prev = Tree()
+    prev.set_mid(t)
     while rearFull(t):
         r = t.rear
         t.rear = r[-1:] + [n]
@@ -177,69 +192,63 @@ def append_node(t, n):
         prev = t
         t = t.mid
     if t is None:
-        t = Tree(n.size, [n], None, [])
+        t = leaf(n)
     elif len(t.rear) == 1 and t.front == []:
         t = Tree(n.size + t.size, t.rear, None, [n])
     else:
         t = Tree(n.size + t.size, t.front, t.mid, t.rear + [n])
-    if prev is not None:
-        prev.mid = t
-    else:
-        root = t
-    return root
+    prev.mid = t
+    t.parent = prev
+    return flat(root)
 
-# TODO: handle ill-formed tree
+# extract the last element from tree
+# assume t is not empty
 def extract_tail(t):
-    root = t
-    prev = None
-    x = last_node(t)
-    if t.size == 1:
-        return (x, None)
-    while True:
-        t.size = t.size - t.rear[-1].size # BUG: rear == [] ???
-        t.rear = t.rear[:-1]
-        if t.mid is not None and t.rear == []:
-            prev = t
-            t = t.mid
-            if isLeaf(t):
-                t = Tree(t.size, [], None, t.front)
-            prev.rear = t.rear[-1].children
-        else:
+    root = Tree()
+    root.set_mid(t)
+    while t.rear == [] and t.mid is not None:
+        t = t.mid
+    if t.rear == [] and t.front != []:
+        (t.front, t.rear) = (t.rear, t.front)
+    n = wraps(t.rear)
+    while True: # a repeat-until loop
+        ns = n.children
+        n = ns[-1]
+        t.rear = ns[:-1]
+        t.size = t.size - n.size
+        t = t.parent
+        if t.mid.size == 0:
+            t.mid.parent = None
+            t.mid = None
+        if n.size == 1:
             break
-    if t.mid is None and t.rear == []:
-        if t.front == []:
-            t = None
-        else:
-            t = Tree(t.size, t.front[:-1], None, t.front[-1:])
-    if prev is not None:
-        prev.mid = t
-    else:
-        root = t
-    return (x, normalize(root))
+    return (elem(n), flat(root))
 
 def last(t):
-    return last_node(t).children[-1]
+    while t.rear == [] and t.mid is not None:
+        t = t.mid
+    if t.rear ==[] and t.front != []:
+        n = t.front[-1]
+    else:
+        n = t.rear[-1]
+    while n.size > 1:
+        n = n.children[-1]
+    return elem(n)
 
-def last_node(t):
-    if t.rear == [] and t.front != []:
-        return t.front[-1]
-    return t.rear[-1]
-
+# Note this will mutate the tree
 def init(t):
-    (_, t1) = extract_tail(t)
-    return t1
+    (_, t) = extract_tail(t)
+    return t
 
 def concat(t1, t2):
     return merge(t1, [], t2)
 
 def merge(t1, ns, t2):
-    root = None
-    prev = empty() #sentinel dummy tree
+    root = prev = Tree() #sentinel dummy tree
     while isBranch(t1) and isBranch(t2):
         t = Tree(t1.size + t2.size + sizeNs(ns), t1.front, None, t2.rear)
-        if root is None:
-            root = t
         prev.mid = t
+        t.parent = mid
         prev = t
         ns = nodes(t1.rear + ns + t2.front)
         t1 = t1.mid
@@ -260,9 +269,7 @@ def merge(t1, ns, t2):
         for n in ns:
             t = append_node(t, n)
     prev.mid = t
-    if root is None:
-        root = t
-    return root
+    return flat(root)
 
 def getAt(t, i):
     return applyAt(t, i, lambda x : x) # applying id function
@@ -308,7 +315,7 @@ def lookupNs(ns, i, f):
 def splitAt(t, i):
     # TODO: handle leaf case???
     # 1st top-down pass
-    (t1_prev, t2_prev) = (empty(), empty())
+    (t1_prev, t2_prev) = (Tree(), Tree())
     (t1, t2) = (t1_prev, t2_prev)
     (s1, s2) = (i, t.size - i - 1)
     szf = szm = 0
@@ -401,8 +408,8 @@ def fromListR(xs):
 def toListR(t):
     xs = []
     while t is not None:
-        (n, t) = extract_head(t)
-        xs.append(n.children[0])
+        (x, t) = extract_head(t)
+        xs.append(x)
     return xs
 
 def fromListL(xs):
@@ -411,8 +418,8 @@ def fromListL(xs):
 def toListL(t):
     xs = []
     while t is not None:
-        (n, t) = extract_tail(t)
-        xs.insert(0, n.children[-1])
+        (x, t) = extract_tail(t)
+        xs.insert(0, x)
     return xs
 
 def fromNodes(ns):
@@ -464,4 +471,4 @@ if __name__ == "__main__":
     test_rebuild()
     test_concat()
     test_random_access()
-    test_split()
+    #test_split()
