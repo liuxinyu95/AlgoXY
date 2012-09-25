@@ -38,6 +38,7 @@ class Tree:
     def empty(self):
         return self.size == 0
 
+    # for debugging purpose only
     def str(self):
         if self.empty():
             return "."
@@ -53,28 +54,36 @@ def tr2str(t):
     return "." if t is None else t.str()
 
 # Helper functions
+
+# calculate the size for a list of nodes
 def sizeNs(xs):
     return sum(map(lambda x: x.size, xs))
 
+# calculate the size for a tree
 def sizeT(t):
     if t is None:
         return 0 
     else: 
         return t.size
 
+# wrap an element to a node
 def wrap(x):
     return Node(1, [x])
 
+# return the singleton element in a node
 def elem(n):
     assert n.size == 1
     return n.children[0]
 
+# wraps a list of nodes (<= 3) to a big node
 def wraps(xs):
     return Node(sizeNs(xs), xs)
 
+# create a leaf contains only one node
 def leaf(x):
     return Tree(x.size, [x], None, [])
 
+# wrap a list of nodes (>3) to a list of big nodes
 def nodes(xs):
     res = []
     while len(xs) > 4:
@@ -87,9 +96,11 @@ def nodes(xs):
         res.append(wraps(xs))
     return res
 
+# test if the front finger is full, which can't afford any more nodes
 def frontFull(t):
     return t is not None and len(t.front) >= 3
 
+# test if the rear finger is full, which can't afford any more modes
 def rearFull(t):
     return t is not None and len(t.rear) >= 3
 
@@ -98,11 +109,6 @@ def isLeaf(t):
 
 def isBranch(t):
     return t is not None and (not isLeaf(t))
-
-def normalize(t):
-    if t is not None and t.front == [] and len(t.rear) == 1:
-        (t.front, t.rear) = (t.rear, t.front)
-    return t
 
 # remove unused senitel if there is
 def flat(t):
@@ -159,7 +165,7 @@ def extract_head(t):
             break
     return (elem(n), flat(root))
 
-# return the first element without remove it
+# return the first element without removing it
 def first(t):
     while t.front == [] and t.mid is not None:
         t = t.mid
@@ -222,6 +228,7 @@ def extract_tail(t):
             break
     return (elem(n), flat(root))
 
+# return the last element without removing it.
 def last(t):
     while t.rear == [] and t.mid is not None:
         t = t.mid
@@ -306,97 +313,63 @@ def lookupNs(ns, i, f):
                 break
             i = i - n.size
 
-# TODO: splitAt, removeAt
+def szf(t):
+    return sizeNs(t.front)
+
+def szm(t):
+    return sizeT(t.mid)
 
 # split(t, i) ==> (t1, x, t2)
 def splitAt(t, i):
-    # TODO: handle leaf case???
-    # 1st top-down pass
-    (t1_prev, t2_prev) = (Tree(), Tree())
-    (t1, t2) = (t1_prev, t2_prev)
-    (s1, s2) = (i, t.size - i - 1)
-    szf = szm = 0
-    while True:
-        print "split", tr2str(t), "at", i
-        szf = sizeNs(t.front)
-        szm = sizeT(t.mid)
-        if szf <= i and i < szf + szm:
-            fst = Tree(0, t.front, None, [])
-            snd = Tree(0, [], None, t.rear)
-            (t1_prev.mid, t2_prev.mid) = (fst, snd)
-            (t1_prev, t2_prev) = (t1_prev.mid, t2_prev.mid)
-            t = t.mid
-            i = i - szf
-        else:
-            break
+    # top-down pass
+    (t1, t2) = (Tree(), Tree())
+    while szf(t) <= i and i < szf(t) + szm(t):
+        fst = Tree(0, t.front, None, [])
+        snd = Tree(0, [], None, t.rear)
+        t1.set_mid(fst)
+        t2.set_mid(snd)
+        (t1, t2) = (fst, snd)
+        i = i - szf(t)
+        t = t.mid
 
-    if i < szf:
-        (xs, y, ys) = splitNs(t.front, i)
-        sz = t.size - sizeNs(xs) - y.size
-        (fst, n, snd) = (fromNodes(xs), y, Tree(sz, ys, t.mid, t.rear))
-    elif szf + szm <= i:
-        (xs, y, ys) = splitNs(t.rear, i - szf - szm)
-        sz = t.size - sizeNs(ys) - y.size
-        (fst, n, snd) = (Tree(sz, t.front, t.mid, xs), y, fromNodes(ys))
-    (t1_prev.mid, t2_prev.mid) = (fst, snd)
+    if i < szf(t):
+        (xs, n, ys) = splitNs(t.front, i)
+        sz = t.size - sizeNs(xs) - n.size
+        (fst, snd) = (fromNodes(xs), Tree(sz, ys, t.mid, t.rear))
+    elif szf(t) + szm(t) <= i:
+        (xs, n, ys) = splitNs(t.rear, i - szf(t) - szm(t))
+        sz = t.size - sizeNs(ys) - n.size
+        (fst, snd) = (Tree(sz, t.front, t.mid, xs), fromNodes(ys))
+    t1.set_mid(fst)
+    t2.set_mid(snd)
 
-    # 2nd top-down pass
-    (t1_prev, t2_prev) = (t1.mid, t2.mid)
+    # bottom-up pass
     i = i - sizeT(fst)
-    while y.size > 1:
-        (xs, y, ys) = splitNs(y.children, i)
+    while n.size > 1:
+        (xs, n, ys) = splitNs(n.children, i)
         i = i - sizeNs(xs)
-        (t1_prev.rear, t2_prev.front) = (xs, ys) # Need further balance if xs or ys is []
-        (t1_prev.size, t2_prev.size) = (s1, s2)
-        s1 = s1 - sizeNs(t1_prev.front) - sizeNs(t1_prev.rear)
-        s2 = s2 - sizeNs(t2_prev.front) - sizeNs(t2_prev.rear)
-        (t1_prev, t2_prev) = (t1_prev.mid, t2_prev.mid)
+        (t1.rear, t2.front) = (xs, ys)
+        t1.size = sizeNs(t1.front) + sizeT(t1.mid) + sizeNs(t1.rear)
+        t2.size = sizeNs(t2.front) + sizeT(t2.mid) + sizeNs(t2.rear)
+        (t1, t2) = (t1.parent, t2.parent)
 
-    # compress one useless level if neccessary
-    if t1.size == 0 and t2.size == 0:
-        (t1, t2) = (t1.mid, t2.mid)
-    
-    print "==>t1=", tr2str(t1), "x=", y.children[0], "t2=", tr2str(t2)
-    return (balance(t1), y.children[0], balance(t2))
+    return (flat(t1), elem(n), flat(t2))
 
 def splitNs(ns, i):
-    print "split nodes", ns2str(ns), "at", i
     for j in range(len(ns)):
         if i < ns[j].size:
-            print "==>", ns2str(ns[:j]), ns[j].str(), ns2str(ns[j+1:])
             return (ns[:j], ns[j], ns[j+1:])
         i = i - ns[j].size
 
-def unbalanced(t):
-    return t.mid is not None and (t.front == [] or t.rear == [])
+def removeAt(t, i):
+    print "remove", i, "-th elem from", tr2str(t)
+    (t1, x, t2) = splitAt(t, i)
+    print "x=", x, 
+    print "t1=", tr2str(t1)
+    print "t2=", tr2str(t2)
+    print "t=", tr2str(concat(t1, t2))
+    return (x, concat(t1, t2))
 
-# TODO: eliminate recursion.
-def balance(t):
-    print "before balance:", tr2str(t)
-    if t is None:
-        print "after balance:", tr2str(t)
-        return t
-    else:
-        t.mid = balance(t.mid)
-        if unbalanced(t):
-            if t.front == []:
-                (n, t.mid) = extract_head(t.mid)
-                t.front = n.children
-                t.size = t.size + n.size
-            elif t.rear == []:
-                (t.mid, n) = extract_tail(t.mid)
-                t.rear = n.children
-                t.size = t.size + n.size
-        if t.mid is None:
-            if t.front == []:
-                t = fromNodes(t.rear)
-            elif t.rear == []:
-                print "here"
-                t = fromNodes(t.front)
-                print "t=", tr2str(t)
-    print "after balance:", tr2str(t)
-    return t
-            
 # Auxiliary functions for verification
 
 def fromListR(xs):
@@ -466,9 +439,22 @@ def test_split():
         __assert(xs, toListR(t1))
         __assert(ys, toListR(t2))
         assert(x == y)
+    print "split tested"
+
+def test_remove():
+    m = 100
+    for _ in range(100):
+        xs = random.sample(range(m), random.randint(0, m))
+        i = random.randint(0, len(xs)-1)
+        print "xs=", xs, "i=", i
+        (y, t) = removeAt(fromListR(xs), i)
+        (x, xs) = (xs[i], xs[:i] + xs[i+1:])
+        __assert(xs, toListR(t))
+        assert y == x
 
 if __name__ == "__main__":
     test_rebuild()
     test_concat()
     test_random_access()
-    #test_split()
+    test_split()
+    test_remove()
