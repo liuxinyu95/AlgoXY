@@ -1342,9 +1342,9 @@ random access list?
 
 \item Prove that the amortized performance of removal operation is
 $O(1)$. Hint: using the banker's method.
-\end{enumerate}
 
 \item Implement the concatenate-able list in your favorite imperative language.
+\end{enumerate}
 \end{Exercise}
 
 % =========================================
@@ -1393,15 +1393,18 @@ data Node a = Br2 a a | Br3 a a a
 \end{lstlisting}
 
 In imperative settings, node can be defined with a list of sub nodes, which contains
-at most 3 children. For instance the following Python code defines node.
+at most 3 children. For instance the following ANSI C code defines node.
 
-TODO: change this to C
-\lstset{language=Python}
+\lstset{language=C}
 \begin{lstlisting}
-class Node:
-    def __init__(self, xs):
-        self.children = xs
+union Node {
+  Key* keys;  
+  union Node* children;
+};
 \end{lstlisting}
+
+Note in this definition, a node can either contain 2~3 keys, or 2~3 sub nodes.
+Where key is the type of elements stored in leaf node.
 
 We mark the left-most none-leaf node as the front finger and the right-most
 none-leaf node as the rear finger. Since both figures are essentially 
@@ -1435,20 +1438,16 @@ of figure tree.
 
 In imperative settings, we can define the finger tree in a similiar manner. What's more,
 we can add a parent field, so that it's possible to back-track to root from any tree node.
-Below Python code defines finger tree accordingly.
+Below ANSI C code defines finger tree accordingly.
 
-TODO: change to ANSI C
-
-\lstlisting{language=Python}
+\lstset{language=C}
 \begin{lstlisting}
-class Tree:
-    def __init__(self, f = [], m = None, r = [], p = None):
-        self.front = f
-        self.mid = m
-        self.rear = r
-        self.parent = p
-        if m is not None:
-            m.parent = self
+struct Tree {
+  union Node* front;
+  union Node* rear;
+  Tree* mid;
+  Tree* parent;
+};
 \end{lstlisting}
 
 We can use NIL pointer to represent an empty tree; and a leaf tree contains only one element
@@ -1487,6 +1486,7 @@ leaf is a tree with 3 branches, eash contains an elements.
 
 We can express these 5 examples as the following Haskell expression.
 
+\lstset{language=Haskell}
 \begin{lstlisting}
 Empty
 Lf a
@@ -1562,7 +1562,121 @@ cons a (Tr f m r) = Tr (a:f) m r
 Here we use the LISP naming convention to illustrate inserting a
 new element to a list. 
 
-TODO: imperative insertion
+The insertion algorithm can also be implemented in imperative approach. Suppose
+function \textproc{Tree}() creates an empty tree, that all fields, including
+front and rear finger, the middle part inner tree and parent are empty.
+Function \textproc{Node}() creates an empty node.
+
+\begin{algorithmic}
+\Function{Prepend-Node}{$n, T$}
+  \State $r \gets $ \textproc{Tree}()
+  \State $p \gets r$
+  \State \Call{Connect-Mid}{$p, T$}
+  \While{\textproc{Full?}(\Call{Front}{$T$})}
+    \State $F \gets $ \Call{Front}{$T$}
+    \State \Call{Front}{$T$} $\gets$ $\{n, F[0]\}$
+    \State $n \gets$ \textproc{Node}()
+    \State \Call{Children}{$n$} $\gets F[1..]$
+    \State $p \gets T$
+    \State $T \gets$ \Call{Mid}{$T$}
+  \EndWhile
+  \If{$T =$ NIL}
+    \State $T \gets$ \textproc{Tree}()
+    \State \Call{Front}{$T$}$\gets \{ n \}$
+  \ElsIf{ $|$ \Call{Front}{$T$} $|$ = 1 $\land$ \Call{Rear}{$T$} = $\Phi$}
+    \State \Call{Rear}{$T$} $\gets$ \Call{Front}{$T$}
+    \State \Call{Front}{$T$} $\gets \{ n \}$
+  \Else
+    \State \Call{Front}{$T$} $\gets \{ n \} \cup $ \Call{Front}{$T$}
+  \EndIf
+  \State \Call{Connect-Mid}{$p, T$} $\gets T$
+  \State \Return \Call{Flat}{$r$}
+\EndFunction
+\end{algorithmic}
+
+Where the notation $L[i..]$ means a sub list of $L$ with the first $i-1$
+elements removed, that if $L = \{a_1, a_2, ..., a_n\}$, $L[i..] = \{a_i, a_{i+1}, ..., a_n\}$.
+
+Functions \textproc{Front}(), \textproc{Rear}(), \textproc{Mid}(), and \textproc{Parent}()
+are used to access the front finger, the rear finger, the middle part inner tree and
+the parent tree respectively; Function \textproc{Children}() accesses the children of a
+node.
+
+Function \textproc{Connect-Mid}($T_1, T_2$), connect $T_2$ as the inner middle part tree of
+$T_1$, and set the parent of $T_2$ as $T_1$ if $T_2$ isn't empty.
+
+In this algorithm, we performs a one pass top-down traverse along the middle part inner tree
+if the front finger is full that it can't afford to store any more. The criteria for full
+for a 2-3 tree is that the finger contains 3 elements already. In such case, we
+extract all the elements except the first one off, wrap them to a new node (one level deeper node),
+and continously insert this new node to its middle inner tree. The first element is left
+in the front finger, and the element to be inserted is put in front of it, so that this
+element becomes the new first one in the front finger.
+
+After this traversal, the algorithm either reach an empty tree, or the tree still has room
+to hold more element in its front finger. We create a new leaf for the former case, and
+perform a trivial list insert to the front finger for the latter.
+
+During the traversal, we use $p$ to record the parent of the current tree we are processing.
+So any new created tree are connected as the middle part inner tree to $p$.
+
+Finally, we return the root of the tree $r$. The last trick of this algorithm is the \textproc{Flat}()
+function. In order to simplify the logic, we create an empty `ground' tree and set
+it as the parent of the root. We need eliminate this extra `ground' level before return the 
+root. This flatten algorithm is realized as the following.
+
+\begin{algorithmic}
+\Function{Flat}{$T$}
+  \While{$T$ isn't empty}
+    \State $T \gets$ \Call{Mid}{$T$}
+  \EndWhile
+  \If{$T \neq \Phi$}
+    \State \Call{Parent}{$T$} $\gets \Phi$
+  \EndIf
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
+
+The while loop test if $T$ is trivial empty, that it's not NIL($=\Phi$), while both its front
+and rear fingers are empty. 
+
+Below Python code implements the insertion algorithm for finger tree.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def insert(x, t):
+    return prepend_node(wrap(x), t)
+
+def prepend_node(n, t):
+    root = prev = Tree()
+    prev.set_mid(t)
+    while frontFull(t):
+        f = t.front
+        t.front = [n] + f[:1]
+        n = wraps(f[1:])
+        prev = t
+        t = t.mid
+    if t is None:
+        t = leaf(n)
+    elif len(t.front)==1 and t.rear == []:
+        t = Tree(n.size + t.size, [n], None, t.front)
+    else:
+        t = Tree(n.size + t.size, [n]+t.front, t.mid, t.rear)
+    prev.set_mid(t)
+    return flat(root)
+
+def flat(t):
+    while t is not None and t.empty():
+        t = t.mid
+    if t is not None:
+        t.parent = None
+    return t
+\end{lstlisting}
+
+The implementation of function '\verb|set_mid()|', '\verb|frontFull()|', '\verb|wrap()|', 
+'\verb|wraps()|', '\verb|empty()|', and tree 
+constructor are trivial enough, that we skip the detail of them here. Readers can take this as
+exersices.
 
 \subsection{Remove element from the head of sequence}
 
@@ -1637,6 +1751,7 @@ inner tree change from three parts to a singleton leaf, which contains only one
 
 Below is the corresponding Haskell program for `uncons'.
 
+\lstset{language=Python}
 \begin{lstlisting}
 uncons :: Tree a -> (a, Tree a)
 uncons (Lf a) = (a, Empty)
@@ -1909,6 +2024,10 @@ nodes (a:b:c:xs) = Br3 a b c:nodes xs
 
 \begin{Exercise}
 \begin{enumerate}
+\item Implement the complete finger tree insertion program in your favorite imperative
+programming language. Don't check the example programs along with this chapter before
+having a try.
+
 \item Try to implement concatenation algorithm without using folding. You can either use
 recursive methos, or use imperative for-each method.
 \end{enumerate}
