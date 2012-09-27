@@ -141,7 +141,7 @@ def prepend_node(n, t):
 
 # extract the first element from tree
 # assume t is not empty
-# capable to handle illed-form (due to deletion or splitting)
+# capable to handle illed form (due to deletion or splitting)
 def extract_head(t):
     root = Tree()
     root.set_mid(t)
