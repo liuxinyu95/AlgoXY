@@ -219,7 +219,7 @@ def extract_tail(t):
         t.rear = ns[:-1]
         t.size = t.size - n.size
         t = t.parent
-        if t.mid.size == 0:
+        if t.mid.empty():
             t.mid.parent = None
             t.mid = None
         if n.leaf:

@@ -1573,10 +1573,10 @@ Function \textproc{Node}() creates an empty node.
   \State $p \gets r$
   \State \Call{Connect-Mid}{$p, T$}
   \While{\textproc{Full?}(\Call{Front}{$T$})}
-    \State $F \gets $ \Call{Front}{$T$}
-    \State \Call{Front}{$T$} $\gets$ $\{n, F[0]\}$
+    \State $F \gets $ \Call{Front}{$T$}  \Comment{$F = \{n_1, n_2, n_3, ...\}$}
+    \State \Call{Front}{$T$} $\gets$ $\{n, F[1]\}$  \Comment{$F[1] = n_1$}
     \State $n \gets$ \textproc{Node}()
-    \State \Call{Children}{$n$} $\gets F[1..]$
+    \State \Call{Children}{$n$} $\gets F[2..]$  \Comment{$F[2..] = \{ n_2, n_3, ... \}$}
     \State $p \gets T$
     \State $T \gets$ \Call{Mid}{$T$}
   \EndWhile
@@ -1659,9 +1659,9 @@ def prepend_node(n, t):
     if t is None:
         t = leaf(n)
     elif len(t.front)==1 and t.rear == []:
-        t = Tree(n.size + t.size, [n], None, t.front)
+        t = Tree([n], None, t.front)
     else:
-        t = Tree(n.size + t.size, [n]+t.front, t.mid, t.rear)
+        t = Tree([n]+t.front, t.mid, t.rear)
     prev.set_mid(t)
     return flat(root)
 
@@ -1900,6 +1900,7 @@ If the finger tree is empty or a singleton leaf, they are handled in the first t
 
 Translating the equation to Haskell yields the below program.
 
+\lstset{language=Python}
 \begin{lstlisting}
 snoc :: Tree a -> a -> Tree a
 snoc Empty a = Lf a
@@ -1910,6 +1911,58 @@ snoc (Tr f m r) a = Tr f m (r++[a])
 
 Function name `snoc' is mirror of 'cons', which indicates the symmetric relationship.
 
+Append new element to the end imperatively is quite similar. The following algorithm
+realizes appending.
+
+\begin{algorithmic}
+\Function{Append-Node}{$T, n$}
+  \State $r \gets $ \textproc{Tree}()
+  \State $p \gets r$
+  \State \Call{Connect-Mid}{$p, T$}
+  \While{\textproc{Full?}(\Call{Rear}{$T$})}
+    \State $R \gets $ \Call{Rear}{$T$} \Comment{$R = \{n_1, n_2, ..., , n_{m-1}, n_m \}$}
+    \State \Call{Rear}{$T$} $\gets$ $\{n, $ \Call{Last}{$R$} $\}$ \Comment{last element $n_m$}
+    \State $n \gets$ \textproc{Node}()
+    \State \Call{Children}{$n$} $\gets R[1...m-1]$ \Comment{ $\{n1, n2, ..., n_{m-1}\}$}
+    \State $p \gets T$
+    \State $T \gets$ \Call{Mid}{$T$}
+  \EndWhile
+  \If{$T =$ NIL}
+    \State $T \gets$ \textproc{Tree}()
+    \State \Call{Front}{$T$} $\gets \{ n \}$
+  \ElsIf{ $|$ \Call{Rear}{$T$} $|$ = 1 $\land$ \Call{Front}{$T$} = $\Phi$}
+    \State \Call{Front}{$T$} $\gets$ \Call{Rear}{$T$}
+    \State \Call{Rear}{$T$} $\gets \{ n \}$
+  \Else
+    \State \Call{Rear}{$T$} $\gets$ \Call{Rear}{$T$} $\cup \{ n \} $
+  \EndIf
+  \State \Call{Connect-Mid}{$p, T$} $\gets T$
+  \State \Return \Call{Flat}{$r$}
+\EndFunction
+\end{algorithmic}
+
+And the coresponding Python programs is given as below.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def append_node(t, n):
+    root = prev = Tree()
+    prev.set_mid(t)
+    while rearFull(t):
+        r = t.rear
+        t.rear = r[-1:] + [n]
+        n = wraps(r[:-1])
+        prev = t
+        t = t.mid
+    if t is None:
+        t = leaf(n)
+    elif len(t.rear) == 1 and t.front == []:
+        t = Tree(t.rear, None, [n])
+    else:
+        t = Tree(t.front, t.mid, t.rear + [n])
+    prev.set_mid(t)
+    return flat(root)
+\end{lstlisting}
 
 \subsection{remove element from the tail of the sequence}
 
@@ -1941,6 +1994,7 @@ refer to the appendix of this book for their implementation.
 Algorithm $removeT()$ can be translated to the following Haskell program, we name
 it as `unsnoc' to indicate it's the reverse function of `snoc'.
 
+\lstset{language=Haskell}
 \begin{lstlisting}
 unsnoc :: Tree a -> (Tree a, a)
 unsnoc (Lf a) = (Empty, a)
@@ -1957,6 +2011,14 @@ to their counterpart for list.
 last = snd . unsnoc
 init = fst . unsnoc
 \end{lstlisting}
+
+TODO: Imperative part
+
+However there is a special
+case need to be handled. As we always store the only element (or sub node) in the front
+finger while the rear finger and middle part inner tree are empty (e.g. \verb|Tree([n], NIL, [])|),
+We may get nothing if always try to fetch the last element from rear finger. 
+
 
 \subsection{concatenate}
 
