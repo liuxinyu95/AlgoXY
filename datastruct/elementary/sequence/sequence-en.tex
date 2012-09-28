@@ -1811,7 +1811,69 @@ root of the tree. Figure \ref{fig:ftr-illed-extract} illustrated this process.
   \caption{Traverse bottom-up until a leaf is extracted.} \label{fig:ftr-illed-extract}
 \end{figure}
 
-TODO: add algorithm
+Based on this idea, the following algorithm realizes the removal operation on head. The
+algorithm assumes that the tree passed in isn't empty.
+
+\begin{algorithmic}
+\Function{Extract-Head}{$T$}
+  \State $r \gets$ \textproc{Tree}()
+  \State \Call{Connect-Mid}{$r, T$}
+  \While{\Call{Front}{$T$} $= \Phi \land $ \Call{Mid}{$T$} $\neq $ NIL}
+    \State $T \gets$ \Call{Mid}{$T$}
+  \EndWhile
+
+  \If{\Call{Front}{$T$} $ = \Phi \land $ \Call{Rear}{$T$} $\neq \Phi$}
+    \State \textproc{Exchange} \Call{Front}{$T$} $\leftrightarrow$ \Call{Rear}{$T$}
+  \EndIf
+
+  \State $n \gets $ \textproc{Node}()
+  \State \Call{Children}{$n$} $\gets$ \Call{Front}{$T$}
+  \Repeat
+    \State $L \gets$ \Call{Children}{$n$} \Comment{$L = \{n_1, n_2, n_3, ...\}$}
+    \State $n \gets L[1]$ \Comment{$ n \gets n_1$}
+    \State \Call{Front}{$T$} $\gets L[2..]$ \Comment{$L[2..] = \{n_2, n_3, ...\}$}
+    \State $T \gets $ \Call{Parent}{$T$}
+    \If{\Call{Mid}{$T$} becomes empty} 
+      \State \Call{Mid}{$T$} $\gets$ NIL
+    \EndIf
+  \Until{$n$ is a leaf}
+  \State \Return (\Call{Elem}{$n$}, \Call{Flat}{$r$})
+\EndFunction
+\end{algorithmic}
+
+Note that function \textproc{Elem}($n$) returns the only element stored inside leaf node $n$.
+Similar as imperative insertion algorithm, a stub `gound' tree is used as the parent of 
+the root, which can simplify the logic a bit. That's why we need flatten the tree finally.
+
+Below Python program translates the algorithm. 
+
+\lstset{language=Python}
+\begin{lstlisting}
+def extract_head(t):
+    root = Tree()
+    root.set_mid(t)
+    while t.front == [] and t.mid is not None:
+        t = t.mid
+    if t.front == [] and t.rear != []:
+        (t.front, t.rear) = (t.rear, t.front)
+    n = wraps(t.front)
+    while True: # a repeat-until loop
+        ns = n.children
+        n = ns[0]
+        t.front = ns[1:]
+        t = t.parent
+        if t.mid.empty():
+            t.mid.parent = None
+            t.mid = None
+        if n.leaf:
+            break
+    return (elem(n), flat(root))
+\end{lstlisting}
+
+Member function \verb|Tree.empty()| returns true if all the three parts - the front finger, 
+the rear finger and the middle part inner tree - are empty. We put a flag \verb|Node.leaf|
+to mark if a node is a leaf or compound node. The exercise of this section asks the reader
+to consider some alternatives.
 
 \subsection{append element to the tail of the sequence}
 
@@ -2064,6 +2126,12 @@ nodes (a:b:c:xs) = Br3 a b c:nodes xs
 \item Implement the complete finger tree insertion program in your favorite imperative
 programming language. Don't check the example programs along with this chapter before
 having a try.
+
+\item How to determin a node is a leaf, which contains only a raw element inside or a compund
+node, which contains sub nodes as children? Note that we can't distinguish it by testing
+the size, as there is case that node contains a singleton leaf, such as \verb|node(1, [node(1, [x]])|.
+Try to solve this problem in both dynamic typed language (e.g. Python, lisp etc) and 
+in strong static typed language (e.g. C++).
 
 \item Try to implement concatenation algorithm without using folding. You can either use
 recursive methos, or use imperative for-each method.
