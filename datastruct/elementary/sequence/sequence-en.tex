@@ -2213,7 +2213,142 @@ nodes [a, b, c, d] = [Br2 a b, Br2 c d]
 nodes (a:b:c:xs) = Br3 a b c:nodes xs
 \end{lstlisting}
 
-TODO: imperative concatenate
+To concatenate two finger trees $T_1$ and $T_2$ in imperative approach, we can traverse the two trees along
+with the middle part inner tree till either tree turns to be empty. In every iteration,
+we create a new tree $T$, choose the front finger of $T_1$ as the front finger of $T$; and choose the
+rear finger of $T_2$ as the rear finger of $T$. The other two fingers (rear finger of $T_1$ and fing finger
+of $T_2$) are put together as a list, and this list is then balanced groupped to several 2-3 tree nodes as $N$.
+Note that $N$ grows along with traversing not only in terms of length, the depth of its elements
+increase by one in each iteration. We attach this new tree as the middle part inner tree of the
+upper level result tree to end this iteration.
+
+Once either tree becomes empty, we stop traversing, and repeatedly insert the 2-3 tree nodes in $N$ to
+the other non-empty tree, and set it as the new middle part inner tree of the upper level result.
+
+Below algorithm descripes this process in detail.
+
+\begin{algorithmic}
+\Function{Concat}{$T_1, T_2$}
+  \State \Return \Call{Merge}{$T_1, \Phi, T_2$}
+\EndFunction
+\Statex
+\Function{Merge}{$T_1, N, T_2$}
+  \State $r \gets$ \textproc{Tree}()
+  \State $p \gets r$
+
+  \While{$T_1 \neq$ NIL $\land T_2 \neq$ NIL}
+    \State $T \gets$ \textproc{Tree}()
+    \State \Call{Front}{$T$} $\gets$ \Call{Front}{$T_1$}
+    \State \Call{Rear}{$T$} $\gets$ \Call{Rear}{$T_2$}
+    \State \Call{Connect-Mid}{$p, T$}
+    \State $p \gets T$
+    \State $N \gets$ \textproc{Nodes}(\Call{Rear}{$T_1$} $\cup N \cup$ \Call{Front}{$T_2$})
+    \State $T_1 \gets$ \Call{Mid}{$T_1$}
+    \State $T_2 \gets$ \Call{Mid}{$T_2$}
+  \EndWhile
+
+  \If{$T_1 =$ NIL}
+    \State $T \gets T_2$
+    \For{each $n \in $ \Call{Reverse}{$N$}}
+      \State $T \gets$ \Call{Prepend-Node}{$n, T$}
+    \EndFor
+  \ElsIf{$T_2 =$ NIL}
+    \State $T \gets T_1$
+    \For{each $n \in N$}
+      \State $T \gets$ \Call{Append-Node}{$T, n$}
+    \EndFor
+  \EndIf
+  \State \Call{Connect-Mid}{$p, T$}
+  
+  \State \Return \Call{Flat}{$r$}
+\EndFunction
+\end{algorithmic}
+
+Translating this algorithm to Python program yields the below code.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def concat(t1, t2):
+    return merge(t1, [], t2)
+
+def merge(t1, ns, t2):
+    root = prev = Tree() #sentinel dummy tree
+    while t1 is not None and t2 is not None:
+        t = Tree(t1.size + t2.size + sizeNs(ns), t1.front, None, t2.rear)
+        prev.set_mid(t)
+        prev = t
+        ns = nodes(t1.rear + ns + t2.front)
+        t1 = t1.mid
+        t2 = t2.mid
+    if t1 is None:
+        prev.set_mid(foldR(prepend_node, ns, t2))
+    elif t2 is None:
+        prev.set_mid(reduce(append_node, ns, t1))
+    return flat(root)
+\end{lstlisting}
+
+Because Python only provides folding function from left as \verb|reduce()|, a folding function
+from right is given like what we shown in pseudo code, that it repeatedly applies function
+in reverse order of the list.
+
+\begin{lstlisting}
+def foldR(f, xs, z):
+    for x in reversed(xs):
+        z = f(x, z)
+    return z
+\end{lstlisting}
+
+The only function in question is how to balanced-group nodes to bigger 2-3 trees. As a 2-3 tree
+can hold at most 3 sub trees, we can firstly take 3 nodes and wrap them to a ternary tree if there
+are more than 4 nodes in the list and continously deal with the rest. 
+If there are just 4 nodes, they can be wrapped to two
+binary trees. For other cases (there are 3 trees, 2 trees, 1 tree), we simply wrap them
+all to a tree. 
+
+Denote node list $L={n_1, n_2, ... }$, The following algorithm realizes this process.
+
+\begin{algorithmic}
+\Function{Nodes}{$L$}
+  \State $N = \Phi$
+  \While{$|L| > 4$}
+    \State $n \gets$ \textproc{Node}()
+    \State \Call{Children}{$n$} $\gets L[1..3]$  \Comment{ $\{n_1, n_2, n_3 \}$ }
+    \State $N \gets N \cup \{ n \}$
+    \State $L \gets L[4...]$ \Comment{ $\{ n_4, n_5, ... \}$ }
+  \EndWhile
+
+  \If{$|L| = 4$}
+    \State $x \gets$ \textproc{Node}()
+    \State \Call{Children}{$x$} $\gets \{L[1], L[2]\}$
+    \State $y \gets$ \textproc{Node}()
+    \State \Call{Children}{$y$} $\gets \{L[3], L[4]\}$
+    \State $N \gets N \cup \{ x, y \}$    
+  \ElsIf{$L \neq \Phi$}
+    \State $n \gets$ \textproc{Node}()
+    \State \Call{Children}{$n$} $\gets L$
+    \State $N \gets N \cup \{ n \}$
+  \EndIf
+
+  \State \Return $N$
+\EndFunction
+\end{algorithmic}
+
+It's straight forward to translate the algorithm to below Python program. Where function \verb|wraps()|
+helps to create an empty node, then set a list as the children of this node.
+
+\begin{lstlisting}
+def nodes(xs):
+    res = []
+    while len(xs) > 4:
+        res.append(wraps(xs[:3]))
+        xs = xs[3:]
+    if len(xs) == 4:
+        res.append(wraps(xs[:2]))
+        res.append(wraps(xs[2:]))
+    elif xs != []:
+        res.append(wraps(xs))
+    return res
+\end{lstlisting}
 
 \begin{Exercise}
 \begin{enumerate}
