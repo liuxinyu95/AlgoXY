@@ -2540,6 +2540,45 @@ unwraps (Br _ xs) = xs
 
 We omitted their type definitions for illustration purpose.
 
+In imperative settings, the size information for node and tree can be accessed
+through the size field. And the size of a list of nodes can be summed up
+for this field as the below algorithm.
+
+\begin{algorithmic}
+\Function{Size-Nodes}{$L$}
+  \State $s \gets 0$
+  \For{$\forall n \in L$}
+    \State $s \gets s + $ \Call{Size}{$n$}
+  \EndFor
+  \State \Return $s$
+\EndFunction
+\end{algorithmic}
+
+The following Python code, for example, translates this algorithm by using
+standard \verb|sum()| and \verb|map()| functions provided in library.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def sizeNs(xs):
+    return sum(map(lambda x: x.size, xs))
+\end{lstlisting}
+
+As NIL is typically used to represent empty tree in imperative settings,
+it's convinient to provide a auxiliary size function to uniformed calculate
+the size of tree no matter it is NIL.
+
+\begin{algorithmic}
+\Function{Size-Tr}{$T$}
+  \If{$T = $ NIL}
+    \State \Return 0
+  \Else
+    \State \Return \Call{Size}{$T$}
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+The algorithmi is trivial and we skip its implementation example program.
+
 \subsubsection{Modification due to the augmented size}
 
 The algorithms have been presented so far need to be modified to accomplish with the
@@ -2552,6 +2591,7 @@ insertT(x, T) = insertT'(wrap(x), T)
 
 The corresponding Haskell program is changed as below.
 
+\lstset{language=Haskell}
 \begin{lstlisting}
 cons a t = cons' (wrap a) t
 \end{lstlisting}
@@ -2628,6 +2668,68 @@ cons' a (Lf b) = tree [a] Empty [b]
 cons' a (Tr _ [b, c, d, e] m r) = tree [a, b] (cons' (wraps [c, d, e]) m) r
 cons' a (Tr _ f m r) = tree (a:f) m r
 \end{lstlisting}
+
+The similar modification for augment size should also be tuned for imperative
+algorithms, for example, when a new node is preprend to the head of the finger
+tree, we should update size when traverse the tree if neccessary.
+
+\begin{algorithmic}
+\Function{Prepend-Node}{$n, T$}
+  \State $r \gets $ \textproc{Tree}()
+  \State $p \gets r$
+  \State \Call{Connect-Mid}{$p, T$}
+  \While{\textproc{Full?}(\Call{Front}{$T$})}
+    \State $F \gets $ \Call{Front}{$T$} 
+    \State \Call{Front}{$T$} $\gets$ $\{n, F[1]\}$ 
+    \State \Call{Size}{$T$} $\gets$ \Call{Size}{$T$} + \Call{Size}{$n$} \Comment{update size}
+    \State $n \gets$ \textproc{Node}()
+    \State \Call{Children}{$n$} $\gets F[2..]$ 
+    \State $p \gets T$
+    \State $T \gets$ \Call{Mid}{$T$}
+  \EndWhile
+  \If{$T =$ NIL}
+    \State $T \gets$ \textproc{Tree}()
+    \State \Call{Front}{$T$}$\gets \{ n \}$
+  \ElsIf{ $|$ \Call{Front}{$T$} $|$ = 1 $\land$ \Call{Rear}{$T$} = $\Phi$}
+    \State \Call{Rear}{$T$} $\gets$ \Call{Front}{$T$}
+    \State \Call{Front}{$T$} $\gets \{ n \}$
+  \Else
+    \State \Call{Front}{$T$} $\gets \{ n \} \cup $ \Call{Front}{$T$}
+  \EndIf
+  \State \Call{Size}{$T$} $\gets$ \Call{Size}{$T$} + \Call{Size}{$n$} \Comment{update size}
+  \State \Call{Connect-Mid}{$p, T$} $\gets T$
+  \State \Return \Call{Flat}{$r$}
+\EndFunction
+\end{algorithmic}
+
+The corresponding Python code are modified accordingly as below.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def prepend_node(n, t):
+    root = prev = Tree()
+    prev.set_mid(t)
+    while frontFull(t):
+        f = t.front
+        t.front = [n] + f[:1]
+        t.size = t.size + n.size
+        n = wraps(f[1:])
+        prev = t
+        t = t.mid
+    if t is None:
+        t = leaf(n)
+    elif len(t.front)==1 and t.rear == []:
+        t = Tree(n.size + t.size, [n], None, t.front)
+    else:
+        t = Tree(n.size + t.size, [n]+t.front, t.mid, t.rear)
+    prev.set_mid(t)
+    return flat(root)
+\end{lstlisting}
+
+Note that the tree constructor is also modified to take a size argument
+as the first parameter. And the \verb|leaf()| helper function does not
+only construct the tree from a node, but also set the size of the tree
+as same as the size of the node.
 
 For simplification purpose, we skipped the detailed description of what are modified in
 $extractT()'$, $appendT()$, $removeT()$, and $concat()$ algorithms. They are left as exercises to the
@@ -2716,6 +2818,7 @@ of spliting is $O(\lg N)$.
 
 Let's first give the Haskell program for $splitAtL()$ function
 
+\lstset{language=Haskell}
 \begin{lstlisting}
 splitNodesAt 0 [x] = ([], x, [])
 splitNodesAt i (x:xs) | i < size x = ([], x, xs)
@@ -2777,11 +2880,48 @@ removeAt(S, i) = (unwrap(y), concat(L, R))
 
 These handy algorithms can be translated to the following Haskell program.
 
+\lstset{language=Haskell}
 \begin{lstlisting}
 getAt t i = unwrap x where (_, x, _) = splitAt' i t
 setAt t i x = let (l, _, r) = splitAt' i t in concat' l (cons x r)
 removeAt t i = let (l, x, r) = splitAt' i t in (unwrap x, concat' l r)
 \end{lstlisting}
+
+\subsubsection{Imperative random access}
+As we can directly mutate the tree in imperative settings, it's possible to
+realize \textproc{Get-At}($T, i$) and \textproc{Set-At}{$T, i, x$} without
+using splitting. The idea is firstly implement a algorithm which can 
+apply some operation to a given position. The following algorithm takes
+three arguments, a finger tree $T$, a position index at $i$ which varies from
+zero to the number of elements stored in the tree, and a function $f$,
+which will be applied to the element at $i$.
+
+\begin{algorithmic}
+\Function{Apply-At}{$T, i, f$}
+  \While{\Call{Size}{$T$} $> 1$}
+    \State $szf \gets $ \textproc{Size-Nodes}(\Call{Front}{$T$})
+    \State $szm \gets $ \textproc{Size-Tr}(\Call{Mid}{$T$})
+    \If{$i < szf$}
+      \State \Return \textproc{Lookup-Nodes}(\Call{Front}{$T$}, $i$, $f$)
+    \ElsIf{$i < szf + szm$}
+      \State $T \gets$ \Call{Mid}{$T$}
+      \State $i \gets i - szf$
+    \Else
+      \State \Return \textproc{Lookup-Nodes}(\Call{Rear}{$T$}, $i - szf - szm$, $f$)
+    \EndIf    
+  \EndWhile
+  \State $n \gets$ \Call{First-Lf}{$T$}
+  \State $x \gets$ \Call{Elem}{$n$}
+  \State \Call{Elem}{$n$} $\gets f(x)$
+  \State \Return $x$
+\EndFunction
+\end{algorithmic}
+
+This algorithm is essentially a divide and conquer tree search. It repeatedly
+examine the sub tree till reach a tree with size of 1 (can it be determined
+as a leaf? please consider the ill-formed case). 
+
+TODO: explain the algorithm
 
 \begin{Exercise}
 \begin{enumerate}
@@ -2789,7 +2929,7 @@ removeAt t i = let (l, x, r) = splitAt' i t in (unwrap x, concat' l r)
 that we needn't write function $tree'()$. Try to realize the algorithm by using this idea.
 
 \item Try to handle the augment size information as well as in $insertT'()$ algorithm for
-the following algorithms: $extractT()'$, $appendT()$, $removeT()$, and $concat()$. The `head', `tail',
+the following algorithms (both functional and imperative): $extractT()'$, $appendT()$, $removeT()$, and $concat()$. The `head', `tail',
 `init' and `last' functions should be kept unchanged. Don't refer to the downloadable
 programs along with this book before you take a try.
 \end{enumerate}
