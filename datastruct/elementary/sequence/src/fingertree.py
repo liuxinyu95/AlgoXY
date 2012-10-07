@@ -165,6 +165,9 @@ def extract_head(t):
 
 # return the first element without removing it
 def first(t):
+    return elem(first_leaf(t))
+
+def first_leaf(t):
     while t.front == [] and t.mid is not None:
         t = t.mid
     if t.front == [] and t.rear != []:
@@ -173,7 +176,7 @@ def first(t):
         n = t.front[0]
     while not n.leaf:
         n = n.children[0]
-    return elem(n)
+    return n
 
 # Note this will mutate t.
 def tail(t):
@@ -281,8 +284,9 @@ def applyAt(t, i, f):
             i = i - szf
         else:
             return lookupNs(t.rear, i - szf - szm, f)
-    x = first(t)
-    t.front[0].children[0] = f(x)
+    n = first_leaf(t)
+    x = elem(n)
+    n.children[0] = f(x)
     return x
 
 # lookup in a list of node for position i, and 
