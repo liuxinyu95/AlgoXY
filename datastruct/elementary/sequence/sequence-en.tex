@@ -2918,10 +2918,105 @@ which will be applied to the element at $i$.
 \end{algorithmic}
 
 This algorithm is essentially a divide and conquer tree search. It repeatedly
-examine the sub tree till reach a tree with size of 1 (can it be determined
-as a leaf? please consider the ill-formed case). 
+examine the current tree till reach a tree with size of 1 (can it be determined
+as a leaf? please consider the ill-formed case and refer to the exercise later). 
+Every time, it check the position to be located with the size information of
+front finger and middle part inner tree.
 
-TODO: explain the algorithm
+If the index $i$ is less than the size of front finger, the location is at some
+node in it. The algorithm call a sub procedure to lookup among front finger;
+If the index is between the size of front finger and the total size till middle
+part inner tree, it means that the location is at some node inside the middle,
+the algorithm goes on traverse along the middle part inner tree with an updated
+index decuded by the size of front finger; Otherwise
+it means the location is at some node in rear finger, the similar looking up
+procedure is called accordingly.
+
+After this loop, we've got a node, (can be a compound node) 
+with what we are looking for at the first leaf inside this node. We can extract
+the element out, and apply the function $f$ on it and store the new value back.
+
+The algorithm returns the previous element before applying $f$ as the final result.
+
+What hasn't been factored is the algorithm \textproc{Lookup-Nodes}($L$, $i$, $f$).
+It takes a list of nodes, a position index, and a function to be applied. This 
+algorithm can be implemented by checking every node in the list. If the node
+is a leaf, and the index is zero, we are at the right position to be looked up.
+The function can be applied on the element stored in this leaf, and the previous
+value is returned; Otherwise, we need compare the size of this node and
+the index to determin if the position is inside this node and search inside the
+children of the node if neccessary.
+
+\begin{algorithmic}
+\Function{Lookup-Nodes}{$L, i, f$}
+  \Loop
+    \For{$\forall n \in L$}
+      \If{$n$ is leaf $\land i = 0$}
+        \State $x \gets $ \Call{Elem}{$n$}
+        \State \Call{Elem}{$n$} $\gets f(x)$
+        \State \Return $x$
+      \EndIf
+      \If{$i < $ \Call{Size}{$n$}}
+        \State $L \gets $ \Call{Children}{$n$}
+        \State break
+      \EndIf
+      \State $i \gets i - $ \Call{Size}{$n$}
+    \EndFor
+  \EndLoop
+\EndFunction
+\end{algorithmic}
+
+The following are the corresponding Python code implements the algorithms.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def applyAt(t, i, f):
+    while t.size > 1:
+        szf = sizeNs(t.front)
+        szm = sizeT(t.mid)
+        if i < szf:
+            return lookupNs(t.front, i, f)
+        elif i < szf + szm:
+            t = t.mid
+            i = i - szf
+        else:
+            return lookupNs(t.rear, i - szf - szm, f)
+    n = first_leaf(t)
+    x = elem(n)
+    n.children[0] = f(x)
+    return x
+
+def lookupNs(ns, i, f):
+    while True:
+        for n in ns:
+            if n.leaf and i == 0:
+                x = elem(n)
+                n.children[0] = f(x)
+                return x
+            if i < n.size:
+                ns = n.children
+                break
+            i = i - n.size
+\end{lstlisting}
+
+With auxilary algorithm that can apply function at a given position, it's trivial to implement
+the \textproc{Get-At}() and \textproc{Set-At}() by passing special function for applying.
+
+\begin{algorithmic}
+\Function{Get-At}{$T, i$}
+  \State \Return \Call{Apply-At}{$T, i, \lambda_x . x$}
+\EndFunction
+\Statex
+\Function{Set-At}{$T, i, x$}
+  \State \Return \Call{Apply-At}{$T, i, \lambda_y . x$}
+\EndFunction
+\end{algorithmic}
+
+That is we pass \verb|id| function to implement getting element at a position, which doesn't 
+change anything at all; and pass constant function to implement setting, which set the element
+to new value by ignoring its previous value.
+
+\subsubsection{Imperative splitting}
 
 \begin{Exercise}
 \begin{enumerate}
@@ -2932,6 +3027,10 @@ that we needn't write function $tree'()$. Try to realize the algorithm by using 
 the following algorithms (both functional and imperative): $extractT()'$, $appendT()$, $removeT()$, and $concat()$. The `head', `tail',
 `init' and `last' functions should be kept unchanged. Don't refer to the downloadable
 programs along with this book before you take a try.
+
+\item In the imperative \textproc{Apply-At}() algorithm, it tests if the size of the 
+current tree is greater than one. Why don't we test if the current tree is
+a leaf? Tell the difference between these two approaches. 
 \end{enumerate}
 \end{Exercise}
 
