@@ -30,7 +30,7 @@
 
 #define BIG_RAND() rand() % 1000
 
-#define M 32      /* Limit the length of the list to 2^(M+1) - 1 */
+#define M sizeof(int)*8      /* Limit the length of the list to 2^(M+1) - 1 */
 typedef int Key;  /* Alternatively,  C++ template can be used */
 
 struct List {
