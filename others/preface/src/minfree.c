@@ -21,7 +21,7 @@
 #include "measure.h"
 
 #define N 1000000
-#define WORD_LENGTH sizeof(int)
+#define WORD_LENGTH sizeof(int)*8
 
 void setbit(unsigned int* bits, unsigned int i){
   bits[i / WORD_LENGTH] |= 1<<(i % WORD_LENGTH);
