@@ -17,8 +17,8 @@
  */
 
 #include <stdio.h>
+#include <time.h>
 #include "randlist.h"
-#include "measure.h"
 
 #define N 1000000
 #define WORD_LENGTH sizeof(int)*8
@@ -152,40 +152,30 @@ int dc_min_free_iter(int* xs, int n){
   return l;
 }
 
-int fire_brute_force(int x, int y){
-  return brute_force((int*)x, y);
+/* Verification part */
+
+typedef int (*MinFree)(int*, int);
+
+double measure(MinFree f, int* xs, int y) {
+  clock_t start = clock();
+  f(xs, y);
+  return ((double) (clock() - start)) / CLOCKS_PER_SEC;
 }
 
-int fire_flags(int x, int y){
-  return flag_map((int*)x, y);
-}
-
-int fire_bits(int x, int y){
-  return bitmap_min_free((int*)x, y);
-}
-
-int fire_dc_min_free(int x, int y){
-  return dc_min_free((int*)x, y);
-}
-
-int fire_dc_min_free_iter(int x, int y){
-  return dc_min_free_iter((int*)x, y);
-}
-
-double measure_min_free(Fun f){
+double measure_min_free(MinFree f){
   double t, tm = 0.0;
   int i;
   printf("start measure min_free...\n");
   for(i = 0; i < 100; ++i){
     shuffle(ids, N);
-    t = measure(f, (int)ids, N-1);
-    //printf("%f[s] elapsed\n", t);
+    t = measure(f, ids, N-1);
+    /* printf("%f[s] elapsed\n", t); */
     tm = tm + t;
   }
   return tm / 100.00;
 }
 
-typedef int (*MinFree)(int*, int);
+
 
 int verify_min_free(MinFree f){
   int i;
@@ -215,19 +205,19 @@ int main(){
   verify();
 
   /* printf("average time of brute-force method: %f[s]\n", */
-  /* 	 measure_min_free(fire_brute_force)); */
+  /* 	 measure_min_free(brute_force)); */
 
   printf("average time of flags method: %f[s]\n",
-   	 measure_min_free(fire_flags));
+   	 measure_min_free(flag_map));
 
   printf("average time of bitmap method: %f[s]\n",
-	 measure_min_free(fire_bits));
+	 measure_min_free(bitmap_min_free));
 
   printf("average time of divide and conquer: %f[s]\n",
-	 measure_min_free(fire_dc_min_free));
+	 measure_min_free(dc_min_free));
 
   printf("average time of divide and conquer without recursion: %f[s]\n",
-	 measure_min_free(fire_dc_min_free_iter));
+	 measure_min_free(dc_min_free_iter));
 
   return 0;
 }
