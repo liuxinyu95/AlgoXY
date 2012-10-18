@@ -1,5 +1,5 @@
 BOOK = main-en
-SRC = common-en.tex
+SRC = common-en.tex main-en.tex
 CHAPTERS = others/preface/preface-en \
 datastruct/tree/binary-search-tree/bstree-en \
 sorting/insertion-sort/isort-en \
@@ -8,7 +8,8 @@ datastruct/tree/trie/trie-en \
 datastruct/tree/suffix-tree/stree-en datastruct/tree/B-tree/btree-en \
 datastruct/heap/binary-heap/bheap-en datastruct/heap/other-heaps/kheap-en \
 datastruct/elementary/queue/queue-en \
-datastruct/elementary/sequence/sequence-en
+datastruct/elementary/sequence/sequence-en \
+others/appendix/list/list-en
 CHAPTER_OBJS = $(foreach file, $(CHAPTERS), $(file).dvi)
 
 all: $(BOOK).pdf
