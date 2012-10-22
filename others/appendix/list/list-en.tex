@@ -109,7 +109,8 @@ nil concept, for example, C or java like programming languages, empty list can h
 different represention. One is the trivial `NIL' (or null, 0 varies from languages);
 the other is an non-NIL empty list as $\{ \}$, the latter is typically allocated with
 memory but filled with nothing. In Lisp dialects, the empty is commonly written as \verb|'()|.
-In ML families, it's written as \verb|[]|. 
+In ML families, it's written as \verb|[]|. We use $\Phi$ to denote empty list in equations
+and use 'NIL' in pseudo code to describe algorithms in this book.
 
 \subsection{Access the element and the sub list}
 Given a list $L$, two functions can be defined to access the element stored in it and
@@ -138,6 +139,9 @@ template<typename T>
 List<T>* rest(List<T>* xs) { return xs->next; }
 \end{lstlisting}
 
+In this book, $L'$ is used to denote the $rest(L)$ sometimes, also we uses $l_1$ to represent
+$first(L)$ in the context that the list is literately given in form $L = \{ l_1, l_2, ..., l_N\}$.
+
 More interesting, as far as in an environment support recursion, we can define List. The following
 example define a list of integers in C++ compile time.
 
@@ -145,13 +149,13 @@ example define a list of integers in C++ compile time.
 \begin{lstlisting}
 struct Empty;
 
-template<n, T> struct List {
+template<int n, typename T> struct List {
   static const int first = n;
   typedef T rest;
 };
 \end{lstlisting}
 
-These line construct a list of $\{1, 2, 3, 4, 5\}$ in compile time.
+These line constructs a list of $\{1, 2, 3, 4, 5\}$ in compile time.
 
 \begin{lstlisting}
 typedef List<1, List<2, List<3, List<4 List<5, Empty> > > > > A;
@@ -183,6 +187,104 @@ List<T>* cons(T x, List<T>* xs) {
 
 \subsection{Empty testing and length calculating}
 
+Testing if a list is empty is trivial. If the environment contains nil concept, the testing should
+also handle nil case. Both Lisp dialects and ML families provide \verb|null| testing functions.
+Empty testing can also be realized by pattern-matching with empty list if possible. The following
+Haskell program shows such example.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+null [] = True
+null _ = False
+\end{lstlisting}
+
+In this book we will either use $empty(L)$ or $L = \Phi$ where empty testing happens.
+
+With empty testing defined, it's possible to calculate length for a list. 
+In imperative settings, \textproc{Length} is ofthen implemented like the following.
+
+\begin{algorithmic}
+\Function{Length}{L}
+  \State $n \gets 0$
+  \While{$L \neq NIL$}
+    \State $n \gets n + 1$
+    \State $L \gets $ \Call{Next}{$L$}
+  \EndWhile
+\EndFunction
+\end{algorithmic}
+
+This ISO C++ code translates the algorithm to real program.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<typename T>
+int length(List<T>* xs) {
+  int n = 0;
+  for (; xs; ++n, xs = xs->next);
+  return n
+}
+\end{lstlisting}
+
+However, in purely funcitonal setting, we can't mutate a counter variable. 
+the idea is that, if the list is empty, then its size is zero; otherwise, we can recursively 
+calculate the length of the sub list, then add it by one to get the length of this list.
+
+\be
+length(L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  0 & L = \Phi \\
+  1 + length(L') & otherwise
+  \end{array}
+\right.
+\ee 
+
+Here $L' = rest(L)$ as mentioned above, it's $\{l_2, l_3, ..., l_N\}$ for list contains $N$ elements.
+Note that both $L$ and $L'$ can be empty $\Phi$. In this equation, we also use $=$ to test if list
+$L$ is empty. Below are two programs in Haskell and in Scheme/Lisp realize this recursive algorithm.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+length [] = 0
+length (x:xs) = 1 + length xs
+\end{lstlisting}
+
+\lstset{language=Lisp}
+\begin{lstlisting}
+(define (length lst)
+  (if (null? lst) 0 (length (cdr lst))))
+\end{lstlisting}
+
+The length calculation can also be implemented in C++ template meta programming in purely recursive
+manner.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<typename L> struct Length{
+  static const int value = 1 + Length<typename L::rest>::value;
+};
+
+template<> struct Length<Empty> {
+  static const int value = 0;
+};
+\end{lstlisting}
+
+The edge case is written behind the recursive one, that the length value of empty list is 0.
+In recursive case, \verb|List::rest| accesses the sub-list of $L$, and \verb|Length<L::rest>::value|
+will be recursively calulcated by the C++ compiler. Note that the \verb|typename| keywords should
+be inserted before \verb|L::res| to indicate it is a type. After that we add it by 1 as the final
+value of the length.
+
+The \verb|Length| calculator can be used as below.
+
+\begin{lstlisting}
+cout<<Length<A>::value;
+\end{lstlisting}
+
+Where list type \verb|A| is defined in previous section.
+
+How to testing if two lists are identical is left as exercise to the reader.
+
 \subsection{Access the last element}
 
 \subsection{concatenate}
@@ -196,6 +298,14 @@ List<T>* cons(T x, List<T>* xs) {
 \subsection{mapping}
 
 \subsection{reverse}
+
+\begin{Exercise}
+\begin{itemize}
+\item Given two lists $L_1$ and $L_2$, design a algorithm $eq(L_1, L_2)$ to test if they are equal to each other.
+Here equality means the lengths are same, and at the same time, every elements in both list are identical.
+\item If you know about C++ template programming, write a program to print a list.
+\end{itemize}
+\end{Exercise}
 
 \section{Mutating}
 
