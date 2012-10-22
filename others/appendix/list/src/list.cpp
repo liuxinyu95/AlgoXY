@@ -11,3 +11,11 @@ T first(List<T> *xs) { return xs->key; }
 
 template<typename T>
 List<T>* rest(List<T>* xs) { return xs->next; }
+
+template<typename T>
+List<T>* cons(T x, List<T>* xs) {
+  List<T>* lst = new List<T>;
+  lst->key = x;
+  lst->next = xs;
+  return lst;
+}
