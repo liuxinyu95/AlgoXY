@@ -114,8 +114,9 @@ and use 'NIL' in pseudo code to describe algorithms in this book.
 
 \subsection{Access the element and the sub list}
 Given a list $L$, two functions can be defined to access the element stored in it and
-the sub list respectively. They are typically denoted as $first(L)$, and $rest(L)$.
-These two functions are typically named as \verb|car| and \verb|cdr| in Lisp for historic reason
+the sub list respectively. They are typically denoted as $first(L)$, and $rest(L)$ or
+$head(L)$ and $tail(L)$ for the same meaning.
+These two functions are named as \verb|car| and \verb|cdr| in Lisp for historic reason
 about the design of machine registers \cite{SICP}. In languages support Pattern matching (e.g. ML families)
 These two functions are commonly realized by matching the \verb|cons| which we'll introduced
 later. for example the following Haskell program:
@@ -241,7 +242,11 @@ length(L) = \left \{
 
 Here $L' = rest(L)$ as mentioned above, it's $\{l_2, l_3, ..., l_N\}$ for list contains $N$ elements.
 Note that both $L$ and $L'$ can be empty $\Phi$. In this equation, we also use $=$ to test if list
-$L$ is empty. Below are two programs in Haskell and in Scheme/Lisp realize this recursive algorithm.
+$L$ is empty. In order to know the length of a list, we need traverse all the elements from the head
+to the end, so that this algorithm is proprotion to the number of elements stored in the list.
+It's a linear $O(N)$ algorithm.
+
+Below are two programs in Haskell and in Scheme/Lisp realize this recursive algorithm.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -270,7 +275,7 @@ template<> struct Length<Empty> {
 \end{lstlisting}
 
 The edge case is written behind the recursive one, that the length value of empty list is 0.
-In recursive case, \verb|List::rest| accesses the sub-list of $L$, and \verb|Length<L::rest>::value|
+In recursive case, \verb|List::rest| accesses the sub-list of \verb|L|, and \verb|Length<L::rest>::value|
 will be recursively calulcated by the C++ compiler. Note that the \verb|typename| keywords should
 be inserted before \verb|L::res| to indicate it is a type. After that we add it by 1 as the final
 value of the length.
@@ -285,19 +290,117 @@ Where list type \verb|A| is defined in previous section.
 
 How to testing if two lists are identical is left as exercise to the reader.
 
+\subsection{Mutating}
+
+Strictly speaking, we can't mutate the list at all in purely funcitonal settings. What we mutates in
+imperative settings are just creation of new lists. Almost all functional environment support gabbage
+collection, the orginal list may either persisited or reusing, or released (dropped) at sometime \cite{okasaki-book}(Chapter 2).
+
+\subsubsection{Appending}
+Function $cons$ can be viewed as building list by insertion element always on head. If we chaines multiple
+$cons$ operation, it repeatedly constructs a list from right to the left. Appending on the other hand,
+is an operation adding element to the tail. Compare to $cons$ which is trivial constant time $O(1)$ operation,
+We must traverse the whole list to locate the appending position, it means that appending is bound to
+$O(N)$, where $N$ is the length of the list. In order to speed up the appending, imperative implementation
+typically use a field (variable) to record the tail position of a list, so that the traversing can be
+avoided. However, in purely functional settings we can't use such `tail' pointer. The appending has to
+be realized in recursive manner.
+
+\be
+append(L, x) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{ x \} & L = \Phi \\
+  cons(first(L), append(rest(L), x)) & otherwise
+  \end{array}
+\right.
+\ee
+
+That the algoritm handles two different appending cases.
+\begin{itemize}
+\item If the list is empty, the result is a singleton list contains $x$, which is the element to be appended. The singleton list denotion $\{ x } = cons(x, \Phi)$, is a simplified form of $cons$ the element with an empty list $\Phi$;
+\item Otherwise, for the none-empty list, the result can be achieved by first appending the element $x$ to the rest sub-list, then construct the first element of $L$ with the recursive appending result. 
+\end{itemize}
+
+For the none-trivial case, if we denote $L= \{l_0, l_1, ... \}$, and $L' = \{ l_2, l_3, ...\}$ the equation can be
+written as.
+
+\be
+append(L, x) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{ x \} & L = \Phi \\
+  cons(l_0, append(L', x)) & otherwise
+  \end{array}
+\right.
+\ee
+
+We'll use both forms in the rest of this appendix.
+
+The following Scheme/Lisp program implements this algorithm.
+
+\lstset{language=Lisp}
+\begin{lstlisting}
+(define (append lst x)
+  (if (null? lst) 
+      (list x) 
+      (cons (car lst) (append (cdr lst) x))))
+\end{lstlisting}
+
+Even without the tail pointer, it's possible to traverse the list imperatively and append the element at the end.
+
+\begin{algorithmic}
+\Function{Append}{$L, x$}
+  \If{$L = $ NIL}
+    \State $L \gets$ \Call{Cons}{$x$, NIL}
+  \Else
+    \While{\Call{Rest}{$L$} $\neq$ NIL}
+      \State $L \gets$ \Call{Rest}{$L$}
+    \EndWhile
+    \State \Call{Rest}{$L$} $\gets$ \Call{Cons}{$x$, NIL}
+  \EndIf
+  \State \Return $L$
+\EndFunction
+\end{algorithmic}
+
+The following ISO C++ programs implements both this algorithm, and the one with tail pointer.
+
+\subsubsection{insertion}
+
+include insertion sort
+
+\subsection{deletion}
+
 \subsection{Access the last element}
+Although accessing the first element and the rest list $L'$ is trivial, the opposite operation, that
+retreiving the last element and the initial sub list needs linear time. If the list isn't empty, we
+need traverse it till the tail to get these two components. Below are their imperative descriptions.
+
+\begin{algorithmic}
+\Function{Last}{$L$}
+  \State $x \gets $ NIL
+  \While{$L \neq$ NIL}
+    \State $x \gets $ \Call{First}{$L$}
+    \State $L \gets $ \Call{Rest}{$L$}
+  \EndWhile
+  \State \Return $x$
+\EndFunction
+\Statex
+\Function{Init}{$L$}
+  \State $L' \gets $ NIL
+  \While{$L \neq$ NIL}
+    \State $L' \gets$ \textproc{Append}($L'$, \Call{First}{$L$})
+    \State $L \gets $ \Call{Rest}{$L$}
+  \EndWhile
+  \State \Return $L'$
+\EndFunction
+\end{algorithmic}
 
 \subsection{concatenate}
 
 \subsection{sum and product}
 
 \subsection{maximum and minimum}
-
-\section{Transformation}
-
-\subsection{mapping}
-
-\subsection{reverse}
 
 \begin{Exercise}
 \begin{itemize}
@@ -307,15 +410,11 @@ Here equality means the lengths are same, and at the same time, every elements i
 \end{itemize}
 \end{Exercise}
 
-\section{Mutating}
+\section{Transformation}
 
-\subsection{appending}
+\subsection{mapping}
 
-\subsection{insertion}
-
-include insertion sort
-
-\subsection{deletion}
+\subsection{reverse}
 
 \section{Extract sub-lists}
 
@@ -369,6 +468,9 @@ Benjamin C. Pierce. ``Types and Programming Languages''. The MIT Press, 2002. IS
 
 \bibitem{SICP}
 Harold Abelson, Gerald Jay Sussman, Julie Sussman. ``Structure and Interpretation of Computer Programs, 2nd Edition''. MIT Press, 1996, ISBN 0-262-51087-1
+
+\bibitem{okasaki-book}
+Chris Okasaki. ``Purely Functional Data Structures''. Cambridge university press, (July 1, 1999), ISBN-13: 978-0521663502
 
 \end{thebibliography}
 
