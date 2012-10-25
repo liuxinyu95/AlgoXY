@@ -150,8 +150,8 @@ example define a list of integers in C++ compile time.
 \begin{lstlisting}
 struct Empty;
 
-template<int n, typename T> struct List {
-  static const int first = n;
+template<int x, typename T> struct List {
+  static const int first = x;
   typedef T rest;
 };
 \end{lstlisting}
@@ -265,7 +265,7 @@ manner.
 
 \lstset{language=C++}
 \begin{lstlisting}
-template<typename L> struct Length{
+template<typename L> struct Length {
   static const int value = 1 + Length<typename L::rest>::value;
 };
 
@@ -318,7 +318,7 @@ append(L, x) = \left \{
 
 That the algoritm handles two different appending cases.
 \begin{itemize}
-\item If the list is empty, the result is a singleton list contains $x$, which is the element to be appended. The singleton list denotion $\{ x } = cons(x, \Phi)$, is a simplified form of $cons$ the element with an empty list $\Phi$;
+\item If the list is empty, the result is a singleton list contains $x$, which is the element to be appended. The singleton list denotion $\{ x \} = cons(x, \Phi)$, is a simplified form of $cons$ the element with an empty list $\Phi$;
 \item Otherwise, for the none-empty list, the result can be achieved by first appending the element $x$ to the rest sub-list, then construct the first element of $L$ with the recursive appending result. 
 \end{itemize}
 
@@ -363,7 +363,40 @@ Even without the tail pointer, it's possible to traverse the list imperatively a
 \EndFunction
 \end{algorithmic}
 
-The following ISO C++ programs implements both this algorithm, and the one with tail pointer.
+The following ISO C++ programs implements this algorithm. How to utilize a tail field to speed up the appending
+is left as exercise to the reader for interesting.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<typename T>
+List<T>* append(List<T>* xs, T x) {
+  List<T> *tail, *head;
+  for (head = tail = xs; xs; xs = xs->next)
+    tail = xs;
+  if (!head)
+    head = cons<T>(x, NULL);
+  else
+    tail->next = cons<T>(x, NULL);
+  return head;
+}
+\end{lstlisting}
+
+For purely interesting purpose, the C++ template meta programming example is given for appending algorithm
+as well.
+
+\begin{lstlisting}
+template<typename L, int x> struct Append {
+  typedef List<L::first, typename Append<typename L::rest, x>::result> result;
+};
+
+template<int x> struct Append<Empty, x> {
+  typedef List<x, Empty> result;
+};
+\end{lstlisting}
+
+The edge case is written behind the recursive case as same. That appending an element x to empty list
+results a singleton; otherwise, the element is firstly appended to the rest of the list, and we
+construct the first element with this recusive appending result to get the final list.
 
 \subsubsection{insertion}
 
@@ -406,6 +439,11 @@ need traverse it till the tail to get these two components. Below are their impe
 \begin{itemize}
 \item Given two lists $L_1$ and $L_2$, design a algorithm $eq(L_1, L_2)$ to test if they are equal to each other.
 Here equality means the lengths are same, and at the same time, every elements in both list are identical.
+\item Augment the list with a `tail' field, so that the appending algorithm can be realized in constant $O(1)$ time but
+not linear $O(N)$ time. Feel free to choose your favorite imperative programming language. Please don't refer to the
+example source code along with this book before you try it.
+\item With `tail' field augmented to list, for which list operations this field must be updated? How it affects to the
+performance?
 \item If you know about C++ template programming, write a program to print a list.
 \end{itemize}
 \end{Exercise}
