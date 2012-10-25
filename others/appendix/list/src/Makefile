@@ -27,6 +27,8 @@ CXX_SOURCE = list.cpp
 CPP_TEST_OBJS = list.o
 CXX_TMP_SRC = list-tmp.cpp
 CXX_TMP_OBJS = list-tmp.o
+CXX_FP_SRC = list-fp.cpp
+CXX_FP_OBJS = list-fp.o
 CXX = g++ -Wall -I/usr/include/boost-1_33_1
 CXX_FLAGS =
 
@@ -49,13 +51,16 @@ ctest: $(C_TEST_OBJS)
 
 $(C_TEST_OBJS): $(CHEADER)
 
-cpp: list list-tmp
+cpp: list list-fp list-tmp
 
 list: $(CPP_TEST_OBJS)
 	$(CXX) $(CXX_FLAGS) -o $@ $(CPP_TEST_OBJS)
 
 list-tmp: $(CXX_TMP_OBJS)
 	$(CXX) $(CXX_FLAGS) -o $@ $(CXX_TMP_OBJS)
+
+list-fp: $(CXX_FP_OBJS)
+	$(CXX) $(CXX_FLAGS) -o $@ $(CXX_FP_OBJS)
 
 $(CPP_TEST_OBJS): $(HEADER)
 
@@ -74,4 +79,4 @@ happ: $(HS_APP_OBJS)
 	ghc -c $<
 
 clean:
-	rm -f *.exe *.hi *~ *.o *.pyc list list-tmp
+	rm -f *.exe *.hi *~ *.o *.pyc list list-fp list-tmp
