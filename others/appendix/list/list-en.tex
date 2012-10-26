@@ -92,7 +92,9 @@ sub list contained in the last node is empty, which is denoted as 'NIL'.
 \end{figure}
 
 This data structure can be explictly defined in programming languages support record
-(or compound type) concept. The following ISO C++ code defines list.
+(or compound type) concept. The following ISO C++ code defines list\footnote{We only use
+template to parameterize the type of the element in this chapter. Except this point,
+all imperative source code are in ANSI C style to avoid language specific features.}.
 
 \lstset{language=C++}
 \begin{lstlisting}
@@ -290,6 +292,117 @@ Where list type \verb|A| is defined in previous section.
 
 How to testing if two lists are identical is left as exercise to the reader.
 
+\subsection{indexing}
+
+One big difference between array and list (singly-linked list accurately) is that array support
+random access. Many programming languages support using \verb|x[i]| to access the $i$-th element
+stored in array in constant $O(1)$ time. The index typically starts from 0, but it's not the all case.
+Some programming languages using 1 as the first index. In this appendix, we treat index starting
+from 0. However, we must traverse the list with
+$i$ steps to reach the target element. The traversing is quite similar to the length calculation.
+Thus it's commonly expressed as below in imperative settings.
+
+\begin{algorithmic}
+\Function{Get-At}{$L, i$}
+  \While{$i \neq 0$}
+    \State $L \gets $ \Call{Next}{$L$}
+  \EndWhile
+  \State \Return \Call{First}{$L$}
+\EndFunction
+\end{algorithmic}
+
+Note that this algorithm doesn't handle the error case such that the index is within the bound
+of the list. We assume that $0 \leq i < |L|$, where $|L| = length(L)$. The error handling is left
+as exercise to the reader. The following ISO C++ code is a line-by-line translation of this
+algorithm.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<typename T>
+T getAt(List<T>* lst, int n) {
+  while(n--)
+    lst = lst->next;
+  return lst->key;
+}
+\end{lstlisting}
+
+However, in purely functional settings, we turn to resurive traversing instead of while-loop.
+
+\be
+getAt(L, i) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  First(L) & i = 0 \\
+  getAt(Rest(L), i-1) & otherwise
+  \end{array}
+\right.
+\ee
+
+In order to {\em get the $i$-th element}, the algorithm does the following:
+\begin{itemize}
+\item if $i$ is 0, then we are done, the result is the first element in the list;
+\item Otherwise, the result is to {\em get the $(i-1)$-th element} from the sub-list.
+\end{itemize}
+
+This algorithm can be translated to the following Haskell code.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+getAt i (x:xs) = if i == 0 then x else getAt i-1 xs
+\end{lstlisting}
+
+Note that we are using pattern matching to ensure the list isn't empty, which actually handles
+all out-of-bound cases with un-matched pattern error. Thus if $i > |L|$, we finally arrive at
+a edge case that the index is $i-|L|$, while the list is empty; On the other hand, if $i < 0$,
+minus it by one makes it even farther away from 0. We finally end at the same error that the index 
+is some negative, while the list is empty;
+
+For interesting purpose, here are the C++ template meta programming indexing algorithm.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<typename L, int i> struct GetAt {
+  static const int value = GetAt<typename L::rest, i-1>::value;
+};
+
+template<typename L> struct GetAt<L, 0> {
+  static const int value = L::first;
+};
+\end{lstlisting}
+
+The indexing algorithm takes time proportion to the value of index, which is bound to $O(N)$
+linear time. 
+This section only address the read symatics. How to mutate the element at a given position is
+explained in later section.
+
+\subsection{Access the last element}
+Although accessing the first element and the rest list $L'$ is trivial, the opposite operation, that
+retreiving the last element and the initial sub list needs linear time. If the list isn't empty, we
+need traverse it till the tail to get these two components. Below are their imperative descriptions.
+
+\begin{algorithmic}
+\Function{Last}{$L$}
+  \State $x \gets $ NIL
+  \While{$L \neq$ NIL}
+    \State $x \gets $ \Call{First}{$L$}
+    \State $L \gets $ \Call{Rest}{$L$}
+  \EndWhile
+  \State \Return $x$
+\EndFunction
+\Statex
+\Function{Init}{$L$}
+  \State $L' \gets $ NIL
+  \While{$L \neq$ NIL}
+    \State $L' \gets$ \textproc{Append}($L'$, \Call{First}{$L$})
+    \State $L \gets $ \Call{Rest}{$L$}
+  \EndWhile
+  \State \Return $L'$
+\EndFunction
+\end{algorithmic}
+
+\subsection{Reverse indexing}
+:)
+
 \subsection{Mutating}
 
 Strictly speaking, we can't mutate the list at all in purely funcitonal settings. What we mutates in
@@ -398,36 +511,13 @@ The edge case is written behind the recursive case as same. That appending an el
 results a singleton; otherwise, the element is firstly appended to the rest of the list, and we
 construct the first element with this recusive appending result to get the final list.
 
+\subsubsection{Mutate element at given position}
+
 \subsubsection{insertion}
 
 include insertion sort
 
 \subsection{deletion}
-
-\subsection{Access the last element}
-Although accessing the first element and the rest list $L'$ is trivial, the opposite operation, that
-retreiving the last element and the initial sub list needs linear time. If the list isn't empty, we
-need traverse it till the tail to get these two components. Below are their imperative descriptions.
-
-\begin{algorithmic}
-\Function{Last}{$L$}
-  \State $x \gets $ NIL
-  \While{$L \neq$ NIL}
-    \State $x \gets $ \Call{First}{$L$}
-    \State $L \gets $ \Call{Rest}{$L$}
-  \EndWhile
-  \State \Return $x$
-\EndFunction
-\Statex
-\Function{Init}{$L$}
-  \State $L' \gets $ NIL
-  \While{$L \neq$ NIL}
-    \State $L' \gets$ \textproc{Append}($L'$, \Call{First}{$L$})
-    \State $L \gets $ \Call{Rest}{$L$}
-  \EndWhile
-  \State \Return $L'$
-\EndFunction
-\end{algorithmic}
 
 \subsection{concatenate}
 
@@ -439,6 +529,8 @@ need traverse it till the tail to get these two components. Below are their impe
 \begin{itemize}
 \item Given two lists $L_1$ and $L_2$, design a algorithm $eq(L_1, L_2)$ to test if they are equal to each other.
 Here equality means the lengths are same, and at the same time, every elements in both list are identical.
+\item Consider varies of options to handle the out-of-bound error case when randomly access the element in list. Realize
+them in both imperative and functional programming languages. Compare the solutions based on exception and error code.
 \item Augment the list with a `tail' field, so that the appending algorithm can be realized in constant $O(1)$ time but
 not linear $O(N)$ time. Feel free to choose your favorite imperative programming language. Please don't refer to the
 example source code along with this book before you try it.
@@ -450,7 +542,7 @@ performance?
 
 \section{Transformation}
 
-\subsection{mapping}
+\subsection{mapping and for-each}
 
 \subsection{reverse}
 
@@ -478,7 +570,7 @@ performance?
 
 \subsection{finding and filtering}
 
-\subsection{indexing}
+
 
 \subsection{Matching}
 
