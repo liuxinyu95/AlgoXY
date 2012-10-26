@@ -32,6 +32,16 @@ template<> struct Length<Empty> {
   static const int value = 0;
 };
 
+/* Get at */
+
+template<typename L, int i> struct GetAt {
+  static const int value = GetAt<typename L::rest, i-1>::value;
+};
+
+template<typename L> struct GetAt<L, 0> {
+  static const int value = L::first;
+};
+
 /* Appending */
 
 template<typename L, int x> struct Append {
@@ -47,4 +57,6 @@ int main(int, char**) {
   std::cout<<Length<Empty>::value<<"\n"<<Length<Lst>::value<<"\n";
   Print<Lst>::apply();
   Print<Append<Lst, 4>::result>::apply();
+  std::cout<<"Lst ! 0 = "<<GetAt<Lst, 0>::value<<", "
+           <<"Lst ! 2 = "<<GetAt<Lst, 2>::value<<"\n";
 }

@@ -61,6 +61,18 @@ int length(List<T> lst) {
   return n;
 }
 
+/* 
+ * Assume 0 <= n < length(lst) 
+ * The bound check is skipped.
+ */
+template<typename T>
+T getAt(List<T> lst, int n) {
+  Node<T>* xs = lst.head;
+  while(n--)
+    xs = xs->next;
+  return xs->key;
+}
+
 template<typename T>
 List<T> append(List<T> lst, T x) {
   Node<T>* n = new Node<T>(x);
@@ -78,10 +90,14 @@ void print_lst(List<T> lst) {
 }
 
 int main(int, char**) {
+  int i, n;
   List<int> lst = cons(1, cons(2, cons(3, empty<int>())));
   printf("length of empty = %d, len([1, 2, 3]) = %d\n", length<int>(empty<int>()), length(lst));
   lst = append(lst, 4);
   printf("append 4 ==>");
   print_lst(lst);
+  n = length(lst);
+  for(i = 0; i < n; ++i)
+    printf("lst[%d] = %d%s", i, getAt(lst, i), i == n-1 ? "\n" : ", ");
   release(lst);
 }
