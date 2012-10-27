@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstdlib>
+#include <cstdio>
 
 using namespace std;
 
@@ -82,6 +83,24 @@ List<T> append(List<T> lst, T x) {
   return make(lst.head, n);
 }
 
+/* Suppose the input list isn't empty. */
+template<typename T>
+T last(List<T> lst) {
+  T x; /* Can be initialized to a special value to indicate empty list err. */
+  for (Node<T>* xs = lst.head; xs; xs = xs->next)
+    x = xs->key;
+  return x;
+}
+
+/* Suppose the input list isn't empty. */
+template<typename T>
+List<T> init(List<T> lst) {
+  List<T> r = empty<T>();
+  for (Node<T>* xs = lst.head; xs->next; xs = xs->next)
+    r = append(r, xs->key);
+  return r;
+}
+
 template<typename T>
 void print_lst(List<T> lst) {
   for(Node<T>* xs = lst.head; xs; xs = xs->next)
@@ -99,5 +118,7 @@ int main(int, char**) {
   n = length(lst);
   for(i = 0; i < n; ++i)
     printf("lst[%d] = %d%s", i, getAt(lst, i), i == n-1 ? "\n" : ", ");
+  printf("last(lst) = %d, init(lst) = ", last(lst));
+  print_lst(init(lst));
   release(lst);
 }
