@@ -9,6 +9,7 @@ using namespace std;
  * tail record etc.
  */
 
+/* Definition of node. */
 template<typename T>
 struct Node {
   T key;
@@ -20,6 +21,7 @@ struct Node {
   ~Node() { delete next; }
 };
 
+/* Definition of list with a tail pointer to speed up appending etc. */
 template<typename T>
 struct List {
   Node<T>* head;
@@ -29,6 +31,7 @@ struct List {
   List(Node<T>* h, Node<T>* t) : head(h), tail(t) {}
 };
 
+/* Auxiliar functions help to wrap a list from a head and a tail pointers. */
 template<typename T>
 List<T> make(Node<T>* head, Node<T>* tail) {
   if (!tail || !head) /* Trick: it actualy handles (nil, nil), and (_, nil) cases, the later is a singleton. */
@@ -41,25 +44,34 @@ void release(List<T> lst) {
   delete lst.head;
 }
 
+/* Test if a list is empty. */
 template<typename T>
 bool empty(List<T> lst) { return !lst.head; }
 
+/* Create an empty list of a given type. */
 template<typename T>
 List<T> empty() { return List<T>(); }
 
+/* Access the first element in the list. */
 template<typename T>
 T first(List<T> lst) { return lst.head->key; }
 
+/* Access the rest sub-list (a list contains all elements except for the first one). */
 template<typename T>
 List<T> rest(List<T> lst) { 
   return make(lst.head->next, lst.tail);
 }
 
+/* 'cons' a list from an element and a list, follow the Lisp naming tradition. */
 template<typename T>
 List<T> cons(T x, List<T> lst) {
   return make(new Node<T>(x, lst.head), lst.tail);
 }
 
+/* 
+ * Calculate the length, not optimized, Linear O(N) time
+ * One optimization is to record the length, and update it wile mutating the list.
+ */
 template<typename T>
 int length(List<T> lst) {
   int n = 0;
@@ -68,6 +80,7 @@ int length(List<T> lst) {
 }
 
 /* 
+ * Random access, O(N) time bound.
  * Assume 0 <= n < length(lst) 
  * The bound check is skipped.
  */
@@ -79,6 +92,9 @@ T getAt(List<T> lst, int n) {
   return xs->key;
 }
 
+/*
+ * Appending with the help of tail pointer, O(1) constant time.
+ */
 template<typename T>
 List<T> append(List<T> lst, T x) {
   Node<T>* n = new Node<T>(x);
@@ -88,13 +104,19 @@ List<T> append(List<T> lst, T x) {
   return make(lst.head, n);
 }
 
-/* Suppose the input list isn't empty. */
+/*
+ * Access the last element, O(1) with the help of tail pointer.
+ * Suppose the input list isn't empty. 
+ */
 template<typename T>
 T last(List<T> lst) {
   return lst.tail->key;
 }
 
-/* Suppose the input list isn't empty. */
+/* 
+ * Get a sub list contains all elements except the last one, O(N) time.
+ * Suppose the input list isn't empty. 
+ */
 template<typename T>
 List<T> init(List<T> lst) {
   List<T> r = empty<T>();
@@ -103,6 +125,7 @@ List<T> init(List<T> lst) {
   return r;
 }
 
+/* Testing purpose only*/
 template<typename T>
 void print_lst(List<T> lst) {
   for(Node<T>* xs = lst.head; xs; xs = xs->next)

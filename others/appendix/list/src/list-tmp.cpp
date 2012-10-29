@@ -52,6 +52,26 @@ template<int x> struct Append<Empty, x> {
   typedef List<x, Empty> result;
 };
 
+/* Last */
+
+template<typename L> struct Last {
+  static const int value = Last<typename L::rest>::value;
+};
+
+template<int x> struct Last<List<x, Empty> > {
+  static const int value = x;
+};
+
+/* Init */
+
+template<typename L> struct Init {
+  typedef List<L::first, typename Init<typename L::rest>::result> result;
+};
+
+template<int x> struct Init<List<x, Empty> > {
+  typedef Empty result;
+};
+
 int main(int, char**) {
   typedef List<1, List<2, List<3, Empty> > > Lst;
   std::cout<<Length<Empty>::value<<"\n"<<Length<Lst>::value<<"\n";
@@ -59,4 +79,6 @@ int main(int, char**) {
   Print<Append<Lst, 4>::result>::apply();
   std::cout<<"Lst ! 0 = "<<GetAt<Lst, 0>::value<<", "
            <<"Lst ! 2 = "<<GetAt<Lst, 2>::value<<"\n";
+  std::cout<<"last(Lst) = "<<Last<Lst>::value<<", init(Lst) = ";
+  Print<Init<Lst>::result>::apply();
 }
