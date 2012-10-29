@@ -377,8 +377,9 @@ explained in later section.
 
 \subsection{Access the last element}
 Although accessing the first element and the rest list $L'$ is trivial, the opposite operations, that
-retreiving the last element and the initial sub list need linear time. If the list isn't empty, we
-need traverse it till the tail to get these two components. Below are their imperative descriptions.
+retreiving the last element and the initial sub list need linear time without using a tail pointer. 
+If the list isn't empty, we need traverse it till the tail to get these two components. Below are 
+their imperative descriptions.
 
 \begin{algorithmic}
 \Function{Last}{$L$}
@@ -399,6 +400,86 @@ need traverse it till the tail to get these two components. Below are their impe
   \State \Return $L'$
 \EndFunction
 \end{algorithmic}
+
+The algorithmis assume that the input list isn't empty, so the error handling is skipped. Note that
+the \textproc{Init}() algorithm uses the appending algorithm which will be defined later.
+
+Below are the corresponding ISO C++ implementation. The optimized version by utilizing tail pointer
+is left as exercise.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<typename T>
+T last(List<T>* xs) {
+  T x; /* Can be set to a special value to indicate empty list err. */
+  for (; xs; xs = xs->next)
+    x = xs->key;
+  return x;
+}
+
+template<typename T>
+List<T>* init(List<T>* xs) {
+  List<T>* ys = NULL;
+  for (; xs->next; xs = xs->next)
+    ys = append(ys, xs->key);
+  return ys;
+}
+\end{lstlisting}
+
+While these two algorithm can be implemented in purely recursive manner as well. When we want to access
+{\em the last element}. 
+
+\begin{itemize}
+\item If the list contains only one element (the rest sub-list is empty), the result is this very element;
+\item Otherwise, the result is {\em the last element} of the rest sub-list.
+\end{itemize}
+
+\be
+last(L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  First(L) & Rest(L) = \Phi \\
+  last(Rest(L)) & otherwise
+  \end{array}
+\right.
+\ee
+
+The simliar approach can be used to {\em get a list contains all elements except for the last one}.
+
+\begin{itemize}
+\item The edge case: If the list contains only one element, then the result is a empty list;
+\item Otherwise, we can first {\em get a list contains all elements except for the last one} from the rest sub-list, then
+construct the final result from the first element and this intermediate result.
+\end{itemize}
+
+\be
+init(L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & L' = \Phi \\
+  cons(l_0, init(L')) & otherwise
+  \end{array}
+\right.
+\ee
+
+Here we denote $l_0$ as the first element of $L$, and $L'$ is the rest sub-list. This recursive algorithm needn't
+use appending, It actually construct the final result list from right to left. We'll introduce a high-level concept
+of such kind of computation later in this appendix.
+
+Below are Haskell programs implement $last()$ and $init()$ algorithms by using pattern matching.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+last [x] = x
+last (_:xs) = last xs
+
+init [x] = []
+init (x:xs) = x : init xs 
+\end{lstlisting}
+
+Where \verb|[x]| matches the singleton list contains only one element, while \verb|(_:xs)| matches any non-empty list,
+and the underscore (\verb|_|) is used to indicate that we don't care about the element. For the detail of pattern matching,
+readers can refer to any Haskell tutorial materials, such as \cite{learn-haskell}.
 
 \subsection{Reverse indexing}
 :)
@@ -601,6 +682,9 @@ Harold Abelson, Gerald Jay Sussman, Julie Sussman. ``Structure and Interpretatio
 
 \bibitem{okasaki-book}
 Chris Okasaki. ``Purely Functional Data Structures''. Cambridge university press, (July 1, 1999), ISBN-13: 978-0521663502
+
+\bibitem{learn-haskell}
+Miran Lipovaca. ``Learn You a Haskell for Great Good! A Beginner's Guide''. No Starch Press; 1 edition April 2011, 400 pp. ISBN: 978-1-59327-283-8
 
 \end{thebibliography}
 
