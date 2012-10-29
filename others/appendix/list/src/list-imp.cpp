@@ -8,6 +8,7 @@ using namespace std;
  * tail record etc.
  */
 
+/* Definition */
 template<typename T>
 struct List {
   T key;
@@ -17,12 +18,15 @@ struct List {
   ~List() { delete next; }
 };
 
+/* Access the rest sub-list (a list contains all elements except for the first one). */
 template<typename T>
 T first(List<T> *xs) { return xs->key; }
 
+/* Access the rest sub-list (a list contains all elements except for the first one). */
 template<typename T>
 List<T>* rest(List<T>* xs) { return xs->next; }
 
+/* 'cons' a list from an element and a list, follow the Lisp naming tradition. */
 template<typename T>
 List<T>* cons(T x, List<T>* xs) {
   List<T>* lst = new List<T>;
@@ -31,6 +35,9 @@ List<T>* cons(T x, List<T>* xs) {
   return lst;
 }
 
+/* 
+ * Calculate the length, not optimized, Linear O(N) time
+ */
 template<typename T>
 int length(List<T>* xs) {
   int n = 0;
@@ -39,6 +46,7 @@ int length(List<T>* xs) {
 }
 
 /* 
+ * Random access, O(N) time
  * Assume 0 <= n < length(lst) 
  * The bound check is skipped.
  */
@@ -49,6 +57,9 @@ T getAt(List<T>* xs, int n) {
   return xs->key;
 }
 
+/*
+ * Appending an element to the end of a list, O(N) linear time
+ */
 template<typename T>
 List<T>* append(List<T>* xs, T x) {
   List<T> *tail, *head;
@@ -61,7 +72,10 @@ List<T>* append(List<T>* xs, T x) {
   return head;
 }
 
-/* Suppose the input list isn't empty. */
+/* 
+ * Access the last element, O(N) time
+ * Suppose the input list isn't empty. 
+ */
 template<typename T>
 T last(List<T>* xs) {
   T x; /* Can be initialized to a special value to indicate empty list err. */
@@ -70,7 +84,10 @@ T last(List<T>* xs) {
   return x;
 }
 
-/* Suppose the input list isn't empty. */
+/* 
+ * Get a sub list contains all elements except the last one, O(N) time.
+ * Suppose the input list isn't empty. 
+ */
 template<typename T>
 List<T>* init(List<T>* xs) {
   List<T>* ys = NULL;
@@ -79,6 +96,7 @@ List<T>* init(List<T>* xs) {
   return ys;
 }
 
+/* Testing purpose only*/
 template<typename T>
 void print_lst(List<T>* xs) {
   for(; xs; xs = xs->next)
