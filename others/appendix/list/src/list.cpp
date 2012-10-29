@@ -4,6 +4,11 @@
 
 using namespace std;
 
+/* 
+ * A pure imperative list implementation WITH some optimization such as
+ * tail record etc.
+ */
+
 template<typename T>
 struct Node {
   T key;
@@ -69,7 +74,7 @@ int length(List<T> lst) {
 template<typename T>
 T getAt(List<T> lst, int n) {
   Node<T>* xs = lst.head;
-  while(n--)
+  while (n--)
     xs = xs->next;
   return xs->key;
 }
@@ -86,17 +91,14 @@ List<T> append(List<T> lst, T x) {
 /* Suppose the input list isn't empty. */
 template<typename T>
 T last(List<T> lst) {
-  T x; /* Can be initialized to a special value to indicate empty list err. */
-  for (Node<T>* xs = lst.head; xs; xs = xs->next)
-    x = xs->key;
-  return x;
+  return lst.tail->key;
 }
 
 /* Suppose the input list isn't empty. */
 template<typename T>
 List<T> init(List<T> lst) {
   List<T> r = empty<T>();
-  for (Node<T>* xs = lst.head; xs->next; xs = xs->next)
+  for(Node<T>* xs = lst.head; xs != lst.tail; xs = xs->next)
     r = append(r, xs->key);
   return r;
 }
