@@ -1,5 +1,23 @@
+/*
+ * list-imp.cpp
+ * Copyright (C) 2012 Liu Xinyu (liuxinyu95@gmail.com)
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #include <iostream>
 #include <cstdlib>
+#include <cstdio>
 
 using namespace std;
 
@@ -96,6 +114,17 @@ List<T>* init(List<T>* xs) {
   return ys;
 }
 
+template<typename T>
+T getAtR(List<T>* xs, int i) {
+  T x;
+  List<T>* p = xs;
+  while(i--)
+    xs = xs->next;
+  for(; xs; xs = xs->next, p = p->next)
+    x = p->key;
+  return x;
+}
+
 /* Testing purpose only*/
 template<typename T>
 void print_lst(List<T>* xs) {
@@ -116,5 +145,7 @@ int main(int, char**) {
     printf("lst[%d] = %d%s", i, getAt(lst, i), i == n-1 ? "\n" : ", ");
   printf("last(lst) = %d, init(lst) = ", last(lst));
   print_lst(init(lst));
+  for(i = 0; i < n; ++i)
+    printf("reverse(lst)[%d] = %d%s", i, getAtR(lst, i), i == n-1 ? "\n" : ", ");
   delete lst;
 }
