@@ -17,6 +17,7 @@
  */
 #include <iostream>
 #include <cstdlib>
+#include <cstdio>
 
 using namespace std;
 
@@ -113,6 +114,17 @@ List<T>* init(List<T>* xs) {
   return ys;
 }
 
+template<typename T>
+T getAtR(List<T>* xs, int i) {
+  T x;
+  List<T>* p = xs;
+  while(i--)
+    xs = xs->next;
+  for(; xs; xs = xs->next, p = p->next)
+    x = p->key;
+  return x;
+}
+
 /* Testing purpose only*/
 template<typename T>
 void print_lst(List<T>* xs) {
@@ -133,5 +145,7 @@ int main(int, char**) {
     printf("lst[%d] = %d%s", i, getAt(lst, i), i == n-1 ? "\n" : ", ");
   printf("last(lst) = %d, init(lst) = ", last(lst));
   print_lst(init(lst));
+  for(i = 0; i < n; ++i)
+    printf("reverse(lst)[%d] = %d%s", i, getAtR(lst, i), i == n-1 ? "\n" : ", ");
   delete lst;
 }
