@@ -89,6 +89,29 @@ template<int x> struct Init<List<x, Empty> > {
   typedef Empty result;
 };
 
+/* Drop */
+template<int n, typename L> struct Drop {
+  typedef typename Drop<n-1, typename L::rest>::result result;
+};
+
+template<typename L> struct Drop<0, L> {
+  typedef L result;
+};
+
+/* index from right*/
+
+template<typename L, int i> struct GetAtR {
+  template<typename A, typename B> struct Get {
+    static const int value = Get<typename A::rest, typename B::rest>::value;
+  };
+
+  template<typename A, int x> struct Get<A, List<x, Empty> > {
+    static const int value = A::first;
+  };
+
+  static const int value = Get<L, typename Drop<i, L>::result>::value;
+};
+
 int main(int, char**) {
   typedef List<1, List<2, List<3, Empty> > > Lst;
   std::cout<<Length<Empty>::value<<"\n"<<Length<Lst>::value<<"\n";
@@ -98,4 +121,5 @@ int main(int, char**) {
            <<"Lst ! 2 = "<<GetAt<Lst, 2>::value<<"\n";
   std::cout<<"last(Lst) = "<<Last<Lst>::value<<", init(Lst) = ";
   Print<Init<Lst>::result>::apply();
+  std::cout<<"reverse(Lst) ! 1 = "<<GetAtR<Lst, 1>::value<<"\n";
 }
