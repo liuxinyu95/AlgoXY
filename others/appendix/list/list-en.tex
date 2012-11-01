@@ -522,6 +522,7 @@ of $i$ between them, that $rest^i(p_2) = p_1$, where $rest^i(p_1)$ means apply $
 $i$ times. It says that succeeds $i$ steps from $p_2$ gets $p_1$. We can start $p_2$ from the head
 of the list and advance the two pointers in parallel till one of them ($p_1$) arrives at the end
 of the list. At that time point, pointer $p_2$ exactly arrived at the $i$-th element from right.
+Figure \ref{fig:list-rindex} illustrates this idea.
 
 \begin{figure}[htbp]
     \centering
@@ -529,6 +530,92 @@ of the list. At that time point, pointer $p_2$ exactly arrived at the $i$-th ele
     \subfloat[When $p_1$ reaches the end, $p_2$ points to the $i$-th element from right.]{\includegraphics[scale=0.8]{img/list-rindex-2.ps}}
     \caption{Double pointers solution to reverse indexing.} \label{fig:list-rindex}
 \end{figure}
+
+It's straightforward to realize the imperative algorithm based on this `double pointers' solution.
+
+\begin{algorithmic}
+\Function{Get-At-R}{$L, i$}
+  \State $p \gets L$
+  \While{$i \neq 0$}
+    \State $L \gets $ \Call{Rest}{$L$}
+    \State $i \gets i - 1$
+  \EndWhile
+  \While{\Call{Rest}{$L$} $\neq$ NIL}
+    \State $L \gets$ \Call{Rest}{$L$}
+    \State $p \gets$ \Call{Rest}{$p$}
+  \EndWhile
+  \State \Return \Call{First}{$p$}
+\EndFunction
+\end{algorithmic}
+
+The following ISO C++ code implements the `double pointers' right indexing algorithm.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<typename T>
+T getAtR(List<T>* xs, int i) {
+  List<T>* p = xs;
+  while(i--)
+    xs = xs->next;
+  for(; xs->next; xs = xs->next, p = p->next);
+  return p->key;
+}
+\end{lstlisting}
+
+The same idea can be realized recursively as well. If we want to access the $i$-th element of list $L$, we
+can examine the two lists $L$ and $S=\{l_i, l_{i+1}, ..., l_N\}$ simulaneously, where $S$ is a sub-list
+of $L$ without the first $i$ elements.
+
+\begin{itemize}
+\item The edge case: If $S$ is a singleton list, then the $i$-th element from right is the first element in $L$;
+\item Otherwise, we drop the first element from $L$ and $S$, and recursively examine $L'$ and $S'$.
+\end{itemize}
+
+This algorithm description can be formalized as the following equations.
+
+\be
+getAtR(L, i) = examine(L, drop(i, L))
+\ee
+
+Where function $examine(L, S)$ is defined as below.
+
+\be
+examine(L, S) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  first(L) & |S| = 1 \\
+  examine(rest(L), rest(S)) & otherwise
+  \end{array}
+\right.
+\ee
+
+We'll explain the detail of $drop()$ function in later section about list mutating operations. Here it can
+be implemented as repeatedly call $rest()$ with specified times.
+
+\[
+drop(n, L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  L & n = 0 \\
+  drop(n - 1, rest(L)) & otherwise
+  \end{array}
+\right.
+\]
+
+Translating the equations to Haskell yeilds this example program.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+atR :: [a] -> Int -> a
+atR xs i = get xs (drop i xs) where
+  get (x:_) [_] = x
+  get (_:xs) (_:ys) = get xs ys
+  drop n as@(_:as') = if n == 0 then as else drop (n-1) as'
+\end{lstlisting}
+
+Here we use dummy variable \verb|_| as the placeholder for component we don't care.
+
+TODO: C++ temp example.
 
 \subsection{Mutating}
 
