@@ -116,13 +116,11 @@ List<T>* init(List<T>* xs) {
 
 template<typename T>
 T getAtR(List<T>* xs, int i) {
-  T x;
   List<T>* p = xs;
   while(i--)
     xs = xs->next;
-  for(; xs; xs = xs->next, p = p->next)
-    x = p->key;
-  return x;
+  for(; xs->next; xs = xs->next, p = p->next);
+  return p->key;
 }
 
 /* Testing purpose only*/
