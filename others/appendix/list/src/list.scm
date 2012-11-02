@@ -20,3 +20,9 @@
   (if (null? lst) 
       (list x) 
       (cons (car lst) (append (cdr lst) x))))
+
+(define (set-at! lst i x)
+  (if (= i 0)
+      (set-car! lst x)
+      (set-at! (cdr lst) (- i 1) x)))
+

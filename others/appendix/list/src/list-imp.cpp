@@ -69,7 +69,7 @@ int length(List<T>* xs) {
  * The bound check is skipped.
  */
 template<typename T>
-T getAt(List<T>* xs, int n) {
+T& getAt(List<T>* xs, int n) {
   while (n--)
     xs = xs->next;
   return xs->key;
@@ -115,7 +115,7 @@ List<T>* init(List<T>* xs) {
 }
 
 template<typename T>
-T getAtR(List<T>* xs, int i) {
+T& getAtR(List<T>* xs, int i) {
   List<T>* p = xs;
   while(i--)
     xs = xs->next;
@@ -145,5 +145,7 @@ int main(int, char**) {
   print_lst(init(lst));
   for(i = 0; i < n; ++i)
     printf("reverse(lst)[%d] = %d%s", i, getAtR(lst, i), i == n-1 ? "\n" : ", ");
+  getAt(lst, 1) = 4;
+  print_lst(lst);
   delete lst;
 }
