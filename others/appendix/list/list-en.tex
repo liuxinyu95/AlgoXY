@@ -613,15 +613,43 @@ atR xs i = get xs (drop i xs) where
   drop n as@(_:as') = if n == 0 then as else drop (n-1) as'
 \end{lstlisting}
 
-Here we use dummy variable \verb|_| as the placeholder for component we don't care.
+Here we use dummy variable \verb|_| as the placeholders for components we don't care.
+It's possible to implement the same algorithm in C++ template meta programing as well.
+Since $getAtR()$ just wraps most of the work in $examine$, we can define an inner
+class template to simulate this fact.
 
-TODO: C++ temp example.
+\lstset{language=C++}
+\begin{lstlisting}
+template<typename L, int i> struct GetAtR {
+  template<typename A, typename B> struct Get {
+    static const int value = Get<typename A::rest, typename B::rest>::value;
+  };
+
+  template<typename A, int x> struct Get<A, List<x, Empty> > {
+    static const int value = A::first;
+  };
+
+  static const int value = Get<L, typename Drop<i, L>::result>::value;
+};
+\end{lstlisting}
+
+Where class template \verb|Drop<n, L>| is defined by recursively accessing the rest sub-list $n$ times.
+
+\begin{lstlisting}
+template<int n, typename L> struct Drop {
+  typedef typename Drop<n-1, typename L::rest>::result result;
+};
+
+template<typename L> struct Drop<0, L> {
+  typedef L result;
+};
+\end{lstlisting}
 
 \subsection{Mutating}
 
-Strictly speaking, we can't mutate the list at all in purely funcitonal settings. What we mutates in
-imperative settings are just creation of new lists. Almost all functional environment support gabbage
-collection, the orginal list may either persisited or reusing, or released (dropped) at sometime \cite{okasaki-book}(Chapter 2).
+Strictly speaking, we can't mutate the list at all in purely funcitonal settings. What we mutate in
+imperative settings is just creation of new list. Almost all functional environments support gabbage
+collection, the orginal list may either persisited for reusing, or released (dropped) at sometime \cite{okasaki-book}(Chapter 2).
 
 \subsubsection{Appending}
 Function $cons$ can be viewed as building list by insertion element always on head. If we chaines multiple
@@ -726,6 +754,55 @@ results a singleton; otherwise, the element is firstly appended to the rest of t
 construct the first element with this recusive appending result to get the final list.
 
 \subsubsection{Mutate element at given position}
+
+Although we have defined random access algorithm $getAt(L, i)$, we can't just mutate the element returned
+by this function in a sense of purely functional settings. It's quite common to provide reference symantics
+in imperative programming languages and in some `almost' functional environment. Readers can refer to \cite{mittype}
+for detail. For example, the following ISO C++ example returns a reference instead of a value in indexing program.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<typename T>
+T& getAt(List<T>* xs, int n) {
+  while (n--)
+    xs = xs->next;
+  return xs->key;
+}
+\end{lstlisting}
+
+So that we can use this function like this to mutate the 2nd element.
+
+\begin{lstlisting}
+List<int>* xs = cons(1, cons(2, cons<int>(3, NULL)));
+getAt(xs, 1) = 4;
+\end{lstlisting}
+
+In an impure functional environment, such as Scheme/Lisp, to set the $i$-th element to a given value can
+be implemented by mutate the referenced cell directly as well.
+
+\lstset{language=Lisp}
+\begin{lstlisting}
+(define (set-at! lst i x)
+  (if (= i 0)
+      (set-car! lst x)
+      (set-at! (cdr lst) (- i 1) x)))
+\end{lstlisting}
+
+This program first checks if the index $i$ is zero, if so, it mutate the first element of the list to
+given value $x$; otherwise, it deduces the index $i$ by one, and tries to mutate the rest of the 
+list at this new index with value $x$. This function doesn't return meaningful value. It is for use
+of side-effect. For instance, the following code mutates the 2nd element in a list.
+
+\begin{lstlisting}
+(define lst '(1 2 3 4 5))
+(set-at! lst 1 4)
+(display lst)
+
+(1 4 3 4 5)
+\end{lstlisting}
+
+TODO: define the pure version.
+$setAt(L, i, x)$ 
 
 \subsubsection{insertion}
 
