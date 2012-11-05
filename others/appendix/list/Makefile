@@ -1,6 +1,7 @@
 HEADER = 
 SOURCE = list-en.tex
 OBJECT = list-en
+OBJECT2 = list-cpptp-en
 TEX = latex
 
 .PHONY: all
@@ -28,6 +29,10 @@ pdf: $(OBJECT).dvi
 tex: image
 	latex $(OBJECT)
 	latex $(OBJECT)
+
+cpptp:
+	latex $(OBJECT2)
+	latex $(OBJECT2)
 
 html: image
 	htlatex.bat $(OBJECT) "html, imgdir:img/"
