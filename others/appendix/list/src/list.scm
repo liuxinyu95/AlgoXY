@@ -26,3 +26,7 @@
       (set-car! lst x)
       (set-at! (cdr lst) (- i 1) x)))
 
+(define (set-at lst i x)
+  (if (= i 0)
+      (cons x (cdr lst))
+      (cons (car lst) (set-at (cdr lst) (- i 1) x))))

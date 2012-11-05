@@ -53,7 +53,7 @@ provides a quick reference. All operations listed in this appendix are not only
 described in equations, but also implemented in both functional programming languages
 as well as imperative languages examples. We also provide a special type of
 implementation in C++ template meta programming similar to \cite{moderncxx}
-for interesting.
+for interesting in next appendix.
 
 Besides the elementary list operations, this appendix also contains explaination of 
 some high order function concepts such as mapping, folding etc.
@@ -262,34 +262,6 @@ length (x:xs) = 1 + length xs
   (if (null? lst) 0 (length (cdr lst))))
 \end{lstlisting}
 
-The length calculation can also be implemented in C++ template meta programming in purely recursive
-manner.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename L> struct Length {
-  static const int value = 1 + Length<typename L::rest>::value;
-};
-
-template<> struct Length<Empty> {
-  static const int value = 0;
-};
-\end{lstlisting}
-
-The edge case is written behind the recursive one, that the length value of empty list is 0.
-In recursive case, \verb|List::rest| accesses the sub-list of \verb|L|, and \verb|Length<L::rest>::value|
-will be recursively calulcated by the C++ compiler. Note that the \verb|typename| keywords should
-be inserted before \verb|L::res| to indicate it is a type. After that we add it by 1 as the final
-value of the length.
-
-The \verb|Length| calculator can be used as below.
-
-\begin{lstlisting}
-cout<<Length<A>::value;
-\end{lstlisting}
-
-Where list type \verb|A| is defined in previous section.
-
 How to testing if two lists are identical is left as exercise to the reader.
 
 \subsection{indexing}
@@ -356,19 +328,6 @@ all out-of-bound cases with un-matched pattern error. Thus if $i > |L|$, we fina
 a edge case that the index is $i-|L|$, while the list is empty; On the other hand, if $i < 0$,
 minus it by one makes it even farther away from 0. We finally end at the same error that the index 
 is some negative, while the list is empty;
-
-For interesting purpose, here are the C++ template meta programming indexing algorithm.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename L, int i> struct GetAt {
-  static const int value = GetAt<typename L::rest, i-1>::value;
-};
-
-template<typename L> struct GetAt<L, 0> {
-  static const int value = L::first;
-};
-\end{lstlisting}
 
 The indexing algorithm takes time proportion to the value of index, which is bound to $O(N)$
 linear time. 
@@ -481,29 +440,6 @@ Where \verb|[x]| matches the singleton list contains only one element, while \ve
 and the underscore (\verb|_|) is used to indicate that we don't care about the element. For the detail of pattern matching,
 readers can refer to any Haskell tutorial materials, such as \cite{learn-haskell}.
 
-The $last()$ and $init()$ algorithms can also be implemented in C++ template meta programming.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename L> struct Last {
-  static const int value = Last<typename L::rest>::value;
-};
-
-template<int x> struct Last<List<x, Empty> > {
-  static const int value = x;
-};
-
-template<typename L> struct Init {
-  typedef List<L::first, typename Init<typename L::rest>::result> result;
-};
-
-template<int x> struct Init<List<x, Empty> > {
-  typedef Empty result;
-};
-\end{lstlisting}
-
-Note that the edge case is about the singleton list, which can be specified as \verb|List<x, Empty>|.
-
 \subsection{Reverse indexing}
 Reverse indexing is a general case for $last()$, finding the $i$-th element in a singly-linked list
 with the minimized memory spaces is interesting, and this problem is often used in technical interview
@@ -614,36 +550,6 @@ atR xs i = get xs (drop i xs) where
 \end{lstlisting}
 
 Here we use dummy variable \verb|_| as the placeholders for components we don't care.
-It's possible to implement the same algorithm in C++ template meta programing as well.
-Since $getAtR()$ just wraps most of the work in $examine$, we can define an inner
-class template to simulate this fact.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename L, int i> struct GetAtR {
-  template<typename A, typename B> struct Get {
-    static const int value = Get<typename A::rest, typename B::rest>::value;
-  };
-
-  template<typename A, int x> struct Get<A, List<x, Empty> > {
-    static const int value = A::first;
-  };
-
-  static const int value = Get<L, typename Drop<i, L>::result>::value;
-};
-\end{lstlisting}
-
-Where class template \verb|Drop<n, L>| is defined by recursively accessing the rest sub-list $n$ times.
-
-\begin{lstlisting}
-template<int n, typename L> struct Drop {
-  typedef typename Drop<n-1, typename L::rest>::result result;
-};
-
-template<typename L> struct Drop<0, L> {
-  typedef L result;
-};
-\end{lstlisting}
 
 \subsection{Mutating}
 
@@ -736,23 +642,6 @@ List<T>* append(List<T>* xs, T x) {
 }
 \end{lstlisting}
 
-For purely interesting purpose, the C++ template meta programming example is given for appending algorithm
-as well.
-
-\begin{lstlisting}
-template<typename L, int x> struct Append {
-  typedef List<L::first, typename Append<typename L::rest, x>::result> result;
-};
-
-template<int x> struct Append<Empty, x> {
-  typedef List<x, Empty> result;
-};
-\end{lstlisting}
-
-The edge case is written behind the recursive case as same. That appending an element x to empty list
-results a singleton; otherwise, the element is firstly appended to the rest of the list, and we
-construct the first element with this recusive appending result to get the final list.
-
 \subsubsection{Mutate element at given position}
 
 Although we have defined random access algorithm $getAt(L, i)$, we can't just mutate the element returned
@@ -801,8 +690,40 @@ of side-effect. For instance, the following code mutates the 2nd element in a li
 (1 4 3 4 5)
 \end{lstlisting}
 
-TODO: define the pure version.
-$setAt(L, i, x)$ 
+In order to realize a purely functional $setAt(L, i, x)$ algorithm, we need avoid directly mutating the cell,
+but creating a new one:
+
+\begin{itemize}
+\item Edge case: If we want to set the value of the first element ($i = 0$), we construct a new list, with the
+new value and the sub-list of the previous one;
+\item Othewise, we construct a new list, with the previous first element, and a new sub-list, which has the $i-1$-th
+element set with the new value.
+\end{itemize}
+
+This recurisve description can be formalized by the following equation.
+
+\be
+setAt(L, i, x) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  cons(x, L') & i == 0 \\
+  cons(first(L), setAt(L', i-1, x)) & otherwise
+  \end{array}
+\right.
+\ee
+
+Comparing the below Scheme/Lisp implementation to the previous one reveals the difference from imperative mutating.
+
+\lstset{language=Lisp}
+\begin{lstlisting}
+(define (set-at lst i x)
+  (if (= i 0)
+      (cons x (cdr lst))
+      (cons (car lst) (set-at (cdr lst) (- i 1) x))))
+\end{lstlisting}
+
+Here we skip the error handling for out-of-bound error etc. again. Similar to the random access algorithm, the
+performance is bound to linear time, as traverse is need to locate the position to set the value.
 
 \subsubsection{insertion}
 
@@ -827,7 +748,6 @@ not linear $O(N)$ time. Feel free to choose your favorite imperative programming
 example source code along with this book before you try it.
 \item With `tail' field augmented to list, for which list operations this field must be updated? How it affects to the
 performance?
-\item If you know about C++ template programming, write a program to print a list.
 \end{itemize}
 \end{Exercise}
 
