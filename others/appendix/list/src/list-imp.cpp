@@ -123,6 +123,17 @@ T& getAtR(List<T>* xs, int i) {
   return p->key;
 }
 
+template<typename T>
+List<T>* insert(List<T>* xs, int i , int x) {
+  List<T> *head, *prev;
+  if (i == 0)
+    return cons(x, xs);
+  for(head = xs; i; --i, xs = xs->next)
+    prev = xs;
+  prev->next = cons(x, xs);
+  return head;
+}
+
 /* Testing purpose only*/
 template<typename T>
 void print_lst(List<T>* xs) {
@@ -136,7 +147,7 @@ int main(int, char**) {
   List<int>* lst = cons(1, cons(2, cons<int>(3, NULL)));
   printf("length of empty = %d, len([1, 2, 3]) = %d\n", length<int>(0), length(lst));
   lst = append(lst, 4);
-  printf("append 4 ==>");
+  printf("append 4 ==>"); /*1, 2, 3, 4*/
   print_lst(lst);
   n = length(lst);
   for(i = 0; i < n; ++i)
@@ -145,7 +156,11 @@ int main(int, char**) {
   print_lst(init(lst));
   for(i = 0; i < n; ++i)
     printf("reverse(lst)[%d] = %d%s", i, getAtR(lst, i), i == n-1 ? "\n" : ", ");
-  getAt(lst, 1) = 4;
+  getAt(lst, 1) = 4; /*1,4,3,4*/
+  print_lst(lst);
+  lst = insert(lst, 0, 0); /*0, 1, 4, 3, 4*/
+  lst = insert(lst, 2, 2); /*0, 1, 2, 4, 3, 4*/
+  lst = insert(lst, length(lst), 5); /*0, 1, 2, 4, 3, 4, 5*/
   print_lst(lst);
   delete lst;
 }
