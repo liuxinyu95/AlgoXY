@@ -128,10 +128,38 @@ List<T>* insert(List<T>* xs, int i , int x) {
   List<T> *head, *prev;
   if (i == 0)
     return cons(x, xs);
-  for(head = xs; i; --i, xs = xs->next)
+  for (head = xs; i; --i, xs = xs->next)
     prev = xs;
   prev->next = cons(x, xs);
   return head;
+}
+
+/* Ordered insertion*/
+template<typename T>
+List<T>* insert(T x, List<T>* xs) {
+  List<T> *head;
+  if (!xs || x < xs->key)
+    return cons(x, xs);
+  for (head = xs; xs->next && xs->next->key < x; xs = xs->next);
+  xs->next = cons(x, xs->next);
+  return head;
+}
+
+template<typename T>
+List<T>* isort(List<T>* xs) {
+  List<T>* ys = NULL;
+  for(; xs; xs = xs->next)
+    ys = insert(xs->key, ys);
+  return ys;
+}
+
+/* imperative folding form right */
+template<typename T>
+List<T>* from(const T* xs, int n) {
+  List<T>* ys = NULL;
+  while(--n > 0)
+    ys = cons(xs[n], ys);
+  return ys;
 }
 
 /* Testing purpose only*/
@@ -146,21 +174,38 @@ int main(int, char**) {
   int i, n;
   List<int>* lst = cons(1, cons(2, cons<int>(3, NULL)));
   printf("length of empty = %d, len([1, 2, 3]) = %d\n", length<int>(0), length(lst));
+
   lst = append(lst, 4);
   printf("append 4 ==>"); /*1, 2, 3, 4*/
   print_lst(lst);
+
   n = length(lst);
   for(i = 0; i < n; ++i)
     printf("lst[%d] = %d%s", i, getAt(lst, i), i == n-1 ? "\n" : ", ");
+
   printf("last(lst) = %d, init(lst) = ", last(lst));
   print_lst(init(lst));
+
   for(i = 0; i < n; ++i)
     printf("reverse(lst)[%d] = %d%s", i, getAtR(lst, i), i == n-1 ? "\n" : ", ");
+
   getAt(lst, 1) = 4; /*1,4,3,4*/
   print_lst(lst);
+
   lst = insert(lst, 0, 0); /*0, 1, 4, 3, 4*/
   lst = insert(lst, 2, 2); /*0, 1, 2, 4, 3, 4*/
   lst = insert(lst, length(lst), 5); /*0, 1, 2, 4, 3, 4, 5*/
   print_lst(lst);
+
+  const int a[] = {3, 1, 2, 4, 0};
+  List<int>* xs = from(a, sizeof(a)/sizeof(a[0]));
+  List<int>* ys = isort(xs);
+  printf("sort: \n");
+  print_lst(xs);
+  printf("sorted: \n");
+  print_lst(ys);
+
+  delete xs;
+  delete ys;
   delete lst;
 }

@@ -798,7 +798,7 @@ List<T>* insert(List<T>* xs, int i , int x) {
   List<T> *head, *prev;
   if (i == 0)
     return cons(x, xs);
-  for(head = xs; i; --i, xs = xs->next)
+  for (head = xs; i; --i, xs = xs->next)
     prev = xs;
   prev->next = cons(x, xs);
   return head;
@@ -809,12 +809,12 @@ If the list $L$ is soreted, that is for any position $0 \leq i \leq j \leq N$, w
 We can design an algorithm which inserts a new element $x$ to the list, so that the result list is still sorted.
 
 \be
-insert(L, x) = \left \{
+insert(x, L) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   cons(x, \Phi) & L = \Phi \\
   cons(x, L) & x < l_0 \\
-  cons(l_0, insert(L', x)) & otherwise
+  cons(l_0, insert(x, L')) & otherwise
   \end{array}
 \right.
 \ee
@@ -833,16 +833,50 @@ ordering.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-insert [] y = [y]
-insert (x:xs) y = if y <= x then y:x:xs else x : insert xs y
+insert y [] = [y]
+insert y (x:xs) = if y <= x then y:x:xs else x : insert y xs
 \end{lstlisting}
 
 Since the algorithm need compare the elements one by one, it's also a linear time algorithm. 
 
-TODO: Add imperative content.
+This ordered insertion algorithm can be designed in imperative manner, for example like the following pseudo code.
 
-With insertion defined, it's
-possible to implement insertion-sort by repeatedly inserting elements to an empty list.
+\begin{algorithmic}
+\Function{Insert}{$x, L$}
+  \If{$L = \Phi \lor x <$ \Call{First}{$L$}}
+    \State \Return \Call{Cons}{$x, L$}
+  \EndIf
+  \State $H \gets L$
+  \While{\Call{Rest}{$L$} $\neq \Phi \land $ \textproc{First}(\Call{Rest}{$L$}) $< x$}
+    \State $L \gets $ \Call{Rest}{$L$}
+  \EndWhile
+  \State \Call{Rest}{$L$} $\gets$ \textproc{Cons}($x$, \Call{Rest}{$L$})
+  \State \Return $H$
+\EndFunction
+\end{algorithmic}
+
+If either the list is empty, or the new element to be inserted is less than the first element in the list, we
+can just put this new element as the new first one; Otherwise, we record the head, then traverse the list till 
+a position, where $x$ is less than the rest of the sub-list, and put $x$ in that position. Compare this one
+to the `insert at' algorithm shown previously, the variable $p$ uses to point to the previous position during
+traversing is omitted by examine the sub-list instead of current list. The following ISO C++ program implements
+this algorithm.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<typename T>
+List<T>* insert(T x, List<T>* xs) {
+  List<T> *head;
+  if (!xs || x < xs->key)
+    return cons(x, xs);
+  for (head = xs; xs->next && xs->next->key < x; xs = xs->next);
+  xs->next = cons(x, xs->next);
+  return head;
+}
+\end{lstlisting}
+
+With linear ordered insertion defined, it's possible to implement quadratic time insertion-sort by repeatedly 
+inserting elements to an empty list as formalized in this equation.
 
 \be
 sort(L) = \left \{
@@ -853,6 +887,43 @@ sort(L) = \left \{
   \end{array}
 \right.
 \ee
+
+The corresponding Haskell program is given as below.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+isort [] = []
+isort (x:xs) = insert x (isort xs)
+\end{lstlisting}
+
+And the imperative linked-list base insertion sort is described in the following.
+
+\begin{algorithmic}
+\Function{Sort}{$L$}
+  \State $L' \gets \Phi$
+  \While{$L \neq \Phi$}
+    \State $L' \gets$ \textproc{Insert}(\Call{First}{$L$}, $L'$)
+    \State $L \gets$ \Call{Rest}{$L$}
+  \EndWhile
+  \State \Return $L'$
+\EndFunction
+\end{algorithmic}
+
+The ISO C++ version of linkied-list insertion sort is list like this.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<typename T>
+List<T>* isort(List<T>* xs) {
+  List<T>* ys = NULL;
+  for(; xs; xs = xs->next)
+    ys = insert(xs->key, ys);
+  return ys;
+}
+\end{lstlisting}
+
+There is also a dedicated chapter discusses insertion sort in this book. Please refer to that chapter for
+more details including performance analysis and fine-tuning.
 
 \subsection{deletion}
 
