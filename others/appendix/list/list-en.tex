@@ -963,14 +963,14 @@ with the following equation.
 delete(L, i) =  \left \{
   \begin{array}
   {r@{\quad:\quad}l}
-  Rest(L) & i = 0 \\
+  L' & i = 0 \\
   \Phi & L = \Phi \\
   cons(l_0, delete(L', i-1))
   \end{array}
 \right.
 \ee
 
-The corresponding Haskell example program is given below.
+Where $L' = rest(L), l_0 = first(L)$. The corresponding Haskell example program is given below.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -982,8 +982,87 @@ del (x:xs) i = x : del xs (i-1)
 This is a linear time algorithm as well, and there are also other alteratives for implementation, for example, we can 
 first split the list at position $i-1$, to get 2 sub lists $L_1$ and $L_2$, then we can concat $L_1$ and $L_2'$.
 
-TODO: imperative del at.
+The 'delete at' algorithm can also be realized imperatively, that we traverse to the position by looping:
 
+\begin{algorithmic}
+\Function{Delete}{$L, i$}
+  \If{$i = 0$}
+    \State \Return \Call{Rest}{$L$}
+  \EndIf
+  \State $H \gets L$
+  \State $p \gets L$
+  \While{$i \neq 0$}
+    \State $i \gets i - 1$
+    \State $p \gets L$
+    \State $L \gets $ \Call{Rest}{$L$}
+  \EndWhile
+  \State \Call{Rest}{$p$} $\gets$ \Call{Rest}{$L$}
+  \State \Return $H$
+\EndFunction
+\end{algorithmic}
+
+Different from the recursive approach, The error handling for out-of-bound is skipped. Besides that the algorithm 
+also skips the handling of resouce releasing which is neccessary in environments without GC (Gabbage collection).
+Below ISO C++ code for example, explicitly releases the node to be deleted.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<typename T>
+List<T>* del(List<T>* xs, int i) {
+  List<T> *head, *prev;
+  if (i == 0)
+    head = xs->next;
+  else {
+    for (head = xs; i; --i, xs = xs->next)
+      prev = xs;
+    prev->next = xs->next;
+  }
+  xs->next = NULL;
+  delete xs;
+  return head;
+}
+\end{lstlisting}
+
+The `find and delete' symantic can further be represented in two ways, one is just find the first occurrence of a
+given value, and delete this element from the list; The other is to find {\em ALL} occurrent of this value, and 
+delete these elements. The later is more general case, and it can be achieved by a minor modification of the
+former. We left the `find all and delete' algorithm as an exercise to the reader.
+
+The algorithm can be designed exactly as the term 'find and delete' but not 'find then delete', that the finding
+and deleting are processed in one pass traversing.
+
+\begin{itemize}
+\item If the list to be deal with is empty, the result is obviously empty;
+\item If the list isn't empty, we examine the first element of the list, if it is identical to the given value, the result is the
+sub list;
+\item Otherwise, we keep the first element, and recursively find and delete the element in the sub list with the given value.
+The final result is a list constructed with the kept first element, and the recursive deleting result.
+\end{itemize}
+
+This algorithm can be formalized by the following equation.
+
+\be
+delete(L, x) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & L = \Phi \\
+  L' & l_0 = x \\
+  cons(l_0, delete(L', x)) & otherwise
+  \end{array}
+\right.
+\ee
+
+This algorithm is bound to linear time as it traverse the list to find and delete element.
+Translating this equation to Haskell program yields the below code, note that, the first edge case is handled
+by pattern-matching the empty list; while the other two cases are further processed by if-else expression.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+del [] _ = []
+del (x:xs) y = if x == y then xs else x : del xs y
+\end{lstlisting}
+
+TODO: Add imperative find-del.
 
 \subsection{concatenate}
 
@@ -1004,6 +1083,7 @@ example source code along with this book before you try it.
 performance?
 \item Handle the out-of-bound case in insertion as appending.
 \item Write the insertion sort algorithm by only using less than ($<$).
+\item Design and implement the algorithm that find all the occurrence of a given value and delete them from the list.
 \end{itemize}
 \end{Exercise}
 
