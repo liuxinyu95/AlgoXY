@@ -134,7 +134,7 @@ List<T>* insert(List<T>* xs, int i , int x) {
   return head;
 }
 
-/* Ordered insertion*/
+/* Orderred insertion*/
 template<typename T>
 List<T>* insert(T x, List<T>* xs) {
   List<T> *head;
@@ -145,12 +145,52 @@ List<T>* insert(T x, List<T>* xs) {
   return head;
 }
 
+/* Insertion sort by using orderred insertion */
 template<typename T>
 List<T>* isort(List<T>* xs) {
   List<T>* ys = NULL;
   for(; xs; xs = xs->next)
     ys = insert(xs->key, ys);
   return ys;
+}
+
+/* 
+ * delete element at position i, assume 0<= i < N, where N is the length
+ * the out-of-bound error isn't handled.
+ */
+template<typename T>
+List<T>* delAt(List<T>* xs, int i) {
+  List<T> *head, *prev;
+  if (i == 0)
+    head = xs->next;
+  else {
+    for (head = xs; i; --i, xs = xs->next)
+      prev = xs;
+    prev->next = xs->next;
+  }
+  xs->next = NULL;
+  delete xs;
+  return head;
+}
+
+template<typename T>
+List<T>* del(List<T>* xs, T x) {
+  List<T> *head, *prev;
+  if (!xs)
+    return xs;
+  if (xs->key == x)
+    head = xs->next;
+  else {
+    for (head = xs; xs && xs->key != x; xs = xs->next)
+      prev = xs;
+    if (xs)
+      prev->next = xs->next;
+  }
+  if (xs) {
+    xs->next = NULL;
+    delete xs;
+  }
+  return head;
 }
 
 /* imperative folding form right */
@@ -204,6 +244,18 @@ int main(int, char**) {
   print_lst(xs);
   printf("sorted: \n");
   print_lst(ys);
+
+  lst = delAt(lst, 3); /*0 .. 5*/
+  lst = delAt(lst, 0); /*1 .. 5*/
+  print_lst(lst);
+
+  lst = del(lst, 1); /*2..5*/
+  lst = insert(lst, 0, -1);
+  lst = insert(lst, 3, -1);
+  lst = del(lst, -1);
+  lst = del(lst, -1);
+  lst = del(lst, -2);
+  print_lst(lst);   /*2..5*/
 
   delete xs;
   delete ys;
