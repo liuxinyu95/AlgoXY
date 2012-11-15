@@ -193,11 +193,23 @@ List<T>* del(List<T>* xs, T x) {
   return head;
 }
 
+template<typename T>
+List<T>* concat(List<T>* xs, List<T>* ys) {
+  List<T>* head;
+  if (!xs)
+    return ys;
+  if (!ys)
+    return xs;
+  for (head = xs; xs->next; xs = xs->next);
+  xs->next = ys;
+  return head;
+}
+
 /* imperative folding form right */
 template<typename T>
 List<T>* from(const T* xs, int n) {
   List<T>* ys = NULL;
-  while(--n > 0)
+  while(--n >= 0)
     ys = cons(xs[n], ys);
   return ys;
 }
@@ -256,6 +268,9 @@ int main(int, char**) {
   lst = del(lst, -1);
   lst = del(lst, -2);
   print_lst(lst);   /*2..5*/
+
+  lst = concat(lst, from(a, sizeof(a)/sizeof(a[0])));
+  print_lst(lst);  /*2..5, 3, 1, 2, 4, 0*/
 
   delete xs;
   delete ys;
