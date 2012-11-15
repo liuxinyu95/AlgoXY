@@ -121,6 +121,13 @@ List<T> append(List<T> lst, T x) {
   return make(lst.head, n);
 }
 
+/* Concatenation with the help of tail pointer, O(1) constant time. */
+template<typename T>
+List<T> concat(List<T> lst1, List<T> lst2) {
+  lst1.tail->next = lst2.head;
+  return lst1;
+}
+
 /*
  * Access the last element, O(1) with the help of tail pointer.
  * Suppose the input list isn't empty. 
@@ -162,5 +169,9 @@ int main(int, char**) {
     printf("lst[%d] = %d%s", i, getAt(lst, i), i == n-1 ? "\n" : ", ");
   printf("last(lst) = %d, init(lst) = ", last(lst));
   print_lst(init(lst));
+
+  lst = concat(lst, cons(5, cons(6, cons(7, empty<int>()))));
+  print_lst(lst);
+
   release(lst);
 }
