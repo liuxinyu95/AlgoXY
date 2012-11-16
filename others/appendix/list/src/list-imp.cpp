@@ -205,6 +205,35 @@ List<T>* concat(List<T>* xs, List<T>* ys) {
   return head;
 }
 
+template<typename T>
+T sum(List<T>* xs) {
+  T s;
+  for (s = 0; xs; xs = xs->next)
+    s += xs->key;
+  return s;
+}
+
+template<typename T>
+T product(List<T>* xs) {
+  T p;
+  for (p = 1; xs; xs = xs->next)
+    p *= xs->key;
+  return p;
+}
+
+template<typename T>
+List<T>* range(T start, T step, T to) {
+  List<T>* xs;
+  for (xs = NULL; start <= to; start += step)
+    xs = cons(start, xs);
+  return xs;
+}
+
+template<typename T>
+List<T>* range(T start, T to) {
+  return range(start, 1, to);
+}
+
 /* imperative folding form right */
 template<typename T>
 List<T>* from(const T* xs, int n) {
@@ -271,6 +300,10 @@ int main(int, char**) {
 
   lst = concat(lst, from(a, sizeof(a)/sizeof(a[0])));
   print_lst(lst);  /*2..5, 3, 1, 2, 4, 0*/
+
+  delete xs;
+  xs = range(1, 5);
+  printf("sum [1..5] = %d, product [1..5] = %d\n", sum(xs), product(xs));
 
   delete xs;
   delete ys;
