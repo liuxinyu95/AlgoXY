@@ -221,6 +221,8 @@ T product(List<T>* xs) {
   return p;
 }
 
+/* Auxiliar functions */
+
 template<typename T>
 List<T>* range(T start, T step, T to) {
   List<T>* xs;
