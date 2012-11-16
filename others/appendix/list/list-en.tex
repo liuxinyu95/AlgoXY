@@ -917,7 +917,8 @@ the list to be sorted, and orderred insert them to the result list.
 Note that, at any time during the loop, the result list is kept sorted. There is
 a major difference between the recursive algorithm (formalized by the equation) and
 the procedural one (described by the pseudo code), that the former process the list
-from right, while the latter from left.
+from right, while the latter from left. We'll see in later section about `tail-recursion'
+how to eleminate this difference.
 
 The ISO C++ version of linkied-list insertion sort is list like this.
 
@@ -1210,6 +1211,7 @@ List<T>* concat(List<T>* xs, List<T>* ys) {
 
 \subsection{sum and product}
 
+\subsubsection{Recursive sum and product}
 It's common to calculate the sum or product of a numveric list of numbers. They are quite similar in terms of
 algorithm structure. We'll see how to abstract such structure in later section.
 
@@ -1258,6 +1260,83 @@ product (x:xs) = x * product xs
 
 Both algorithm traverse the whole list during calculation, so they are bound to $O(N)$ linear time.
 
+\subsubsection{Tail recursion}
+Note that both sum and product algorithms actually compute the result from right to left. We can change them
+to the normal way, that calculated the {\em accumulated} result from left to right. For example with sum,
+the result is actually accumulated from 0, and adds element one by one to this accumulated result till
+all the list is consumed. Such approach can be described as the following.
+
+When accumulate result of a list by summing:
+\begin{itemize}
+\item If the list is empty, we are done and return the accumulated result;
+\item Otherwise, we take the first element from the list, accumulate it to the result by summing, and go one
+process the rest of the list.
+\end{itemize}
+
+Formalize this idea to equation yields another version of sum algorithm.
+
+\be
+sum'(A, L) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  A & L = \Phi \\
+  sum'(A + l_0, L') & otherwise
+  \end{array}
+\right.
+\ee
+
+And sum can be implemented by calling this function by passing start value 0 and the list as arguments.
+\be
+sum(L) = sum'(0, L)
+\ee
+
+The interesting point of this approach is that, besides it calculates the result in a normal order from
+left to right; by observing the equation of $sum'(A, L)$, we found it needn't remember any intermediate
+results or states when perform recursion. All such states are either passed as arguments ($A$ for example)
+or can be dropped (previous elements of the list for example). So in a practical implementation,
+such kind of recursive function can be optimized by eliminating the recursion at all.
+
+We call such kind of function `tail recursion', and the optimization of removing recursion in this case
+'tail recursioni optimization'\cite{wiki-tail-call} because the recursion happens as the final actions
+in such function. The advantage of tail recursion optimazation is that the performance can be greately
+improved, so that we can avoid the issue of stack overflow in deep recursion algorithms such as sum and
+product.
+
+Changing the sum and product Haskell program to tail-recursion manner gives the following modified
+program.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+sum = sum' 0 where
+    sum' acc [] = acc
+    sum' acc (x:xs) = sum' (acc + x) xs
+
+product = product' 1 where
+    product' acc [] = acc
+    product' acc (x:xs) = product' (acc * x) xs
+\end{lstlisting}
+
+In previous section about insertion sort, we mentioned that the functional version sorts the element
+form right, this can also be modified to tail recursive realization.
+
+\be
+sort'(A, L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  A & L = \Phi \\
+  sort'(insert(l_0, A), L') & otherwise
+  \end{array}
+\right.
+\ee
+
+The the sorting algorithm is just call this function by passing empty list as the accumulator argument.
+\be
+sort(L) = sort'(\Phi, L)
+\ee
+
+Implementing this tail recursive algorithm to real program is left as exercise to the reader.
+
+\subsubsection{Imperative sum and product}
 The imperative sum and product are just applying plus and times while traversing the list.
 
 \begin{algorithmic}
@@ -1306,6 +1385,48 @@ product of $\{1, 2, ..., N\}$ that $fact(N) = product([1..N])$.
 
 \subsection{maximum and minimum}
 
+Another very useful use case is to get the minimum or maximum element of a list. We'll see that their algorithm
+structures are quite similar again. We'll generalize this kind of feature and introduce about higher level abstraction
+in later section. For both maximum and minimum algorithmis, we assume that the given list isn't empty.
+
+In order to find the minimum element in a list.
+
+\begin{itemize}
+\item If the list contains only one element, (a singleton list), the minimum element is this one;
+\item Otherwise, we can firstly find the minimum element of the rest list, then compare the first element with this
+intermediate result to determine the final minimum value.
+\end{itemize}
+
+This algorithm can be formalized by the following equation.
+
+\be
+min(L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  l_0 & L = \{ l_0 \} \\
+  l_0 & l_0 \leq min(L') \\
+  min(L') & otherwise
+  \end{array}
+\right.
+\ee
+
+In order to get the maximum element instead of the minimum one, we can simply replace the $\leq$ comparison to $\geq$
+in the above equation.
+
+\be
+max(L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  l_0 & L = \{ l_0 \} \\
+  l_0 & l_0 \geq max(L') \\
+  max(L') & otherwise
+  \end{array}
+\right.
+\ee
+
+TODO: Accu
+An interesting point is that
+
 \begin{Exercise}
 \begin{itemize}
 \item Given two lists $L_1$ and $L_2$, design a algorithm $eq(L_1, L_2)$ to test if they are equal to each other.
@@ -1320,6 +1441,7 @@ performance?
 \item Handle the out-of-bound case in insertion as appending.
 \item Write the insertion sort algorithm by only using less than ($<$).
 \item Design and implement the algorithm that find all the occurrence of a given value and delete them from the list.
+\item Implement the insertion sort in tail recursive manner.
 \end{itemize}
 \end{Exercise}
 
@@ -1387,6 +1509,9 @@ Chris Okasaki. ``Purely Functional Data Structures''. Cambridge university press
 
 \bibitem{learn-haskell}
 Miran Lipovaca. ``Learn You a Haskell for Great Good! A Beginner's Guide''. No Starch Press; 1 edition April 2011, 400 pp. ISBN: 978-1-59327-283-8
+
+\bibitem{wiki-tail-call}
+Wikipedia. ``Tail call''. https://en.wikipedia.org/wiki/Tail\_call
 
 \end{thebibliography}
 
