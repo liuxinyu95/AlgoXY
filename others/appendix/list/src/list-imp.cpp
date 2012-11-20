@@ -221,6 +221,24 @@ T product(List<T>* xs) {
   return p;
 }
 
+template<typename T>
+T min(List<T>* xs) {
+  T x;
+  for (x = xs->key; xs; xs = xs->next)
+    if (xs->key < x)
+      x = xs->key;
+  return x;
+}
+
+template<typename T>
+T max(List<T>* xs) {
+  T x;
+  for (x = xs->key; xs; xs = xs->next)
+    if (x < xs->key)
+      x = xs->key;
+  return x;
+}
+
 /* Auxiliar functions */
 
 template<typename T>
@@ -306,6 +324,8 @@ int main(int, char**) {
   delete xs;
   xs = range(1, 5);
   printf("sum [1..5] = %d, product [1..5] = %d\n", sum(xs), product(xs));
+
+  printf("min(lst)=%d, max(lst)=%d\n", min(lst), max(lst));
 
   delete xs;
   delete ys;
