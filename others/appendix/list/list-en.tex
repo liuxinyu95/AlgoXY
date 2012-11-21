@@ -1548,10 +1548,152 @@ performance?
 \end{Exercise}
 
 \section{Transformation}
+In previous section, we list some basic operations for linked-list. In this section, we focus on the transformation
+algorithms for list. Some of them are corner stones of abstraction for functional programming. We'll show how to use
+list transformation to solve some interesting problems.
 
 \subsection{mapping and for-each}
 
+It's every-day programming routine that, we need output something as readible string. If we have a list of numbers, and
+we want to print the list to console like '3 1 2 5 4'. One option is to convert the numbers to strings, so that we
+can feed them to the printing function. One such trivial conversion program may like this.
+
+\be
+toStr(L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & L = \Phi \\
+  cons(str(l_0), toStr(L')) & otherwise
+  \end{array}
+\right.
+\label{eq:tostr}
+\ee
+
+The other example is that we have a dictionary which is actually a list of words groupped in their initial letters, 
+for example: [[a, an, another, ... ], [bat, bath, bool, bus, ...], ..., [zero, zoo, ...]]. We want to know the frequency
+of them in English, so that we process some English text, for example, `Hamlet' or the 'Bible' and augment each of the word
+with a number of occurrence in these texts. Now we have a list like this:
+
+\begin{verbatim}
+[[(a, 1041), (an, 432), (another, 802), ... ], 
+ [(bat, 5), (bath, 34), (bool, 11), (bus, 0), ...], 
+ ..., 
+ [(zero 12), (zoo, 0), ...]]
+\end{verbatim}
+
+If we want to find which word in each initial is used most, how to write a program to work this problem out?
+The output of a list of words that every one has the most occurrence in the group, which is categoriezed by initial, something like `[a, but, can, ...]'.
+We actually need a program which can transfer a list of group of augumented words into a list of words.
+
+Let's work it out step by step. First, we need define a function, which takes a list of word - number pairs, and find the
+word has the biggest number agumented. Sorting is overkill. What we need is just a speical $max'()$ function, Note that the 
+$max()$ function developed in previous section can't be used directly. Suppose for a pair of values $p = (a, b)$, function
+$fst(p) = a$, and $snd(p) = b$ are accessors to extract the values, $max'()$ can be defined as the following.
+
+\be
+max'(L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  l_0 & |L| = 1 \\
+  l_0 & snd(max'(L')) < snd(l_0) \\
+  max'(L') & otherwise
+  \end{array}
+\right.
+\ee
+
+Alternatively, we can define a dedicated function to compare word-number of occurrence pair, and generalize the
+$max()$ function by passing a comparator.
+
+\be
+less(p_1, p_2) = snd(p_1) < snd(p_2)
+\ee
+
+\be
+maxBy(cmp, L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  l_0 & |L| = 1 \\
+  l_0 & cmp(l_0, maxBy(cmp, L')) \\
+  maxBy(cmp, L') & otherwise
+  \end{array}
+\right.
+\ee
+
+Then $max'()$ is just a special case of $maxBy()$ with the comparator function compareing on the second value in a pair.
+
+\be
+max'(L) = maxBy(less, L)
+\ee
+
+Here we write all functions in purely recursive way, they can be modified in tail call manner. This is left as exercise
+to the reader.
+
+With $max'()$ function defined, it's possible to complete the solution by processing the whole list.
+
+\be
+solve(L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & L = \Phi \\
+  cons(fst(max'(l_0)), solve(L')) & otherwise
+  \end{array}
+\right.
+\label{eq:solve}
+\ee
+
+Compare the $solve()$ function in (\ref{eq:solve}) and $toStr()$ function in (\ref{eq:tostr}), reveals very similiar
+algorithm structure. although they targeted on very different problems, and one is trivial while the other is a bit
+complex.
+
+The structure of $toStr()$ applies the function $str()$ which can turn a number into string on every element in the list;
+while $sovle()$ fist applies $max'()$ function to every element (which is actually a list of pairs), then applies $fst()$
+function, which essentially turn a list of pairs into a string. It's not hard to abstract such common structures like
+the following equation, which is called as {\em mapping}.
+
+\be
+map(f, L) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & L = \Phi \\
+  cons(f(l_0)), map(f, L')) & otherwise
+  \end{array}
+\right.
+\ee
+
+Because map takes a `converter' function $f$ as argument, it's called a kind of high-order function. In functional
+programming environment such as Haskell, mapping can be implemented just like the above equation.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+map :: (a->b)->[a]->[b]
+map _ [] = []
+map f (x:xs) = f x : map f xs
+\end{lstlisting}
+
+The two concrete cases we discussed above can all be represented in high order mapping.
+
+\[
+\begin{array}{l}
+toStr  = map \quad str \\
+solve = map \quad (fst \cdot max')
+\end{array}
+\]
+
+Where $f \cdot g$ means function composing, that we first apply $g$ then apply $f$. Note that we use Curried form
+to omit the argument $L$.
+
+TODO: Add imperative mapping.
+
+TODO: Add for-each
+
 \subsection{reverse}
+
+\begin{Exercise}
+\begin{itemize}
+\item Implement the algorithm to find the maximum element in a list of pair in tail call approach in your favorite programming
+language.
+\end{itemize}
+\end{Exercise}
 
 \section{Extract sub-lists}
 
