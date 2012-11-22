@@ -1679,12 +1679,81 @@ solve = map \quad (fst \cdot max')
 \end{array}
 \]
 
-Where $f \cdot g$ means function composing, that we first apply $g$ then apply $f$. Note that we use Curried form
-to omit the argument $L$.
+Where $f \cdot g$ means function composing, that we first apply $g$ then apply $f$. For instance
+function $h(x) = f(g(x))$ can be represented as $h = f \cdot g $, reading like function $h$ is 
+composed by $f$ and $g$. Note that we use Curried form to omit the argument $L$ for brevity. 
+Informally speaking, If we feed a function which needs 2 arguments, for instance $f(x, y) = z$
+with only 1 argument, the result turns to be a function which need 1 argument. For instance,
+if we feed $f$ with only argument $x$, it turns to be a new function take one argument $y$, 
+defined as $g(y) = f(x, y)$, or $g = f x$. Note that $x$ isn't a free variable any more, 
+as it is bound to a value. Reader can refer to any book about functional programming
+for details about function composing and Currying.
 
-TODO: Add imperative mapping.
+Mapping can also be realized imperatively. We can applying the
+function while traverse the list, and construct the new list from left to right.
+Since that the new element is appendded to the result list, we can track the tail
+position to achieve constant time appending, so th mapping algorithms is linear in
+terms of the passed in function.
+
+\begin{algorithmic}
+\Function{Map}{$f, L$}
+  \State $L' \gets \Phi$
+  \State $p \gets \Phi$
+  \While{$L \neq \Phi$}
+    \If{$p = \Phi$}
+      \State $p \gets$ \textproc{Cons}($f($ \Call{First}{$L$} $), \Phi$)
+      \State $L' \gets p$
+    \Else
+      \State \Call{Next}{$p$} $\gets$ \textproc{Cons}($f($ \Call{First}{$L$} $), \Phi$)
+      \State $p \gets$ \Call{Next}{$p$}
+    \EndIf
+    \State $L \gets$ \Call{Next}{$L$}
+  \EndWhile
+  \State \Return $L'$
+\EndFunction
+\end{algorithmic}
+
+Because It's a bit complex to annotate the type of the passed-in function in ISO C++, as it
+envolved some detailed language specific features. See \cite{sgi-stl-transform} for detail. 
+In fact ISO C++ provides the very same mapping concept as in \verb|std::transform|. However, 
+it needs the reader have knowledge of function object, iterator etc, which is out of the
+scope of this book. Reader can refer to any ISO C++ STL materials for detail.
+
+For brevity purpose, we switch to Python programming language for example code. So that the type inference
+can be avoid in compile time. The definition of a simple singly linked-list in Python is give as the 
+following.
+
+\lstset{language=Python}
+\begin{lstlisting}
+class List:
+    def __init__(self, x = None, xs = None):
+        self.key = x
+        self.next = xs
+
+def cons(x, xs):
+    return List(x, xs)
+\end{lstlisting}
+
+The mapping proram, takes a function and a linked-list, and maps the functions to every element as described
+in above algorithm.
+
+\begin{lstlisting}
+def mapL(f, xs):
+    ys = prev = List()
+    while xs is not None:
+        prev.next = List(f(xs.key))
+        prev = prev.next
+        xs = xs.next
+    return ys.next
+\end{lstlisting}
+
+Different from the pseudo code, this program uses a dummy node as the head of the resulting list. So it needn't
+test if the variable stores the last appending position is NIL. This small trick makes the program compact. 
+We only need drop the dummy node before returnning the result.
 
 TODO: Add for-each
+
+TODO: Add more interest problems
 
 \subsection{reverse}
 
@@ -1756,6 +1825,9 @@ Miran Lipovaca. ``Learn You a Haskell for Great Good! A Beginner's Guide''. No S
 
 \bibitem{wiki-tail-call}
 Wikipedia. ``Tail call''. https://en.wikipedia.org/wiki/Tail\_call
+
+\bibitem{sgi-stl-tranform}
+SGI. ``transform''. http://www.sgi.com/tech/stl/transform.html
 
 \end{thebibliography}
 
