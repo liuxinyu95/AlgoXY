@@ -2,6 +2,8 @@
 -- http://poj.org/problem?id=1218
 module DrunkJailer where
 
+import Test.QuickCheck
+
 -- Naive brute force ver.
 solve n = sum $ map snd $ foldl proc (zip [1..n] (repeat 0)) [1..n] where
     proc xs i = map (switch i) xs
@@ -14,6 +16,13 @@ solve' = sum . (map snd) . proc  where
     operate [] xs = xs
     operate (i:is) xs = operate is (map (switch i) xs)
 
+-- smart ver.
+solve'' = floor . sqrt . fromIntegral
+
 -- induction
 test = map solve [1..100]
 test' = map solve' [1..100]
+
+-- test
+prop_solve :: Int -> Bool
+prop_solve n = let m = if n `elem` [1..1000] then abs(n) else 1 in solve m == solve'' m
