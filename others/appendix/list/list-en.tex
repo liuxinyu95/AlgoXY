@@ -1828,6 +1828,99 @@ And at the last round, only the last light (the $N$-th light) is switched.
 
 The question is how many lights are on finally?
 
+Before we show the best answer to this puzzle, let's first work out a naive brute-force solution.
+Suppose there are $N$ lights, which can be represented as a list of 0, 1 numbers, where 0 means the light
+is off, and 1 means on. The initial state can is a list of $N$ zeros: $\{0, 0, ..., 0\}$.
+
+We can label the light from 1 to $N$. A mapping can help us to turn the above list into a labelled list\footnote{Readers
+who are familiar with functional programming, may use zipping to achieve this. We'll explain zipping in later 
+section.}.
+
+\[
+map(\lambda_i(i, 0), \{1, 2, 3, ... N\})
+\]
+
+This mapping augment each natural number with zero, the result is a list of pairs: $L = \{(1, 0), (2, 0), ..., (N, 0)\}$.
+
+Next we operate this list of pairs $N$ times from 1 to $N$. For every time $i$, we switch the second value in this pair
+if the first label can be divided by $i$. Consider the fact that $1 - 0 = 1$, and $1 - 1 = 0$, we can realize switching
+of 0, 1 value $x$ by $1 - x$. At the $i$-th operation, for light $(j, x)$, if $i | j$, (or $j \mod i = 0$), we then 
+perform switching, otherwise, we leave the light untouched. 
+
+\be
+switch(i, (j, x)) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (j, 1 - x) &  j \mod i = 0 \\
+  (j, x) & otherwise
+  \end{array}
+\right.
+\ee
+
+The $i$-th operation on all lights can be realized as mapping again:
+
+\be
+map(switch(i), L)
+\ee
+
+Note that, here we use Curried form of $switch()$ function, which is equvilant to 
+
+\[
+map(\lambda_{(j, x)}switch(i, (j, x)), L)
+\]
+
+Here we need define a function $proc()$, which can perform the above mapping on $L$ over and over by $N$ times.
+One option is to realize it in pure recursive way as the following, so that we can call it like 
+$proc(\{1, 2, ..., N\}, L)$\footnote{This can also be realized by folding, which will be explained in later section.}.
+
+\be
+proc(I, L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  L & I = \Phi \\
+  operate(I', map(switch(i_1), L)) & otherwise
+  \end{array}
+\right.
+\ee
+
+Where $I = cons(i_1, I')$ if $I$ isn't empty.
+
+At this stage, we can sum the second value of each pair in list $L$ to get the answer. The sum function has been 
+defined in previous section, so the only thing left is mapping.
+
+\be
+solve(N) = sum(map(snd, proc(\{1, 2, ..., N\}, L)))
+\ee
+
+Translating this naive brute-force soution to Haskell yields below program.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+solve' = sum . (map snd) . proc  where
+    proc n = operate [1..n] $ map (\i -> (i, 0)) [1..n]
+    operate [] xs = xs
+    operate (i:is) xs = operate is (map (switch i) xs)
+\end{lstlisting} %$
+
+Let's see what's the answer for there are 1, 2, ..., 100 lights.
+
+\begin{lstlisting}
+[1,1,1,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,10]
+\end{lstlisting}
+
+This result is interesting:
+
+\begin{itemize}
+\item the first 3 answers are 1;
+\item the 4-th to the 8-th answers are 2;
+\item the 9-th to the 15-th answers are 3;
+\item ...
+\end{itemize}
+
+It seems that the $i^2$-th to the $((i+1)^2-1)$-th answers are $i$. Actually, we can prove this fact as the following.
+
+TODO: proof.
+
 \subsection{reverse}
 
 \begin{Exercise}
