@@ -55,4 +55,4 @@ results n = map fst $ filter (\x -> 1 == snd x) $ foldl proc (zip [1..n] (repeat
                 
 -- test
 prop_solve :: Int -> Bool
-prop_solve n = let m = if n `elem` [1..1000] then abs(n) else 1 in solve m == solve'' m
+prop_solve n = let m = if abs(n) `elem` [1..1000] then abs(n) else 1 in solve m == solve'' m
