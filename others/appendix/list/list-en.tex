@@ -1336,6 +1336,96 @@ sort(L) = sort'(\Phi, L)
 
 Implementing this tail recursive algorithm to real program is left as exercise to the reader.
 
+To the end this sub-section, let's consider an interesting problem, that how to design an algorithm
+to compute $b^N$ effectively? (refer to problem 1.16 in \cite{SICP}.)
+
+A naive brute-force solution is to repeatedly mutiply $b$ for $N$ times from 1, which leads to a
+linear $O(N)$ algorithm.
+
+\begin{algorithmic}
+\Function{Pow}{$b, N$}
+  \State $x \gets 1$
+  \Loop{$N$ times}
+    \State $x \gets x \times N$
+  \EndLoop
+  \State \Return $x$
+\EndFunction
+\end{algorithmic}
+
+Actually, the solution can be greatly improved. Consider we are trying to calculate $b^8$.
+By the first 2 iterations in above naive algorithm, we got $x = b^2$. At this stage, we
+needn't mutliply $x$ with $b$ to get $b^3$, we can diretcly calculate $x^2$, which leads
+to $b^4$. And if we do this again, we get $(b^4)^2 = b^8$. Thus we only need looping 3 times
+but not 8 times.
+
+An algorithm based on this idea to compute $b^N$ if $N = 2^M$ for some non-negative integer $M$ can be shown in 
+the following equation.
+
+\[
+pow(b, N) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  b & N = 1 \\
+  pow(b, \frac{N}{2})^2 & otherwise
+  \end{array}
+\right.
+\]
+
+It's easy to extend this divide and conquor algorithm so that $N$ can be any non-negative integer. 
+
+\begin{itemize}
+\item For the trivial case, that $N$ is zero, the result is 1;
+\item If $N$ is even number, we can halve $N$, and compute $b^{\frac{N}{2}}$ first. Then calculate the square number of this result.
+\item Otherwise, $N$ is odd. Since $N-1$ is even, we can first recursively compute $b^{N-1}$, the multiply $b$ one more time to this result.
+\end{itemize}
+
+Below equation formalizes this description.
+
+\be
+pow(b, N) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  1 & N = 0 \\
+  pow(b, \frac{N}{2})^2 & 2 | N \\
+  b \times pow(b, N-1) & otherwise
+  \end{array}
+\right.
+\ee
+
+However, it's hard to turn this algorithm to tail-recursive mainly because the 2nd clause. However, it can be alternatively
+realized by square the base number, and halve the exponent.
+
+\be
+pow(b, N) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  1 & N = 0 \\
+  pow(b^2, \frac{N}{2}) & 2 | N \\
+  b \times pow(b, N-1) & otherwise
+  \end{array}
+\right.
+\ee
+
+Then it's easy to get a tail-recursive algorithm as the following, so that $b^N = pow'(b, N, 1)$.
+
+\be
+pow'(b, N, A) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  A & N = 0 \\
+  pow'(b^2, \frac{N}{2}, A) & 2 | N \\
+  pow'(b, N-1, A \times b) & otherwise
+  \end{array}
+\right.
+\ee
+
+Compare to the naive brute-force algorithm, we improved the performance to $O(\lg N)$.
+Actually, this algorithm can be improved even one more step.
+
+Let's remind the famouse problem of computing the $N$-th Fibonacci number.
+
+TODO: Add improved algorithm.
+
 \subsubsection{Imperative sum and product}
 The imperative sum and product are just applying plus and times while traversing the list.
 
@@ -1904,9 +1994,11 @@ solve' = sum . (map snd) . proc  where
 
 Let's see what's the answer for there are 1, 2, ..., 100 lights.
 
-\begin{lstlisting}
-[1,1,1,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,10]
-\end{lstlisting}
+\begin{verbatim}
+[1,1,1,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,
+6,6,6,6,6,6,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,
+8,8,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,10]
+\end{verbatim}
 
 This result is interesting:
 
@@ -1919,7 +2011,33 @@ This result is interesting:
 
 It seems that the $i^2$-th to the $((i+1)^2-1)$-th answers are $i$. Actually, we can prove this fact as the following.
 
-TODO: proof.
+\begin{proof}
+Given $N$ lights, labelled from 1 to $N$, consider which lights are on finally. Since the initial states for all lights
+are off, we can say that, the lights which are manipulated odd times are on. For every light $i$, it will be switched
+at the $j$ round if $i$ can be devided by $j$ (denote as $j | i$). So only the lights which have odd number of factors are on at the end.
+
+So the key point to solve this puzzle, is to find all numbers which have odd number of factors. For any positive integer
+$N$, denote $S$ the set of all factors of $N$. $S$ is initialized to $\Phi$. if $p$ is a factor of $N$, there must
+exist an positive integer $q$ that $N = p q$, which means $q$ is also a factor of $N$. So we add 2 different factors to 
+the set $S$ if and only if $p \neq q$, which keeps $|S|$ even all the time unless $p = q$. In such case, $N$ is a
+perfect square number, and we can only add 1 factor to the set $S$, which leads to an odd number of factors.
+\end{proof}
+
+
+At this stage, we can design a fast solution by finding the number of perfect square numbers under $N$.
+
+\be
+solve(N) = \lfloor \sqrt{N} \rfloor
+\ee
+
+The next Haskell command verifies that the answer for 1, 2, ..., 100 lights are as same as above.
+
+\begin{lstlisting}
+map (floor.sqrt) [1..100]
+[1,1,1,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,
+6,6,6,6,6,6,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,
+8,8,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,10]
+\end{lstlisting}
 
 \subsection{reverse}
 
