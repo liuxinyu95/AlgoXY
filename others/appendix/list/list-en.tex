@@ -1422,9 +1422,56 @@ pow'(b, N, A) =  \left \{
 Compare to the naive brute-force algorithm, we improved the performance to $O(\lg N)$.
 Actually, this algorithm can be improved even one more step.
 
-Let's remind the famouse problem of computing the $N$-th Fibonacci number.
+Observe that if we represent $N$ in binary format $N = (a_ma_{m-1}...a_1a_0)_2$, we clear know
+that the computation for $b^{2^i}$ is neccessary if $a_i = 1$. This is quite similar to the
+idea of Binomial heap (reader can refer to the chapter of binomial heap in this book). Thus
+we can calculate the final result by multiplying all of them for bits with value 1.
 
-TODO: Add improved algorithm.
+For instance, when we compute $b^{11}$, as $11 = (1011)_2 = 2^3 + 2 +1$, thus $b^{11} = b^{2^3} \times b^2 \times b$.
+We can get the result by the following steps.
+
+\begin{enumerate}
+\item calculate $b^1$, which is $b$;
+\item Get $b^2$ from previous result;
+\item Get $b^{2^2}$ from step 2;
+\item Get $b^{2^3}$ from step 3.
+\end{enumerate}
+
+Finally, we multiply the resutls of step 1, 2, and 4 which yields $b^{11}$.
+
+Summarize this idea, we can improve the algorithm as below.
+
+\be
+pow'(b, N, A) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  A & N = 0 \\
+  pow'(b^2, \frac{N}{2}, A) & 2 | N \\
+  pow'(b^2, \lfloor \frac{N}{2} \rfloor, A \times b) & otherwise
+  \end{array}
+\right.
+\ee
+
+This algorithm essentially shift $N$ to right for 1 bit each time (by dividing $N$ by 2). If the LSB (Least Significant Bit,
+which is the lowest bit) is 0, it means $N$ is even. It goes on computing the square the base, without accumulating the
+final product (Just like the 3rd step in above example); If the LSB is 1, it means $N$ is odd. It squres the base and
+accumulates it to the product $A$; The edge case is when $N$ is zero, which means we exhaust all the bits in $N$, can
+the final result is the accumulator $A$. At any time, the updated base number $b'$, the shifted exponent number $N'$,
+and the accumulator $A$ satisfy the invariant that $b^N = b'^{N'}A$. 
+
+This algorithm can be implemented in Haskell like the following.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+pow b n = pow' b n 1 where
+  pow' b n acc | n == 0 = acc
+               | even n = pow' (b*b) (n `div` 2) acc
+               | otherwise = pow' (b*b) (n `div` 2) (acc*b)
+\end{lstlisting}
+
+Compare to previous algorithm, which minus $N$ by one to change it to even when $N$ is odd, this one half $N$ every
+time. It exactly runs $m$ rounds, where $m$ is the number of bits of $N$. However, the performance is till bound to 
+$O(\lg N)$. How to implement this algorithm imperatively is left as exercise to the reader.
 
 \subsubsection{Imperative sum and product}
 The imperative sum and product are just applying plus and times while traversing the list.
@@ -1634,6 +1681,8 @@ performance?
 \item Write the insertion sort algorithm by only using less than ($<$).
 \item Design and implement the algorithm that find all the occurrence of a given value and delete them from the list.
 \item Implement the insertion sort in tail recursive manner.
+\item Implement the $O(\lg N)$ algorithm to calculate $b^N$ in your favorite imperative programming language. Note that
+we only need accumulate the intermediate result when the bit is not zero.
 \end{itemize}
 \end{Exercise}
 
