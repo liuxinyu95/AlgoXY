@@ -239,6 +239,19 @@ T max(List<T>* xs) {
   return x;
 }
 
+/* In-place reverse*/
+template<typename T>
+List<T>* reverse(List<T>* xs) {
+  List<T> *p, *ys = NULL;
+  while (xs) {
+    p = xs;
+    xs = xs->next;
+    p->next = ys;
+    ys = p;
+  }
+  return ys;
+}
+
 /* Auxiliar functions */
 
 template<typename T>
@@ -326,6 +339,9 @@ int main(int, char**) {
   printf("sum [1..5] = %d, product [1..5] = %d\n", sum(xs), product(xs));
 
   printf("min(lst)=%d, max(lst)=%d\n", min(lst), max(lst));
+
+  lst = reverse(lst);
+  printf("reverse: "); print_lst(lst);
 
   delete xs;
   delete ys;
