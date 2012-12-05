@@ -2194,7 +2194,7 @@ language.
 Different from arrays which is capable to slice a continous segment fast and easily, extract sub lists from singly linked
 list need more work. Such operations are typical linear algorithms.
 
-\subsection{take and drop}
+\subsection{take, drop, and split-at}
 Taking first $N$ elements from a list is semanticly similar to extract sub list from the very left like $sublist(L, 1, N)$.
 For the trivial edge case, that either $N$ is zero or the list is empty, the sub list is empty as well; Otherwise, we
 can recursively take the first $N-1$ elements from the rest of the list, and put the first element in front of it.
@@ -2275,7 +2275,7 @@ takeWhile(p, L) =  \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   \Phi & L = \Phi \\
-  \Phi & p(l_1) = False \\
+  \Phi & \lnot p(l_1) \\
   cons(l_1, takeWhile(p, L')) & otherwise
   \end{array}
 \right.
@@ -2308,7 +2308,7 @@ dropWhile _ [] = []
 dropWhile p xs@(x:xs') = if p x then dropWhile p xs' else xs
 \end{lstlisting}
 
-\subsection{splitting-at, breaking and grouping}
+\subsubsection{split-at}
 
 With taking and dropping define, splitting-at can be realized trivially by calling both functions.
 
@@ -2316,11 +2316,79 @@ With taking and dropping define, splitting-at can be realized trivially by calli
 splitAt(i, L) = (take(i, L), drop(i, L))
 \ee
 
+\subsection{breaking and grouping}
+
+Breaking can be considerred as a general form of splitting, instead of splitting at a given position, breaking
+examine every element for a centain predicate, and find the longest prefix of the list for that condition. 
+The result is a pair of sub-list, one is that longest prefix, the other is the rest.
+
+There are two differenet breaking semantics, one is to pick elements satisify the predicate as long as possible;
+the other is to pick those don't satisfiy. The former is typically defined as $span$, while the later as $break$.
+
+Span can be described, for example, in such recursive manner: In order to span a list $L$ for predicate $p$.
+
+\begin{itemize}
+\item If the list is empty, the result for this edge trivial case is a pair of empty list $(\Phi, \Phi)$;
+\item Otherwise, we test the predicate against the first element $l_1$, if $l_1$ satisfy the predicate, we 
+denote the intermediate result for spanning the rest of list as $(A, B) = span(p, L')$, then
+ we put $l_1$ in front of $A$ to get pair $(\{ l_1 \} \cup A, B)$, otherwise, we just return $(\Phi, L)$ as
+the result.
+\end{itemize}
+
+For breaking, we just test the negate of predicate and all the others are as same as spanning. Alternatively,
+one can define breaking by using span as in the later example program.
+
+\be
+span(p, L) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (\Phi, \Phi) & L = \Phi \\
+  (\{ l_1 \} \cup A, B) & p(l_1) = True, (A, B) = span(p, L') \\
+  (\Phi, L) & otherwise
+  \end{array}
+\right.
+\ee
+
+\be
+break(p, L) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (\Phi, \Phi) & L = \Phi \\
+  (\{ l_1 \} \cup A, B) & \lnot p(l_1), (A, B) = break(p, L') \\
+  (\Phi, L) & otherwise
+  \end{array}
+\right.
+\ee
+
+Note that both functions only find the longest {\em prefix}, they stop immediately when the condition 
+is fail even if there are elements in the rest of the list meet the predicate (or not). Translating them
+to Haskell gives the following example program.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+span _ [] = ([], []) 
+span p xs@(x:xs') = if p x then let (as, bs) = span xs' in (x:as, bs) else ([], xs)
+
+break p = span (not . p)
+\end{lstlisting}
+
 \begin{Exercise}
 \begin{enumerate}
 \item Implement the imperative taking and dropping algorithm in your favorite programming language, note that
 the out of bound cases should be handled.
 \item Implement take-while and drop-while in your favorite imperative programming language.
+\item Consider the following definition of span.
+\[
+span(p, L) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (\Phi, \Phi) & L = \Phi \\
+  (\{ l_1 \} \cup A, B) & p(l_1) = True, (A, B) = span(p, L') \\
+  (A, \{l_1\} \cup B) & otherwise
+  \end{array}
+\right.
+\]
+What's the difference from the one shown above?
 \end{enumerate}
 \end{Exercise}
 
