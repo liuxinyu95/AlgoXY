@@ -16,8 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
 # Imperative list manipulations
+import random
 
 class List:
     def __init__(self, x = None, xs = None):
@@ -27,6 +27,13 @@ class List:
 def cons(x, xs):
     return List(x, xs)
 
+def length(xs):
+    n = 0
+    while xs is not None:
+        n = n + 1
+        xs = xs.next
+    return n
+
 def mapL(f, xs):
     ys = prev = List()
     while xs is not None:
@@ -34,6 +41,17 @@ def mapL(f, xs):
         prev = prev.next
         xs = xs.next
     return ys.next
+
+def span(p, xs):
+    ys = xs
+    last = None
+    while xs is not None and p(xs.key):
+        last = xs
+        xs = xs.next
+    if last is None:
+        return (None, xs)
+    last.next = None
+    return (ys, xs)
 
 # auxiliar functions
 def fromList(xs):
@@ -51,7 +69,21 @@ def toList(xs):
 
 # testing
 def test_map():
-    assert toList(mapL(lambda x: -x, fromList(range(10)))) == map(lambda x: -x, range(10))
+    for _ in range(100):
+        lst = random.sample(range(100), random.randint(0, 100))
+        assert toList(mapL(lambda x: -x, fromList(lst))) == map(lambda x: -x, lst)
+
+def test_span():
+    for _ in range(100):
+        lst = range(100)
+        random.shuffle(lst)
+        (xs, ys) = span(lambda x: x < 50, fromList(lst))
+        if xs is not None:
+            assert any(toList(mapL(lambda x: x < 50, xs)))
+        if ys is not None:
+            assert not ys.key < 50
+        assert length(xs) + length(ys) == len(lst)
 
 if __name__ == "__main__":
     test_map()
+    test_span()
