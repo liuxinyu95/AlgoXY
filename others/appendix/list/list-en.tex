@@ -2493,7 +2493,7 @@ proc(f, z, L) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   z & L = \Phi \\
-  f(l_1, proc(L')) & otherwise
+  f(l_1, proc(f, z, L')) & otherwise
   \end{array}
 \right.
 \]
@@ -2578,7 +2578,7 @@ foldr(f, z, L) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   z & L = \Phi \\
-  f(l_1, foldr(L')) & otherwise
+  f(l_1, foldr(f, z, L')) & otherwise
   \end{array}
 \right.
 \ee
@@ -2599,14 +2599,131 @@ Let's see how to use fold-right to realize sum and product.
 \end{array}
 \ee
 
-And the insertion-sort can also be defined by using folding right.
+The insertion-sort algorithm can also be defined by using folding right.
 
 \be
 sort(L) = foldr(insert, \Phi, L)
 \ee
 
-
 \subsection{folding from left}
+
+As mentioned in section of `tail recursive` call. Both pure recursive sum and product compute from right
+to left and they must book keep all the intermediate results and context. As we abstract fold-right from
+the very same structure, folding from right does the book keeping as well. This will be expensive if
+the list is very long.
+
+Since we can change the realization of sum and product to tail-recursive call manner, it quite possible
+that we can provide another folding algorith, which processes the list from left to right in normal order,
+and enable the tail-call optimization by reusing the same context.
+
+Instead of induction from sum, product and insertion, we can directly change the folding right to tail call.
+Observe that the initial value $z$, actually represents the intermediate result at any time. We can use it
+as the accumulator.
+
+\be
+foldl(f, z, L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  z & L = \Phi \\
+  foldl(f, f(z, l_1), L') & otherwise
+  \end{array}
+\right.
+\ee
+
+Every time when the list isn't empty, we take the first element, apply function $f$ on the accumulator
+$z$ and it to get a new accumulator $z' = f(z, l_1)$. After that we can repeatedly folding with the very
+same function $f$, the updated accumulator $z'$, and list $L'$.
+
+Let's verify that this tail-call algorithm actually folding from left. 
+
+\[
+\begin{array}{rl}
+\sum_{i=1}^{5}i & = foldl(+, 0, \{1, 2, 3, 4, 5\}) \\
+                & = foldl(+, 0 + 1, \{ 2, 3, 4, 5 \}) \\
+                & = foldl(+, (0 + 1) + 2 \{3, 4, 5 \} \\
+                & = foldl(+, ((0 + 1) + 2) + 3, \{4, 5\}) \\
+                & = foldl(+, (((0 + 1) + 2) + 3) + 4, \{5\}) \\
+                & = foldl(+, ((((0 + 1) + 2 + 3) + 4 + 5, \Phi) \\
+                & = 0 + 1 + 2 + 3 + 4 + 5
+\end{array}
+\]
+
+Note that, we actually delayed the evaluation of $f(z, l_1)$ in every step. (This is the exact behavior
+in system support lazy-evaluation, for instance, Haskell.) Actually, they will be evaluated in sequence
+of $\{ 1, 3, 6, 10, 15\}$ in each call.
+
+Generally, folding-left can be expanded in form of
+
+\be
+foldl(f, z, L) = f(f(...(f(f(z, l_1), l_2), ..., l_N)
+\ee
+
+Or in infix manner as
+
+\be
+foldl(f, z, L) = ((...(z \oplus_f l_1) \oplus_f l_2) \oplus_f ...) \oplus l_N
+\ee
+
+With folding from left defined, sum, product, and insertion-sort can be transparently implemented by calling
+$foldl$ as $sum(L) = foldl(+, 0, L)$, $product(L) = foldl(+, 1, L)$, and $sort(L) = foldl(insert, \Phi, L)$.
+Compare with the folding-right version, they are almost same at first glarence, however, the internal implementation
+differs.
+
+\subsubsection{Imperative folding and generic folding concept}
+The tail-call nature of folding-left algorithm is quite friendly for imperative settings, that even the compiler
+don't equipped with tail-call recursive optimization, we can anyway implement the folding in while-loop manually.
+
+\begin{algorithmic}
+\Function{Fold}{$f, z, L$}
+  \While{$L \neq Phi$}
+    \State $z \gets f(z, $ \Call{First}{$L$} $)$
+    \State $L \gets$ \Call{Rest}{$L$}
+  \EndWhile
+  \State \Return $z$
+\EndFunction
+\end{algorithmic}
+
+Translating this algorithm to Python yields the following example program.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def fold(f, z, xs):
+    for x in xs:
+        z = f(z, x)
+    return z
+\end{lstlisting}
+
+Actually, Python provide built-in function `reduce' which does the very same thing. (in ISO C++, this is
+provided as reduce algorithm in STL.) Almost no imperative environment provides folding-right function because
+it will cause stack overflow problem if the list is too long. However, in case the folding from right
+semantics is neccessary, For example, one defines a container, which only provides insertion function to
+the head of the container, but there is no any appending method, so that we want such a $fromList$
+tool.
+
+\[
+fromList(L) = foldr(insertHead, empty, L)
+\]
+
+Calling $fromList$ with the insertion function as well as an empty intialized container, can turn a list 
+into the special container. Actually the singly linked-list is such a container, which performs well
+on insertion to the head, but poor to linear time if appending on the tail. Folding from right is quite
+nature when duplicate a linked-list while keeps the elements order. While folding from left will generates
+a reversed list.
+
+In such case, there exists an alternative way to implement imperative folding right by first reverse the list, and then
+folding the reversed one from left.
+
+\begin{algorithmic}
+\Function{Fold-Right}{$f, z, L$}
+  \State \Return \textproc{Fold}($f, z$, \Call{Reverse}{$L$})
+\EndFunction
+\end{algorithmic}
+
+Note that, here we must use the tail-call version of reversing, or the stack overflow issue still exists.
+
+TODO: Another reason of folding right -- infinity
+
+TODO: Generic folding concept.
 
 \subsection{folding in practice}
 
