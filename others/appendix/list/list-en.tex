@@ -2439,9 +2439,97 @@ Both case have plays very important role in real algorithms, the string grouping
 data structure, which is a powerful tool in string searching area; The ordered sub list grouping can be used in
 nature merge sort. There are dedicated chapters in this book explain the detail of these algorithms.
 
-However, these two grouping algorithms have quite different type of condition to determine at where the grouping
-should happen. Let's try to solve the first string groupping problem first.
+It's obvious that we need abstract the grouping condition so that we know where to break the origian list into
+small ones. This predicate can be passed to the algorithm as an argument like $group(p, L)$, where predicate
+$p$ accepts two consecutive elemenets and test if the condition matches.
 
+The first idea to solve the grouping problem is traverse, takes two element at each time, if the predicate
+success, put both elements into a small group, otherwise, put only the first one into the group, and use the second
+one to initialize another new group. Denote the first two elements (if there are) are $l_1, l_2$, and the 
+sub-list except the first element is $L'$. The result is a list of list $G = \{g_1, g_2, ...\}$, denote as $G = group(p, L)$.
+
+\be
+group(p, L) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{\Phi\} & L = \Phi \\
+  \{\{l_1\}\} & |L| = 1 \\
+  \{\{l_1\} \cup g'_1, g'_2, ...\} & p(l_1, l_2), G' = group(p, L') = \{g'_1, g'_2, ...\} \\
+  \{\{l_1\}, g'_1, g'_2, ...\} & otherwise
+  \end{array}
+\right.
+\ee
+
+Note that $\cup$ is acutally $cons$ function, which performs in constant time. 
+This is linear algorithm performs proportion to the length of the list, it traverses the list in one
+pass which is bound to $O(N)$. Translating this program in Haskell gives the below example code.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+group _ [] = [[]]
+group _ [x] = [[x]]
+group p (x:xs@(x':_)) | p x x' = (x:ys):yss
+                      | otherwise = [x]:r
+  where
+    r@(ys:yss) = group p xs
+\end{lstlisting}
+
+It's possible to implement this algorithm in imperative approach, that we initialize the result groups as
+$\{{l_1\}}$ if $L$ isn't empty, then we traverse the list from the second one, and append to the last group
+if the two consecutive element satisfy the predicate; otherwise we start a new group.
+
+\begin{algorithmic}
+\Function{Group}{$p, L$}
+  \If{$L = \Phi$}
+    \State \Return $\{ \Phi \}$
+  \EndIf
+  \State $x \gets$ \Call{First}{$L$}
+  \State $L \gets$ \Call{Rest}{$L$}
+  \State $g \gets \{ x \}$
+  \State $G \gets \{ g \}$
+  \While{$L \neq \Phi$}
+    \State $y \gets$ \Call{First}{$L$}
+    \If{$p(x, y)$}
+      \State $g \gets $ \Call{Append}{$g, y$}
+    \Else
+      \State $g \gets \{y\}$
+      \State $G \gets$ \Call{Append}{$G, g$}
+    \EndIf
+    \State $x \gets y$
+    \State $L \gets$ \Call{Next}{$L$}
+  \EndWhile
+  \State \Return $G$
+\EndFunction
+\end{algorithmic}
+
+However, this program performs in quadratic time if the appending function isn't optimized by store the tail position.
+The corresponding Python program is given as below.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def group(p, xs):
+    if xs is None:
+        return List(None)
+    (x, xs) = (xs.key, xs.next)
+    g = List(x)
+    G = List(g)
+    while xs is not None:
+        y = xs.key
+        if p(x, y):
+            g = append(g, y)
+        else:
+            g = List(y)
+            G = append(G, g)
+        x = y
+        xs = xs.next
+    return G
+\end{lstlisting}
+
+TODO: implement the two solutions for grouping ``mississippi'' and list of numbers
+
+TODO: design the algorith by using span
+
+TODO: equality properties
 
 \begin{Exercise}
 \begin{enumerate}
