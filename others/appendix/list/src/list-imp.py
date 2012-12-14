@@ -34,6 +34,14 @@ def length(xs):
         xs = xs.next
     return n
 
+def append(xs, x):
+    xs = cons(None, xs)
+    r = xs
+    while xs.next is not None:
+        xs = xs.next
+    xs.next = List(x)
+    return r.next
+
 def mapL(f, xs):
     ys = prev = List()
     while xs is not None:
@@ -52,6 +60,23 @@ def span(p, xs):
         return (None, xs)
     last.next = None
     return (ys, xs)
+
+def group1(p, xs):
+    if xs is None:
+        return List(None)
+    (x, xs) = (xs.key, xs.next)
+    g = List(x)
+    G = List(g)
+    while xs is not None:
+        y = xs.key
+        if p(x, y):
+            g = append(g, y)
+        else:
+            g = List(y)
+            G = append(G, g)
+        x = y
+        xs = xs.next
+    return G
 
 # auxiliar functions
 def fromList(xs):
@@ -84,6 +109,14 @@ def test_span():
             assert not ys.key < 50
         assert length(xs) + length(ys) == len(lst)
 
+def test_group1():
+    gs = group1(lambda x, y: x == y, fromList("mississipi"))
+    while gs is not None:
+        print toList(gs.key),
+        gs = gs.next
+    print
+
 if __name__ == "__main__":
     test_map()
     test_span()
+    test_group1()
