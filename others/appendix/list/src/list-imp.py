@@ -78,6 +78,12 @@ def group1(p, xs):
         xs = xs.next
     return G
 
+def find(p, xs):
+    for x in xs:
+        if p(x):
+            return x
+    return None
+
 # auxiliar functions
 def fromList(xs):
     ys = None
@@ -109,6 +115,15 @@ def test_span():
             assert not ys.key < 50
         assert length(xs) + length(ys) == len(lst)
 
+def test_find():
+    for _ in range(100):
+        lst = random.sample(range(100), random.randint(0, 100))
+        x = random.randint(0, 100)
+        if x in lst:
+            assert x == find(lambda a : x == a, lst)
+        else:
+            assert None == find(lambda a : x == a, lst)
+
 def test_group1():
     gs = group1(lambda x, y: x == y, fromList("mississipi"))
     while gs is not None:
@@ -120,3 +135,4 @@ if __name__ == "__main__":
     test_map()
     test_span()
     test_group1()
+    test_find()
