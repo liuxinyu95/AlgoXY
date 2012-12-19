@@ -3150,7 +3150,120 @@ def find(p, xs):
     return None      
 \end{lstlisting}
 
-TODO: filtering.
+It's quite possible that there are multiple elements in the list which satisfiy the precondition.
+The finding algorithm designed so far just pick the first one it meets and stops immediately.
+It can be considered as a special case of finding all elements under a certain condition.
+
+Another viewpoint of finding all elements with a given predicate is treat the finding algorithm
+as a black box, the input to this box is a list, while the output is another list contains
+all elements satisfy the predicate. This can be called as filtering as shown in the below
+figure.
+
+\begin{figure}[htbp]
+        \centering
+        \includegraphics[scale=0.8]{img/filter.ps}
+        \caption{The input is the original list $\{x_1, x_2, ..., x_N\}$, the output is a list $\{x_1', x_2', ..., x_M'\}$, that for $\forall x_i'$, predicate $p(x_i')$ is satisified.} \label{fig:filter}
+\end{figure}
+
+In order to modify the finding algorithm to realize the filtering, the found element is appended
+to a result list. And instead of stop the traverse, all the rest of elements should be examined
+with the predicate.
+
+\be
+filter(p, L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & L = \Phi \\
+  cons(l_1, filter(p, L')) & p(l_1) \\
+  filter(p, L') & otherwise
+  \end{array}
+\right.
+\ee
+
+This algorithm returns empty result if the list is empty for trivial edge case; For non-empty list,
+suppose the recursive result of filtering the rest of the sub-list is $A$, the algorithm examine
+if the first element satisfy the predicate, it is put in front of $A$ by a `cons' operation ($O(1)$ time).
+
+The corresponding Haskell program is given as below.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+filter _ [] = []
+filter p (x:xs) = if p x then x : filter p xs else filter p xs
+\end{lstlisting} 
+
+Although we mentioned that the next found element is `appended' to the result list, this algorithm
+actually constructs the result list from the right most to the left, so that appending 
+is avoided, which ensure the linear $O(N)$ performance. Compare this algorithm with the following
+imperative quadratic realization reveals the difference.
+
+\begin{algorithmic}
+\Function{Filter}{$p, L$}
+  \State $L' \gets \Phi$
+  \While{$L \neq \Phi$}
+    \If{$p$(\Call{First}{$L$})}
+      \State $L' \gets$ \textproc{Append}($L'$, \Call{First}{$L$}) \Comment{Linear operation}
+    \EndIf
+    \State $L \gets$ \Call{Rest}{$L$}
+  \EndWhile
+\EndFunction
+\end{algorithmic}
+
+As the comment of appending statement, it's typically proportion to the length of the result list
+if the tail position isn't memorized. This fact indicates that directly transforming the recursive filter
+algorithm into tail-call form will downgrade the performance from $O(N)$ to $O(N^2)$. As shown
+in the below equation, that $filter(p, L) = filter'(p, L, \Phi)$ performs as poorly as the 
+imperative one.
+
+\be
+filter'(p, L, A) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  A & L = \Phi \\
+  filter'(p, L', A \cup \{l_1\}) & p(l_1) \\
+  filter'(p, L', A) & otherwise
+  \end{array}
+\right.
+\ee
+
+One solution to achieve linear time performance imperatively is to construct the result list in
+reverse order, and perform the $O(N)$ reversion (refer to the above section) to get the final result.
+This is left as exercise to the reader.
+
+The fact of construction the result list from right to left indicates the possibility of realizing
+filtering with folding-right concept. We need design some combinator function $f$, so that
+$filter(p, L) = foldr(f, \Phi, L)$. It requires that function $f$ takes two arguments, one 
+is the element iterated among the list; the other is the intermediate result constructed 
+from right. $f(x, A)$ can be defined as that it tests the predicate against $x$, if succeed,
+the result is updated to $cons(x, A)$, otherwise, $A$ is kept same.
+
+\be
+f(x, A) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  cons(x, A) & p(x) \\
+  A & otherwise
+  \end{array}
+\right.
+\ee
+
+However, the predicate must be passed to function $f$ as well. This can be achieved by using
+curring, so $f$ actually has the prototype $f(p, x, A)$, and filtering is defined as follow.
+
+\be
+filter(p, L) = foldr(\lambda_{x, A} \cdot f(p, x, A), \Phi, L)
+\ee
+
+Which can be simplified by $\eta$-convertion. For detailed definition of $\eta$-convertion,
+readers can refer to \cite{slpj-book-1987}.
+
+\be
+filter(p, L) = foldr(f(p), \Phi, L)
+\ee
+
+TODO: left foldr implementation as exercise
+
+TODO: general filtering
 
 \subsection{Matching}
 
@@ -3161,6 +3274,9 @@ prefix, postfix, and infix
 \item Implement the linear existence testing in both functional and imperative approaches in 
 your favorite programming languages.
 \item Implement the looking up algorithm in your favorite imperative programming language.
+\item Realize the linear time filtering algorith by firstly building the result list in reverse
+order, and finally reverse it to resume the normal result. Implement this algorith in both
+imperative looping and functional tail-recursion call.
 \end{itemize}
 \end{Exercise}
 
@@ -3180,6 +3296,9 @@ your favorite programming languages.
 
 \bibitem{fp-pearls}
 Richard Bird. ``Pearls of Functional Algorithm Design''. Cambridge University Press; 1 edition (November 1, 2010). ISBN: 978-0521513388
+
+\bibitem{slpj-book-1987}
+Simon L. Peyton Jones. ``The Implementation of Functional Programming Languages''. Prentice-Hall International Series in Computer Since. Prentice Hall (May 1987). ISBN: 978-0134533339
 
 \bibitem{moderncxx}
 Andrei Alexandrescu. ``Modern C++ design: Generic Programming and Design Patterns Applied''. Addison Wesley February 01, 2001, ISBN 0-201-70431-5
