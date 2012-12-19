@@ -1,6 +1,6 @@
 IMG_OBJECTS = fold-fan1 fold-fan2 fold-fan3
 FIG_OBJECTS = 
-DOT_OBJECTS = list-example list-rindex list-rindex-2
+DOT_OBJECTS = list-example list-rindex list-rindex-2 filter
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
