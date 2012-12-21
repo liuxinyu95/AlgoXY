@@ -3308,8 +3308,6 @@ Before dive into the algorithm of finding the sub-list at any position, two spec
 are used for warm up. They are algorithms to test if a given list is either prefix or postfix 
 of another.
 
-\subsubsection{prefix testing}
-
 In the section about span, we have seen how to find a prefix under a certain condition.
 prefix matching can be considered as a special case in some sense. That it compares each
 of the elements between the two from the beginning until meets any different elements
@@ -3339,7 +3337,67 @@ instead. Defind $L \supseteq P$ if $P$ is postfix of $L$.
 L \supseteq P = reverse(P) \subseteq reverse(L)
 \ee
 
-prefix, postfix, and infix
+With $\subseteq$ defined, it enables to test if a list is infix of another.
+The idea is to traverse the target list, and repeatedly applying the prefix testing
+till any success or arrives at the end.
+
+\begin{algorithmic}
+\Function{Is-Infix}{$P, L$}
+  \While{$L \neq \Phi$}
+    \If{$P \subseteq L$}
+      \State \Return TRUE
+    \EndIf
+    \State $L \gets$ \Call{Rest}{$L$}
+  \EndWhile
+  \State \Return FALSE
+\EndFunction
+\end{algorithmic}
+
+Formalize this algorithm to recursive equation leads to the below definition.
+
+\be
+infix?(P, L) \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  True & P \subseteq L \\
+  False & L = \Phi \\
+  infix?(P, L') & otherwise
+  \end{array}
+\right.
+\ee
+
+Note that there is a tricky implicit constraint in this equation. If the pattern $P$ is empty,
+it is definitely the infix of any target list. This case is actually covered by the first condition
+in the above equation becasue empty list is also the prefix of any list. In most programming languages
+support pattern matching, we can't arrange the second clause as the first edge case, or it will
+return false for $infix?(\Phi, \Phi)$. (One exception is Prolog, but this is language spcific 
+feature, which we won't covered in this book.)
+
+Since prefix testing is linear, and it is called while traverse the list, this algorithm 
+is quadratic $O(N*M)$. where $N$ and $M$ are the length of the pattern and target lists respectively.
+There is no trivial way to improve this position by position scanning algorithm to linear
+even if the data strucutre changes from linked-list to randomly accessible array.
+
+There are chapters in this book introduce several approaches for fast matching, including 
+suffix tree with Ukkonen algorithm, Knuth-Morris-Pratt algorithm and Boyer-Moore algorithm.
+
+Alternatively, we can enumerate all suffixes of the target list, and check if the pattern 
+is prefix of any these suffixes. Which can be represented as the following.
+
+\be
+infix?(P, L) = \exists S \in suffixes(L) \land P \subseteq S
+\ee
+
+This can be represented as list enumeration, for example the below Haskell program.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+isInfixOf x y = (not . null) [ s | s <- tails(y), x `isPrefixOf`s]
+\end{lstlisting}
+
+Where function \verb|isPrefixOf| is the prefixing testing function defined according to
+our previous design. function \verb|tails| generate all suffixes of a list. The implementation
+of \verb|tails| is left as an exercise to the reader.
 
 \begin{Exercise}
 \begin{itemize}
@@ -3350,6 +3408,7 @@ your favorite programming languages.
 order, and finally reverse it to resume the normal result. Implement this algorith in both
 imperative looping and functional tail-recursion call.
 \item Implement the imperative algorithm of prefix testing in your favorite programming language.
+\item Implmeent the algorithm to enumerate all suffixes of a list.
 \end{itemize}
 \end{Exercise}
 
