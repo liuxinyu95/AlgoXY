@@ -29,8 +29,17 @@ insertAt xs 0 y = y:xs
 insertAt [] i y = [y]
 insertAt (x:xs) i y = x : insertAt xs (i-1) y
 
+permutation xs n r=  if length xs  <=  n - r 
+        then [[]] 
+        else [x:ys | x  <-  xs, ys  <-  permutation (delete x xs) n r] 
+             
+perm _ 0 = [[]] 
+perm xs r | length xs < r = [[]]
+          | otherwise = [ x:ys | x <-xs, ys <- perm (delete x xs) (r-1)]
+
 prop_rindex :: [Int] -> Bool
 prop_rindex xs = xs == (map (atR xs) $ reverse [0..length xs -1])
 
 prop_insertAt :: [Int] -> Int -> Int -> Property
 prop_insertAt xs i x = (0 <= i) ==> (insertAt xs i x) == (let (as, bs) = splitAt i xs in as ++ x:bs)
+
