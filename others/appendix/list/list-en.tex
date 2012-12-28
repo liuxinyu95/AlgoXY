@@ -554,17 +554,17 @@ Here we use dummy variable \verb|_| as the placeholders for components we don't 
 
 \subsection{Mutating}
 
-Strictly speaking, we can't mutate the list at all in purely functional settings. What we mutate in
-imperative settings is just creation of new list. Almost all functional environments support garbage
-collection, the original list may either persisted for reusing, or released (dropped) at sometime \cite{okasaki-book}(Chapter 2).
+Strictly speaking, we can't mutate the list at all in purely functional settings. Unlike in imperative
+settings, mutate is actually realized by creating new list. Almost all functional environments support garbage
+collection, the original list may either be persisted for reusing, or released (dropped) at sometime (Chapter 2 in \cite{okasaki-book}).
 
 \subsubsection{Appending}
 Function $cons$ can be viewed as building list by insertion element always on head. If we chains multiple
-$cons$ operation, it repeatedly constructs a list from right to the left. Appending on the other hand,
+$cons$ operations, it can repeatedly construct a list from right to the left. Appending on the other hand,
 is an operation adding element to the tail. Compare to $cons$ which is trivial constant time $O(1)$ operation,
-We must traverse the whole list to locate the appending position, it means that appending is bound to
+We must traverse the whole list to locate the appending position. It means that appending is bound to
 $O(N)$, where $N$ is the length of the list. In order to speed up the appending, imperative implementation
-typically use a field (variable) to record the tail position of a list, so that the traversing can be
+typically uses a field (variable) to record the tail position of a list, so that the traversing can be
 avoided. However, in purely functional settings we can't use such `tail' pointer. The appending has to
 be realized in recursive manner.
 
@@ -578,7 +578,7 @@ append(L, x) = \left \{
 \right.
 \ee
 
-That the algorithm handles two different appending cases.
+That the algorithm handles two different appending cases:
 \begin{itemize}
 \item If the list is empty, the result is a singleton list contains $x$, which is the element to be appended. The singleton list notion $\{ x \} = cons(x, \Phi)$, is a simplified form of $cons$ the element with an empty list $\Phi$;
 \item Otherwise, for the none-empty list, the result can be achieved by first appending the element $x$ to the rest sub-list, then construct the first element of $L$ with the recursive appending result. 
@@ -614,14 +614,14 @@ Even without the tail pointer, it's possible to traverse the list imperatively a
 \begin{algorithmic}
 \Function{Append}{$L, x$}
   \If{$L = $ NIL}
-    \State $L \gets$ \Call{Cons}{$x$, NIL}
-  \Else
-    \While{\Call{Rest}{$L$} $\neq$ NIL}
-      \State $L \gets$ \Call{Rest}{$L$}
-    \EndWhile
-    \State \Call{Rest}{$L$} $\gets$ \Call{Cons}{$x$, NIL}
+    \State \Return \Call{Cons}{$x$, NIL}
   \EndIf
-  \State \Return $L$
+  \State $H \gets L$
+  \While{\Call{Rest}{$L$} $\neq$ NIL}
+    \State $L \gets$ \Call{Rest}{$L$}
+  \EndWhile
+  \State \Call{Rest}{$L$} $\gets$ \Call{Cons}{$x$, NIL}
+  \State \Return $H$
 \EndFunction
 \end{algorithmic}
 
@@ -643,7 +643,7 @@ List<T>* append(List<T>* xs, T x) {
 }
 \end{lstlisting}
 
-\subsubsection{Mutate element at given position}
+\subsubsection{Mutate element at a given position}
 
 Although we have defined random access algorithm $getAt(L, i)$, we can't just mutate the element returned
 by this function in a sense of purely functional settings. It's quite common to provide reference semantics
@@ -660,7 +660,7 @@ T& getAt(List<T>* xs, int n) {
 }
 \end{lstlisting}
 
-So that we can use this function like this to mutate the 2nd element.
+So that we can use this function to mutate the 2nd element as below.
 
 \begin{lstlisting}
 List<int>* xs = cons(1, cons(2, cons<int>(3, NULL)));
@@ -723,7 +723,7 @@ Comparing the below Scheme/Lisp implementation to the previous one reveals the d
       (cons (car lst) (set-at (cdr lst) (- i 1) x))))
 \end{lstlisting}
 
-Here we skip the error handling for out-of-bound error etc. again. Similar to the random access algorithm, the
+Here we skip the error handling for out-of-bound error etc. Again, similar to the random access algorithm, the
 performance is bound to linear time, as traverse is need to locate the position to set the value.
 
 \subsubsection{insertion}
@@ -768,9 +768,9 @@ This algorithm doesn't handle the out-of-bound error. However, we can interpret 
 case, that the position $i$ exceeds the length of the list as appending. Readers can considering about
 it in the exercise of this section.
 
-The algorithm can also be design imperatively: If the position is zero, just construct the new list with the 
-element to be inserted as the first one; Otherwise, we record the head of the list, then start traverse the
-list $i$ times. We also need an extra variable to memorize the previous position for the later list insertion
+The algorithm can also be designed imperatively: If the position is zero, just construct the new list with the 
+element to be inserted as the first one; Otherwise, we record the head of the list, then start traversing the
+list $i$ steps. We also need an extra variable to memorize the previous position for the later list insertion
 operation. Below is the pseudo code.
 
 \begin{algorithmic}
@@ -806,7 +806,7 @@ List<T>* insert(List<T>* xs, int i , int x) {
 }
 \end{lstlisting}
 
-If the list $L$ is sorted, that is for any position $0 \leq i \leq j \leq N$, we have $l_i \leq l_j$.
+If the list $L$ is sorted, that is for any position $1 \leq i \leq j \leq N$, we have $l_i \leq l_j$.
 We can design an algorithm which inserts a new element $x$ to the list, so that the result list is still sorted.
 
 \be
@@ -820,7 +820,7 @@ insert(x, L) = \left \{
 \right.
 \ee
 
-The idea is that to insert an element $x$ to a sorted list $L$.
+The idea is that, to insert an element $x$ to a sorted list $L$:
 
 \begin{itemize}
 \item If either $L$ is empty or $x$ is less than the first element in $L$, we just put $x$ in front of $L$ to construct the result;
@@ -828,17 +828,18 @@ The idea is that to insert an element $x$ to a sorted list $L$.
 \end{itemize}
 
 The following Haskell program implements this algorithm. Note that we use $\leq$, to determine the ordering. Actually this 
-constraint can be loss to the strict less ($<$), that if elements can be compare in terms of $<$, we can design a program
-to insert element so that the result list is still sorted. Readers can refer to the chapter of sorting for details about
+constraint can be loosened to the strict less ($<$), that if elements can be compare in terms of $<$, we can design a program
+to insert element so that the result list is still sorted. Readers can refer to the chapters of sorting in this book for details about
 ordering.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
 insert y [] = [y]
-insert y (x:xs) = if y <= x then y:x:xs else x : insert y xs
+insert y xs@(x:xs') = if y <= x then y : xs else x : insert y xs'
 \end{lstlisting}
 
-Since the algorithm need compare the elements one by one, it's also a linear time algorithm. 
+Since the algorithm need compare the elements one by one, it's also a linear time algorithm. Note that here we use the 'as'
+notion for pattern matching in Haskell. Readers can refer to \cite{learn-haskell} and \cite{algo-fp} for details.
 
 This ordered insertion algorithm can be designed in imperative manner, for example like the following pseudo code\footnote{Reader
 can refer to the chapter `The evolution of insertion sort' in this book for a minor different one}.
@@ -858,7 +859,7 @@ can refer to the chapter `The evolution of insertion sort' in this book for a mi
 \end{algorithmic}
 
 If either the list is empty, or the new element to be inserted is less than the first element in the list, we
-can just put this new element as the new first one; Otherwise, we record the head, then traverse the list till 
+can just put this element as the new first one; Otherwise, we record the head, then traverse the list till 
 a position, where $x$ is less than the rest of the sub-list, and put $x$ in that position. Compare this one
 to the `insert at' algorithm shown previously, the variable $p$ uses to point to the previous position during
 traversing is omitted by examine the sub-list instead of current list. The following ISO C++ program implements
@@ -877,7 +878,7 @@ List<T>* insert(T x, List<T>* xs) {
 }
 \end{lstlisting}
 
-With linear ordered insertion defined, it's possible to implement quadratic time insertion-sort by repeatedly 
+With this linear time ordered insertion defined, it's possible to implement quadratic time insertion-sort by repeatedly 
 inserting elements to an empty list as formalized in this equation.
 
 \be
@@ -939,16 +940,16 @@ more details including performance analysis and fine-tuning.
 
 \subsubsection{deletion}
 In purely functional settings, there is no deletion at all in term of mutating, the data is persist, what
-the semantic deletion means is actually create a 'new' list with all the elements in previous one except for
+the semantic deletion means is actually to create a 'new' list with all the elements in previous one except for
 the element being 'deleted'. 
 
 Similar to the insertion, there are also two deletion semantics. One is to delete the element at a given position;
 the other is to find and delete elements of a given value. The first can be expressed as $delete(L, i)$, while
 the second is $delete(L, x)$.
 
-In order design the algorithm $delete(L,i)$ (or `delete at'), we can use the idea which is quite similar to 
+In order to design the algorithm $delete(L,i)$ (or `delete at'), we can use the idea which is quite similar to 
 random access and insertion, that we first traverse the list to the specified position, then construct the 
-result list with the elements we have traversed, and all the others except the next one we haven't traversed yet.
+result list with the elements we have traversed, and all the others except for          the next one we haven't traversed yet.
 
 The strategy can be realized in a recursive manner that in order to {\em delete the $i$-th element from list $L$},
 \begin{itemize}
@@ -981,8 +982,8 @@ del [] _ = []
 del (x:xs) i = x : del xs (i-1)
 \end{lstlisting}
 
-This is a linear time algorithm as well, and there are also other alternatives for implementation, for example, we can 
-first split the list at position $i-1$, to get 2 sub lists $L_1$ and $L_2$, then we can concatenate $L_1$ and $L_2'$.
+This is a linear time algorithm as well, and there are also alternatives for implementation, for example, we can 
+first split the list at position $i-1$, to get 2 sub-lists $L_1$ and $L_2$, then we can concatenate $L_1$ and $L_2'$.
 
 The 'delete at' algorithm can also be realized imperatively, that we traverse to the position by looping:
 
@@ -1025,6 +1026,9 @@ List<T>* del(List<T>* xs, int i) {
 }
 \end{lstlisting}
 
+Note that the statement \verb|xs->next = NULL| is neccessary if the destructor is designed to release the whole
+linked-list recursively.
+
 The `find and delete' semantic can further be represented in two ways, one is just find the first occurrence of a
 given value, and delete this element from the list; The other is to find {\em ALL} occurrence of this value, and 
 delete these elements. The later is more general case, and it can be achieved by a minor modification of the
@@ -1034,7 +1038,7 @@ The algorithm can be designed exactly as the term 'find and delete' but not 'fin
 and deleting are processed in one pass traversing.
 
 \begin{itemize}
-\item If the list to be deal with is empty, the result is obviously empty;
+\item If the list to be dealt with is empty, the result is obviously empty;
 \item If the list isn't empty, we examine the first element of the list, if it is identical to the given value, the result is the
 sub list;
 \item Otherwise, we keep the first element, and recursively find and delete the element in the sub list with the given value.
@@ -1054,7 +1058,7 @@ delete(L, x) = \left \{
 \right.
 \ee
 
-This algorithm is bound to linear time as it traverse the list to find and delete element.
+This algorithm is bound to linear time as it traverses the list to find and delete element.
 Translating this equation to Haskell program yields the below code, note that, the first edge case is handled
 by pattern-matching the empty list; while the other two cases are further processed by if-else expression.
 
@@ -1088,7 +1092,7 @@ problem that the given value doesn't exist.
 \EndFunction
 \end{algorithmic}
 
-If the list is empty, the result is anyway empty; otherwise, the algorithm traverse the list till either finds an element identical to the given value or to the
+If the list is empty, the result is anyway empty; otherwise, the algorithm traverses the list till either finds an element identical to the given value or to the
 end of the list. If the element is found, it is removed from the list. The following ISO C++ program implements the algorithm. Note that there are codes release the memory explicitly.
 
 \lstset{language=C++}
@@ -1116,9 +1120,9 @@ List<T>* del(List<T>* xs, T x) {
 
 \subsubsection{concatenate}
 \label{concat}
-Concatenation can be considered as a general case for appending, that appending only add one more extra element to the end of the list, while concatenation add multiple elements.
+Concatenation can be considered as a general case for appending, that appending only adds one more extra element to the end of the list, while concatenation adds multiple elements.
 
-However, implementing concatenation naively by appending leads to quadratic algorithm which performs poor. Consider the
+However, It will lead to quadratic algorithm if implement concatenation naively by appending, which performs poor. Consider the
 following equation.
 
 \[
@@ -1135,7 +1139,7 @@ Note that each appending algorithm need traverse to the end of the list, which i
 we need do this linear time appending work $|L_2|$ times, so the total performance is $O(|L_1| + (|L_1| + 1) + ... + (|L_1| + |L_2|)) = O(|L_1||L_2| + |L_2|^2)$.
 
 The key point is that the linking operation of linked-list is fast (constant $O(1)$ time), we can traverse to the end of
-$L_1$ only one time, and linking the second list to the tail of $L_1$.
+$L_1$ only one time, and link the second list to the tail of $L_1$.
 
 \be
 concat(L_1, L_2) = \left \{
@@ -1158,7 +1162,7 @@ This algorithm is described as the following.
 with the first element and this intermediate result.
 \end{itemize}
 
-Most functional language provides built-in functions or operators for list concatenation, for example in ML families
+Most functional languages provide built-in functions or operators for list concatenation, for example in ML families
 \verb|++| is used for this purpose.
 
 \lstset{language=Haskell}
@@ -1175,7 +1179,7 @@ In imperative settings, concatenation can be realized in constant $O(1)$ time wi
 We skip the detailed implementation for this method, reader can refer to the source code which can be download
 along with this appendix.
 
-The imperative algorithm without using augmented tail record can be described below.
+The imperative algorithm without using augmented tail record can be described as below.
 
 \begin{algorithmic}
 \Function{Concat}{$L_1, L_2$}
