@@ -79,9 +79,10 @@ def group1(p, xs):
     return G
 
 def find(p, xs):
-    for x in xs:
-        if p(x):
-            return x
+    while xs is not None:
+        if p(xs.key):
+            return xs
+        xs = xs.next
     return None
 
 # auxiliar functions
@@ -120,9 +121,9 @@ def test_find():
         lst = random.sample(range(100), random.randint(0, 100))
         x = random.randint(0, 100)
         if x in lst:
-            assert x == find(lambda a : x == a, lst)
+            assert x == find(lambda a : x == a, fromList(lst)).key
         else:
-            assert None == find(lambda a : x == a, lst)
+            assert None == find(lambda a : x == a, fromList(lst))
 
 def test_group1():
     gs = group1(lambda x, y: x == y, fromList("mississipi"))
