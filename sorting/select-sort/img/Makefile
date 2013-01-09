@@ -1,5 +1,5 @@
-IMG_OBJECTS = hand-of-cards
-DOT_OBJECTS = in-place-sort array-shift
+IMG_OBJECTS = #hand-of-cards
+DOT_OBJECTS = sel-sort in-place-sort
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
