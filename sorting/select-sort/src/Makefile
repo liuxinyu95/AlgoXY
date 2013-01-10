@@ -23,8 +23,8 @@ CFLAGS = -I../../../tool/test
 
 # C++ part
 CXX_HEADER = 
-CXX_SOURCE =
-CPP_TEST_OBJS = test.o
+CXX_SOURCE = ssort.cpp
+CPP_TEST_OBJS = ssort.o
 CXX = g++ -Wall -I/usr/include/boost-1_33_1
 CXX_FLAGS =
 
