@@ -147,7 +147,7 @@ minimum element, we swap it with the element in the $i$-th cell:
 \begin{algorithmic}
 \Function{Sort}{$A$}
   \For{$i \gets 1$ to $|A|$}
-    \State $m \gets$ \Call{Min}{$A[i+1..]$}
+    \State $m \gets$ \Call{Min}{$A[i...]$}
     \State \textproc{Exchange} $A[i] \leftrightarrow m$
   \EndFor
 \EndFunction
@@ -186,10 +186,11 @@ another one, and pick the bigger one; then we take a next grape and compare
 it with the one we selected so far, pick the bigger one and go on the take-and-compare
 process, until there is no any grape we haven't compared.
 
-It's easy to get mess in real practice if we don't mark which grape has been 
+It's easy to get loss in real practice if we don't mark which grape has been 
 compared. There are two ways to to solve this problem, which are suitable for
 different data-structures respectively.
 
+\subsection{Labeling}
 Method 1 is to label each grape with a number: $\{1, 2, ..., N\}$, and we systematically
 perform the compare in the order of this sequence of labels. That we first 
 compare grape number 1 and grape number 2, pick the bigger one; then we take grape
@@ -212,7 +213,7 @@ With \textproc{Min} defined, we can complete the basic version of selection sort
 (or naive version without any optimization in terms of time and space). 
 
 However, this algorithm returns the value of the minimum element instead of its
-location (or the label of the grape), which need a bit tweaking for the inplace version.
+location (or the label of the grape), which need a bit tweaking for the in-place version.
 Some languages such as ISO C++, support returning the reference as result, so that the
 swap can be achieved directly as below.
 
@@ -235,9 +236,78 @@ void ssort(T* xs, int n) {
 }
 \end{lstlisting}
 
-We can also provide \textproc{Insert}() function explicitly, and call it
-from the general insertion sort algorithm in previous section. We skip 
-the detailed realization here and left it as an exercise.
+In environments without reference semantics, the solution is to return the location
+of the minimum element instead of the value:
+
+\begin{algorithmic}
+\Function{Min-At}{$A$}
+  \State $m \gets$ \Call{First-Index}{$A$}
+  \For{$i \gets m + 1 $ to $|A|$}
+    \If{$A[i] < A[m]$}
+      \State $m \gets i$
+    \EndIf
+  \EndFor
+  \State \Return $m$
+\EndFunction
+\end{algorithmic}
+
+Note that since we pass $A[i...]$ to \textproc{Min-At} as the argument, we assume the first
+element $A[i]$ as the smallest one, and examine all elements $A[i+1], A[i+2], ...$ one by one.
+Function \textproc{First-Index}() is used to retrieve $i$ from the input parameter.
+
+The following Python example program, for example, completes the basic in-place
+selection sort algorithm based on this idea. It explicitly passes the range information
+to the function of finding the minimum location.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def ssort(xs):
+    n = len(xs)
+    for i in range(n):
+        m = min_at(xs, i, n)
+        (xs[i], xs[m]) = (xs[m], xs[i])
+    return xs
+
+def min_at(xs, i, n):
+    m = i;
+    for j in range(i+1, n):
+        if xs[j] < xs[m]:
+            m = j
+    return m
+\end{lstlisting}
+
+\subsection{Groupping}
+Another method is to group all grapes in two parts: the group we have examined, and rest we
+haven't. We denote these two groups as $A$ and $B$; All the elements (grapes) as $L$. 
+At the beginning, we haven't examine any grapes at all, thus $A$ is empty ($\Phi$), and
+$B$ contains all grapes. We can select arbitary two grapes from $B$, compare them, and 
+put the loser (the smaller one for example) to $A$. After that, we repeat this process
+by continously picking arbitrary grapes from $B$, and compare with the winner of the
+previous time until $B$ becomes empty. At this time being, the final winner is the
+minimum element. And $A$ turns to be $L - \{min(L)\}$, which can be used for the next
+time minimum finding.
+
+There is an invariant of this method, that at any time, we have $L = A \cup \{m\} \cup B$,
+where $m$ is the winner so far we hold.
+
+This approach doesn't need the collection of grapes being indexed (as being labeled
+in method 1). It's suitable for any traversable data structures, including linked-list
+etc. This method can be formalized as below.
+
+\be
+min(A, m, B) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (m, A) & B = \Phi \\
+  min(A \cup \{m\}, b_1, B') & b_1 < m \\
+  min(A \cup \{b_1\}, m, B') & otherwise
+  \end{array}
+\right.  
+\ee
+
+TODO: stop at here.
+
+TODO: Complexity analysis
 
 All the insertion algorithms are bound to $O(N)$, where $N$ is the length of
 the sequence. No matter what difference among them, such as scan from left
