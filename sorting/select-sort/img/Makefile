@@ -1,4 +1,4 @@
-IMG_OBJECTS = #hand-of-cards
+IMG_OBJECTS = grapes-1
 DOT_OBJECTS = sel-sort in-place-sort
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
