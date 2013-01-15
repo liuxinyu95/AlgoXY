@@ -342,7 +342,8 @@ element, that's why the \verb|extractMin| function needn't other pattern-matchin
 One may think the second clause of \verb|min'| function should be written like below:
 
 \begin{lstlisting}
-min' ys m (x:xs) = if m < x then min' ys ++ [x] m xs else min' ys ++ [m] x xs
+min' ys m (x:xs) = if m < x then min' ys ++ [x] m xs 
+                            else min' ys ++ [m] x xs
 \end{lstlisting}
 
 Or it will produce the updated list in reverse order. However, it's neccessary to
@@ -351,13 +352,52 @@ which is proportion to the length of part $A$, while `cons' is constant $O(1)$ t
 operation. Actually, we needn't keep the relative order of the list to be sorted,
 as it will be re-arrnaged anyway during sorting. 
 
-TODO: purely recursive version.
+It's quite possible to keep the relative order during sorting, while ensure the
+performance of finding the minimum element not degrade to quadratic. The following
+equation defines a solution.
+
+\be
+extractMin(L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (l_1, \Phi) & |L| = 1 \\
+  (l_1, L') & l_1 < m, (m, L'') = extractMin(L') \\
+  (m, {l_1} \cup L'') & otherwise
+  \end{array}
+\right.  
+\ee
+
+If $L$ is a singleton, the minimum is the only element it contains. Otherwise,
+denote $l_1$ as the first element in $L$, and $L'$ contains the rest elements except
+for $l_1$, that $L' = \{ l_2, l_3, ...\}$. The algorithm recursively finding
+the minimum element in $L'$, which yields the intermediate result as $(m, L'')$,
+that $m$ is the minimum element in $L'$, and $L''$ contains all rest elements
+except for $m$. Comparing $l_1$ with $m$, we can determine which of them are
+the final minimum result.
+
+The following Haskell program implements this version of selection sort.
+
+\begin{lstlisting}
+sort [] = []
+sort xs = x : sort xs' where
+  (x, xs') = extractMin xs
+
+extractMin [x] = (x, [])
+extractMin (x:xs) = if x < m then (x, xs) else (m, x:xs') where
+  (m, xs') = extractMin xs
+\end{lstlisting}
+
+Note that only `cons' operation is used, we needn't appending at all because
+the algorithm actually examines the list from right to left. However, it's not
+free, as this program need book-keeping the context (via call stack typically).
+The relative order is ensured by the nature of recursion. Please refer
+to the appendix about tail recursion call for detailed discussion.
 
 \subsection{performance of the basic selection sorting}
 
 Both the labeling method, and the grouping method need examine all the elements to
 pick the minimum in every round; and we totally pick up minimum element $N$ times.
-Thus the performance is around $N + (N-1) + (N-2) + ... + 1$ which is $\frac{N(N+1}{2}$.
+Thus the performance is around $N + (N-1) + (N-2) + ... + 1$ which is $\frac{N(N+1)}{2}$.
 Selection sort is a quadratic algorithm bound to $O(N^2)$ time.
 
 Compare to the insertion sort, which we introduced previously, selection sort
@@ -371,9 +411,9 @@ to improve it step by step.
 \begin{Exercise}
 
 \begin{itemize}
-\item Provide explicit insertion function, and call it with general
-insertion sort algorithm. Please realize it in both procedural way and
-functional way.
+\item Implement the basic imperative selection sort algorithm (the none in-place version)
+in your favorite programming language. Compare it with the in-place version, and analyze
+the time and space effectiveness.
 \end{itemize}
 
 \end{Exercise}
