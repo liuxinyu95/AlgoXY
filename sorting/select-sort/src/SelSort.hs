@@ -53,12 +53,17 @@ csort' xs = cocktail [] xs [] where
   cocktail as xs bs = let (mi, xs', ma) = extractMinMax xs
                       in cocktail (as ++ [mi]) xs' (ma:bs)
 
+-- Method 2, same as method 1, keep 'as' in reverse order
+--  so that we can avoid linear time appending.
+
 csort'' xs = cocktail [] xs [] where
   cocktail as [] bs = reverse as ++ bs
   cocktail as [x] bs = reverse (x:as) ++ bs
   cocktail as xs bs = let (mi, xs', ma) = extractMinMax xs 
                       in cocktail (mi:as) xs' (ma:bs)
   
+-- testing
+
 prop_ssort :: [Int] -> Bool
 prop_ssort xs = (sort xs) == (ssort xs)
 
