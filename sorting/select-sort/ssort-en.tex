@@ -661,6 +661,96 @@ def cocktail_sort(xs):
     return xs
 \end{lstlisting}
 
+It's possible to realize cock-tail sort in functional approach as well. An intuitive recursive description
+can be give like this:
+
+\begin{itemize}
+  \item Trivial edge case: If the list is empty, or there is only one element in the list, the sorted result is obviously the origin list;
+  \item Otherwise, we select the minimum and the maximum, put them in the head and tail position, then recursively sort the rest elements.
+\end{itemize}
+
+This algorithm description can be formalized by the following equation.
+
+\be
+sort(L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  L & |L| \leq 1 \\
+  \{ l_{min} \} \cup sort(L'') \cup \{ l_{max} \} & otherwise
+  \end{array}
+\right.  
+\ee
+
+Where the minimum and the maximum are extracted from $L$ by a function $select(L)$.
+
+\[
+(l_{min}, L'', l_{max}) = select(L)
+\]
+
+Note that, the minimum is actually link to the front of the recursive sort result. Its semantic is a constant $O(1)$
+time `cons' (refer to the appendix of this book for detail). While the maximum is appending to the tail. This
+is typically a linear $O(N)$ time expensive operation. We'll optimize it later.
+
+Function $select(L)$ scan the whole list to find both the minimum and the maximum. It can be defined as below:
+
+\be
+select(L) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (min(l_1, l_2), max(l_1, l_2)) & L = \{ l_1, l_2\} \\
+  (l_1, \{ l_{min}\} \cup L'', l_{max}) & l_1 < l_{min} \\
+  (l_{min}, \{l_{max}\} \cup L'', l_1) & l_{max} < l_1 \\
+  (l_{min}, \{l_1\} \cup L'', l_{max}) & otherwise
+  \end{array}
+\right.  
+\ee
+
+Where $(l_{min}, L'', l_{max}) = select(L')$ and $L'$ is the rest of the list except for the first element $l_1$.
+If there are only two elements in the list, we pick the smaller as the minimum, and the bigger as the maximum.
+After extact them, the list becomes empty. This is the trivial edge case; Otherwise, we take the first element
+$l_1$ out, then recursively perform selection on the rest of the list. After that, we compare if $l_1$ is less
+then the minimum or greater than the maximum candidates, so that we can finalize the result.
+
+Note that for all the cases, there is no appending operation to form the result. However, since selection must
+scan all the element to determin the minimum and the maximum, it is bound to $O(N)$ linear time.
+
+The complete example Haskell program is given as the following.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+csort [] = []
+csort [x] = [x]
+csort xs = mi : csort xs' ++ [ma] where
+  (mi, xs', ma) = extractMinMax xs
+  
+extractMinMax [x, y] = (min x y, [], max x y)
+extractMinMax (x:xs) | x < mi = (x, mi:xs', ma)
+                     | ma < x = (mi, ma:xs', x)
+                     | otherwise = (mi, x:xs', ma)
+  where (mi, xs', ma) = extractMinMax xs
+\end{lstlisting}
+
+We mentioned that the appending operation is expensive in this intuitive version. It can be improved.
+This can be achieved in two steps. The first step is to convert the cock-tail sort into tail-recursive
+call. Denote the sorted small ones as $A$, and sorted big ones as $B$ in figure \ref{fig:cock-tail-sort}. 
+We use $A$ and $B$ as accumulators. The new cock-tail sort is defined as the following.
+
+\be
+sort'(A, L, B) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  A \cup L \cup B & L = Phi \lor |L| = 1 \\
+  sort'(A \cup \{ l_{min}\}, L'', \{ l_{max}\} \cup B) & otherwise
+  \end{array}
+\right. 
+\ee
+
+Besides the edge case, observing that the appending operation only happens on $A \cup {l_min}$; while
+$l_{max}$ is only linked to the head of $B$. This appending occurs in every recursive call. To elemininate
+
+Where $l_{min}$, $l_{max}$ and $L''$ are defined as same as before. And we start sorting by passing
+empty $A$ and $B$: $sort(L) = sort'(\Phi, L, \Phi)$.
+
 TODO: Added funional cock-tail part.
 
 \begin{Exercise}
