@@ -806,189 +806,45 @@ there are several special edge cases should be handled correctly:
 % Improvement 2
 % ================================================================
 
-\section{Improvement 2}
-\index{Insertion sort!linked-list setting}
+\section{Major improvement}
 
-Although we improve the search time to $O(N \lg N)$ in previous section, the
-number of moves is still $O(N^2)$. The reason of why movement takes so long
-time, is because the sequence is stored in plain array. The nature of array
-is continuously layout data structure, so the insertion operation is expensive.
-This hints us that we can use linked-list setting to represent the sequence.
-It can improve the insertion operation from $O(N)$ to constant time $O(1)$.
+Although cock-tail sort halves the numbers of loop, the performance is still bound to quadratic time.
+It means that, the method we developed so far handles big data poorly compare to other divide and conquer
+sorting solutions.
 
-\be
-  insert(A, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ x \} & A = \Phi \\
-  \{ x \} \cup A & x < A_1 \\
-  \{ A_1 \} \cup insert(\{ A_2, A_3, ... A_n\}, x)& otherwise
-  \end{array}
-\right.  
-\ee
+To improve selection based sort essentially, we must analyze where is the bottle-neck. In order to sort
+the elements by comparason, we must examine all the elements for ordering. Thus the outter loop of selection
+sort is neccessary. However, must it scan all the elements every time to select the minimum? Note that
+when we pick the smallest one at the first time, we actually traverse the whole collection, so that
+we know which ones are relative bigger, and which ones are relative small partially.
 
-Translating the algorithm to Haskell yields the below program.
+The problem is that, when we select the further minimum elements, instread of re-using the ordering information
+we obtained previously, we drop them all, and blindly start a new traverse.
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-insert :: (Ord a) => [a] -> a -> [a]
-insert [] x = [x]
-insert (y:ys) x = if x < y then x:y:ys else y:insert ys x
-\end{lstlisting}
+So the key point to improve selection based sort is to re-use the previous result. There are several approaches, 
+we'll adopt an intuitive idea inspired by football match in this chapter.
 
-And we can complete the two versions of insertion sort program based on
-the first two equations in this chapter.
+\subsection{Tournament knock out}
 
-\begin{lstlisting}
-isort [] = []
-isort (x:xs) = insert (isort xs) x
-\end{lstlisting}
+The football world cup is held every four years. There are 32 teams from different continent 
+play the final games. Let's imagine a way to determine the champion: In the first round, the teams
+are grouped into 16 pairs to play the game; After that, there will be 8 winner, and 8 teams will
+be out. Then in the second round, these 8 teams are groupped into 4 pairs. This time there
+will be 4 winners after the second round of games; Then the top 4 teams are divided into 
+2 pairs, so that there will be only two teams left for the final game. 
 
-Or we can represent the recursion with folding.
+So the chammpion is determined after the total 4 round of games. And there are actually $8+4+2+1 = 16$
+comparasons. Now we have the world cup champion, however, the world cup game won't be finished,
+we need to determine which is the silver medal team.
 
-\begin{lstlisting}
-isort = foldl insert []
-\end{lstlisting}
+Readers may argue that isn't the team beat by the champion at the final game the second best?
+This is true according to the real world cup rules. However, This isn't fair enough in some sense.
 
-Linked-list setting solution can also be described imperatively. Suppose
-function \textproc{Key}($x$), returns the value of element stored in node
-$x$, and \textproc{Next}($x$) accesses the next node in the linked-list.
-
-\begin{algorithmic}
-\Function{Insert}{$L, x$}
-  \State $p \gets NIL$
-  \State $H \gets L$
-  \While{$L \neq NIL \land $ \Call{Key}{$L$} $<$ \Call{Key}{$x$}}
-    \State $p \gets L$
-    \State $L \gets $ \Call{Next}{$L$}
-  \EndWhile
-  \State \Call{Next}{$x$} $\gets L$
-  \If{$p \neq NIL$}
-    \State $H \gets x$
-  \Else
-    \State \Call{Next}{$p$} $\gets x$
-  \EndIf
-  \State \Return $H$
-\EndFunction
-\end{algorithmic}
-
-For example in ANSI C, the linked-list can be defined as the following.
-
-\lstset{language=C}
-\begin{lstlisting}
-struct node{
-  Key key;
-  struct node* next;
-};
-\end{lstlisting}
-
-Thus the insert function can be given as below.
-
-\begin{lstlisting}
-struct node* insert(struct node* lst, struct node* x){
-  struct node *p, *head;
-  p = NULL;
-  for(head = lst; lst && x->key > lst->key; lst = lst->next)
-    p = lst;
-  x->next = lst;
-  if(!p)
-    return x;
-  p->next = x;
-  return head;
-}
-\end{lstlisting}
-
-Instead of using explicit linked-list such as by pointer or reference
-based structure. Linked-list can also be realized by another index array.
-For any array element $A_i$, $Next_i$ stores the index of next element
-follows $A_i$. It means $A_{Next_i}$ is the next element after $A_i$.
-
-The insertion algorithm based on this solution is given like below.
-
-\begin{algorithmic}
-\Function{Insert}{$A, Next, i$}
-  \State $j \gets \perp$
-  \While{$Next_j \neq NIL \land A_{Next_j} < A_i$}
-    \State $j \gets Next_j$
-  \EndWhile
-  \State $Next_i \gets Next_j$
-  \State $Next_j \gets i$
-\EndFunction
-\end{algorithmic}
-
-Here $\perp$ means the head of the $Next$ table. 
-And the relative Python program for this algorithm is given as the following.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def isort(xs):
-    n = len(xs)
-    next = [-1]*(n+1)
-    for i in range(n):
-        insert(xs, next, i)
-    return next
-
-def insert(xs, next, i):
-    j = -1
-    while next[j] != -1 and xs[next[j]] < xs[i]:
-        j = next[j]
-    next[j], next[i] = i, next[j]
-\end{lstlisting}
-
-Although we change the insertion operation to constant time by using 
-linked-list. However, we have to traverse the linked-list to find the
-position, which results $O(N^2)$ times comparison. This is because
-linked-list, unlike array, doesn't support random access. It means we
-can't use binary search with linked-list setting.
-
-\begin{Exercise}
-\begin{itemize}
-\item Complete the insertion sort by using linked-list insertion function
-in your favorate imperative programming language.
-\item The index based linked-list return the sequence of rearranged index
-as result. Write a program to re-order the original array of elements from
-this result.
-\end{itemize}
-\end{Exercise}
-
-% ================================================================
-% Final improvement
-% ================================================================
-
-\section{Final improvement by binary search tree}
-\index{Insertion sort!binary search tree}
-
-It seems that we drive into a corner. We must improve both the comparison 
-and the insertion at the same time, or we will end up with $O(N^2)$ performance.
-
-We must use binary search, this is the only way to improve the comparison
-time to $O(\lg N)$. On the other hand, we must change the data structure, 
-because we can't achieve constant time insertion at a position with 
-plain array.
-
-This remind us about our 'hello world' data structure, binary search tree.
-It naturally support binary search from its definition. At the same time,
-We can insert a new leaf in binary search tree in $O(1)$ constant time
-if we already find the location.
-
-So the algorithm changes to this.
-
-\begin{algorithmic}
-\Function{Sort}{$A$}
-  \State $T \gets \Phi$
-  \For{each $x \in A$}
-    \State $T \gets $ \Call{Insert-Tree}{$T, x$}
-  \EndFor
-  \State \Return \Call{To-List}{$T$}
-\EndFunction
-\end{algorithmic}
-
-Where \textproc{Insert-Tree}() and \textproc{To-List}() are described in 
-previous chapter about binary search tree.
-
-As we have analyzed for binary search tree, the performance of tree sort
-is bound to $O(N \lg N)$, which is the lower limit of comparison based 
-sort\cite{Knuth}.
+We often heard about the so called `group of death', Let's suppose that Brazile team is 
+groupped with Deutch team at the very begining. Altough both teams are quite strong, one of
+them must be knocked out. It's quite possible that even the team loss the game can beat
+all the other teams except for the champion. The following figure illustrates such
+case.
 
 \section{Short summary} 
 In this chapter, we present the evolution process of insertion sort. Insertion
