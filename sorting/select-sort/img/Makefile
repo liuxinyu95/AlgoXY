@@ -1,5 +1,5 @@
 IMG_OBJECTS = grapes-1
-DOT_OBJECTS = sel-sort in-place-sort knuth-ssort cock-tail-sort
+DOT_OBJECTS = sel-sort in-place-sort knuth-ssort cock-tail-sort tournament-tree-1
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
