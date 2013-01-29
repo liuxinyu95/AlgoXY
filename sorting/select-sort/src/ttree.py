@@ -22,6 +22,8 @@
 
 from itertools import izip
 
+N_INF = -10000
+
 class Node:
 
     def __init__(self, x = None, l = None, r = None):
@@ -29,7 +31,15 @@ class Node:
         self.left = l 
         self.right = r
         self.parent = None
+        if l is not None:
+            l.parent = self
+        if r is not None:
+            r.parent = self
 
+def leaf(t):
+    return t is not None and t.left is None and t.right is None
+
+# limitation: |xs| = 2 ^ m for some m in N
 def build(xs):
     ts = [ Node(x) for x in xs]
     while len(ts) > 1:
@@ -39,8 +49,35 @@ def build(xs):
         ts = ts1
     return ts[0]
 
-def pop(xs):
-    pass
+# limitation: for all x, x > -inf
+def pop(t):
+    x = t.key
+    t.key = N_INF
+    while not leaf(t):
+        if t.left.key == x:
+            t.left.key = N_INF
+            t = t.left
+        else:
+            t.right.key = N_INF
+            t = t.right
+    while t.parent is not None:
+        t = t.parent
+        t.key = max(t.left.key, t.right.key)
+    return (x, t)
+
+def empty(t):
+    return t.key == N_INF
+
+# testing
+
+# same limitation as build function.
+def tsort(xs):
+    ys = []
+    t = build(xs)
+    while not empty(t):
+        (x, t) = pop(t)
+        ys.append(x)
+    return ys
 
 def to_str(t):
     def with_depth(t, depth):
@@ -48,4 +85,6 @@ def to_str(t):
     return with_depth(t, 0)
 
 if __name__ == "__main__":
-    print to_str(build([7, 6, 14, 16, 8, 4, 13, 3, 5, 10, 9, 1, 12, 2, 11, 15]))
+    xs = [7, 6, 15, 16, 8, 4, 13, 3, 5, 10, 9, 1, 12, 2, 11, 14]
+    print to_str(build(xs))
+    print "sort:", tsort(xs)
