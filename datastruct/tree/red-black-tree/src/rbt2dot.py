@@ -28,6 +28,12 @@ import sys
 import string
 import getopt
 
+COLOR_DICT = {"R":"fillcolor=lightgray, fontcolor=black", 
+              "B":"fillcolor=black, fontcolor=white",
+              "BB":"fillcolor=black, fontcolor=white, peripheries=2", #BB: doubly black
+              "C":"fillcolor=white, fontcolor=black", #C: unknow color
+              "N":"color=white"} #N: this is not a node, but a sub stree
+
 class Node:
     def __init__(self):
         self.key = ""
@@ -73,39 +79,41 @@ def parsing_field(ts):
         res = res + c
     return (res, ts)
 
+def leaf(node):
+    return node.left is None and node.right is None
+
 def define_connection(node, prefix):
     (left, leftstyle, right, rightstyle, res)=("", "\n", "", "\n", "")
-    (mid, midstyle)=("nil" + prefix+node.key+"m", "[style=invis];\n")
+    (mid, midstyle)=("nil" + prefix + "m" + node.key, "[style=invis];\n")
+
     if node.left is None:
-        left="nil"+prefix+node.key+"l"
+        left = "nil" + prefix + "l" + node.key
         leftstyle="[style=invis];\n"
     else:
-        left=prefix+node.left.key
+        left = prefix + "l" + node.left.key
+
     if node.right is None:
-        right="nil"+prefix+node.key+"r"
+        right = "nil" + prefix + "r" + node.key
         rightstyle="[style=invis];\n"
     else:
-        right=prefix+node.right.key
-    res=res+"\t"+prefix+node.key + "->" + left + leftstyle
-    res=res+"\t"+prefix+node.key + "->" + mid + midstyle
-    res=res+"\t"+prefix+node.key + "->" + right + rightstyle
-    res=res+"\t{rank=same "+left+"->"+mid+"->"+right+"[style=invis]}\n"
+        right = prefix + "r" + node.right.key
+
+    res = res + "\t" +prefix + node.key + "->" + left + leftstyle
+    res = res + "\t" +prefix + node.key + "->" + mid + midstyle
+    res = res + "\t" +prefix + node.key + "->" + right + rightstyle
+    res = res + "\t{rank=same " + left + "->" + mid + "->" + right + "[style=invis]}\n"
     return res
 
-def define_node(node, prefix="a", parent=None, postfix=""):
+def define_node(node, prefix="a", parent=None):
     res="\t"
     if node is None:
-        res=res+"nil"+prefix+parent.key+postfix+"[label=\"\", style=invis];\n"
+        res = res + "nil" + prefix + parent.key + "[label=\"\", style=invis];\n"
     else:
-        color_dict = {"R":"fillcolor=lightgray, fontcolor=black", 
-                      "B":"fillcolor=black, fontcolor=white",
-                      "BB":"fillcolor=black, fontcolor=white, peripheries=2", #BB: doubly black
-                      "C":"fillcolor=white, fontcolor=black", #C: unknow color
-                      "N":"color=white"} #N: this is not a node, but a sub stree
-        res=res+prefix+node.key+"[label=\""+node.key+"\", style=filled, "+color_dict[node.color]+"];\n"
-        res=res+define_node(node.left, prefix, node, "l")+define_node(node.right, prefix, node, "r")
-        res=res+define_node(None, prefix, node, "m") #used for balancing, refer to [1]
-        res=res+define_connection(node, prefix)
+        res = res + prefix + node.key + "[label=\"" +node.key + "\", style=filled, " + COLOR_DICT[node.color] + "];\n"
+        if not leaf(node):
+            res = res + define_node(node.left, prefix + "l", node) + define_node(node.right, prefix + "r", node)
+            res = res + define_node(None, prefix + "m", node) #used for balancing, refer to [1]
+            res = res + define_connection(node, prefix)
     return res
 
 def tree_to_dot(t, prefix, filename):
