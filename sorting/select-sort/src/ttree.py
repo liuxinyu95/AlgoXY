@@ -80,9 +80,7 @@ def tsort(xs):
     return ys
 
 def to_str(t):
-    def with_depth(t, depth):
-        return "." if t is None else "(" + with_depth(t.left, depth+1) + " " + str(t.key) + "_" + str(depth)+ " " + with_depth(t.right, depth+1) + ")"
-    return with_depth(t, 0)
+    return "." if t is None else "(" + to_str(t.left) + " " + str(t.key) + " " + to_str(t.right) + ")"
 
 if __name__ == "__main__":
     xs = [7, 6, 15, 16, 8, 4, 13, 3, 5, 10, 9, 1, 12, 2, 11, 14]
