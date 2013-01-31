@@ -870,7 +870,7 @@ the fourth, ..., to accomplish the selection based sort.
 One idea is to assign the champion a very small number (for instance, $-\infty$), 
 so that it won't be selected next time, and the second best one, becomes the new champion.
 However, suppose there are $2^m$ teams for some natural number $m$, it still takes 
-$2^{m_1} + 2^{m-2} + ... + 2 + 1 = 2^m$ times of comparison to determine the new 
+$2^{m-1} + 2^{m-2} + ... + 2 + 1 = 2^m$ times of comparison to determine the new 
 champion. Which is as slow as the first time.
 
 Actually, we needn't perform a bottom-up comparison at all since the tournament tree
@@ -880,7 +880,92 @@ can track the path from the root of the tournament tree to the leaf of the
 champion, examine all the teams along with this path to find the second best team.
 
 In figure \ref{fig:tournament-tree-1}, this path is marked in gray color, the elements
-to be examined are $\{14, 13, 7, 15\}$. Because the tournament tree is well balanced,
+to be examined are $\{14, 13, 7, 15\}$. Based on this idea, we refine the algorithm
+like below.
+
+\begin{enumerate}
+\item Build a tournament tree from the element to be sorted, so that the champion (the maximum) becomes the root;
+\item Extract the root from the tree, perform a top-down pass and replace the maximum with $-\infty$;
+\item Perform a bottom-up back-track along the path, determin the new champion and make it as the new root;
+\item Repeat step 2 till all elements have been extracted.
+\end{enumerate}
+
+Figure \ref{fig:tournament-tree-2}, \ref{fig:tournament-tree-3}, and \ref{fig:tournament-tree-4}
+show the steps of applying this strategy.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.25]{img/tournament-tree-2.ps}
+  \caption{Extract 16, replace it with $-\infty$, 15 sifts up to root.}
+  \label{fig:tournament-tree-2}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.25]{img/tournament-tree-3.ps}
+  \caption{Extract 15, replace it with $-\infty$, 14 sifts up to root.}
+  \label{fig:tournament-tree-3}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.25]{img/tournament-tree-4.ps}
+  \caption{Extract 14, replace it with $-\infty$, 13 sifts up to root.}
+  \label{fig:tournament-tree-4}
+\end{figure}
+
+We can reuse the binary tree definition given in the first chapter of this book to represents
+tournament tree. In order to back-track from leaf to the root, every node should hold a reference
+to its parent (concept of pointer in some environment such as ANSI C):
+
+\lstset{language=C}
+\begin{lstlisting}
+struct Node {
+  Key key;
+  struct Node *left, *right, *parent;
+};  
+\end{lstlisting}
+
+To build a tournament tree from a list of elements (suppose the number of elements are $2^m$ for some $m$),
+we can first wrap each element as a leaf, so that we obtained a list of binary trees. We take every two
+trees from this list, compare their keys, and form a new binary tree with the bigger key as the root;
+the two trees are set as the left and right children of this new binary tree. Repeat this operation
+to build a new list of trees. The height of each tree increase to 2. Note that the size of the tree 
+list havles after such a pass, so that we can keep reduce the list until there is only one tree left.
+And this tree is the built tournament tree.
+
+\begin{algorithmic}
+\Function{Build-Tree}{$L$}
+  \State $T \gets \Phi$
+  \For{each $x \in $ L}
+    \State $t \gets $ \Call{Create-Node}{}
+    \State \Call{Key}{$t$} $\gets x$
+    \State \Call{Append}{$T, t$}
+  \EndFor
+  \While{$|T| > 1$}
+    \State $T' \gets \Phi$
+    \For{every $t_1, t_2 \in$ T}
+      \State $t \gets $ \Call{Create-Node}{}
+      \State \Call{Key}{$t$} $\gets$ \textproc{Max}(\Call{Key}{$t_1$}, \Call{Key}{$t_2$})
+      \State \Call{Left}{$t$} $\gets t_1$
+      \State \Call{Right}{$t$} $\gets t_2$
+      \State \Call{Parent}{$t_1$} $\gets t$
+      \State \Call{Parent}{$t_2$} $\gets t$
+      \State \Call{Append}{$T', t$}      
+    \EndFor
+    \State $T \gets T'$
+  \EndWhile
+  \State \Return $T[1]$
+\EndFunction  
+\end{algorithmic}
+
+Suppose the length of the list $L$ is $N$, this algorithm firstly traverses the list to build tree,
+which is linear to $N$ time. Then it repeatedly compare pairs, which loops proportion to 
+$N + \frac{N}{2} + \frac{N}{4} + ... + 2 = 2N$. So the total performance is bound to $O(N)$ time.
+
+TODO: Add real program source code
+
+Because the tournament tree is well balanced,
 the length of this path, which is the height of the tree, is bound to $O(\lg N)$,
 where $N$ is the number of the elements to be sorted.
 
