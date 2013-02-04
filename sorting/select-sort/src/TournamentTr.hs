@@ -20,9 +20,14 @@
 
 module TrounamentTr where
 
+import Test.QuickCheck -- for verification purpose only
+import Data.List(sort, nub) -- for verification purpose only
+
 -- Note: in order to derive from Ord for free, the order must be: 
 --    negative infinity, regular, then positive infinity
 data Infinite a = NegInf | Only a | PosInf deriving (Eq, Show, Ord)
+
+only (Only x) = x
 
 data Tr a = Empty | Br (Tr a) a (Tr a) deriving Show
 
@@ -37,19 +42,24 @@ isEmpty _ = False
 
 fromList :: (Ord a) => [a] -> Tr (Infinite a)
 fromList = build . (map wrap) where
+  build [] = Empty
   build [t] = t
   build ts = build $ pair ts 
   pair (t1:t2:ts) = (branch t1 t2):pair ts
   pair ts = ts
   
-pop :: (Ord a) => Tr (Infinite a) -> (Infinite a, Tr (Infinite a))
-pop (Br l k r) | k == key l = let (k', l') = pop l in (k, Br l' (max k' $ key r) r)
-               | k == key r = let (k', r') = pop r in (k, Br l (max k' $ key l) r')
-               | otherwise = (k, Br Empty NegInf Empty)
-pop t = t
+pop :: (Ord a) => Tr (Infinite a) -> Tr (Infinite a)
+pop (Br Empty _ Empty) = Br Empty NegInf Empty
+pop (Br l k r) | k == key l = let l' = pop l in Br l' (max (key l') (key r)) r
+               | k == key r = let r' = pop r in Br l (max (key l) (key r')) r'
+
+top = only . key
 
 tsort :: (Ord a) => [a] -> [a]
 tsort = sort' . fromList where
-    sort' t | isEmpty t = []
-            | otherwise = let (Only x, t') = pop t in x : sort' t'
+    sort' Empty = []
+    sort' (Br _ NegInf _) = []
+    sort' t = (top t) : (sort' $ pop t)
 
+prop_tsort :: [Int]->Bool
+prop_tsort xs = (reverse $ sort $ nub xs) == (tsort $ nub xs)
