@@ -21,11 +21,11 @@
 module TrounamentTr where
 
 import Test.QuickCheck -- for verification purpose only
-import Data.List(sort, nub) -- for verification purpose only
+import Data.List(sort) -- for verification purpose only
 
 -- Note: in order to derive from Ord for free, the order must be: 
 --    negative infinity, regular, then positive infinity
-data Infinite a = NegInf | Only a | PosInf deriving (Eq, Show, Ord)
+data Infinite a = NegInf | Only a | Inf deriving (Eq, Show, Ord)
 
 only (Only x) = x
 
@@ -35,10 +35,7 @@ key (Br _ k _ ) = k
 
 wrap x = Br Empty (Only x) Empty
 
-branch t1 t2 = Br t1 (max (key t1) (key t2)) t2
-
-isEmpty (Br _ NegInf _) = True
-isEmpty _ = False
+branch t1 t2 = Br t1 (min (key t1) (key t2)) t2
 
 fromList :: (Ord a) => [a] -> Tr (Infinite a)
 fromList = build . (map wrap) where
@@ -49,17 +46,17 @@ fromList = build . (map wrap) where
   pair ts = ts
   
 pop :: (Ord a) => Tr (Infinite a) -> Tr (Infinite a)
-pop (Br Empty _ Empty) = Br Empty NegInf Empty
-pop (Br l k r) | k == key l = let l' = pop l in Br l' (max (key l') (key r)) r
-               | k == key r = let r' = pop r in Br l (max (key l) (key r')) r'
+pop (Br Empty _ Empty) = Br Empty Inf Empty
+pop (Br l k r) | k == key l = let l' = pop l in Br l' (min (key l') (key r)) r
+               | k == key r = let r' = pop r in Br l (min (key l) (key r')) r'
 
 top = only . key
 
 tsort :: (Ord a) => [a] -> [a]
 tsort = sort' . fromList where
     sort' Empty = []
-    sort' (Br _ NegInf _) = []
+    sort' (Br _ Inf _) = []
     sort' t = (top t) : (sort' $ pop t)
 
 prop_tsort :: [Int]->Bool
-prop_tsort xs = (reverse $ sort $ nub xs) == (tsort $ nub xs)
+prop_tsort xs = (sort xs) == (tsort xs)
