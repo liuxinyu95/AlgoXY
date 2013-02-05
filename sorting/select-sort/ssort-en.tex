@@ -935,9 +935,9 @@ list havles after such a pass, so that we can keep reduce the list until there i
 And this tree is the built tournament tree.
 
 \begin{algorithmic}
-\Function{Build-Tree}{$L$}
+\Function{Build-Tree}{$A$}
   \State $T \gets \Phi$
-  \For{each $x \in $ L}
+  \For{each $x \in A$}
     \State $t \gets $ \Call{Create-Node}{}
     \State \Call{Key}{$t$} $\gets x$
     \State \Call{Append}{$T, t$}
@@ -959,7 +959,7 @@ And this tree is the built tournament tree.
 \EndFunction  
 \end{algorithmic}
 
-Suppose the length of the list $L$ is $N$, this algorithm firstly traverses the list to build tree,
+Suppose the length of the list $A$ is $N$, this algorithm firstly traverses the list to build tree,
 which is linear to $N$ time. Then it repeatedly compare pairs, which loops proportion to 
 $N + \frac{N}{2} + \frac{N}{4} + ... + 2 = 2N$. So the total performance is bound to $O(N)$ time.
 
@@ -1006,18 +1006,124 @@ for x, y in zip(*[iter(ts)]*2):
 We skip such language specific feature, readers can refer to the Python example program
 along with this book for details.
 
-TODO: Add real program source code
+When the maximum element is extracted from the tournament tree, we replace it with $-\infty$,
+and repeatedly replace all these values from the root to the leaf. Next, we back-track 
+to root through the parent field, and determine the new maximum element.
 
-Because the tournament tree is well balanced,
+\begin{algorithmic}
+\Function{Extract-Max}{$T$}
+  \State $m \gets$ \Call{Key}{$T$}
+  \State \Call{Key}{$T$} $\gets -\infty$
+  \While{$\lnot$ \Call{Leaf?}{$T$}}  \Comment{The top down pass}
+    \If{\textproc{Key}(\Call{Left}{$T$}) $ = m$}
+      \State $T \gets$ \Call{Left}{$T$}
+    \Else
+      \State $T \gets$ \Call{Right}{$T$}
+    \EndIf
+    \State \Call{Key}{$T$} $\gets -\infty$
+  \EndWhile
+  \While{\Call{Parent}{$T$} $\neq \Phi$} \Comment{The bottom up pass}
+    \State $T \gets$ \Call{Parent}{$T$}
+    \State \Call{Key}{$T$} $\gets$ \textproc{Max}(\textproc{Key}(\Call{Left}{$T$}), \textproc{Key}(\Call{Right}{$T$}))
+  \EndWhile
+  \State \Return $m$
+\EndFunction
+\end{algorithmic}
+
+This algorithm returns the extracted maximum elements, and modifies the tournament tree in-place.
+Because we can't represent $-\infty$ in real program by limited length of word. One approach is to define
+a relative negative big number, which is less than all the elements in the tournament tree, for example,
+suppose all the elements are greater than -65535, we can define negative infinity as below:
+
+\lstset{language=C}
+\begin{lstlisting}
+#define N_INF -65535
+\end{lstlisting}
+
+We can implements this algorithm as the following ANSI C example program.
+
+\lstset{language=C}
+\begin{lstlisting}
+Key pop(struct Node* t) {
+    Key x = t->key;
+    t->key = N_INF;
+    while (!isleaf(t)) {
+        t = t->left->key == x ? t->left : t->right;
+        t->key = N_INF;
+    }
+    while (t->parent) {
+        t = t->parent;
+        t->key = max(t->left->key, t->right->key);
+    }
+    return x;
+}
+\end{lstlisting}
+
+The behavior of \textproc{Extract-Max} is quite similiar to the pop operation for some data structures,
+such as queue, and heap, thus we name it as \verb|pop| in this code snippet.
+
+Algorithm \textproc{Extract-Max} process the tree in tow passes, one is top-down, then a bottom-up along
+the path that the `champion team win the world cup'.
+Because the tournament tree is well balanced, 
 the length of this path, which is the height of the tree, is bound to $O(\lg N)$,
-where $N$ is the number of the elements to be sorted.
+where $N$ is the number of the elements to be sorted (which are equal to the number of leaves).
+Thus the performance of this algorithm is $O(\lg N)$.
+
+It's possible to realize the tournament knock out sort now. We build a tournament tree from the elements
+to be sorted, then continously extract the maximum. If we want to sort in monotonically increase order,
+we put the first extracted one to the right most, then insert the further extracted elements one by one
+to left; Otherwise if we want to sort in decrease order, we can just append the extracted elements
+to the result. Below is the algorithm sorts elements in ascending order.
+
+\begin{algorithmic}
+\Procedure{Sort}{$A$}
+  \State $T \gets$ \Call{Build-Tree}{$A$}
+  \For{$i \gets |A|$ down to $1$}
+    \State $A[i] \gets$ \Call{Extract-Max}{$T$}
+  \EndFor
+\EndProcedure
+\end{algorithmic}
+
+Translating it to ANSI C example program is straightforward.
+
+\lstset{language=C}
+\begin{lstlisting}
+void tsort(Key* xs, int n) {
+    struct Node* t = build(xs, n);
+    while(n)
+        xs[--n] = pop(t);
+    release(t);
+}  
+\end{lstlisting}
+
+This algorithms first takes $O(N)$ time to build the tournament tree, then performs $N$ pops to select
+the maximum elements so far left in the tree. Since each pop operation is bound to $O(\lg N)$, thus
+the total performance of tournament knock out sorting is $O(N \lg N)$.
+
+\subsubsection{Refine the tournament knock out}
+
+TODO: Functional algorithm
+TODO: Handle arbitrary number of elements
+TODO: Avoid of using hard code infinity
 
 \begin{Exercise}
   \begin{itemize}
     \item Implement the helper function \verb|leaf()|, \verb|branch|, \verb|max()| \verb|lsleaf()|, \verb|release()| to complete the imperative tournament tree program.
     \item Implement the imperative tournament tree in a programming language support GC (garbage collection).
+    \item Why our tournament tree knock out sort algorithm can handle duplicated elements (elements with same value)? We say a sorting algorithm stable, if it keeps the original order of elements with same value. Is the tournament tree knock out sorting stable?
+    \item Design a imperative tournament tree knock out sort algorithm, which satisfies the following:
+      \begin{itemize}
+        \item Can handle arbitrary number of elements;
+        \item Without using hard coded negative infinity, so that it can take elements with any value.
+      \end{itemize} 
+    \item Compare the tournament tree knock out sort algorithm and binary tree sort algorithm, analyze efficiency both in time and space.
+    \item Compare the heap sort algorithm and binary tree sort algorithm, and do same analysis for them.
   \end{itemize}
 \end{Exercise}
+
+\subsection{Final improvement by using heap sort}
+
+TODO: brief the heap sort
 
 \section{Short summary} 
 In this chapter, we present the evolution process of insertion sort. Insertion

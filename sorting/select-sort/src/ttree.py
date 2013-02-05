@@ -54,12 +54,8 @@ def pop(t):
     x = t.key
     t.key = N_INF
     while not leaf(t):
-        if t.left.key == x:
-            t.left.key = N_INF
-            t = t.left
-        else:
-            t.right.key = N_INF
-            t = t.right
+        t = t.left if t.left.key == x else t.right
+        t.key = N_INF
     while t.parent is not None:
         t = t.parent
         t.key = max(t.left.key, t.right.key)
@@ -77,7 +73,7 @@ def tsort(xs):
     while not empty(t):
         (x, t) = pop(t)
         ys.append(x)
-    return ys
+    return reversed(ys)
 
 def to_str(t):
     return "." if t is None else "(" + to_str(t.left) + " " + str(t.key) + " " + to_str(t.right) + ")"
