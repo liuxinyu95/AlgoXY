@@ -45,7 +45,6 @@ fromList = build . (map wrap) where
   pair (t1:t2:ts) = (branch t1 t2):pair ts
   pair ts = ts
   
-pop :: (Ord a) => Tr (Infinite a) -> Tr (Infinite a)
 pop (Br Empty _ Empty) = Br Empty Inf Empty
 pop (Br l k r) | k == key l = let l' = pop l in Br l' (min (key l') (key r)) r
                | k == key r = let r' = pop r in Br l (min (key l) (key r')) r'

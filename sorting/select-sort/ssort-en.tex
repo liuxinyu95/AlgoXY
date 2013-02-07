@@ -1119,7 +1119,7 @@ We've use hard coded big negative number to represents $-\infty$. However, this 
 it forces all elements to be sorted are greater than this pre-defined magic number. Some programming
 environments support algebraic type, so that we can define negative infinity explicitly. For instance, 
 the below Haskell program setups the concept of infinity \footnote{The order of the definition of `NegInf',
-regular number, `Inf' is significant if we want to derive the default, correct comparing behavior of `Ord'.
+regular number, and `Inf' is significant if we want to derive the default, correct comparing behavior of `Ord'.
 Anyway, it's possible to specify the detailed order by make it as an instance of `Ord'. However, this is
 Language specific feature which is out of the scope of this book. Please refer to other textbook about Haskell}.
 
@@ -1141,6 +1141,13 @@ key, and setting these two trees as children:
 \be
 branch(T_1, T_2) = tree(T_1, min(key(T_1), key(T_2)), T_2)
 \ee
+
+This can be implemented in Haskell word by word:
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+branch t1 t2 = Br t1 (min (key t1) (key t2)) t2  
+\end{lstlisting}
 
 There is limitation in our tournament sorting algorithm so far. It only accepts collection of elements
 with size of $2^m$, Or we can't build a complete binary tree. This can be actually solved in the tree
@@ -1201,7 +1208,79 @@ fromList = build . (map wrap) where
   pair ts = ts
 \end{lstlisting} %$
 
-TODO: the pop algorithm
+When extract the champion (the minimum) from the tournament tree, we need examine either the left child
+sub-tree or the right one has the same key, and recursively extract on that tree until arrive at the leaf
+node. Denote the left sub-tree of $T$ as $L$, right sub-tree as $R$, and $K$ as its key. We can define this popping 
+algorithm as the following.
+
+\be
+pop(T) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  tree(\Phi, \infty, \Phi) & L = \Phi \land R = \Phi \\
+  tree(L', min(key(L'), key(R)), R) & K = key(L), L' = pop(L) \\
+  tree(L, min(key(L), key(R')), R') & K = key(R), R' = pop(R)
+  \end{array}
+\right.  
+\ee
+
+It's straightforward to translate this algorithm into example Haskell code.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+pop (Br Empty _ Empty) = Br Empty Inf Empty
+pop (Br l k r) | k == key l = let l' = pop l in Br l' (min (key l') (key r)) r
+               | k == key r = let r' = pop r in Br l (min (key l) (key r')) r'
+\end{lstlisting}
+
+Note that this algorithm only removes the current champion without returning it. So it's neccessary to
+define a function to get the champion at the root node.
+
+\be
+top(T) = key(T)
+\ee
+
+With these function defined, tournament knock out sorting can be formalized by using them.
+
+\be
+sort(L) = sort'(build(L))
+\ee
+
+Where $sort'(T)$ continously pops the minimum element to form a result list
+
+\be
+sort'(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & T = \Phi \lor key(T) = \infty \\
+  \{ top(T) \} \cup sort'(pop(T)) & otherwise
+  \end{array}
+\right.  
+\label{eq:tsort}
+\ee 
+
+The rest of the Haskell code is given below to complete the implementation.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+top = only . key
+
+tsort :: (Ord a) => [a] -> [a]
+tsort = sort' . fromList where
+    sort' Empty = []
+    sort' (Br _ Inf _) = []
+    sort' t = (top t) : (sort' $ pop t)  
+\end{lstlisting} %$
+
+And the auxiliar function \verb|only|, \verb|key|, \verb|wrap| accomplished with explict infinity support are list
+as the following.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+only (Only x) = x
+key (Br _ k _ ) = k
+wrap x = Br Empty (Only x) Empty  
+\end{lstlisting} 
 
 \begin{Exercise}
   \begin{itemize}
@@ -1220,12 +1299,39 @@ TODO: the pop algorithm
 
 \subsection{Final improvement by using heap sort}
 
-TODO: brief the heap sort
+We manage improving the performance of selection based sorting to $O(N \lg N)$ by using tournament knock out.
+This is the limit of comparison based sort according to \cite{TAOCP}. However, there is still room for improvement.
+After sorting, there lefts a complete binary tree with all leaves and branches hold useless infinite values.
+This isn't space effecient at all. Can we release the nodes when popping?
+
+Another observation is that if there are $N$ elements to be sorted, we actually allocate about $2N$ tree nodes.
+$N$ for leaves and $N$ for branches. Is there any better way to halve the space usage?
+
+The final sorting structure described in equation \ref{eq:tsort} can be easily uniformed to a more general
+one if we treat the case that the tree is empty if its root holds infinity as key:
+
+\be
+sort'(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & T = \Phi\\
+  \{ top(T) \} \cup sort'(pop(T)) & otherwise
+  \end{array}
+\right.  
+\label{eq:tsort}
+\ee 
+
+This is exactly as same as the one of heap sort we gave in previous chapter. 
+Heap always keeps the minimum (or the maximum) on the top, and privdes fast pop operation.
+The binary heap by implicit array encodes the tree structure in array index, so there aren't
+any extra spaces allocated except for the $N$ array cells. The functional heaps,
+such as leftist heap and splay heap allocate $N$ nodes as well. We'll introduce more
+heaps in next chapter which perform well in many aspects.
 
 \section{Short summary} 
-In this chapter, we present the evolution process of insertion sort. Insertion
-sort is well explained in most textbooks as the first sorting algorithm.
-It has simple and straightforward idea, but the performance is quadratic.
+In this chapter, we present the evolution process of selection based sort. selection
+sort is easy and commonly used as example to teach new programmer about embedded looping.
+It has simple and straightforward structure, but the performance is quadratic.
 Some textbooks stop here, but we want to show that there exist ways to improve
 it by different point of view. We first try to save the comparison time
 by using binary search, and then try to save the insertion operation by
