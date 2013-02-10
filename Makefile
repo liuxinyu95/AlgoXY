@@ -6,7 +6,8 @@ sorting/insertion-sort/isort-en \
 datastruct/tree/red-black-tree/rbtree-en datastruct/tree/AVL-tree/avltree-en \
 datastruct/tree/trie/trie-en \
 datastruct/tree/suffix-tree/stree-en datastruct/tree/B-tree/btree-en \
-datastruct/heap/binary-heap/bheap-en datastruct/heap/other-heaps/kheap-en \
+datastruct/heap/binary-heap/bheap-en sorting/select-sort/ssort-en \
+datastruct/heap/other-heaps/kheap-en \
 datastruct/elementary/queue/queue-en \
 datastruct/elementary/sequence/sequence-en \
 others/appendix/list/list-en
