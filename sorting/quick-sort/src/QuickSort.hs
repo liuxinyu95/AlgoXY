@@ -24,6 +24,15 @@ bsort :: (Ord a) => [a] -> [a]
 bsort [] = []
 bsort (x:xs) = bsort [y | y<-xs, y<=x] ++ [x] ++ bsort [z | z<-xs, z>x]
 
+-- Explicit partition
+bsort' [] = []
+bsort' (x:xs) = bsort' as ++ [x] ++ bsort' bs where
+  (as, bs) = partition (<= x) xs
+  
+partition _ [] = ([], [])
+partition p (x:xs) = let (as, bs) = partition p xs in
+    if p x then (x:as, bs) else (as, x:bs)
+
 -- Accumulator version (Unstable version)
 qsort :: (Ord a) => [a] -> [a]
 qsort xs = qsort' xs []
@@ -71,6 +80,9 @@ tqsort' (x:xs) r = qpart xs [] [x] [] r where
 
 prop_bsort :: (Ord a, Num a) => [a] -> Bool
 prop_bsort xs = L.sort xs == bsort xs
+
+prop_bsort' :: [Int] -> Bool
+prop_bsort' xs = L.sort xs == bsort' xs
 
 prop_qsort :: (Ord a, Num a) => [a] -> Bool
 prop_qsort xs = L.sort xs == qsort xs
