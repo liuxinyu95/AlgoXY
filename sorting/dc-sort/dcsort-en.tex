@@ -120,8 +120,8 @@ of elements $L$.
 
 \begin{itemize}
 \item If $L$ is empty, the result is obviously empty; This is the trivial edge case;
-\item Otherwise, select an arbitrary element in $L$ as a pivot, recursively sort all elements less than $L$, put
-the result on the left hand of the pivot, {\em and} recursively sort all elements which are not less than $L$, put
+\item Otherwise, select an arbitrary element in $L$ as a pivot, recursively sort all elements not greater than $L$, put
+the result on the left hand of the pivot, {\em and} recursively sort all elements which are greater than $L$, put
 the result on the right hand of the pivot.
 \end{itemize}
 
@@ -140,7 +140,7 @@ sort(L) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   \Phi & L = \Phi \\
-  sort(\{ x | x \in L', x <= l_1 \} \cup \{ l_1 \} \cup sort(\{ x | x \in L', l_1 < x \}) & otherwise \\
+  sort(\{ x | x \in L', x \leq l_1 \} \cup \{ l_1 \} \cup sort(\{ x | x \in L', l_1 < x \}) & otherwise \\
   \end{array}
 \right.  
 \ee
@@ -186,12 +186,78 @@ def sort(xs):
 \end{lstlisting}
 
 \subsection{Strict weak ordering}
-TODO: strict weak ordering
+We assume the elements are sorted in monotonic none decreasing order so far. It's quite possible to customize
+the algorithm, so that it can sort the elements in other ordering criteria. This is necessary in practice because
+users may sort numbers, strings, or other complex objects (even list of lists for example) and so on.
+
+The typical generic solution is to abstract the comparison as a parameter as we mentioned in chapters about 
+insertion sort and selection sort. Although it needn't the total ordering, the comparison must satisfy 
+{\em strict weak ordering} at least \cite{wiki-total-order} \cite{wiki-sweak-order}.
+
+For the sake of brevity, we only considering sort the elements by using less than or equal 
+(equivelent to not greater than) in the rest of the chapter.
 
 \subsection{Partition}
 \index{Quick sort!partition}
-improvement
-1. two pass ==> one pass
+Observing that the basic version actually takes two passes to find all elements not greater than the pivot and 
+the rest. Such partition can be accomplished by only one pass. We explicitly define the partition as below.
+
+\be
+partition(p, L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (\Phi, \Phi) & L = \Phi \\
+  (\{ l_1 \} \cup A, B) & p(l_1), (A, B) = partition(p, L') \\
+  (A, \{ l_1 \} \cup B) & \lnot p(l_1)
+  \end{array}
+\right.  
+\ee
+
+The quick sort can be modified accordingly.
+
+\be
+sort(L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & L = \Phi \\
+  sort(A) \cup \{l_1\} \cup sort(B) & otherwise, (A, B) = partition(\lambda_x x \leq l_1, L')
+  \end{array}
+\right.  
+\ee
+
+Translating this new algorithm into Haskell yields the below code.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+sort [] = []
+sort (x:xs) = sort as ++ [x] ++ sort bs where
+    (as, bs) = partition (<= x) xs
+
+partition _ [] = ([], [])
+partition p (x:xs) = let (as, bs) = partition p xs in
+    if p x then (x:as, bs) else (as, x:bs)
+\end{lstlisting}
+
+The concept of parition is very cirtical to quick sort. Partition is also very important to many
+other sort algorithms. We'll explain how it generally affects the sorting methodology by the end
+of this chapter. Before further discussion about fine tuning of quick sort specific partition, let's
+see how to realize it in-place imperatively.
+
+There many partition methods. The one given by Nico Lomuto \cite{pearls} \cite{CLRS} will be used here as it's
+easy to understand. We'll show other partition algorithm soon and see how it affects the performance.
+
+TODO: imperative partition and in place quick sort
+
+TODO: 
+partition by folding
+Accumulated partition
+Accumulated FP version
+
+\begin{Exercise}
+\begin{itemize}
+\item Implement the recursive basic quick sort algorithm in your favorite imperative programming language.
+\end{itemize}  
+\end{Exercise}
 
 \section{Performance analysis for quick sort}
 
@@ -242,8 +308,18 @@ Donald E. Knuth. ``The Art of Computer Programming, Volume 3: Sorting and Search
 Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest and Clifford Stein. 
 ``Introduction to Algorithms, Second Edition''. ISBN:0262032937. The MIT Press. 2001
 
+\bibitem{pearls}
+Jon Bentley. ``Programming pearls, Second Edtion''. Addison-Wesley Professional; 1999. ISBN-13: 978-0201657883
+
 \bibitem{wiki-qs}
 Wikipedia. ``Quicksort''. http://en.wikipedia.org/wiki/Quicksort
+
+\bibitem{wiki-sweak-order}
+Wikipedia. ``Strict weak order''. http://en.wikipedia.org/wiki/Strict\_weak\_order
+
+\bibitem{wiki-total-order}
+Wikipedia. ``Total order''. http://en.wokipedia.org/wiki/Total\_order
+
 \end{thebibliography}
 
 \ifx\wholebook\relax\else
