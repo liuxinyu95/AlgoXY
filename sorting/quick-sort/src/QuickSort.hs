@@ -32,6 +32,11 @@ bsort' (x:xs) = bsort' as ++ [x] ++ bsort' bs where
 partition _ [] = ([], [])
 partition p (x:xs) = let (as, bs) = partition p xs in
     if p x then (x:as, bs) else (as, x:bs)
+                                
+bsort'' [] = []                                
+bsort'' (x:xs) = bsort'' as ++ [x] ++ bsort'' bs where
+  (as, bs) = foldr f ([], []) xs
+  f a (as', bs') = if a <= x then (a:as', bs') else (as', a:bs')
 
 -- Accumulator version (Unstable version)
 qsort :: (Ord a) => [a] -> [a]
@@ -83,6 +88,9 @@ prop_bsort xs = L.sort xs == bsort xs
 
 prop_bsort' :: [Int] -> Bool
 prop_bsort' xs = L.sort xs == bsort' xs
+
+prop_bsort'' :: [Int] -> Bool
+prop_bsort'' xs = L.sort xs == bsort'' xs
 
 prop_qsort :: (Ord a, Num a) => [a] -> Bool
 prop_qsort xs = L.sort xs == qsort xs
