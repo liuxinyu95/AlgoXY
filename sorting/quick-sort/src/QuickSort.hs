@@ -48,6 +48,16 @@ qsort' (x:xs) r = qpart xs [] [] r where
     qpart [] as bs r = qsort' as (x:qsort' bs r)
     qpart (x':xs') as bs r | x' <= x = qpart xs' (x':as) bs r
                            | x' >  x = qpart xs' as (x':bs) r
+                                       
+-- Explicit partition
+asort xs = asort' xs []
+  
+asort' [] acc = acc
+asort' (x:xs) acc = asort' as (x:asort' bs acc) where
+  (as, bs) = part xs [] []
+  part [] as bs = (as, bs)
+  part (y:ys) as bs | y <= x = part ys (y:as) bs
+                    | otherwise = part ys as (y:bs)
 
 -- Ternery Quick Sort 
 
@@ -94,6 +104,9 @@ prop_bsort'' xs = L.sort xs == bsort'' xs
 
 prop_qsort :: (Ord a, Num a) => [a] -> Bool
 prop_qsort xs = L.sort xs == qsort xs
+
+prop_asort :: [Int] -> Bool
+prop_asort xs = L.sort xs == asort xs
 
 prop_tsort :: (Ord a, Num a) => [a] -> Bool
 prop_tsort xs = L.sort xs == tsort xs
