@@ -402,10 +402,10 @@ f(p, x, (A, B)) =  \left \{
 \ee
 
 Note we actually uses pattern-matching style definition. In environment without pattern-matching support,
-the pair $(A, B)$ should be reprensted by a variable, for example $P$, the using access functions
+the pair $(A, B)$ should be reprensted by a variable, for example $P$, and use access functions
 to extract its first and second parts.
 
-The example Haskell program needs be modified accordingly.
+The example Haskell program needs to be modified accordingly.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -415,15 +415,115 @@ sort (x:xs) = sort small ++ [x] ++ sort big where
   f a (as, bs) = if a <= x then (a:as, bs) else (as, a:bs)  
 \end{lstlisting}
 
-TODO: 
-Accumulated partition
-Accumulated FP version
+\subsubsection{Accumulated partition}
+The partition algorithm by using folding actually accumulates to the result lists pair $(A, B)$. That
+if the element is not greater than the pivot, it's accumulated to $A$, otherwise to $B$. We can explicit
+express it which saves spaces and is friendly for tail-recusive call optimization (refer to the appendix
+of this book for detail).
+
+\be
+partition(p, L, A, B) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (A, B) & L = \Phi \\
+  partition(p, L', \{ l_1 \} \cup A, B) & p(l_1) \\
+  partition(p, L', A, \{ l_1 \} \cup B) & otherwise
+  \end{array}
+\right.  
+\ee
+
+Where $l_1$ is the first element in $L$ if $L$ isn't empty, and $L'$ is the rest elements except for
+$l_1$, that $L' = \{ l_2, l_3, ...\}$ for example.
+The quick sort algorithm then uses this accumulated partition fucntion by passing the $\lambda_x x \leq pivot$
+as the partition predicate.
+
+\be
+sort(L) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & L = \Phi \\
+  sort(A) \cup \{ l_1 \} \cup sort(B) & otherwise
+  \end{array}
+\right.  
+\ee
+
+Where $A, B$ are computed by the accumulated paritition function defined above.
+
+\[
+(A, B) = partition(\lambda_x x \leq l_1, L', \Phi, \Phi)
+\]
+
+\subsubsection{Accumulated quick sort}
+Observe the recursive case in the last quick sort definition. the list concatenation operations $sort(A) \cup \{l_1\} \cup sort(B)$
+actually are proportion to the length of the list to be concatenated. Of course we can use some general solutions
+introduced in the appendix of this book to improve it. Another way is to change the sort algorithm to accumulated
+manner. Something like below:
+
+\[
+sort'(L, S) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  S & L = \Phi \\
+  ... & otherwise
+  \end{array}
+\right.  
+\]
+
+Where $S$ is the accumulator, and we call this version by passing empty list as the accumulator to start sorting: 
+$sort(L) = sort'(L, \Phi)$.
+The key intuitive is that after the partition finishes, the two sub lists need to be recursively sorted. We can
+first recurisvly sort the list contains the elements which are greater than the pivot, then link the pivot infront
+of it and use it as a {\em accumulator} for next step sorting.
+
+Based on this idea, the '...' part in above definition can be realized as the following.
+
+\[
+sort'(L, S) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  S & L = \Phi \\
+  sort(A, \{l_1\} \cup sort(B, ?)) & otherwise
+  \end{array}
+\right. 
+\]
+
+The problem is what's the accumulator when sorting $B$. There is an important invariant acctually, that at
+every time, the accumulator $S$ hold the elements have been sorted so far. So that we should sort $B$ by
+accumulating to $S$. 
+
+\be
+sort'(L, S) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  S & L = \Phi \\
+  sort(A, \{l_1\} \cup sort(B, S)) & otherwise
+  \end{array}
+\right. 
+\ee
+
+The following Haskell example program implements the accumulated quick sort algorithm.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+asort xs = asort' xs []
+  
+asort' [] acc = acc
+asort' (x:xs) acc = asort' as (x:asort' bs acc) where
+  (as, bs) = part xs [] []
+  part [] as bs = (as, bs)
+  part (y:ys) as bs | y <= x = part ys (y:as) bs
+                    | otherwise = part ys as (y:bs)  
+\end{lstlisting}
 
 \begin{Exercise}
 \begin{itemize}
 \item Implement the recursive basic quick sort algorithm in your favorite imperative programming language.
 \item One minor improvement is that besides the empty case, we needn't sort the singleton list (or array), implement
 this idea in both imperative and functional approaches.
+\item The accumulated quick sort algorithm developed in this section uses intermediate variable $A, B$. They
+can be eleminated by defining the partition function mutually recurisve call the sort function. Implement this
+idea in your favorite functional programming lanugage. Please don't refer to the downloadable example program
+along with this book before you try it.
 \end{itemize}  
 \end{Exercise}
 
