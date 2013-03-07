@@ -1,5 +1,5 @@
 IMG_OBJECTS = kids-inline
-DOT_OBJECTS = partition-1-way partition-1-way-start partition-1-way-finish
+DOT_OBJECTS = partition-1-way partition-1-way-start partition-1-way-finish qsort-best
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
