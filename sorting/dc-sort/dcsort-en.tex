@@ -574,7 +574,150 @@ There are other cases which lead quick sort performs poor. There is no completel
 which can avoid the worst case. We'll see some engineering practice in next section which can 
 make it very seldom to meet the worst case.
 
-TODO: strict proof for average case performance
+\subsection{Average case analysis $\star$}
+
+In average case, quick sort performs well. There is a vivid example that even the partition
+divides the list every time to two lists with length 1 to 9. The performance is still bound
+to $O(N \lg N)$ as shown in \cite{CLRS}.
+
+This subsection need some mathematic background, reader can safely skip to next part.
+
+There are two methods to proof the average case performance, one uses an important fact
+that the performance is proportion to the total comparing operations during quick sort \cite{CLRS}.
+Different with the selections sort that every two elements have beem compared. Quick sort
+avoid many unnecessary cmoparisons. For example supose a partition operation on list
+$\{ a_1, a_2, a_3, ..., a_n\}$. Select $a_1$ as the pivot, the partition builds two sub lists
+$A = \{x_1, x_2, ..., x_k\}$ and $B = \{ y_1, y_2, ..., y_{n-k-1} \}$.
+In the rest time of quick sort, The element in $A$ will never be compared with any elements in $B$.
+
+Denoted the final sorted result as $\{ a_1, a_2, ..., a_n \}$, 
+this indicates that if elements $a_i < a_j$, they will not be compared
+any longer if and only if some elements $a_k$ where $a_i < a_k < a_j$ has ever been selected as pivot
+before $a_i$ or $a_j$ being selected as the pivot.
+
+That is to say, the only chance that $a_i$ and $a_j$ being compared is either $a_i$ is choosen
+as pivot or $a_j$ is chosen as pivot before any other elements in ordered range 
+$a_{i+1} < a{i+2}, ... < a_{j-1}$ are selected.
+
+Let $P(i, )$ represent the probability that $a_i$ and $a_j$ being compared. We have:
+
+\be
+P(i, j) = \frac{2}{j - i + 1}
+\ee
+
+Since the total compare operation can be given as:
+
+\be
+C(N) = \sum_{i=1}^{N-1}\sum_{j=i+1}^{N} P(i, j)
+\ee
+
+Note the fact that if we compared $a_i$ and $a_j$, we won't compare $a_j$ and $a_i$ again in
+the quick sort  algorithm, and we never compare $a_i$ on itself. That's way we set the upper
+bound of $i$ to $N-1$; and lower bound of $j$ to $i+1$.
+
+Subtitute the probability, it yields:
+
+\be
+\begin{array}{rl}
+C(N) & = \displaystyle \sum_{i=1}^{N-1}\sum_{j = i+1}^{N} \frac{2}{j - i + 1} \\
+     & = \displaystyle \sum_{i=1}^{N-1}\sum_{k=1}^{N-i} \frac{2}{k+1} \\
+\end{array}
+\ee
+
+Using the harmonic series \cite{wiki-harmonic}
+
+\[
+H_n = 1 + \frac{1}{2} + \frac{1}{3} + .... = \ln n + \gamma + \epsilon_n
+\]
+
+\be
+C(N) = \sum_{i=1}^{N-1} O(\lg N) = O(N \lg N)
+\ee
+
+The other method to prove the average performance is to use recursive fact that
+when sorting list of length $N$, the partition splits the list into two
+sub list with length $i$ and $N-i-1$. The partition process itself takes $cN$
+time because it examine every elements with the pivot. So we have the following
+equation.
+
+\be
+T(N) = T(i) + T(N-i-1) + c N 
+\ee
+
+Where $T(n)$ is the total time when perform quick sort on list of length $n$.
+Since $i$ is equally likely be any of 0, 1, ..., N-1. Take math expectation to
+the equation gives:
+
+\be
+\renewcommand*{\arraystretch}{1.5}
+\begin{array}{rl}
+T(N) & = E(T(i)) + E(T(N-i-1)) + c N \\
+     & = \displaystyle \frac{1}{N} \sum_{i=0}^{N-1}T(i) + \frac{1}{N} \sum_{i=0}^{N-1}T(N-i-1) + cN \\
+     & = \displaystyle \frac{1}{N} \sum_{i=0}^{N-1}T(i) + \frac{1}{N} \sum_{j=0}^{N-1}T(j) + cN \\
+     & = \displaystyle \frac{2}{N} \sum_{i=0}^{N-1}T(i) + cN 
+\end{array}
+\ee
+
+Mutiply by 2 to both sides the equation changes to:
+
+\be
+N T(N) = 2 \sum_{i=0}^{N-1} T(i) + c N^2
+\label{eq:ntn}
+\ee
+
+Subtitute $N$ to $N-1$ gives another eqaution:
+
+\be
+(N-1) T(N-1) = 2 \sum_{i=0}^{N-2} T(i) + c (N-1)^2
+\label{eq:n1tn1}
+\ee
+
+Sustract euqation (\ref{eq:ntn}) and (\ref{eq:n1tn1}) can eleminate all the $T(i)$ for $0 \leq i < N-1$.
+
+\be
+N T(N) = (N + 1) T(N-1) + 2c N - c
+\ee
+
+As we can drop the constant time $c$ in computing performance. The equation can be extra changed like
+below.
+
+\be
+\frac{T(N)}{N+1} = \frac{T(N-1)}{N} + \frac{2c}{N+1}
+\ee
+
+Next we assign $N$ to $N-1$, $N-2$, ..., which gives us $N-1$ equations.
+
+\[
+\frac{T(N-1)}{N} = \frac{T(N-2)}{N-1} + \frac{2c}{N}
+\]
+
+\[
+\frac{T(N-2)}{N-1} = \frac{T(N-3)}{N-2} + \frac{2c}{N-1}
+\]
+
+...
+
+\[
+\frac{T(2)}{3} = \frac{T(1)}{2} + \frac{2c}{3}
+\]
+
+Sum all them up, and eleminate same components in both sides, we can deduce to a function of $N$.
+
+\be
+\frac{T(N)}{N+1} = \frac{T(1)}{2} + 2c \sum_{k=3}^{N+1} \frac{1}{k}
+\ee
+
+Using the harmonic series mentioned above, the final result is:
+
+\be
+O(\frac{T(N)}{N+1}) = O(\frac{T(1)}{2} + 2c \ln N + \gamma + \epsilon_N) = O(\lg N)
+\ee
+
+Thus
+
+\be
+O(T(N)) = O(N \lg N)
+\ee
 
 \begin{Exercise}
 \begin{itemize}
@@ -634,6 +777,9 @@ Wikipedia. ``Strict weak order''. http://en.wikipedia.org/wiki/Strict\_weak\_ord
 
 \bibitem{wiki-total-order}
 Wikipedia. ``Total order''. http://en.wokipedia.org/wiki/Total\_order
+
+\bibitem{wiki-harmonic}
+Wikipedia. ``Harmonic series (mathematics)''. http://en.wikipedia.org/wiki/Harmonic\_series\_(mathematics)
 
 \end{thebibliography}
 
