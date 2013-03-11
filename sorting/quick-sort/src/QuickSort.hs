@@ -84,7 +84,6 @@ tqsort :: (Ord a) => [a] -> [a]
 tqsort xs = tqsort' xs []
 
 tqsort' []     r = r
-tqsort' [x]    r = x:r
 tqsort' (x:xs) r = qpart xs [] [x] [] r where
     qpart [] as bs cs r = tqsort' as (bs ++ tqsort' cs r)
     qpart (x':xs') as bs cs r | x' <  x = qpart xs' (x':as) bs cs r
