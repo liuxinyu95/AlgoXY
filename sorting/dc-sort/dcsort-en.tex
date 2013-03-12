@@ -875,19 +875,96 @@ pass (x:xs) xss = step xs [] [x] [] xss where
                                | x' >  x = step xs' as bs (x':cs) xss  
 \end{lstlisting} %$
 
-The tenery quick sort can also be implemented imperatively. Robert Sedgewick presented a partition
+\subsubsection{2-way partition}
+
+The cases with many duplicated elements can also be handled imperatively. Robert Sedgewick presented a partition
 method \cite{qsort-impl}, \cite{pearls}
 which holds two pointers one moves from left to right, the other moves from right to left. The two pointers
 are initialized from the left and right boundary of the array.
 
-At any time poing during partition.
+When start parition, the left most element is selected as the pivot. Then the left pointer $i$
+keeps advancing to right until it meets any element which is not less than the pivot; On the other hand\footnote{We don't use `then' because it's quite OK to perform the two scans in parallel.}, The right pointer $j$ repeatedly scan to
+left until it meets any element which is not greater than the pivot.
 
-TODO: Add figures to illustrate
+At this time, all elemnts before the left pointer $i$ are strictly less than the pivot, while all
+elements after the right pointer $j$ are greater than the pivot. $i$ points to an element which is
+ either greater or equal to the pivot; while $j$ points to an element which is either less than or
+equal to the pivot, the situation at this stage is illustrated in figure \ref{fig:partition-2-way} (a).
 
-TODO: improved partition (refer to Jon Bentley)
+In order to partition all elements less than or equal to the pivot to the left, and the others to the right,
+we can exchange the two elements pointed by $i$, and $j$. After that the scan can be resumed until either
+$i$ meets $j$, or they are overlapped.
+
+At any time point during partition. There is an invariant that all elements before $i$ (including the one 
+pointed by $i$) are not greater than
+the pivot; while all elements after $j$ (including the one pointed by $j$) are not less than the pivot. 
+The elements between $i$ and $j$ haven't been examined yet. This invariant is shown in figure \ref{fig:partition-2-way} (b).
+
+\begin{figure}[htbp]
+   \centering
+   \subfloat[When pointer $i$, and $j$ stop]{\includegraphics[scale=0.5]{img/partition-2-way-inner.ps}} \\
+   \subfloat[Partition invariant]{\includegraphics[scale=0.5]{img/partition-2-way.ps}} \\
+   \caption{Partition a range of array by using the left most element as pivot.} 
+   \label{fig:partition-2-way}
+\end{figure}
+
+After the left pointer $i$ meets the right pointer $j$, or they overlaps eachother, we need one extra exchanging
+to move the pivot located at the first position to the correct place which is pointed by $j$. Next, the 
+elements between the lower bound and $j$ as well as the sub slice between $i$ and the upper bound of the array
+are recursively sorted.
+
+This algorithm can be described as the following.
+
+\begin{algorithmic}
+\Procedure{Sort}{$A, l, u$} \Comment{sort range $[l, u)$}
+  \If{$u - l > 1$} \Comment{More than 1 element for non-trivial case}
+    \State $i \gets l$, $j \gets u$
+    \State $pivot \gets A[l]$
+    \Loop
+      \Repeat
+        \State $i \gets i + 1$
+      \Until{$A[i] \geq pivot$} \Comment{Need handle error case that $i \geq u$ in fact.}
+      \Repeat
+        \State $j \gets j - 1$
+      \Until{$A[j] \leq pivot$} \Comment{Need handle error case that $j < l$ in fact.}
+      \If{$j < i$}
+        \State break
+      \EndIf
+      \State \textproc{Exchange} $A[i] \leftrightarrow A[j]$
+    \EndLoop
+    \State \textproc{Exchange} $A[l] \leftrightarrow A[j]$ \Comment{Move the pivot}
+    \State \Call{Sort}{$A, l, j$}
+    \State \Call{Sort}{$A, i, u$}
+  \EndIf
+\EndProcedure
+\end{algorithmic}
+
+Consider the extreme case that all elements are equal, this in-place quick sort will partition
+the list to two equal length sub lists although it takes $\frac{N}{2}$ unecessary swappings.
+As the partition is balanced, the overall performance is $O(N \lg N)$, which avoid downgrading
+to quadratic. The following ANSI C example program implements this algorithm.
+
+\lstset{language=C}
+\begin{lstlisting}
+void qsort(Key* xs, int l, int u) {
+    int i, j, pivot;
+    if (l < u - 1) {
+        pivot = i = l; j = u;
+        while (1) {
+            while (i < u && xs[++i] < xs[pivot]);
+            while (j >=l && xs[pivot] < xs[--j]);
+            if (j < i) break;
+            swap(xs[i], xs[j]);
+        }
+        swap(xs[pivot], xs[j]);
+        qsort(xs, l, j);
+        qsort(xs, i, u);
+    }
+}
+\end{lstlisting}
 
 \section{Engineering solution to worst case}
-TODO: 3 median
+Random quick sort , 3 median, ...
 
 \section{Other engineering practice}
 TODO: Revert to insertion sort: Sedgewick's 
