@@ -65,7 +65,7 @@ void qsort1(Key* xs, int l, int u) {
 }
 
 /*
- * Ternery quick sort (3-way partition)
+ * Ternary quick sort (3-way partition)
  * Based on:
  * Jon Bentley, M. Douglas McIlroy. ``Engineering a sort function''. Software Practice and experience VOL. 23(11), 1249-1265 1993.
  */
