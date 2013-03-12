@@ -78,16 +78,17 @@ void qsort2(Key* xs, int l, int u) {
     int i, j, k, p, q; Key pivot;
     if (l < u - 1) {
         i = p = l; j = q = u; pivot = xs[l];
-        while (i < j) {
+        while (1) {
             while (i < u && xs[++i] < pivot);
             while (j >= l && pivot < xs[--j]);
-            if (j < i) break;
+            if (j <= i) break;
             exchange(xs, i, j);
             if (xs[i] == pivot)
                 exchange(xs, ++p, i);
             if (xs[j] == pivot)
                 exchange(xs, --q, j);
         }
+        if (i == j && xs[i] == pivot) { --j, ++i; }
         for (k = l; k <= p; ++k, --j)
             exchange(xs, k, j);
         for (k = u-1; k >= q; --k, ++i)
