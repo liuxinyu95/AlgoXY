@@ -21,13 +21,13 @@ void printrange(Key* xs, int l, int u) {
  * negate of less than is enough for strict weak order
  */
 int partition(Key* xs, int l, int u) {
-    int r; Key pivot = xs[l];
+    int r, pivot= l;
     for (r = l + 1; r < u; ++r)
-        if (!(pivot < xs[r])) {
+        if (!(xs[pivot] < xs[r])) {
             ++l;
             swap(xs[l], xs[r]);
         }
-    swap(pivot, xs[l]);
+    swap(xs[pivot], xs[l]);
     return l + 1;
 }
 
@@ -50,16 +50,16 @@ void quicksort(Key* xs, int l, int u) {
  */
 
 void qsort1(Key* xs, int l, int u) {
-    int i, j; Key pivot;
-    if (l < u) {
-        i = l; j = u; pivot = xs[l];
+    int i, j, pivot;
+    if (l < u - 1) {
+        pivot = i = l; j = u;
         while (1) {
-            while (i < u && xs[++i] < pivot);
-            while (j >=l && pivot < xs[--j]);
-            if (j <= i) break;
+            while (i < u && xs[++i] < xs[pivot]);
+            while (j >=l && xs[pivot] < xs[--j]);
+            if (j < i) break;
             swap(xs[i], xs[j]);
         }
-        swap(pivot, xs[j]);
+        swap(xs[pivot], xs[j]);
         qsort1(xs, l, j);
         qsort1(xs, i, u);
     }
@@ -68,7 +68,7 @@ void qsort1(Key* xs, int l, int u) {
 /*
  * Ternery quick sort (3-way partition)
  * Based on:
- * Jon Bentley, M. Douglas McILROY. ``Engineering a sort function''. Software Practice and experience VOL. 23(11), 1249-1265 1993.
+ * Jon Bentley, M. Douglas McIlroy. ``Engineering a sort function''. Software Practice and experience VOL. 23(11), 1249-1265 1993.
  */
 void exchange(Key* xs, int i, int j) {
     Key tmp = xs[i]; xs[i] = xs[j]; xs[j] = tmp;
@@ -76,23 +76,23 @@ void exchange(Key* xs, int i, int j) {
 
 void qsort2(Key* xs, int l, int u) {
     int i, j, k, p, q; Key pivot;
-    if (l < u) {
+    if (l < u - 1) {
         i = p = l; j = q = u; pivot = xs[l];
         while (i < j) {
             while (i < u && xs[++i] < pivot);
-            while (j >= 0 && pivot < xs[--j]);
+            while (j >= l && pivot < xs[--j]);
             if (j < i) break;
             exchange(xs, i, j);
-            if (xs[i] == xs[pivot])
+            if (xs[i] == pivot)
                 exchange(xs, ++p, i);
-            if (xs[j] == xs[pivot])
+            if (xs[j] == pivot)
                 exchange(xs, --q, j);
         }
         for (k = l; k <= p; ++k, --j)
             exchange(xs, k, j);
         for (k = u-1; k >= q; --k, ++i)
             exchange(xs, k, i);
-        qsort2(xs, l, j+1);
+        qsort2(xs, l, j + 1);
         qsort2(xs, i, u);
     }
 }
@@ -122,13 +122,17 @@ void testqsort(void (*fsort)(Key*, int, int)) {
 }
 
 int main() {
-    //testqsort(quicksort);
-    //testqsort(qsort1);
+    testqsort(quicksort);
+    printf("basic version tested\n");
+    testqsort(qsort1);
+    printf("sedgewick version tested\n");
     testqsort(qsort2);
-    const int xs[] = {9, 0, 5}; //{9, 13, 18, 10, 12, 4, 18};
-    int ys[3];
-    memcpy((void*)ys, (const void*)xs, 3*sizeof(int));
-    qsort2(ys, 0, 3);
-    printrange(ys, 0, 3);
+    printf("3-way partition tested\n");
+    const int xs[] = {2, 7, 3, 7, 9, 0, 12, 3, 9, 9, 17, 0 };
+    const int n = sizeof(xs)/sizeof(int);
+    int ys[n];
+    memcpy((void*)ys, (const void*)xs, sizeof(xs));
+    qsort2(ys, 0, n);
+    printrange(ys, 0, n);
     return 0;
 }
