@@ -70,10 +70,6 @@ void qsort1(Key* xs, int l, int u) {
  * Based on:
  * Jon Bentley, M. Douglas McIlroy. ``Engineering a sort function''. Software Practice and experience VOL. 23(11), 1249-1265 1993.
  */
-void exchange(Key* xs, int i, int j) {
-    Key tmp = xs[i]; xs[i] = xs[j]; xs[j] = tmp;
-}
-
 void qsort2(Key* xs, int l, int u) {
     int i, j, k, p, q; Key pivot;
     if (l < u - 1) {
@@ -83,16 +79,12 @@ void qsort2(Key* xs, int l, int u) {
             while (j >= l && pivot < xs[--j]);
             if (j <= i) break;
             exchange(xs, i, j);
-            if (xs[i] == pivot)
-                exchange(xs, ++p, i);
-            if (xs[j] == pivot)
-                exchange(xs, --q, j);
+            if (xs[i] == pivot) { ++p; swap(xs[p], xs[i]); }
+            if (xs[j] == pivot) { --q; swap(xs[q], xs[j]); }
         }
-        if (i == j && xs[i] == pivot) { --j, ++i; }
-        for (k = l; k <= p; ++k, --j)
-            exchange(xs, k, j);
-        for (k = u-1; k >= q; --k, ++i)
-            exchange(xs, k, i);
+        if (i == j && xs[i] == pivot) { --j, ++i; }  /*a special case*/
+        for (k = l; k <= p; ++k, --j) swap(xs[k], xs[j]);
+        for (k = u-1; k >= q; --k, ++i) swap(xs[k], xs[i]);
         qsort2(xs, l, j + 1);
         qsort2(xs, i, u);
     }
