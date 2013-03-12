@@ -963,6 +963,8 @@ void qsort(Key* xs, int l, int u) {
 }
 \end{lstlisting}
 
+\subsubsection{3-way partition}
+
 It's obviously that, we should avoid those unecessary swapping for the duplicated elements. What's more,
 the algorithm can be developed with the idea of ternary sort (as known as 3-way partition in some
 materials), that all the elements which are strictly less than the pivot are put to the left sub slice,
@@ -997,6 +999,81 @@ in the case. The final partition result is shown in figure \ref{fig:partition-3-
 we only need recursively sort the `less-than' and `greater-than' sub slices.
 
 This algorithm can be given by modifying the 2-way partition as below.
+
+\begin{algorithmic}
+\Procedure{Sort}{$A, l, u$}
+  \If{$u - l > 1$}
+    \State $i \gets l$, $j \gets u$
+    \State $p \gets l$, $q \gets u$ \Comment{points to the boundaries for equal elements}
+    \State $pivot \gets A[l]$
+    \Loop
+      \Repeat
+        \State $i \gets i + 1$
+      \Until{$A[i] \geq pivot$} \Comment{Skip the error handling for $i \geq u$}
+      \Repeat
+        \State $j \gets j - 1$
+      \Until{$A[j] \leq pivot$} \Comment{Skip the error handling for $j < l$}
+      \If{$j \leq i$}
+        \State break \Comment{Note the difference form the above algorithm}
+      \EndIf
+      \State \textproc{Exchange} $A[i] \leftrightarrow A[j]$
+      \If{$A[i] = pivot$} \Comment{Handle the equal elements}
+        \State $p \gets p + 1$
+        \State \textproc{Exchange} $A[p] \leftrightarrow A[i]$
+      \EndIf
+      \If{$A[j] = pivot$}
+        \State $q \gets q - 1$
+        \State \textproc{Exchange} $A[q] \leftrightarrow A[j]$
+      \EndIf
+    \EndLoop
+    \If{$i = j \land A[i] = pivot$} \Comment{A special case}
+      \State $j \gets j - 1$, $i \gets i + 1$
+    \EndIf
+    \For{$k$ from $l$ to $p$} \Comment{Swap the equal elements to the middle part}
+      \State \textproc{Exchange} $A[k] \leftrightarrow A[j]$
+      \State $j \gets j - 1$
+    \EndFor
+    \For{$k$ from $u-1$ down-to $q$} 
+      \State \textproc{Exchange} $A[k] \leftrightarrow A[i]$
+      \State $i \gets i + 1$
+    \EndFor
+    \State \Call{Sort}{$A, l, j + 1$}
+    \State \Call{Sort}{$A, i, u$}
+  \EndIf
+\EndProcedure
+\end{algorithmic}
+
+This algorithm can be translated to the following ANSI C example program.
+
+\lstset{language=C}
+\begin{lstlisting}
+void qsort2(Key* xs, int l, int u) {
+    int i, j, k, p, q, pivot;
+    if (l < u - 1) {
+        i = p = l; j = q = u; pivot = xs[l];
+        while (1) {
+            while (i < u && xs[++i] < pivot);
+            while (j >= l && pivot < xs[--j]);
+            if (j <= i) break;
+            swap(xs[i], xs[j]);
+            if (xs[i] == pivot) { ++p; swap(xs[p], xs[i]); }
+            if (xs[j] == pivot) { --q; swap(xs[q], xs[j]); }
+        }
+        if (i == j && xs[i] == pivot) { --j, ++i; }
+        for (k = l; k <= p; ++k, --j) swap(xs[k], xs[j]);
+        for (k = u-1; k >= q; --k, ++i) swap(xs[k], xs[i]);
+        qsort2(xs, l, j + 1);
+        qsort2(xs, i, u);
+    }
+}
+\end{lstlisting}
+
+It can be seen that the the algorithm turns to be a bit complex when it evolves to 3-way parition.
+There are some tricky edge cases should be handled with caution. Actually, we just need a ternary
+partition algorithm. This remind us the N. Lumoto's method, which is straightforward enough
+to be a start point.
+
+The idea is to change the invariant a bit.
 
 \section{Engineering solution to worst case}
 Random quick sort , 3 median, ...
