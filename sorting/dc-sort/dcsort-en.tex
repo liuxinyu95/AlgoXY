@@ -963,6 +963,9 @@ void qsort(Key* xs, int l, int u) {
 }
 \end{lstlisting}
 
+Comparing this algorithm with the basic version based on N. Lumoto's partition method, we can find
+that it swaps fewer elements, because it skips those have already in proper sides of the pivot.
+
 \subsubsection{3-way partition}
 
 It's obviously that, we should avoid those unecessary swapping for the duplicated elements. What's more,
@@ -1073,9 +1076,77 @@ There are some tricky edge cases should be handled with caution. Actually, we ju
 partition algorithm. This remind us the N. Lumoto's method, which is straightforward enough
 to be a start point.
 
-The idea is to change the invariant a bit.
+The idea is to change the invariant a bit. We still select the first element as the pivot, 
+as shown in figure \ref{fig:partition-3-way-lumoto},
+at any time point, the left most section contains elements which are strictly less than the pivot;
+the next section contains the elements equal to the pivot; the right most section holds all the
+elements which are strctly greater than the pivot. The boundaries of three sections are marked
+as $i$, $k$, and $j$ respectively.
+The rest part, which is between $k$ and $j$ are elements haven't been scanned yet.
 
-\section{Engineering solution to worst case}
+At the begining of this algorithm, the `less-than' section is empty; the `equal-to' section
+contains only one element, which is the pivot; so that $i$ is intialized to the lower bound
+of the array, and $k$ points to the element next to $i$. The `greater-than' section is also
+initialized as empty, thus $j$ is set to the upper bound.
+
+\begin{figure}[htbp]
+   \centering
+   \includegraphics[scale=0.5]{img/partition-3-way-lumoto.ps}
+   \caption{3-way partition based on N. Lumoto's method.} 
+   \label{fig:partition-3-way-lumoto}
+\end{figure}
+
+When the partition process starts, the elements pointed by $k$ is examined. If it's equal to
+the pivot, $k$ just advances to the next one; If it's greater than the pivot, we swap it with
+the last element in the unknown area, so that the length of `greater-than' section increases
+by one. It's boundary $j$ moves to the left. Since we don't know if the elements swapped to $k$
+is still greater than the pivot, it should be examined again repeatedly. Otherwise, if the
+element is less than the pivot, we can exchange it with the first one in the `equal-to' section
+to resume the invariant. The parition algorithm stops when $k$ meets $j$.
+
+\begin{algorithmic}
+\Procedure{Sort}{$A, l, u$}
+  \If{$u - l > 1$}
+    \State $i \gets l$, $j \gets u$, $k \gets l + 1$
+    \State $pivot \gets A[i]$
+    \While{$k < j$}
+      \While{$pivot < A[k]$}
+        \State $j \gets j - 1$
+        \State \textproc{Exchange} $A[k] \leftrightarrow A[j]$
+      \EndWhile
+      \If{$A[k] < pivot$}
+        \State \textproc{Exchange} $A[k] \leftrightarrow A[i]$
+        \State $i \gets i + 1$
+      \EndIf
+      \State $k \gets k + 1$
+    \EndWhile
+    \State \Call{Sort}{$A, l, i$}
+    \State \Call{Sort}{$A, j, u$}
+  \EndIf
+\EndProcedure
+\end{algorithmic}
+
+Compare this one with the previous 3-way partition quick sort algorithm, it's more
+simple at the cost of more swapping operations. Below ANSI C program implements this
+algorithm.
+
+\lstset{language=C}
+\begin{lstlisting}
+void qsort(Key* xs, int l, int u) {
+    int i, j, k; Key pivot;
+    if (l < u - 1) {
+        i = l; j = u; pivot = xs[l];
+        for (k = l + 1; k < j; ++k) {
+            while (pivot < xs[k]) { --j; swap(xs[j], xs[k]); }
+            if (xs[k] < pivot) { swap(xs[i], xs[k]); ++i; }
+        }
+        qsort(xs, l, i);
+        qsort(xs, j, u);
+    }
+}
+\end{lstlisting}
+
+\section{Engineering solution to the worst case}
 Random quick sort , 3 median, ...
 
 \section{Other engineering practice}
