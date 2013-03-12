@@ -5,8 +5,7 @@
 
 typedef int Key;
 
-//#define N 100000
-#define N 20
+#define N 100000
 #define swap(x, y) { Key tmp = (x); (x) = (y); (y) = tmp; }
 
 void printrange(Key* xs, int l, int u) {
@@ -71,14 +70,14 @@ void qsort1(Key* xs, int l, int u) {
  * Jon Bentley, M. Douglas McIlroy. ``Engineering a sort function''. Software Practice and experience VOL. 23(11), 1249-1265 1993.
  */
 void qsort2(Key* xs, int l, int u) {
-    int i, j, k, p, q; Key pivot;
+    int i, j, k, p, q, pivot;
     if (l < u - 1) {
         i = p = l; j = q = u; pivot = xs[l];
         while (1) {
             while (i < u && xs[++i] < pivot);
             while (j >= l && pivot < xs[--j]);
             if (j <= i) break;
-            exchange(xs, i, j);
+            swap(xs[i], xs[j]);
             if (xs[i] == pivot) { ++p; swap(xs[p], xs[i]); }
             if (xs[j] == pivot) { --q; swap(xs[q], xs[j]); }
         }
@@ -87,6 +86,24 @@ void qsort2(Key* xs, int l, int u) {
         for (k = u-1; k >= q; --k, ++i) swap(xs[k], xs[i]);
         qsort2(xs, l, j + 1);
         qsort2(xs, i, u);
+    }
+}
+
+/*
+ * Another 3-way partition ternery quick sort based on N. Lomuto's method.
+ *   Invariant: ... less ... | ... equal ... | ... ? ... | greater |
+ *                           i               k           j
+ */
+void qsort3(Key* xs, int l, int u) {
+    int i, j, k; Key pivot;
+    if (l < u - 1) {
+        i = l; j = u; pivot = xs[l];
+        for (k = l + 1; k < j; ++k) {
+            while (pivot < xs[k]) { --j; swap(xs[j], xs[k]); }
+            if (xs[k] < pivot) { swap(xs[i], xs[k]); ++i; }
+        }
+        qsort3(xs, l, i);
+        qsort3(xs, j, u);
     }
 }
 
@@ -101,16 +118,9 @@ void testqsort(void (*fsort)(Key*, int, int)) {
         for (i = 0, n = rand() % N; i < n; ++i)
             xs[i] = rand() % N;
         memcpy((void*)ys, (const void*)xs, n * sizeof(int));
-        printrange(xs, 0, n);
         qsort(xs, n, sizeof(int), cmp);
         fsort(ys, 0, n);
-        if (memcmp(xs, ys, n * sizeof(int))) {
-            printf("error\n");
-            printrange(xs, 0, n);
-            printrange(ys, 0, n);
-            exit(1);
-        }
-        //assert(!memcmp(xs, ys, n * sizeof(int)));
+        assert(!memcmp(xs, ys, n * sizeof(int)));
     }
 }
 
@@ -120,12 +130,8 @@ int main() {
     testqsort(qsort1);
     printf("sedgewick version tested\n");
     testqsort(qsort2);
-    printf("3-way partition tested\n");
-    const int xs[] = {2, 7, 3, 7, 9, 0, 12, 3, 9, 9, 17, 0 };
-    const int n = sizeof(xs)/sizeof(int);
-    int ys[n];
-    memcpy((void*)ys, (const void*)xs, sizeof(xs));
-    qsort2(ys, 0, n);
-    printrange(ys, 0, n);
+    printf("3-way partition (Bentley & McIlroy) tested\n");
+    testqsort(qsort3);
+    printf("3-way partition based on Lomuto's method tested\n");
     return 0;
 }
