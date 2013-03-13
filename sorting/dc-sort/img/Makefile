@@ -1,6 +1,7 @@
 IMG_OBJECTS = kids-inline
 DOT_OBJECTS = partition-1-way partition-1-way-start partition-1-way-finish qsort-best partition-2-way \
-partition-2-way-inner partition-3-way partition-3-way-end partition-3-way-lumoto
+partition-2-way-inner partition-3-way partition-3-way-end partition-3-way-lumoto unbalanced \
+unbalanced-2 unbalanced-3 unbalanced-zigzag
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
