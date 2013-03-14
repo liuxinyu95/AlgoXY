@@ -1194,21 +1194,59 @@ it can ensure that there is at least one element in the shorter partitioned sub 
 Note that there is one tricky in real-world implementation. Since the index is typically represented
 in limited length words. It may cause overflow when calculating the middle index by 
 the naive expression \verb|(l + u) / 2|. In order to avoid this issue, it can be accessed
-as \verb|l + (u - l)/2|. Below algorithm illustrated this idea before calling the partition procedure.
+as \verb|l + (u - l)/2|. There are two methods to find the median, one is by at most three
+comparisons; the other is to move the minimum value to the first location, the maximum value
+to the last location, and the median value to the meddle location by swapping. After that
+we can select the middle as the pivot.
+Below algorithm illustrated the second idea before calling the partition procedure.
 
 \begin{algorithmic}
 \Procedure{Sort}{$A, l, u$}
   \If{$u - l > 2$}
-    \State ...
+    \State $m \gets \lfloor \frac{l + u}{2} \rfloor$ \Comment{Need handle overflow error in practice}
+    \If{$A[m] < A[l]$} \Comment{Ensure $A[l] \leq A[m]$}
+      \State \textproc{Exchange} $A[l] \leftrightarrow A[r]$
+    \EndIf
+    \If{$A[u-1] < A[l]$} \Comment{Ensure $A[l] \leq A[u-1]$}
+      \State \textproc{Exchange} $A[l] \leftrightarrow A[u-1]$
+    \EndIf
+    \If{$A[u-1] < A[m]$} \Comment{Ensure $A[m] \leq A[u-1]$}
+      \State \textproc{Exchange} $A[m] \leftrightarrow A[u]$
+    \EndIf
+    \State \textproc{Exchange} $A[l] \leftrightarrow A[m]$
+    \State $(i, j) \gets $ \Call{Partition}{$A, l, u$}
+    \State \Call{Sort}{$A, l, i$}
+    \State \Call{Sort}{$A, j, u$}
   \EndIf
 \EndProcedure
 \end{algorithmic}
+
+It's obviously that this algorithm performs well in the 4 speical worst cases given above.
+The imperative implementation of median-of-three is left as excercise to the reader.
+
+However, in pure functional settings, it's expensive to randomly access the middle and the last
+element. We can't directly translate the imperative median selection algorithm. The idea of
+taking a small sampling and find a median element as pivot can be realized alternatively
+by taking the first 3. For example, in the following Haskell program.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+qsort [] = []
+qsort [x] = [x]
+qsort [x, y] = [min x y, max x y]
+qsort (x:y:z:rest) = qsort (filter (< m) (s:rest)) ++ [m] ++ qsort (filter (>= m) (l:rest)) where
+    xs = [x, y, z]
+    [s, m, l] = [minimum xs, median xs, maximum xs]  
+\end{lstlisting}
+
+Unfortunately, 
 
 Random quick sort , 3 median, ...
 
 \begin{Exercise}
 \begin{itemize}
 \item Can you figure out more quick sort worst cases besides the four given in this section?
+\item Implement median-of-three method in your favorite imperative programming language.
 \end{itemize}
 \end{Exercise}
 
