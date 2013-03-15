@@ -1195,14 +1195,14 @@ Note that there is one tricky in real-world implementation. Since the index is t
 in limited length words. It may cause overflow when calculating the middle index by 
 the naive expression \verb|(l + u) / 2|. In order to avoid this issue, it can be accessed
 as \verb|l + (u - l)/2|. There are two methods to find the median, one is by at most three
-comparisons; the other is to move the minimum value to the first location, the maximum value
+comparisons \cite{3-way-part}; the other is to move the minimum value to the first location, the maximum value
 to the last location, and the median value to the meddle location by swapping. After that
 we can select the middle as the pivot.
 Below algorithm illustrated the second idea before calling the partition procedure.
 
 \begin{algorithmic}
 \Procedure{Sort}{$A, l, u$}
-  \If{$u - l > 2$}
+  \If{$u - l > 1$}
     \State $m \gets \lfloor \frac{l + u}{2} \rfloor$ \Comment{Need handle overflow error in practice}
     \If{$A[m] < A[l]$} \Comment{Ensure $A[l] \leq A[m]$}
       \State \textproc{Exchange} $A[l] \leftrightarrow A[r]$
@@ -1239,19 +1239,61 @@ qsort (x:y:z:rest) = qsort (filter (< m) (s:rest)) ++ [m] ++ qsort (filter (>= m
     [s, m, l] = [minimum xs, median xs, maximum xs]  
 \end{lstlisting}
 
-Unfortunately, 
+Unfortunately, none of the above 4 worst cases can be well handled by this program, this is becaue
+the sampling is not good. We need telescope, but not microscope to profile the whole list to be
+partitioned. We'll see the functional way to solve the partition problem later.
 
-Random quick sort , 3 median, ...
+Except for the median-of-three, there is another popular engineering practice to get good parition
+result. instead of always take the first element or the last one as the pivot. One alternative is
+to randomly select one. For example as the following modification.
+
+\begin{algorithmic}
+\Procedure{Sort}{$A, l, u$}
+  \If{$u - l > 1$}
+    \State \textproc{Exchange} $A[l] \leftrightarrow A[$ \Call{Random}{$l, u$} $]$
+    \State $(i, j) \gets $ \Call{Partition}{$A, l, u$}
+    \State \Call{Sort}{$A, l, i$}
+    \State \Call{Sort}{$A, j, u$}
+  \EndIf
+\EndProcedure
+\end{algorithmic}
+
+The function \textproc{Random}($l, u$) returns a random integer $i$ between $l$ and $u$, that
+$l \leq i < u$. The element at this position is exchanged with the first one, so that it is
+selected as the pivot for the further partition. This algorithm is called {\em random quick sort} \cite{CLRS}.
+
+Theoritically, neither median-of-three nor random quick sort can avoid the worst case completely.
+Even with this bad news, the engineering improvement still makes sense in real world programming.
+
+\section{Other engineering practice}
+There is some other engineering pratice which doesn't focus on solving the bad partition issue.
+Robert Sedgewick observed that when the list to be sorted is short, the overhead introduced by
+quick sort is relative expense, on the other hand, the insertion sort performs better in such
+case \cite{pearls}, \cite{3-way-part}. Sedgewick, Bentley and MicIlory tries different
+threadshold, as known as `CutOff', that when 
+there are lesson than `CutOff' elements, the sort algorithm rollback to insertion sort.
+
+\begin{algorithmic}
+\Procedure{Sort}{$A, l, u$}
+  \If{$u - l > $ \textproc{Cut-Off}}
+    \State \Call{Quick-Sort}{$A, l, u$}
+  \Else
+    \State \Call{Insertion-Sort}{$A, l, u$}
+  \EndIf
+\EndProcedure
+\end{algorithmic}
+
+The implementation of this improvement is left as exercise to the reader.
 
 \begin{Exercise}
 \begin{itemize}
 \item Can you figure out more quick sort worst cases besides the four given in this section?
 \item Implement median-of-three method in your favorite imperative programming language.
+\item Implement random quick sort in your favorite imperative programming language.
+\item Implement the algorithm which rollback to insertion sort when the length of list is
+small in both imperative and functional approach.
 \end{itemize}
 \end{Exercise}
-
-\section{Other engineering practice}
-TODO: Revert to insertion sort: Sedgewick's 
 
 \section{Side words}
 TODO: Relationship between quick sort and tree sort (deforestration, Richard Bird)
