@@ -16,7 +16,17 @@
 
 module MergeSort1 where
 
--- This is the basic version according to merge sort definition.
+import Test.QuickCheck
+import Data.List
+
+-- Basic version, split at the middle point
+msort [] = []
+msort [x] = [x]
+msort xs = merge (msort as) (msort bs) where
+  (as, bs) = splitAt (length xs `div` 2) xs
+
+
+-- Basic version, split odd/even
 
 mergesort [] = []
 mergesort [x] = [x]
@@ -32,4 +42,6 @@ merge [] ys = ys
 merge (x:xs) (y:ys) | x <= y = x : merge xs (y:ys)
                     | x >  y = y : merge (x:xs) ys
 
-test = mergesort [5, 9, 1, 0, 5, 4, 3, 1, 2, 3]
+--test
+prop_msort :: [Int] -> Bool
+prop_msort xs = sort xs == (msort xs)
