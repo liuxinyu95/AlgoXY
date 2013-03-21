@@ -1494,13 +1494,114 @@ merge (x:xs) (y:ys) | x <= y = x : merge xs (y:ys)
 Note that, the implemenation differs from the algorithm definition that it treats the singleton
 list as trivial edge case.
 
-TODO: imperative merge sort
+Merge sort can also be realized impreatively. The basic version can be developed as the below algorithm.
 
-TODO: verbose merge
-TOOD: merge with sentinel (infinity)
+\begin{algorithmic}
+\Procedure{Sort}{$A$}
+  \If{$|A| > 1$}
+    \State $m \gets \lfloor \frac{|A|}{2} \rfloor$
+    \State $X \gets$ \Call{Copy-Array}{$A[1...m]$}
+    \State $Y \gets$ \Call{Copy-Array}{$A[m+1...|A|]$}
+    \State \Call{Sort}{$X$}
+    \State \Call{Sort}{$Y$}
+    \State \Call{Merge}{$A, X, Y$}
+  \EndIf
+\EndProcedure
+\end{algorithmic}
 
+When the array to be sorted contains at least two elements, the non-trivial sorting process starts.
+It first copy the first half to a new create array $A$, and the second half to a second new array $B$.
+Recursively sort them by using merge sort algorithm; and finally merge the sorted result back to $A$.
+
+This version uses the same amount of extra spaces of $A$. This is because the \textproc{Merge} algorithm
+isn't in-place at the moment. We'll introduce the imperative in-place merge sort in later section.
+
+The merge process almost does the samething as the functional definition. There is a verbose version
+and a simplified version by using sentinel.
+
+The verbose merge algorithm continous check the element from the two input arrays, pick the smaller one
+and put it back to the result array $A$, it then advances along the arrays respectively until either
+one input array is exhausted. After that, the algorithm append the rest of the elements in the other
+input array to $A$.
+
+\begin{algorithmic}
+\Procedure{Merge}{$A, X, Y$}
+  \State $i \gets 1, j\gets 1, k\gets 1$
+  \State $m \gets |X|, n \gets |Y|$
+  \While{$i \leq m \land j \leq n$}
+    \If{$X[i] < Y[j]$}
+      \State $A[k] \gets X[i]$
+      \State $i \gets i + 1$
+    \Else
+      \State $A[k] \gets Y[j]$
+      \State $j \gets j + 1$
+    \EndIf
+    \State $k \gets k + 1$
+  \EndWhile
+  \While{$i \leq m$}
+    \State $A[k] \gets X[i]$
+    \State $k \gets k + 1$
+    \State $i \gets i + 1$
+  \EndWhile
+  \While{$j \leq n$}
+    \State $A[k] \gets Y[j]$
+    \State $k \gets k + 1$
+    \State $j \gets j + 1$
+  \EndWhile
+\EndProcedure
+\end{algorithmic}
+
+Altough this algorithm is a bit verbose, it can be short in some programming environment with enough tools
+to manipulate array. The following Python program is an example.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def msort(xs):
+    n = len(xs)
+    if n > 1:
+        ys = [x for x in xs[:n/2]]
+        zs = [x for x in xs[n/2:]]
+        ys = msort(ys)
+        zs = msort(zs)
+        xs = merge(xs, ys, zs)
+    return xs
+
+def merge(xs, ys, zs):
+    i = 0
+    while ys != [] and zs != []:
+        xs[i] = ys.pop(0) if ys[0] < zs[0] else zs.pop(0)
+        i = i + 1
+    xs[i:] = ys if ys !=[] else zs
+    return xs
+\end{lstlisting}
+
+\subsubsection{Performance}
+Before dive into the improvement of this basic version, let's analyze the performance of merge sort.
+The algorithm contains two steps, divide step, and merge step. In divide step, the sequence to be 
+sorted is always divided into two sub sequences with the same length. If we draw a similar partition tree
+as what we did for quick sort, it can be found this tree is a perfect balanced binary tree as shown in
+figure \ref{fig:qsort-best}. Thus the height of this tree is $O(\lg N)$. It means the recursion depth
+of merge sort is bound to $O(\lg N)$. Merge happens in every level. It's intuitive to analyze the
+merge algorithm, that it compare elements from two input sequences in pairs, after one sequence is fully examined
+the rest one is copied one by one to the result, thus it's a linear algorithm proportion to the length of 
+the sequence. Based on this facts, denote $T(N)$ is the time for sort the sequence with length $N$,
+we can write the recursive time cost as below.
+
+\be
+\begin{array}{rl}
+T(N) & = \displaystyle T(\frac{N}{2}) + T(\frac{N}{2}) + c N \\
+     & = 2 T(\frac{N}{2}) + c N
+\ee
+
+It states that the cost consists of three parts: merge sort the first half takes $T(\frac{N}{2})$, 
+merge sort the second half takes also $T(\frac{N}{2})$, merge the two results takes $c N$, where $c$
+is some constant. Solve this equation gives the result as $O(N \lg N)$.
+
+Note that, this performance doesn't vary in all cases, as merge sort alwasy uniformed divids the input.
 
 \subsubsection{Minor improvement}
+TOOD: merge with sentinel (infinity)
+
 FP: even-odd split.
 
 \section{In-place merge sort}
