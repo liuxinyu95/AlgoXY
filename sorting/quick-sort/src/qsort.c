@@ -108,7 +108,7 @@ void qsort3(Key* xs, int l, int u) {
 }
 
 /* test */
-Key cmp(const void* x, const void* y) {
+int cmp(const void* x, const void* y) {
     return *(Key*)x - *(Key*)y;
 }
 
