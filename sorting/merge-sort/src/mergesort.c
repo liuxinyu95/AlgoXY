@@ -25,6 +25,12 @@ typedef int Key;
 #define N 100000
 #define INF N + 1
 
+void printrange(Key* xs, int l, int u) {
+    printf("xs[%d, %d) = ", l, u);
+    for (; l < u; ++l)
+        printf( l == u - 1 ? "%d\n" : "%d, ", xs[l]);
+}
+
 /*
  * Basic version, using infinity as sentinel
  * Refer to CLRS:
@@ -50,12 +56,44 @@ void msort(Key* xs, int l, int u) {
     }
 }
 
+/*
+ * Method described by Knuth in TAOCP
+ */
+void kmerge(Key* xs, Key* ys, int l, int m, int u) {
+    int i, j, k;
+    i = k = l; j = m;
+    while (i < m && j < u)
+        ys[k++] = xs[i] < xs[j] ? xs[i++] : xs[j++];
+    while (i < m)
+        ys[k++] = xs[i++];
+    while (j < u)
+        ys[k++] = xs[j++];
+    for(; l < u; ++l)
+        xs[l] = ys[l]; //memcpy((void*)(xs + l), (void*)(ys + l), sizeof(Key) * (u - l));
+}
+
+void kmsort(Key* xs, Key* ys, int l, int u) {
+    int m;
+    if (u - l > 1) {
+        m = l + (u - l) / 2;
+        kmsort(xs, ys, l, m);
+        kmsort(xs, ys, m, u);
+        kmerge(xs, ys, l, m, u);
+    }
+}
+
+void msort2(Key* xs, int l, int u) {
+    Key* ys = (Key*) malloc(sizeof(Key) * (u - l));
+    kmsort(xs, ys, l, u);
+    free(ys);
+}
+
 /* test */
 int cmp(const void* x, const void* y) {
     return *(Key*)x - *(Key*)y;
 }
 
-void testqsort(void (*fsort)(Key*, int, int)) {
+void testmsort(void (*fsort)(Key*, int, int)) {
     int i, j, n, xs[N], ys[N];
     for (j = 0; j < 100; ++j) {
         for (i = 0, n = rand() % N; i < n; ++i)
@@ -64,11 +102,20 @@ void testqsort(void (*fsort)(Key*, int, int)) {
         qsort(xs, n, sizeof(int), cmp);
         fsort(ys, 0, n);
         assert(!memcmp(xs, ys, n * sizeof(int)));
+        /*
+        if(memcmp(xs, ys, n * sizeof(int))) {
+            printrange(xs, 0, n);
+            printrange(ys, 0, n);
+            exit(-1);
+        }
+        */
     }
 }
 
 int main() {
-    testqsort(msort);
-    printf("basic version tested\n");
+    //testmsort(msort);
+    //printf("basic version tested\n");
+    testmsort(msort2);
+    printf("knuth version tested\n");
     return 0;
 }
