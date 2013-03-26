@@ -23,7 +23,7 @@
 
 typedef int Key;
 
-#define N 100000
+#define N  100000
 #define INF N + 1
 
 void printrange(Key* xs, int l, int u) {
@@ -89,6 +89,31 @@ void msort2(Key* xs, int l, int u) {
     free(ys);
 }
 
+/*
+ * Naive in-place merge
+ * Refer to http://penguin.ewu.edu/cscd300/Topic/AdvSorting/MergeSorts/InPlace.html
+ */
+void naive_merge(Key* xs, int l, int m, int u) {
+    int i; Key y;
+    for(; l < m && m < u; ++l)
+        if (!(xs[l] < xs[m])) {
+            y = xs[m++];
+            for (i = m - 1; i > l; --i) /* shift */
+                xs[i] = xs[i-1];
+            xs[l] = y;
+        }
+}
+
+void msort3(Key* xs, int l, int u) {
+    int m;
+    if (u - l > 1) {
+        m = l + (u - l) / 2;
+        msort3(xs, l, m);
+        msort3(xs, m, u);
+        naive_merge(xs, l, m, u);
+    }
+}
+
 /* test */
 int cmp(const void* x, const void* y) {
     return *(Key*)x - *(Key*)y;
@@ -115,10 +140,17 @@ void testmsort(void (*fsort)(Key*, int, int)) {
 
 int main() {
     double t = clock();
+    /*
     testmsort(msort);
     printf("basic version tested, average time: %f\n", (clock() - t) / CLOCKS_PER_SEC / 100.0);
+    */
     t = clock();
     testmsort(msort2);
     printf("working area version tested, average time: %f\n", (clock() - t) / CLOCKS_PER_SEC / 100.0);
+
+    /* Don't use big N such as 100,000, it's very slow, for 10,000, average tm = 0.022948
+    testmsort(msort3);
+    printf("naive in-place version tested, average time: %f.\n", (clock() - t) / CLOCKS_PER_SEC / 100.0);
+    */
     return 0;
 }
