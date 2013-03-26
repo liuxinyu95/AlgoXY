@@ -19,6 +19,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include <time.h> /*for time measurement*/
 
 typedef int Key;
 
@@ -57,7 +58,7 @@ void msort(Key* xs, int l, int u) {
 }
 
 /*
- * Method described by Knuth in TAOCP
+ * Method of double the array in advance to prepare the working area.
  */
 void kmerge(Key* xs, Key* ys, int l, int m, int u) {
     int i, j, k;
@@ -113,9 +114,11 @@ void testmsort(void (*fsort)(Key*, int, int)) {
 }
 
 int main() {
-    //testmsort(msort);
-    //printf("basic version tested\n");
+    double t = clock();
+    testmsort(msort);
+    printf("basic version tested, average time: %f\n", (clock() - t) / CLOCKS_PER_SEC / 100.0);
+    t = clock();
     testmsort(msort2);
-    printf("knuth version tested\n");
+    printf("working area version tested, average time: %f\n", (clock() - t) / CLOCKS_PER_SEC / 100.0);
     return 0;
 }

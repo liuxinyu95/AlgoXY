@@ -1671,18 +1671,99 @@ void msort(Key* xs, int l, int u) {
 }
 \end{lstlisting}
 
-Running this program takes much more time than the quick sort. Besides the major reason we'll state later,
-one problem is that this version frequentl allocate and release extra memories for merging. While memory
-allocation is one of the well known bottle-neck in real word as mentioned by Bentley in \cite{pearls}.
-Knuth proposed a method in \cite{TAOCP}, that we can double the size of the array to be sorted.
-The first half of this new array contains elements we are sorting, the second half is used as
-working area for merging. When we enter the next recursion, we switch to use the second half
-for sorting, and use the first half as working area; Such switching happends repeatedly in
-recursive calls. Finally, we copied all elements from the second half as the result.
+Running this program takes much more time than the quick sort. Besides the major reason we'll explain later,
+one problem is that this version frequently allocates and releases extra memories for merging. While memory
+allocation is one of the well known bottle-neck in real world as mentioned by Bentley in \cite{pearls}.
+One solution to address this issue is to allocate another array with the same size to the original one
+as working area. The recursive sort for the first and second halves needn't allocate any more
+extra spaces, but using the working area when merging. Finally, the algorithm copies
+the merged result back.
 
-TODO: illustrate this idea by using figure.
+This idea can be expressed as the following modified algorithm.
 
-TODO: Knuth method, append an equal buffer as working area, and swap between it and the original array.
+\begin{algorithmic}
+\Procedure{Sort}{A}
+  \State $B \gets $ \Call{Create-Array}{$|A|$}
+  \State \Call{Sort'}{$A, B, 1, |A|$}
+\EndProcedure
+\Statex
+\Procedure{Sort'}{$A, B, l, u$}
+  \If{$u - l > 2$}
+    \State $m \gets \lfloor \frac{l + u}{2} \rfloor$
+    \State \Call{Sort'}{$A, B, l, m$}
+    \State \Call{Sort'}{$A, B, m + 1, u$}
+    \State \Call{Merge'}{$A, B, l, m, u$}
+  \EndIf
+\EndProcedure
+\end{algorithmic}
+
+The modified algorithm \textproc{Merge'} also accepts a working area as parameter.
+
+\begin{algorithmic}
+\Procedure{Merge'}{$A, B, l, m, u$}
+  \State $i \gets l, j \gets m + 1, k \gets l$
+  \While{$i \leq m \land j \leq u$}
+    \If{$A[i] < A[j]$}
+      \State $B[k] \gets A[i]$
+      \State $i \gets i + 1$
+    \Else
+      \State $B[k] \gets A[j]$
+      \State $j \gets j + 1$
+    \EndIf
+    \State $k \gets k + 1$
+  \EndWhile
+  \While{$i \leq m$}
+    \State $B[k] \gets A[i]$
+    \State $k \gets k + 1$
+    \State $i \gets i + 1$
+  \EndWhile
+  \While{$j \leq u$}
+    \State $B[k] \gets A[j]$
+    \State $k \gets k + 1$
+    \State $j \gets j + 1$
+  \EndWhile
+  \For{$i \gets$ from $l$ to $u$} \Comment{Copy back}
+    \State $A[i] \gets B[i]$
+  \EndFor
+\EndProcedure
+\end{algorithmic}
+
+The following ANSI C program implements this minor improvement.
+
+\lstset{language=C}
+\begin{lstlisting}
+void merge(Key* xs, Key* ys, int l, int m, int u) {
+    int i, j, k;
+    i = k = l; j = m;
+    while (i < m && j < u)
+        ys[k++] = xs[i] < xs[j] ? xs[i++] : xs[j++];
+    while (i < m)
+        ys[k++] = xs[i++];
+    while (j < u)
+        ys[k++] = xs[j++];
+    for(; l < u; ++l)
+        xs[l] = ys[l];
+}
+
+void msort(Key* xs, Key* ys, int l, int u) {
+    int m;
+    if (u - l > 1) {
+        m = l + (u - l) / 2;
+        msort(xs, ys, l, m);
+        msort(xs, ys, m, u);
+        merge(xs, ys, l, m, u);
+    }
+}
+
+void sort(Key* xs, int l, int u) {
+    Key* ys = (Key*) malloc(sizeof(Key) * (u - l));
+    kmsort(xs, ys, l, u);
+    free(ys);
+}
+\end{lstlisting}
+
+This new version runs faster than the previous one. In my test machine, it speeds up about 20\% to 25\% when sorting
+100,000 randomly generated numbers.
 
 FP: even-odd split.
 
@@ -1693,6 +1774,13 @@ FP: even-odd split.
 \subsection{in-place merge with working area}
 
 \section{Nature merge sort}
+Knuth proposed a method in \cite{TAOCP}, that we can double the size of the array to be sorted.
+The first half of this new array contains elements we are sorting, the second half is used as
+working area for merging. When we enter the next recursion, we switch to use the second half
+for sorting, and use the first half as working area; Such switching happends repeatedly in
+recursive calls. Finally, we copied all elements from the second half as the result.
+
+TODO: illustrate this idea by using figure.
 
 \section{Bottom-up merge sort}
 
