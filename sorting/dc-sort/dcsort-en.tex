@@ -1880,6 +1880,133 @@ void msort3(Key* xs, int l, int u) {
 
 \subsection{in-place working area}
 
+In order to implement the in-place merge sort in $O(N \lg N)$ time, when sorting a sub array, the rest part of 
+the array must be reused as working area for merging. As the elements stored in the working area, will be sorted
+later, they can't be overwritten. We can modify the previous algorithm, which douplicate an extra spaces for merging
+a bit to achieve this. The idea is that, every time when we compare the first elements in the two sorted sub
+array, if we want to put the less element to the target position in the working area, we in-turn exchange what
+sored in the working area with this element. Thus after merging the two sub arrays store what the working area
+previously contains. This idea can be illustrated in figure \ref{fig:merge_workarea}.
+
+\begin{figure}[htbp]
+ \centering
+ \includegraphics[scale=0.8]{img/merge-workarea.ps}
+ \caption{Merge without overwritting work area.}
+ \label{fig:merge-workarea}
+\end{figure}
+
+In our algorithm, both the two sorted sub array, and the working area for merging are all part of the 
+origianl array to be sorted. we need pass the following arguments when merging: the start points and end
+points of the sorted sub arrays, which can be represented as ranges; and the start point of the working
+area. The following algorithm description for example, use $[a, b)$ to indicate the range include $a$, 
+exclude $b$. It merges sorted range $[i, m)$ and range $[j, n)$ to work area starts from $k$.
+
+\begin{algorithmic}
+\Procedure{Merge}{$A, [i, m), [j, n), k$}
+  \While{$i < m \land j < n$}
+    \If{$A[i] < A[j]$}
+      \State \textproc{Exchange} $A[k] \leftrightarrow A[i]$
+      \State $i \gets i + 1$
+    \Else
+      \State \textproc{Exchange} $A[k] \leftrightarrow A[j]$
+      \State $j \gets j + 1$
+    \EndIf
+    \State $k \gets k + 1$
+  \EndWhile
+  \While{$i < m$}
+    \State \textproc{Exchange} $A[k] \leftrightarrow A[i]$
+    \State $i \gets i + 1$
+    \State $k \gets k + 1$
+  \EndWhile
+  \While{$j < m$}
+    \State \textproc{Exchange} $A[k] \leftrightarrow A[j]$
+    \State $j \gets j + 1$
+    \State $k \gets k + 1$
+  \EndWhile
+\EndProcedure
+\end{algorithmic}
+
+Note that, the following two constraints must be satisfied when merging:
+
+\begin{enumerate}
+\item The work area should be within the bound of the array. In other words, it should be big 
+enough to hold elements exchanged in without causing any out-of-bound error;
+\item The work area can be overlapped with either of the two sorted arrays, however, it should
+be ensured that there are not any unmerged elements being overwritten;
+\end{enumerate}
+
+This algorithm can be implemented in ANSI C as the following example.
+
+\lstset{language=C}
+\begin{lstlisting}
+void wmerge(Key* xs, int i, int m, int j, int n, int w) {
+    while (i < m && j < n)
+        swap(xs, w++, xs[i] < xs[j] ? i++ : j++);
+    while (i < m)
+        swap(xs, w++, i++);
+    while (j < n)
+        swap(xs, w++, j++);
+}  
+\end{lstlisting}
+
+With this merging algorithm defined, it's easy to imagine a solution, which can sort
+half of the array; The next question is, how to deal with the rest of the unsort part
+stored in work area as shown in figure \ref{fig:merge-in-place-start}?
+
+\begin{figure}[htbp]
+ \centering
+ \includegraphics[scale=0.8]{img/merge-in-place-start.ps}
+ \caption{Half of the array is soreted.}
+ \label{fig:merge-in-place-start}
+\end{figure}
+
+One intuitive idea is to recursive sort another half of the working area, thus there are
+only $\frac{1}{4}$ elements haven't been sorted yet. Which is shown in figure \ref{fig:merge-in-place-quater}.
+The key point at this stage is that we must merge the sorted $\frac{1}{4}$ elements $B$
+with the sorted $\frac{1}{2}$ elements $A$ sooner or later.
+
+\begin{figure}[htbp]
+ \centering
+ \includegraphics[scale=0.8]{img/merge-in-place-quater.ps}
+ \caption{$A$ and $B$ must be merged at sometime.}
+ \label{fig:merge-in-place-quater}
+\end{figure}
+
+Is the working area left, which only holds $\frac{1}{4}$ elements, big enough to merge
+$A$ and $B$? Unfortunately, it isn't in the setting shown in figure \ref{fig:merge-in-place-quater}.
+
+However, the second constraint mentioned before gives us a hint, that we can exploit
+it by arranging the working area to overlap with either sub array if we can ensure the
+merging sequence that the unmerged elements won't be overwritten.
+
+Actually, instead of sorting the second half of the working area, we can sort the first
+half, and put the working area between the two sorted arrays as shown in figure \ref{fig:merge-in-place-setup} (a).
+This setup effects arrange the work area overlap with the sub array $A$. This idea
+is proposed in \cite{msort-in-place}.
+
+\begin{figure}[htbp]
+ \centering
+ \subfloat[]{\includegraphics[scale=0.8]{img/merge-in-place-setup.ps}} \\
+ \subfloat[]{\includegraphics[scale=0.8]{img/merge-in-place-merged-quater.ps}}
+ \caption{Merge $A$ and $B$ with a work area.}
+ \label{fig:merge-in-place-setup}
+\end{figure}
+
+Let's consider two extreme cases:
+
+\begin{enumerate}
+\item All the elements in $B$ are less than any elements in $A$. In this case, the merge algorithm
+finally moves the whole contents of $B$ to the working area; the cells of $B$ holds what previously
+stored in the workarea; As the size of area is as same as $B$, it's OK for exchange their contents;
+\item All the elements in $A$ are less than any elements in $B$. In this case, the merge algorithm
+continously exchanges elements between $A$ and the workarea. After all the previous $\frac{1}{4}$ 
+cells in the work area are filled with elements from $A$, the algorithm starts to overwrite the
+first half of $A$, fortunately, the contents being overwritten are not those unmerged elements.
+The work area is in effect advances towards the end of the array, and finally moves to the right
+side; From this time point, the merge algorithm start exchange contents in $B$ with the work area.
+The result is that the work area moves to the right most side which is shown in figure \ref{fig:merge-in-place-setup} (b).
+\end{enumerate}
+
 \section{Nature merge sort}
 Knuth proposed a method in \cite{TAOCP}, that we can double the size of the array to be sorted.
 The first half of this new array contains elements we are sorting, the second half is used as
