@@ -163,10 +163,9 @@ void imsort(Key* xs, int l, int u) {
         wsort(xs, l, m, w); /* the last half contains sorted elements */
         while (w - l > 2) {
             n = w;
-            m = l + (n - l + 1) / 2;
-            wsort(xs, m, n, l);  /* the first half of the previous working area contains sorted elements */
-            w = m;
-            wmerge(xs, l, l + n - m, n, u, m);
+            w = l + (n - l + 1) / 2;
+            wsort(xs, w, n, l);  /* the first half of the previous working area contains sorted elements */
+            wmerge(xs, l, l + n - w, n, u, w);
         }
         for (n = w; n > l; --n) /*switch to insertion sort*/
             for (m = n; m < u && xs[m] < xs[m-1]; ++m)
@@ -198,16 +197,12 @@ void testmsort(void (*fsort)(Key*, int, int)) {
 
 int main() {
     double t = clock();
-    /*
     testmsort(msort);
     printf("basic version tested, average time: %f\n", (clock() - t) / CLOCKS_PER_SEC / 100.0);
-    */
 
-    /*
     t = clock();
     testmsort(msort2);
     printf("working area version tested, average time: %f\n", (clock() - t) / CLOCKS_PER_SEC / 100.0);
-    */
 
     /* Don't use big N such as 100,000, it's very slow, for 10,000, average tm = 0.022948
     testmsort(msort3);
