@@ -1688,7 +1688,7 @@ This idea can be expressed as the following modified algorithm.
 \EndProcedure
 \Statex
 \Procedure{Sort'}{$A, B, l, u$}
-  \If{$u - l > 2$}
+  \If{$u - l > 0$}
     \State $m \gets \lfloor \frac{l + u}{2} \rfloor$
     \State \Call{Sort'}{$A, B, l, m$}
     \State \Call{Sort'}{$A, B, m + 1, u$}
@@ -2007,15 +2007,129 @@ side; From this time point, the merge algorithm start exchange contents in $B$ w
 The result is that the work area moves to the right most side which is shown in figure \ref{fig:merge-in-place-setup} (b).
 \end{enumerate}
 
-TODO: describe the algorithm
+We can repeat this step, that always sort the second half of the unsorted part, and exchange
+the sorted sub array to the first half as working area. Thus we keep reducing the working area 
+from $\frac{1}{2}$ of the array, $\frac{1}{4}$
+of the array, $\frac{1}{8}$ of the array, ... The scale of the merge problem keeps reducing.
+When there is only one element left in the working area, we needn't sort it any more since
+the singleton array is sorted by nature. Merge a singleton array to the other is equivellent
+to insert the element. In practice, the algorithm can finalize the last few 
+elements by switching to insertion sort.
 
-TODO: pseudo code
+The who algorithm can be described as the following.
 
-TODO: performance analysis
+\begin{algorithmic}
+\Procedure{Sort}{$A, l, u$}
+  \If{$u - l > 0$}
+    \State $m \gets \lfloor \frac{l + u}{2} \rfloor$
+    \State $w \gets l + u - m$
+    \State \Call{Sort'}{$A, l, m, w$} \Comment{The second half contains sorted elements}
+    \While{$w - l > 1$}
+      \State $u' \gets w$
+      \State $w \gets \lceil \frac{l + u'}{2} \rceil$ \Comment{Ensure the working area is big enough}
+      \State \Call{Sort'}{$A, w, u', l$} \Comment{The first half holds the sorted elements}
+      \State \Call{Merge}{$A, [l, l + u' - w], [u', u], w$}
+    \EndWhile
+    \For{$i \gets w$ down-to $l$} \Comment{Switch to insertion sort}
+      \State $j \gets i$
+      \While{$j \leq u \land A[j] < A[j-1]$}
+        \State \textproc{Exchange} $A[j] \leftrightarrow A[j-1]$
+        \State $j \gets j + 1$
+      \EndWhile
+    \EndFor
+  \EndIf
+\EndProcedure
+\end{algorithmic}
 
-TODO: C code
+Note that in order to satisfy the first constrait, we must ensure the working area is big enough to hold
+all exhanged in elements, that's way we round it by ceiling when sort the second half of the working area.
+Note that we actually pass the ranges including the end points to the algorithm \textproc{Merge}.
 
-TODO: performance in practice
+Next, we develope a \text{Sort'} algorithm, which mutually recursive call \text{Sort} and exhange the result
+to the working area.
+
+\begin{algorithmic}
+\Procedure{Sort'}{$A, l, u, w$}
+  \If{$u - l > 0$}
+    \State $m \gets \lfloor \frac{l + u}{2} \rfloor$
+    \State \Call{Sort}{$A, l, m$}
+    \State \Call{Sort}{$A, m+1, u$}
+    \State \Call{Merge}{$A, [l, m], [m+1, u], w$}
+  \Else \Comment{Exhange all elements to the work area}
+    \While{$l \leq u$}
+      \State \textproc{Exchange} $A[l] \leftrightarrow A[w]$
+      \State $l \gets l + 1$
+      \State $w \gets w + 1$
+    \EndWhile
+  \EndIf
+\EndProcedure
+\end{algorithmic}
+
+Different from the naive in-place sort, this algorithm doesn't shift the array during merging. The main
+algorithm reduces the unsort part in sequence of $N/2, N/4, N/8, ...$, it takes $O(\lg N)$ steps to complete
+sorting. In every step, It recurisve sort half of the rest elements, and perform linear time merging.
+
+Denote the time cost of sorting $N$ elements as $T(N)$, we have the following equation.
+
+\be
+T(N) = T(\frac{N}{2}) + c \frac{N}{2} + T(\frac{N}{4}) + c \frac{3N}{4} + T(\frac{N}{8}) + c \frac{7N}{8} + ...
+\ee
+
+Solving this equation by using telescope method, get the result $O(N \lg N)$. The detailed process is
+left as exercise to the reader.
+
+The following ANSI C code complete the implementation by using the example \verb|wmerge| program given 
+above.
+
+\lstset{language=C}
+\begin{lstlisting}
+void imsort(Key* xs, int l, int u);
+
+void wsort(Key* xs, int l, int u, int w) {
+    int m;
+    if (u - l > 1) {
+        m = l + (u - l) / 2;
+        imsort(xs, l, m);
+        imsort(xs, m, u);
+        wmerge(xs, l, m, m, u, w);
+    }
+    else
+        while (l < u)
+            swap(xs, l++, w++);
+}
+
+void imsort(Key* xs, int l, int u) {
+    int m, n, w;
+    if (u - l > 1) {
+        m = l + (u - l) / 2;
+        w = l + u - m;
+        wsort(xs, l, m, w); /* the last half contains sorted elements */
+        while (w - l > 2) {
+            n = w;
+            w = l + (n - l + 1) / 2; /* ceiling */
+            wsort(xs, w, n, l);  /* the first half contains sorted elements */
+            wmerge(xs, l, l + n - w, n, u, w);
+        }
+        for (n = w; n > l; --n) /*switch to insertion sort*/
+            for (m = n; m < u && xs[m] < xs[m-1]; ++m)
+                swap(xs, m, m - 1);
+    }
+}
+\end{lstlisting}
+
+However, this program doesn't run faster than version we developed in previous section, which double
+the array in advance as working area. In my machine, it is about 60\% slower when sorting 100,000 random 
+numbers due to many swap operations.
+
+\subsection{In-place merge sort V.S. linked-list merge sort}
+
+TODO:
+
+\begin{Exercise}
+\begin{itemize}
+\item Proof the in-place merge sort is bound to $O(N \lg N)$.
+\end{itemize}
+\end{Exercise}
 
 \section{Nature merge sort}
 Knuth proposed a method in \cite{TAOCP}, that we can double the size of the array to be sorted.
