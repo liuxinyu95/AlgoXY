@@ -2123,16 +2123,115 @@ numbers due to many swap operations.
 
 \subsection{In-place merge sort V.S. linked-list merge sort}
 
-TODO:
+The in-place merge sort is still a live area for research. In order to save the extra spaces for merging,
+some overhead has be introduced, which increase the complecxity of the merge sort algorithm. However, if
+the underlying data structure isn't array, but linked list, merge can be achieved without any extra spaces
+as shown in the even-odd functional merge sort algorithm presented in previous section.
+
+In order to make it clearer, we can develop a purely imperative linked-list merge sort solution.
+The linked-list can be defined as a record type as shown in appendix A like below.
+
+\lstset{language=C}
+\begin{lstlisting}
+struct Node {
+    Key key;
+    struct Node* next;
+};  
+\end{lstlisting}
+
+We can define an auxiliary function for node linking. Assume the list to be linked isn't empty, it
+can be implemented as the following.
+
+\lstset{language=C}
+\begin{lstlisting}
+struct Node* link(struct Node* xs, struct Node* ys) {
+    xs->next = ys;
+    return xs;
+}  
+\end{lstlisting}
+
+One method to realize the imperative even-odd splitting, is to initialize two empty sub lists.
+Then iterate the list to be splitted. Every time, we link the current node in front of the
+first sub list, then exchange the two sub lists. So that, the second sub list will be linked
+at the next time iteration. This idea can be illustrated as below.
+
+\begin{algorithmic}
+\Function{Split}{$L$}
+  \State $(A, B) \gets (\Phi, \Phi)$
+  \While{$L \neq \Phi$}
+    \State $p \gets L$
+    \State $L \gets $ \Call{Next}{$L$}
+    \State $A \gets $ \Call{Link}{$p, A$}
+    \State \textproc{Exchange} $A \leftrightarrow B$
+  \EndWhile
+  \State \Return $(A, B)$
+\EndFunction
+\end{algorithmic}
+
+The following example ANSI C program implements this splitting algorithm embedded.
+
+\lstset{language=C}
+\begin{lstlisting}
+struct Node* msort(struct Node* xs) {
+    struct Node *p, *as, *bs;
+    if (!xs || !xs->next) return xs;
+
+    as = bs = NULL;
+    while(xs) {
+        p = xs;
+        xs = xs->next;
+        as = link(p, as);
+        swap(as, bs);
+    }
+    as = msort(as);
+    bs = msort(bs);
+    return merge(as, bs);
+}  
+\end{lstlisting}
+
+The only thing left is to develop the imperative merging algorithm for linked-list. The idea
+is quite similar to the array merging version. As long as neither of the sub lists is exhausted,
+we pick the less one, and append it to the result list. After that, it just need link the
+non-empty one to the tail the result, but not a looping for copying. It's need some carefulness
+to initiaize the result list, as its head node is the less one among the two sub lists.
+One simple method is to use a dummy sentinel head, and drop it before returning. This implementation
+detail can be given as the following.
+
+\lstset{language=C}
+\begin{lstlisting}
+struct Node* merge(struct Node* as, struct Node* bs) {
+    struct Node s, *p;
+    p = &s;
+    while (as && bs) {
+        if (as->key < bs->key) {
+            link(p, as);
+            as = as->next;
+        }
+        else {
+            link(p, bs);
+            bs = bs->next;
+        }
+        p = p->next;
+    }
+    if (as)
+        link(p, as);
+    if (bs)
+        link(p, bs);
+    return s.next;
+}  
+\end{lstlisting}
 
 \begin{Exercise}
 \begin{itemize}
-\item Proof the in-place merge sort is bound to $O(N \lg N)$.
+\item Proof the performance of in-place merge sort is bound to $O(N \lg N)$.
 \end{itemize}
 \end{Exercise}
 
 \section{Nature merge sort}
-Knuth proposed a method in \cite{TAOCP}, that we can double the size of the array to be sorted.
+Knuth gives another way to interpret the idea of divide and conquer merge sort by using the example
+of burning a candle in both ends \cite{TAOCP}. This leads to the nature merge sort algorithm.
+
+that we can double the size of the array to be sorted.
 The first half of this new array contains elements we are sorting, the second half is used as
 working area for merging. When we enter the next recursion, we switch to use the second half
 for sorting, and use the first half as working area; Such switching happends repeatedly in

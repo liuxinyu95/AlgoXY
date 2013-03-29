@@ -99,15 +99,16 @@ struct Node* merge(struct Node* as, struct Node* bs) {
 }
 
 struct Node* msort(struct Node* xs) {
-    struct Node *p, *as = NULL, *bs = NULL;
+    struct Node *p, *as, *bs;
     if (!xs || !xs->next)
         return xs;
 
+    as = bs = NULL;
     while(xs) {
-        swap(as, bs);
         p = xs;
         xs = xs->next;
         as = link(p, as);
+        swap(as, bs);
     }
     as = msort(as);
     bs = msort(bs);
