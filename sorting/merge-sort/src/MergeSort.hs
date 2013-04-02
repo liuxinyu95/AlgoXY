@@ -41,6 +41,22 @@ merge xs [] = xs
 merge [] ys = ys
 merge (x:xs) (y:ys) | x <= y = x : merge xs (y:ys)
                     | x >  y = y : merge (x:xs) ys
+                               
+-- Bottom up version
+-- Based on: Chris Okasaki. ``Purely functional data structures'' 6.4.3. 
+bmsort = sort'' . map (\x->[x])
+
+sort'' [] = []
+sort'' [xs] = xs
+sort'' xss = sort'' $ mergeAll xss where
+  mergeAll (xs:ys:xss) = merge xs ys : mergeAll xss
+  mergeAll xss = xss
+  
+-- Bottom up version using foldl
+bmsort' = bmsort'' . map (\x->[x]) where
+  bmsort'' [] = []
+  bmsort'' [xs] = xs
+  bmsort'' xss = bmsort $ foldl merge [] xss
 
 -- A version for performance visualization
 -- This version record the number of swaps which happens during sorting.
@@ -68,3 +84,12 @@ msort' = sort' . map (\x->([x], 0))
 --test
 prop_msort :: [Int] -> Bool
 prop_msort xs = sort xs == (msort xs)
+
+prop_mergesort :: [Int] -> Bool
+prop_mergesort xs = sort xs == (mergesort xs)
+
+prop_bmsort :: [Int] -> Bool
+prop_bmsort xs = sort xs == (bmsort xs)
+
+prop_bmsort' :: [Int] -> Bool
+prop_bmsort' xs = sort xs == (bmsort' xs)

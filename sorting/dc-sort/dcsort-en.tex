@@ -2547,6 +2547,123 @@ mergesort' = foldl merge [] . groupBy' (<=)
 
 \section{Bottom-up merge sort}
 
+The worst case analysis for nature merge sort raises an interesting topic, instead of realizing merge sort in
+top-down manner, we can develop a bottom-up version. The great advantage is that, we needn't do book keeping
+any more, so the algorithm is quite friendly for purely iterative implementation.
+
+The idea of bottom-up merge sort is to turn the sequence to be sorted into $N$ small sub sequences each contains
+only one elment. Then we merge every two of such small sub sequences, so that we get $\frac{N}{2}$ ordered
+sub sequences each with length 2; If $N$ is odd number, we left the last singleton sequence untouched.
+We repeatedly merge these pairs, and the finally we got the sorted result. Knuth names this variant as
+`straight two-way merge sort' \cite{TAOCP}. The bottom-up merge sort is illustrated in figure \ref{fig:bottom-up-msort}
+
+\begin{figure}[htbp]
+ \centering
+ \includegraphics[scale=0.6]{img/bottom-up-msort.ps}
+ \caption{Bottom-up merge sort}
+ \label{fig:bottom-up-msort}
+\end{figure}
+
+Different with the basic version and even-odd version, we needn't explictly split the list to be sorted
+in every recursion. The whole list is split into $N$ singletons at the very begining, and we only merge
+them in the rest of the algorithm.
+
+\be
+sort(L) = sort'(wraps(L))
+\ee
+
+\be
+wraps(L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & L = \Phi \\
+  \{ \{l_1\} \} \cup wraps(L')
+  \end{array}
+\right.  
+\ee
+
+Of course $wraps$ can be imlemented by using mapping as introduced in appendix A.
+
+\be
+sort(L) = sort'(map(\lambda_x \cdot \{ x \}, L))
+\ee
+
+The next is to design the $sort'$ algorithm, which repeatedly merge merge pairs of sub lists until there are only
+one sub list.
+
+\be
+sort'(\mathbb{L}) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & \mathbb{L} = \Phi \\
+  L_1 & \mathbb{L} = \{ L_1 \} \\
+  sort'(mergeAll(\mathbb{L})) & otherwise
+  \end{array}
+\right.
+\ee
+
+The first two are the trivial edge cases. If the list to be sorted is empty, the result is obviously empty;
+If it contains only one sub list, then we are done. We need just extract this single sub list as result;
+For the recursive case, we call a fuction $mergeAll$ to merge every two sub lists, then recursive call
+$sort'$.
+
+\be
+mergeAll(\mathbb{L}) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \mathbb{L} & |\mathbb{L}| \leq 1 \\
+  \{ merge(L_1, L_2) \} \cup mergeAll(L') & otherwise
+  \end{array}
+\right.
+\ee
+
+Implement this version in Haskell gives the following example code.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+sort = sort' . map (\x->[x])
+
+sort' [] = []
+sort' [xs] = xs
+sort' xss = sort' $ mergeAll xss where
+  mergeAll (xs:ys:xss) = merge xs ys : mergeAll xss
+  mergeAll xss = xss
+\end{lstlisting} %$
+
+This version based on Okasaki presented in \cite{okasaki-book} is quite similiar to the nature merge sort
+only differs in the way of groupping. Actually, it can be deduced as a special case (the worst case) of
+nature merge sort by the following equation.
+
+\be
+sort(L)= concats(mergePairs(groupBy(\lambda_{x, y} \cdot False, L)))
+\ee
+
+That instead of spanning the non-dereasing sub list as long as possible, it uses a always false predicate,
+so the sub list spans only one element.
+
+Similiar with nature merge sort bottom-up merge sort can also be defined by folding. The detailed implementation
+is left as exercise to the reader.
+
+\be
+sort'(\mathbb{L}) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & \mathbb{L} = \Phi \\
+  L_1 & \mathbb{L} = \{ L_1 \} \\
+  sort'(fold(merge, \Phi, \mathbb{L})) & otherwise
+  \end{array}
+\right.
+\ee
+
+Observing the bottom-up sort, we can find it's in tail recursion call manner, thus it's quite easy
+to translate it into purely iterative algorithm without any recursion.
+
+\begin{Exercise}
+\begin{itemize}
+\item Implement the functional bottom-up merge sort by using folding.
+\end{itemize}
+\end{Exercise}
+
 \section{Short summary} 
 From easy/hard partition, easy/hard merge point of view
 
@@ -2584,6 +2701,9 @@ Simon Peyton Jones. ``The Impelementation of functional programming languages''.
 
 \bibitem{msort-in-place}
 Jyrki Katajainen, Tomi Pasanen, Jukka Teuhola. ``Practical in-place mergesort''. Nordic Journal of Computing, 1996.
+
+\bibitem{okasaki-book}
+Chris Okasaki. ``Purely Functional Data Structures''. Cambridge university press, (July 1, 1999), ISBN-13: 978-0521663502
 
 \bibitem{wiki-qs}
 Wikipedia. ``Quicksort''. http://en.wikipedia.org/wiki/Quicksort
