@@ -2296,12 +2296,6 @@ ordered sub sequences), For the odd times (1, 3, 5, ...), we merge $[a, b)$ and 
 from $f$ to the right; while for the even times (2, 4, 6, ...), we merge the two 
 sorted sub sequences after $r$ to the left.
 
-For imperative realization, the sequence is represented by array. Before sorting starts, 
-we duplicate the array to create a working area. The pointers $a, b$ are intiliazed to
-point the left most position, while $c, d$ point to the right most position. Pointer $f$
-starts by pointing to the begining of the working area, and $r$ points to the ending
-position.
-
 \begin{figure}[htbp]
  \centering
  \includegraphics[scale=0.8]{img/nature-msort-invariant.ps}
@@ -2309,11 +2303,132 @@ position.
  \label{fig:nature-msort-invariant}
 \end{figure}
 
+For imperative realization, the sequence is represented by array. Before sorting starts, 
+we duplicate the array to create a working area. The pointers $a, b$ are intiliazed to
+point the left most position, while $c, d$ point to the right most position. Pointer $f$
+starts by pointing to the front of the working area, and $r$ points to the rear
+position.
+
 \begin{algorithmic}
-\Procedure{Sort}{$A$}
-\State ...
-\EndProcedure
+\Function{Sort}{$A$}
+  \If{$|A| > 1$}
+    \State $n \gets |A|$
+    \State $B \gets$ \Call{Create-Array}{$n$}  \Comment{Create the working area}
+    \Loop
+      \State $[a, b) \gets [1, 1)$
+      \State $[c, d) \gets [n+1, n+1)$
+      \State $f \gets 1, r \gets n$ \Comment{front and rear pointers to the working area}
+      \State $t \gets $ False \Comment{merge to front or rear}
+      \While{$b < c$} \Comment{There are still elements for scan}
+        \Repeat \Comment{Span $[a, b)$}
+          \State $b \gets b + 1$
+        \Until{$b \geq c \lor A[b] < A[b-1]$}
+
+        \Repeat \Comment{Span $[c, d)$}
+          \State $c \gets c - 1$
+        \Until{$c \leq b \lor A[c-1] < A[c]$}
+
+        \If{$c < b$} \Comment{Avoid overlap}
+          \State $c \gets b$
+        \EndIf
+
+        \If{$b - a \geq n$} \Comment{Done if $[a, b)$ spans to the whole array}
+          \State \Return $A$
+        \EndIf
+
+        \If{$t$} \Comment{merge to front}
+          \State $f \gets$ \Call{Merge}{$A, [a, b), [c, d), B, f, 1$}
+        \Else \Comment{merge to rear}
+          \State $r \gets$ \Call{Merge}{$A, [a, b), [c, d), B, r, -1$}
+        \EndIf
+        \State $a \gets b, d \gets c$
+        \State $t \gets \lnot t$ \Comment{Switch the merge direction}
+      \EndWhile
+      \State \textproc{Exchange} $A \leftrightarrow B$ \Comment{Switch working area}
+    \EndLoop
+  \EndIf
+  \State \Return $A$
+\EndFunction
 \end{algorithmic}
+
+The merge algorithm is almost as same as before except that we need pass a parameter
+to indicate the direction for merging.
+
+\begin{algorithmic}
+\Function{Merge}{$A, [a, b), [c, d), B, w, \Delta$}
+  \While{$a < b \land c < d$}
+    \If{$A[a] < A[d-1]$}
+      \State $B[w] \gets A[a]$
+      \State $a \gets a + 1$
+    \Else
+      \State $B[w] \gets A[d-1]$
+      \State $d \gets d - 1$
+    \EndIf
+    \State $w \gets w + \Delta$
+  \EndWhile
+  \While{$a < b$}
+    \State $B[w] \gets A[a]$
+    \State $a \gets a + 1$
+    \State $w \gets w + \Delta$
+  \EndWhile
+  \While{$c < d$}
+    \State $B[w] \gets A[d-1]$
+    \State $d \gets d - 1$
+    \State $w \gets w + \Delta$
+  \EndWhile
+  \State \Return $w$
+\EndFunction
+\end{algorithmic}
+
+The following ANSI C program implements this two-way nature merge sort algorithm. Note that it
+doesn't release the allocated working area.
+
+\lstset{language=C}
+\begin{lstlisting}
+int merge(Key* xs, int a, int b, int c, int d, Key* ys, int k, int delta) {
+    for(; a < b && c < d; k += delta )
+        ys[k] = xs[a] < xs[d-1] ? xs[a++] : xs[--d];
+    for(; a < b; k += delta)
+        ys[k] = xs[a++];
+    for(; c < d; k += delta)
+        ys[k] = xs[--d];
+    return k;
+}
+
+Key* sort(Key* xs, Key* ys, int n) {
+    int a, b, c, d, f, r, t;
+    if(n < 2)
+        return xs;
+    for(;;) {
+        a = b = 0;
+        c = d = n;
+        f = 0;
+        r = n-1;
+        t = 1;
+        while(b < c) {
+            do {      /* span [a, b) as much as possible */
+                ++b;
+            } while( b < c && xs[b-1] <= xs[b] );
+            do{      /* span [c, d) as much as possible */
+                --c;
+            } while( b < c && xs[c] <= xs[c-1] );
+            if( c < b )
+                c = b;   /* eliminate overlap if any */
+            if( b - a >= n) 
+                return xs;          /* sorted */
+            if( t )
+                f = merge(xs, a, b, c, d, ys, f, 1);
+            else
+                r = merge(xs, a, b, c, d, ys, r, -1);
+            a = b;
+            d = c;
+            t = !t;
+        } 
+        swap(&xs, &ys);
+    }
+    return xs; /*can't be here*/
+}
+\end{lstlisting}
 
 \section{Bottom-up merge sort}
 
