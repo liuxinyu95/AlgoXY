@@ -42,6 +42,10 @@ def merge(xs, ys, zs):
     xs[i:] = ys if ys !=[] else zs
     return xs
 
+# Bottom-up merge sort version.
+def mergesort(xs):
+    ys = [x for x in xs]
+
 def test_sort(fsort):
     for _ in range(100):
         xs = random.sample(range(N) * 10, random.randint(0, N))
