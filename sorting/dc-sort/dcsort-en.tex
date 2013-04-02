@@ -2430,6 +2430,121 @@ Key* sort(Key* xs, Key* ys, int n) {
 }
 \end{lstlisting}
 
+The performance of nature merge sort depends on the actual ordering of the sub arrays. However, it in fact performs
+well even in the worst case. Suppose that we are unlucky when scan the array, that the length of the non-decreasing
+sub arrays are always 1 during the first round scan. This leads to the result working area with merged ordered sub
+arrays of length 2. Suppose that we are unlucky again in the second round of scan, however, the previous results
+ensure that the non-decreasing sub arrays in this round are no shorter than 2, this time, the working area will
+be filled with merged ordered sub arrays of length 4, ... Repeat this we get the length of the non-decreasing sub arrays
+doubled in every round, so there are at most $O(\lg N)$ round, and in every round we scanned all the elements.
+The overall performance for this worst case is bound to $O(N \lg N)$. We'll go back to this interesting phenomina
+in the next section about bottom-up merge sort.
+
+In purely functional settings however, it's not sensible to scan list from both ends since the underlying data
+structure is singly linked-list. The nature merge sort can be realized in another approach.
+
+Observe that the list to be sorted is consist of several non-decreasing sub lists, that we can pick every two
+of such sub lists and merge them to a bigger one. We repeatedly pick and merge, so that the number of the 
+non-decreasing sub lists halves continously and finally there is only one such list, which is the sorted
+result. This idea can be formalized in the following equation.
+
+\be
+sort(L) = concats(mergePairs(group(L)))
+\ee
+
+Where function $group(L)$ groups the list into non-decreasing sub lists. This function can be described like
+below, the first two are trivial edge cases.
+
+\begin{itemize}
+\item If the list is empyt, the result is a list contains an empty list;
+\item If there is only one element in the list, the result is a list contains a singleton list;
+\item Otherwise, The first two elements are compared, if the first one is less than or equal to the second,
+it is link in front of the first sub list of the recursive grouping result; or a singleton list contains
+the first element is set as the first sub list before the recursive result.
+\end{itemize}
+
+\be
+group(L) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{ L \} & |L| \leq 1 \\
+  \{ \{ l_1 \} \cup L_1, L_2, ... \} & l_1 \leq l_2, \{ L_1, L_2, ...\} = group(L') \\
+  \{ \{ l_1 \}, L_1, L_2, ... \} & otherwise
+  \end{array}
+\right.  
+\ee
+
+It's quite possible to abstract the grouping criteria as a parameter to develop a generic groupping function,
+for instace, as the following example Haskell code \footnote{There is a `groupBy' function provided in
+the Haskell standard library 'Data.List'. However, it doesn't fit here, because it accepts an equality
+testing fucntion as parameter, which must satisfiy the properties of reflexive, transitive, and
+symmetric. but what we use here, the less-than or equal to operation doesn't conform to transitive. Refer
+to appendix A of this book for detail.}.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+groupBy' :: (a->a->Bool) ->[a] ->[[a]]
+groupBy' _ [] = [[]]
+groupBy' _ [x] = [[x]]
+groupBy' f (x:xs@(x':_)) | f x x' = (x:ys):yss
+                         | otherwise = [x]:r
+  where
+    r@(ys:yss) = groupBy' f xs
+\end{lstlisting}
+
+The next undefined function is $mergePairs$, as the name indicates, it repeatedly merge pairs of non-decreasing
+sub lists into bigger one until there sub lists are merged to the only one result.
+
+\be
+mergePairs(L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  L & |L| = 1 \\
+  mergePairs(\{ merge(L_1, L_2) \} \cup mergePairs(L'')) & otherwise
+  \end{array}
+\right.  
+\ee
+
+When there are less than two sub lists in the list, we are done; Otherwise, we merge the first two sub lists $L_1$ and $L_2$,
+and recursively merge the rest of pairs in $L''$. The merge result is again fed to the $mergePairs$. However, the type of
+the result of $mergePairs$ is list of lists, so that we use $concats$ function to flatten it. $concats$ is detailed
+explained in appendix A of this book.
+
+\be
+concats(L) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & L = \Phi \\
+  concat(L_1, concats(L')) & otherwise
+  \end{array}
+\right.  
+\ee
+
+The $merge$ function is as same as before. The complete example Haskell program is given as below \footnote{Haskell
+standard library provides `concat' function to flatten the list of lists}.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+mergesort = concat . mergePairs . groupBy' (<=) where
+  mergePairs (xs:ys:xss) = mergePairs ((merge xs ys) : (mergePairs xss))
+  mergePairs xss = xss
+\end{lstlisting}
+
+Alternatively, observing that we can first pick two sub lists, merge them to a intermediate result, then repeatedly
+picking next sub list, and merge to this ordered result we've gotten so far until all the rest sub lists are merged.
+This is a typical folding algorithm as introduced in appendix A.
+
+\be
+sort(L) = fold(merge, \Phi, group, L)
+\ee
+
+Translate this version to Haskell yeilds the folding version.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+mergesort' = foldl merge [] . groupBy' (<=)
+\end{lstlisting}
+
 \section{Bottom-up merge sort}
 
 \section{Short summary} 
