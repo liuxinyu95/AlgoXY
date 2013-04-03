@@ -2449,7 +2449,7 @@ non-decreasing sub lists halves continously and finally there is only one such l
 result. This idea can be formalized in the following equation.
 
 \be
-sort(L) = concats(mergePairs(group(L)))
+sort(L) = sort'(group(L))
 \ee
 
 Where function $group(L)$ groups the list into non-decreasing sub lists. This function can be described like
@@ -2492,6 +2492,25 @@ groupBy' f (x:xs@(x':_)) | f x x' = (x:ys):yss
     r@(ys:yss) = groupBy' f xs
 \end{lstlisting}
 
+Different from teh $sort$ function, which sort a list of elements, function $sort'$ accepts a list of 
+sub lists which is the result of groupping.
+
+\be
+sort'(\mathbb{L}) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & \mathbb{L} = \Phi \\
+  L_1 & \mathbb{L} = \{ L_1 \} \\
+  sort'(mergePairs(\mathbb{L})) & otherwise
+  \end{array}
+\right.  
+\ee
+
+The first two are the trivial edge cases. If the list to be sorted is empty, the result is obviously empty;
+If it contains only one sub list, then we are done. We need just extract this single sub list as result;
+For the recursive case, we call a fuction $mergePairs$ to merge every two sub lists, then recursive call
+$sort'$.
+
 The next undefined function is $mergePairs$, as the name indicates, it repeatedly merge pairs of non-decreasing
 sub lists into bigger one until there sub lists are merged to the only one result.
 
@@ -2499,33 +2518,25 @@ sub lists into bigger one until there sub lists are merged to the only one resul
 mergePairs(L) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
-  L & |L| = 1 \\
+  L & |L| \leq 1 \\
   mergePairs(\{ merge(L_1, L_2) \} \cup mergePairs(L'')) & otherwise
   \end{array}
 \right.  
 \ee
 
-When there are less than two sub lists in the list, we are done; Otherwise, we merge the first two sub lists $L_1$ and $L_2$,
+When there are less than two sub lists in the list, we are done; otherwise, we merge the first two sub lists $L_1$ and $L_2$,
 and recursively merge the rest of pairs in $L''$. The merge result is again fed to the $mergePairs$. However, the type of
-the result of $mergePairs$ is list of lists, so that we use $concats$ function to flatten it. $concats$ is detailed
-explained in appendix A of this book.
+the result of $mergePairs$ is list of lists, however, it will be flattened by $sort'$ function finally.
 
-\be
-concats(L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \Phi & L = \Phi \\
-  concat(L_1, concats(L')) & otherwise
-  \end{array}
-\right.  
-\ee
-
-The $merge$ function is as same as before. The complete example Haskell program is given as below \footnote{Haskell
-standard library provides `concat' function to flatten the list of lists}.
+The $merge$ function is as same as before. The complete example Haskell program is given as below.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-mergesort = concat . mergePairs . groupBy' (<=) where
+mergesort = sort' . groupBy' (<=)
+
+sort' [] = []
+sort' [xs] = xs
+sort' xss = sort' (mergePairs xss) where
   mergePairs (xs:ys:xss) = mergePairs ((merge xs ys) : (mergePairs xss))
   mergePairs xss = xss
 \end{lstlisting}
@@ -2535,7 +2546,7 @@ picking next sub list, and merge to this ordered result we've gotten so far unti
 This is a typical folding algorithm as introduced in appendix A.
 
 \be
-sort(L) = fold(merge, \Phi, group, L)
+sort(L) = fold(merge, \Phi, group(L))
 \ee
 
 Translate this version to Haskell yeilds the folding version.
@@ -2544,6 +2555,13 @@ Translate this version to Haskell yeilds the folding version.
 \begin{lstlisting}
 mergesort' = foldl merge [] . groupBy' (<=)
 \end{lstlisting}
+
+\begin{Exercise}
+\begin{itemize}
+  \item Is the nature merge sort algorithm realized by folding is equivallent with the one by using $mergePairs$ in terms
+of performance? If yes, prove it; If not, which one is faster?
+\end{itemize}
+\end{Exercise}
 
 \section{Bottom-up merge sort}
 
@@ -2565,8 +2583,8 @@ We repeatedly merge these pairs, and the finally we got the sorted result. Knuth
 \end{figure}
 
 Different with the basic version and even-odd version, we needn't explictly split the list to be sorted
-in every recursion. The whole list is split into $N$ singletons at the very begining, and we only merge
-them in the rest of the algorithm.
+in every recursion. The whole list is split into $N$ singletons at the very begining, and we merge these
+sub lists in the rest of the algorithm.
 
 \be
 sort(L) = sort'(wraps(L))
@@ -2588,72 +2606,29 @@ Of course $wraps$ can be imlemented by using mapping as introduced in appendix A
 sort(L) = sort'(map(\lambda_x \cdot \{ x \}, L))
 \ee
 
-The next is to design the $sort'$ algorithm, which repeatedly merge merge pairs of sub lists until there are only
-one sub list.
-
-\be
-sort'(\mathbb{L}) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \Phi & \mathbb{L} = \Phi \\
-  L_1 & \mathbb{L} = \{ L_1 \} \\
-  sort'(mergeAll(\mathbb{L})) & otherwise
-  \end{array}
-\right.
-\ee
-
-The first two are the trivial edge cases. If the list to be sorted is empty, the result is obviously empty;
-If it contains only one sub list, then we are done. We need just extract this single sub list as result;
-For the recursive case, we call a fuction $mergeAll$ to merge every two sub lists, then recursive call
-$sort'$.
-
-\be
-mergeAll(\mathbb{L}) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \mathbb{L} & |\mathbb{L}| \leq 1 \\
-  \{ merge(L_1, L_2) \} \cup mergeAll(L') & otherwise
-  \end{array}
-\right.
-\ee
+We reuse the function $sort'$ and $mergePairs$ which are defined in section of nature merge sort. They
+repeatedly merges pairs of sub lists until there is only one.
 
 Implement this version in Haskell gives the following example code.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
 sort = sort' . map (\x->[x])
-
-sort' [] = []
-sort' [xs] = xs
-sort' xss = sort' $ mergeAll xss where
-  mergeAll (xs:ys:xss) = merge xs ys : mergeAll xss
-  mergeAll xss = xss
-\end{lstlisting} %$
+\end{lstlisting}
 
 This version based on Okasaki presented in \cite{okasaki-book} is quite similiar to the nature merge sort
 only differs in the way of groupping. Actually, it can be deduced as a special case (the worst case) of
 nature merge sort by the following equation.
 
 \be
-sort(L)= concats(mergePairs(groupBy(\lambda_{x, y} \cdot False, L)))
+sort(L)= sort'(groupBy(\lambda_{x, y} \cdot False, L))
 \ee
 
-That instead of spanning the non-dereasing sub list as long as possible, it uses a always false predicate,
+That instead of spanning the non-dereasing sub list as long as possible, the predicate always evalutes to false,
 so the sub list spans only one element.
 
 Similiar with nature merge sort bottom-up merge sort can also be defined by folding. The detailed implementation
 is left as exercise to the reader.
-
-\be
-sort'(\mathbb{L}) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \Phi & \mathbb{L} = \Phi \\
-  L_1 & \mathbb{L} = \{ L_1 \} \\
-  sort'(fold(merge, \Phi, \mathbb{L})) & otherwise
-  \end{array}
-\right.
-\ee
 
 Observing the bottom-up sort, we can find it's in tail recursion call manner, thus it's quite easy
 to translate it into purely iterative algorithm without any recursion.

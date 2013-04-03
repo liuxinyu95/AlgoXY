@@ -48,10 +48,9 @@ bmsort = sort' . map (\x->[x])
 
 sort' [] = []
 sort' [xs] = xs
-sort' xss = sort' (mergePairs xss)
-
-mergePairs (xs:ys:xss) = merge xs ys : mergePairs xss
-mergePairs xss = xss
+sort' xss = sort' (mergePairs xss) where
+    mergePairs (xs:ys:xss) = merge xs ys : mergePairs xss
+    mergePairs xss = xss
 
 -- Bottom up version using foldl
 bmsort' = foldl merge [] . map (\x->[x]) where
