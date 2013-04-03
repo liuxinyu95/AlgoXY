@@ -21,7 +21,7 @@ module NMergeSort where
 
 import Data.List
 import Test.QuickCheck
-import MergeSort (mergePairs, merge, sort')
+import MergeSort (merge, sort')
 
 -- Nature merge sort can be realized as a genericl ver. of bottom-up merge sort
 mergesort = sort' . groupBy' (<=)
