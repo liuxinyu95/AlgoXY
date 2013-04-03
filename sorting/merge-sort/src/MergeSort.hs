@@ -44,19 +44,17 @@ merge (x:xs) (y:ys) | x <= y = x : merge xs (y:ys)
                                
 -- Bottom up version
 -- Based on: Chris Okasaki. ``Purely functional data structures'' 6.4.3. 
-bmsort = sort'' . map (\x->[x])
+bmsort = sort' . map (\x->[x])
 
-sort'' [] = []
-sort'' [xs] = xs
-sort'' xss = sort'' $ mergeAll xss where
-  mergeAll (xs:ys:xss) = merge xs ys : mergeAll xss
-  mergeAll xss = xss
-  
+sort' [] = []
+sort' [xs] = xs
+sort' xss = sort' (mergePairs xss)
+
+mergePairs (xs:ys:xss) = merge xs ys : mergePairs xss
+mergePairs xss = xss
+
 -- Bottom up version using foldl
-bmsort' = bmsort'' . map (\x->[x]) where
-  bmsort'' [] = []
-  bmsort'' [xs] = xs
-  bmsort'' xss = bmsort $ foldl merge [] xss
+bmsort' = foldl merge [] . map (\x->[x]) where
 
 -- A version for performance visualization
 -- This version record the number of swaps which happens during sorting.
@@ -68,18 +66,16 @@ merge' ((x:xs), n) ((y:ys), m) =
     if x< y then let (xs', n') = merge' (xs, n) ((y:ys), m) in (x:xs', n')
     else let (xs', n') = merge' ((x:xs), n) (ys, m) in (y:xs', n'+1)
 
---sort' :: (Ord a)=>[([a], Int)] -> ([a], Int)
-sort' [] = ([], 0)
-sort' [(xs, n)] = (xs, n)
-sort' xss = sort' $ mergePairs xss
+--sort'' :: (Ord a)=>[([a], Int)] -> ([a], Int)
+sort'' [] = ([], 0)
+sort'' [(xs, n)] = (xs, n)
+sort'' xss = sort'' $ mergePairs' xss where
+    mergePairs' (xs:ys:xss) = merge' xs ys : mergePairs' xss
+    mergeParis' xss = xss
 
---mergePairs :: (Ord a)=>[([a], Int)]->[([a], Int)]
-mergePairs [] = []
-mergePairs [xs] = [xs]
-mergePairs (xs:ys:xss) = merge' xs ys : mergePairs xss
 
 msort' :: (Ord a)=>[a]->([a], Int)
-msort' = sort' . map (\x->([x], 0))
+msort' = sort'' . map (\x->([x], 0))
 
 --test
 prop_msort :: [Int] -> Bool

@@ -19,7 +19,7 @@
 
 import random
 
-N = 10000
+N = 20 #10000
 
 # 1. basic version as described in CLRS (Introduction to algorithm)
 def msort(xs):
@@ -45,14 +45,33 @@ def merge(xs, ys, zs):
 # Bottom-up merge sort version.
 def mergesort(xs):
     ys = [x for x in xs]
+    n = len(xs)
+    i = 1
+    while i < n:
+        for j in range(0, n, i):
+            print "merge", xs[j:j+i], xs[j+i:j+2*i]
+            ys[j:j+2*i] = merge(ys[j:j+2*i], xs[j:j+i], xs[j+i:j+2*i])
+            print "merged", ys[j:j+2*i]
+        print "i=", i, "ys=", ys
+        xs = [y for y in ys]
+        i = i * 2
+    return xs
 
 def test_sort(fsort):
     for _ in range(100):
         xs = random.sample(range(N) * 10, random.randint(0, N))
-        assert sorted(xs) == fsort(xs)
+        #assert sorted(xs) == fsort(xs)
+        ys = [x for x in xs]
+        if sorted(xs) != fsort(xs):
+            print "ys=", ys
+            print "xs=", sorted(ys)
+            print "zs=", fsort(ys)
+            exit()
 
 def test():
-    test_sort(msort)
+    print mergesort([7, 14, 10, 1, 1, 10, 16, 19, 17, 1])
+    #test_sort(msort)
+    test_sort(mergesort)
 
 if __name__ == "__main__":
     test()
