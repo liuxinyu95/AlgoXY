@@ -21,19 +21,14 @@ module NMergeSort where
 
 import Data.List
 import Test.QuickCheck
+import MergeSort (mergePairs, merge, sort')
 
-mergesort = concat . mergePairs . groupBy' (<=) where
-  mergePairs (xs:ys:xss) = mergePairs ((merge xs ys) : (mergePairs xss))
-  mergePairs xss = xss
+-- Nature merge sort can be realized as a genericl ver. of bottom-up merge sort
+mergesort = sort' . groupBy' (<=)
 
-mergesort' :: (Ord a) => [a] -> [a]
+--mergesort' :: (Ord a) => [a] -> [a]
 mergesort' = foldl merge [] . groupBy' (<=)
   
-merge xs [] = xs
-merge [] ys = ys
-merge (x:xs) (y:ys) | x < y = x : merge xs (y:ys)
-                    | otherwise = y : merge (x:xs) ys
-                                  
 -- groupBy in Data.List doesn't fit here, because it use eq funciton
 --  which must satisfy: reflexive, transitive, and symmetric,
 --  but (<=) only satisfy transitive
