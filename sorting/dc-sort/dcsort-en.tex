@@ -745,25 +745,26 @@ in handling some special input data with improved partition algorithm, or try to
 the possibilities among cases. 
 
 \subsection{Engineering solution to duplicated elements}
-As presented in the exercise in above section, N. Lomuto's partition method isn't good at handling
+As presented in the exercise of above section, N. Lomuto's partition method isn't good at handling
 sequence with many duplicated elements. Consider a sequence with $N$ equal elements like: $\{x, x, ..., x\}$.
 There are actually two methods to sort it.
 
 \begin{enumerate}
 \item The normal basic quick sort: That we select an arbitrary element, which is $x$ as the pivot, partition
-the sequence to two sub list, one is $\{x, x, ..., x \}$ which contains $N-1$ elements, the other is empty.
-then recursive sort the first one; this is obviously quadratic $O(N^2)$ solution.
-\item The other way is that, we pick only those elements which are strictly small than $x$, and greater than $x$.
-Such partition results two empty lists, and $N$ pivot. Next we recursively sort the sub lists contains
-smaller elements and bigger elements, since both of them are empty, to the recursive call returns immediately;
-The only thing left is to concatenate the recursive sort result in front of and after the pivots list.
+it to two sub sequences, one is $\{x, x, ..., x \}$, which contains $N-1$ elements, the other is empty.
+then recursively sort the first one; this is obviously quadratic $O(N^2)$ solution.
+\item The other way is to only pick those elements strictly smaller than $x$, and strictly greater than $x$.
+Such partition results two empty sub sequences, and $N$ elements equal to the pivot. 
+Next we recursively sort the sub sequences contains the smaller and the bigger elements, since both of them are empty, the recursive call returns immediately;
+The only thing left is to concatenate the sort results in front of and after the list of elements which are equal to the
+pivot.
 \end{enumerate}
 
 The latter one performs in $O(N)$ time if all elements are equal. This indicates an important improvement
 for partition. That instead of binary partition (split to two sub lists and a pivot), ternary partition (split
 to three sub lists) handles duplicated elements better.
 
-We can define a ternary quick sort as the following.
+We can define the ternary quick sort as the following.
 
 \be
 sort(L) = \left \{
@@ -795,9 +796,9 @@ sort (x:xs) = sort [a | a<-xs, a<x] ++
               x:[b | b<-xs, b==x] ++ sort [c | c<-xs, c>x]  
 \end{lstlisting}
 
-Note that here we need the comparison between elements must support abstract `less-than' and
-`equal-to' operations. The basic version of ternary sort concatenates the three sub lists by 
-concatenation, which are all linear time operations. They can be eliminated by using the standard
+Note that the comparison between elements must support abstract `less-than' and
+`equal-to' operations. The basic version of ternary sort takes linear $O(N)$ time to 
+concatenate the three sub lists. It can be improved by using the standard
 techniques of accumulator.
 
 Suppose function $sort'(L, A)$ is the accumulated ternary quick sort definition, that $L$ is the sequence
@@ -831,9 +832,9 @@ sort'(L, A) = \left \{
 \right. 
 \ee
 
-The partition can also be realized with accumulators which is similar to what has been developed with
-basic version of quick sort. Note that we can't just pass one predication for pivot comparison as 
-we actually need two, one for less-than, the other for equality testing. For the sake of brevity,
+The partition can also be realized with accumulators. It is similar to what has been developed for the
+basic version of quick sort. Note that we can't just pass only one predication for pivot comparison. 
+It actually needs two, one for less-than, the other for equality testing. For the sake of brevity,
 we pass the pivot element instead.
 
 \be
@@ -841,15 +842,16 @@ partition(p, L, S, E, G) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   (S, E, G) & L = \Phi \\
-  partition(\{l_1\} \cup S, E, G) & l_1 < p \\
-  partition(S, \{l_1\} \cup E, G) & l_1 = p \\
-  partition(S, E, \{ l_1 \} \cup G) & p < l_1
+  partition(p, L', \{l_1\} \cup S, E, G) & l_1 < p \\
+  partition(p, L', S, \{l_1\} \cup E, G) & l_1 = p \\
+  partition(p, L', S, E, \{ l_1 \} \cup G) & p < l_1
   \end{array}
 \right. 
 \ee
 
-Below Haskell program implements this algorithm. It eliminates the intermediate variables to represent
-$S, E, G$ by mutually call the sort function recursively.
+Where $l_1$ is the first element in $L$ if $L$ isn't empty, and $L'$ contains all rest elements except for $l_1$.
+Below Haskell program implements this algorithm. It starts the recursive sorting immediately in the edge
+case of parition.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -863,8 +865,8 @@ sort' (x:xs) r = part xs [] [x] [] r where
                              | x' >  x = part xs' as bs (x':cs) r
 \end{lstlisting}
 
-Richard Bird developed another version in \cite{fp-pearls}, that instead of concatenate the 
-recursively sorted results, it holds list of sorted sub list, and perform concatenation
+Richard Bird developed another version in \cite{fp-pearls}, that instead of concatenating the 
+recursively sorted results, it uses a list of sorted sub lists, and performs concatenation
 finally.
 
 \lstset{language=Haskell}
@@ -883,23 +885,23 @@ pass (x:xs) xss = step xs [] [x] [] xss where
 
 The cases with many duplicated elements can also be handled imperatively. Robert Sedgewick presented a partition
 method \cite{qsort-impl}, \cite{pearls}
-which holds two pointers one moves from left to right, the other moves from right to left. The two pointers
-are initialized from the left and right boundary of the array.
+which holds two pointers. One moves from left to right, the other moves from right to left. The two pointers
+are initialized as the left and right boundaries of the array.
 
 When start partition, the left most element is selected as the pivot. Then the left pointer $i$
-keeps advancing to right until it meets any element which is not less than the pivot; On the other hand\footnote{We don't use `then' because it's quite OK to perform the two scans in parallel.}, The right pointer $j$ repeatedly scan to
+keeps advancing to right until it meets any element which is not less than the pivot; On the other hand\footnote{We don't use `then' because it's quite OK to perform the two scans in parallel.}, The right pointer $j$ repeatedly scans to
 left until it meets any element which is not greater than the pivot.
 
 At this time, all elements before the left pointer $i$ are strictly less than the pivot, while all
 elements after the right pointer $j$ are greater than the pivot. $i$ points to an element which is
- either greater or equal to the pivot; while $j$ points to an element which is either less than or
+ either greater than or equal to the pivot; while $j$ points to an element which is either less than or
 equal to the pivot, the situation at this stage is illustrated in figure \ref{fig:partition-2-way} (a).
 
 In order to partition all elements less than or equal to the pivot to the left, and the others to the right,
 we can exchange the two elements pointed by $i$, and $j$. After that the scan can be resumed until either
-$i$ meets $j$, or they are overlapped.
+$i$ meets $j$, or they overlap.
 
-At any time point during partition. There is an invariant that all elements before $i$ (including the one 
+At any time point during partition. There is invariant that all elements before $i$ (including the one 
 pointed by $i$) are not greater than
 the pivot; while all elements after $j$ (including the one pointed by $j$) are not less than the pivot. 
 The elements between $i$ and $j$ haven't been examined yet. This invariant is shown in figure \ref{fig:partition-2-way} (b).
@@ -908,11 +910,11 @@ The elements between $i$ and $j$ haven't been examined yet. This invariant is sh
    \centering
    \subfloat[When pointer $i$, and $j$ stop]{\includegraphics[scale=0.5]{img/partition-2-way-inner.ps}} \\
    \subfloat[Partition invariant]{\includegraphics[scale=0.5]{img/partition-2-way.ps}} \\
-   \caption{Partition a range of array by using the left most element as pivot.} 
+   \caption{Partition a range of array by using the left most element as the pivot.} 
    \label{fig:partition-2-way}
 \end{figure}
 
-After the left pointer $i$ meets the right pointer $j$, or they overlaps each other, we need one extra exchanging
+After the left pointer $i$ meets the right pointer $j$, or they overlap each other, we need one extra exchanging
 to move the pivot located at the first position to the correct place which is pointed by $j$. Next, the 
 elements between the lower bound and $j$ as well as the sub slice between $i$ and the upper bound of the array
 are recursively sorted.
@@ -996,11 +998,11 @@ The majority part of scan process is as same as the one developed by Robert Sedg
 $i$ and $j$ keep advancing toward each other until they meet any element which is greater then or equal
 to the pivot for $i$, or less than or equal to the pivot for $j$ respectively.
 At this time, if $i$ and $j$ don't meet each other or overlap, they are not only 
-exchanged, but also examined if the elements point by them are identical to the pivot.
+exchanged, but also examined if the elements pointed by them are identical to the pivot.
 Then necessary exchanging happens between $i$ and $p$, as well as $j$ and $q$.
 
 By the end of the partition process, the elements equal to the pivot need to be swapped to the middle
-from the left and right end. The number of such extra exchanging operations are proportion to the
+part from the left and right ends. The number of such extra exchanging operations are proportion to the
 number of duplicated elements. It's zero operation if elements are unique which there is no overhead
 in the case. The final partition result is shown in figure \ref{fig:partition-3-way} (b). After that
 we only need recursively sort the `less-than' and `greater-than' sub slices.
@@ -1082,7 +1084,7 @@ to be a start point.
 
 The idea is to change the invariant a bit. We still select the first element as the pivot, 
 as shown in figure \ref{fig:partition-3-way-lumoto},
-at any time point, the left most section contains elements which are strictly less than the pivot;
+at any time, the left most section contains elements which are strictly less than the pivot;
 the next section contains the elements equal to the pivot; the right most section holds all the
 elements which are strictly greater than the pivot. The boundaries of three sections are marked
 as $i$, $k$, and $j$ respectively.
