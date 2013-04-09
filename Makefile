@@ -10,6 +10,7 @@ datastruct/heap/binary-heap/bheap-en sorting/select-sort/ssort-en \
 datastruct/heap/other-heaps/kheap-en \
 datastruct/elementary/queue/queue-en \
 datastruct/elementary/sequence/sequence-en \
+sorting/dc-sort/dcsort-en \
 others/appendix/list/list-en
 CHAPTER_OBJS = $(foreach file, $(CHAPTERS), $(file).dvi)
 
