@@ -21,16 +21,27 @@ module NthElem where
 import Data.List
 import Test.QuickCheck
 
-top::Int->[Int]->[Int]
-top _ [] = []
-top 0 _  = []
-top n (x:xs) | len ==n = as
-             | len < n  = as++[x]++(top (n-len-1) bs)
-             | otherwise = top n as
+-- the k-selection problem.
+
+tops _ [] = []
+tops 0 _  = []
+tops n (x:xs) | len ==n = as
+              | len < n  = as++[x]++(tops (n-len-1) bs)
+              | otherwise = tops n as
     where
       (as, bs) = partition (<= x) xs
       len = length as
+      
+top n (x:xs) | len == n - 1 = x
+             | len < n - 1 = top (n - len - 1) bs
+             | otherwise = top n as
+    where                           
+      (as, bs) = partition (<=x) xs
+      len = length as
 
-prop_top :: Int ->[Int] ->Bool
-prop_top k xs = if k>=0 then sort (top k xs) == take k (sort xs)
+prop_tops :: Int ->[Int] ->Bool
+prop_tops k xs = if k>=0 then sort (tops k xs) == take k (sort xs)
                 else True
+                     
+prop_top :: Int ->[Int] -> Property
+prop_top k xs = xs /= [] ==> let k' = (abs(k) `mod` (length xs)) + 1 in sort (xs) !! (k'-1) == top k' xs
