@@ -26,7 +26,7 @@ import Test.QuickCheck
 tops _ [] = []
 tops 0 _  = []
 tops n (x:xs) | len ==n = as
-              | len < n  = as++[x]++(tops (n-len-1) bs)
+              | len < n  = as ++ [x] ++ tops (n-len-1) bs
               | otherwise = tops n as
     where
       (as, bs) = partition (<= x) xs
