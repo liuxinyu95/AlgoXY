@@ -344,6 +344,159 @@ tops n (x:xs) | len ==n = as
 \end{lstlisting}
 
 \subsubsection{binary search}
+Another popular devide and conquer algorithm is binary search. We've shown it in the chapter about insertion sort.
+When I was in school, the teacher who taught math played a magic to me, He asked me to consider a natural number
+less than 1000. Then he asked me 10 questions, I only saied `yes' or `no', and finally he guessed my number.
+He typically asks questions like the following:
+
+\begin{itemize}
+\item Is it an even number?
+\item Is it a prime number?
+\item Are all digits same?
+\item Can it be divided by 3?
+\item ...
+\end{itemize}
+
+Most of the time he guessed the number within 10 questions. My classmates and I all thought it's unbelievable.
+
+This game will not be so interesting if it downgrades to a popular TV program, that the price of a product
+is hidden, and you must figure out the exact price in 30 seconds. The host of the program tells you if
+your guess is higher or lower to the fact. If you win, the product is yours. The best strategy is
+to use similar divide and conquer approach to perfrom a binary search. So it's common to find such
+conversation between the player and the host:
+
+\begin{itemize}
+\item P: 1000;
+\item H: High;
+\item P: 500;
+\item H: Low;
+\item P: 750;
+\item H: Low;
+\item P: 890;
+\item H: Low;
+\item P: 990;
+\item H: Bingo.
+\end{itemize}
+
+My math teacher told us that, because the number we considered is within 1000, if he can halve the
+numbers every time by designing good questions, the number will be found in 10 questions. This is because
+$2^{10} = 1024 > 1000$. However, it would be boring to just ask is it higher than 500, is it lower
+than 250, ... Actually, the question `is it even' is very good, because it always
+halve the number.
+
+Come back to the binary search algorithm, it is only applicable to a sequence of orderred number.
+I've seen programmers tried to apply it to unsorted arrays, and took several hours to figure out
+why it doesn't work. The idea is quite straightforward, in order to find a number $x$ in a
+orderred sequence $A$, we first check middle point number, compare it with $x$, if
+they are same, then we are done; If $x$ is smaller, as $A$ is orderred, we need only
+recursively search it among the first half; or we search it among the second half.
+Once $A$ gets empty and we haven't found $x$ yet, it means $x$ doesn't exsit.
+
+Before formalizing this algorithm. There is a suprising fact need to be noted. Donald Knuth stated that
+`Although the basic idea of binary search is comparatively straightforward, 
+the details can be surprisingly tricky¡­'. Jon Bentley pointed out that most binary search implementation
+contains errors, and even the version given by him in the first version of `Programming pearls' contains
+an error undetected over twenty years \cite{programming-pearls}.
+
+There are two kinds of realization, one is recursive, the other is iterative. The recursive solution
+is as same as what we described. Suppose the lower and upper bounderies of the array 
+are $l$ and $u$ inclusive.
+
+\begin{algorithmic}[1]
+\Function{Binary-Search}{$x, A, l, u$}
+  \If{$u < l$}
+    \State Not found error
+  \Else
+     \State $m \gets l + \lfloor \frac{u - l}{2} \rfloor$ \Comment{avoid overflow of $\lfloor \frac{l+u}{2} \rfloor$}
+     \If{$A[m] = x$}
+       \State \Return $m$
+     \EndIf
+     \If{$x < A[m]$}
+       \State \Return \Call{Binary-Search}{x, A, l, m - 1}
+     \Else
+       \State \Return \Call{Binary-Search}{x, A, m + 1, u}
+     \EndIf
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+As the comment highlights, if the integer is presented with limited words, we can't merely use $\lfloor \frac{l+u}{2} \rfloor$
+because it may cause overflow if $l$ and $u$ are big.
+
+Binary search can also be realized in iterative manner, that we keep updating the boundaries according to the middle point
+comparison result.
+
+\begin{algorithmic}[1]
+\Function{Binary-Search}{$x, A, l, u$}
+  \While{$l < u$}
+    \State $m \gets l + \lfloor \frac{u - l}{2} \rfloor$
+    \If{$A[m] = x$}
+      \State \Return $m$
+    \EndIf
+    \If{$x < A[m]$}
+      \State $u \gets m - 1$
+    \Else
+      \State $l \gets m + 1$
+    \EndIf
+  \EndWhile
+\EndFunction
+\end{algorithmic}
+
+The implementation is very good exercise, we left it to the reader. Please try all kinds of methods to verify your program.
+
+Since the array is halved every time, the performance of binary search is bound to $O(\lg n)$ time.
+
+In purely functional settings, the list is represented with singly linked-list. It's linear time to randomly access the
+element for a given position. Binary search doesn't make sense in such case. However, it good to analysis what the perfromance
+will downgrade to. Consider the following equation.
+
+\[
+bsearch(x, L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  Err & L = \Phi \\
+  b_1 & x = b_1, (A, B) = splitAt(\lfloor \frac{|L|}{2} \rfloor, L) \\
+  bsearch(x, A) & B = \Phi \lor x < b_1 \\
+  bsearch(x, B') & otherwise
+  \end{array}
+\right.
+\]
+
+The $splitAt$ function takes $O(n)$ time to divide the list into two subs $A$ and $B$
+(see the appendix A, and the chapter about merge sort for detail).
+If $B$ isn't empty, denote the first element in it is $b_1$, and the rest as $B'$.
+If $x$ is equal to $b_1$, the search returns; Otherwise if it is less than $b_1$, as
+the list is sorted, we need recursively search in $A$, otherwise, we search in $B$.
+If the list is empty, we raise error to indicate search failure.
+
+As we always split the list in the middle point, the number of elements halves in each
+recursion. In every recursive call, we takes linear time for splitting. The splitting
+function only traverses the first half of the linked-list, Thus the
+total time can be expressed as.
+
+\[
+T(n) = c \frac{n}{2} + c \frac{n}{4} + c \frac{n}{8} + ...
+\]
+
+This results $O(n)$ time, which is as same as the brute force search from head to tail:
+
+\[
+search(x, L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  Err & L = \Phi \\
+  l_1 & x = l_1 \\
+  search(x, L') & otherwise
+  \end{array}
+\right.
+\]
+
+As we mentioned in the chapter about insertion sort, the functional approach of binary search
+is through binary search tree. The ordered sequence is represented in a binary search tree (
+self balanced tree if neccessary), which offers logarithm time search \footnote{Some readers
+may argue that array should be used instead of linked-list, for example in Haskell. This book
+only deals with purely functional sequences in finger-tree. Different from the 
+Haskell array, it can't support constant time random accessing}.
 
 \subsubsection{2 demension bineary search? Dijkstra}
 
@@ -375,6 +528,9 @@ some elements in the first $k$ should be moved.
   \EndLoop
 \EndProcedure
 \end{algorithmic}
+\item Implement the binary search algorithm in both recursive and iterative manner, and try to verify your version
+automatically. You can generate randomized data, test your program with the binary search invariant and against the
+one provided in your standard library.
 \end{itemize}
 \end{Exercise}
 
@@ -409,6 +565,9 @@ Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest and Clifford Stein.
 
 \bibitem{median-of-median}
 M. Blum, R.W. Floyd, V. Pratt, R. Rivest and R. Tarjan, "Time bounds for selection," J. Comput. System Sci. 7 (1973) 448-461.
+
+\bibitem{programming-pearls}
+Jon Bentley. ``Programming pearls, Second Edition''. Addison-Wesley Professional; 1999. ISBN-13: 978-0201657883
 
 \end{thebibliography}
 

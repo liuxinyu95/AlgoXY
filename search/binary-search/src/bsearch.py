@@ -6,7 +6,7 @@ def bsearch(xs, x):
     l = 0
     u = len(xs)
     while(l < u):
-        m = (l+u)/2
+        m = (l+u)/2 #error if integer are in limited words, l + (u-l)/2
         if xs[m] == x:
             return m
         elif xs[m] < x:
