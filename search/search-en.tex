@@ -562,16 +562,16 @@ It's quite natural to think that the idea of binary search can be extended to 2 
 more generl -- multi-demension domain. However, it's not an easy step.
 
 Consider the example of a $m \times n$ matrix $M$. The elements in each row and
-each column are in non-decreasing order. Figure \ref{fig:matrix-eg} illustrates such a matrix for example.
+each column are in strict increasing order. Figure \ref{fig:matrix-eg} illustrates such a matrix for example.
 
 \begin{figure}[htbp]
  \centering
 \[
 \left [
   \begin{array}{ccccc}
-    1 & 2 & 3 & 3 & ... \\
-    2 & 4 & 4 & 6 & ... \\
-    3 & 4 & 7 & 9 & ... \\
+    1 & 2 & 3 & 4 & ... \\
+    2 & 4 & 5 & 6 & ... \\
+    3 & 5 & 7 & 8 & ... \\
     4 & 6 & 8 & 9 & ...
     ... \\
   \end{array}
@@ -582,7 +582,7 @@ each column are in non-decreasing order. Figure \ref{fig:matrix-eg} illustrates 
 \end{figure}
 
 Given a value $x$, how to locate all elements equal to $x$ in the matrix quickly? We need develop an algorithm, 
-which returns a list of locations $(i, j)$ so that $m_{i,j} = x$.
+which returns a list of locations $(i, j)$ so that $M_{i,j} = x$.
 
 Richard Bird in \cite{fp-pearls} mentioned that he used this problem to interview candidates for entry to Oxford.
 The interesting story was that, those who had some computer background at school tendeded to use binary search.
@@ -603,13 +603,97 @@ The problem is that the solution domain chnages from a rectangle to a 'L' shape 
 recursively apply search on it. In order to solve this problem systematically, we define the problem more
 generally, use brute-force search as a start point, and keep improving it bit by bit.
 
-Consider a function $f(x, y)$, which is non-decreasing for its arguments, for instance $f(x, y) = a^x + b^y$, where
+Consider a function $f(x, y)$, which is strict increasing for its arguments, for instance $f(x, y) = a^x + b^y$, where
 $a$ and $b$ are natural numbers. Given a value $z$, which is natural number as well. We want to sovle the equation
 $f(x, y) = z$ by finding all candidate pairs $(x, y)$.
 
+With this definition, the non-decreasing matrix search problem can be specialized by the below function. 
+
+\[
+f(x, y) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  M_{x, y} & 1 \leq x \leq m, 1 \leq y \leq n \\
+  -1 & otherwise
+  \end{array}
+\right.
+\]
+
 \paragraph{Brute-force 2D search}
 
+As all solutions should be found for $f(x, y)$. One can immediately give the
+brute force solution by embedded looping.
+
+\begin{algorithmic}
+\Function{Solve}{$f, z$}
+  \State $A \gets \Phi$
+  \For{$x \in \{0, 1, 2, ..., z\}$}
+    \For{$y \in \{0, 1, 2, ..., z\}$}
+      \If{$f(x, y) = z$}
+        \State $A \gets A \cup \{(x, y)\}$
+      \EndIf
+    \EndFor
+  \EndFor
+  \State \Return $A$
+\EndFunction
+\end{algorithmic}
+
+This definately calculates $f$ for $(z+1)^2$ times. It can be formalized as in (\ref{eq:bsearch-brute}).
+
+\be
+solve(f, z) = \{ (x, y) | x \in \{0, 1, ..., z\}, y \in \{0, 1, ..., z\}, f(x, y) = z\}
+\label{eq:bsearch-brute}
+\ee
+
 \paragraph{Saddleback search}
+
+We haven't utilize the fact that $f(x, y)$ is strict increasing yet. Dijkstra pointed out in \cite{saddle-back}, instead
+of searching from bottom-left corner, search from the top-left leads to a effective solution. As illustrated in figure 
+\ref{fig:saddleback-1}, the search starts from $(0, z)$, for every point $(p, q)$, we compare $f(p, q)$ with $z$:
+
+\begin{itemize}
+\item If $f(p, q) < z$, since $f$ is strict increasing, for all $0 \leq y < q$, we have $f(p, y) < z$. We can drop all
+points in the vertical line section (in red color); 
+\item If $f(p, q) > z$, then $f(x, q) > z$ for all $p < x \leq z$. We can drop all points in the horizontal 
+line section (in blue color); 
+\item Otherwise if $f(p, q) = z$, we mark $(p, q)$ as one solution, then both line sections can be dropped. 
+\end{itemize}
+
+This is a systematical way to scale down the solution 
+domain rectangle. We keep dropping either a row, or a column, or both. 
+
+\begin{figure}[htbp]
+ \centering
+ \includegraphics[scale=0.5]{img/saddleback-1.eps}
+ \caption{Search from top-left.}
+ \label{fig:saddleback-1}
+\end{figure}
+
+This method can be formalized as a function $search(f, z, p, q)$, which search solutions for equation $f(x, y) = z$ in
+rectancle with top-left corner $(p, q)$, and bottom-right corner $(z, 0)$. We start the searching by intializing
+$(p, q) = (0, z)$ as $solve(f, z) = search(f, z, 0, z)$
+
+\be
+search(f, z, p, q) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & p > z \lor q < 0 \\
+  search(f, z, p + 1, q) & f(p, q) < z \\
+  search(f, z, p, q - 1) & f(p, q) > z \\
+  \{(p, q)\} \cup search(f, z, p + 1, q - 1) & otherwise
+  \end{array}
+\right.
+\ee
+
+TODO: explain the edge case
+
+TODO: Add Haskell code
+
+TODO: Add imperative realization.
+
+TODO: Performance analysis, provide figures.
+
+TODO: Improve this algorithm with binary search for accurate boudaries
 
 \paragraph{Improved saddle back search}
 
@@ -686,6 +770,9 @@ Jon Bentley. ``Programming pearls, Second Edition''. Addison-Wesley Professional
 
 \bibitem{fp-pearls}
 Richard Bird. ``Pearls of functional algorithm design''. Cambridge University Press. 2010. ISBN, 1139490605, 9781139490603
+
+\bibitem{saddle-back}
+Edsger W. Dijkstra. ``The saddleback search''. EWD-934. 1985. http://www.cs.utexas.edu/users/EWD/index09xx.html.
 
 \end{thebibliography}
 
