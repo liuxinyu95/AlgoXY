@@ -551,6 +551,7 @@ bsearch(f, y, l, u) = \left \{
   bsearch(f, y, m+1, u) & f(m) < y
   \end{array}
 \right.
+\label{eq:bsearch}
 \ee
 
 As we halve the solution domain in every recursion, this method computes $f(x)$ in $O(\lg y)$ times.
@@ -744,7 +745,14 @@ cases. The first one happens that in every iteration, both $p$ and $q$ advance b
 only $z+1$ steps; The second case keeps advancing horizontally to right and ends when $p$ exceeds $z$;
 The last case is similar, that it keeps moving down vertically to the bottom until $q$ becomes negative.
 
-Figure \ref{fig:saddleback-1-cases} illustrated the bese cases and the worst cases respectively.
+Figure \ref{fig:saddleback-1-cases} illustrated the bese cases and the worst cases respectively. Figure
+\ref{fig:saddleback-1-cases} (a) is the case that every point $(x, x)$ in diagonal satisfies $f(x, x) = z$,
+it uses $z+1$ steps to arrive at $(z, z)$; (b) is the case that every point $(x, z)$ along the top
+horizontal line gives the result $f(x, z) < z$, the algorithm takes $z+1$ steps to finish; (c) is
+the case that every point $(0, x)$ along the left vertical line gives the result $f(0, x) > z$, thus
+the algorithm takes $z+1$ steps to finish; (d) is the worst case. If we project all the horizontal
+sections along the search path to $x$ axis, the project all the vertical sections to $y$ axis, it
+gives the total steps of $2(z+1)$.
 
 \begin{figure}[htbp]
  \centering
@@ -755,11 +763,81 @@ Figure \ref{fig:saddleback-1-cases} illustrated the bese cases and the worst cas
 
 Compare to the quadratic brute-froce method ($O(z^2)$), we improve to a linear algorithm bound to $O(z)$.
 
-TODO: Performance analysis, provide figures.
-
-TODO: Improve this algorithm with binary search for accurate boudaries
-
 \paragraph{Improved saddle back search}
+
+We haven't utilized the binary search tool so far, even the problem extends to 2-dimension domain.
+The basic saddleback search starts from the top-left corner $(0, z)$ to the bottom-right corner $(z, z)$.
+This is acutally over-general domain. we can constrait it a bit more accurate.
+
+Since $f$ is strict increasing, we can find the biggest number $m$, that $0 \leq m \leq z$, along the
+$y$ axis which satisfies $f(0, m) \leq z$; Similarly, we can find the biggest $n$, that $0 \leq n \leq z$,
+along the $x$ axis, which satisifes $f(n, 0) \leq z$; And the solution domain shrinks
+from $(0, z) - (z, z)$ to $(0, m) - (n, 0)$ as shown in figure \ref{fig:saddleback-2}.
+
+\begin{figure}[htbp]
+ \centering
+ \includegraphics[scale=0.5]{img/saddleback-2.eps}
+ \caption{A more accurate search domain shown in shaded color.}
+ \label{fig:saddleback-2}
+\end{figure}
+
+Of course $m$ and $n$ can be found by brute-force searching like below.
+
+\be
+\begin{array}{rl}
+m & = max(\{y | 0 \leq y \leq z, f(0, y) \leq z\}) \\
+n & = max(\{x | 0 \leq x \leq z, f(x, 0) \leq z\})
+\end{array}
+\ee
+
+When searching $m$, the $x$ variable of $f$ is bound to 0. It turns to be a one dimenstion search problem
+for a strict increasing function. (Or in functional term, a Curried function $f(0, y)$) Binary search works
+in such case. However, we need a bit modification for equation (\ref{eq:bsearch}). Different from searching
+a solution $l \leq x \leq u$, so that $f(x) = y$ for a given $y$; we need search for a solution
+$l \leq x \leq u$ so that $f(x) \leq y < f(x+1)$.
+
+\be
+bsearch(f, y, l, u) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  l & l + 1 \geq u \\
+  bsearch(f, y, m, u) & f(m) \leq y, m = \lfloor \frac{l + u}{2} \rfloor \\
+  bsearch(f, y, l, m) & otherwise
+  \end{array}
+\right.
+\label{eq:bsearch-general}
+\ee
+
+Then $m$ and $n$ can be found by using this binary search function.
+
+\be
+\begin{array}{rl}
+m & = bsearch(\lambda_y \cdot f(0, y), z, 0, z) \\
+n & = bsearch(\lambda_x \cdot f(x, 0), z, 0, z)
+\end{array}
+\ee
+
+TODO: needn't bsearch(f, z, -1, z+1) ???
+
+And the improved saddleback search will shrink to this new search domain $solve(f, z) = search(f, z, 0, m)$:
+
+\be
+search(f, z, p, q) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & p > n \lor q < 0 \\
+  search(f, z, p + 1, q) & f(p, q) < z \\
+  search(f, z, p, q - 1) & f(p, q) > z \\
+  \{(p, q)\} \cup search(f, z, p + 1, q - 1) & otherwise
+  \end{array}
+\right.
+\ee
+
+TODO: Haskell example
+
+TODO: Performance analysis
+
+TODO: Extra improvement
 
 \begin{Exercise}
 \begin{itemize}
