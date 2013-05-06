@@ -693,11 +693,13 @@ example Haskell program implents this algorithm.
 \begin{lstlisting}
 solve f z = search 0 z where
   search p q | p > z || q < 0 = []
-             | f p q < z = search (p + 1) q
-             | f p q > z = search p (q - 1)
+             | z' < z = search (p + 1) q
+             | z' > z = search p (q - 1)
              | otherwise = (p, q) : search (p + 1) (q - 1)
+    where z' = f p q
 \end{lstlisting}
 
+Consider the calculation of $f$ is expensive, this program stores the result of $f(p, q)$ to variable $z'$.
 This algorithm can also be implemented in iterative manner, that the boundaries of solution domain keeps being updated
 in a loop.
 
@@ -745,9 +747,9 @@ cases. The first one happens that in every iteration, both $p$ and $q$ advance b
 only $z+1$ steps; The second case keeps advancing horizontally to right and ends when $p$ exceeds $z$;
 The last case is similar, that it keeps moving down vertically to the bottom until $q$ becomes negative.
 
-Figure \ref{fig:saddleback-1-cases} illustrated the bese cases and the worst cases respectively. Figure
-\ref{fig:saddleback-1-cases} (a) is the case that every point $(x, x)$ in diagonal satisfies $f(x, x) = z$,
-it uses $z+1$ steps to arrive at $(z, z)$; (b) is the case that every point $(x, z)$ along the top
+Figure \ref{fig:saddleback-1-cases} illustrates the bese cases and the worst cases respectively. Figure
+\ref{fig:saddleback-1-cases} (a) is the case that every point $(x, z-x)$ in diagonal satisfies $f(x, z-x) = z$,
+it uses $z+1$ steps to arrive at $(z, 0)$; (b) is the case that every point $(x, z)$ along the top
 horizontal line gives the result $f(x, z) < z$, the algorithm takes $z+1$ steps to finish; (c) is
 the case that every point $(0, x)$ along the left vertical line gives the result $f(0, x) > z$, thus
 the algorithm takes $z+1$ steps to finish; (d) is the worst case. If we project all the horizontal
@@ -765,16 +767,16 @@ Compare to the quadratic brute-froce method ($O(z^2)$), we improve to a linear a
 
 TODO: the naming. 3-D plot
 
-\paragraph{Improved saddle back search}
+\paragraph{Improved saddleback search}
 
 We haven't utilized the binary search tool so far, even the problem extends to 2-dimension domain.
-The basic saddleback search starts from the top-left corner $(0, z)$ to the bottom-right corner $(z, z)$.
+The basic saddleback search starts from the top-left corner $(0, z)$ to the bottom-right corner $(z, 0)$.
 This is acutally over-general domain. we can constrait it a bit more accurate.
 
 Since $f$ is strict increasing, we can find the biggest number $m$, that $0 \leq m \leq z$, along the
 $y$ axis which satisfies $f(0, m) \leq z$; Similarly, we can find the biggest $n$, that $0 \leq n \leq z$,
 along the $x$ axis, which satisifes $f(n, 0) \leq z$; And the solution domain shrinks
-from $(0, z) - (z, z)$ to $(0, m) - (n, 0)$ as shown in figure \ref{fig:saddleback-2}.
+from $(0, z) - (z, 0)$ to $(0, m) - (n, 0)$ as shown in figure \ref{fig:saddleback-2}.
 
 \begin{figure}[htbp]
  \centering
@@ -792,8 +794,8 @@ n & = max(\{x | 0 \leq x \leq z, f(x, 0) \leq z\})
 \end{array}
 \ee
 
-When searching $m$, the $x$ variable of $f$ is bound to 0. It turns to be a one dimenstion search problem
-for a strict increasing function. (Or in functional term, a Curried function $f(0, y)$) Binary search works
+When searching $m$, the $x$ variable of $f$ is bound to 0. It turns to be one dimension search problem
+for a strict increasing function (or in functional term, a Curried function $f(0, y)$). Binary search works
 in such case. However, we need a bit modification for equation (\ref{eq:bsearch}). Different from searching
 a solution $l \leq x \leq u$, so that $f(x) = y$ for a given $y$; we need search for a solution
 $l \leq x \leq u$ so that $f(x) \leq y < f(x+1)$.
@@ -802,13 +804,27 @@ $l \leq x \leq u$ so that $f(x) \leq y < f(x+1)$.
 bsearch(f, y, l, u) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
-  l & l + 1 \geq u \\
-  bsearch(f, y, m, u) & f(m) \leq y, m = \lfloor \frac{l + u}{2} \rfloor \\
+  l & l \geq u \\
+  bsearch(f, y, m + 1, u) & f(m) \leq y, m = \lfloor \frac{l + u}{2} \rfloor \\
   bsearch(f, y, l, m) & otherwise
   \end{array}
 \right.
 \label{eq:bsearch-general}
 \ee
+
+The first clause handles the edge case that the range contains less than one integer. The lower
+boundary is returned for the further saddleback search;
+If the middle point produces a value less than or equal to the target, the lower bound is updated as the integer
+next to the middle point; otherwise, the middle point becomes the new upperbound. The following
+Haskell example code implements this modified binary search.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+bsearch f y (l, u) | u <= l = l
+                   | f m <= y = bsearch f y (m + 1, u)
+                   | otherwise = bsearch f y (l, m)
+  where m = (l + u) `div` 2
+\end{lstlisting}
 
 Then $m$ and $n$ can be found by using this binary search function.
 
@@ -819,9 +835,7 @@ n & = bsearch(\lambda_x \cdot f(x, 0), z, 0, z)
 \end{array}
 \ee
 
-TODO: needn't bsearch(f, z, -1, z+1) ???
-
-And the improved saddleback search will shrink to this new search domain $solve(f, z) = search(f, z, 0, m)$:
+And the improved saddleback search shrinks to this new search domain $solve(f, z) = search(f, z, 0, m)$:
 
 \be
 search(f, z, p, q) =  \left \{
@@ -835,10 +849,42 @@ search(f, z, p, q) =  \left \{
 \right.
 \ee
 
-TODO: Haskell example
+It's almost as same as the basic saddleback version, except that it stops if $p$ exceeds $n$, but not $z$.
+In real implementation, the result of $f(p, q)$ can be calculated once, and stored in a variable as
+shown in the following Haskell example.
 
-TODO: Performance analysis
+\lstset{language=Haskell}
+\begin{lstlisting}
+solve' f z = search 0 m where
+  search p q | p > n || q < 0 = []
+             | z' < z = search (p + 1) q
+             | z' > z = search p (q - 1)
+             | otherwise = (p, q) : search (p + 1) (q - 1)
+    where z' = f p q
+  m = bsearch (f 0) z (0, z)
+  n = bsearch (\x->f x 0) z (0, z)
+\end{lstlisting}
 
+This improved saddleback firstly performs binary search two rounds to find the proper $m$, and $n$.
+Eash round is bound to $O(\log z)$ times of calculation for $f$; After that, it takes $O(m + n)$
+time in the worst case; and $O(min(m, n))$ time in the best case. The overall performance is
+given in the following table.
+
+\begin{tabular}{|l|l|}
+\hline
+ & times of evaluation $f$ \\
+\hline
+worst case & $2 \log z + m + n$ \\
+best case & $2 \log z + min(m, n)$ \\
+\hline
+\end{tabular}
+
+For some function $f(x, y) = a^x + b^y$, for positive integers $a$ and $b$, $m$ and $n$ will be
+much less than $z$ ($m \ll z$, $n \ll z$). The performance is near to $O(\log z)$.
+
+TODO: imperative realization.
+
+\paragraph{More improvement to saddleback search}
 TODO: Extra improvement
 
 \begin{Exercise}

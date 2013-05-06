@@ -29,12 +29,32 @@ bruteSolve f z = [(x, y) | x <- [0..z], y<- [z, z-1..0], f x y == z]
 -- [2] Edsger W. Dijkstra. ``The saddleback search''. EWD-934. 1985. http://www.cs.utexas.edu/users/EWD/index09xx.html.
 solve f z = search 0 z where
   search p q | p > z || q < 0 = []
-             | f p q < z = search (p + 1) q
-             | f p q > z = search p (q - 1)
+             | z' < z = search (p + 1) q
+             | z' > z = search p (q - 1)
              | otherwise = (p, q) : search (p + 1) (q - 1)
+    where z' = f p q
                            
+-- Minor improvement by using binary search to find the more accurate boundaries
+-- Binary search in range (l, u)
+bsearch f y (l, u) | u <= l = l
+                   | f m <= y = bsearch f y (m + 1, u)
+                   | otherwise = bsearch f y (l, m)
+  where m = (l + u) `div` 2
+        
+solve' f z = search 0 m where
+  search p q | p > n || q < 0 = []
+             | z' < z = search (p + 1) q
+             | z' > z = search p (q - 1)
+             | otherwise = (p, q) : search (p + 1) (q - 1)
+    where z' = f p q
+  m = bsearch (f 0) z (0, z)
+  n = bsearch (\x->f x 0) z (0, z)
+
 -- test
 fs = [\x y -> x + y, \x y -> 2^x + 3^y, \x y -> x^2 + y^2]
 
 prop_solve :: Integer -> Bool
 prop_solve z = let z' = abs z `mod` 100 in and $ map (\f -> solve f z' == bruteSolve f z') fs
+
+prop_solve' :: Integer -> Bool
+prop_solve' z = let z' = abs z `mod` 100 in and $ map (\f -> solve' f z' == solve f z') fs
