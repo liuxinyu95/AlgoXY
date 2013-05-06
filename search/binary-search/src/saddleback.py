@@ -42,11 +42,40 @@ def saddleback(f, z):
             (p, q) = (p + 1, q - 1)
     return res
 
-def test():
+def bsearch(f, z, l, u):
+    while u > l:
+        m = (l + u) // 2
+        if f(m) <= z:
+            l = m + 1
+        else:
+            u = m
+    return l
+
+def saddleback1(f, z):
+    m = bsearch(lambda y: f(0, y), z, 0, z)
+    n = bsearch(lambda x: f(x, 0), z, 0, z)
+    res = []
+    (p, q) = (0, m)
+    while p <= n and q >= 0:
+        z1 = f(p, q)
+        if z1 < z:
+            p = p + 1
+        elif z1 > z:
+            q = q - 1
+        else:
+            res.append((p, q))
+            (p, q) = (p + 1, q - 1)
+    return res
+
+def test_search(search1, search2):
     fs = [lambda x, y: x + y, lambda x, y: pow(2, x) + pow(3, y), lambda x, y: x*x + y*y]
     for z in range(100+1):
         for f in fs:
-            assert brute_solve(f, z) == saddleback(f, z)
+            assert search1(f, z) == search2(f, z)
+
+def test():
+    test_search(brute_solve, saddleback)
+    test_search(saddleback, saddleback1)
 
 if __name__ == "__main__":
     test()
