@@ -17,6 +17,8 @@
 -- Saddleback search based on Chapter 3 of [1]
 -- [1] Richard Bird. ``Pearls of functional algorithm design''. Cambridge University Press. 2010. ISBN, 1139490605, 9781139490603
 
+module Saddleback where
+
 import Test.QuickCheck
 import Data.List (sort)
 
@@ -50,6 +52,21 @@ solve' f z = search 0 m where
   m = bsearch (f 0) z (0, z)
   n = bsearch (\x->f x 0) z (0, z)
 
+-- Improvement based on [1]
+solve'' f z = search f z (0, m) (n, 0) where
+  m = bsearch (f 0) z (0, z)
+  n = bsearch (\x -> f x 0) z (0, z)
+  
+search f z (a, b) (c, d) | c < a || b < d = []
+                         | c - a < b - d = let q = (b + d) `div` 2 in csearch (bsearch (\x -> f x q) z (a, c), q)
+                         | otherwise = let p = (a + c) `div` 2 in rsearch (p, bsearch (f p) z (d, b))
+  where
+    csearch (p, q) = search f z (a, b) (p - 1, q + 1) ++ 
+                     if f p q == z then (p, q) : search f z (p + 1, q) (c, d) 
+                     else search f z (p + 1, q - 1) (c, d)
+    rsearch (p, q) = (if f p q == z then (p, q) : search f z (a, b) (p - 1, q)
+                     else search f z (a, b) (p, q)) ++ search f z (p + 1, q - 1) (c, d)
+
 -- test
 fs = [\x y -> x + y, \x y -> 2^x + 3^y, \x y -> x^2 + y^2]
 
@@ -58,3 +75,6 @@ prop_solve z = let z' = abs z `mod` 100 in and $ map (\f -> solve f z' == bruteS
 
 prop_solve' :: Integer -> Bool
 prop_solve' z = let z' = abs z `mod` 100 in and $ map (\f -> solve' f z' == solve f z') fs
+
+prop_solve'' :: Integer -> Bool
+prop_solve'' z = let z' = abs z `mod` 100 in and $ map (\f -> solve'' f z' == solve' f z') fs
