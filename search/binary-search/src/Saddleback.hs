@@ -61,11 +61,12 @@ search f z (a, b) (c, d) | c < a || b < d = []
                          | c - a < b - d = let q = (b + d) `div` 2 in csearch (bsearch (\x -> f x q) z (a, c), q)
                          | otherwise = let p = (a + c) `div` 2 in rsearch (p, bsearch (f p) z (d, b))
   where
-    csearch (p, q) = search f z (a, b) (p - 1, q + 1) ++ 
-                     if f p q == z then (p, q) : search f z (p + 1, q) (c, d) 
-                     else search f z (p + 1, q - 1) (c, d)
-    rsearch (p, q) = (if f p q == z then (p, q) : search f z (a, b) (p - 1, q)
-                     else search f z (a, b) (p, q)) ++ search f z (p + 1, q - 1) (c, d)
+    csearch (p, q) | z < f p q = search f z (p, q - 1) (c, d)
+                   | f p q == z = search f z (a, b) (p - 1, q + 1) ++ (p, q) : search f z (p + 1, q - 1) (c, d)
+                   | otherwise = search f z (a, b) (p, q + 1) ++ search f z (p + 1, q - 1) (c, d)
+    rsearch (p, q) | z < f p q = search f z (a, b) (p - 1, q)
+                   | f p q == z = search f z (a, b) (p - 1, q + 1) ++ (p, q) : search f z (p + 1, q - 1) (c, d)
+                   | otherwise = search f z (a, b) (p - 1, q + 1) ++ search f z (p + 1, q) (c, d)
 
 -- test
 fs = [\x y -> x + y, \x y -> 2^x + 3^y, \x y -> x^2 + y^2]
