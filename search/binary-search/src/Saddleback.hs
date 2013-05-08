@@ -60,7 +60,7 @@ solve'' f z = search f z (0, m) (n, 0) where
 search f z (a, b) (c, d) | c < a || b < d = []
                          | c - a < b - d = let q = (b + d) `div` 2 in csearch (bsearch (\x -> f x q) z (a, c), q)
                          | otherwise = let p = (a + c) `div` 2 in rsearch (p, bsearch (f p) z (d, b))
-  where
+  where  
     csearch (p, q) | z < f p q = search f z (p, q - 1) (c, d)
                    | f p q == z = search f z (a, b) (p - 1, q + 1) ++ (p, q) : search f z (p + 1, q - 1) (c, d)
                    | otherwise = search f z (a, b) (p, q + 1) ++ search f z (p + 1, q - 1) (c, d)
