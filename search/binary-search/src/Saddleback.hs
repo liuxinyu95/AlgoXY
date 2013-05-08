@@ -39,8 +39,8 @@ solve f z = search 0 z where
 -- Minor improvement by using binary search to find the more accurate boundaries
 -- Binary search in range (l, u)
 bsearch f y (l, u) | u <= l = l
-                   | f m <= y = bsearch f y (m + 1, u)
-                   | otherwise = bsearch f y (l, m)
+                   | f m <= y = if f (m + 1) <= y then bsearch f y (m + 1, u) else m
+                   | otherwise = bsearch f y (l, m-1)
   where m = (l + u) `div` 2
         
 solve' f z = search 0 m where
@@ -72,6 +72,14 @@ fs = [\x y -> x + y, \x y -> 2^x + 3^y, \x y -> x^2 + y^2]
 
 prop_solve :: Integer -> Bool
 prop_solve z = let z' = abs z `mod` 100 in and $ map (\f -> solve f z' == bruteSolve f z') fs
+
+bruteSearch f y (l, u) = if y < f l then l else head [ x | x <-[l..u], x == u || (f x <= y && y < f (x+1))]
+
+testBSearch f y (l, u) = bruteSearch f y (l, u) == bsearch f y (l, u)
+
+prop_bsearch :: Integer -> Integer -> Integer -> Bool
+prop_bsearch y l u = and $ map (\f -> testBSearch (f 0) y' (min l' u', max l' u')) fs where
+  [y', l', u'] = map abs [y, l, u]
 
 prop_solve' :: Integer -> Bool
 prop_solve' z = let z' = abs z `mod` 100 in and $ map (\f -> solve' f z' == solve f z') fs
