@@ -46,6 +46,8 @@ def bsearch(f, z, l, u):
     while u > l:
         m = (l + u) // 2
         if f(m) <= z:
+            if z < f(m+1):
+                return m
             l = m + 1
         else:
             u = m
