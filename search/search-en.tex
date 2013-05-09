@@ -992,10 +992,9 @@ Sum up all the ideas, we can develop a effcient improved saddleback search as th
 \item If $f(p, q) = z$, record $(p, q)$ as a solution, and recursively search two sub rectangles $(a, b) - (p-1, q+1)$ and
 $(p+1, q-1) - (c, d)$;
 \item Otherwise, $f(p, q) \neq z$, recursively the same two sub rectangles plus a line section. The line section
-is either $(p, q+1) - (p, b)$ for center vertical line; or $(p+1, q) - (c, q)$ for center horizontal line.
+is either $(p, q+1) - (p, b)$ as shown in figure \ref{fig:include-line} (a); or $(p+1, q) - (c, q)$ as shown in
+figure \ref{fig:include-line} (b).
 \end{enumerate}
-
-Figure \ref{fig:include-line} shows the line section should be included for recursively search.
 
 \begin{figure}[htbp]
  \centering
@@ -1008,15 +1007,105 @@ This algorithm can be formalized as the following. The equation (\ref{eq:bsearch
 are as same as before. A new $search$ function should be defined.
 
 \be
-search(f, z, (a, b), (c, d)) =  \left \{
+search((a, b), (c, d)) =  \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   \Phi & c < a \lor d < b \\
-  csearch(f, z, (a, b), (c, d)) & c - a < d - b \\
-  rsearch(f, z, (a, b), (c, d)) & otherwise
+  csearch & c - a < b - d \\
+  rsearch & otherwise
   \end{array}
 \right.
 \ee
+
+Function $csearch$ perfroms binary search in the center horinzontal line to find a point $(p, q)$ that
+$f(p, q) \leq z < f(p+1, q)$. This is shown in figure \ref{fig:include-line} (a).
+There is a special edge case, that all points in the lines evaluate to values greater than $z$. The general binary search
+will return the lower bound as result, so that $(p, q) = (a, \lfloor \frac{b + d}{2} \rfloor)$. The whole upper side
+includes the center line can be dropped as shown in figure \ref{fig:saddleback-edge-cases} (a).
+
+\begin{figure}[htbp]
+ \centering
+ \includegraphics[scale=0.5]{img/saddleback-edge-cases.eps}
+ \caption{Edge cases when performing binary search in the center line.}
+ \label{fig:saddleback-edge-cases}
+\end{figure}
+
+\be
+csearch = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  search((p, q-1), (c, d)) & z < f(p, q) \\
+  search((a, b), (p-1, q+1)) \cup \{(p, q)\} \cup search((p+1, q-1), (c, d)) & f(p, q) = z \\
+  search((a, b), (p, q+1)) \cup search((p+1, q-1), (c, d)) & otherwise 
+  \end{array}
+\right.
+\ee
+
+Where
+
+\[
+\begin{array}{l}
+q = \lfloor \frac{b + d}{2} \rfloor) \\
+p = bsearch(\lambda_x \cdot f(x, q), z, (a, c))
+\end{array}
+\]
+
+Function $rsearch$ is quite similar except that it searches in the center horinzental line.
+
+\be
+rsearch = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  search((a, b), (p - 1, q)) & z < f(p, q) \\
+  search((a, b), (p-1, q+1)) \cup \{(p, q)\} \cup search((p+1, q-1), (c, d)) & f(p, q) = z \\
+  search((a, b), (p-1, q+1)) \cup search((p+1, q), (c, d)) & otherwise 
+  \end{array}
+\right.
+\ee
+
+Where
+
+\[
+\begin{array}{l}
+p = \lfloor \frac{a + c}{2} \rfloor) \\
+q = bsearch(\lambda_y \cdot f(p, y), z, (d, b))
+\end{array}
+\]
+
+The following Haskell program implements this algorithm.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+search f z (a, b) (c, d) | c < a || b < d = []
+                         | c - a < b - d = let q = (b + d) `div` 2 in 
+                                             csearch (bsearch (\x -> f x q) z (a, c), q)
+                         | otherwise = let p = (a + c) `div` 2 in 
+                                             rsearch (p, bsearch (f p) z (d, b))
+  where  
+    csearch (p, q) | z < f p q = search f z (p, q - 1) (c, d)
+                   | f p q == z = search f z (a, b) (p - 1, q + 1) ++ 
+                                    (p, q) : search f z (p + 1, q - 1) (c, d)
+                   | otherwise = search f z (a, b) (p, q + 1) ++ 
+                                   search f z (p + 1, q - 1) (c, d)
+    rsearch (p, q) | z < f p q = search f z (a, b) (p - 1, q)
+                   | f p q == z = search f z (a, b) (p - 1, q + 1) ++ 
+                                    (p, q) : search f z (p + 1, q - 1) (c, d)
+                   | otherwise = search f z (a, b) (p - 1, q + 1) ++ 
+                                    search f z (p + 1, q) (c, d)
+\end{lstlisting}
+
+And the main program calls this function after performing binary search in $X$ and $Y$ axes.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+solve f z = search f z (0, m) (n, 0) where
+  m = bsearch (f 0) z (0, z)
+  n = bsearch (\x -> f x 0) z (0, z)
+\end{lstlisting}
+
+TODO: Performance analysis
+
+TODO: Imperative part.
 
 \begin{Exercise}
 \begin{itemize}
@@ -1052,6 +1141,7 @@ automatically. You can generate randomized data, test your program with the bina
 one provided in your standard library.
 \item Implement the improved saddleback search by first performing binary search to find a more accurate solution domain
 in your favorite imperative programming language.
+\item TODO: add brute-force 2D binary search as exercise.
 \end{itemize}
 \end{Exercise}
 
