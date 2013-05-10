@@ -69,6 +69,45 @@ def saddleback1(f, z):
             (p, q) = (p + 1, q - 1)
     return res
 
+def solve(f, z):
+    m = bsearch(lambda y: f(0, y), z, 0, z)
+    n = bsearch(lambda x: f(x, 0), z, 0, z)
+    res = []
+    def search(a, b, c, d):
+        def csearch(p, q):
+            z1 = f(p, q)
+            if z < z1:
+                search(p, q-1, c, d)
+            elif z == z1:
+                search(a, b, p-1, q+1)
+                res.append((p, q))
+                search(p+1, q-1, c, d)
+            else:
+                search(a, b, p, q+1)
+                search(p+1, q-1, c, d)
+        def rsearch(p, q):
+            z1 = f(p, q)
+            if z < z1:
+                search(a, b, p-1, q)
+            elif z == z1:
+                search(a, b, p-1, q+1)
+                res.append((p, q))
+                search(p+1, q-1, c, d)
+            else:
+                search(a, b, p-1, q+1)
+                search(p+1, q, c, d)
+        if a <=c and d <=b:
+            if c - a < b - d:
+                q = (b + d) // 2
+                p = bsearch(lambda x: f(x, q), z, a, c)
+                csearch(p, q)
+            else:
+                p = (a + c) // 2
+                q = bsearch(lambda y: f(p, y), z, d, b)
+                rsearch(p, q)
+    search(0, m, n, 0)
+    return res
+
 def test_search(search1, search2):
     fs = [lambda x, y: x + y, lambda x, y: pow(2, x) + pow(3, y), lambda x, y: x*x + y*y]
     for z in range(100+1):
@@ -78,6 +117,7 @@ def test_search(search1, search2):
 def test():
     test_search(brute_solve, saddleback)
     test_search(saddleback, saddleback1)
+    test_search(saddleback1, solve)
 
 if __name__ == "__main__":
     test()
