@@ -1,4 +1,4 @@
-IMG_OBJECTS = 
+IMG_OBJECTS = saddleback-pow2x-add-y saddleback-xx-yy
 DOT_OBJECTS = 
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
