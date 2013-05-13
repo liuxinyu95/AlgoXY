@@ -19,7 +19,7 @@ ax = fig.add_subplot(111, projection='3d')
 
 fs = [lambda x, y: x + y, lambda x, y: pow(2, x) + y, lambda x, y: x*x + y*y]
 
-wireframe(ax, fs[i], 100)
+wireframe(ax, fs[i], 50)
 
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
