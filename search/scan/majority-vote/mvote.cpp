@@ -34,7 +34,7 @@ T majority(const T* xs, int n, T fail) {
         c += xs[i] == m ? 1 : -1;
         if (c < 0) {
             m = xs[i];
-            c = 0;
+            c = 1;
         }
     }
     for (i = 0, c = 0; i < n; ++i, c += xs[i] == m);
@@ -48,7 +48,6 @@ void test() {
     printf("majority = %c\n", majority(xs, sizeof(xs)/sizeof(xs[0]), 'X'));
     printf("majority_brute = %d\n", majority_brute(ys, sizeof(ys)/sizeof(ys[0]), -1));
     printf("majority = %d\n", majority(ys, sizeof(ys)/sizeof(ys[0]), -1));
-
 }
 
 int main() {
