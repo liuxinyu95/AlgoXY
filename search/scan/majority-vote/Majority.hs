@@ -28,6 +28,6 @@ maj c n (x:xs) | c == x = maj c (n+1) xs
                | n == 0 = maj x 1 xs
                | otherwise = maj c (n-1) xs
                              
-verify m xs = if 2 * (length $ filter (==m) xs) >= length xs then Just m else Nothing
+verify m xs = if 2 * (length $ filter (==m) xs) > length xs then Just m else Nothing
 
 -- test
