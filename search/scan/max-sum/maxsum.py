@@ -16,7 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
 # refer to column 7 in [1]
 # [1]. Jon Bentley. ``Programming pearls, Second Edition''. Addison-Wesley Professional; 1999. ISBN-13: 978-0201657883
 
@@ -32,6 +31,26 @@ def maxsum(xs):
         s = max(m, s)
     return s
 
+# divide and conquer solution
+def dc_maxsum(xs):
+    n = len(xs)
+    if n == 0:
+        return 0
+    if n == 1:
+        return max(0, xs[0])
+    m = n //2
+    a = max_from(reversed(xs[:m]))
+    b = max_from(xs[m:])
+    return max(dc_maxsum(xs[:m]), dc_maxsum(xs[m:]), a + b)
+
+def max_from(xs):
+    s = 0
+    m = 0
+    for x in xs:
+        s = s + x
+        m = max(m, s)
+    return m
+
 def naive_maxsum(xs):
     n = len(xs)
     m = 0
@@ -45,11 +64,15 @@ def naive_maxsum(xs):
                 r = (i, j)
     return (m, r)
 
-def test():
+def test_maxsum(f):
     for _ in range(100):
         xs = random.sample(range(-100, 100), 100)
         (m, _) = naive_maxsum(xs)
-        assert m == maxsum(xs)
+        assert m == f(xs)
+
+def test():
+    test_maxsum(maxsum)
+    test_maxsum(dc_maxsum)
 
 def example():
     xs = [3, -13, 19, -12, 1, 9, 18, -16, 15, -15]
