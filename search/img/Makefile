@@ -1,5 +1,5 @@
 IMG_OBJECTS = saddleback-xx-yy
-DOT_OBJECTS = max-sum-invariant
+DOT_OBJECTS = max-sum-invariant strstr
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
