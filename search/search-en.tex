@@ -1622,6 +1622,7 @@ not match \cite{CLRS}.
 
 \be
 \pi(q) = max \{ k | k < q \land P_k \sqsupset P_q \}
+\label{eq:prefix-function}
 \ee
 
 This function is used as the following. When we match pattern $P$ against text $T$ from offset $s$, 
@@ -1648,6 +1649,50 @@ core algorithm of KMP can be described as the following.
   \EndFor
 \EndFunction
 \end{algorithmic}
+
+Although the definition of prefix function $\pi(q)$ is given in equation \ref{eq:prefix-function}, realizing it
+blindly by finding the longest suffix isn't effective. Actually we can use the idea of information reusing again
+to build the prefix function.
+
+The trivial edge case is that, the first character doesn't match. In this case the longest prefix, which is
+also the suffix if empty string is definitely empty, so $\pi(1) = k = 0$. We record the longest prefix as $P_k$.
+In this edge case $P_k = P_0$ is the empty string.
+
+After that, when we scan at the $q$-th character in the pattern string $P$, we hold the invariant that the 
+prefix funciton values $pi(i)$ for $i$ in $\{1, 2, ..., q-1 \}$ have already been recorded, and $P_k$ is 
+the longest prefix which is also the suffix of $P_{q-1}$. As shown in figure \ref{fig:kmp-prefix-func},
+if $P[q] = P[k+1]$, A bigger $k$ than before is found, we can increase the maximum of $k$ by one;
+otherwise, if they are not same, we can use $pi(k)$ to fallback to a shorter prefix $P_{k'}$ where
+$k' = \pi(k)$, and check if the next character after this new prefix is same as the $q$-th character.
+We need repeat this step until either $k$ becomes zero (which means only empty string satisfies), 
+or the $q$-th character matches.
+
+\begin{figure}[htbp]
+ \centering
+ \includegraphics[scale=0.5]{img/kmp-prefix-func.ps}
+ \caption{$P_k$ is suffix of $P_{q-1}$, $P[q]$ and $P[k+1]$ are compared.}
+ \label{fig:kmp-prefix-func}
+\end{figure}
+
+Realizing this idea gives the KMP prefix building algorithm.
+
+\begin{algorithmic}[1]
+\Function{Build-Prefix-Function}{$P$}
+  \State $m \gets |P|, k \gets 0$
+  \State $\pi(1) \gets 0$
+  \For{$q \gets 2$ to $m$}
+    \While{$k > 0 \land P[q] \neq P[k+1]$}
+      \State $k \gets \pi(k)$
+    \EndWhile
+    \If{$P[q] = P[k+1]$}
+      \State $k \gets k + 1$
+    \EndIf
+    \State $\pi(q) \gets k$
+  \EndFor
+  \State \Return $\pi$
+\EndFunction
+\end{algorithmic}
+
 
 \subsubsection{Boyer-moore}
 
