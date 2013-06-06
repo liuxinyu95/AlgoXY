@@ -1502,9 +1502,9 @@ we reset it to 0. The following tables illustrated the steps when we scan the ex
 $\{3, -13, 19, -12, 1, 9, 18, -16, 15, -15\}$.
 
 \begin{tabular}{|l|l|r|}
-\hline \\
+\hline 
 max sum & max end at $i$ & list to be scan \\
-\hline \\
+\hline 
 0 & 0 & $\{3, -13, 19, -12, 1, 9, 18, -16, 15, -15\}$ \\
 3 & 3 & $\{-13, 19, -12, 1, 9, 18, -16, 15, -15\}$ \\
 3 & 0 & $\{19, -12, 1, 9, 18, -16, 15, -15\}$ \\
@@ -1693,6 +1693,71 @@ Realizing this idea gives the KMP prefix building algorithm.
 \EndFunction
 \end{algorithmic}
 
+The following table lists the steps of building prefix function for patter string `ananym'. Note that
+the $k$ in the table actually means the maximum $k$ statisfies equation (\ref{eq:prefix-function}).
+
+\begin{tabular}{|c|r|c|l|}
+\hline
+$q$ & $P_q$ & $k$ & $P_k$ \\
+\hline
+1 & a & 0 & ``'' \\
+2 & an & 0 & ``'' \\
+3 & ana & 1 & a \\
+4 & anan & 2 & an  \\
+5 & anany & 0 & ``'' \\
+6 & ananym & 0 & ``'' \\
+\hline
+\end{tabular}
+
+Translating the KMP algorithm to Python gives the below example code.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def kmp_match(w, p):
+    n = len(w)
+    m = len(p)
+    fallback = fprefix(p)
+    k = 0 # how many elements have been matched so far.
+    res = []
+    for i in range(n):
+        while k > 0 and p[k] != w[i]:
+            k = fallback[k] #fall back
+        if p[k] == w[i]:
+            k = k + 1
+        if k == m:
+            res.append(i+1-m)
+            k = fallback[k-1] # look for next
+    return res
+
+def fprefix(p):
+    m = len(p)
+    t = [0]*m  # fallback table
+    k = 0
+    for i in range(2, m):
+        while k>0 and p[i-1] != p[k]:
+            k = t[k-1] #fallback
+        if p[i-1] == p[k]:
+            k = k + 1
+        t[i] = k
+    return t
+\end{lstlisting}
+
+The KMP algorithm builds the prefix function for the pattern string as a kind of pre-processing before the 
+search. Because of this, it can reuse as much information of the previous matching as possible.
+
+The armotized performance of building the prefix function is $O(m)$. This can be proved by using potential
+method as in \cite{CLRS}. Using the similar method, it can be proved that the matching algorithm itself is
+also linear. Thus the total performance is $O(m + n)$ at the expense of the $O(m)$ space to record the 
+prefix function table.
+
+It seems that varies pattern string would affect the performance of KMP. Considering the case that
+we are finding pattern string `aaa...a' of length $m$ in a string `aaa...a' of length $n$. 
+All the characters are same, when the last character in the pattern is examined, we can only fallback by 1,
+and this 1 character fall back repeated util it falls back to zero. Even in this extreme case, KMP
+algorithm still holds its linear performance (why?). Please try to consider more cases such as $P = aaaa...b$,
+$T = aaaa...a$ and so on.
+
+TODO: Functional KMP algorithm
 
 \subsubsection{Boyer-moore}
 
@@ -1730,6 +1795,7 @@ from the middle point to both ends as the following.
 \end{algorithmic}
 It's easy to deduce the time performance is $T(n) = 2T(n/2) + O(n)$. Implement this algorithm in your 
 favorite programming language.
+\item Explain why KMP algorithm perform in linear time even in the seemed `worst' case.
 \end{itemize}
 \end{Exercise}
 
