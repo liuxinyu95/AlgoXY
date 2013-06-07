@@ -18,7 +18,7 @@
 
 module KMP where
 
-import Data.List
+import Data.List (isSuffixOf, isPrefixOf, (\\), maximumBy)
 import Data.Function (on)
 import Test.QuickCheck
 
@@ -35,16 +35,17 @@ kmpSearch' f (sp, (p:ps)) (sw, (w:ws))
 
 -- Why we said this solution is brute force is because
 --  we provide a brute-force prefix-function
-next [] ps = ([], ps)
-next [p] ps = ([], p:ps)
 next sp ps = (sp', ps') where
     prev = reverse sp
-    prefix = longest [xs | xs <- init $ tail $ inits prev,
-                           xs `isSuffixOf` prev]
+    prefix = longest [xs | xs <- inits prev, xs `isSuffixOf` prev]
     sp' = reverse prefix
     ps' = (prev ++ ps) \\ prefix
     longest xs = if xs==[] then [] 
                  else maximumBy (compare `on` length) xs
+
+inits [] = [[]]
+inits [_] = [[]]
+inits (x:xs) = [] : (map (x:) $ inits xs)
 
 -- Improvement 1, 
 failure :: (Eq a)=> ([a], [a]) -> ([a], [a])

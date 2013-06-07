@@ -1845,6 +1845,86 @@ kmp(\pi, (\overleftarrow{P_p}, P_s), (\overleftarrow{T_p}, T_s)) =  \left \{
 \right.
 \ee
 
+The first clause states that, if the scan successfully ends to both the pattern and text strings, we get a solution.
+And the algorithm terminates.
+Note that we use the right position in the text string as the matching point. It's easy to use the left position by
+substracting with the length of the pattern string. For sake of brevity, we switch to right position in functional
+solutions.
+
+The second clause states that if the scan arrives at the end of text string, while there are still rest of characters
+in the pattern string haven't been matched, there is no solution. And the algorithm terminates.
+
+The third clause states that, if all the characters in the pattern string have been successfully matched, while there
+are still characters in the text haven't been examined, we get a solution, and we fallback by calling prefix function
+$\pi$ to go on searching other solutions.
+
+The fourth clause deals with the case, that the next characters in pattern string and text are same. In such case, the
+algorithm advances one character ahead, and recursively performs searching.
+
+If the the next characters are not same and this is the first character in the pattern string, we just need advance
+to next character in the text, and try again. Otherwiese if this isn't the first character in the pattern, 
+we call prefix function $\pi$ to fallback, and try again.
+
+The brute-force way to build the prefix function is just to follow the definition equation (\ref{eq:prefix-function}).
+
+\be
+\pi(\overleftarrow{P_p}, P_s) = (\overleftarrow{P_p'}, P_s')
+\ee
+
+where
+
+\[
+\begin{array}{l}
+P_p' = longest(\{ s | s \in prefixes(P_p), s \sqsupset P_p \}) \\
+P_s' = P - P_p'
+\end{array}
+\]
+
+Every time when calculate the fallback position, the algorithm natively enumerates all prefixes of $P_p$, checks
+if it is also the suffix of $P_p$, and then pick the longest one as result. Note that we reuse the substraction
+symbol here for list differ operation.
+
+There is a tricky case which should be avoided. Because any string itself is both its prefix and suffix. 
+Say $P_p \sqsubset P_p$  and $P_p \sqsupset P_p$. We shouldn't enumerate $P_p$ as a candiate prefix. One
+solution of such prefix enumerateion can be realized as the following.
+
+\be
+prefixes(L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{ \Phi \} & L = \Phi \lor |L| = 1 \\
+  cons(\Phi, map(\lambda_s \cdot cons(l_1, s), prefixes(L'))) & otherwise
+  \end{array}
+\right.
+\ee
+
+Below Haskell example program implements this version of string matching algorithm completely.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+kmpSearch1 ptn text = kmpSearch' next ([], ptn) ([], text)
+
+kmpSearch' _ (sp, []) (sw, []) = [length sw]
+kmpSearch' _ _ (_, []) = []
+kmpSearch' f (sp, []) (sw, ws) = length sw : kmpSearch' f (f sp []) (sw, ws)
+kmpSearch' f (sp, (p:ps)) (sw, (w:ws))
+    | p == w = kmpSearch' f ((p:sp), ps) ((w:sw), ws)
+    | otherwise = if sp ==[] then kmpSearch' f (sp, (p:ps)) ((w:sw), ws)
+                  else kmpSearch' f (f sp (p:ps)) (sw, (w:ws))
+
+next sp ps = (sp', ps') where
+    prev = reverse sp
+    prefix = longest [xs | xs <- inits prev, xs `isSuffixOf` prev]
+    sp' = reverse prefix
+    ps' = (prev ++ ps) \\ prefix
+    longest xs = if xs==[] then [] 
+                 else maximumBy (compare `on` length) xs
+
+inits [] = [[]]
+inits [_] = [[]]
+inits (x:xs) = [] : (map (x:) $ inits xs)
+\end{lstlisting} %$
+
 \subsubsection{Boyer-moore}
 
 \begin{Exercise}
