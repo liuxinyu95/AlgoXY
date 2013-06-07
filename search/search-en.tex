@@ -1757,7 +1757,93 @@ and this 1 character fallback repeats util it falls back to zero. Even in this e
 algorithm still holds its linear performance (why?). Please try to consider more cases such as $P = aaaa...b$,
 $T = aaaa...a$ and so on.
 
-TODO: Functional KMP algorithm
+\paragraph{Purely functional KMP algorithm}
+
+It is not easy to realize KMP matching algorithm in purely functional manner. The imperative algorithm represented
+so far intensely use array to record prefix function values. Although it is possible to utilize sequence like structure
+in purely functional settings, such sequence is typically implemented with finger tree. Unlike native arrays, 
+finger tree based sequence needs logarithm time for random accessing.
+
+Richard Bird presents a formal program deduction to KMP algorithm by using fold fusion law in chapter 17 of \cite{fp-pearls}.
+In this secion, we show how to develop purely functional KMP algorithm step by step from a brute-force prefix
+function creation version.
+
+Both text string and pattern are represented as singly linked-list in purely functional settings. During the scan
+process, these two lists are further partitioned, every one is broken into two parts. As shown in figure \ref{fig:fp-strstr},
+The first $j$ characters in the pattern string have been matched. $T[i+1]$ and $P[j+1]$ are compared next.
+If they are same, we need append the character to the matched part. However, since strings are essentially singly 
+linked list, such appending is proportion to $j$.
+
+\begin{figure}[htbp]
+ \centering
+ \includegraphics[scale=0.5]{img/fp-strstr.ps}
+ \caption{$P_k$ is suffix of $P_{q-1}$, $P[q]$ and $P[k+1]$ are compared.}
+ \label{fig:fp-strstr}
+\end{figure}
+
+Denote the first $i$ characters as $T_p$, which means the prefix of $T$, the rest characters as $T_s$ for suffix;
+Similarily, the first $j$ characters as $P_p$, and the rest as $P_s$; Denote the first character of $T_s$ as $t$,
+the first character of $P_s$ as $p$. We have the following `cons' relationship.
+
+\[
+\begin{array}{l}
+T_s = cons(t, T_s') \\
+P_s = cons(p, P_s')  
+\end{array}
+\]
+
+If $t = s$, note the following updating process is bound to linear time.
+
+\[
+\begin{array}{l}
+T_p' = T_p \cup {t} \\
+P_p' = P_p \cup {p}
+\end{array}
+\]
+
+We've introduced a method in the chapter about purely functional queue, which can solve this problem.
+By using a pair of front and rear list, we can turn the linear time appending to constant time linking.
+The key point is to represent the prefix part in reverse order.
+
+\be
+\begin{array}{l}
+T = T_p \cup T_s = reverse(reverse(T_p)) \cup T_s = reverse(\overleftarrow{T_p}) \cup T_s \\
+P = P_p \cup P_s = reverse(reverse(P_p)) \cup P_s = reverse(\overleftarrow{P_p}) \cup P_s \\
+\end{array}
+\ee
+
+The idea is to using pair $(\overleftarrow{T_p}, T_s)$ and $(\overleftarrow{P_p}, P_s)$ instead. With this change,
+the if $t=p$, we can update the prefix part fast in constant time.
+
+\be
+\begin{array}{l}
+\overleftarrow{T_p'} = cons(t, \overleftarrow{T_p}) \\
+\overleftarrow{P_p'} = cons(p, \overleftarrow{P_p})
+\end{array}
+\ee
+
+The KMP matching algoriths starts by initialzing the success prefix parts to empty strings as the following.
+
+\be
+search(P, T) = kmp(\pi, (\Phi, P) (\Phi, T))
+\ee
+
+Where $\pi$ is the prefix function we explained before. The core part of KMP algorithm, except for the prefix function
+building part, can be defined as below.
+
+\be
+kmp(\pi, (\overleftarrow{P_p}, P_s), (\overleftarrow{T_p}, T_s)) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{ |\overleftarrow{T_p}| \} & P_s = \Phi \land T_s = \Phi \\
+  \Phi & P_s \neq \Phi \land T_s = \Phi \\
+  \{ |\overleftarrow{T_p} \} \cup kmp(\pi, \pi(\overleftarrow{P_p}, P_s), (\overleftarrow{T_p}, T_s)) & P_s = \Phi \land T_s \neq \Phi \\
+  kmp(\pi, (\overleftarrow{P_p'}, P_s'), (\overleftarrow{T_p'}, T_s')) & t = p \\
+  kmp(\pi, \pi(\overleftarrow{P_p}, P_s), (\overleftarrow{T_p'}, T_s')) & t \neq p \land \overleftarrow{P_p} = \Phi \\
+  kmp(\pi, \pi(\overleftarrow{P_p}, P_s), (\overleftarrow{T_p}, T_s)) & t \neq p \land \overleftarrow{P_p} \neq \Phi 
+  \end{array}
+\right.
+\ee
 
 \subsubsection{Boyer-moore}
 
