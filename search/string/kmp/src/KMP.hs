@@ -40,8 +40,7 @@ next sp ps = (sp', ps') where
     prefix = longest [xs | xs <- inits prev, xs `isSuffixOf` prev]
     sp' = reverse prefix
     ps' = (prev ++ ps) \\ prefix
-    longest xs = if xs==[] then [] 
-                 else maximumBy (compare `on` length) xs
+    longest = maximumBy (compare `on` length)
 
 inits [] = [[]]
 inits [_] = [[]]
