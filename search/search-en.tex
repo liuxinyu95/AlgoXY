@@ -1975,7 +1975,67 @@ the current state.
 
 The prefix-function $\pi$ developed so far can also be improved although it is minor. Since we want
 to find the longest prefix of $P_p$, which is also suffix of it, we can scan from right to left
-instead.
+instead. For any non empty list $L$, denote the first element as $l_1$, and all the rest except
+for the first one as $L'$, define a function $init(L)$, which returns all the elements except for the last one
+as below.
+
+\be
+init(L) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & |L| = 1 \\
+  cons(l_1, init(L')) & otherwise
+  \end{array}
+\right.
+\ee
+
+Note that this function can not handle empty list. The idea of scan from right to left for $P_p$
+is first check if $init(P_p) \sqsupset P_p$, if yes, then we are done; otherwise, we examine if
+$init(init(P_p))$ is OK, and repeated this until to the left most. Based on this idea, the 
+prefix-funciton can be modified as the following.
+
+\be
+\pi(P_p, P_s) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (P_p, P_s) & P_p = \Phi \\
+  fallback(init(P_p), cons(last(P_p), P_s)) & otherwise
+  \end{array}
+\right.
+\ee
+
+Where
+
+\be
+fallback(A, B) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (A, B) & A \sqsupset P_p \\
+  (init(A), cons(last(A), B)) & otherwise
+  \end{array}
+\right.
+\ee
+
+Note that fallback always terminates because empty string is suffix of any string. The $last$ function
+returns the last element of a list, it is also a linear time operation (refer to Appendix A) for detail.
+However, it's constant operation if we use $\overleftarrow(P_p)$ approach. This improved prefix-function
+is bound to linear time. Itis still quite slow than the imperative algorith which can look up prefix-funciton
+in constant $O(1)$ time. The following Haskell exmple program implements this minor improvement.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+failure ([], ys) = ([], ys)
+failure (xs, ys) = fallback (init xs) (last xs:ys) where
+    fallback as bs | as `isSuffixOf` xs = (as, bs)
+                   | otherwise = fallback (init as) (last as:bs)
+
+kmpSearch ws txt = snd $ foldl f (([], ws), []) (zip txt [1..]) where
+    f (p@(xs, (y:ys)), ns) (x, n) | x == y = if ys==[] then ((xs++[y], ys), ns++[n])
+                                             else ((xs++[y], ys), ns)
+                                  | xs == [] = (p, ns)
+                                  | otherwise = f (failure p, ns) (x, n)
+    f (p, ns) e = f (failure p, ns) e
+\end{lstlisting}
 
 \subsubsection{Boyer-moore}
 
