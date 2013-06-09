@@ -47,13 +47,11 @@ inits [_] = [[]]
 inits (x:xs) = [] : (map (x:) $ inits xs)
 
 -- Improvement 1, 
-failure :: (Eq a)=> ([a], [a]) -> ([a], [a])
 failure ([], ys) = ([], ys)
 failure (xs, ys) = fallback (init xs) (last xs:ys) where
     fallback as bs | as `isSuffixOf` xs = (as, bs)
                    | otherwise = fallback (init as) (last as:bs)
 
-kmpSearch2 :: (Eq a) => [a] -> [a] ->[Int]
 kmpSearch2 ws txt = snd $ foldl f (([], ws), []) (zip txt [1..]) where
     f (p@(xs, (y:ys)), ns) (x, n) | x == y = if ys==[] then ((xs++[y], ys), ns++[n])
                                              else ((xs++[y], ys), ns)
