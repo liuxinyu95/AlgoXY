@@ -2037,6 +2037,53 @@ kmpSearch ws txt = snd $ foldl f (([], ws), []) (zip txt [1..]) where
     f (p, ns) e = f (failure p, ns) e
 \end{lstlisting}
 
+The bottleneck is that we can not use raw array to record prefix function values in purely functional settings.
+In fact the prefix funciton can be understood as a state transform function. It transfer from one state
+to the other according to the matching is success or fail. We can abstract such state changing as a tree.
+In environment supporting algebraic data type, Haskell for example, such state tree can be defined like
+below.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+data State a = E | S a (State a) (State a)
+\end{lstlisting}
+
+A state is either empty $E$, or contains three part: the current state, the new state if match fails, and
+the new state if match succeeds. Such definition is quite similiar to the binary tree. We can call it
+`left-fail, right-success' tree. The state we are using here is $(P_p, P_s)$.
+
+Similar as imperative KMP algorithm, which build the prefix function from the pattern string, the 
+state transforming tree can also be built from the pattern. The idea is to build the tree from the
+very begining state $(\Phi, P)$, with both its children empty. We replace the left child with a 
+new state by calling $\pi$ function defined above, and replace the right child by advancing one character
+ahead. There is an edge case, that when the state transfers to $(P, \Phi)$, we can not advance any more
+in success case, such node only contains child for failure case. 
+The build function is defined as the following.
+
+\be
+build(state((P_p, P_s), E, E)) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  build(\pi(P_p, P_s), E, E) & P_s = \Phi \\
+  build((P_p, P_s), build(\pi(P_p, P_s), E, E), build((P_s \cup \{p\}, P_s'), E, E)) & otherwise
+  \end{array}
+\right.
+\ee
+
+The meaning of $p$ and $P_s'$ are as same as before, that $p$ is the first character in $P_s$, and
+$P_s'$ is the rest characters. The most interesting point is that the build funciton will never
+stop. It endless build a infinite tree. In strict programming environment, calling this function
+will freeze. However, in environment supports lazy evaluation, only the node has to be use will
+be created. For example, both Haskell and Scheme/Lisp is capable to construct such infinite state
+tree. In imperatvie settings, it is typically realized by using pointers which links to ancestor
+of a node.
+
+TODO: provide a picture to illustrate such tree.
+
+With the help of state transform tree, we can realize KMP algorithm in an automata manner.
+
+TODO:
+
 \subsubsection{Boyer-moore}
 
 \begin{Exercise}
