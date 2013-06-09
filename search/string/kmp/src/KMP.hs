@@ -64,7 +64,7 @@ data State a = E | S a (State a) (State a) -- state, ok-state, fail-state
                deriving (Eq, Show)
 
 build :: (Eq a)=>State ([a], [a]) -> State ([a], [a])
-build (S s@(xs, []) E E) = S (xs, []) (build (S (failure s) E E)) E
+build (S s@(xs, []) E E) = S s (build (S (failure s) E E)) E
 build (S s@(xs, (y:ys)) E E) = S s l r where
     l = build (S (failure s) E E) -- fail state
     r = build (S (xs++[y], ys) E E)
