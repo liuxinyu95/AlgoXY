@@ -2048,7 +2048,7 @@ below.
 data State a = E | S a (State a) (State a)
 \end{lstlisting}
 
-A state is either empty $E$, or contains three part: the current state, the new state if match fails, and
+A state is either empty, or contains three part: the current state, the new state if match fails, and
 the new state if match succeeds. Such definition is quite similiar to the binary tree. We can call it
 `left-fail, right-success' tree. The state we are using here is $(P_p, P_s)$.
 
@@ -2061,10 +2061,10 @@ in success case, such node only contains child for failure case.
 The build function is defined as the following.
 
 \be
-build((P_p, P_s), E, E) = \left \{
+build((P_p, P_s), \Phi, \Phi) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
-  build(\pi(P_p, P_s), E, E) & P_s = \Phi \\
+  build(\pi(P_p, P_s), \Phi, \Phi) & P_s = \Phi \\
   build((P_p, P_s), L, R) & otherwise
   \end{array}
 \right.
@@ -2073,8 +2073,8 @@ build((P_p, P_s), E, E) = \left \{
 Where
 \[
 \begin{array}{l}
-L = build(\pi(P_p, P_s), E, E) \\
-R = build((P_s \cup \{p\}, P_s'), E, E))
+L = build(\pi(P_p, P_s), \Phi, \Phi) \\
+R = build((P_s \cup \{p\}, P_s'), \Phi, \Phi))
 \end{array}
 \]
 
@@ -2089,17 +2089,76 @@ of a node.
 \begin{figure}[htbp]
  \centering
  \includegraphics[scale=0.4]{img/fallback-tr.ps}
- \caption{The infinity state tree for pattern `ananym'.}
+ \caption{The infinite state tree for pattern `ananym'.}
  \label{fig:fallback-tree}
 \end{figure}
 
-Figure \ref{fig:fallback-tree} illustrates such an infinity state tree for pattern string `ananym'.
+Figure \ref{fig:fallback-tree} illustrates such an infinite state tree for pattern string `ananym'.
 Note that the right most edge represents the case that the matching continously succeed for all
 characters. After that, since we can't match any more, so the right subtree is empty.
+Base on this fact, we can define a auxiliary function to test if a state indicates the whole
+pattern is successfully matched.
+
+\be
+match((P_p, P_s), L, R) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  True & P_s = \Phi \\
+  False & otherwise
+  \end{array}
+\right.
+\ee
 
 With the help of state transform tree, we can realize KMP algorithm in an automata manner.
 
-TODO:
+\be
+kmp(P, T) = snd(fold(search, (Tr, []), zip(T, \{1, 2, ... \})))
+\ee
+
+Where the tree $Tr = build((\Phi, P), \Phi, \Phi)$ is the infinite state transform tree.
+Function $search$ utilizes this tree to transform the state according to match or fail.
+Denote the first character in $P_s$ as $p$, the rest characters as $P_s'$, and the matched
+position found so far as $A$.
+
+\be
+search((((P_p, P_s), L, R), A), (c, i)) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (R, A \cup \{ i \} & p = c \land match(R) \\
+  (R, A) & p = c \land \neg{match(R)} \\
+  ((((P_p, P_s), L, R), A) & P_p = \Phi \\
+  search((L, A), (c, i)) & otherwise
+  \end{array}
+\right.
+\ee
+
+The following Haskell example program implements this algorithm.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+data State a = E | S a (State a) (State a) -- state, ok-state, fail-state
+               deriving (Eq, Show)
+
+build :: (Eq a)=>State ([a], [a]) -> State ([a], [a])
+build (S s@(xs, []) E E) = S s (build (S (failure s) E E)) E
+build (S s@(xs, (y:ys)) E E) = S s l r where
+    l = build (S (failure s) E E) -- fail state
+    r = build (S (xs++[y], ys) E E)
+
+matched (S (_, []) _ _) = True
+matched _ = False
+
+kmpSearch3 :: (Eq a) => [a] -> [a] -> [Int]
+kmpSearch3 ws txt = snd $ foldl f (auto, []) (zip txt [1..]) where
+    auto = build (S ([], ws) E E)
+    f (s@(S (xs, ys) l r), ns) (x, n) 
+        | [x] `isPrefixOf` ys = if matched r then (r, ns++[n])
+                                else (r, ns)
+        | xs == [] = (s, ns)
+        | otherwise = f (l, ns) (x, n)
+\end{lstlisting}
+
+TODO: final improvement
 
 \subsubsection{Boyer-moore}
 
