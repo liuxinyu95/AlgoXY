@@ -2158,7 +2158,130 @@ kmpSearch3 ws txt = snd $ foldl f (auto, []) (zip txt [1..]) where
         | otherwise = f (l, ns) (x, n)
 \end{lstlisting}
 
-TODO: final improvement
+The bottle-neck is that the state tree building function calls $\pi$ to fallback. While current definition
+of $\pi$ isn't effective enough, because it enumerates all candidates from right to the left every time.
+
+Since the state tree is infinite, we can adopt some common treatment for infinite structures. One good example
+is the Fibonacci series. The first two Fibonacci numbers are defined as 0 and 1; the rest Fibonacci numbers
+can be obtained by adding the previous two nubmers.
+
+\be
+\begin{array}{l}
+F_0 = 0 \\
+F_1 = 1 \\
+F_n = F_{n-1} + F_{n-2} \\
+\end{array}
+\ee
+
+Let us list the Fibonacci numbers one by one as the following
+
+\be
+\begin{array}{l}
+F_0 = 0 \\
+F_1 = 1 \\
+F_2 = F_1 + F_0 \\
+F_3 = F_2 + F_1 \\
+...
+\end{array}
+\ee
+
+We can collect all numbers in both sides, and define $F = \{ 0, 1, F_1, F_2, ... \}$, Thus we have the following 
+equation.
+
+\be
+\begin{array}{rl}
+F = & \{ 0, 1, F_1 + F_0, F_2 + F_1, ... \}  \\
+  = & \{ 0, 1 \} \cup \{ x + y | x \in \{ F_0, F_1, F_2, ...\}, y \in \{ F_1, F_2, F_3, ... \}\} \\
+  = & \{ 0, 1 \} \cup \{ x + y | x \in F, y \in F'\}
+\end{array}
+\ee
+
+Where $F' = tail(F)$ is all the Fibonacci numbers except for the first one. In environment support lazy evaluation,
+Haskell for instance, this definition can be expressed like below.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+fibs = 0 : 1 : zipWith (+) fibs (tail fibs)
+\end{lstlisting}
+
+The recursive definiton for infinite Fibonacci series indicates an idea which can be used to get rid of the
+fallback funciton $\pi$. Denote the state transfer tree as $T$, we can define the transfer function
+when matching a character on this tree as the following.
+
+\be
+trans(T, c) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  root & T = \Phi \\
+  R & T = ((P_p, P_s), L, R), c = p \\
+  trans(L, c) & otherwise
+  \end{array}
+\right.
+\ee
+
+If we match a character againt empty node, we transfer to the root of the tree. We'll define the root later soon.
+Otherwise, we compare if the character $c$ is as same as the first character $p$ in $P_s$. If they match, then
+we transfer to the right sub tree for this success case; otherwise, we transfer to the left sub tree for fail case.
+
+With transfer function defined, we can modify the previous tree building function by using it. This is quite similiar
+to the previous Fibonacci series definition.
+
+\[
+build(T, (P_p, P_s)) = ((P_p, P_s), T, build(trans(T, p), (P_p \cup \{ p \}, P_s')))
+\]
+
+The right hand of this equation contains three parts. The first one is the state that we are matching $(P_p, P_s)$;
+If the match fails, Since $T$ itself can handle any fail case, we use it directly as the left sub tree; otherwise
+we recursive build the right sub tree for success case by advancing one character ahead, and calling transfer 
+function we defined above.
+
+However, there is an edge case which has to be handled specially, that if $P_s$ is empty, which indicates a successful
+match. As defined above, there isn't right sub tree any more. Combine this case gives the final building function.
+
+\be
+build(T, (P_p, P_s)) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  ((P_p, P_s), T, \Phi) & P_s = \Phi \\
+  ((P_p, P_s), T, build(trans(T, p), (P_p \cup \{ p \}, P_s'))) & otherwise
+  \end{array}
+\right.
+\ee
+
+The last brick is to define the root of the infinite state transfer tree, which initializes the building.
+
+\be
+root = build(\Phi, (\Phi, P))
+\ee
+
+And the new KMP matching algorithm is modifiied by using this root.
+
+\be
+kmp(P, T) = snd(fold(trans, (root, []), zip(T, \{1, 2, ... \})))
+\ee
+
+The following Haskell example program implements this final version.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+kmpSearch ws txt = snd $ foldl tr (root, []) (zip txt [1..]) where
+    root = build' E ([], ws)
+    build' fails (xs, []) = S (xs, []) fails E
+    build' fails s@(xs, (y:ys)) = S s fails succs where
+        succs = build' (fst (tr (fails, []) (y, 0))) (xs++[y], ys)
+    tr (E, ns) _ = (root, ns)
+    tr ((S (xs, ys) fails succs), ns) (x, n) 
+        | [x] `isPrefixOf` ys = if matched succs then (succs, ns++[n]) else (succs, ns)
+        | otherwise = tr (fails, ns) (x, n)
+\end{lstlisting}
+
+Note that this algorithm depends on the critical lazy evaluation fact. All the states to be transferred
+are built on demand. So that the building process is armortized $O(m)$, and the total performance is
+amortized $O(n + m)$. Readers can refer to \cite{fp-pearls} for detailed proof of it.
+
+It's worth of comparing the final pure functional and the imperative algorithms. In many cases, we
+have expressive funcitonal realization, however, for KMP matching algorithm, the imperative approach
+is much simple and intuitive. This is because we have to mimic the raw array by a infinite state transfer tree.
 
 \subsubsection{Boyer-moore}
 
@@ -2197,6 +2320,7 @@ from the middle point to both ends as the following.
 It's easy to deduce the time performance is $T(n) = 2T(n/2) + O(n)$. Implement this algorithm in your 
 favorite programming language.
 \item Explain why KMP algorithm perform in linear time even in the seemed `worst' case.
+\item Implement the purely funcitonal KMP algorithm by using reversed $P_p$ to avoid the linear time appending operation.
 \end{itemize}
 \end{Exercise}
 
