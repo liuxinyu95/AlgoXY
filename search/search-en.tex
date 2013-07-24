@@ -2344,6 +2344,64 @@ s = |P| - p_i
 There is a good result in practice, that only using the bad-character rule leads to a simple and fast string matching
 algorithm, called Boyer-Moore-Horspool algorithm \cite{boyer-moore-horspool}.
 
+\begin{algorithmic}[1]
+\Procedure{Boyer-Moore-Horspool}{$T, P$}
+  \For{$\forall c \in \Sigma$}
+    \State $\pi(c) \gets |P|$
+  \EndFor
+  \For{$i \gets 1$ to $|P|$}
+    \State $\pi(P[i]) \gets |P| - i$
+  \EndFor
+  \State $s \gets 0$
+  \While{$s + |P| \leq |T|$}
+    \State $i \gets |P|$
+    \While{$i \geq 1 \land P[i] = T[s+i]$} \Comment{scan from right}
+      \State $i \gets i - 1$
+    \EndWhile
+    \If{$i < 1$}
+      \State found one solution at $s$
+    \EndIf
+    \State $s \gets s + \pi(T[s + |P|])$
+  \EndWhile
+\EndProcedure
+\end{algorithmic}
+
+The character set is denoted as $\Sigma$, we first intialize all the values of sliding function $\pi(c)$ as the length
+of the pattern string $|P|$. After that we process the pattern from left to right, update the sliding function value.
+If a character appears multiple times in the pattern, the latter value, which is on the right hand, will overwrite
+the previous value. We start the matching scan process by align the pattern and the text string from the very left.
+However, for every alignment $s$, we scan from the right to the left until either there is unmatched character or
+all the characters in the pattern have been examined. The latter case indicates that we've found a match; while for 
+the former case, we look up $\pi(c)$ to slide the pattern down to the right.
+
+The following example Python code implements this algorithm accordingly.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def bmh_match(w, p):
+    n = len(w)
+    m = len(p)
+    tab = [m for _ in range(256)]  # table to hold the bad character rule.
+    for i in range(m-1):
+        tab[ord(p[i])] = m - 1 - i
+    res = []
+    offset = 0
+    while offset + m <= n:
+        i = m - 1
+        while i >= 0 and p[i] == w[offset+i]:
+            i = i - 1
+        if i < 0:
+            res.append(offset)
+        offset = offset + tab[ord(w[offset + m - 1])]
+    return res
+\end{lstlisting}
+
+The algorithm firstly takes about $O(|\Sigma| + |P|)$ time to build the sliding function. If the character set size is
+small, the performance is dominated by the pattern and the text. There is definitely a worst case
+that all the characters in the pattern and text are same, e.g. searching `aa...a' in text `aa...a'. The performance in 
+this worst case is $O(mn)$. This algorithm performs well if the pattern is long, and there is constant number of matchings.
+This is as same as the bese case of full Boyer-Moore algorithm which will be explained next.
+
 \begin{Exercise}
 \begin{itemize}
 \item Proof that Boyer-Moore majority vote algorithm is correct.
