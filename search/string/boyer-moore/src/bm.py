@@ -13,7 +13,7 @@ import string # for verification purpose only
 
 #  The bad-character rule should ONLY be used for the position aligned
 #  with the LAST character in the pattern no matter where the mismatch
-#  Happens
+#  happens
 
 # Match pattern p in text w
 def bmh_match(w, p):

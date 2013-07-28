@@ -2305,10 +2305,11 @@ transfer tree.
 Boyer-Moore string matching algorithm is another effective algorithm invited in 1977 \cite{boyer-moore}.
 The idea of Boyer-Moore algorithm comes from the following observation.
 
+\paragraph{The bad character heuristics}
 The first observation is when attempt to match the pattern, even if there are several characters from the
-left are same, it fails if the last one does not, as shown in figure \ref{fig:bad-char}. What's more,
+left are same, it fails if the last one does not match, as shown in figure \ref{fig:bad-char}. What's more,
 we wouldn't find a match even if we slide the pattern down by 1, nor 2. Actually, the length of the
-pattern `ananym' is 5, the last one is `m' in the patter, however, the correcponding character in the
+pattern `ananym' is 5, the last character is `m', however, the correcponding character in the
 text is `h'. It does not appear in the pattern at all. We can directly slide the pattern down by 5.
 
 \begin{figure}[htbp]
@@ -2319,11 +2320,11 @@ down less than the length of the pattern.}
  \label{fig:bad-char}
 \end{figure}
 
-This leads to the {\em bad-character} rule. We can do a preprocessing for the pattern. If the character set
+This leads to {\em the bad-character rule}. We can do a preprocessing for the pattern. If the character set
 of the text is already known, we can find all characters which don't appear in the pattern string. During the
 later scan process, as long as we find such a bad character, we can immediately slide the pattern down by
 its length. The question is what if the unmatched character does appear in the pattern? While, in order not to
-miss any matches, we have to slide down the pattern to check again. This is shown as in the figure \ref{fig:good-char}
+miss any potential matches, we have to slide down the pattern to check again. This is shown as in the figure \ref{fig:good-char}
 
 \begin{figure}[htbp]
  \centering
@@ -2341,16 +2342,33 @@ take the right most one to avoid miss any matches.
 s = |P| - p_i
 \ee
 
-There is a good result in practice, that only using the bad-character rule leads to a simple and fast string matching
-algorithm, called Boyer-Moore-Horspool algorithm \cite{boyer-moore-horspool}.
+Note that the shifting length is 0 for the last position in the pattern according to the above 
+equation. Thus we can skip it in real realization.
+Another important point is that since the shifting is calculated against the position aligned
+with the last character in the pattern string, (we deduce it from $|P|$), no matter where the
+mismatching happens when we scan from right to the left, we slide down the pattern string
+by looking up the bad character table with the one in the text aligned with the last 
+character of the pattern. This is shown in figure \ref{fig:good-char-2}.
+
+\begin{figure}[htbp]
+ \centering
+ \subfloat[]{\includegraphics[scale=0.5]{img/good-char-3.ps}}
+ \subfloat[]{\includegraphics[scale=0.5]{img/good-char-4.ps}}
+ \caption{Even the mismatching happens in the middle, between char `i' and `a', we look up the shifting value with character `e', which is 6 (calculated from the first `e', the second `e' is skipped to avoid zero shifting according to our previous explaination).}
+ \label{fig:good-char-2}
+\end{figure}
+
+There is a good result in practice, that only using the bad-character rule leads to a simple 
+and fast string matching algorithm, called Boyer-Moore-Horspool algorithm 
+\cite{boyer-moore-horspool}.
 
 \begin{algorithmic}[1]
 \Procedure{Boyer-Moore-Horspool}{$T, P$}
   \For{$\forall c \in \Sigma$}
-    \State $\pi(c) \gets |P|$
+    \State $\pi[c] \gets |P|$
   \EndFor
-  \For{$i \gets 1$ to $|P|-1$}
-    \State $\pi(P[i]) \gets |P| - i$
+  \For{$i \gets 1$ to $|P|-1$} \Comment{Skip the last position}
+    \State $\pi[P[i]] \gets |P| - i$
   \EndFor
   \State $s \gets 0$
   \While{$s + |P| \leq |T|$}
@@ -2360,19 +2378,21 @@ algorithm, called Boyer-Moore-Horspool algorithm \cite{boyer-moore-horspool}.
     \EndWhile
     \If{$i < 1$}
       \State found one solution at $s$
+      \State $s \gets s + 1$ \Comment{go on finding the next}
+    \Else
+      \State $s \gets s + \pi[T[s + |P|]]$
     \EndIf
-    \State $s \gets s + \pi(T[s + |P|])$
   \EndWhile
 \EndProcedure
 \end{algorithmic}
 
-The character set is denoted as $\Sigma$, we first intialize all the values of sliding function $\pi(c)$ as the length
-of the pattern string $|P|$. After that we process the pattern from left to right, update the sliding function value.
+The character set is denoted as $\Sigma$, we first intialize all the values of sliding table $\pi$ as the length
+of the pattern string $|P|$. After that we process the pattern from left to right, update the sliding value.
 If a character appears multiple times in the pattern, the latter value, which is on the right hand, will overwrite
 the previous value. We start the matching scan process by align the pattern and the text string from the very left.
 However, for every alignment $s$, we scan from the right to the left until either there is unmatched character or
 all the characters in the pattern have been examined. The latter case indicates that we've found a match; while for 
-the former case, we look up $\pi(c)$ to slide the pattern down to the right.
+the former case, we look up $\pi$ to slide the pattern down to the right.
 
 The following example Python code implements this algorithm accordingly.
 
@@ -2392,15 +2412,21 @@ def bmh_match(w, p):
             i = i - 1
         if i < 0:
             res.append(offset)
-        offset = offset + tab[ord(w[offset + m - 1])]
+            offset = offset + 1
+        else:
+            offset = offset + tab[ord(w[offset + m - 1])]
     return res
 \end{lstlisting}
 
-The algorithm firstly takes about $O(|\Sigma| + |P|)$ time to build the sliding function. If the character set size is
+The algorithm firstly takes about $O(|\Sigma| + |P|)$ time to build the sliding table. If the character set size is
 small, the performance is dominated by the pattern and the text. There is definitely a worst case
-that all the characters in the pattern and text are same, e.g. searching `aa...a' in text `aa...a'. The performance in 
-this worst case is $O(mn)$. This algorithm performs well if the pattern is long, and there is constant number of matchings.
-This is as same as the bese case of full Boyer-Moore algorithm which will be explained next.
+that all the characters in the pattern and text are same, e.g. searching `aa...a' (denoted as $a^m$) in text `aa......a' (denoted as $a^n$). The performance in 
+this worst case is $O(mn)$. This algorithm performs well if the pattern is long, and there is constant number of matchings. The result is bound to linear time.
+This is as same as the best case of full Boyer-Moore algorithm which will be explained next.
+
+\paragraph{The good suffix heuristics}
+
+TODO: Add the good suffix rule part.
 
 \begin{Exercise}
 \begin{itemize}
