@@ -1,6 +1,6 @@
 IMG_OBJECTS = saddleback-xx-yy
 DOT_OBJECTS = max-sum-invariant strstr kmp kmp-fallback kmp-prefix-func fp-strstr fallback-tr \
-lazy-fallback-tr good-char good-char-2
+lazy-fallback-tr good-char good-char-2 good-char-3 good-char-4
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
