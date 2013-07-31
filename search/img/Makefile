@@ -6,6 +6,7 @@ DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
 PNG_OBJECTS = $(DOT_SOURCES:.dot=.png)
+EPS_OBJECTS = $(foreach file, $(IMG_OBJECTS), $(file).eps)
 
 .SUFFIXES: .eps .jpg .png .dot .ps
 
@@ -39,5 +40,6 @@ png: $(PNG_OBJECTS)
 	dot -Tpng -o $@ $<
 
 clean:
-	rm -f *.ps *.eps trie-en* *~
+	rm -f *.ps *~
 	rm -f $(PNG_OBJECTS)
+	rm -f $(EPS_OBJECTS)
