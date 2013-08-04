@@ -1592,19 +1592,21 @@ At this stage, the brute-force solution terminates the attempt, increases $s$ by
 comparison between `ananym' and `nantho...'. Actually, we can incrase $s$ not only by one. This is because
 we have already known that the first four characters `anan' have been matched, and the failure happends
 at the 5th position. Observe the two letters prefix `an' of the pattern string is also a suffix of 
-`anan' that we have matched so far. A more effective way is to shift $s$ by two by not one, which is
+`anan' that we have matched so far. A more effective way is to shift $s$ by two but not one, which is
 shown in figure \ref{fig:strstr} (b). By this means, we reused the information that 4 characters have
-been matched. This helps us skip invalid positions as many as possible.
+been matched. This helps us to skip invalid positions as many as possible.
 
 Knuth, Morris and Pratt presented this idea in \cite{kmp} and developed a novell string matching algorithm.
 This algorithm is later called as `KMP', which is consist of the three authors names.
+
+For the purpose of brevity notation, we denote the first $k$ characters of text $T$ as $T_k$. Which means $T_k$ is the $k$-character prefix of $T$.
 
 The key point to shift $s$ effectively is to find a function of $q$, where $q$ is the number of characters
 matching successfully. For instance, $q$ is 4 in figure \ref{fig:strstr} (a), as the 5th character doesn't match.
 
 Consider what situation we can shift $s$ more than 1. As shown in figure \ref{fig:kmp-fallback}, if we can
 shift the pattern $P$ ahead, there must exist $k$, so that the first $k$ characters are as same as the
-last $k$ characters of $P_{(1, q)}$. In otherwords, the prefix $P_k$ is suffix of $p_q$.
+last $k$ characters of $P_q$. In otherwords, the prefix $P_k$ is suffix of $P_q$.
 
 \begin{figure}[htbp]
  \centering
@@ -1625,6 +1627,8 @@ not match \cite{CLRS}.
 \label{eq:prefix-function}
 \ee
 
+Where $\sqsupset$ is read as `is suffix of', for instance, $A \sqsupset B$ means $A$ is suffix
+of $B$.
 This function is used as the following. When we match pattern $P$ against text $T$ from offset $s$, 
 If it fails after matching $q$ characters, we next look up $\pi(q)$ to get a fallback $q'$, 
 and retry to compare $P[q']$ with the previous unmatching character. Based on this idea, the
@@ -1659,10 +1663,10 @@ also the suffix if empty string is definitely empty, so $\pi(1) = k = 0$. We rec
 In this edge case $P_k = P_0$ is the empty string.
 
 After that, when we scan at the $q$-th character in the pattern string $P$, we hold the invariant that the 
-prefix funciton values $pi(i)$ for $i$ in $\{1, 2, ..., q-1 \}$ have already been recorded, and $P_k$ is 
+prefix funciton values $\pi(i)$ for $i$ in $\{1, 2, ..., q-1 \}$ have already been recorded, and $P_k$ is 
 the longest prefix which is also the suffix of $P_{q-1}$. As shown in figure \ref{fig:kmp-prefix-func},
 if $P[q] = P[k+1]$, A bigger $k$ than before is found, we can increase the maximum of $k$ by one;
-otherwise, if they are not same, we can use $pi(k)$ to fallback to a shorter prefix $P_{k'}$ where
+otherwise, if they are not same, we can use $\pi(k)$ to fallback to a shorter prefix $P_{k'}$ where
 $k' = \pi(k)$, and check if the next character after this new prefix is same as the $q$-th character.
 We need repeat this step until either $k$ becomes zero (which means only empty string satisfies), 
 or the $q$-th character matches.
@@ -1822,7 +1826,7 @@ the if $t=p$, we can update the prefix part fast in constant time.
 \end{array}
 \ee
 
-The KMP matching algoriths starts by initialzing the success prefix parts to empty strings as the following.
+The KMP matching algorithms starts by initialzing the success prefix parts to empty strings as the following.
 
 \be
 search(P, T) = kmp(\pi, (\Phi, P) (\Phi, T))
@@ -2334,7 +2338,7 @@ miss any potential matches, we have to slide down the pattern to check again. Th
  \label{fig:good-char}
 \end{figure}
 
-It's quite possible that that unmatched character appears in the pattern more than one position. Denote the
+It's quite possible that the unmatched character appears in the pattern more than one position. Denote the
 length of the pattern as $|P|$, the character appears in position $p_1, p_2, ..., p_i$. In such case, we
 take the right most one to avoid miss any matches.
 
@@ -2464,7 +2468,7 @@ The above situation forms the two cases of {\em the good-suffix rule}, as shown 
 
 \begin{figure}[htbp]
  \centering
- \subfloat[Case 1, Only a part of the matching suffix occurs as a prefix of the pattern.]{\includegraphics[scale=0.2]{img/good-suffix-case1.eps}}
+ \subfloat[Case 1, Only a part of the matching suffix occurs as a prefix of the pattern.]{\includegraphics[scale=0.2]{img/good-suffix-case1.eps}} \hspace{.01\textwidth}
  \subfloat[Case 2, The matching suffix occurs some where else in the pattern.]{\includegraphics[scale=0.2]{img/good-suffix-case2.eps}}
  \caption{The light gray in the text represents the characters have been matched; The gray parts indicates the same content in the pattern.}
  \label{fig:good-suffix-cases}
@@ -2486,31 +2490,178 @@ examine case 1 if the whole matched suffix does not appears in the pattern. Obse
 both cases of the good-suffix rule only depend on the pattern string, a table can be
 built by pre-process the pattern for further looking up. 
 
-For case 1, we can check every suffix of $P$, which includes $P_m$, $P_{(m-1, m)}$, $P_{(m-2, ..., m)}$, ... $P_{(i, ..., m)}$, ..., $P_{(2, ..., m)}$ to examine if it is the prefix of $P$. Where $P_{i, ..., j}$ means the sub-string
-of $P$ from the $i$-th character to the $j$-th.
+For the purpose of brevity notation, we denote the suffix string from the $i$-th character
+of $P$ as $\overline{P_i}$. That $\overline{P_i}$ is the sub-string $P[i]P[i+1]...P[m]$.
+
+For case 1, we can check every suffix of $P$, which includes $\overline{P_m}$, $\overline{P_{m-1}}$, $\overline{P_{m-2}}$, ...,  $\overline{P_2}$ to examine if it is the prefix of $P$. 
 This can be achieved by a round of scan of the pattern from right to the left.
 
-For case 2, we can check every prefix of $P$ includes $P_1$, $P_{(1, 2)}$, ..., $P_{(1, ..., m-1)}$ to examine if the longest suffix of it is also a suffix of $P$. This can be achieved by another
+For case 2, we can check every prefix of $P$ includes $P_1$, $P_2$, ..., $P_{m-1}$ to examine if the longest suffix of it is also a suffix of $P$. This can be achieved by another
 round of scan from the left to the right of the pattern.
 
 \begin{algorithmic}
 \Function{Good-Suffix}{$P$}
   \State $m \gets |P|$
-  \State $S \gets \{0, 0, ..., 0\}$ \Comment{Initialize the table of length $m$}
+  \State $\pi_s \gets \{0, 0, ..., 0\}$ \Comment{Initialize the table of length $m$}
   \State $l \gets 0$ \Comment{The last suffix which is also prefix of $P$}
-  \For{$i \gets m-1$ down-to $1$} \Comment{first loop for case 1}
-    \If{$P_{(i,...,m)} \sqsubset P$} \Comment{$\sqsubset$ means is prefix of}
+  \For{$i \gets m-1$ down-to $1$} \Comment{First loop for case 1}
+    \If{$\overline{P_i} \sqsubset P$} \Comment{$\sqsubset$ means is prefix of}
       \State $l \gets i$
     \EndIf
-    \State $S[i] \gets l$
+    \State $\pi_s[i] \gets l$
   \EndFor
-  \For{$i \gets 1$ to $m$}
+  \For{$i \gets 1$ to $m$} \Comment{Second loop for case 2}
+    \State $s \gets$ \Call{Suffix-Length}{$P_i$}
+    \If{$s \neq 0 \land P[i - s] \neq P[m - s]$}
+      \State $\pi_s[m - s] \gets m - i$
+    \EndIf
   \EndFor
-  \State \Return $S$
+  \State \Return $\pi_s$
 \EndFunction
 \end{algorithmic}
 
-TODO: Realize the algorithms of good-suffix rule
+This algorithm builds the good-suffix heuristics table $\pi_s$. It first checks every 
+suffix of $P$ from the shortest to the longest. If the suffix $\overline{P_i}$ is also the prefix of $P$, we record
+this suffix, and use it for all the entries until we find another suffix $\overline{P_j}$, $j < i$, and it is also the prefix of $P$.
+
+After that, the algorithm checks every prefix of $P$ from the shortest to the longest. It calls
+the function \textproc{Suffix-Length}($P_i$), to calculate the length of the longest suffix
+of $P_i$, which is also suffix of $P$. If this length $s$ isn't zero, which means there
+exists a sub-string of $s$, that appears as the suffix of the pattern. It represents the
+situation of case 2 happens. The algorithm overwrite the $s$-th entry from the right
+of the table $\pi_s$. Note that to avoid finding the same ocurrence of the matched suffix, 
+we test if $P[i - s]$ and $P[m - s]$ are same.
+
+Function \textproc{Suffix-Length} is designed as the following.
+
+\begin{algorithmic}
+\Function{Suffix-Length}{$P_i$}
+  \State $m \gets |P|$
+  \State $j \gets 0$
+  \While{$P[m - j] = P[i - j] \land j < i$}
+    \State $j \gets j + 1$
+  \EndWhile
+  \State \Return $j$
+\EndFunction
+\end{algorithmic}
+
+The following Python example program implements the good-suffix rule.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def good_suffix(p):
+    m = len(p)
+    tab = [0 for _ in range(m)]
+    last = 0
+    # first loop for case 1
+    for i in range(m-1, 0, -1): # m-1, m-2, ..., 1
+        if is_prefix(p, i):
+            last = i
+        tab[i - 1] = last
+    # second loop for case 2
+    for i in range(m):
+        slen = suffix_len(p, i)
+        if slen != 0 and p[i - slen] != p[m - 1 - slen]:
+            tab[m - 1 - slen] = m - 1 - i
+    return tab
+
+# test if p[i..m-1] `is prefix of` p
+def is_prefix(p, i):
+    for j in range(len(p) - i):
+        if p[j] != p [i+j]:
+            return False
+    return True
+
+# length of the longest suffix of p[..i], which is also a suffix of p
+def suffix_len(p, i):
+    m = len(p)
+    j = 0
+    while p[m - 1 - j] == p[i - j] and j < i:
+        j = j + 1
+    return j
+\end{lstlisting}
+
+It's quite possible that both the bad-character rule and the good-suffix rule can be applied
+when the unmatching happens. The Boyer-Moore algorithm compare and pick the bigger shift
+so that it can find the solution as quick as possible. The bad-character rule table can
+be explicitly built as below
+
+\begin{algorithmic}
+\Function{Bad-Character}{$P$}
+  \For{$\forall c \in \Sigma$}
+    \State $\pi_b[c] \gets |P|$
+  \EndFor
+  \For{$i \gets 1$ to $|P|-1$}
+    \State $\pi_b[P[i]] \gets |P| - i$
+  \EndFor
+  \State \Return $\pi_b$
+\EndFunction
+\end{algorithmic}
+
+The following Python program implements the bad-character rule accordingly.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def bad_char(p):
+    m = len(p)
+    tab = [m for _ in range(256)]
+    for i in range(m-1):
+        tab[ord(p[i])] = m - 1 - i
+    return tab
+\end{lstlisting}
+
+The final Boyer-Moore algorithm firstly build the two rules from the pattern, then
+align the pattern to the begining of the text and scan from right to the left for
+every alignment. If any unmaching happens, it tries both rule, and slide the pattern
+with the bigger shift.
+
+\begin{algorithmic}
+\Function{Boyer-Moore}{$T, P$}
+  \State $n \gets |T|, m \gets |P|$
+  \State $\pi_b \gets$ \Call{Bad-Character}{$P$}
+  \State $\pi_s \gets$ \Call{Good-Suffix}{$P$}
+  \State $s \gets 0$
+  \While{$s + m \leq n$}
+    \State $i \gets m$
+    \While{$i \geq 1 \land P[i] = T[s + i]$}
+      \State $i \gets i - 1$
+    \EndWhile
+    \If{$i < 1$}
+      \State found one solution at $s$
+      \State $s \gets s + 1$ \Comment{go on finding the next}
+    \Else
+      \State $s \gets s + max(\pi_b[T[s + m]], \pi_s[i])$
+    \EndIf
+  \EndWhile
+\EndFunction
+\end{algorithmic}
+
+Here is an example implementation of Boyer-Moore algorithm in Python.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def bm_match(w, p):
+    n = len(w)
+    m = len(p)
+    tab1 = bad_char(p)
+    tab2 = good_suffix(p)
+    res = []
+    offset = 0
+    while offset + m <= n:
+        i = m - 1
+        while i >= 0 and p[i] == w[offset + i]:
+            i = i - 1
+        if i < 0:
+            res.append(offset)
+            offset = offset + 1
+        else:
+            offset = offset + max(tab1[ord(w[offset + m - 1])], tab2[i])
+    return res
+\end{lstlisting}
+
+TODO: Big-O analysis
+
+TODO: Functional ver.
 
 \begin{Exercise}
 \begin{itemize}
