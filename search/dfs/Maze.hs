@@ -34,6 +34,8 @@ dfsSolve m from to = reverse $ solve [[from]] [] where
     adjacent (x, y) = [(x', y') | (x', y') <- [(x-1, y), (x+1, y), (x, y-1), (x, y+1)], 
                                   inRange (bounds m) (x', y'), m ! (x', y') == 0]
 
+-- TODO: DFS returns ALL solution
+
 mz = [[0, 0, 1, 0, 1, 1],
       [1, 0, 1, 0, 1, 1],
       [1, 0, 0, 0, 0, 0],
