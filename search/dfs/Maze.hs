@@ -23,18 +23,29 @@ dfsVisit m from to = reverse $ solve [from] [] where
                                   inRange (bounds m) (x', y'), m ! (x', y') == 0]
 
 -- DFS solve, return ONLY the first solution
-dfsSolve m from to = reverse $ solve [[from]] [] where
-    solve [] visit = []
-    solve (c@(p:path):cs) visit
+dfsSolve m from to = reverse $ solve [[from]] where
+    solve [] = []
+    solve (c@(p:path):cs)
         | p == to = c -- stop at the first solution
-        | otherwise = let os = filter (`notElem` visit) (adjacent p) in
-                      if os == [] 
-                      then solve cs visit
-                      else solve ((map (:c) os) ++ cs) (p:visit) -- try new candidates
+        | otherwise = let os = filter (`notElem` path) (adjacent p) in
+                          if os == [] 
+                          then solve cs
+                          else solve ((map (:c) os) ++ cs) -- try new candidates
     adjacent (x, y) = [(x', y') | (x', y') <- [(x-1, y), (x+1, y), (x, y-1), (x, y+1)], 
                                   inRange (bounds m) (x', y'), m ! (x', y') == 0]
 
--- TODO: DFS returns ALL solution
+-- DFS solve, return ALL the solutions
+dfsSolveAll m from to = map reverse $ solve [[from]] [] where
+    solve [] ss = ss
+    solve (c@(p:path):cs) ss
+        | p == to = solve cs (c:ss) -- find one solution, go on search
+        | otherwise = let os = filter (`notElem` path) (adjacent p) in
+                          if os == [] 
+                          then solve cs ss
+                          else solve ((map (:c) os) ++ cs) ss
+    adjacent (x, y) = [(x', y') | (x', y') <- [(x-1, y), (x+1, y), (x, y-1), (x, y+1)], 
+                                  inRange (bounds m) (x', y'), m ! (x', y') == 0]
+
 
 mz = [[0, 0, 1, 0, 1, 1],
       [1, 0, 1, 0, 1, 1],
@@ -43,10 +54,19 @@ mz = [[0, 0, 1, 0, 1, 1],
       [0, 0, 0, 0, 0, 0],
       [0, 0, 0, 1, 1, 0]]
 
-maze = listArray ((1,1), (6, 6)) (concat mz)
+mz1 = [[0, 0, 0, 0, 0, 1],
+       [1, 0, 1, 1, 0, 1],
+       [1, 0, 1, 1, 0, 1],
+       [1, 0, 1, 1, 0, 1],
+       [1, 0, 0, 0, 0, 0],
+       [1, 1, 1, 1, 1, 0]]
 
-test = solveMaze maze (1,1) (6,6)
+maze  = listArray ((1,1), (6, 6)) . concat
 
-test2 = dfsSolve maze (1,1) (6,6)
+test1 = [solveMaze (maze m) (1,1) (6,6) | m <- [mz, mz1]]
 
-test3 = dfsSolve maze (1,1) (6,6)
+test2 = [dfsVisit (maze m) (1,1) (6,6) | m <- [mz, mz1]]
+
+test3 = [dfsSolve (maze m) (1,1) (6,6) | m <- [mz, mz1]]
+
+test4 = [dfsSolveAll (maze m) (1,1) (6,6) | m <- [mz, mz1]]
