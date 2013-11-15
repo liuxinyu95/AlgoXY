@@ -2725,7 +2725,7 @@ all over the world.
 
 \begin{figure}[htbp]
  \centering
- \includegraphics[scale=0.2]{img/maze.eps}
+ \includegraphics[scale=0.3]{img/maze.eps}
  \caption{A maze}
  \label{fig:maze}
 \end{figure}
@@ -2742,7 +2742,7 @@ loop around the inner big block.
 
 \begin{figure}[htbp]
  \centering
- \includegraphics[scale=0.2]{img/maze-loop.eps}
+ \includegraphics[scale=0.3]{img/maze-loop.eps}
  \caption{it leads to loop way if always turns right.}
  \label{fig:maze-loop}
 \end{figure}
@@ -2777,15 +2777,96 @@ illustrated in figure \ref{fig:maze-loop} can be defined as the following matrix
 Given a start point $s=(i, j)$, and a goal $e=(p, q)$, we need find all solutions, that are the
 paths from $s$ to $e$.
 
-There is an obviously recursive exhaustive search method. That in order to find all paths from $s$ to $e$,
-we can check all connected points to $s$, for every such point $k$, we recursively find all paths from 
-$k$ to $e$. This method can be illustrated as the following.
+There is an obviously recursive exhaustive search method. That in order to find all paths from 
+$s$ to $e$, we can check all connected points to $s$, for every such point $k$, we recursively 
+find all paths from $k$ to $e$. This method can be illustrated as the following.
 
 \begin{itemize}
 \item Trivial case, if the start point $s$ is as same as the target point $e$, we are done;
-\item Otherwise, for every connected point $k$ to $s$, recursively find the paths from $k$ to $e$; If $e$
-can be reached via $k$, put section $s$-$k$ in front of each path between $k$ and $e$.
+\item Otherwise, for every connected point $k$ to $s$, recursively find the paths from $k$ 
+to $e$; If $e$ can be reached via $k$, put section $s$-$k$ in front of each path between $k$ 
+and $e$.
 \end{itemize}
+
+However, we have to left 'bread crumbs' to avoid repeatedly trying same attempts. This is because
+otherwise in the recursive case, we start from $s$, find a connected point $k$, then we further 
+try to find paths from $k$ to $e$. Since $s$ is connected to $k$ as well, so in the next 
+recursion, we'll again try to find paths from $s$ to $e$. This ends up the very same origin 
+problem, and we are trapped in infinit recursions.
+
+Our solution is to initialize an empty list, use it to record all the points we've visited so
+far. For every connected points, we examine if it has already been visited by using this list.
+We skip all the visited candidates and try those new ones. The coresponding algorithm can be
+defined like this.
+
+\be
+solveMaze(m, s, e) = solve(s, \{ \Phi \})
+\label{eq:solve-maze-reversed}
+\ee
+
+Where $m$ is the matrix which defines a maze, $s$ is the start point, and $e$ is the end point.
+Function $solve$ is defined in the context of $solveMaze$, so that the maze and the end point
+can be accessed. It can be realized recursively like what we described above.
+
+\be
+solve(s, P) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{ \{ s\} \cup p | p \in P \} & s = e \\
+  concat(\{ solve(s', \{ \{ s\} \cup p | p \in P \}) | \newline 
+  s' \in adjacent(s), \lnot visited(s')\}) & otherwise
+  \end{array}
+\right.
+\ee
+
+Note that $P$ also serves as an accumulator. Every connected point is recorded in all the
+possible pahts to the current position. But they are stored in reversed order, that is
+the newly visited point is put to the head of all the lists, and the start point is the last
+element in these lists. This is because appending operation is linear ($O(n)$, where $n$ is
+the number of elements stored in a list), while link to the head is just constant time
+operation. We can output the result in correct order by reversing all possible solutions
+in equation (\ref{eq:solve-maze-reverse})
+
+\be
+solveMaze(m, s, e) = map(reverse, solve(s, \{ \Phi \}))
+\ee
+
+We need define functions $adjacent(p)$ and $visited(p)$, which finds all the connected
+points to $p$, and test if point $p$ has been visited respectively. We only consider
+two points are connected if and only if in the maze matrix they are next cells horizontally
+or vertically, and both with value zero.
+
+\be
+\begin{array}{ll}
+adjacent((x, y)) = \{ (x', y') | & (x', y') \in \{ (x-1, y), (x+1, y), (x, y-1), (x, y+1)\}, \\
+ & 1 \leq x' \leq M, 1 \leq y' \leq N, m_{x', y'} = 0\} \\
+\end{array}
+\ee
+
+Where $M$ and $N$ are the widths and heights of the maze.
+
+Function $visited(p)$ just examine if point $p$ has been recoreded in any list in $P$.
+
+\be
+visited(p, P) = \exists path \in P, p \in path
+\ee
+
+The following Haskell example code implements this algorithm.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+solveMaze m from to = map reverse $ solve from [[]] where
+    solve p paths | p == to = map (p:) paths
+                  | otherwise = concat [solve p' (map (p:) paths) | 
+                                        p' <- adjacent p, not $ visited p' paths]
+    adjacent (x, y) = [(x', y') | (x', y') <- [(x-1, y), (x+1, y), (x, y-1), (x, y+1)], 
+                                  inRange (bounds m) (x', y'), 
+                                  m ! (x', y') == 0]
+    visited p paths = any (p `elem`) paths
+\end{lstlisting}
+
+As we mentioned, this is a style of 'exhaustive search'. 
+TODO: DFS
 
 \subsubsection{8 queue puzzle}
 
