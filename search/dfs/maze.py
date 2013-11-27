@@ -5,7 +5,6 @@ def solve(m, src, dst):
     s = []
     while stack != []:
         path = stack.pop()
-        #print("pop:", path)
         if path[-1] == dst:
             s.append(path)
         else:
