@@ -2807,7 +2807,9 @@ solveMaze(m, s, e) = solve(s, \{ \Phi \})
 
 Where $m$ is the matrix which defines a maze, $s$ is the start point, and $e$ is the end point.
 Function $solve$ is defined in the context of $solveMaze$, so that the maze and the end point
-can be accessed. It can be realized recursively like what we described above.
+can be accessed. It can be realized recursively like what we described above\footnote{Function
+$concat$ can flatten a list of lists. For example. 
+$concat(\{\{a, b, c\}, \{x, y, z\}\}) = \{a, b, c, x, y, z\}$. Refer to appendix A for detail.}.
 
 \be
 solve(s, P) = \left \{
@@ -2826,7 +2828,8 @@ the newly visited point is put to the head of all the lists, and the start point
 element in these lists. This is because appending operation is linear ($O(n)$, where $n$ is
 the number of elements stored in a list), while link to the head is just constant time
 operation. We can output the result in correct order by reversing all possible solutions
-in equation (\ref{eq:solve-maze-reverse})
+in equation (\ref{eq:solve-maze-reverse})\footnote{the detailed defintion of $reverse$ can 
+be found in the appendix A.}
 
 \be
 solveMaze(m, s, e) = map(reverse, solve(s, \{ \Phi \}))
@@ -2840,7 +2843,7 @@ or vertically, and both with value zero.
 \be
 \begin{array}{ll}
 adjacent((x, y)) = \{ (x', y') | & (x', y') \in \{ (x-1, y), (x+1, y), (x, y-1), (x, y+1)\}, \\
- & 1 \leq x' \leq M, 1 \leq y' \leq N, m_{x', y'} = 0\} \\
+ & 1 \leq x' \leq M, 1 \leq y' \leq N, m_{x' y'} = 0\} \\
 \end{array}
 \ee
 
@@ -2866,8 +2869,110 @@ solveMaze m from to = map reverse $ solve from [[]] where
     visited p paths = any (p `elem`) paths
 \end{lstlisting}
 
-As we mentioned, this is a style of 'exhaustive search'. 
-TODO: DFS
+As we mentioned, this is a style of 'exhaustive search'. It recursively search all the connected
+points as candidates. In a real maze solving game, a robot mouse competition for instance, 
+it's enough to just find a route. We can adapt to a method close to what described at the 
+begining of this section. That ask the robot mouse to try the first connected point, and won't
+try others until it can't arrive the target location. We need some data structure to 
+store the 'bread crumbs', which help to remember the decisions being made. As we always attempt
+to find the way on top of the latest decision, it's in the last-in, first-out manner. Which
+indicate that we can use a stack.
+
+At the very begining, only the starting point $s$ is stored in the stack. we pop it out,
+find, for example, points $a$, and $b$, are connected to $s$, we push these two possible
+paths: $\{a, s\}$ and $\{b, s\}$ to the stack. Next we pop $\{a, s\}$ out, and examine
+connected points to $a$, if there are, all the 3-steps paths will be pushed back. We
+repeat this process. At anytime, each element stored in the stack is a path, from the
+starting point to the farest place this path can arrive in the reversed order.
+This can be illustrated in figure \ref{fig:dfs-stack}.
+
+\begin{figure}[htbp]
+ \centering
+ \includegraphics[scale=0.5]{img/dfs-stack.ps}
+ \caption{The stack is intialized with a singleton list of the starting point $s$. $s$ is connected with point $a$ and $b$. Paths $\{a, s\}$ and $\{b, s\}$ are pushed back. In some step, the path ended with point $p$ is popped.
+$p$ is connected with points $i$, $j$, and $k$. These 3 points are expanded as different options and pushed
+back to the stack. The candidate path ended with $q$ won't be examined unless all the options above fail.}
+ \label{fig:dfs-stack}
+\end{figure}
+
+The stack can be realized as a list, that the latest option is picked from the head, and new candidates are
+added to the head. The maze puzzle can be solved by using such a list of paths:
+
+\be
+solveMaze'(m, s, e) = reverse(solve'(\{\{s\}\}))
+\ee
+
+As we are finding the first path, instead of all of them, $map$ isn't used here. When the stack is empty, it
+means that we've tried all the options and failed to find a way out. The solution is therefore empty; otherwise,
+the top option is popped, expanded with all the adajcent points which haven't been visited before, and pushed
+back to the stack. Denote the stack as $S$, if it isn't empty, the top element is $s_1$, and the new stack
+after the top is popped as $S'$. The top element $s_1$ is actually a path $P$, which is a list of points. Denote
+the latest point in this path as $p_1$, and the rest of points as $P'$. The solution can be formalized as
+the following.
+
+\be
+solve'(S) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & S = \Phi \\
+  s_1 & s_1 = e \\
+  solve'(S') & C = \{ c | c \in adjacent(p_1), c \not\in P' \} = \Phi \\
+  solve'(\{ \{p\}\cup P | p \in C\} \cup S) & otherwise, C \neq \Phi
+  \end{array}
+\right.
+\ee
+
+Where the $adjacent$ function is defined above. This updated maze solution can be implemented with the
+below example Haskell program \footnote{The same code of $adjacent$ function is skipped}.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+dfsSolve m from to = reverse $ solve [[from]] where
+    solve [] = []
+    solve (c@(p:path):cs)
+        | p == to = c -- stop at the first solution
+        | otherwise = let os = filter (`notElem` path) (adjacent p) in
+                          if os == [] 
+                          then solve cs
+                          else solve ((map (:c) os) ++ cs)
+\end{lstlisting}
+
+It's quite easy to modify this solution to another different version, which finds all possible
+paths from the starting point to the end. When we found a solution in the second clause, instead
+of returning this path, we record it and go on checking the rest memorized options in the stack
+till all the possible ways are tried, which ends with an empty stack. We left it as an exercise to
+the reader.
+
+The same idea can also be realized imperatively. We maintain a stack to store all possible paths
+begins from the starting point. In each iteration, the top option path is popped from the stack,
+if the farest position is the end point, a solution is found; otherwise, all the adjacent, not
+visited yet points are appended as new option paths and pushed back to the stack. This is repeated
+till all the candidate paths in the stacks are checked, thus the stack ends up empty.
+
+Use the same notation, the imperative algorithm can be given as below.
+
+\begin{algorithmic}
+\Function{Solve-Maze}{$m, s, e$}
+  \State $S \gets \Phi$
+  \State \Call{Push}{$S, \{ s \}$}
+  \State $L \gets \Phi$
+  \While{$S \neq \Phi$}
+    \State $P \gets$ \Call{Pop}{$S$}
+    \If{$e = p_1$}
+      \State \textproc{Add}($L$, \Call{Reverse}{$P$})
+    \Else
+      \For{$\forall p \in $ \Call{Adjacent}{$m, p_1$}}
+        \If{$\lnot p \in P$}
+          \State \Call{Push}{$S, \{ p \} \cup P$}
+        \EndIf
+      \EndFor
+    \EndIf
+  \EndWhile
+  \State \Return $L$
+\EndFunction
+\end{algorithmic}
+
+TODO: Change the above algorithm to array friendly manner.
 
 \subsubsection{8 queue puzzle}
 
@@ -2888,6 +2993,12 @@ TODO: DFS
 \subsubsection{Dynamic programming}
 
 \subsubsection{Grady algorithm}
+
+\begin{Exercise}
+\begin{itemize}
+\item Realize a maze solver by using the stack approach, which can find all the possible paths.
+\end{itemize}
+\end{Exercise}
 
 \section{Short summary} 
 summary
