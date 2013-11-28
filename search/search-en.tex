@@ -2869,6 +2869,23 @@ solveMaze m from to = map reverse $ solve from [[]] where
     visited p paths = any (p `elem`) paths
 \end{lstlisting}
 
+For a maze defined as a matrix like below example, all the solutions can be given
+by this program.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+mz = [[0, 0, 1, 0, 1, 1],
+      [1, 0, 1, 0, 1, 1],
+      [1, 0, 0, 0, 0, 0],
+      [1, 1, 0, 1, 1, 1],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 1, 1, 0]]
+
+maze  = listArray ((1,1), (6, 6)) . concat
+
+solveMaze (maze mz) (1,1) (6, 6)
+\end{lstlisting}
+
 As we mentioned, this is a style of 'exhaustive search'. It recursively search all the connected
 points as candidates. In a real maze solving game, a robot mouse competition for instance, 
 it's enough to just find a route. We can adapt to a method close to what described at the 
@@ -2949,21 +2966,25 @@ if the farest position is the end point, a solution is found; otherwise, all the
 visited yet points are appended as new option paths and pushed back to the stack. This is repeated
 till all the candidate paths in the stacks are checked, thus the stack ends up empty.
 
-Use the same notation, the imperative algorithm can be given as below.
+Use the same notation to represent the stack $S$. But the paths will be stored as arrays
+instead of list in imperative settings as the former is more effective. Because of this
+the starting point is the first element in the path array, while the farest reached
+place is the right most element. We use $p_n$ to represent \textproc{Last}($P$) for
+path $P$. The imperative algorithm can be given as below.
 
 \begin{algorithmic}
 \Function{Solve-Maze}{$m, s, e$}
   \State $S \gets \Phi$
   \State \Call{Push}{$S, \{ s \}$}
-  \State $L \gets \Phi$
+  \State $L \gets \Phi$ \Comment{the result list}
   \While{$S \neq \Phi$}
     \State $P \gets$ \Call{Pop}{$S$}
-    \If{$e = p_1$}
-      \State \textproc{Add}($L$, \Call{Reverse}{$P$})
+    \If{$e = p_n$}
+      \State \Call{Add}{$L, P$}
     \Else
-      \For{$\forall p \in $ \Call{Adjacent}{$m, p_1$}}
+      \For{$\forall p \in $ \Call{Adjacent}{$m, p_n$}}
         \If{$\lnot p \in P$}
-          \State \Call{Push}{$S, \{ p \} \cup P$}
+          \State \Call{Push}{$S, P \cup \{ p \}$}
         \EndIf
       \EndFor
     \EndIf
@@ -2972,7 +2993,50 @@ Use the same notation, the imperative algorithm can be given as below.
 \EndFunction
 \end{algorithmic}
 
-TODO: Change the above algorithm to array friendly manner.
+The following example Python program implements this maze solving algorithm.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def solve(m, src, dst):
+    stack = [[src]]
+    s = []
+    while stack != []:
+        path = stack.pop()
+        if path[-1] == dst:
+            s.append(path)
+        else:
+            for p in adjacent(m, path[-1]):
+                if not p in path:
+                    stack.append(path + [p])
+    return s
+
+def adjacent(m, p):
+    (x, y) = p
+    ds = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+    ps = []
+    for (dx, dy) in ds:
+        x1 = x + dx
+        y1 = y + dy
+        if 0 <= x1 and x1 < len(m[0]) and 0 <= y1 and y1 < len(m) and m[y][x] == 0:
+            ps.append((x1, y1))
+    return ps
+\end{lstlisting}
+
+And the same maze example given above can be solved by this program like the following.
+
+\lstset{language=Python}
+\begin{lstlisting}
+mz = [[0, 0, 1, 0, 1, 1],
+      [1, 0, 1, 0, 1, 1],
+      [1, 0, 0, 0, 0, 0],
+      [1, 1, 0, 1, 1, 1],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 1, 1, 0]]
+
+solve(mz, (0, 0), (5,5))
+\end{lstlisting}
+
+TODO: big O analysis
 
 \subsubsection{8 queue puzzle}
 
