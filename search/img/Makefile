@@ -1,4 +1,4 @@
-IMG_OBJECTS = saddleback-xx-yy maze maze-loop
+IMG_OBJECTS = saddleback-xx-yy maze maze-loop queen queens-example
 DOT_OBJECTS = max-sum-invariant strstr kmp kmp-fallback kmp-prefix-func fp-strstr fallback-tr \
 lazy-fallback-tr good-char good-char-2 good-char-3 good-char-4 bad-char-1 bad-char-2 \
 good-suffix-case1-1 good-suffix-case2-1 good-suffix-case2-2 dfs-stack
