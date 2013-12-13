@@ -9,8 +9,7 @@ solve = dfsSolve [[]] [] where
              | length c == 8 = dfsSolve cs (c:s)
              | otherwise = dfsSolve ([(x:c) | x <- [1..8] \\ c, not $ attack x c] ++ cs) s
     attack x cs = let y = 1 + length cs in 
-                 x `elem` cs || 
-                 (any (\(c, r) -> abs(x - c) == abs(y - r)) $ zip (reverse cs) [1..])
+                 any (\(c, r) -> abs(x - c) == abs(y - r)) $ zip (reverse cs) [1..]
 
 
 -- TODO: constructive find 12 unique solutions (not remove duplicates, but avoid duplicate)
