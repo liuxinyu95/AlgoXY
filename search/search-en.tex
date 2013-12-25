@@ -3280,17 +3280,17 @@ shows some variants.
 We can solve this puzzle by computer program. The idea is similar to the 8 queens puzzle.
 Denote the position from the left most stone as 1, 2, ..., 7. 
 In ideal cases, there are 4 options to arrange the move. For example when start, the frog
-on 3rd stone can leap right to the empty stone; symmetrically, the frog on the 5th stone
-can leap left; Alternatively, the frog on the 2nd stone can hop right, while the frog on
-the 6th stone can hop left.
+on 3rd stone can hop right to the empty stone; symmetrically, the frog on the 5th stone
+can hop left; Alternatively, the frog on the 2nd stone can leap right, while the frog on
+the 6th stone can leap left.
 
-We can record the state, and try one of these 4 options at every step. Of course not all of them
+We can record the state and try one of these 4 options at every step. Of course not all of them
 are possible at any time. If get stuck, we can backtrack and try other options. 
 
-As we restrict the left side frogs can only move to the right, and the right frogs can only
+As we restrict the left side frogs only move to the right, and the right frogs only
 move to the left. The moves are not reversable. There won't be any repeatation cases as
-we have to deal with in the maze puzzle. However, we've to record the steps in order to
-print them out finally.
+what we have to deal with in the maze puzzle. However, we still need record the steps 
+in order to print them out finally.
 
 In order to enforce these restriction, let A, O, B in representation 'AAAOBBB' be -1, 0, 
 and 1 repectively. A state $L$ is a list of elements, each elements is one of these 3
@@ -3306,7 +3306,74 @@ The 4 moving options can be stated as below.
 \item Hop right $p > 1$ and $L[p-1] < 0$, swap $L[p-1] \leftrightarrow L[p]$.
 \end{itemize}
 
-TODO: move direction restriction realization
+Four functions $leap_l(L), hop_l(L), leap_r$ and $hop_r(L)$ are defined accordingly.
+If the state $L$ does not satisfy the move restriction, these function return $L$
+unchanged, otherwise, the changed state $L'$ is given accordingly.
+
+We can also explicityly maintain a stack $S$, which stores the attemptation as
+well as the historic movements. The stack is initilaized with a singleton list
+of start state. The solution is put to a list $M$, which is empty at the begining:
+
+\be
+solve(\{\{-1, -1, -1, 0, 1, 1, 1\}\}, \Phi)
+\ee
+
+As far as the stack isn't empty, we pop one possible itermediate attemptation. If
+the latest state is equal to $\{1, 1, 1, 0, -1, -1, -1\}$, a solution is found,
+we append the series of moves till this state to the result list $M$; otherwise,
+We expand to next possible state by trying all four possible moves, and push
+them back to the stack for further search. Denote the top element in the stack
+$S$ as $s_1$, and the lastest state in $s_1$ as $L$. The algorithm can be
+defined as the following.
+
+\be
+solve(S, M) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  M & S = \Phi \\
+  solve(S', \{reverse(s_1)\} \cup M) & |L| = \{1, 1, 1, 0, -1, -1, -1\} \\
+  solve(P \cup S', M) & otherwise
+  \end{array}
+\right.
+\ee
+
+Where $P$ are possible moves from the latest state $L$, that 
+\[
+P = \{ L'  | L' \in \{leap_l(L), hop_l(L), leap_r(L), hop_r(L)\}, L \neq L'\}
+\]
+
+Note that the start state is stored as the last element, while the
+final state is stored as the first, that's why we reverse it when add
+to solution list.
+
+Translating this algorithm to Haskell gives the following example program.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+solve = dfsSolve [[[-1, -1, -1, 0, 1, 1, 1]]] [] where
+    dfsSolve [] s = s
+    dfsSolve (c:cs) s
+             | head c == [1, 1, 1, 0, -1, -1, -1] = dfsSolve cs (reverse c:s)
+             | otherwise = dfsSolve ((map (:c) $ moves $ head c) ++ cs) s
+
+moves s = filter (/=s) [leapLeft s, hopLeft s, leapRight s, hopRight s] where
+    leapLeft [] = []
+    leapLeft (0:y:1:ys) = 1:y:0:ys
+    leapLeft (y:ys) = y:leapLeft ys
+    hopLeft [] = []
+    hopLeft (0:1:ys) = 1:0:ys
+    hopLeft (y:ys) = y:hopLeft ys
+    leapRight [] = []
+    leapRight (-1:y:0:ys) = 0:y:(-1):ys
+    leapRight (y:ys) = y:leapRight ys
+    hopRight [] = []
+    hopRight (-1:0:ys) = 0:(-1):ys
+    hopRight (y:ys) = y:hopRight ys
+\end{lstlisting}
+
+Running this program finds 2 symmetric solution, each takes 15 steps.
+
+TODO: List the steps
 
 TODO: describe the pure mathematic solution
 
