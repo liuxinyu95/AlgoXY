@@ -23,21 +23,35 @@
 
 using namespace std;
 
+/* 
+ * As the leap/hop are realized by swapping, vector is used to realize
+ * random access. New attemptation is append on the tail of steps, while
+ * stack is manipulate on the head, list can serve both.
+ */
 typedef vector<int> State;
 typedef list<State> Steps;
 typedef list<Steps> Moves;
 
+/* A combined operation, peek the front and extract it from the stack. */
 Steps pop(Moves& stack) {
     Steps top = stack.front();
     stack.pop_front();
     return top;
 }
 
+/* 
+ * The 'passed by value' helps creating a new copy of steps. The new 
+ * attemptation is appended to it. The new copy is returned.
+ */
 Steps append(Steps steps, State s) {
     steps.push_back(s);
     return steps;
 }
 
+/*
+ * The 'passed by value' helps duplicating a new state, then swaps
+ * to realize leap/hop, and returns this new attemptation.
+ */
 State swap(State s, int i, int j) {
     swap(s[i], s[j]);
     return s;
@@ -57,6 +71,7 @@ list<State> moves(State s) {
     return ms;
 }
 
+/* The DFS solution */
 Moves solve(State start, State end) {
     Moves s, stack(1, Steps(1, start));
     while (!stack.empty()) {
@@ -72,6 +87,8 @@ Moves solve(State start, State end) {
     }
     return s;
 }
+
+/* Auxiliary functions for output and verification. */
 
 void print_line(State s) {
     copy(s.begin(), s.end(), ostream_iterator<int>(cout, ", "));
