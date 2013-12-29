@@ -28,7 +28,7 @@ magicName = "GNU General Public License"
 
 authorInfo = "Liu Xinyu (liuxinyu95@gmail.com)"
 
-exts = [("C/C++", [".c", ".cpp", ".h", ".hpp", ".cxx", ".hxx"]),
+exts = [("C/C++", [".c", ".cpp", ".h", ".hpp", ".cxx", ".hxx", ".cc"]),
         ("Script", [".py", ".pl", ".pm", ".sh"]),
         ("Haskell", [".hs"]),
         ("Lisp", [".scm"])]
