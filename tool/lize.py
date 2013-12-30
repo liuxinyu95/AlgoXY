@@ -40,7 +40,7 @@ GPL = "This program is free software: you can redistribute it and/or modify\n"\
     "You should have received a copy of the GNU General Public License\n"\
     "along with this program.  If not, see <http://www.gnu.org/licenses/>.\n"
 
-EXT = {"C/C++":".c.cpp.h.hpp.cxx.hxx",
+EXT = {"C/C++":".c.cpp.h.hpp.cxx.hxx.cc",
        "Script":".py.pl.pm.sh",
        "Haskell":".hs",
        "Lisp":".scm"}
