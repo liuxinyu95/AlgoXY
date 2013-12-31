@@ -20,7 +20,7 @@ moves (a, b) = if a .&. 8  /= 0 then trans a b else map swap (trans b a) where
     swap (x, y) = (y, x)
 
 toWgc = unlines . map (\(a, b)-> wgc a ++ "----" ++ wgc b) where
-    wgc x = show $ foldl (\s (i, name)-> if (x .&. i) /= 0 then name:s else s) 
-                         [] [(1, "wolf"), (2, "goat"), (4, "cabbage"), (8, "farmer")]
+    wgc x = show $ map snd $ filter (\(i, _) ->  x .&. i /= 0)
+                         [(1, "wolf"), (2, "goat"), (4, "cabbage"), (8, "farmer")]
 
 prt = putStrLn $ toWgc $ solve
