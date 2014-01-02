@@ -12,7 +12,8 @@ solve = bfsSolve [[(15, 0)]] where
     bfsSolve (c:cs) | (fst $ head c) == 0 = reverse c
                     | otherwise = bfsSolve (cs ++ map (:c) 
                                       (filter (`valid` c) $ moves $ head c))
-    valid (a, b) r = not $ or [ a `elem` [3, 6], b `elem` [3, 6], (a, b) `elem` r]
+
+valid (a, b) r = not $ or [ a `elem` [3, 6], b `elem` [3, 6], (a, b) `elem` r]
 
 moves (a, b) = if b < 8 then trans a b else map swap (trans b a) where
     trans x y = [(x - 8 - i, y + 8 + i) 
@@ -24,3 +25,13 @@ toWgc = unlines . map (\(a, b)-> wgc a ++ "----" ++ wgc b) where
                          [(1, "wolf"), (2, "goat"), (4, "cabbage"), (8, "farmer")]
 
 prt = putStrLn $ toWgc $ solve
+
+-- find all solutions
+solve' = bfsSolve [[(15, 0)]] where
+    bfsSolve :: [[(Int, Int)]] -> [[(Int, Int)]]
+    bfsSolve [] = []
+    bfsSolve (c:cs) | (fst $ head c) == 0 = (reverse c) : bfsSolve cs
+                    | otherwise = bfsSolve (cs ++ map (:c) 
+                                      (filter (`valid` c) $ moves $ head c))
+
+prtAll = putStrLn $ unlines (map toWgc solve')
