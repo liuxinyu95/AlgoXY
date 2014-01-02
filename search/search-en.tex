@@ -3575,32 +3575,111 @@ back and forth means 2 times, we are actually checking the complete possibilitie
 we are done. And this solution wins the compete, which is the fast solution.
 
 The problem is that we can't really examine all possible solutions in parrallel ideally.
-Even with a super computer equipped with many CPU cores, such setup is too expensive to
+Even with a super computer equipped with many CPU cores, the setup is too expensive to
 solve such a simple puzzle. 
 
 Let's consider a lucky draw game. People blindly pick from a box with colored balls. There
-is only one black ball, all the others are white. The one who pick the black ball won the
+is only one black ball, all the others are white. The one who pick the black ball wins the
 game; Otherwise, he must return the ball to the box and wait for the next chance.
-In order to be fair enough, we can setup rules that no one can try the second time before
-all others have complete drawn. We can line people to a queue, every time the first guy
+In order to be fair enough, we can setup a rule that no one can try the second time before
+all others have tried. We can line people to a queue, every time the first guy
 pick a ball, if he does not win, he then stands at the tail of the queue to wait for the
 second try. This queue helps to ensure our rule.
 
 TODO: Add a figure to illustrate the lucky draw game.
 
 We can use the quite same idea to solve our puzzle. The two banks of the river can be
-represented as two sets $A$ and $B$. $A$ contains the wolf, the goat, and the cabbage;
-while $B$ is empty. We transfer an element from one set to the other each time. The
-two sets can't hold conflict things except at the begining and ending. The goal is
+represented as two sets $A$ and $B$. $A$ contains the wolf, the goat, the cabbage and
+the farmer; while $B$ is empty. The farmer takes an element from one set to the other 
+each time. The two sets can't hold conflict things if the farmer is absent. The goal is
 to exchange the contents of $A$ and $B$ with fewest steps.
 
-We intialize a queue with $A = \{w, g, c\}, B=\Phi$ as the only element. As far as
-the queue isn't empty, we pick the first element from the head, expand it with all
-possible options, and put these new expanded candidates to the tail of the queue.
-If the first element on the head is the final goal, that $A=\Phi, B=\{w, g, c\}$,
+We intialize a queue with state $A = \{w, g, c, p\}, B=\Phi$ as the only element. 
+As far as the queue isn't empty, we pick the first element from the head, expand it 
+with all possible options, and put these new expanded candidates to the tail of the queue.
+If the first element on the head is the final goal, that $A=\Phi, B=\{w, g, c, p\}$,
 we are done. 
 
 TODO: Add a figure to illustrate the BFS idea
+
+There is a simple way to treat the set. A four bits binary number can be used, each
+bits stands for a thing, for example, the wolf $w=1$, the goat $g=2$, the cabbate
+$c=4$, and the farmer $p=8$. That 0 stands for the empty set, 15 stands for a 
+full set. Value 3, solely means there are a wolf and a goat on the river bank. In 
+this case, the wolf will eat the goat. Simliarily, value 6 stands for the other
+conflicting case. Every time, we move the highest bit (which is 8), or together
+with one of the other bits (4 or 2, or 1) from one number to the other. The 
+possilbe moves can be defined as below.
+
+\be
+mv(A, B) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{(A - 8 - i, B + 8 + i) | i \in \{0, 1, 2, 4\}, i = 0 \lor A \overline{\land} i \neq 0 \} & B < 8 \\
+  \{(A + 8 + i, B - 8 - i) | i \in \{0, 1, 2, 4\}, i = 0 \lor B \overline{\land} i \neq 0 \} & Otherwise
+  \end{array}
+\right.
+\ee
+
+Where $\overline{\land}$ means bitwise and operation.
+
+the solution can be give by reusing the queue defined in previous chapter. Denote
+the queue as $Q$, which is initialed with a singleton list \{(15, 0)\}. If $Q$ is
+not empty, function $DeQ(Q)$ extracts the head element $M$, the updated queue
+becomes $Q'$. $M$ is a list of pairs, stands for a series of movements between the
+river banks. The first element in $m_1=(A', B')$ is the latest state. Function 
+$EnQ'(Q, L)$ push all possible moving sequence in $L$ to the tail of the 
+queue one by one and returns the updated queue.
+With these notations, the solution funciton is defined like below.
+
+\be
+solve(Q) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & Q = \Phi \\
+  reverse(M) & A' = 0 \\
+  solve(EnQ'(Q', \{\{m\} \cup M| m \in mv(m_1), valid(m, M)\})) & otherwise
+  \end{array}
+\right.
+\ee
+
+Where function $valid(m, M)$ check new moving candidate $m=(A'', B'')$ is valid.
+That neither $A''$ nor $B''$ is 3 or 6, and $m$ hasn't been tried before in $M$,
+so that to avoid any repeatedly attemptations.
+
+\be
+valid(m, M) = A'' \neq 3, A'' \neq 6, B'' \neq 3, B'' \neq 6, m \notin M
+\ee
+
+The following example Haskell program implements this solution.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+import Data.Bits
+
+solve = bfsSolve [[(15, 0)]] where
+    bfsSolve :: [[(Int, Int)]] -> [(Int, Int)]
+    bfsSolve [] = [] -- no solution
+    bfsSolve (c:cs) | (fst $ head c) == 0 = reverse c
+                    | otherwise = bfsSolve (cs ++ map (:c) 
+                                      (filter (`valid` c) $ moves $ head c))
+    valid (a, b) r = not $ or [ a `elem` [3, 6], b `elem` [3, 6], (a, b) `elem` r]
+
+moves (a, b) = if b < 8 then trans a b else map swap (trans b a) where
+    trans x y = [(x - 8 - i, y + 8 + i) 
+                     | i <-[0, 1, 2, 4], i == 0 || (x .&. i) /= 0]
+    swap (x, y) = (y, x)
+\end{lstlisting}
+
+This solution generate one of the fastest solution as below.
+
+TODO: list the table
+
+TODO: States the method to find all the solution
+
+TODO: Imperative solution
+
+TDO: complexity analysis.
 
 \subsubsection{Puzzle in the movie `Die-Hard'}
 
