@@ -2,6 +2,7 @@
 #include <list>
 #include <iostream>
 #include <algorithm>
+#include <iterator>
 
 using namespace std;
 
@@ -20,8 +21,22 @@ Steps append(Steps steps, unsigned s) {
     return steps;
 }
 
+void print_steps(Steps s) {
+    cout<<"(";
+    copy(s.begin(), s.end(), ostream_iterator<unsigned>(cout, ", "));
+    cout<<") ";
+}
+
+void print_queue(Queue q) {
+    cout<<"[";
+    while (!q.empty())
+        print_steps(pop(q));
+    cout<<"]\n";
+}
+
 bool invalid(const Steps& s, int x) {
-    return (x & 3) || (x & 6) || (x & (3 << 4)) || (x & (6 << 4)) || 
+    unsigned a = x>>4, b = x & 0x0f;
+    return a == 3 || a == 6 || b == 3 || b == 6 || 
         find(s.begin(), s.end(), x) != s.end();
 }
 
@@ -30,14 +45,14 @@ unsigned state(unsigned a, unsigned b) {
 }
 
 Steps moves(const Steps& s) {
-    unsigned a = s.back() & 0xf0, b = s.back() & 0x0f;
+    unsigned a = s.back() >> 4, b = s.back() & 0x0f;
     Steps ms;
     int i, mask, x;
     for (i = 0; i < 4; ++i) {
-        mask = 8 & (1 << i);
-        if ((a & mask) && (!invalid(s, x = state(a ^ mask, b | mask))))
+        mask = 8 | (1 << i);
+        if ((a & mask) == mask && (!invalid(s, x = state(a ^ mask, b | mask))))
             ms.push_back(x);
-        if ((b & mask) && (!invalid(s, x = state(a | mask, b ^ mask))))
+        if ((b & mask) == mask && (!invalid(s, x = state(a | mask, b ^ mask))))
             ms.push_back(x);
     }
     return ms;
@@ -71,7 +86,7 @@ void print_set(unsigned s) {
 }
 
 void print_move(unsigned x) {
-    print_set(x & 0xf0);
+    print_set(x >> 4);
     cout<<"====";
     print_set(x & 0xf);
     cout<<"\n";
