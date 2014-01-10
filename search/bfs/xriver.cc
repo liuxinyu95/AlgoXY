@@ -1,3 +1,20 @@
+/*
+ * xriver.cc
+ * Copyright (C) 2014 Liu Xinyu (liuxinyu95@gmail.com)
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #include <queue>
 #include <list>
 #include <iostream>
@@ -19,19 +36,6 @@ Steps pop(Queue& q) {
 Steps append(Steps steps, unsigned s) {
     steps.push_back(s);
     return steps;
-}
-
-void print_steps(Steps s) {
-    cout<<"(";
-    copy(s.begin(), s.end(), ostream_iterator<unsigned>(cout, ", "));
-    cout<<") ";
-}
-
-void print_queue(Queue q) {
-    cout<<"[";
-    while (!q.empty())
-        print_steps(pop(q));
-    cout<<"]\n";
 }
 
 bool invalid(const Steps& s, int x) {
