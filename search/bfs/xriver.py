@@ -29,6 +29,15 @@ def swaps(s):
 def reverse(x):
     return x[::-1]
 
-def pretty_print
+def pretty_print(s):
+    for ms in s:
+        for (a, b) in ms:
+            print wgc(a), "====", wgc(b)
+        print "total", len(ms) - 1, "steps"
+    print "total", len(s), "soluitons"
+
+def wgc(x):
+    return [n for (i, n) in [(1, "wolf"), (2, "goat"), (3, "cabbage"), (4, "farmer")] 
+              if (x & i) != 0]
 
 pretty_print(solve())
