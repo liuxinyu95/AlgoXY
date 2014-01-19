@@ -45,8 +45,19 @@
 
 -- Summarize the above gives the extended Euclide algorithm:
 extGcd 0 b = (b, 0, 1)
-extGcd a b = (d, y' - x' * (b / d), x') where (d, x', y') = extGcd(b `mod` a, a)
-
+extGcd a b = let (d, x', y') = extGcd (b `mod` a) a in (d, y' - x' * (b / d), x')
+        
 -- Method 1, Extended Euclid algorithm.
+
+-- let g = a x + b y.
+-- If a < 0, repeatedly increase x by b and decrese y by a till a is greater than 0.
+-- Repeat x times:
+--    Fill the jug of volumn a;
+--    Pour all the water in jug a into jug b. Whenever jug b becomes full, empty it out.
+solve a b g | g `mod` d /= 0 = [] -- no solution
+            | otherwise = pour (x*g/d) (y*g/d)
+    where
+      (d, x, y) = extGcd(a, b)
+      pour x y | x < 0 = 
 
 -- Method 2, BFS (brute-force)
