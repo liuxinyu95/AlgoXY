@@ -1,6 +1,10 @@
+module WaterJugs where
+
+import Debug.Trace
+
 -- General solution to 2 jugs:
 
--- Problem: 
+-- Problem:
 -- Given 2 jugs of volumn a and b (a < b), bring up g volumns of water from the river.
 
 -- Constraint:
@@ -10,14 +14,14 @@
 -- bring up any quantity of g.
 
 -- Memo of extended Euclid algorithm:
--- The extended Euclide algorithm does not give GCD of a and b, but also give one of
--- the linear combination so that 
+-- The extended Euclide algorithm does not only give GCD of a and b, but also give one of
+-- the linear combination so that
 
 --     a x + b y = gcd(a, b)
 
 -- Define this function as:
 
---     (d, x, y) = ext-gcd(a, b) 
+--     (d, x, y) = ext-gcd(a, b)
 
 -- Without loss of genericity, assume a < b. there exists quotation q and remainder r that
 
@@ -37,7 +41,7 @@
 
 -- This is linear combination of a and b, so that we have:
 
---    x = y' - x' (b / d)
+--    x = y' - x' (b / a)
 --    y = x'
 
 -- Beside this recursive case, the edge case happens when a = 0:
@@ -45,8 +49,8 @@
 
 -- Summarize the above gives the extended Euclide algorithm:
 extGcd 0 b = (b, 0, 1)
-extGcd a b = let (d, x', y') = extGcd (b `mod` a) a in (d, y' - x' * (b / d), x')
-        
+extGcd a b = let (d, x', y') = extGcd (b `mod` a) a in (d, y' - x' * (b `div` a), x')
+
 -- Method 1, Extended Euclid algorithm.
 
 -- let g = a x + b y.
@@ -54,10 +58,16 @@ extGcd a b = let (d, x', y') = extGcd (b `mod` a) a in (d, y' - x' * (b / d), x'
 -- Repeat x times:
 --    Fill the jug of volumn a;
 --    Pour all the water in jug a into jug b. Whenever jug b becomes full, empty it out.
+--solve :: Integer -> Integer -> Integer -> [(Integer, Integer)]
 solve a b g | g `mod` d /= 0 = [] -- no solution
-            | otherwise = pour (x*g/d) (y*g/d)
+            | otherwise = solve' (x * g `div` d)
     where
-      (d, x, y) = extGcd(a, b)
-      pour x y | x < 0 = 
+      (d, x, y) = extGcd a b
+      solve' x | x < 0 = solve' (x + b)
+               | otherwise = pour x [(0, 0)]
+      pour 0 ps = reverse ps
+      pour n ps@((a', b'):_) | a' == 0 = pour (n-1) ((a, b'):ps) -- fill a
+                             | b' == b = pour (n-1) ((a', 0):ps) -- empty b
+                             | otherwise = pour (n-1) ((max 0 (a' + b' - b), min (a' + b') b):ps)
 
 -- Method 2, BFS (brute-force)
