@@ -39,7 +39,7 @@ import Debug.Trace
 
 --     (d, x, y) = ext-gcd(a, b)
 
--- Without loss of genericity, assume a < b. there exists quotation q and remainder r that
+-- Without loss of generality, assume a < b. there exists quotation q and remainder r that
 
 --    b = a q + r
 
@@ -50,7 +50,7 @@ import Debug.Trace
 
 -- Where d = x' r + y' a according to the definition of extended Euclid algorithm.
 
--- Transform b = a q + r to r = b - a q, sustitude r in above equation yeilds:
+-- Transform b = a q + r to r = b - a q, substitude r in above equation yields:
 
 --    d = x' (b - a q) + y' a   this can be further transform to:
 --    d = (y' - x' q) a + x' b
