@@ -87,7 +87,6 @@ solve a b g | g `mod` d /= 0 = [] -- no solution
                              | otherwise = pour x ((max 0 (a' + b' - b), min (a' + b') b):ps)
 
 -- Method 2, BFS (brute-force)
---solve' :: (Integral a) => a -> a -> a -> [(a, a)]
 solve' a b g = bfs [[(0, 0)]] where
   bfs [] = []
   bfs (c:cs) | fst (head c) == g || snd (head c) == g = reverse c

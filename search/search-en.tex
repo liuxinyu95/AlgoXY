@@ -4050,8 +4050,9 @@ of water from 3 and 5 gallons jugs. The extended Euclid algorithm produces the
 following sequence:
 
 \begin{verbatim}
-[(0,0),(3,0),(0,3),(3,3),(1,5),(1,0),(0,1),(3,1),(0,4),(3,4),(2,5),(2,0),(0,2),
-(3,2),(0,5),(3,5),(3,0),(0,3),(3,3),(1,5),(1,0),(0,1),(3,1),(0,4)]
+[(0,0),(3,0),(0,3),(3,3),(1,5),(1,0),(0,1),(3,1),
+(0,4),(3,4),(2,5),(2,0),(0,2),(3,2),(0,5),(3,5),
+(3,0),(0,3),(3,3),(1,5),(1,0),(0,1),(3,1),(0,4)]
 \end{verbatim}
 
 It takes 23 steps to achieve the goal, while the best solution only need 6 steps:
@@ -4059,6 +4060,83 @@ It takes 23 steps to achieve the goal, while the best solution only need 6 steps
 \begin{verbatim}
 [(0,0),(0,5),(3,2),(0,2),(2,0),(2,5),(3,4)]
 \end{verbatim}
+
+Observe the 23 steps, and we can find that jug $B$ has already contained 4 gallons
+of water at the 8 step. But the algorithm ignores this fact and goes on executing
+the left 15 steps. The reason is that the linear combination $x$ and $y$ we find
+with the extended Euclid algorithm are not the only numbers satisifying
+$g = x a + b y$. For all these numbers, the smaller $|x| + |y|$, the less steps
+are needed. There is an exercise to addressing this problem in this section.
+
+The interesting problem is how to find the best solution? We have two approaches,
+one is to find $x$ and $y$ to minimize $|x| + |y|$; the other is to adopt the quite
+similar idea as the wolf-goat-cabbage puzzle. We focus on the latter in this
+section. Since there are at most 6 possible
+options: fill $A$, fill $B$, pour $A$ into $B$, pour $B$ into $A$, empty $A$ and
+empty $B$, we can try them in parallel, and check which decision can lead to the
+best solution. We need record all the states we've achieved to avoid any potential
+repeatation. In order to realize this parallel approach with reasonable resources,
+a queue can be used to arrange our attemptations. The element stored in this queue
+are series of pairs $(p, q)$, where $p$ and $q$ represent the volume of waters
+contained in each jug. These pairs records the sequence of our operations from
+the beginning to the latest. We intialize the queue with the singleton list
+contains the start state $\{ (0, 0) \}$.
+
+\be
+solve(a, b, g) = solve' \{ \{ (0, 0) \} \}
+\ee
+
+Every time, when the queue isn't empty, we pick a sequence from the head of the
+queue. If this sequence
+ends with a pair contains the target volume $g$, we find a solution, we can
+print this sequence by reversing it; Otherwise, we expand the lastest pair
+by trying all the possible 6 options, remove any duplicated states, and add
+them to the tail of the queue. Denote the queue as $Q$, the first sequence
+stored on the head of the queue as $S$, the latest pair in $S$ as $(p, q)$,
+and the rest of pairs as $S'$. After popping the head element, the queue
+becomes $Q'$. This algorithm can be defined like below:
+
+\be
+solve'(Q) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & Q = \Phi \\
+  reverse(S) & p = g \lor q = g \\
+  solve'(EnQ(Q', \{\{s'\} \cup S' | s' \in try(S)\})) & otherwise
+  \end{array}
+\right.
+\ee
+
+Where function $EnQ$ pushes a list of sequence to the queue one by one.
+Function $try(S)$ will try all possible 6 options to generate new
+pairs of water volumes:
+
+\be
+try(S) = \{s' | s' \in \{ \begin{array}{l}
+  fillA(p, q), fillB(p, q), \\
+  pourA(p, q), pourB(p, q), \\
+  emptyA(p, q), emptyB(p, q)
+  \end{array}
+  \}, s' \notin S' \}
+\ee
+
+The following example Haskell program implements this method:
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+solve' a b g = bfs [[(0, 0)]] where
+  bfs [] = []
+  bfs (c:cs) | fst (head c) == g || snd (head c) == g = reverse c
+             | otherwise = bfs (cs ++ map (:c) (expand c))
+  expand ((x, y):ps) = filter (`notElem` ps) $ map (\f -> f x y)
+                           [fillA, fillB, pourA, pourB, emptyA, emptyB]
+  fillA _ y = (a, y)
+  fillB x _ = (x, b)
+  emptyA _ y = (0, y)
+  emptyB x _ = (x, 0)
+  pourA x y = (max 0 (x + y - b), min (x + y) b)
+  pourB x y = (min (x + y) a, max 0 (x + y - a))
+\end{lstlisting}
 
 TODO: BFS
 
@@ -4089,6 +4167,11 @@ frogs case.
 solutions.
 \item Give the complete algorithm definition to solve the 2 water jugs puzzle with extended
 Euclid algorithm.
+\item We needn't the exact linear combination information $x$ and $y$ in fact. After we know
+the puzzle is solvable by testing with GCD, we can blindly execute the process that:
+fill $A$, pour $A$ into $B$, whenever $B$ is full, empty it till there is expected volume
+in one jug. Realize this solution. Can this one find faster solution than the original
+version?
 \end{itemize}
 \end{Exercise}
 
