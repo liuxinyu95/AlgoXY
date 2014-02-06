@@ -2,7 +2,8 @@ IMG_OBJECTS = saddleback-xx-yy maze maze-loop queen queens-example leapfrogs lea
 leapfrog2 leapfrog3 solitaire draught-board hop-over wgc-puzzle
 DOT_OBJECTS = max-sum-invariant strstr kmp kmp-fallback kmp-prefix-func fp-strstr fallback-tr \
 lazy-fallback-tr good-char good-char-2 good-char-3 good-char-4 bad-char-1 bad-char-2 \
-good-suffix-case1-1 good-suffix-case2-1 good-suffix-case2-2 dfs-stack directed-graph
+good-suffix-case1-1 good-suffix-case2-1 good-suffix-case2-2 dfs-stack directed-graph \
+water-jugs
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
@@ -17,7 +18,7 @@ all: convert dot
 
 convert: $(IMG_OBJECTS)
 
-# for details, refer to: 
+# for details, refer to:
 #    http://www.gnu.org/software/autoconf/manual/make/
 # Makefile syntax, replace each '%' to 'eps
 $(IMG_OBJECTS): % : %.eps
