@@ -1,21 +1,20 @@
 /*
  * waterjugs.cc
  * Copyright (C) 2014 Liu Xinyu (liuxinyu95@gmail.com)
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <queue>
 #include <list>
 #include <algorithm>
 #include <cstdio>
@@ -28,22 +27,43 @@ struct Step {
     Step(int x, int y, Step* p = NULL): p(x), q(y), parent(p) {}
 };
 
-typedef queue<Step*> Queue;
 typedef list<Step*> Steps;
 
-Steps visit;
-
-/** Record in historic data and push */
-void push(Queue& q, Step* s) {
-    visit.push_back(s);
-    q.push(s);
+bool eq(Step* a, Step* b) {
+    return a->p == b->p && a->q == b->q;
 }
 
-Step* pop(Queue& q) {
-    Step* s = q.front();
-    q.pop();
-    return s;
-}
+/* A queue with historic data */
+struct Queue {
+    Steps q;
+    Steps::iterator head;
+
+    void reset() {
+        for (Steps::iterator it = q.begin(); it != q.end(); ++it)
+            delete *it;
+        q.clear();
+        head = q.end();
+    }
+
+    void push(Step* s) {
+        q.push_back(s);
+        if (head == q.end())
+            head = q.begin();
+    }
+
+    Step* pop() { return *head++; }
+
+    bool empty() { return head == q.end(); }
+
+    /* Alternatively, this can be implemented with find_if and lambda */
+    bool visited(Step* s) {
+        for (Steps::iterator it = q.begin(); it != q.end(); ++it)
+            if (eq(*it, s)) return true;
+        return false;
+    }
+};
+
+Queue queue;
 
 Steps expand(Step* s, int a, int b) {
     int p = s->p, q = s->q;
@@ -57,29 +77,18 @@ Steps expand(Step* s, int a, int b) {
     return cs;
 }
 
-bool eq(Step* a, Step* b) {
-    return a->p == b->p && a->q == b->q;
-}
-
-/* Alternatively, this can be implemented with find_if and lambda */
-bool visited(Step* s) {
-    for (Steps::iterator it = visit.begin(); it != visit.end(); ++it)
-        if (eq(*it, s)) return true;
-    return false;
-}
-
 Step* solve(int a, int b, int g) {
-    Queue q;
-    push(q, new Step(0, 0));
-    while (!q.empty()) {
-        Step* cur = pop(q);
+    queue.reset();
+    queue.push(new Step(0, 0));
+    while (!queue.empty()) {
+        Step* cur = queue.pop();
         if (cur->p == g || cur->q == g)
             return cur;
         else {
             Steps cs = expand(cur, a, b);
             for (Steps::iterator it = cs.begin(); it != cs.end(); ++it)
-                if(!eq(cur, *it) && !visited(*it))
-                    push(q, *it);
+                if(!eq(cur, *it) && !queue.visited(*it))
+                    queue.push(*it);
         }
     }
     return NULL;
@@ -98,9 +107,7 @@ int print(Step* s) {
 void test(int a, int b, int g) {
     printf("solve a=%d, b=%d, g=%d:\n", a, b, g);
     printf("total %d steps\n", print(solve(a, b, g)));
-    for (Steps::iterator it = visit.begin(); it != visit.end(); ++it)
-        delete *it;
-    visit.clear();
+    queue.reset();
 }
 
 int main(int argc, char *argv[]) {
