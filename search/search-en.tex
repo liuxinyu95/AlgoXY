@@ -4150,7 +4150,7 @@ solve' a b g = bfs [[(0, 0)]] where
   emptyB x _ = (x, 0)
   pourA x y = (max 0 (x + y - b), min (x + y) b)
   pourB x y = (min (x + y) a, max 0 (x + y - a))
-\end{lstlisting}
+\end{lstlisting} %$
 
 This method always returns the fast solution. It can also be realized in
 imperative approach, instead of storing the complete sequence of operation
@@ -4176,20 +4176,27 @@ figure.
 With such setting, we needn't remember the operation sequence in each element
 in the queue explictly. We can add a `parent' link to each node in figure
 \ref{fig:water-jugs}, and use it to back-traverse to the start point from
-any state. The following example C++ code shows such a definition.
+any state. The following example ANSI C code shows such a definition.
 
-\lstset{language=C++}
+\lstset{language=C}
 \begin{lstlisting}
 struct Step {
     int p, q;
-    Step* parent;
-    Step(int x, int y, Step* p = NULL): p(x), q(y), parent(p) {}
+    struct Step* parent;
 };
+
+struct Step* make_step(int p, int q, struct Step* parent) {
+    struct Step* s = (struct Step*) malloc(sizeof(struct Step));
+    s->p = p;
+    s->q = q;
+    s->parent = parent;
+    return s;
+}
 \end{lstlisting}
 
 Where $p, q$ are volumes of water in the 2 jugs. For any state $s$,
-function $p(s)$ and $q(s)$ return these 2 values.
-The imperative algorithm can be realized based on this idea as below.
+define functions $p(s)$ and $q(s)$ return these 2 values, the imperative algorithm
+can be realized based on this idea as below.
 
 \begin{algorithmic}[1]
 \Function{Solve}{$a, b, g$}
@@ -4200,7 +4207,7 @@ The imperative algorithm can be realized based on this idea as below.
     \If{$p(s) = g \lor q(s) = g$}
       \State \Return $s$
     \Else
-      \State $C \gets$ \Call{Try}{$s$}
+      \State $C \gets$ \Call{Expand}{$s$}
       \For{$\forall c \in C$}
         \If{$c \neq s \land \lnot$ \Call{Visited}{$c$}}
           \State \Call{Push-and-record}{$Q, c$}
@@ -4212,8 +4219,99 @@ The imperative algorithm can be realized based on this idea as below.
 \EndFunction
 \end{algorithmic}
 
+Where \textproc{Push-and-record} does not only push an element to the queue, but also
+record this element as visited, so that we can check if an element has been visited
+before in the future. This can be implemented with a list. All push operations
+append the new elements to the tail. For pop operation, instead of removing the element
+pointed by head, the head pointer only advances to the next one. This list contains
+historic data has to be reset explictly. The following ANSI C
+code illustrates this idea.
 
-TODO: Imperative BFS
+\lstset{language=C}
+\begin{lstlisting}
+struct Step *steps[1000], **head, **tail = steps;
+
+void push(struct Step* s) { *tail++ = s; }
+
+struct Step* pop() { return *head++; }
+
+int empty() { return head == tail; }
+
+void reset() {
+    struct Step **p;
+    for (p = steps; p != tail; ++p)
+        free(*p);
+    head = tail = steps;
+}
+\end{lstlisting}
+
+In order to test a state has been visited, we can traverse the list to compare $p$ and $q$.
+
+\lstset{language=C}
+\begin{lstlisting}
+int eq(struct Step* a, struct Step* b) {
+    return a->p == b->p && a->q == b->q;
+}
+
+int visited(struct Step* s) {
+    struct Step **p;
+    for (p = steps; p != tail; ++p)
+        if (eq(*p, s)) return 1;
+    return 0;
+}
+\end{lstlisting}
+
+The main program can be implemented as below:
+
+\lstset{language=C}
+\begin{lstlisting}
+struct Step* solve(int a, int b, int g) {
+    int i;
+    struct Step *cur, *cs[6];
+    reset();
+    push(make_step(0, 0, NULL));
+    while (!empty()) {
+        cur = pop();
+        if (cur->p == g || cur->q == g)
+            return cur;
+        else {
+            expand(cur, a, b, cs);
+            for (i = 0; i < 6; ++i)
+                if(!eq(cur, cs[i]) && !visited(cs[i]))
+                    push(cs[i]);
+        }
+    }
+    return NULL;
+}
+\end{lstlisting}
+
+Where function \texttt{expand} tries all the 6 possible options:
+
+\lstset{language=C}
+\begin{lstlisting}
+void expand(struct Step* s, int a, int b, struct Step** cs) {
+    int p = s->p, q = s->q;
+    cs[0] = make_step(a, q, s); /*fill A*/
+    cs[1] = make_step(p, b, s); /*fill B*/
+    cs[2] = make_step(0, q, s); /*empty A*/
+    cs[3] = make_step(p, 0, s); /*empty B*/
+    cs[4] = make_step(max(0, p + q - b), min(p + q, b), s); /*pour A*/
+    cs[5] = make_step(min(p + q, a), max(0, p + q - a), s); /*pour B*/
+}
+\end{lstlisting}
+
+And the result steps is back tracked in reverse order, it can be output
+with a recursive function:
+
+\lstset{language=C}
+\begin{lstlisting}
+void print(struct Step* s) {
+    if (s) {
+        print(s->parent);
+        printf("%d, %d\n", s->p, s->q);
+    }
+}
+\end{lstlisting}
 
 \subsubsection{Kloski}
 
@@ -4247,6 +4345,9 @@ the puzzle is solvable by testing with GCD, we can blindly execute the process t
 fill $A$, pour $A$ into $B$, whenever $B$ is full, empty it till there is expected volume
 in one jug. Realize this solution. Can this one find faster solution than the original
 version?
+\item Compare to the extended Euclid method, the DFS approach is a kind of brute-force searching.
+Improve the extended Euclid approach by finding the best linear combination which minimze
+$|x| + |y|$.
 \end{itemize}
 \end{Exercise}
 
