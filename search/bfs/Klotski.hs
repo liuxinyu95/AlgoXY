@@ -41,7 +41,7 @@ solve (Op x seq : cs) visit | M.lookup 10 x == Just [(4, 2), (4, 3), (5, 2), (5,
 
 expand :: Layout -> [[[Point]]] -> [Move]
 expand x visit = [(i, d) | i <-[1..10], d <- [(0, -1), (0, 1), (-1, 0), (1, 0)],
-                           valid i d, (layout $ move x (i, d)) `notElem` visit] where
+                           valid i d, unique i d] where
   valid i d = all (\ p -> let p' = shift p d in
                     inRange ((1, 1), (5, 4)) p' &&
                     (M.keys $ M.filter (elem p') x) `elem` [[i], []])
