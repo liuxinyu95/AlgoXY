@@ -3,7 +3,8 @@ module Klotski where
 import qualified Data.Map as M
 import Data.Ix
 import Data.List (sort)
-import Debug.Trace (trace)
+import Data.Array         -- for pretty output purpose only
+import Numeric (showHex)  -- for pretty output purpose only
 
 -- `Heng Dao Li Ma' Layout
 --  1 A A 2
@@ -16,7 +17,9 @@ type Point = (Integer, Integer)
 type Layout = M.Map Integer [Point]
 type Move = (Integer, Point)
 
-data Ops = Op Layout [Move] deriving (Eq, Show)
+data Ops = Op Layout [Move]
+
+board = listArray ((1,1), (5,4)) (replicate 20 0)
 
 start = [(1, [(1, 1), (2, 1)]),
          (2, [(1, 4), (2, 4)]),
@@ -26,14 +29,17 @@ start = [(1, [(1, 1), (2, 1)]),
          (6, [(5, 1)]), (7, [(4, 2)]), (8, [(4, 3)]), (9, [(5, 4)]),
          (10, [(1, 2), (1, 3), (2, 2), (2, 3)])]
 
+-- Normalize the layout. It removes the piece information and treats them equally.
+-- This removes a lot of potential duplicated layout.
 layout = sort . map sort . M.elems
 
+-- Avoid attempting mirror layout. It halves the search space.
 mirror = M.map (map (\ (y, x) -> (y, 5 - x)))
 
 solve :: [Ops] -> [[[Point]]]-> [Move]
 solve [] _ = [] -- no solution
 solve (Op x seq : cs) visit | M.lookup 10 x == Just [(4, 2), (4, 3), (5, 2), (5, 3)] = reverse seq
-                            | otherwise = solve (trace ((show $ length q) ++"   "++ (show $ length seq)) q) visit'
+                            | otherwise = solve q visit'
   where
     ops = expand x visit
     visit' = map (layout . move x) ops ++ visit
@@ -42,8 +48,8 @@ solve (Op x seq : cs) visit | M.lookup 10 x == Just [(4, 2), (4, 3), (5, 2), (5,
 expand :: Layout -> [[[Point]]] -> [Move]
 expand x visit = [(i, d) | i <-[1..10], d <- [(0, -1), (0, 1), (-1, 0), (1, 0)],
                            valid i d, unique i d] where
-  valid i d = all (\ p -> let p' = shift p d in
-                    inRange ((1, 1), (5, 4)) p' &&
+  valid i d = all (\p -> let p' = shift p d in
+                    inRange (bounds board) p' &&
                     (M.keys $ M.filter (elem p') x) `elem` [[i], []])
               (maybe [] id $ M.lookup i x)
   unique i d = let mv = move x (i, d) in all (`notElem` visit) (map layout [mv, mirror mv])
@@ -52,6 +58,21 @@ move x (i, d) = M.update (Just . map (flip shift d)) i x
 
 shift (y, x) (dy, dx) = (y + dy, x + dx)
 
+-- this builds a sequence of moves, e.g. [(1, (0, 1), (3, (-1, 0)), ...]
+-- Which means, move 1st piece to right 1 step, then move the 3rd piece up 1 step, ...
 klotski = let x = M.fromList start in solve [Op x []] [layout x]
 
--- [(6,(0,1)),(3,(1,0)),(4,(0,-1)),(8,(-1,0)),(9,(0,-1)),(5,(1,0)),(8,(0,1)),(4,(0,1)),(3,(-1,0)),(6,(0,-1)),(9,(0,-1)),(5,(0,-1)),(8,(1,0)),(4,(0,1)),(7,(-1,0)),(8,(1,0)),(9,(-1,0)),(6,(0,1)),(3,(1,0)),(7,(0,-1)),(4,(0,-1)),(2,(1,0)),(2,(1,0)),(10,(0,1)),(1,(0,1)),(7,(-1,0)),(3,(-1,0)),(6,(0,-1)),(7,(-1,0)),(3,(-1,0)),(9,(0,-1)),(5,(0,-1)),(8,(0,-1)),(2,(1,0)),(4,(0,1)),(5,(-1,0)),(6,(0,1)),(8,(-1,0)),(6,(0,1)),(5,(1,0)),(1,(1,0)),(7,(0,1)),(3,(-1,0)),(9,(-1,0)),(5,(0,-1)),(1,(1,0)),(1,(1,0)),(9,(0,1)),(9,(-1,0)),(4,(0,-1)),(2,(-1,0)),(4,(0,-1)),(6,(0,1)),(8,(1,0)),(2,(0,-1)),(6,(-1,0)),(8,(0,1)),(2,(1,0)),(4,(0,1)),(3,(1,0)),(4,(0,1)),(1,(-1,0)),(7,(0,-1)),(9,(-1,0)),(1,(-1,0)),(2,(0,-1)),(6,(0,-1)),(6,(1,0)),(4,(1,0)),(10,(1,0)),(9,(0,1)),(7,(0,1)),(3,(-1,0)),(5,(-1,0)),(9,(0,1)),(7,(0,1)),(1,(-1,0)),(2,(-1,0)),(6,(0,-1)),(6,(0,-1)),(8,(0,-1)),(8,(0,-1)),(4,(1,0)),(10,(1,0)),(7,(1,0)),(7,(0,1)),(1,(0,1)),(2,(-1,0)),(2,(-1,0)),(10,(0,-1)),(7,(1,0)),(7,(1,0)),(9,(1,0)),(9,(1,0)),(1,(0,1)),(2,(0,1)),(3,(0,1)),(5,(-1,0)),(5,(-1,0)),(10,(0,-1)),(7,(0,-1)),(7,(-1,0)),(4,(-1,0)),(8,(0,1)),(6,(0,1)),(8,(0,1)),(6,(0,1)),(10,(1,0)),(7,(0,-1)),(7,(0,-1)),(9,(0,-1)),(9,(0,-1)),(4,(-1,0)),(6,(-1,0)),(6,(0,1)),(10,(0,1))]
+-- the followings are for pretty print only.
+
+toTable = toTab . map (flip showHex "") . elems . toArray where
+  toTab [] = []
+  toTab xs = let (r, xs') = splitAt 4 xs in r : toTab xs'
+  toArray x = board // (M.foldrWithKey (\k ps assoc ->
+                                       (map (\p -> (p, k)) ps) ++ assoc) [] x)
+
+output = do
+  mapM_ print $ scanl move (M.fromList start) seq
+  putStrLn $ "total " ++ (show $ length seq) ++ " steps"
+    where
+      seq = klotski
+      print = putStrLn . unlines . map show . toTable
