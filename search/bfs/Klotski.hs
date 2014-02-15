@@ -78,7 +78,7 @@ shift (y, x) (dy, dx) = (y + dy, x + dx)
 -- Which means, move 1st piece to right 1 step, then move the 3rd piece up 1 step, ...
 klotski = let x = M.fromList start in solve [Op x []] [layout x]
 
--- the followings are for pretty print only.
+-- the followings are for pretty printing only.
 
 -- !!! Note that this program is a bit SLOW, it takes minutes typically, please wait a
 -- while for the result being printed.
