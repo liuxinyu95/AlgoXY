@@ -64,8 +64,8 @@ def expand(layout, visit):
     m = matrix(layout)
     for i in range(1, 11):
         for (dy, dx) in d:
-            if all([bound(y + dy, x + dx) and valid(m, i, y + dy, x + dx)
-                    for (y, x) in layout[i - 1]]):
+            if all(bound(y + dy, x + dx) and valid(m, i, y + dy, x + dx)
+                    for (y, x) in layout[i - 1]):
                 brd = move(layout, (i, (dy, dx)))
                 if unique(brd):
                     s.append(brd)
