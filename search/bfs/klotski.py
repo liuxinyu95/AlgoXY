@@ -46,8 +46,7 @@ def solve(start):
         if layout[-1] == [(4, 2), (4, 3), (5, 2), (5, 3)]:
             return cur
         else:
-            for delta in expand(layout, visit):
-                brd = move(layout, delta)
+            for brd in expand(layout, visit):
                 queue.append(Node(brd, cur))
                 visit.append(normalize(brd))
     return None # no solution
@@ -57,17 +56,20 @@ def expand(layout, visit):
         return 1 <= y and y <= 5 and 1 <= x and x <= 4
     def valid(m, i, y, x):
         return m[y - 1][x - 1] in [0, i]
-    def unique(i, dy, dx):
-        b = move(layout, (i, (dy, dx)))
-        return normalize(b) not in visit and normalize(mirror(b)) not in visit
+    def unique(brd):
+        (m, n) = (normalize(brd), normalize(mirror(brd)))
+        #return all(lambda v: m != v and n != v for v in visit)
+        return m not in visit and n not in visit
     s = []
     d = [(0, -1), (0, 1), (-1, 0), (1, 0)]
     m = matrix(layout)
     for i in range(1, 11):
         for (dy, dx) in d:
             if all([bound(y + dy, x + dx) and valid(m, i, y + dy, x + dx)
-                    for (y, x) in layout[i - 1]]) and unique(i, dy, dx):
-                s.append((i, (dy, dx)))
+                    for (y, x) in layout[i - 1]]):
+                brd = move(layout, (i, (dy, dx)))
+                if unique(brd):
+                    s.append(brd)
     return s
 
 def dup(layout):
