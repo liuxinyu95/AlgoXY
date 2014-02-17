@@ -58,8 +58,7 @@ def expand(layout, visit):
         return m[y - 1][x - 1] in [0, i]
     def unique(brd):
         (m, n) = (normalize(brd), normalize(mirror(brd)))
-        #return all(lambda v: m != v and n != v for v in visit)
-        return m not in visit and n not in visit
+        return all(m != v and n != v for v in visit)
     s = []
     d = [(0, -1), (0, 1), (-1, 0), (1, 0)]
     m = matrix(layout)
