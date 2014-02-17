@@ -2,17 +2,17 @@
 
 # klotski.py
 # Copyright (C) 2014 Liu Xinyu (liuxinyu95@gmail.com)
-# 
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -32,20 +32,25 @@ START = [[(1, 1), (2, 1)],
          [(5, 1)], [(4, 2)], [(4, 3)], [(5, 4)],
          [(1, 2), (1, 3), (2, 2), (2, 3)]]
 
+class Node:
+    def __init__(self, l, p = None):
+        self.layout = l
+        self.parent = p
+
 def solve(start):
     visit = [normalize(start)]
-    queue = [(start, [])]
+    queue = [Node(start)]
     while queue != []:
-        (cur, seq) = queue.pop(0)
-        print "try", len(seq), "steps"
-        if cur[-1] == [(4, 2), (4, 3), (5, 2), (5, 3)]:
-            return seq[::-1] # reversed(seq)
+        cur = queue.pop(0)
+        layout = cur.layout
+        if layout[-1] == [(4, 2), (4, 3), (5, 2), (5, 3)]:
+            return cur
         else:
-            for delta in expand(cur, visit):
-                brd = move(cur, delta)
-                queue.append((brd, [delta]+seq))
+            for delta in expand(layout, visit):
+                brd = move(layout, delta)
+                queue.append(Node(brd, cur))
                 visit.append(normalize(brd))
-    return [] # no solution
+    return None # no solution
 
 def expand(layout, visit):
     def bound(y, x):
@@ -88,16 +93,16 @@ def normalize(layout):
     return sorted([sorted(r) for r in layout])
 
 # pretty print
-def output(layout, seq):
-    def prt(m):
-        for r in m:
+def output(node):
+    seq = []
+    while node is not None:
+        seq = [node.layout] + seq
+        node = node.parent
+    for layout in seq:
+        for r in matrix(layout):
             print ["%X" % x for x in r]
         print "\n",
-    prt(matrix(layout))
-    for (i, (dy, dx)) in seq:
-        layout[i - 1] = [(y + dy, x + dx) for (y, x) in layout[i - 1]]
-        prt(matrix(layout))
-    print "total", len(seq), "steps"
+    print "total", len(seq) - 1, "steps"
 
 if __name__ == "__main__":
-    output(START, solve(START))
+    output(solve(START))
