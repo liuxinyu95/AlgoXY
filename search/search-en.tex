@@ -4387,7 +4387,7 @@ The starting layout can be written as the following Array.
 When moving the klotski blocks, we need examine all the 10 blocks, checking each block if
 it can move up, down, left and right. it seems that this approach would lead to a very huge
 amount of possibilities, because each step might have $10 \times 4$ options, there will be
-$40^n$ cases in the $n$-th step.
+about $40^n$ cases in the $n$-th step.
 
 Actually, there won't be so much options. For example, in the first step, there are only 4
 valid moving: the 6-th piece moves right; the 7-th and 8-th move down; and the 9-th moves left.
@@ -4412,17 +4412,105 @@ move to the cell occupied by other block, which is labeled with 2.
 
 In order to test validate moving, we need examine all cells a block will cover. If all cells are lebeled
 with 0 or a number as same the this block, the moving is valid. Otherwise it conflicts with some
-other block. For a layout $L$, the corresponding matrix is $M$, suppose we want to move the $i$-th
+other block. For a layout $L$, the corresponding matrix is $M$, suppose we want to move the $k$-th
 block with $(\Delta x, \Delta y)$, where $|\Delta x| \leq 1, |\Delta y| \leq 1$. The following
 equation tells if the moving is valid:
 
 \be
 \begin{array}{rl}
-valid(L, i, \Delta x, \Delta y): & \\
-\forall (i, j) \in L[i] \Rightarrow & i' = i + \Delta y, j' = j + \Delta x, \\
-& (1, 1) \leq (i', j') \leq (5, 4), M_{i'j'} \in \{i, 0\}
+valid(L, k, \Delta x, \Delta y): & \\
+\forall (i, j) \in L[k] \Rightarrow & i' = i + \Delta y, j' = j + \Delta x, \\
+& (1, 1) \leq (i', j') \leq (5, 4), M_{i'j'} \in \{k, 0\}
 \end{array}
 \ee
+
+Another important point to solve klotski puzzle, is about how to avoid repeated attemptation.
+The obvious case is that after a series of sliding, we end up a matrix which have been
+transformed from. However, only avoid same matrix isn't enough. Consider the following
+two matrics. Although $M_1 \neq M_2$, we need drop options to $M_2$, because they are
+essentially same.
+
+\[
+\begin{array}{cc}
+M_1 = \left [
+  \begin{array}{cccc}
+  1 & 10 & 10 & 2 \\
+  1 & 10 & 10 & 2 \\
+  3 & 4 & 4 & 5 \\
+  3 & 7 & 8 & 5 \\
+  6 & 0 & 0 & 9
+  \end{array}
+\right ] &
+M_2 = \left [
+  \begin{array}{cccc}
+  2 & 10 & 10 & 1 \\
+  2 & 10 & 10 & 1 \\
+  3 & 4 & 4 & 5 \\
+  3 & 7 & 6 & 5 \\
+  8 & 0 & 0 & 9
+  \end{array}
+\right ]
+\end{array}
+\]
+
+This fact tells us, that we should compare the layout, but not merely matrix to avoid
+repeatation. Denote the corresponding layouts as $L_1$ and $L_2$ respectively, it's
+easy to verify that $||L_1|| = ||L_2||$, where $||L||$ is the normalized layout, which
+is defined as below:
+
+\be
+||L|| = sort(\{sort(l_i) | \forall l_i \in L\})
+\ee
+
+In other words, a normalized layout is ordered for all its elements, and every element
+is also ordered. The ordering can defined as that $(a, b) \leq (c, d) \Leftrightarrow
+a n + b \leq c n + d$, where $n$ is the width of the matrix.
+
+Observing that the klotski board is symmetric, thus a layout can be mirrored from
+another one. Mirrored layout is also a kind of repeating, which should be avoided.
+
+It's easy to get a mirrored layout like this:
+
+\be
+mirror(L) = \{\{(i, n - j + 1) | \forall (i, j) \in l \} | \forall l \in L \}
+\ee
+
+We find that the matrix representation is useful in validation a moving, while the
+layout is handy to modeling moving and avoid repeated attemptation. We use similar
+approach to solve the klotski puzzle. We need a queue, every element in the queue
+contains two parts: a series of moving and the latest layout led by the moving.
+Each moving is in form of $(k, (\Delta y, \Delta x))$, which means moving the $k$-th
+block, with $\Delta y$ in row, and $\Delta x$ in column in the board.
+
+We initialize a queue, contains the starting
+layout. Whenever this queue isn't empty, we pick the first one from the head,
+checking if the biggest block is on target, that $L[10] = \{(4, 2), (4, 3), (5, 2), (5, 3)\}$.
+If yes, then we are done; otherwise, we try to move every block with 4 options:
+left, right, up, and down, and store all the possible, unique new layout to the
+tail of the queue. During this searching, we need record all the normalized
+layouts we've ever found to avoid any duplication.
+
+Denote the queue as $Q$, the historic layouts as $H$, the first layout on the
+head of the queue as $L$, its corresponding matrix as $M$. and the moving sequence
+to this layout as $S$. The algorithm can be defined as the following.
+
+\be
+solve(Q, H) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & Q = \Phi \\
+  reverse(S) & L[10] = \{(4, 2), (4, 3), (5, 2), (5, 3)\} \\
+  solve(Q', H') & otherwise
+  \end{array}
+\right.
+\ee
+
+The first clause says that if the queue is empty, we've tried all the possibilities
+and can't find a solution; The second caluse finds a solution, it returns the moving
+sequence in reversed order; These are edge cases. Otherwise, the algorithm
+expands the current layout, puts all the valid new layouts to the tail of the
+queue to yield $Q'$, and updates the normalized layouts to $H'$, and recursive
+search.
 
 \subsubsection{Summary of BFS}
 
