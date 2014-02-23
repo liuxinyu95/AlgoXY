@@ -4468,7 +4468,32 @@ a n + b \leq c n + d$, where $n$ is the width of the matrix.
 
 Observing that the klotski board is symmetric, thus a layout can be mirrored from
 another one. Mirrored layout is also a kind of repeating, which should be avoided.
+The following $M_1$ and $M_2$ shows such an example.
 
+\[
+\begin{array}{cc}
+M_1 = \left [
+  \begin{array}{cccc}
+  10 & 10 & 1 & 2 \\
+  10 & 10 & 1 & 2 \\
+  3 & 5 & 4 & 4 \\
+  3 & 5 & 8 & 9 \\
+  6 & 7 & 0 & 0
+  \end{array}
+\right ] &
+M_2 = \left [
+  \begin{array}{cccc}
+  3 & 1 & 10 & 10 \\
+  3 & 1 & 10 & 10 \\
+  4 & 4 & 2 & 5 \\
+  7 & 6 & 2 & 5 \\
+  0 & 0 & 9 & 8
+  \end{array}
+\right ]
+\end{array}
+\]
+
+Note that, the normalized layouts are symmetric to each other.
 It's easy to get a mirrored layout like this:
 
 \be
@@ -4531,7 +4556,131 @@ layout of $L'$. Function unique is defined like this:
 unique(L', H) = M' \notin H \land M'' \notin H
 \ee
 
-TODO: Haskell exmple code...
+We'll next show some example Haskell Klotski programs. As array isn't mutable in
+the purely functional settings, tree based map is used to represent layout
+\footnote{Alternatively, finger tree based sequence shown in previous chapter
+can be used}. Some type synonyms defined as below:
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+import qualified Data.Map as M
+import Data.Ix
+import Data.List (sort)
+
+type Point = (Integer, Integer)
+type Layout = M.Map Integer [Point]
+type Move = (Integer, Point)
+
+data Ops = Op Layout [Move]
+\end{lstlisting}
+
+The main program is almost as same as the $sort(Q, H)$ function defined above.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+solve :: [Ops] -> [[[Point]]]-> [Move]
+solve [] _ = [] -- no solution
+solve (Op x seq : cs) visit | M.lookup 10 x == Just [(4, 2), (4, 3), (5, 2), (5, 3)] = reverse seq
+                            | otherwise = solve q visit'
+  where
+    ops = expand x visit
+    visit' = map (layout . move x) ops ++ visit
+    q = cs ++ [Op (move x op) (op:seq) | op <- ops ]
+\end{lstlisting}
+
+Where function \texttt{layout} gives the normalized form by sorting. \texttt{move} returns
+an updated map by sliding the $i$-th block with $(\Delta y, \Delta x)$.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+layout = sort . map sort . M.elems
+
+move x (i, d) = M.update (Just . map (flip shift d)) i x
+
+shift (y, x) (dy, dx) = (y + dy, x + dx)
+\end{lstlisting}
+
+Function \texttt{expand} gives all possible new options, which is a direct translation
+from $expand(L, H)$.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+expand :: Layout -> [[[Point]]] -> [Move]
+expand x visit = [(i, d) | i <-[1..10], d <- [(0, -1), (0, 1), (-1, 0), (1, 0)],
+                           valid i d, unique i d] where
+  valid i d = all (\p -> let p' = shift p d in
+                    inRange (bounds board) p' &&
+                    (M.keys $ M.filter (elem p') x) `elem` [[i], []])
+              (maybe [] id $ M.lookup i x)
+  unique i d = let mv = move x (i, d) in all (`notElem` visit) (map layout [mv, mirror mv])
+\end{lstlisting}
+
+Note that we also filtered out mirrored layout. The \texttt{mirror} function is given
+as the following.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+mirror = M.map (map (\ (y, x) -> (y, 5 - x)))
+\end{lstlisting}
+
+This program takes several minutes to produce the fast soltuion, which takes 116 steps.
+The final 3 steps are shown as below:
+
+\begin{verbatim}
+...
+
+['5', '3', '2', '1']
+['5', '3', '2', '1']
+['7', '9', '4', '4']
+['A', 'A', '6', '0']
+['A', 'A', '0', '8']
+
+['5', '3', '2', '1']
+['5', '3', '2', '1']
+['7', '9', '4', '4']
+['A', 'A', '0', '6']
+['A', 'A', '0', '8']
+
+['5', '3', '2', '1']
+['5', '3', '2', '1']
+['7', '9', '4', '4']
+['0', 'A', 'A', '6']
+['0', 'A', 'A', '8']
+
+total 116 steps
+\end{verbatim}
+
+The Klotski solution can also be realized imperatively. Note that the $solve(Q, H)$ is
+tail-recursive, it's easy to translate it with looping. We can also link one layout
+to its parent layout, so that the moving sequence can be recorded globally.
+It can save some spaces, as the queue needn't store the moving in every element.
+When output the result, we only need back-tracking to the starting layout from the
+last one.
+
+Suppose function \textproc{Link}($L', L$) links a new layout $L'$ to its parent layout
+$L$.
+The following algorithm takes a starting layout, and searching for best moving sequence.
+
+\begin{algorithmic}[1]
+\Function{Solve}{$L_0$}
+  \State $H \gets ||L_0||$
+  \State $Q \gets \Phi$
+  \State \textproc{Push}($Q$, \Call{Link}{$L_0$, NIL})
+  \While{$Q \neq \Phi$}
+    \State $L \gets $ \Call{Pop}{$Q$}
+    \If{$L[10] = \{(4, 2), (4, 3), (5, 2), (5, 3)\}$}
+      \State \Return $L$
+    \Else
+      \For{each $L' \in$ \Call{Expand}{$L, H$}}
+        \State \textproc{Push}($Q$, \Call{Link}{$L', L$})
+        \State \Call{Append}{$H, ||L'||$}
+      \EndFor
+    \EndIf
+  \EndWhile
+  \State \Return NIL \Comment{No solution}
+\EndFunction
+\end{algorithmic}
+
 
 \subsubsection{Summary of BFS}
 
