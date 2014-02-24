@@ -4681,6 +4681,83 @@ The following algorithm takes a starting layout, and searching for best moving s
 \EndFunction
 \end{algorithmic}
 
+The following example Python program implements this algorithm:
+
+\lstset{language=Python}
+\begin{lstlisting}
+class Node:
+    def __init__(self, l, p = None):
+        self.layout = l
+        self.parent = p
+
+def solve(start):
+    visit = [normalize(start)]
+    queue = [Node(start)]
+    while queue != []:
+        cur = queue.pop(0)
+        layout = cur.layout
+        if layout[-1] == [(4, 2), (4, 3), (5, 2), (5, 3)]:
+            return cur
+        else:
+            for brd in expand(layout, visit):
+                queue.append(Node(brd, cur))
+                visit.append(normalize(brd))
+    return None # no solution
+\end{lstlisting}
+
+Where \texttt{normalize} and \texttt{expand} are implements as below:
+
+\lstset{language=Python}
+\begin{lstlisting}
+def normalize(layout):
+    return sorted([sorted(r) for r in layout])
+
+def expand(layout, visit):
+    def bound(y, x):
+        return 1 <= y and y <= 5 and 1 <= x and x <= 4
+    def valid(m, i, y, x):
+        return m[y - 1][x - 1] in [0, i]
+    def unique(brd):
+        (m, n) = (normalize(brd), normalize(mirror(brd)))
+        return all(m != v and n != v for v in visit)
+    s = []
+    d = [(0, -1), (0, 1), (-1, 0), (1, 0)]
+    m = matrix(layout)
+    for i in range(1, 11):
+        for (dy, dx) in d:
+            if all(bound(y + dy, x + dx) and valid(m, i, y + dy, x + dx)
+                    for (y, x) in layout[i - 1]):
+                brd = move(layout, (i, (dy, dx)))
+                if unique(brd):
+                    s.append(brd)
+    return s
+\end{lstlisting}
+
+Like most programming languages, arrays are indexed from 0 but not 1 in Python.
+This has to be handled properly. The rest functions including \texttt{mirror},
+\texttt{matrix}, and \texttt{move} are implemented as the following.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def mirror(layout):
+    return [[(y, 5 - x) for (y, x) in r] for r in layout]
+
+def matrix(layout):
+    m = [[0]*4 for _ in range(5)]
+    for (i, ps) in zip(range(1, 11), layout):
+        for (y, x) in ps:
+            m[y - 1][x - 1] = i
+    return m
+
+def move(layout, delta):
+    (i, (dy, dx)) = delta
+    m = dup(layout)
+    m[i - 1] = [(y + dy, x + dx) for (y, x) in m[i - 1]]
+    return m
+
+def dup(layout):
+    return [r[:] for r in layout]
+\end{lstlisting}
 
 \subsubsection{Summary of BFS}
 
