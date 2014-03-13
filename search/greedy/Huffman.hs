@@ -3,6 +3,7 @@ module Huffman where
 import Data.Function (on)
 import Data.Map (fromList, (!)) -- only for storing the code table
 import Data.List (sort, group)
+import qualified Heap as Heap
 
 -- Huffman's original article.
 -- D.A. Huffman, "A Method for the Construction of Minimum-Redundancy Codes", Proceedings of the I.R.E., September 1952, pp 1098¨C1102.
@@ -48,6 +49,10 @@ encode dict = concatMap (dict !)
 
 -- Method 2, building Huffman tree by using heap, repeatedly pop the 2 trees
 -- with the smallest weight and merge.
+huffman' :: (Num a, Ord a) => [(b, a)] -> HTr a b
+huffman' = build' . Heap.fromList . map (\(c, w) -> Leaf w c) where
+  build' h = merge (Heap.findMin h) (Heap.deleteMin)
+  merge x E
 
 -- Decode with a Huffman tree
 decode tr cs = find tr cs where

@@ -1,6 +1,6 @@
 {-
-    PairingHeap.hs, Pairing Heap in Haskell
-    Copyright (C) 2011, Liu Xinyu (liuxinyu95@gmail.com)
+    Heap.hs, Simple heap realized with pairing heap
+    Copyright (C) 2014, Liu Xinyu (liuxinyu95@gmail.com)
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -18,10 +18,7 @@
 
 -- Based on Chris Okasaki's ``Purely Functional Datastructures''
 
-module PairingHeap where
-
-import Test.QuickCheck
-import qualified Data.List as L -- for verification purpose only
+module Heap where
 
 -- Definition
 
@@ -57,12 +54,3 @@ deleteMin (Node _ hs) = mergePairs hs where
 fromList :: (Ord a) => [a] -> PHeap a
 fromList xs = foldl insert E xs
 
-heapSort :: (Ord a) => [a] -> [a]
-heapSort = hsort . fromList where
-    hsort E = []
-    hsort h = (findMin h):(hsort $ deleteMin h)
-
--- test
-
-prop_sort :: [Int] -> Bool
-prop_sort xs = heapSort xs == L.sort xs
