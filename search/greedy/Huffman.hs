@@ -1,7 +1,8 @@
 module Huffman where
 
 import Data.Function (on)
-import Data.Map (fromList, (!)) -- to store the code table
+import Data.Map (fromList, (!)) -- only for storing the code table
+import Data.List (sort, group)
 
 -- Huffman's original article.
 -- D.A. Huffman, "A Method for the Construction of Minimum-Redundancy Codes", Proceedings of the I.R.E., September 1952, pp 1098¨C1102.
@@ -34,6 +35,7 @@ extract (x:y:xs) = min2 (min x y) (max x y) xs [] where
                      | otherwise = min2 x z zs (y:xs)
 
 -- Build Huffman tree from an associcate list of character and weight
+huffman :: (Num a, Ord a) => [(b, a)] -> HTr a b
 huffman = build . map (\(c, w) -> Leaf w c)
 
 -- Build the code table from a Huffman tree by traversing it
@@ -41,15 +43,20 @@ code tr = fromList $ traverse [] tr where
   traverse bits (Leaf _ c) = [(c, bits)]
   traverse bits (Branch _ l r) = (traverse (bits ++ [0]) l) ++ (traverse (bits ++ [1]) r)
 
--- Encode a text with code table dict
+-- Encode text with a code table
 encode dict = concatMap (dict !)
 
 -- Method 2, building Huffman tree by using heap, repeatedly pop the 2 trees
 -- with the smallest weight and merge.
 
--- TODO: create a freq function, which count the charactor histogram from a text.
+-- Auxliary function,
+--   count the occurrent of every character to build the histogram of a text.
+freq :: (Ord a, Eq a) => [a] -> [(a, Int)]
+freq = map (\x -> (head x, length x)) . group . sort
+
+-- examples:
 
 testData = [('A', 8), ('B', 3), ('C', 1), ('D', 1), ('E', 1), ('F', 1), ('G', 1), ('H', 1)]
 
--- examples:
---   encode (code $ huffman testData) "ABC"
+--  1. encode (code $ huffman testData) "ABC"
+--  2. let tr = huffman freq txt in (encode (code tr) txt, tr)
