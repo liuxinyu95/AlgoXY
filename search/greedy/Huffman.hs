@@ -49,6 +49,12 @@ encode dict = concatMap (dict !)
 -- Method 2, building Huffman tree by using heap, repeatedly pop the 2 trees
 -- with the smallest weight and merge.
 
+-- Decode with a Huffman tree
+decode tr cs = find tr cs where
+  find (Leaf _ c) ws = c : find tr ws
+  find (Branch _ l r) (w:ws) = if w == 0 then find l ws else find r ws
+  find _ [] = [] -- won't handle (Leaf _ c) []
+
 -- Auxliary function,
 --   count the occurrent of every character to build the histogram of a text.
 freq :: (Ord a, Eq a) => [a] -> [(a, Int)]
@@ -57,6 +63,8 @@ freq = map (\x -> (head x, length x)) . group . sort
 -- examples:
 
 testData = [('A', 8), ('B', 3), ('C', 1), ('D', 1), ('E', 1), ('F', 1), ('G', 1), ('H', 1)]
+testEncode = encode (code $ huffman testData) "ABC"
+testTree = huffman $ freq "hello wired world"
+testCode = encode (code testTree) "hello"
+testDecode = decode testTree testCode
 
---  1. encode (code $ huffman testData) "ABC"
---  2. let tr = huffman freq txt in (encode (code tr) txt, tr)
