@@ -58,9 +58,9 @@ huffman' = build' . Heap.fromList . map (\(c, w) -> Leaf w c) where
 
 -- Decode with a Huffman tree
 decode tr cs = find tr cs where
-  find (Leaf _ c) ws = c : find tr ws
-  find (Branch _ l r) (w:ws) = if w == 0 then find l ws else find r ws
-  find _ [] = [] -- won't handle (Leaf _ c) []
+  find (Leaf _ c) [] = [c]
+  find (Leaf _ c) bs = c : find tr bs
+  find (Branch _ l r) (b:bs) = find (if b == 0 then l else r) bs
 
 -- Auxliary function,
 --   count the occurrent of every character to build the histogram of a text.
