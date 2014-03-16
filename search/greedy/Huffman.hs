@@ -52,9 +52,9 @@ encode dict = concatMap (dict !)
 -- with the smallest weight and merge.
 huffman' :: (Num a, Ord a) => [(b, a)] -> HTr a b
 huffman' = build' . Heap.fromList . map (\(c, w) -> Leaf w c) where
-  build' h = meld (Heap.findMin h) (Heap.deleteMin h)
-  meld x Heap.E = x
-  meld x h = build' $ Heap.insert (Heap.deleteMin h) (merge x (Heap.findMin h))
+  build' h = reduce (Heap.findMin h) (Heap.deleteMin h)
+  reduce x Heap.E = x
+  reduce x h = build' $ Heap.insert (Heap.deleteMin h) (merge x (Heap.findMin h))
 
 -- Decode with a Huffman tree
 decode tr cs = find tr cs where
