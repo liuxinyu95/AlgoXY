@@ -5,7 +5,6 @@ import Data.Map (fromList, (!)) -- only for storing the code table
 import Data.List (sort, group)
 import qualified Heap as Heap
 
--- Huffman's original article.
 -- D.A. Huffman, "A Method for the Construction of Minimum-Redundancy Codes", Proceedings of the I.R.E., September 1952, pp 1098¨C1102.
 
 -- Definition of Huffman tree, every character is augmented with a weight
@@ -14,6 +13,8 @@ data HTr w a = Leaf w a | Branch w (HTr w a) (HTr w a)
 
 weight (Leaf w _) = w
 weight (Branch w _ _) = w
+
+merge x y = Branch (weight x + weight y) x y
 
 -- The Huffman tree node can be compared by weight
 instance Ord w => Ord (HTr w a) where
@@ -25,7 +26,7 @@ instance Eq w => Eq (HTr w a) where
 -- Method 1, building the Huffman tree by repeatedly extracting the 2 trees with
 -- the smallest weight and merge.
 build [x] = x
-build xs = build ((Branch (weight x + weight y) x y) : xs') where
+build xs = build ((merge x y) : xs') where
   (x, y, xs') = extract xs
 
 -- Extract the 2 elements with the smallest weight.
@@ -51,8 +52,9 @@ encode dict = concatMap (dict !)
 -- with the smallest weight and merge.
 huffman' :: (Num a, Ord a) => [(b, a)] -> HTr a b
 huffman' = build' . Heap.fromList . map (\(c, w) -> Leaf w c) where
-  build' h = merge (Heap.findMin h) (Heap.deleteMin)
-  merge x E
+  build' h = meld (Heap.findMin h) (Heap.deleteMin h)
+  meld x Heap.E = x
+  meld x h = build' $ Heap.insert (Heap.deleteMin h) (merge x (Heap.findMin h))
 
 -- Decode with a Huffman tree
 decode tr cs = find tr cs where
@@ -72,4 +74,6 @@ testEncode = encode (code $ huffman testData) "ABC"
 testTree = huffman $ freq "hello wired world"
 testCode = encode (code testTree) "hello"
 testDecode = decode testTree testCode
-
+testTree' = huffman' $ freq "hello wired world"
+testCode' = encode (code testTree') "hello"
+testDecode' = decode testTree' testCode'
