@@ -4,7 +4,7 @@ klotski-jp
 DOT_OBJECTS = max-sum-invariant strstr kmp kmp-fallback kmp-prefix-func fp-strstr fallback-tr \
 lazy-fallback-tr good-char good-char-2 good-char-3 good-char-4 bad-char-1 bad-char-2 \
 good-suffix-case1-1 good-suffix-case2-1 good-suffix-case2-2 dfs-stack directed-graph \
-water-jugs weighted-dag
+water-jugs weighted-dag huffman-tr
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
