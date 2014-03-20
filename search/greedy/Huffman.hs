@@ -1,20 +1,20 @@
 {-
  Huffman.hs
  Copyright (C) 2014 Liu Xinyu (liuxinyu95@gmail.com)
- 
+
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 3 of the License, or
  (at your option) any later version.
- 
+
  This program is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.
- 
+
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
- 
+
 -}
 module Huffman where
 
@@ -66,8 +66,8 @@ code tr = fromList $ traverse [] tr where
 -- Encode text with a code table
 encode dict = concatMap (dict !)
 
--- Method 2, building Huffman tree by using heap, repeatedly pop the 2 trees
--- with the smallest weight and merge.
+-- Method 2, building Huffman tree by using heap.
+-- Repeatedly pop 2 trees from the heap to merge.
 huffman' :: (Num a, Ord a) => [(b, a)] -> HTr a b
 huffman' = build' . Heap.fromList . map (\(c, w) -> Leaf w c) where
   build' h = reduce (Heap.findMin h) (Heap.deleteMin h)
