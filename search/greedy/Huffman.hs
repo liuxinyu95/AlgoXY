@@ -66,13 +66,25 @@ code tr = fromList $ traverse [] tr where
 -- Encode text with a code table
 encode dict = concatMap (dict !)
 
--- Method 2, building Huffman tree by using heap.
+-- Method 2, build Huffman tree by using heap.
 -- Repeatedly pop 2 trees from the heap to merge.
 huffman' :: (Num a, Ord a) => [(b, a)] -> HTr a b
 huffman' = build' . Heap.fromList . map (\(c, w) -> Leaf w c) where
   build' h = reduce (Heap.findMin h) (Heap.deleteMin h)
   reduce x Heap.E = x
   reduce x h = build' $ Heap.insert (Heap.deleteMin h) (merge x (Heap.findMin h))
+
+-- Method 3, If the symbol assoc list is ordered, Huffman tree can be
+-- built in linear time with a queue.
+huffman'' :: (Num a, Ord a) => [(b, a)] -> HTr a b
+huffman'' = reduce . wrap . sort . map (\(c, w) -> Leaf w c) where
+  wrap xs = delMin ([], xs)
+  reduce (x, ([], [])) = x
+  reduce (x, h) = let (y, (q, xs)) = delMin h in reduce $ delMin (q ++ [merge x y], xs)
+  delMin ([], (x:xs)) = (x, ([], xs))
+  delMin ((q:qs), []) = (q, (qs, []))
+  delMin ((q:qs), (x:xs)) | q < x = (q, (qs, (x:xs)))
+                          | otherwise = (x, ((q:qs), xs))
 
 -- Decode with a Huffman tree
 decode tr cs = find tr cs where
@@ -95,3 +107,6 @@ testDecode = decode testTree testCode
 testTree' = huffman' $ freq "hello wired world"
 testCode' = encode (code testTree') "hello"
 testDecode' = decode testTree' testCode'
+testTree'' = huffman'' $ freq "hello wired world"
+testCode'' = encode (code testTree'') "hello"
+testDecode'' = decode testTree'' testCode''
