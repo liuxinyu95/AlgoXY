@@ -1,1 +1,7 @@
-python ../../datastruct/tree/red-black-tree/src/rbt2dot.py -o huffman-tr.dot "((((. O1 .) 2 (. R1 .)) 5 (. N3 .)) 13 (((. T2 .) 4 (. I2 .)) 8 ((. A2 .) 4 ((. E1 .) 2 (. L1 .)))))"
+#python ../../datastruct/tree/red-black-tree/src/rbt2dot.py -o huffman-tr.dot "((((. O1 .) 2 (. R1 .)) 5 (. N3 .)) 13 (((. T2 .) 4 (. I2 .)) 8 ((. A2 .) 4 ((. E1 .) 2 (. L1 .)))))"
+python ../../datastruct/tree/red-black-tree/src/rbt2dot.py -o huffman-tr1.dot "((. E1 .) 2 (. L1 .))"
+python ../../datastruct/tree/red-black-tree/src/rbt2dot.py -o huffman-tr2.dot "((. O1 .) 2 (. R1 .))"
+python ../../datastruct/tree/red-black-tree/src/rbt2dot.py -o huffman-tr3.dot "((. T2 .) 4 (. I2 .))"
+python ../../datastruct/tree/red-black-tree/src/rbt2dot.py -o huffman-tr4.dot "((. A2 .) 4 ((. E1 .) 2 (. L1 .)))"
+python ../../datastruct/tree/red-black-tree/src/rbt2dot.py -o huffman-tr5.dot "(((. O1 .) 2 (. R1 .)) 5 (. N3 .))"
+python ../../datastruct/tree/red-black-tree/src/rbt2dot.py -o huffman-tr6.dot "(((. T2 .) 4 (. I2 .)) 8 ((. A2 .) 4 ((. E1 .) 2 (. L1 .))))"
