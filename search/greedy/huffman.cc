@@ -21,11 +21,11 @@
  * Proceedings of the I.R.E., September 1952, pp 1098¨C1102.
  */
 
-#include <cstdlib>
 #include <algorithm>
 #include <vector>
 #include <string>
 #include <map>
+#include <iostream>
 
 using namespace std;
 
@@ -62,14 +62,14 @@ Node* merge(Node* a, Node* b) {
     return n;
 }
 
-bool less(Node* a, Node* b) { return a->w < b->w; }
+bool lessp(Node* a, Node* b) { return a->w < b->w; }
 
 Node*& min(Node*& x, Node*& y) {
-    return less(x, y) ? x : y;
+    return lessp(x, y) ? x : y;
 }
 
-Node*& max(Node*& y, Node*& y) {
-    return less(x, y) ? y : x;
+Node*& max(Node*& x, Node*& y) {
+    return lessp(x, y) ? y : x;
 }
 
 typedef map<char, string> CodeTab;
@@ -78,32 +78,31 @@ typedef map<char, string> CodeTab;
  * Method 1, Build the Huffman tree by repeatedly extracting the 2
  * trees with the smallest weight.
  */
-Node* huffman(Node **tr, int n) {
-    int i;
-    for (; n > 1; --n) {
-        for (i = n - 3; i >= 0; --i)
-            if (less(t[i], min(t[n-1], t[n-2])))
-                swap(t[i], max(t[n-1], t[n-2]));
-        tr[n-2] = merge(tr[n-1], tr[n-2]);
+Node* huffman(vector<Node*> ts) {
+    int n;
+    while((n = ts.size()) > 1) {
+        for (int i = n - 3; i >= 0; --i)
+            if (lessp(ts[i], min(ts[n-1], ts[n-2])))
+                swap(ts[i], max(ts[n-1], ts[n-2]));
+        ts[n-2] = merge(ts[n-1], ts[n-2]);
+        ts.pop_back();
     }
-    return *tr;
+    return ts.front();
 }
 
-/* Auxiliary functions */
-
 /* Build the code table from a Huffman tree by traversing */
-CodeTab& codetab(Node* t, string bits, CodeTab& codes) {
+void codetab(Node* t, string bits, CodeTab& codes) {
     if (isleaf(t))
         codes[t->c] = bits;
     else {
         codetab(t->left, bits + "0", codes);
         codetab(t->right, bits + "1", codes);
     }
-    return codes;
 }
 
 CodeTab codetable(Node* t) {
-    CodeTab codes = codetab(t, "", CodeTab());
+    CodeTab codes;
+    codetab(t, "", codes);
     return codes;
 }
 
@@ -126,4 +125,31 @@ string decode(Node* root, const string& bits) {
         w += t->c;
     }
     return w;
+}
+
+/*
+ * Auxiliary function
+ * Count the occurrence of every character to build the histogram of a text
+ */
+map<char, int> freq(const string& w) {
+    map<char, int> hist;
+    for (string::const_iterator it = w.begin(); it != w.end(); ++it)
+        ++hist[*it];
+    return hist;
+}
+
+/* Turn a symbol-weight histogram into an array of huffman tree leaves. */
+vector<Node*> nodes(const map<char, int>& hist) {
+    vector<Node*> ns;
+    for (map<char, int>::const_iterator it = hist.begin(); it != hist.end(); ++it)
+        ns.push_back(leaf(it->first, it->second));
+    return ns;
+}
+
+int main(int, char**) {
+    string w = "hello, wired world";
+    Node* tr = huffman(nodes(freq(w)));
+    string cs = encode(codetable(tr), w);
+    cout<<"code: "<<cs<<"\n";
+    cout<<"text: "<<decode(tr, cs)<<"\n";
 }
