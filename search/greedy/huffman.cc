@@ -116,12 +116,17 @@ string encode(CodeTab codes, const string& w) {
 
 /* Decode with a Huffman tree. */
 string decode(Node* root, const string& bits) {
+    cerr<<"decode: "<<bits<<"\n";
     string w;
     for (string::const_iterator it = bits.begin(); it != bits.end(); ++it) {
+        cerr<<*it;
         Node* t = root;
         while (!isleaf(t)) {
-            t = '\0' == *it++ ? t->left : t->right;
+            cerr<<"\nbit=";
+            cerr<<*it;
+            t = '0' == *it++? t->left : t->right;
         }
+        cerr<<"\n";
         w += t->c;
     }
     return w;
