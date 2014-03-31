@@ -118,7 +118,7 @@ string encode(CodeTab codes, const string& w) {
 string decode(Node* root, const string& bits) {
     cerr<<"decode: "<<bits<<"\n";
     string w;
-    for (string::const_iterator it = bits.begin(); it != bits.end(); ++it) {
+    for (string::const_iterator it = bits.begin(); it != bits.end();) {
         cerr<<*it;
         Node* t = root;
         while (!isleaf(t)) {
