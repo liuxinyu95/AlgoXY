@@ -35,9 +35,13 @@ struct Node {
     int w;
     char c;
     Node *left, *right;
+    bool operator<(const Node& a) { return w < a.w; }
 };
 
-int isleaf(Node* a) { return !left && ! right; }
+typedef vector<Node*> Nodes;
+typedef map<char, string> CodeTab;
+
+int isleaf(Node* a) { return (!a->left) && (!a->right); }
 
 Node* leaf(char c, int w) {
     Node* n = new Node();
@@ -63,30 +67,23 @@ Node* merge(Node* a, Node* b) {
     return n;
 }
 
-bool lessp(Node* a, Node* b) { return a->w < b->w; }
-
-Node*& min(Node*& x, Node*& y) {
-    return lessp(x, y) ? x : y;
+void swap(Nodes& ts, int i, int j, int k) {
+    if (ts[j] < ts[k])
+        swap(ts[i], ts[k]);
+    else
+        swap(ts[i], ts[j]);
 }
-
-Node*& max(Node*& x, Node*& y) {
-    return lessp(x, y) ? y : x;
-}
-
-typedef map<char, string> CodeTab;
 
 /*
  * Method 1, Build the Huffman tree by repeatedly extracting the 2
  * trees with the smallest weight.
  */
 Node* huffman(vector<Node*> ts) {
-    cerr<<"started huffman tree building\n";
     int n;
     while((n = ts.size()) > 1) {
-        cerr<<"len(ts)="<<n<<"\n";
         for (int i = n - 3; i >= 0; --i)
-            if (lessp(ts[i], min(ts[n-1], ts[n-2])))
-                swap(ts[i], max(ts[n-1], ts[n-2]));
+            if (ts[i] < min(ts[n-1], ts[n-1]))
+                swap(ts, i, n-1, n-2);
         ts[n-2] = merge(ts[n-1], ts[n-2]);
         ts.pop_back();
     }
@@ -95,7 +92,6 @@ Node* huffman(vector<Node*> ts) {
 
 /* Build the code table from a Huffman tree by traversing */
 void codetab(Node* t, string bits, CodeTab& codes) {
-    fprintf(stderr, "build code table, nil(t)=%d, bits=%s\n", t== NULL, bits.c_str());
     if (isleaf(t))
         codes[t->c] = bits;
     else {
@@ -112,7 +108,6 @@ CodeTab codetable(Node* t) {
 
 /* Encode text with the code table. */
 string encode(CodeTab codes, const string& w) {
-    cerr<<"start encoding\n";
     string bits;
     for (string::const_iterator it = w.begin(); it != w.end(); ++it)
         bits += codes[*it];
@@ -151,21 +146,19 @@ vector<Node*> nodes(const map<char, int>& hist) {
     return ns;
 }
 
-void print_tr(Node* t) {
+void print_tr(Node* t, char end='\n') {
     if (t) {
         cerr<<"("<<t->c<<":"<<t->w<<" ";
-        print_tr(t->left);
-        print_tr(t->right);
-        cerr<<")";
+        print_tr(t->left, 0);
+        print_tr(t->right, 0);
+        cerr<<")"<<end;
     }
 }
 
 int main(int, char**) {
     string w = "hello, wired world";
     Node* tr = huffman(nodes(freq(w)));
-    cerr<<"huffman tree built\n";
     print_tr(tr);
-    cerr<<"before build code table\n";
     string cs = encode(codetable(tr), w);
     cout<<"code: "<<cs<<"\n";
     cout<<"text: "<<decode(tr, cs)<<"\n";
