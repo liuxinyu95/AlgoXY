@@ -93,7 +93,7 @@ decode tr cs = find tr cs where
   find (Branch _ l r) (b:bs) = find (if b == 0 then l else r) bs
 
 -- Auxliary function,
---   count the occurrent of every character to build the histogram of a text.
+--   count the occurrence of every character to build the histogram of a text.
 freq :: (Ord a, Eq a) => [a] -> [(a, Int)]
 freq = map (\x -> (head x, length x)) . group . sort
 
