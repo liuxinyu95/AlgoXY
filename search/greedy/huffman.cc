@@ -25,7 +25,6 @@
 #include <vector>
 #include <string>
 #include <map>
-#include <iostream>
 #include <cstdio>
 
 using namespace std;
@@ -116,17 +115,11 @@ string encode(CodeTab codes, const string& w) {
 
 /* Decode with a Huffman tree. */
 string decode(Node* root, const string& bits) {
-    cerr<<"decode: "<<bits<<"\n";
     string w;
     for (string::const_iterator it = bits.begin(); it != bits.end();) {
-        cerr<<*it;
         Node* t = root;
-        while (!isleaf(t)) {
-            cerr<<"\nbit=";
-            cerr<<*it;
+        while (!isleaf(t))
             t = '0' == *it++? t->left : t->right;
-        }
-        cerr<<"\n";
         w += t->c;
     }
     return w;
@@ -136,10 +129,9 @@ string decode(Node* root, const string& bits) {
  * Auxiliary function
  * Count the occurrence of every character to build the histogram of a text
  */
-map<char, int> freq(const string& w) {
+map<char, int> freq(const char* w) {
     map<char, int> hist;
-    for (string::const_iterator it = w.begin(); it != w.end(); ++it)
-        ++hist[*it];
+    while (*w) ++hist[*w++];
     return hist;
 }
 
@@ -153,19 +145,21 @@ vector<Node*> nodes(const map<char, int>& hist) {
 
 void print_tr(Node* t, char end='\n') {
     if (t) {
-        cerr<<"("<<t->c<<":"<<t->w<<" ";
+        printf("(%c:%d ", t->c, t->w);
         print_tr(t->left, 0);
         print_tr(t->right, 0);
-        cerr<<")"<<end;
+        printf(")%c", end);
     }
 }
 
-int main(int, char**) {
-    string w = "hello, wired world";
+void test() {
+    const char* w = "hello, wired world";
     Node* tr = huffman(nodes(freq(w)));
     print_tr(tr);
     string cs = encode(codetable(tr), w);
-    cout<<"code: "<<cs<<"\n";
-    cout<<"text: "<<decode(tr, cs)<<"\n";
+    printf("code: %s\n", cs.c_str());
+    printf("text: %s\n", decode(tr, cs).c_str());
     release(tr);
 }
+
+int main(int, char**) { test(); }
