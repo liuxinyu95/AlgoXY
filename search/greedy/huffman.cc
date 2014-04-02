@@ -21,10 +21,10 @@
  * Proceedings of the I.R.E., September 1952, pp 1098¨C1102.
  */
 
-#include <algorithm>
-#include <vector>
-#include <string>
-#include <map>
+#include <algorithm> /* builtin swap etc. */
+#include <vector> /* array of huffman trees. */
+#include <string> /* to store variable-length coding/decoding result. */
+#include <map>    /* to store code table. */
 #include <cstdio>
 
 using namespace std;
@@ -106,20 +106,20 @@ CodeTab codetable(Node* t) {
 }
 
 /* Encode text with the code table. */
-string encode(CodeTab codes, const string& w) {
+string encode(CodeTab codes, const char* w) {
     string bits;
-    for (string::const_iterator it = w.begin(); it != w.end(); ++it)
-        bits += codes[*it];
+    while (*w)
+        bits += codes[*w++];
     return bits;
 }
 
 /* Decode with a Huffman tree. */
-string decode(Node* root, const string& bits) {
+string decode(Node* root, const char* bits) {
     string w;
-    for (string::const_iterator it = bits.begin(); it != bits.end();) {
+    while (*bits) {
         Node* t = root;
         while (!isleaf(t))
-            t = '0' == *it++? t->left : t->right;
+            t = '0' == *bits++ ? t->left : t->right;
         w += t->c;
     }
     return w;
@@ -158,7 +158,7 @@ void test() {
     print_tr(tr);
     string cs = encode(codetable(tr), w);
     printf("code: %s\n", cs.c_str());
-    printf("text: %s\n", decode(tr, cs).c_str());
+    printf("text: %s\n", decode(tr, cs.c_str()).c_str());
     release(tr);
 }
 
