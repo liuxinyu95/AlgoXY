@@ -5007,26 +5007,100 @@ tree, and put back to the tree list for further recursive building.
 (T_a, T_b, A') = extract(A)
 \ee
 
-We can scan the tree list to extract the 2 nodes with the smallest weight.
+We can scan the tree list to extract the 2 nodes with the smallest weight. Below
+equation shows that when the scan begins, the first 2 elements are compared and
+initialized as the two minimum one. An empty accumulator is passed as the last
+argument.
 
 \be
 extract(A) = extract'(min(T_1, T_2), max(T_1, T_2), \{T_3, T_4, ... \}, \Phi)
 \ee
 
 For every tree, if its weight is less than the smallest two we've ever found, we
-update the result to contain this tree.
+update the result to contain this tree. For any given tree list $A$, denote the
+first tree in it as $T_1$, and the rest trees except $T_1$ as $A'$. The scan
+process can be defined as the following.
 
 \be
-extract'(T_a, T_b, A, A') = \left \{
+extract'(T_a, T_b, A, B) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
-  (T_a, T_b, A') & A = \Phi \\
+  (T_a, T_b, B) & A = \Phi \\
+  extract'(T_a', T_b', A', \{T_b\} \cup A) & T_1 < T_b\\
+  extract'(T_a, T_b, A', \{T_1\} \cup A) & otherwise
   \end{array}
 \right.
 \ee
 
+Where $T_a' = min(T_1, T_a)$, $T_b' = max(T_1, T_a)$ are the updated two trees with
+the smallest weights.
 
-TODO: Huffman tree building.
+The following Haskell example program implements this Huffman tree building algorithm.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+build [x] = x
+build xs = build ((merge x y) : xs') where
+  (x, y, xs') = extract xs
+
+extract (x:y:xs) = min2 (min x y) (max x y) xs [] where
+  min2 x y [] xs = (x, y, xs)
+  min2 x y (z:zs) xs | z < y = min2 (min z x) (max z x) zs (y:xs)
+                     | otherwise = min2 x y zs (z:xs)
+\end{lstlisting}
+
+This building solution can also be realized imperatively. Given an array of huffman
+nodes, we can use the last two cells to hold the nodes with the smallest weights.
+Then we scan the rest of the array from right to left. Whenever there is a node with
+the smaller weight, this node will be exchanged with the bigger one of the last two.
+After all nodes have been examined, we merge the trees in the last two cells, and drop
+the last cell. This shrink the array by one. We repeat this process till there is only
+one tree left.
+
+\begin{algorithmic}[1]
+\Function{Huffman}{$A$}
+  \While{$|A|>1$}
+    \State $n \gets |A|$
+    \For{$i \gets n - 2 $ down to $1$}
+      \If{$A[i] <$ \Call{Min}{$A[n], A[n-1]$}}
+        \State \textproc{Exchange} $A[i]$ $\leftrightarrow$ \Call{Min}{$A[n], A[n-1]$}
+      \EndIf
+    \EndFor
+    \State $A[n-1] \gets$ \Call{Merge}{$A[n], A[n-1]$}
+    \State \Call{Drop}{$A[n]$}
+  \EndWhile
+  \State \Return $A[1]$
+\EndFunction
+\end{algorithmic}
+
+The following ISO C++ example program implements this algorithm. Note that this algorithm
+doesn't need the last two elements are ordered.
+
+\lstset{language=C++}
+\begin{lstlisting}
+void swap(Nodes& ts, int i, int j, int k) {
+    swap(ts[i], ts[ts[j] < ts[k] ? k : j]);
+}
+
+Node* huffman(vector<Node*> ts) {
+    int n;
+    while((n = ts.size()) > 1) {
+        for (int i = n - 3; i >= 0; --i)
+            if (ts[i] < min(ts[n-1], ts[n-1]))
+                swap(ts, i, n-1, n-2);
+        ts[n-2] = merge(ts[n-1], ts[n-2]);
+        ts.pop_back();
+    }
+    return ts.front();
+}
+\end{lstlisting}
+
+The algorithm merges all the leaves, and each time it need scan the list. Thus the performance
+is quadratic.
+
+TODO: The heap solution
+
+TODO: The linear solution when the assoc is ordered.
 
 \subsubsection{Dynamic programming}
 

@@ -67,10 +67,7 @@ Node* merge(Node* a, Node* b) {
 }
 
 void swap(Nodes& ts, int i, int j, int k) {
-    if (ts[j] < ts[k])
-        swap(ts[i], ts[k]);
-    else
-        swap(ts[i], ts[j]);
+    swap(ts[i], ts[ts[j] < ts[k] ? k : j]);
 }
 
 /*

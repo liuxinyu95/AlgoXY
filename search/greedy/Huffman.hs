@@ -50,9 +50,8 @@ build xs = build ((merge x y) : xs') where
 -- Extract the 2 elements with the smallest weight.
 extract (x:y:xs) = min2 (min x y) (max x y) xs [] where
   min2 x y [] xs = (x, y, xs)
-  min2 x y (z:zs) xs | z < x = min2 z x zs (y:xs)
-                     | y < z = min2 x y zs (z:xs)
-                     | otherwise = min2 x z zs (y:xs)
+  min2 x y (z:zs) xs | z < y = min2 (min z x) (max z x) zs (y:xs)
+                     | otherwise = min2 x y zs (z:xs)
 
 -- Build Huffman tree from an associcate list of character and weight
 huffman :: (Num a, Ord a) => [(b, a)] -> HTr a b
