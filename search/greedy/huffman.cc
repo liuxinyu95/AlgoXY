@@ -26,6 +26,7 @@
 #include <string> /* to store variable-length coding/decoding result. */
 #include <map>    /* to store code table. */
 #include <cstdio>
+#include "heap.hpp"
 
 using namespace std;
 
@@ -84,6 +85,14 @@ Node* huffman(vector<Node*> ts) {
         ts.pop_back();
     }
     return ts.front();
+}
+
+/*
+ * Method 2, Build the Huffman tree by using Heap.
+ * Repeatedly pop 2 trees from the heap for merging.
+ */
+Node* huffman1(vector<Node*> ts) {
+
 }
 
 /* Build the code table from a Huffman tree by traversing */
