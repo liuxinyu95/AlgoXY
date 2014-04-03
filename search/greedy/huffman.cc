@@ -92,7 +92,17 @@ Node* huffman(vector<Node*> ts) {
  * Repeatedly pop 2 trees from the heap for merging.
  */
 Node* huffman1(vector<Node*> ts) {
-
+    Node *t1, *t2;
+    unsigned n = ts.size();
+    build_heap(ts, n);
+    while (n > 1) {
+        t1 = top(ts);
+        pop(ts, n--);
+        t2 = top(ts);
+        pop(ts, n--);
+        insert(merge(t1, t2), ts, n++);
+    }
+    return top(ts);
 }
 
 /* Build the code table from a Huffman tree by traversing */
@@ -158,9 +168,10 @@ void print_tr(Node* t, char end='\n') {
     }
 }
 
-void test() {
+template<typename Func>
+void test(Func huffman_func) {
     const char* w = "hello, wired world";
-    Node* tr = huffman(nodes(freq(w)));
+    Node* tr = huffman_func(nodes(freq(w)));
     print_tr(tr);
     string cs = encode(codetable(tr), w);
     printf("code: %s\n", cs.c_str());
@@ -168,4 +179,7 @@ void test() {
     release(tr);
 }
 
-int main(int, char**) { test(); }
+int main(int, char**) {
+    test(huffman);
+    test(huffman1);
+}
