@@ -77,6 +77,7 @@ void swap(Nodes& ts, int i, int j, int k) {
  * Method 1, Build the Huffman tree by repeatedly extracting the 2
  * trees with the smallest weight.
  */
+// TODO: there is bug in method 1.
 Node* huffman(vector<Node*> ts) {
     int n;
     while((n = ts.size()) > 1) {
