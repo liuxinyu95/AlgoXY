@@ -69,6 +69,8 @@ bool lessp(Node* a, Node* b) { return a->w < b->w; }
 
 bool greaterp(Node* a, Node* b) { return b->w < a->w; }
 
+Node* max(Node* a, Node* b) { return lessp(a, b) ? b : a; }
+
 void swap(Nodes& ts, int i, int j, int k) {
     swap(ts[i], ts[ts[j] < ts[k] ? k : j]);
 }
@@ -77,12 +79,11 @@ void swap(Nodes& ts, int i, int j, int k) {
  * Method 1, Build the Huffman tree by repeatedly extracting the 2
  * trees with the smallest weight.
  */
-// TODO: there is bug in method 1.
 Node* huffman(vector<Node*> ts) {
     int n;
     while((n = ts.size()) > 1) {
         for (int i = n - 3; i >= 0; --i)
-            if (lessp(ts[i], min(ts[n-1], ts[n-1])))
+            if (lessp(ts[i], max(ts[n-1], ts[n-2])))
                 swap(ts, i, n-1, n-2);
         ts[n-2] = merge(ts[n-1], ts[n-2]);
         ts.pop_back();
