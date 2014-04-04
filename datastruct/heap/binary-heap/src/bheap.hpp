@@ -25,6 +25,7 @@
 #include <functional> //std::ptr_fun
 #include <vector>     //random access needed.
 #include <iterator>   //std::insert_iterator
+#include <cassert>
 
 template<class T> struct MinHeap: public std::less<T>{};
 template<class T> struct MaxHeap: public std::greater<T>{};
@@ -57,7 +58,7 @@ struct Range{
 
   reference  operator[](size_t i){ return *(first+i); }
   size_t size() const { return last-first; }
-  
+
   RIter first;
   RIter last;
 };
@@ -84,9 +85,9 @@ T right(T i){ return (i+1)<<1; }
 
 // Heapify with range
 //
-// Liu Xinyu: in STL, Random access iterator and distance 
+// Liu Xinyu: in STL, Random access iterator and distance
 // of the iterators are used to define the function. Although it's more
-// generic, I would rather like to use index of array instead 
+// generic, I would rather like to use index of array instead
 // because the algorithm itself looks clear.
 //
 template<class Array, class LessOp>
@@ -136,21 +137,17 @@ void heapify(R a, typename R::size_t i, LessOp lt){
 template<class Array, class LessOp>
 void build_heap(Array& a, unsigned int n, LessOp lt){
   unsigned int i = (n-1)>>1;
-  while(true){
-    heapify(a, i, n, lt);
-    if(i==0) break; // this is a trick: unsigned int always >=0
-    --i;
-  }
+  do {
+      heapify(a, i, n, lt);
+  } while (i--);
 }
 
 template<class RangeType, class LessOp>
 void build_heap(RangeType a, LessOp lt){
   typename RangeType::size_t i = (a.size()-1)>>1;
-  while(true){
+  do {
     heapify(a, i, lt);
-    if(i==0) break;
-    --i;
-  }
+  } while (i--);
 }
 
 template<class T>
@@ -221,8 +218,8 @@ void heap_fix(Array& a, unsigned int i, LessOp lt){
 }
 
 template<class Array, class LessOp>
-void heap_decrease_key(Array& a, 
-                       unsigned int i, 
+void heap_decrease_key(Array& a,
+                       unsigned int i,
                        typename ValueType<Array>::Result key,
                        LessOp lt){
   if(lt(key, a[i])){
@@ -243,11 +240,11 @@ void heap_decrease_key(Array& a,
 //     // initialize a[0]~a[9]
 //     heap_push(a, n, MinHeap<int>());
 template<class Array, class LessOp>
-void heap_push(Array& a, 
+void heap_push(Array& a,
                unsigned int& n,
                typename ValueType<Array>::Result key,
                LessOp lt){
-  a[n] = key; 
+  a[n] = key;
   heap_fix(a, n, lt);
   ++n;
 }
@@ -259,7 +256,7 @@ void heap_push(R a, typename R::value_type key, LessOp lt){
 }
 
 template<class Iter, class Array, class LessOp>
-void heap_top_k(Iter res, unsigned int k, 
+void heap_top_k(Iter res, unsigned int k,
                 Array& a, unsigned int& n, LessOp lt){
   build_heap(a, n, lt);
   unsigned int count = std::min(k, n);
@@ -278,7 +275,7 @@ void heap_top_k(R a, typename R::size_t k, LessOp lt){
   }
 }
 
-// helper function to print both STL containers and 
+// helper function to print both STL containers and
 // raw arrays
 template<class Iter>
 void print_range(Iter first, Iter last){
