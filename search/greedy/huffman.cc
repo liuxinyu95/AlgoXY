@@ -26,7 +26,6 @@
 #include <string> /* to store variable-length coding/decoding result. */
 #include <map>    /* to store code table. */
 #include <cstdio>
-#include "heap.hpp"
 
 using namespace std;
 
@@ -35,7 +34,6 @@ struct Node {
     int w;
     char c;
     Node *left, *right;
-    bool operator<(const Node& a) { return w < a.w; }
 };
 
 typedef vector<Node*> Nodes;
@@ -67,6 +65,10 @@ Node* merge(Node* a, Node* b) {
     return n;
 }
 
+bool lessp(Node* a, Node* b) { return a->w < b->w; }
+
+bool greaterp(Node* a, Node* b) { return b->w < a->w; }
+
 void swap(Nodes& ts, int i, int j, int k) {
     swap(ts[i], ts[ts[j] < ts[k] ? k : j]);
 }
@@ -79,7 +81,7 @@ Node* huffman(vector<Node*> ts) {
     int n;
     while((n = ts.size()) > 1) {
         for (int i = n - 3; i >= 0; --i)
-            if (ts[i] < min(ts[n-1], ts[n-1]))
+            if (lessp(ts[i], min(ts[n-1], ts[n-1])))
                 swap(ts, i, n-1, n-2);
         ts[n-2] = merge(ts[n-1], ts[n-2]);
         ts.pop_back();
@@ -91,18 +93,26 @@ Node* huffman(vector<Node*> ts) {
  * Method 2, Build the Huffman tree by using Heap.
  * Repeatedly pop 2 trees from the heap for merging.
  */
+Node* pop(vector<Node*>& h) {
+    Node* m = h.front();
+    pop_heap(h.begin(), h.end(), greaterp);
+    h.pop_back();
+    return m;
+}
+
+void push(Node* t, vector<Node*>& h) {
+    h.push_back(t);
+    push_heap(h.begin(), h.end(), greaterp);
+}
+
 Node* huffman1(vector<Node*> ts) {
-    Node *t1, *t2;
-    unsigned n = ts.size();
-    build_heap(ts, n);
-    while (n > 1) {
-        t1 = top(ts);
-        pop(ts, n--);
-        t2 = top(ts);
-        pop(ts, n--);
-        insert(merge(t1, t2), ts, n++);
+    make_heap(ts.begin(), ts.end(), greaterp);
+    while (ts.size() > 1) {
+        Node* t1 = pop(ts);
+        Node* t2 = pop(ts);
+        push(merge(t1, t2), ts);
     }
-    return top(ts);
+    return ts.front();
 }
 
 /* Build the code table from a Huffman tree by traversing */
