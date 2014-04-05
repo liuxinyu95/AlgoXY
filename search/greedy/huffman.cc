@@ -122,14 +122,28 @@ Node* huffman1(Nodes ts) {
  * Method 3, If the symbol-weight list is ordered, Huffman tree
  * can be built in linear time with a queue
  */
-//Node* extract(
+Node* extract(queue<Node*>& q, Nodes& ts) {
+    Node* t;
+    if (!q.empty() && (ts.empty() || lessp(q.front(), ts.back()))) {
+        t = q.front();
+        q.pop();
+    } else {
+        t = ts.back();
+        ts.pop_back();
+    }
+    return t;
+}
 
-// Node* huffman2(vector<Node*> ts) {
-//     queue<Node*> q;
-//     do {
-
-//     }
-// }
+Node* huffman2(Nodes ts) {
+    queue<Node*> q;
+    sort(ts.begin(), ts.end(), greaterp);
+    Node* t = extract(q, ts);
+    while (!q.empty() || !ts.empty()) {
+        q.push(merge(t, extract(q, ts)));
+        t = extract(q, ts);
+    }
+    return t;
+}
 
 /* Build the code table from a Huffman tree by traversing */
 void codetab(Node* t, string bits, CodeTab& codes) {
@@ -208,4 +222,5 @@ void test(Func huffman_func) {
 int main(int, char**) {
     test(huffman);
     test(huffman1);
+    test(huffman2);
 }
