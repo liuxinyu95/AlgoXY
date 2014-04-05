@@ -73,7 +73,7 @@ huffman' = build' . Heap.fromList . map (\(c, w) -> Leaf w c) where
   reduce x Heap.E = x
   reduce x h = build' $ Heap.insert (Heap.deleteMin h) (merge x (Heap.findMin h))
 
--- Method 3, If the symbol assoc list is ordered, Huffman tree can be
+-- Method 3, If the symbol-weight assoc list is ordered, Huffman tree can be
 -- built in linear time with a queue.
 huffman'' :: (Num a, Ord a) => [(b, a)] -> HTr a b
 huffman'' = reduce . wrap . sort . map (\(c, w) -> Leaf w c) where

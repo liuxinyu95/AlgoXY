@@ -25,6 +25,7 @@
 #include <vector> /* array of huffman trees. */
 #include <string> /* to store variable-length coding/decoding result. */
 #include <map>    /* to store code table. */
+#include <queue>
 #include <cstdio>
 
 using namespace std;
@@ -79,7 +80,7 @@ void swap(Nodes& ts, int i, int j, int k) {
  * Method 1, Build the Huffman tree by repeatedly extracting the 2
  * trees with the smallest weight.
  */
-Node* huffman(vector<Node*> ts) {
+Node* huffman(Nodes ts) {
     int n;
     while((n = ts.size()) > 1) {
         for (int i = n - 3; i >= 0; --i)
@@ -95,19 +96,19 @@ Node* huffman(vector<Node*> ts) {
  * Method 2, Build the Huffman tree by using Heap.
  * Repeatedly pop 2 trees from the heap for merging.
  */
-Node* pop(vector<Node*>& h) {
+Node* pop(Nodes& h) {
     Node* m = h.front();
     pop_heap(h.begin(), h.end(), greaterp);
     h.pop_back();
     return m;
 }
 
-void push(Node* t, vector<Node*>& h) {
+void push(Node* t, Nodes& h) {
     h.push_back(t);
     push_heap(h.begin(), h.end(), greaterp);
 }
 
-Node* huffman1(vector<Node*> ts) {
+Node* huffman1(Nodes ts) {
     make_heap(ts.begin(), ts.end(), greaterp);
     while (ts.size() > 1) {
         Node* t1 = pop(ts);
@@ -116,6 +117,19 @@ Node* huffman1(vector<Node*> ts) {
     }
     return ts.front();
 }
+
+/*
+ * Method 3, If the symbol-weight list is ordered, Huffman tree
+ * can be built in linear time with a queue
+ */
+//Node* extract(
+
+// Node* huffman2(vector<Node*> ts) {
+//     queue<Node*> q;
+//     do {
+
+//     }
+// }
 
 /* Build the code table from a Huffman tree by traversing */
 void codetab(Node* t, string bits, CodeTab& codes) {
@@ -164,7 +178,7 @@ map<char, int> freq(const char* w) {
 }
 
 /* Turn a symbol-weight histogram into an array of huffman tree leaves. */
-vector<Node*> nodes(const map<char, int>& hist) {
+Nodes nodes(const map<char, int>& hist) {
     vector<Node*> ns;
     for (map<char, int>::const_iterator it = hist.begin(); it != hist.end(); ++it)
         ns.push_back(leaf(it->first, it->second));
