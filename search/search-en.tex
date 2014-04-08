@@ -4960,7 +4960,7 @@ illustrates one such a building process.
 
 We can reuse the binary tree definition to formalize Huffman coding. We augment
 the weight information, and the symbols are only stored in leaf nodes. The following
-ANSI C like definition, shows an example.
+C like definition, shows an example.
 
 \lstset{language=C}
 \begin{lstlisting}
@@ -5073,11 +5073,13 @@ one tree left.
 \EndFunction
 \end{algorithmic}
 
-The following ISO C++ example program implements this algorithm. Note that this algorithm
-doesn't need the last two elements are ordered.
+The following C++ example program implements this algorithm. Note that this algorithm
+needn't the last two elements being ordered.
 
 \lstset{language=C++}
 \begin{lstlisting}
+typedef vector<Node*> Nodes;
+
 bool lessp(Node* a, Node* b) { return a->w < b->w; }
 
 Node* max(Node* a, Node* b) { return lessp(a, b) ? b : a; }
@@ -5086,7 +5088,7 @@ void swap(Nodes& ts, int i, int j, int k) {
     swap(ts[i], ts[ts[j] < ts[k] ? k : j]);
 }
 
-Node* huffman(vector<Node*> ts) {
+Node* huffman(Nodes ts) {
     int n;
     while((n = ts.size()) > 1) {
         for (int i = n - 3; i >= 0; --i)
@@ -5125,7 +5127,65 @@ reduce(T, H) = \left \{
 \right.
 \ee
 
-TODO: The heap solution
+Function $build$ and $reduce$ are mutually recursive. The following Haskell example program
+implements this algorithm by using heap defined in previous chapter.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+huffman' :: (Num a, Ord a) => [(b, a)] -> HTr a b
+huffman' = build' . Heap.fromList . map (\(c, w) -> Leaf w c) where
+  build' h = reduce (Heap.findMin h) (Heap.deleteMin h)
+  reduce x Heap.E = x
+  reduce x h = build' $ Heap.insert (Heap.deleteMin h) (merge x (Heap.findMin h))
+\end{lstlisting} %$
+
+The heap solution can also be realized imperatively. The leaves are first transfered to
+a heap, so that the one with minimum weight is put on the top. As far as there are more
+than 1 elements in the heap, we extract two smallest, merge them to a bigger one, and
+put back to the heap. The final tree left in the heap is the result Huffman tree.
+
+\begin{algorithmic}[1]
+\Function{Huffman'}{$A$}
+  \State \Call{Build-Heap}{$A$}
+  \While{$|A| > 1$}
+    \State $T_a \gets$ \Call{Heap-Pop}{$A$}
+    \State $T_b \gets$ \Call{Heap-Pop}{$B$}
+    \State \textproc{Heap-Push}($A$, \Call{Merge}{$T_a, T_b$})
+  \EndWhile
+  \State \Return \Call{Heap-Pop}{$A$}
+\EndFunction
+\end{algorithmic}
+
+The following example C++ code implements this heap soltuion. The heap used is
+provided in the standard library. Because the max-heap, but not min-heap would
+be made by default, a greater predicate is explictly passed.
+
+\lstset{language=C++}
+\begin{lstlisting}
+bool greaterp(Node* a, Node* b) { return b->w < a->w; }
+
+Node* pop(Nodes& h) {
+    Node* m = h.front();
+    pop_heap(h.begin(), h.end(), greaterp);
+    h.pop_back();
+    return m;
+}
+
+void push(Node* t, Nodes& h) {
+    h.push_back(t);
+    push_heap(h.begin(), h.end(), greaterp);
+}
+
+Node* huffman1(Nodes ts) {
+    make_heap(ts.begin(), ts.end(), greaterp);
+    while (ts.size() > 1) {
+        Node* t1 = pop(ts);
+        Node* t2 = pop(ts);
+        push(merge(t1, t2), ts);
+    }
+    return ts.front();
+}
+\end{lstlisting}
 
 TODO: The linear solution when the assoc is ordered.
 
