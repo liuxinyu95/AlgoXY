@@ -5156,9 +5156,9 @@ put back to the heap. The final tree left in the heap is the result Huffman tree
 \EndFunction
 \end{algorithmic}
 
-The following example C++ code implements this heap soltuion. The heap used is
-provided in the standard library. Because the max-heap, but not min-heap would
-be made by default, a greater predicate is explictly passed.
+The following example C++ code implements this heap soltuion. The heap used here
+is provided in the standard library. Because the max-heap, but not min-heap would
+be made by default, a greater predication is explictly passed as argument.
 
 \lstset{language=C++}
 \begin{lstlisting}
@@ -5187,7 +5187,135 @@ Node* huffman1(Nodes ts) {
 }
 \end{lstlisting}
 
-TODO: The linear solution when the assoc is ordered.
+When the symbol-weight list has been already sorted, there exists a linear time method
+to build the Huffman tree. Observe that during the Huffman tree building, it produces
+a series of merged trees with weight in asscending order. We can use a queue to
+manage the merged trees. Everytime, we pick the two trees with the smallest weight
+from both the queue and the list, merge them and push the result to the queue.
+All the trees in the list will be processed, and there will be only one tree
+left in the queue. This tree is the result Huffman tree. This process starts
+by passing an empty queue as below.
+
+\be
+build'(A) = reduce'(extract''(\Phi, A))
+\ee
+
+Suppose $A$ is in asscending order by weight, At any time, the tree with the
+smallest weight is either the header of the queue, or the first element of the
+list. Denote the header of the queue is $T_a$, after pops it, the queue is $Q'$;
+The first element in $A$ is $T_b$, the rest elements are hold in $A'$.
+Function $extract''$ can be defined like the following.
+
+\be
+extract''(Q, A) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (T_b, (Q, A')) & Q = \Phi \\
+  (T_a, (Q', A)) & A = \Phi \lor T_a < T_b \\
+  (T_b, (Q, A')) & otherwise
+  \end{array}
+\right.
+\ee
+
+Actually, the paif of queue and tree list can be viewed as a special heap.
+The tree with minimum weight is continously extracted and merge.
+
+\be
+reduce'(T, (Q, A)) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  T & Q = \Phi \land A = \Phi \\
+  reduce'(extract''(push(Q'', merge(T, T')), A'')) & otherwise
+  \end{array}
+\right.
+\ee
+
+Where $(T', (Q'', A'') = extract''(Q, A)$, which means extracting another
+tree. The following Haskell example program shows the implementation of
+this method. Note that this program explictly sort the leaves, which isn't
+neccessary if the leaves are ordered. Again, the list, but not a real
+queue is used here for illustration purpose. List isn't good at pushing
+new element, please refer to the chapter of queue for details about
+it.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+huffman'' :: (Num a, Ord a) => [(b, a)] -> HTr a b
+huffman'' = reduce . wrap . sort . map (\(c, w) -> Leaf w c) where
+  wrap xs = delMin ([], xs)
+  reduce (x, ([], [])) = x
+  reduce (x, h) = let (y, (q, xs)) = delMin h in reduce $ delMin (q ++ [merge x y], xs)
+  delMin ([], (x:xs)) = (x, ([], xs))
+  delMin ((q:qs), []) = (q, (qs, []))
+  delMin ((q:qs), (x:xs)) | q < x = (q, (qs, (x:xs)))
+                          | otherwise = (x, ((q:qs), xs))
+\end{lstlisting} %$
+
+This algorithm can also be realized imperatively.
+
+\begin{algorithmic}[1]
+\Function{Huffman''}{$A$} \Comment{$A$ is ordered by weight}
+  \State $Q \gets \Phi$
+  \State $T \gets$ \Call{Extract}{$Q, A$}n
+  \While{$Q \neq \Phi \lor A \neq \Phi$}
+    \State \textproc{Push}($Q$, \textproc{Merge}($T$, \Call{Extract}{$Q, A$}))
+    \State $T \gets$ \Call{Extract}{$Q, A$}
+  \EndWhile
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
+
+Where function \textproc{Extract} extract the tree with the smallest weight from
+the queue and the list. It mutates the queue and tree if neccessary. Denote
+the head of the queue is $T_a$, and the first element of the list as $T_b$.
+
+\begin{algorithmic}[1]
+\Function{Extract}{$Q, A$}
+  \If{$Q \neq \Phi \land (A = \Phi \lor T_a < T_b)$}
+    \State \Return \Call{Pop}{$Q$}
+  \Else
+    \State \Return \Call{Detach}{$A$}
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+Where procedure \textproc{Detach}($A$), removes the first element from $A$,
+and returns this element as result. In most imperative settings, as detaching
+the first element is slow linear operation for array, we can store the trees
+in descending order by weight, and remove the last element. This is a fast
+constant time operation. The below C++ example code shows this idea.
+
+\lstset{language=C++}
+\begin{lstlisting}
+Node* extract(queue<Node*>& q, Nodes& ts) {
+    Node* t;
+    if (!q.empty() && (ts.empty() || lessp(q.front(), ts.back()))) {
+        t = q.front();
+        q.pop();
+    } else {
+        t = ts.back();
+        ts.pop_back();
+    }
+    return t;
+}
+
+Node* huffman2(Nodes ts) {
+    queue<Node*> q;
+    sort(ts.begin(), ts.end(), greaterp);
+    Node* t = extract(q, ts);
+    while (!q.empty() || !ts.empty()) {
+        q.push(merge(t, extract(q, ts)));
+        t = extract(q, ts);
+    }
+    return t;
+}
+\end{lstlisting}
+
+Note that the sorting isn't neccessary if the trees have already been ordered.
+It can be a linear time reversing in case the trees are in ascending order by
+weight.
+
+TODO: build the code tree and decode.
 
 \subsubsection{Dynamic programming}
 
