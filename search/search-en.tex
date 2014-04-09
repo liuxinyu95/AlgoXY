@@ -5333,7 +5333,72 @@ Altough these three trees are not identical. They are all able to generate the
 most efficient code. The formal proof is skipped here. The detailed information
 can be refered to \cite{Huffman} and Section 16.3 of \cite{CLRS}.
 
-TODO: build the code tree and decode.
+The Huffman tree building is the core idea of Huffman coding. Many things can be
+easily achieved with the Huffman tree. For example, the code table can be generated
+by traversing the tree. We start from the root with an empty prefix $p$,
+for any branches,
+we append a zero to the prefix if turn left, and append a one if turn right. When
+a leaf node is arrived, the symbol representd by this node and the prefix are put
+to the code table. Denote the symbol of a leaf node as $c$, the children for tree
+$T$ as $T_l$ and $T_r$
+respectively. The code table association list can be built with $code(T, \Phi)$,
+which is defined as below.
+
+\be
+code(T, p) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{(c, p)\} & leaf(T) \\
+  code(T_l, p \cup \{0\}) \cup code(T_r, p \cup \{1\}) & otherwise
+  \end{array}
+\right.
+\ee
+
+Where function $leaf(T)$ tests if tree $T$ is a leaf or a branch node.
+The following Haskell example program generate a map as the code table according to
+this algorithm.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+code tr = Map.fromList $ traverse [] tr where
+  traverse bits (Leaf _ c) = [(c, bits)]
+  traverse bits (Branch _ l r) = (traverse (bits ++ [0]) l) ++ (traverse (bits ++ [1]) r)
+\end{lstlisting} %$
+
+The imperative code table generating algorithm is left as exercise.
+The encoding process can scan the text, and look up the code table to output the bit
+sequence. The realization is skipped here.
+
+The decoding process is realized by looking up the Huffman tree according to the bit
+sequence. We start from the root, whenever a zero is received, we turn left, otherwise
+if a one is received, we turn right. If a leaf node is arrived, the symbol represented
+by this leaf is output, and we start another looking up from the root. The decoding
+process ends when all the bits are consumed. Denote the bit sequence as
+$B = \{b_1, b_2, ...\}$, all bits except the first one are hold in $B'$, below
+definition realize the decoding algorithm.
+
+\be
+decode(T, B) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{c\} & B = \Phi \land leaf(T) \\
+  \{c\} \cup decode(root(T), B) & leaf(T) \\
+  decode(T_l, B') & b_1 = 0 \\
+  decode(T_r, B') & otherwise
+  \end{array}
+\right.
+\ee
+
+Where $root(T)$ returns the root of the Huffman tree. The following Haskell example
+code implements this algorithm.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+decode tr cs = find tr cs where
+  find (Leaf _ c) [] = [c]
+  find (Leaf _ c) bs = c : find tr bs
+  find (Branch _ l r) (b:bs) = find (if b == 0 then l else r) bs
+\end{lstlisting}
 
 \subsubsection{Dynamic programming}
 
@@ -5360,6 +5425,7 @@ version?
 \item Compare to the extended Euclid method, the DFS approach is a kind of brute-force searching.
 Improve the extended Euclid approach by finding the best linear combination which minimze
 $|x| + |y|$.
+\item Realize the imperative Huffman code table generating algorithm.
 \end{itemize}
 \end{Exercise}
 
