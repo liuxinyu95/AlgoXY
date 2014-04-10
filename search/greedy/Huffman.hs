@@ -96,6 +96,10 @@ decode tr cs = find tr cs where
 freq :: (Ord a, Eq a) => [a] -> [(a, Int)]
 freq = map (\x -> (head x, length x)) . group . sort
 
+-- Pretty print
+prt (Leaf w c) = "(. " ++ [c] ++ (show w) ++ " .)"
+prt (Branch w l r) = "(" ++ (prt l) ++ " " ++ (show w) ++ " " ++ (prt r) ++ ")"
+
 -- examples:
 
 testData = [('A', 8), ('B', 3), ('C', 1), ('D', 1), ('E', 1), ('F', 1), ('G', 1), ('H', 1)]
