@@ -28,3 +28,5 @@ assoc = (map (\cs -> (head cs, length cs))) . group
 
 coinsUSA = reverse [1, 5, 25, 50, 100]
 
+-- example:
+-- solve 142 coinsUSA
