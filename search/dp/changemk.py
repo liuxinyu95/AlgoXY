@@ -20,13 +20,10 @@
 tab = [[] for _ in range(1000)]
 
 def change(x, cs):
-    if x == 0 or tab[x] != []:
-        return tab[x]
-    a = None
-    for s in [[c] + change(x - c, cs) for c in cs if c <= x]:
-        if a is None or len(s) < len(a):
-            a = s
-    tab[x] = a
+    if x > 0 and tab[x] == []:
+        for s in [[c] + change(x - c, cs) for c in cs if c <= x]:
+            if tab[x] == [] or len(s) < len(tab[x]):
+                tab[x] = s
     return tab[x]
 
 def test():
