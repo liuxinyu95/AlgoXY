@@ -19,6 +19,7 @@
 
 TAB = [1, 1]
 
+# top-bottom recursive solution
 def fibo(n):
     global TAB
     if n > len(TAB):
@@ -27,6 +28,13 @@ def fibo(n):
         TAB[n] = fibo(n-1) + fibo(n-2)
     return TAB[n]
 
+# bottom-up solution
+def fibonacci(n):
+    tab = [1]*n
+    for i in range(2, n):
+        tab[i] = tab[i-1] + tab[i-2]
+    return tab[n-1]
 
 if __name__ == "__main__":
     print fibo(100)
+    print fibonacci(100)
