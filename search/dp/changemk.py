@@ -26,6 +26,9 @@ def change(x, cs):
                 tab[x] = s
     return tab[x]
 
+def changemk(x, cs):
+    pass
+
 def test():
     USA = [1, 5, 25, 50, 100]
     print(change(142, USA))
