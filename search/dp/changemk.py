@@ -16,6 +16,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# [1] ``Dynamic Programming Solution to the Coin Changing Problem''.
+#   2004, open course. CSG 713 Advanced algorithms
+# http://www.ccs.neu.edu/home/jaa/CSG713.04F/Information/Handouts/dyn_prog.pdf
+
+# method 1, top-down recursive solution with table
 
 tab = [[] for _ in range(1000)]
 
@@ -26,15 +31,29 @@ def change(x, cs):
                 tab[x] = s
     return tab[x]
 
+# method 2, bottom-up DP solution
 def changemk(x, cs):
-    pass
+    s = [[] for _ in range(x+1)]
+    for i in range(1, x+1):
+        for c in cs:
+            if c <= i and (s[i] == [] or 1 + len(s[i-c]) < len(s[i])):
+                s[i] = [c] + s[i-c]
+    return s[x]
+
+#method 3, bottom-up DP solution, with fewer space based on [1]
+
+USA = [1, 5, 25, 50, 100]
 
 def test():
-    USA = [1, 5, 25, 50, 100]
     print(change(142, USA))
     for i in range(1000):
         tab[i] = []
     print(change(6, [1, 2, 4]))
 
+def test1():
+    print(changemk(142, USA))
+    print(changemk(6, [1, 2, 4]))
+
 if __name__ == "__main__":
     test()
+    test1()
