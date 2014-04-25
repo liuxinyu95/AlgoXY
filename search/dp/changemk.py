@@ -32,6 +32,7 @@ def change(x, cs):
     return tab[x]
 
 # method 2, bottom-up DP solution
+
 def changemk(x, cs):
     s = [[] for _ in range(x+1)]
     for i in range(1, x+1):
@@ -41,6 +42,23 @@ def changemk(x, cs):
     return s[x]
 
 #method 3, bottom-up DP solution, with fewer space based on [1]
+
+def chgmk(x, cs):
+    cnt = [0] + [x+1] * x
+    s = [0]
+    for i in range(1, x+1):
+        coin = 0
+        for c in cs:
+            if c <= i and 1 + cnt[i-c] < cnt[i]:
+                cnt[i] = 1 + cnt[i-c]
+                coin = c
+        s.append(coin)
+    r = []
+    while x > 0:
+        r.append(s[x])
+        x = x - s[x]
+    return r
+
 
 USA = [1, 5, 25, 50, 100]
 
@@ -54,6 +72,11 @@ def test1():
     print(changemk(142, USA))
     print(changemk(6, [1, 2, 4]))
 
+def test2():
+    print(chgmk(142, USA))
+    print(chgmk(6, [1, 2, 4]))
+
 if __name__ == "__main__":
     test()
     test1()
+    test2()
