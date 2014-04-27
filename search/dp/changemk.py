@@ -59,6 +59,7 @@ def chgmk(x, cs):
         x = x - s[x]
     return r
 
+# Examples
 
 USA = [1, 5, 25, 50, 100]
 
