@@ -20,6 +20,11 @@ import Data.List (group, minimumBy)
 import Data.Function (on)
 import Data.Sequence (Seq, singleton, index, (|>))
 
+-- [1] ``Dynamic Programming Solution to the Coin Changing Problem''.
+--   2004, open course. CSG 713 Advanced algorithms
+-- http://www.ccs.neu.edu/home/jaa/CSG713.04F/Information/Handouts/dyn_prog.pdf
+
+
 -- Method 1, Top-down recursive solution without store the sub optimal solutions
 
 solve cs = assoc . change cs
@@ -29,12 +34,11 @@ change cs x = minimumBy (compare `on` length) [c:change cs (x - c) | c <- cs, c 
 
 assoc = (map (\cs -> (head cs, length cs))) . group
 
--- Method 2, Top-down recursive solution with table to record sub optimal solutions
+-- Method 2, Top-down recursive solution with table to record sub optimal solutions [1]
 
-changemk x cs = change' 0 $ singleton (0, 0) where
-  change' :: Int -> Seq (Int, Int) -> [Int]
-  change' i tab | i == x = makeChange x
-                | otherwise = change' (i + 1) tab where
+changemk x cs = change' 1 $ singleton (0, 0) where
+  change' i tab | i == x + 1 = makeChange x
+                | otherwise = change' (i + 1) tab' where
                   tab' = tab |> (foldr sel ((x + 1), 0) $ filter (<=i) cs)
                   sel c (m, coin) = min (1 + fst (index tab (i - c)), c) (m, coin)
                   makeChange 0 = []
@@ -46,5 +50,5 @@ coinsTest = [1, 2, 4]
 -- example:
 -- solve coinsUSA 142 -- Don't do this it's takes too long time
 -- solve [1, 2, 4] 6 ==> [(2,1),(4,1)]
--- changemk 142 [1, 5, 25, 50, 100]
--- changemk 6 [1, 2, 4]
+testChange1 = changemk 142 [1, 5, 25, 50, 100]
+testChange2 = changemk 6 [1, 2, 4]
