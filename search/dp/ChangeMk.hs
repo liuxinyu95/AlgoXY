@@ -18,8 +18,9 @@ module ChangeMk where
 
 import Data.List (group, minimumBy)
 import Data.Function (on)
+import Data.Sequence (Seq, singleton, index, (|>))
 
--- Top-down recursive solution
+-- Method 1, Top-down recursive solution without store the sub optimal solutions
 
 solve cs = assoc . change cs
 
@@ -28,9 +29,22 @@ change cs x = minimumBy (compare `on` length) [c:change cs (x - c) | c <- cs, c 
 
 assoc = (map (\cs -> (head cs, length cs))) . group
 
+-- Method 2, Top-down recursive solution with table to record sub optimal solutions
+
+changemk x cs = change' 0 $ singleton (0, 0) where
+  change' :: Int -> Seq (Int, Int) -> [Int]
+  change' i tab | i == x = makeChange x
+                | otherwise = change' (i + 1) tab where
+                  tab' = tab |> (foldr sel ((x + 1), 0) $ filter (<=i) cs)
+                  sel c (m, coin) = min (1 + fst (index tab (i - c)), c) (m, coin)
+                  makeChange 0 = []
+                  makeChange x = let c = snd $ index tab x in c : makeChange (x - c)
+
 coinsUSA = reverse [1, 5, 25, 50, 100]
 coinsTest = [1, 2, 4]
 
 -- example:
 -- solve coinsUSA 142 -- Don't do this it's takes too long time
 -- solve [1, 2, 4] 6 ==> [(2,1),(4,1)]
+-- changemk 142 [1, 5, 25, 50, 100]
+-- changemk 6 [1, 2, 4]
