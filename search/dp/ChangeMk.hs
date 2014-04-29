@@ -36,13 +36,12 @@ assoc = (map (\cs -> (head cs, length cs))) . group
 
 -- Method 2, Top-down recursive solution with table to record sub optimal solutions [1]
 
-changemk x cs = change' 1 $ singleton (0, 0) where
-  change' i tab | i == x + 1 = makeChange x
-                | otherwise = change' (i + 1) tab' where
-                  tab' = tab |> (foldr sel ((x + 1), 0) $ filter (<=i) cs)
-                  sel c (m, coin) = min (1 + fst (index tab (i - c)), c) (m, coin)
-                  makeChange 0 = []
-                  makeChange x = let c = snd $ index tab x in c : makeChange (x - c)
+changemk x cs = makeChange x $ foldl change' (singleton (0, 0)) [1..x] where
+  change' tab i = let sel c = min (1 + fst (index tab (i - c)), c)
+                  in tab |> (foldr sel ((x + 1), 0) $ filter (<=i) cs)
+  makeChange 0 _ = []
+  makeChange x tab = let c = snd $ index tab x in c : makeChange (x - c) tab
+
 
 coinsUSA = reverse [1, 5, 25, 50, 100]
 coinsTest = [1, 2, 4]
