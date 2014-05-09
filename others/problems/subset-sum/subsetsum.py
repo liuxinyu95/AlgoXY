@@ -71,9 +71,9 @@ def subsetsum(xs, s):
             if low <= j1 and j1 <= up and tab[-1][j1-low] != []:
                 row[j-low] = row[j-low] + [[x] + ys for ys in tab[-1][j1-low]]
         tab.append(row)
-    # print "low=", low, "up=", up
-    #
     return tab[-1][s-low]
+
+# TODO: save space
 
 def test():
     for i in xrange(100):
