@@ -66,12 +66,12 @@ def subsetsum(xs, s):
         tab1 = tab[:]
         for j in xrange(low, up+1):
             if x == j:
-                tab1[j-low].append([x])
+                tab1[j].append([x])
             j1 = j - x
-            if low <= j1 and j1 <= up and tab[j1-low] != []:
-                tab1[j-low] = tab1[j-low] + [[x] + ys for ys in tab[j1-low]]
+            if low <= j1 and j1 <= up and tab[j1] != []:
+                tab1[j] = tab1[j] + [[x] + ys for ys in tab[j1]]
         tab = tab1
-    return tab[s-low]
+    return tab[s]
 
 def test():
     for i in xrange(100):
