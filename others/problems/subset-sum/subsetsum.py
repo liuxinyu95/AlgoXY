@@ -21,35 +21,18 @@ import random
 
 # DP solution based on [1].
 # Note the following solution only answers the existence of subset for a given value.
-
-class qtab:
-    def __init__(self, n, low, up):
-        self.q = [[False]*(up-low+1) for x in xrange(n)] # this is tricky!!![[False]*(up-low+1)]*n
-        self.l = low
-        self.u = up
-
-    def set(self, i, j, x):
-        self.q[i][j-self.l] = x
-
-    def get(self, i, j):
-        if j<self.l or j>self.u:
-            return False
-        return self.q[i][j-self.l]
-
 def solve(xs, s):
     low = sum([x for x in xs if x < 0])
     up  = sum([x for x in xs if x > 0])
-    if s < low or s > up:
-        return False
-    n = len(xs)
-    q = qtab(n, low, up)
-    for i in xrange(0, n):
+    # tab = [[x == v for v in xrange(low, up+1)] for x in xs]
+    tab = [[False for v in xrange(low, up+1)] for x in xs]
+    for i in xrange(0, len(xs)):
         for j in xrange(low, up+1):
-            if i == 0:
-                q.set(i, j, xs[i] == j)
-            else:
-                q.set(i, j, q.get(i-1, j) or xs[i]==j or q.get(i-1, j-xs[i]))
-    return q.get(n-1, s)
+            tab[i][j] = (xs[i] == j)
+            j1 = j - xs[i];
+            if i > 0:
+                tab[i][j] = (tab[i][j] or tab[i-1][j] or (low <= j1 and j1 <= up and tab[i-1][j1]))
+    return tab[-1][s]
 
 def brute_force(xs, s):
     if len(xs)==1:
