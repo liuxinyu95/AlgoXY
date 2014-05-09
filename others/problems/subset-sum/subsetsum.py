@@ -57,6 +57,24 @@ def brute_force(xs, s):
     else:
         return brute_force(xs[1:], s) or xs[0]==s or brute_force(xs[1:], s-xs[0])
 
+# Give the detailed solution for subset sum, (not only output the existence result)
+def subsetsum(xs, s):
+    low = sum([x for x in xs if x < 0])
+    up  = sum([x for x in xs if x > 0])
+    tab = [[[] for _ in xrange(low, up+1)]]
+    for x in xs:
+        row = tab[-1][:]
+        for j in xrange(low, up+1):
+            if x == j:
+                row[j-low].append([x])
+            j1 = j - x
+            if low <= j1 and j1 <= up and tab[-1][j1-low] != []:
+                row[j-low] = row[j-low] + [[x] + ys for ys in tab[-1][j1-low]]
+        tab.append(row)
+    # print "low=", low, "up=", up
+    #
+    return tab[-1][s-low]
+
 def test():
     for i in xrange(100):
         n = random.randint(1, 10)
@@ -64,7 +82,10 @@ def test():
         l = sum([x for x in xs if x<0])
         u = sum([x for x in xs if x>0])
         s = random.randint(l, u)
-        assert(brute_force(xs, s) == solve(xs, s))
+        exist = brute_force(xs, s)
+        assert( exist == solve(xs, s))
+        if exist:
+            print xs, s, "==>", subsetsum(xs, s)
 
 if __name__ == "__main__":
     test()
