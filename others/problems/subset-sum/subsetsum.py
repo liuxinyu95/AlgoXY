@@ -61,19 +61,17 @@ def brute_force(xs, s):
 def subsetsum(xs, s):
     low = sum([x for x in xs if x < 0])
     up  = sum([x for x in xs if x > 0])
-    tab = [[[] for _ in xrange(low, up+1)]]
+    tab = [[] for _ in xrange(low, up+1)]
     for x in xs:
-        row = tab[-1][:]
+        tab1 = tab[:]
         for j in xrange(low, up+1):
             if x == j:
-                row[j-low].append([x])
+                tab1[j-low].append([x])
             j1 = j - x
-            if low <= j1 and j1 <= up and tab[-1][j1-low] != []:
-                row[j-low] = row[j-low] + [[x] + ys for ys in tab[-1][j1-low]]
-        tab.append(row)
-    return tab[-1][s-low]
-
-# TODO: save space
+            if low <= j1 and j1 <= up and tab[j1-low] != []:
+                tab1[j-low] = tab1[j-low] + [[x] + ys for ys in tab[j1-low]]
+        tab = tab1
+    return tab[s-low]
 
 def test():
     for i in xrange(100):
