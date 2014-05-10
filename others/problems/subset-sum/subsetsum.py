@@ -24,8 +24,7 @@ import random
 def solve(xs, s):
     low = sum([x for x in xs if x < 0])
     up  = sum([x for x in xs if x > 0])
-    # tab = [[x == v for v in xrange(low, up+1)] for x in xs]
-    tab = [[False for v in xrange(low, up+1)] for x in xs]
+    tab = [[False]*(up-low+1) for _ in xs]
     for i in xrange(0, len(xs)):
         for j in xrange(low, up+1):
             tab[i][j] = (xs[i] == j)
