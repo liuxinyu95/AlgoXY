@@ -45,7 +45,7 @@ def get(xs, s, tab, n):
         r.append([xs[n]])
     if n > 0:
         if tab[n-1][s]:
-            r.append(get(xs, s, tab, n-1))
+            r = r + get(xs, s, tab, n-1)
         if tab[n-1][s - xs[n]]:
             r = r + [[xs[n]] + ys for ys in get(xs, s - xs[n], tab, n-1)]
     return r
