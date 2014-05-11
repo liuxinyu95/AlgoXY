@@ -6319,8 +6319,82 @@ $x_1$ & F & F & ... & T & ... & F \\
 \hline
 \end{tabular}
 
-With the next element $x_2$, the possible There are three possible sums:
-$x_2$, $x_1$, and $x_1 + x_2$.
+With the next element $x_2$, There are three possible sums.
+Similar as the first row, $\{x_2\}$ sums to $x_2$. For all possible sums
+in previous row, they can also been achieved with $x_2$. So the cell
+below to $x_1$ should also be filled as true. By adding $x_2$ to all
+possilbe sums so far, we can also get some new values. That the cell
+represents $x_1 + x_2$ should be true.
+
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|}
+\hline
+ & $s_l$ & $s_l+1$ & ... & $x_1$ & ... & $x_2$ & ... & $x_1 + x_2$ & ... & $s_u$ \\
+\hline
+$x_1$ & F & F & ... & T & ... & F & ... & F & ... & F \\
+\hline
+$x_2$ & F & F & ... & T & ... & T & ... & T & ... & F \\
+\hline
+\end{tabular}
+
+Generally speaking, when fill the $i$-th row, all the possible sums
+constructed with $\{x_1, x_2, ..., x_{i-1}$ so far
+can also be achieved with $x_i$. So the cells previouly are true
+should also be true in this new row. The cell represents value $x_i$
+should also be true since the singleton set $\{x_i\}$ sums to it.
+And we can also adds $x_i$ to all previously constructed sums to
+get the new results. Cells represent these new sums should also
+be filled as true.
+
+When all the elements are processed like this, a table with $|X|$
+rows is built. Looking up the cell represents $s$ in the last row
+tells if there exists subset can sum to this value.
+
+\begin{algorithmic}[1]
+\Function{Subset-Sum}{$X, s$}
+  \State $s_l \gets \sum \{x \in X, x < 0\}$
+  \State $s_u \gets \sum \{x \in X, x > 0\}$
+  \State $n \gets |X|$
+  \State $T \gets \{\{False, False, ...\}, \{False, False, ...\}, ...\}$ \Comment{$n \times (s_u - s_l + 1)$}
+  \For{$i \gets 1$ to $n$}
+    \For{$j \gets s_l$ to $s_u$}
+      \If{$X[i] = j$}
+        \State $T[i][j] \gets True$
+      \EndIf
+      \If{$i > 1$}
+        \State $T[i][j] \gets T[i][j] \lor T[i-1][j]$
+        \State $j' \gets j - X[i]$
+        \If{$s_l \leq j' \leq s_u$}
+          \State $T[i][j] \gets T[i][j] \lor T[i-1][j']$
+        \EndIf
+      \EndIf
+    \EndFor
+  \EndFor
+  \State \Return $T[n][s]$
+\EndFunction
+\end{algorithmic}
+
+Note that the index to the columns of the table, doesn't range from 1 to $s_u-s_l + 1$,
+but maps directly from $s_l$ to $s_u$. Because most programming environment don't support
+negative index, this can be worked around by using $T[i][j-s_l]$. The following example
+Python program utilizes the properity of negative indexing.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def solve(xs, s):
+    low = sum([x for x in xs if x < 0])
+    up  = sum([x for x in xs if x > 0])
+    tab = [[False]*(up-low+1) for _ in xs]
+    for i in xrange(0, len(xs)):
+        for j in xrange(low, up+1):
+            tab[i][j] = (xs[i] == j)
+            j1 = j - xs[i];
+            tab[i][j] = (tab[i][j] or tab[i-1][j] or (low <= j1 and j1 <= up and tab[i-1][j1]))
+    return tab[-1][s]
+\end{lstlisting}
+
+Note that this program doesn't use different branches for $i = 0$ and $i = 1, 3, ..., n-1$. This
+is when $i = 0$, the row index to $i - 1 = -1$ refers to the last row in the table, which are
+all false value. This simplified the logic one more step.
 
 \begin{Exercise}
 \begin{itemize}
