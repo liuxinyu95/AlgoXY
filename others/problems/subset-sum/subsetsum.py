@@ -17,10 +17,16 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-import random
+import random # for verification purpose only
 
-# DP solution based on [1].
-# Note the following solution only answers the existence of subset for a given value.
+# A brute-force solution only answers the existence of subset for a given sum.
+def brute_force(xs, s):
+    if len(xs)==1:
+        return xs[0] == s
+    else:
+        return brute_force(xs[1:], s) or xs[0]==s or brute_force(xs[1:], s-xs[0])
+
+# Method 1, DP solution based on [1].
 def solve(xs, s):
     low = sum([x for x in xs if x < 0])
     up  = sum([x for x in xs if x > 0])
@@ -29,17 +35,22 @@ def solve(xs, s):
         for j in xrange(low, up+1):
             tab[i][j] = (xs[i] == j)
             j1 = j - xs[i];
-            if i > 0:
-                tab[i][j] = (tab[i][j] or tab[i-1][j] or (low <= j1 and j1 <= up and tab[i-1][j1]))
-    return tab[-1][s]
+            # test if i > 0 can be skipped here.
+            tab[i][j] = (tab[i][j] or tab[i-1][j] or (low <= j1 and j1 <= up and tab[i-1][j1]))
+    return get(xs, s, tab, len(xs)-1) #existence: tab[-1][s]
 
-def brute_force(xs, s):
-    if len(xs)==1:
-        return xs[0] == s
-    else:
-        return brute_force(xs[1:], s) or xs[0]==s or brute_force(xs[1:], s-xs[0])
+def get(xs, s, tab, n):
+    r = []
+    if xs[n] == s:
+        r.append([xs[n]])
+    if n > 0:
+        if tab[n-1][s]:
+            r.append(get(xs, s, tab, n-1))
+        if tab[n-1][s - xs[n]]:
+            r = r + [[xs[n]] + ys for ys in get(xs, s - xs[n], tab, n-1)]
+    return r
 
-# Give the detailed solution for subset sum, (not only output the existence result)
+# Method 2: Use a vector instead of a 2D table.
 def subsetsum(xs, s):
     low = sum([x for x in xs if x < 0])
     up  = sum([x for x in xs if x > 0])
@@ -55,6 +66,7 @@ def subsetsum(xs, s):
         tab = tab1
     return tab[s]
 
+# Verification
 def test():
     for i in xrange(100):
         n = random.randint(1, 10)
@@ -63,7 +75,7 @@ def test():
         u = sum([x for x in xs if x>0])
         s = random.randint(l, u)
         exist = brute_force(xs, s)
-        assert( exist == solve(xs, s))
+        assert( exist == (solve(xs, s) != []))
         if exist:
             print xs, s, "==>", subsetsum(xs, s)
 
