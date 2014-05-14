@@ -29,7 +29,6 @@ import Test.QuickCheck
 -- Naive Top-down recursive method, note that there are a lot of
 -- overlapping subproblems, so the efficiency is poor.
 
-lcs :: (Eq a) => [a] -> [a] -> [a]
 lcs [] _ = []
 lcs _ [] = []
 lcs (x:xs) (y:ys) | x == y = x : lcs xs ys
