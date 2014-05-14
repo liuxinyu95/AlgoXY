@@ -34,7 +34,7 @@ change cs x = minimumBy (compare `on` length) [c:change cs (x - c) | c <- cs, c 
 
 assoc = (map (\cs -> (head cs, length cs))) . group
 
--- Method 2, Top-down recursive solution with table to record sub optimal solutions [1]
+-- Method 2, Bottom-up dynamic programming solution with finger tree.[1]
 
 changemk x cs = makeChange x $ foldl change' (singleton (0, 0)) [1..x] where
   change' tab i = let sel c = min (1 + fst (index tab (i - c)), c)
