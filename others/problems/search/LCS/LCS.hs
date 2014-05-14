@@ -20,9 +20,13 @@ module LCS where
 
 import Data.Function (on)
 import Data.List (maximumBy, subsequences, intersect)
+import Data.Sequence (Seq, singleton, fromList, index, (|>))
 import Test.QuickCheck
 
--- Top-down recursive method, note that there are a lot of
+-- [1]. ``Longest common subsequence problem''.
+--        http://en.wikipedia.org/wiki/Longest_common_subsequence_problem
+
+-- Naive Top-down recursive method, note that there are a lot of
 -- overlapping subproblems, so the efficiency is poor.
 
 lcs :: (Eq a) => [a] -> [a] -> [a]
@@ -30,3 +34,11 @@ lcs [] _ = []
 lcs _ [] = []
 lcs (x:xs) (y:ys) | x == y = x : lcs xs ys
                   | otherwise = maximumBy (compare `on` length) [lcs xs (y:ys), lcs (x:xs) ys]
+
+-- Bottom-up dynamic programming solution with finger tree
+lcs' xs ys = get m n $ foldl f (singleton $ fromList $ replicate n 0) (zip [1..] xs) where
+  (m, n) = (length xs, length ys)
+  f tab (i, x) = tab |> foldl longer (singleton 0) (zip [1..] ys) where
+    longer r (j, y) r |> if x == y then 1 + (tab `index` (i-1) `index` (j-1))
+                         else max (tab `index` (i-1) `index` j) (r `index` (j-1))
+  --TODO get
