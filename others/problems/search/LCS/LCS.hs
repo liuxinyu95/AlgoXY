@@ -36,9 +36,16 @@ lcs (x:xs) (y:ys) | x == y = x : lcs xs ys
                   | otherwise = maximumBy (compare `on` length) [lcs xs (y:ys), lcs (x:xs) ys]
 
 -- Bottom-up dynamic programming solution with finger tree
-lcs' xs ys = get m n $ foldl f (singleton $ fromList $ replicate n 0) (zip [1..] xs) where
+lcs' xs ys = construct $ foldl f (singleton $ fromList $ replicate (n+1) 0) (zip [1..] xs) where
   (m, n) = (length xs, length ys)
-  f tab (i, x) = tab |> foldl longer (singleton 0) (zip [1..] ys) where
-    longer r (j, y) r |> if x == y then 1 + (tab `index` (i-1) `index` (j-1))
-                         else max (tab `index` (i-1) `index` j) (r `index` (j-1))
-  --TODO get
+  f tab (i, x) = tab |> (foldl longer (singleton 0) (zip [1..] ys)) where
+    longer r (j, y) = r |> if x == y then 1 + (tab `index` (i-1) `index` (j-1))
+                           else max (tab `index` (i-1) `index` j) (r `index` (j-1))
+  construct tab = get (reverse xs, m) (reverse ys, n) where
+    get ([], 0) ([], 0) = []
+    get ((x:xs), i) ((y:ys), j)
+      | x == y = get (xs, i-1) (ys, j-1) ++ [x]
+      | (tab `index` (i-1) `index` j) > (tab `index` i `index` (j-1)) = get (xs, i-1) ((y:ys), j)
+      | otherwise = get ((x:xs), i) (ys, j-1)
+
+example = lcs' "Mississippi" "Missunderstanding"
