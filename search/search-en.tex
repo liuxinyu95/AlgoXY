@@ -6270,7 +6270,49 @@ longest(R, (j, y)) = \left \{
 \right.
 \ee
 
-TODO: Purely functional LCS solution.
+After the table is built. The longest common sub sequence can be constructed recursively
+by looing up this table. We can pass the reversed sequences $\overleftarrow{X}$, and
+$\overleftarrow{Y}$ together with their lengths $m$ and $n$ for efficient building.
+
+\be
+construct(T) = get((\overleftarrow{X}, m), (\overleftarrow{Y}, n))
+\ee
+
+If the sequence isn't empty, denote the first element as $x$ and $y$. The rest elements
+are hold in $\overleftarrow{X}'$ and $\overleftarrow{Y}'$ respectively. The function
+$get$ can be defined as the following.
+
+\be
+get((\overleftarrow{X}, i), (\overleftarrow{Y}, j)) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & \overleftarrow{X} = \Phi \land \overleftarrow{Y} = \Phi \\
+  get((\overleftarrow{X}', i-1), (\overleftarrow{Y}', j-1)) \cup \{x\} & x = y \\
+  get((\overleftarrow{X}', i-1), (\overleftarrow{Y}, j)) & T[i-1][j] > T[i][j-1] \\
+  get((\overleftarrow{X}, i), (\overleftarrow{Y}', j-1)) & otherwise
+  \end{array}
+\right.
+\ee
+
+Below Haskell example program implements this solution.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+lcs' xs ys = construct $ foldl f (singleton $ fromList $ replicate (n+1) 0)
+                               (zip [1..] xs) where
+  (m, n) = (length xs, length ys)
+  f tab (i, x) = tab |> (foldl longer (singleton 0) (zip [1..] ys)) where
+    longer r (j, y) = r |> if x == y
+                    then 1 + (tab `index` (i-1) `index` (j-1))
+                    else max (tab `index` (i-1) `index` j) (r `index` (j-1))
+  construct tab = get (reverse xs, m) (reverse ys, n) where
+    get ([], 0) ([], 0) = []
+    get ((x:xs), i) ((y:ys), j)
+      | x == y = get (xs, i-1) (ys, j-1) ++ [x]
+      | (tab `index` (i-1) `index` j) > (tab `index` i `index` (j-1)) =
+                 get (xs, i-1) ((y:ys), j)
+      | otherwise = get ((x:xs), i) (ys, j-1)
+\end{lstlisting}
 
 \paragraph{Subset sum problem}
 Dynamic programming is not limited to solve the optimization problem, but
