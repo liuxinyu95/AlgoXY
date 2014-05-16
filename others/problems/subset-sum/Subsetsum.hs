@@ -14,7 +14,11 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import Data.List
+module Subsetsum where
+
+import Data.List (subsequences)
+import Data.Sequence (Seq, fromList, index, adjust)
+import Test.QuickCheck
 
 naiveSolve xs n = filter (\ys->n == sum ys) $ tail $ subsequences xs
 
@@ -22,3 +26,22 @@ solve :: (Num a, Eq a)=>[a] -> a -> [[a]]
 solve [] n = []
 solve (x:xs) n = if x == n then [x]:xss else xss where
     xss = solve xs n ++ map (x:) (solve xs (n-x))
+
+-- Bottom-up dynamic programing solution with finger tree
+subsetsum xs s | xs ==[] || s < l || s > u = []
+               | otherwise = foldl build (fromList [[] | _ <- [l..u]]) xs `idx` s where
+  l = sum $ filter (< 0) xs
+  u = sum $ filter (> 0) xs
+  idx t i = index t (i - l)
+  build tab x = foldl (\t j -> let j' = j - x in
+                        adjustIf (l <= j' && j' <= u && tab `idx` j' /= [])
+                        (++ [(x:ys) | ys <- tab `idx` j']) j
+                        (adjustIf (x == j) ([x]:) j t)
+                      ) tab [l..u]
+  adjustIf pred f i seq = if pred then adjust f (i - l) seq else seq
+
+example = subsetsum [11, 64, -82, -68, 86, 55, -88, -21, 51] 0
+
+-- test, Note!! this is very slow
+prop_subsetsum :: [Int] -> Int -> Bool
+prop_subsetsum xs s = all (\ys -> s == sum ys) $ subsetsum xs s
