@@ -11,6 +11,7 @@ datastruct/heap/other-heaps/kheap-en \
 datastruct/elementary/queue/queue-en \
 datastruct/elementary/sequence/sequence-en \
 sorting/dc-sort/dcsort-en \
+search/search-en \
 others/appendix/list/list-en
 CHAPTER_OBJS = $(foreach file, $(CHAPTERS), $(file).dvi)
 
@@ -19,10 +20,13 @@ all: $(BOOK).pdf
 %.dvi : %.tex
 	make -C $(@D) tex
 
+image:
+	make -C img
+
 index:
 	makeindex $(BOOK)
 
-$(BOOK).pdf: $(SRC) $(CHAPTER_OBJS)
+$(BOOK).pdf: image $(SRC) $(CHAPTER_OBJS)
 	latex $(BOOK).tex
 	makeindex $(BOOK).idx
 	latex $(BOOK).tex
@@ -33,4 +37,3 @@ clean:
 
 distclean: clean
 	rm -f *.pdf *.dvi *~
-
