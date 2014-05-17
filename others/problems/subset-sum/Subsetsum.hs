@@ -16,7 +16,7 @@
 
 module Subsetsum where
 
-import Data.List (subsequences)
+import Data.List (subsequences, nub)
 import Data.Sequence (Seq, fromList, index, adjust)
 import Test.QuickCheck
 
@@ -42,6 +42,8 @@ subsetsum xs s | xs ==[] || s < l || s > u = []
 
 example = subsetsum [11, 64, -82, -68, 86, 55, -88, -21, 51] 0
 
--- test, Note!! this is very slow
+-- test.
 prop_subsetsum :: [Int] -> Int -> Bool
-prop_subsetsum xs s = all (\ys -> s == sum ys) $ subsetsum xs s
+prop_subsetsum xs s = all (\ys -> s' == sum ys) $ subsetsum xs' s' where
+  s' = s `mod` 100
+  xs' = nub $ map (`mod` 100) xs
