@@ -35,9 +35,8 @@ subsetsum xs s | xs ==[] || s < l || s > u = []
   idx t i = index t (i - l)
   build tab x = foldl (\t j -> let j' = j - x in
                         adjustIf (l <= j' && j' <= u && tab `idx` j' /= [])
-                        (++ [(x:ys) | ys <- tab `idx` j']) j
-                        (adjustIf (x == j) ([x]:) j t)
-                      ) tab [l..u]
+                            (++ [(x:ys) | ys <- tab `idx` j']) j
+                            (adjustIf (x == j) ([x]:) j t)) tab [l..u]
   adjustIf pred f i seq = if pred then adjust f (i - l) seq else seq
 
 example = subsetsum [11, 64, -82, -68, 86, 55, -88, -21, 51] 0
