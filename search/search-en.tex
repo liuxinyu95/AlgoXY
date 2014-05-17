@@ -6423,7 +6423,9 @@ be filled as true.
 
 When all the elements are processed like this, a table with $|X|$
 rows is built. Looking up the cell represents $s$ in the last row
-tells if there exists subset can sum to this value.
+tells if there exists subset can sum to this value. Of course there
+is no solution if $s_l \leq s \leq s_u$ doesn't satisfied. We skip
+the handling to this case for the sake of brevity.
 
 \begin{algorithmic}[1]
 \Function{Subset-Sum}{$X, s$}
@@ -6565,7 +6567,73 @@ def subsetsum(xs, s):
     return tab[s]
 \end{lstlisting}
 
-TODO: Purely functional version
+This imperative algorithm show clear structure, that the solution table is
+built while looping every element. This can be realized in purely functional
+way by folding. A finger tree can be used to represents the vector spans
+from $s_l$ to $s_u$. It is initialized with all empty values as in the following
+equation.
+
+\be
+subsetsum(X, s) = fold(build, \{\Phi, \Phi, ..., \}, X)[s]
+\ee
+
+After folding, the soltion table is built, the answer is looked up at
+cell $s$\footnote{Again, here we skip the error handling to the case that
+$s < s_l$ or $s > s_u$. There is no solution if $s$ is out of range.}.
+
+For every element $x \in X$,
+function $build$ folds the list $\{s_l, s_l + 1, ..., s_u\}$, with every
+value $j$, it check if it equals to $x$ and append a singleton set $\{x\}$
+to the $j$-th cell of the table. Not that here the cell is indexed from
+$s_l$, but not 0. If the cell corresponding to $j - x$ is not empyt,
+the candidate solutions stored in that place are also duplicated and
+add element $x$ is added to every solution.
+
+\be
+build(T, x) = fold(f, T, \{s_l, s_l+1, ..., s_u\})
+\ee
+
+\be
+f(T, j) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  T'[j] \cup \{\{x\} \cup Y | Y \in T[j']\} & s_l \leq j' \leq s_u \land T[j'] \neq \Phi, j' = j - x \\
+  T' & otherwise
+  \end{array}
+\right.
+\label{eq:mutate1}
+\ee
+
+Here the adjustment is applied on $T'$, which is another adjustment to $T$ as shown as below.
+
+\be
+T' = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{x\} \cup T[j] & x = j \\
+  T & otherwise
+  \end{array}
+\right.
+\label{eq:mutate2}
+\ee
+
+Note that the first clause in both equation (\ref{eq:mutate1}) and (\ref{eq:mutate2}) returns
+a new table with a certain cell being updated with the given value.
+
+The following Haskell example program implments this algorithm.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+subsetsum xs s = foldl build (fromList [[] | _ <- [l..u]]) xs `idx` s where
+  l = sum $ filter (< 0) xs
+  u = sum $ filter (> 0) xs
+  idx t i = index t (i - l)
+  build tab x = foldl (\t j -> let j' = j - x in
+                   adjustIf (l <= j' && j' <= u && tab `idx` j' /= [])
+                            (++ [(x:ys) | ys <- tab `idx` j']) j
+                            (adjustIf (x == j) ([x]:) j t)) tab [l..u]
+  adjustIf pred f i seq = if pred then adjust f (i - l) seq else seq
+\end{lstlisting}
 
 Some materials like \cite{algorithms-fp} provide common structures to abstract dynamic programming.
 So that problems can be solved with a generic solution by customizing the precondition, the
