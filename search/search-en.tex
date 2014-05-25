@@ -1649,7 +1649,7 @@ core algorithm of KMP can be described as the following.
 \begin{algorithmic}[1]
 \Function{KMP}{$T, P$}
   \State $n \gets |T|, m \gets |P|$
-  \State build prefix function $\pi(p)$
+  \State build prefix function $\pi$ from $P$
   \State $q \gets 0$ \Comment{How many characters have been matched so far.}
   \For{$i \gets 1$ to $n$}
     \While{$q > 0 \land P[q+1] \neq T[i]$}
@@ -1666,12 +1666,12 @@ core algorithm of KMP can be described as the following.
 \EndFunction
 \end{algorithmic}
 
-Although the definition of prefix function $\pi(q)$ is given in equation \ref{eq:prefix-function}, realizing it
+Although the definition of prefix function $\pi(q)$ is given in equation (\ref{eq:prefix-function}), realizing it
 blindly by finding the longest suffix isn't effective. Actually we can use the idea of information reusing again
 to build the prefix function.
 
 The trivial edge case is that, the first character doesn't match. In this case the longest prefix, which is
-also the suffix if empty string is definitely empty, so $\pi(1) = k = 0$. We record the longest prefix as $P_k$.
+also the suffix is definitely empty, so $\pi(1) = k = 0$. We record the longest prefix as $P_k$.
 In this edge case $P_k = P_0$ is the empty string.
 
 After that, when we scan at the $q$-th character in the pattern string $P$, we hold the invariant that the
@@ -1709,7 +1709,7 @@ Realizing this idea gives the KMP prefix building algorithm.
 \EndFunction
 \end{algorithmic}
 
-The following table lists the steps of building prefix function for patter string `ananym'. Note that
+The following table lists the steps of building prefix function for pattern string `ananym'. Note that
 the $k$ in the table actually means the maximum $k$ statisfies equation (\ref{eq:prefix-function}).
 
 \begin{tabular}{|c|r|c|l|}
@@ -1776,17 +1776,17 @@ $T = aaaa...a$ and so on.
 \paragraph{Purely functional KMP algorithm}
 
 It is not easy to realize KMP matching algorithm in purely functional manner. The imperative algorithm represented
-so far intensely use array to record prefix function values. Although it is possible to utilize sequence like structure
+so far intensely uses array to record prefix function values. Although it is possible to utilize sequence like structure
 in purely functional settings, such sequence is typically implemented with finger tree. Unlike native arrays,
-finger tree based sequence needs logarithm time for random accessing.
+finger tree needs logarithm time for random accessing\footnote{Again, we don't use native array, even it is supported in some functional programming environments like Haskell.}.
 
 Richard Bird presents a formal program deduction to KMP algorithm by using fold fusion law in chapter 17 of \cite{fp-pearls}.
 In this secion, we show how to develop purely functional KMP algorithm step by step from a brute-force prefix
-function creation version.
+function creation method.
 
 Both text string and pattern are represented as singly linked-list in purely functional settings. During the scan
 process, these two lists are further partitioned, every one is broken into two parts. As shown in figure \ref{fig:fp-strstr},
-The first $j$ characters in the pattern string have been matched. $T[i+1]$ and $P[j+1]$ are compared next.
+The first $j$ characters in the pattern string have been matched. $T[i+1]$ and $P[j+1]$ will be compared next.
 If they are same, we need append the character to the matched part. However, since strings are essentially singly
 linked list, such appending is proportion to $j$.
 
@@ -1808,7 +1808,7 @@ P_s = cons(p, P_s')
 \end{array}
 \]
 
-If $t = s$, note the following updating process is bound to linear time.
+If $t = p$, note the following updating process is bound to linear time.
 
 \[
 \begin{array}{l}
@@ -1838,14 +1838,14 @@ the if $t=p$, we can update the prefix part fast in constant time.
 \end{array}
 \ee
 
-The KMP matching algorithms starts by initialzing the success prefix parts to empty strings as the following.
+The KMP matching algorithm starts by initialzing the success prefix parts to empty strings as the following.
 
 \be
 search(P, T) = kmp(\pi, (\Phi, P) (\Phi, T))
 \ee
 
 Where $\pi$ is the prefix function we explained before. The core part of KMP algorithm, except for the prefix function
-building part, can be defined as below.
+building, can be defined as below.
 
 \be
 kmp(\pi, (\overleftarrow{P_p}, P_s), (\overleftarrow{T_p}, T_s)) =  \left \{
@@ -1861,8 +1861,7 @@ kmp(\pi, (\overleftarrow{P_p}, P_s), (\overleftarrow{T_p}, T_s)) =  \left \{
 \right.
 \ee
 
-The first clause states that, if the scan successfully ends to both the pattern and text strings, we get a solution.
-And the algorithm terminates.
+The first clause states that, if the scan successfully ends to both the pattern and text strings, we get a solution, and the algorithm terminates.
 Note that we use the right position in the text string as the matching point. It's easy to use the left position by
 substracting with the length of the pattern string. For sake of brevity, we switch to right position in functional
 solutions.
@@ -1874,7 +1873,7 @@ The third clause states that, if all the characters in the pattern string have b
 are still characters in the text haven't been examined, we get a solution, and we fallback by calling prefix function
 $\pi$ to go on searching other solutions.
 
-The fourth clause deals with the case, that the next characters in pattern string and text are same. In such case, the
+The fourth clause deals with the case, that the next character in pattern string and text are same. In such case, the
 algorithm advances one character ahead, and recursively performs searching.
 
 If the the next characters are not same and this is the first character in the pattern string, we just need advance
@@ -1914,7 +1913,7 @@ prefixes(L) = \left \{
 \right.
 \ee
 
-Below Haskell example program implements this version of string matching algorithm completely.
+Below Haskell example program implements this version of string matching algorithm.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -1940,7 +1939,7 @@ inits [_] = [[]]
 inits (x:xs) = [] : (map (x:) $ inits xs)
 \end{lstlisting} %$
 
-This version does not only perform poorly, but also is complex. We can simplify it a bit. Observe
+This version does not only perform poorly, but it is also complex. We can simplify it a bit. Observing
 the KMP matching is a scan process from left to the right of the text, it can be represented
 with folding (refer to Appendix A for detail). Firstly, we can augment each character with an index
 for folding like below.
@@ -1982,14 +1981,15 @@ search(((P_p, P_s), L), (c, i)) = \left \{
 \right.
 \ee
 
-If the first character in $P_s$ matches the current scanned character $c$, we need further check
+If the first character in $P_s$ matches the current character $c$ during scan,
+we need further check
 if all the characters in the pattern havet been examined, if so, we successfully find a solution,
-so we record this position $i$ in list $L$; otherwise, we advance one character ahead and go on.
+This position $i$ in list $L$ is recorded; Otherwise, we advance one character ahead and go on.
 If $p$ does not match $c$, we need fallback for further retry. However, there is an edge case
 that we can't fallback any more. $P_p$ is empty in this case, and we need do nothing but keep
 the current state.
 
-The prefix-function $\pi$ developed so far can also be improved although it is minor. Since we want
+The prefix-function $\pi$ developed so far can also be improved a bit. Since we want
 to find the longest prefix of $P_p$, which is also suffix of it, we can scan from right to left
 instead. For any non empty list $L$, denote the first element as $l_1$, and all the rest except
 for the first one as $L'$, define a function $init(L)$, which returns all the elements except for the last one
@@ -2007,7 +2007,7 @@ init(L) = \left \{
 
 Note that this function can not handle empty list. The idea of scan from right to left for $P_p$
 is first check if $init(P_p) \sqsupset P_p$, if yes, then we are done; otherwise, we examine if
-$init(init(P_p))$ is OK, and repeated this until to the left most. Based on this idea, the
+$init(init(P_p))$ is OK, and repeat this till the left most. Based on this idea, the
 prefix-funciton can be modified as the following.
 
 \be
@@ -2032,10 +2032,10 @@ fallback(A, B) = \left \{
 \right.
 \ee
 
-Note that fallback always terminates because empty string is suffix of any string. The $last$ function
-returns the last element of a list, it is also a linear time operation (refer to Appendix A) for detail.
-However, it's constant operation if we use $\overleftarrow(P_p)$ approach. This improved prefix-function
-is bound to linear time. Itis still quite slow than the imperative algorith which can look up prefix-funciton
+Note that fallback always terminates because empty string is suffix of any string. The $last(L)$ function
+returns the last element of a list, it is also a linear time operation (refer to Appendix A for detail).
+However, it's constant operation if we use $\overleftarrow{P_p}$ approach. This improved prefix-function
+is bound to linear time. It is still quite slower than the imperative algorithm which can look up prefix-funciton
 in constant $O(1)$ time. The following Haskell exmple program implements this minor improvement.
 
 \lstset{language=Haskell}
@@ -2053,7 +2053,7 @@ kmpSearch ws txt = snd $ foldl f (([], ws), []) (zip txt [1..]) where
     f (p, ns) e = f (failure p, ns) e
 \end{lstlisting} %$
 
-The bottleneck is that we can not use raw array to record prefix function values in purely functional settings.
+The bottleneck is that we can not use native array to record prefix functions in purely functional settings.
 In fact the prefix funciton can be understood as a state transform function. It transfer from one state
 to the other according to the matching is success or fail. We can abstract such state changing as a tree.
 In environment supporting algebraic data type, Haskell for example, such state tree can be defined like
