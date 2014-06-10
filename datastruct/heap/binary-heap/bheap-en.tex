@@ -175,8 +175,8 @@ to check if both its two children conform to this property. In case
 there is violation, we need swap the parent and child recursively \cite{CLRS}
 to fix the problem.
 
-Below algorithm shows the iterative solution to build the min-heap
-from the given index of the array.
+Below algorithm shows the iterative solution to enforce the min-heap
+property from the given index of the array.
 
 \begin{algorithmic}[1]
 \Function{HEAPIFY}{$A, i$}
@@ -207,42 +207,13 @@ element as $A[i]$, and swap the previous $A[i]$ to child.
 The algorithm traverses the tree top-down to fix the heap property
 until either reach a leaf or there is no heap property violation.
 
-Note that the \textproc{Heapify} algorithm takes $O(\lg n)$ time, where
+The \textproc{Heapify} algorithm takes $O(\lg n)$ time, where
 $n$ is the number of elements. This
 is because the loop time is proportion to the height of the binary tree.
 
-\subsection*{Heapify in C++}
-
-For C++ program, we need it cover both traditional C compatible array, and
-the modern container abstraction. There are several options to realize this
-requirement.
-
-One method is to pass iterators as argument to heap algorithm. C++/STL
-implementation (at the time the author wrote this post) uses this approach.
-
-The advantage of using iterator is that some random access iterator is
-just implemented as C pointers, so it compatible with C array well.
-
-However, this method need us change the algorithm from a array index style
-to pointer operation style. It's hard to reflect the above pseudo code
-quite clear in such style. Because of this problem, we won't use this approach
-here. Reader can refer to STL source code for detailed information.
-
-Another option is to pass the array or container as well as the
-number of elements as arguments. However, we need abstract the
-comparison anyway so that the algorithm works for both max-heap
-and min-heap.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<class T> struct MinHeap: public std::less<T>{};
-template<class T> struct MaxHeap: public std::greater<T>{};
-\end{lstlisting}
-
-Here we define MinHeap and MaxHeap as a kind of alias of less-than
-and greater-than logic comparison functor template.
-
-The heapify algorithm can be implemented as the following.
+When implement this algorithm, the comparison method can be passed as
+a parameter, so that both min-heap and max-heap can be supported.
+The following C++ example code uses this approach.
 
 \begin{lstlisting}
 template<class Array, class LessOp>
@@ -265,137 +236,9 @@ void heapify(Array& a, unsigned int i, unsigned int n, LessOp lt){
 }
 \end{lstlisting}
 
-The program accepts the reference of the array (both reference
-of the container, and reference to pointer are OK), the index
-from where we want to adjust so that all children of it confirms
-to the heap property; the number of elements in the array, and
-a comparison functor. It checks from the node which is indexed
-as $i$ down to the leaf until it find a node that both children are
-``less than'' the value of the node based on the comparison functor.
-Otherwise, it will locate the ``smallest'' one and swap it with
-the node value.
-
-It is also possible to create a concept of range and realize the
-algorithm with it. Some C++ library, such as boost has already
-support range. Here we can develop a light weight range only for
-random access container.
-
-\begin{lstlisting}
-template<class RIter> // random access iterator
-struct Range{
-  typedef typename std::iterator_traits<RIter>::value_type value_type;
-  typedef typename std::iterator_traits<RIter>::difference_type size_t;
-  typedef typename std::iterator_traits<RIter>::reference  reference;
-  typedef RIter iterator;
-
-  Range(RIter left, RIter right):first(left), last(right){}
-
-  reference  operator[](size_t i){ return *(first+i); }
-  size_t size() const { return last-first; }
-
-  RIter first;
-  RIter last;
-};
-\end{lstlisting}
-
-For a given left index $l$, and right index $r$, a range represents
-$[l, r)$, So it is easy to construct a range with iterators as well
-as the pointer of the array and its length.
-
-Two overloaded auxiliary function templates are provided to create
-range easily.
-
-\begin{lstlisting}
-template<class Iter>
-Range<Iter> range(Iter left, Iter right){ return Range<Iter>(left, right); }
-
-template<class Iter>
-Range<Iter> range(Iter left, typename Range<Iter>::size_t n){
-  return Range<Iter>(left, left+n);
-}
-\end{lstlisting}
-
-The above algorithm can be implemented with range like below.
-
-\begin{lstlisting}
-template<class R, class LessOp>
-void heapify(R a, typename R::size_t i, LessOp lt){
-  typename R::size_t l, r, smallest;
-  while(true){
-    l = left(i);
-    r = right(i);
-    smallest = i;
-    if( l < a.size() && lt(a[l], a[i]))
-      smallest = l;
-    if( r < a.size() && lt(a[r], a[smallest]))
-      smallest = r;
-    if( smallest != i){
-      std::swap(a[i], a[smallest]);
-      i = smallest;
-    }
-    else
-      break;
-  }
-}
-\end{lstlisting}
-
-Almost everything is as same as the former one except that the number
-of elements can be given by the size of the range.
-
-In order to verify the program, a same test case as in figure 6.2 in \cite{CLRS}
-is fed to our function.
-
-\begin{lstlisting}
-// test c-array
-const int a[] = {16, 4, 10, 14, 7, 9, 3, 2, 8, 1};
-const unsigned int n = sizeof(a)/sizeof(a[0]);
-int x[n];
-std::copy(a, a+n, x);
-heapify(x, 1, n, MaxHeap<int>());
-print_range(x, x+n);
-
-// test random access container
-std::vector<short> y(a, a+n);
-heapify(y, 1, n, MaxHeap<short>());
-print_range(y.begin(), y.end());
-\end{lstlisting}
-
-The same test case can also be applied to the ``range'' version of
-program.
-
-\begin{lstlisting}
-heapify(range(x, n), 1, MaxHeap<int>());
-
-//...
-
-heapify(range(y.begin(), y.end()), 1, MaxHeap<short>());
-\end{lstlisting}
-
-Where ``print\_range'' is a helper function to output all elements
-in a container, a C array or a range.
-
-\begin{lstlisting}
-template<class Iter>
-void print_range(Iter first, Iter last){
-  for(; first!=last; ++first)
-    std::cout<<*first<<", ";
-  std::cout<<"\n";
-}
-
-template<class R>
-void print_range(R a){
-  print_range(a.first, a.last);
-}
-\end{lstlisting}
-
-The above test code can output a result as below:
-
-\begin{verbatim}
-16, 14, 10, 8, 7, 9, 3, 2, 4, 1,
-16, 14, 10, 8, 7, 9, 3, 2, 4, 1,
-\end{verbatim}
-
-Figure \ref{fig:heapify} shows how this algorithm works.
+Figure \ref{fig:heapify} illustrates the steps when \textproc{Heapify} processing the
+array $\{16, 4, 10, 14, 7, 9, 3, 2, 8, 1\}$. The array changes to
+$\{16, 14, 10, 8, 7, 9, 3, 2, 4, 1\}$.
 
 \begin{figure}[htbp]
   \begin{center}
@@ -414,62 +257,15 @@ Figure \ref{fig:heapify} shows how this algorithm works.
   \end{center}
 \end{figure}
 
-\subsection*{Heapify in Python}
-
-In order to cover both min-heap and max-heap, we abstract the comparison
-as the following lambda expressions.
-
-\lstset{language = Python}
-\begin{lstlisting}
-MIN_HEAP = lambda a, b: a < b
-MAX_HEAP = lambda a, b: a > b
-\end{lstlisting}
-
-By passing the above defined comparison operation as an argument, the ``Heapify''
-algorithm is given as below.
-
-\begin{lstlisting}
-def heapify(x, i, less_p = MIN_HEAP):
-    n = len(x)
-    while True:
-        l = left(i)
-        r = right(i)
-        smallest = i
-        if l < n and less_p(x[l], x[i]):
-            smallest = l
-        if r < n and less_p(x[r], x[smallest]):
-            smallest = r
-        if smallest != i:
-            (x[i], x[smallest])=(x[smallest], x[i])
-            i  = smallest
-        else:
-            break
-\end{lstlisting}
-
-We can use the same test case as presents in Figure 6.2 of \cite{CLRS}.
-
-\begin{lstlisting}
-l = [16, 4, 10, 14, 7, 9, 3, 2, 8, 1]
-heapify(l, 1, MAX_HEAP)
-print l
-\end{lstlisting}
-
-The result is something like this.
-
-\begin{verbatim}
-[16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
-\end{verbatim}
-
-This result is as same as the one presented in \ref{fig:heapify}.
 
 % ================================================================
 %                 Build a heap
 % ================================================================
 \subsection{Build a heap}
 
-With heapify algorithm, it is easy to build a heap from an arbitrary
-array. Observe that the number of nodes in a complete binary tree
-for each level is a list like:
+With \textproc{Heapify} algorithm defined, it is easy to build a heap from the arbitrary
+array. Observe that the numbers of nodes in a complete binary tree
+for each level is a list like below:
 
 $1, 2, 4, 8, ..., 2^i, ...$.
 
@@ -478,28 +274,27 @@ The only exception is the last level. Since the tree may not full
 last level contains at most $2^{p-1}$ nodes, where $2^p \leq n$ and $n$
 is the length of the array.
 
-Heapify algorithm doesn't take any effect on leave node, which means
-we can skip applying heapify for all nodes. In other words,
-all leaf nodes have already satisfied heap property. We only need
-start checking and maintaining heap property from the last branch node.
-the Index of the last branch node is no greater than $\lfloor n/2 rfloor$.
+The \textproc{Heapify} algorithm doesn't have any effect on leave node.
+We can skip applying \textproc{Heapify} for all leaves. In other words,
+all leaf nodes have already satisfied the heap property. We only need
+start checking and maintain the heap property from the last branch node.
+the index of the last branch node is no greater than $\lfloor n/2 rfloor$.
 
 Based on this fact, we can build a heap with the following algorithm.
 (Assume the heap is min-heap).
 
 \begin{algorithmic}[1]
-\Function{BUILD-HEAP}{$A$}
-  \State $n \gets LENGTH(A)$
+\Function{Build-Heap}{$A$}
+  \State $n \gets |A|$
   \For{$i \gets \lfloor n/2 \rfloor$ downto $1$}
-    \State $HEAPIFY(A, i)$
+    \State \Call{Heapify}{$A, i$}
   \EndFor
 \EndFunction
 \end{algorithmic}
 
-Although the complexity of $HEAPIFY$ is $O(\lg{N})$, the running time
-of $BUILD\_HEAP$ doesn't bound to $O(N \lg{N})$ but to $O(N)$, so this
-is a linear time algorithm. Please refer to \cite{CLRS} for the
-detailed proof.
+Although the complexity of \textproc{Heapify} is $O(\lg n)$, the running time
+of \textproc{Build-Heap} is not bound to $O(n \lg n)$ but $O(n)$. This
+is a linear time algorithm. \cite{CLRS} provides the detailed proof.
 
 \subsection*{Build a heap in C++}
 
