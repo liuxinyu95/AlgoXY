@@ -296,10 +296,7 @@ Although the complexity of \textproc{Heapify} is $O(\lg n)$, the running time
 of \textproc{Build-Heap} is not bound to $O(n \lg n)$ but $O(n)$. This
 is a linear time algorithm. \cite{CLRS} provides the detailed proof.
 
-\subsection*{Build a heap in C++}
-
-The only adjustment in C++ program from the above algorithm is
-about the starting index from 1 to 0.
+Below C++ example program implements this heap building function.
 
 \lstset{language=C++}
 \begin{lstlisting}
@@ -312,73 +309,31 @@ void build_heap(Array& a, unsigned int n, LessOp lt){
 }
 \end{lstlisting}
 
-Note that since the unsigned type is used to represent index,
-It can't lower than zero. We can't just use a for loop as below.
-
-\begin{lstlisting}
-for(unsigned int i = (n-1)>>1; i>=0; --i) //wrong, i always >=0
-\end{lstlisting}
-
-This program can be easily adjusted with range concept.
-
-\begin{lstlisting}
-template<class RangeType, class LessOp>
-void build_heap(RangeType a, LessOp lt){
-  typename RangeType::size_t i = (a.size()-1)>>1;
-  do {
-    heapify(a, i, lt);
-  } while (i--);
-}
-\end{lstlisting}
-
-We can test our program with the same data as in Figure 6.3 in \cite{CLRS}.
-
-\begin{lstlisting}
-// test c-array
-const int a[] = {4, 1, 3, 2, 16, 9, 10, 14, 8, 7};
-const unsigned int n = sizeof(a)/sizeof(a[0]);
-int x[n];
-std::copy(a, a+n, x);
-build_heap(range(x, n), MaxHeap<int>());
-print_range(x, x+n);
-
-// test random access container
-std::vector<int> y(a, a+n);
-build_heap(range(y.begin(), y.end()), MaxHeap<short>());
-print_range(y.begin(), y.end());
-\end{lstlisting}
-
-Running results are printed in console like the following.
-
-\begin{verbatim}
-16, 14, 10, 8, 7, 9, 3, 2, 4, 1,
-16, 14, 10, 8, 7, 9, 3, 2, 4, 1,
-\end{verbatim}
-
 Figure \ref{fig:build-heap-1} and \ref{fig:build-heap-2}
-show the steps when build a heap from
-an arbitrary array. The node in black color is the one we will apply
-$HEAPIFY$ algorithm, the nodes in gray color are swapped during
-$HEAPIFY$.
+show the steps when building a heap from
+array $\{4, 1, 3, 2, 16, 9, 10, 14, 8, 7\}$.
+The node in black color is the one \textproc{Heapify} being
+applied, the nodes in gray color are swapped during
+to keep the heap properity.
 
 \begin{figure}[htbp]
   \begin{center}
-    \includegraphics[scale=0.3]{img/build-heap-array.ps}
+    \includegraphics[scale=0.5]{img/build-heap-array.ps}
 
-    a. An array in arbitrary order before build-heap process;
+    a. An array in arbitrary order before heap building process;
 
     \includegraphics[scale=0.3]{img/build-heap-1.ps}
 
     b. Step 1, The array is mapped to binary tree. The first branch node, which is
-16 is to be examined;
+16 is examined;
 
     \includegraphics[scale=0.3]{img/build-heap-2.ps}
 
     c. Step 2, 16 is the largest element in current sub tree, next is to check node
 with value 2;
 
-    \caption{Build a heap from an arbitrary array. Gray nodes are changed in each step,
-black node is the one to be processed next step.} \label{fig:build-heap-1}
+    \caption{Build a heap from the arbitrary array. Gray nodes are changed in each step,
+black node will be processed next step.} \label{fig:build-heap-1}
   \end{center}
 \end{figure}
 
@@ -404,118 +359,44 @@ similarly, swap 1 and 7; next is to check the root node with value 4;
     g. Step 6, Swap 4 and 16, then swap 4 and 14, and then swap 4 and 8;
 And the whole build process finish.
 
-    \caption{Build a heap from an arbitrary array. Gray nodes are changed in each step,
-black node is the one to be processed next step.} \label{fig:build-heap-2}
+    \caption{Build a heap from the arbitrary array. Gray nodes are changed in each step,
+black node will be processed next step.} \label{fig:build-heap-2}
   \end{center}
 \end{figure}
-
-
-\subsection*{Build a heap in Python}
-
-Like the C++ heap building program, we check from the last non-leaf
-node and apply $HEAPIFY$ algorithm, and repeat the process back to
-the root node. However, we use explicit calculation (divided by 2)
-instead of using bit-wise shifting.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def build_heap(x, less_p = MIN_HEAP):
-    n = len(x)
-    for i in reversed(range(n//2)):
-        heapify(x, i, less_p)
-\end{lstlisting}
-
-We can feed the similar test case to this program as below:
-
-\begin{lstlisting}
-l = [4, 1, 3, 2, 16, 9, 10, 14, 8, 7]
-build_heap(l, MAX_HEAP)
-print l
-\end{lstlisting}
-
-It will output the same result as the C++ program.
-
-\begin{verbatim}
-[16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
-\end{verbatim}
 
 % ================================================================
 %                 Basic heap operations
 % ================================================================
 \subsection{Basic heap operations}
 
-From the generic definition of heap (not necessarily binary heap),
+From the generic definition of heap (not necessarily the binary heap),
 It's essential to provides basic operations so that user can access
 the data and modify it.
 
-The most important operations included accessing the top element
-(find the minimum or maximum element), pop one element (the minimum
-one or the maximum one depends on the type of the heap)
-from the heap, find the top N elements, decrease a key (note this
-is for min-heap, and it will be increase a key for max-heap), and
+The most important operations include accessing the top element
+(find the minimum or maximum one), popping the top element
+from the heap, finding the top $n$ elements, decreasing a key (this
+is for min-heap, and it is increasing a key for max-heap), and
 insertion.
 
-For binary tree, most of this operation is bound to $O(\lg{N})$ worst-case,
-some of them, such as top is $O(1)$ time.
+For the binary tree, most of operations are bound to $O(\lg n)$ in
+worst-case, some of them, such as top is $O(1)$ constant time.
 
-\subsubsection{Access the top element (minimum)}
-According to the definition of heap, there must be an operation to
-return the top element. for implicit binary tree by array, it is the
-root node which stores the minimum (maximum) value.
+\subsubsection{Access the top element (the minimum)}
+We need provide a way to access the top element efficiently.
+For the binary tree realization, it is the
+root stores the minimum (maximum) value. This is the first
+element in the array.
 
 \begin{algorithmic}[1]
 \Function{TOP}{$A$}
-  \State \Return $A[0]$
+  \State \Return $A[1]$
 \EndFunction
 \end{algorithmic}
 
 This operation is trivial. It takes $O(1)$ time.
-
-\subsubsection*{Access the top element in C++}
-
-By translate the above algorithm directly in C++, we get the
-following program.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<class T>
-typename ValueType<T>::Result heap_top(T a){ return a[0]; }
-\end{lstlisting}
-
-There is a small trick to get the type of the element store in
-array no matter if the array is STL container or plain C like
-array.
-
-\begin{lstlisting}
-template<class T> struct ValueType{
-  typedef typename T::value_type Result;
-};
-
-template<class T> struct ValueType<T*>{
-  typedef T Result; // c-pointer type
-};
-
-template<class T, unsigned int n> struct ValueType<T[n]>{
-  typedef T Result; // c-array type
-};
-\end{lstlisting}
-
-Not that the C++ template meta programming support to
-specialize for a certain type.
-
-Here we skip the error handling of empty heap case. If the
-heap is empty, one option is just to raise exception.
-
-\subsubsection*{Access the top element in Python}
-
-The python version of this program is also simple, we omit
-the error handling for empty heap as well.
-
-\lstset{language=C++}
-\begin{lstlisting}
-def heap_top(x):
-    return x[0] #ignore empty case
-\end{lstlisting}
+Here we skip the error handling for empty case. If the
+heap is empty, one option is to raise an error.
 
 \subsubsection{Heap Pop (delete minimum)}
 
