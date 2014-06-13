@@ -217,11 +217,11 @@ The following C++ example code uses this approach.
 
 \begin{lstlisting}
 template<class Array, class LessOp>
-void heapify(Array& a, unsigned int i, unsigned int n, LessOp lt){
+void heapify(Array& a, unsigned i, unsigned n, LessOp lt){
   while(true){
-    unsigned int l=left(i);
-    unsigned int r=right(i);
-    unsigned int smallest=i;
+    unsigned l=left(i);
+    unsigned r=right(i);
+    unsigned smallest=i;
     if(l < n && lt(a[l], a[i]))
       smallest = l;
     if(r < n && lt(a[r], a[smallest]))
@@ -301,8 +301,8 @@ Below C++ example program implements this heap building function.
 \lstset{language=C++}
 \begin{lstlisting}
 template<class Array, class LessOp>
-void build_heap(Array& a, unsigned int n, LessOp lt){
-  unsigned int i = (n-1)>>1;
+void build_heap(Array& a, unsigned n, LessOp lt){
+  unsigned i = (n-1)>>1;
   do {
       heapify(a, i, n, lt);
   } while (i--);
@@ -433,7 +433,7 @@ we need shift all the rest elements one by one.
 This bottle neck slows the whole algorithm
 to linear time.
 
-In order to solve this program, one alternative is
+In order to solve this problem, one alternative is
 to swap the first element with the last one in the
 array, then shrink the array size by one.
 
@@ -452,154 +452,58 @@ array, then shrink the array size by one.
 
 Removing the last element from the array takes
 only constant $O(1)$ time, and \textproc{Heapify} is bound to $O(\lg n)$.
-Thus the whole algorithm performs in $O(\lg n)$ time.
-
-\subsubsection*{Pop in C++}
-
-In C++ program, we abstract the min-heap and max-heap as heap type
-template parameter, and pass it explicitly.
-
-First is the `reference + size' approach.
+Thus the whole algorithm performs in $O(\lg n)$ time. The following
+example C++ program implements this algorithm.
 
 \lstset{language=C++}
 \begin{lstlisting}
-template<class T, class LessOp>
-typename ValueType<T>::Result heap_pop(T& a, unsigned int& n, LessOp lt){
-  typename ValueType<T>::Result top = heap_top(a);
+template<class E, class T, class LessOp>
+E heap_pop(T& a, unsigned& n, LessOp lt){
+  E top = heap_top(a);
   a[0] = a[n-1];
   heapify(a, 0, --n, lt);
   return top;
 }
 \end{lstlisting}
 
-And it can be adapted to ``range'' abstraction as well.
+Since the top element is removed from the array, instead swapping,
+this program overwrites it with the last element before applying
+\textproc{Heapify}.
 
-\begin{lstlisting}
-template<class R, class LessOp>
-typename R::value_type heap_pop(R& a, LessOp lt){
-  typename R::value_type top = heap_top(a);
-  std::swap(a[0], a[a.size()-1]);
-  --a.last;
-  heapify_(a, 0, lt);
-  return top;
-}
-\end{lstlisting}
+\subsubsection{Find the top $k$ elements}
 
-\subsubsection*{Pop in Python}
-
-Python provides pop() function to get rid of the last element,
-so the program can be developed as below.
-
-\begin{lstlisting}
-def heap_pop(x, less_p = MIN_HEAP):
-    top = heap_top(x)
-    x[0] = x[-1] # this is faster than top = x.pop(0)
-    x.pop()
-    if x!=[]:
-        heapify(x, 0, less_p)
-    return top
-\end{lstlisting}
-
-\subsubsection{Find the first $K$ biggest (smallest) element}
-
-With pop operation, it is easy to implement algorithm to
-find the top $K$ elements. In order to find the biggest $K$
-values form an array, we can build a max-heap, then perform
-pop operation $K$ times.
+With pop defined, it is easy to
+find the top $k$ elements from array.
+we can build a max-heap from the array, then perform
+pop operation $k$ times.
 
 \begin{algorithmic}[1]
-\Function{TOP-K}{$A, k$}
-  \State $BUILD-HEAP(A)$
-  \For{$i \gets 1, MIN(k, LENGTH(A))$}
-    \State $APPEND(Result, POP(A))$
+\Function{Top-k}{$A, k$}
+  \State $R \gets \Phi$
+  \State \Call{Build-Heap}{$A$}
+  \For{$i \gets 1$ to \textproc{Min}(k, \Call{Length}{$A$})}
+    \State \textproc{Append}($R$, \Call{Pop}{$A$})
   \EndFor
-  \State \Return $Result$
+  \State \Return $R$
 \EndFunction
 \end{algorithmic}
 
-Note that if $K$ is bigger than the length of the array, it means
-we need return the whole array as the result. That's why it need
-use the $MIN$ function in the algorithm.
+If $k$ is greater than the length of the array,
+we need return the whole array as the result. That's why it calls
+the \textproc{Min} function to determine the number of loops.
 
-\subsubsection*{Find the first $K$ biggest (smallest) element in C++}
-
-In C++ program, we can pass the iterator for output, so the
-``reference - size'' version looks like below.
+Below example C++ program implements the top-$k$ algorithm.
 
 \lstset{language=C++}
 \begin{lstlisting}
 template<class Iter, class Array, class LessOp>
-void heap_top_k(Iter res, unsigned int k,
-                Array& a, unsigned int& n, LessOp lt){
+void heap_top_k(Iter res, unsigned k,
+                Array& a, unsigned& n, LessOp lt){
   build_heap(a, n, lt);
-  unsigned int count = std::min(k, n);
-  for(unsigned int i=0; i<count; ++i)
+  unsigned i, count = min(k, n);
+  for(i=0; i<count; ++i)
     *res++=heap_pop(a, n, lt);
 }
-\end{lstlisting}
-
-When we adapt to `range' concept, it is possible to manipulate
-the data in place, so that we can put the top $K$ element
-in first $K$ positions in the array.
-
-\begin{lstlisting}
-template<class R, class LessOp>
-void heap_top_k(R a, typename R::size_t k, LessOp lt){
-  typename R::size_t count = std::min(k, a.size());
-  build_heap(a, lt);
-  while(count--){
-    ++a.first;
-    heapify(a, 0, lt);
-  }
-}
-\end{lstlisting}
-
-The algorithm doesn't utilize `pop' function, instead, after
-the heap is built, the first element is the top one, it
-adjusts the range one position next, then apply heapify
-to the new range. This process is repeated for $K$ times
-so the first $K$ elements are the result.
-
-A simple test cases can be fed to the program for verification.
-
-\begin{lstlisting}
-const int a[] = {4, 1, 3, 2, 16, 9, 10, 14, 8, 7};
-unsigned int n = sizeof(a)/sizeof(a[0]);
-std::vector<int> x(a, a+n);
-heap_top_k(range(x.begin(), x.end()), 3, MaxHeap<int>());
-print_range(range(x.begin(), 3));
-\end{lstlisting}
-
-The result is printed in console like below.
-
-\begin{verbatim}
-16, 14, 10,
-\end{verbatim}
-
-\subsubsection*{Find the first $K$ biggest (smallest) element in Python}
-
-In Python we can put `pop' function to list comprehension to
-get the top $K$ elements like the following.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def top_k(x, k, less_p = MIN_HEAP):
-    build_heap(x, less_p)
-    return [heap_pop(x, less_p) for i in range(min(k, len(x)))]
-\end{lstlisting}
-
-The testing and result are shown as the following.
-
-\begin{lstlisting}
-l = [4, 1, 3, 2, 16, 9, 10, 14, 8, 7]
-res = top_k(l, 3, MAX_HEAP)
-print res
-\end{lstlisting}
-
-Evaluate the code led to below line.
-
-\begin{lstlisting}
-[16, 14, 10]
 \end{lstlisting}
 
 \subsubsection{Modification: Decrease key}
