@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <stdlib.h>
+
 /*Binary heap with implicit array*/
 
 /*Implicit binary tree mapping in array*/
@@ -97,4 +100,12 @@ void heap_sort(Key* a, int n) {
         swap(a[0], a[n--]);
         heapify(a, 0, greater);
     }
+}
+
+/* Verification */
+void test_heapsort() {
+}
+
+int main(int argc, char** argv) {
+    test_heapsort();
 }
