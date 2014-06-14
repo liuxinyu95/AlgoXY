@@ -36,18 +36,14 @@ int notless(Key x, Key y) { return !less(x, y); }
 
 void heapify(Key* a, int i, int n, Less lt) {
     int l, r, m;
-    /*printf("i = %d, n = %d\n", i, n);
-      printn(a, n);*/
     while (1) {
         l = LEFT(i);
         r = RIGHT(i);
         m = i;
-        //printf("l=%d, r=%d, m = %d\n", l, r, m);
         if (l < n && lt(a[l], a[i]))
             m = l;
         if (r < n && lt(a[r], a[m]))
             m = r;
-        //printf("i = %d, m=%d\n", i, m);
         if (m != i) {
             swap(a, i, m);
             i = m;

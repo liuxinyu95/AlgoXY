@@ -145,20 +145,17 @@ of the child exceeds the length of the array, it means this
 node does not have such a child (leaf for example).
 
 In real implementation, this mapping can be calculated fast
-with bit-wise operation like the following example code in C++.
+with bit-wise operation like the following example ANSI C code.
 Note that, the array index starts from zero in C like
 languages.
 
-\lstset{language=C++}
+\lstset{language=C}
 \begin{lstlisting}
-template<class T>
-T parent(T i){ return ((i+1)>>1)-1; }
+#define PARENT(i) ((((i) + 1) >> 1) - 1)
 
-template<class T>
-T left(T i){ return (i<<1)+1; }
+#define LEFT(i) (((i) << 1) + 1)
 
-template<class T>
-T right(T i){ return (i+1)<<1; }
+#define RIGHT(i) (((i) + 1) << 1)
 \end{lstlisting}
 
 % ================================================================
@@ -213,26 +210,30 @@ is because the loop time is proportion to the height of the binary tree.
 
 When implement this algorithm, the comparison method can be passed as
 a parameter, so that both min-heap and max-heap can be supported.
-The following C++ example code uses this approach.
+The following ANSI C example code uses this approach.
 
 \begin{lstlisting}
-template<class Array, class LessOp>
-void heapify(Array& a, unsigned i, unsigned n, LessOp lt){
-  while(true){
-    unsigned l=left(i);
-    unsigned r=right(i);
-    unsigned smallest=i;
-    if(l < n && lt(a[l], a[i]))
-      smallest = l;
-    if(r < n && lt(a[r], a[smallest]))
-      smallest = r;
-    if(smallest != i){
-      std::swap(a[i], a[smallest]);
-      i = smallest;
+typedef int (*Less)(Key, Key);
+int less(Key x, Key y) { return x < y; }
+int notless(Key x, Key y) { return !less(x, y); }
+
+void heapify(Key* a, int i, int n, Less lt) {
+    int l, r, m;
+     while (1) {
+        l = LEFT(i);
+        r = RIGHT(i);
+        m = i;
+         if (l < n && lt(a[l], a[i]))
+            m = l;
+        if (r < n && lt(a[r], a[m]))
+            m = r;
+         if (m != i) {
+            swap(a, i, m);
+            i = m;
+        }
+        else
+            break;
     }
-    else
-      break;
-  }
 }
 \end{lstlisting}
 
@@ -296,16 +297,14 @@ Although the complexity of \textproc{Heapify} is $O(\lg n)$, the running time
 of \textproc{Build-Heap} is not bound to $O(n \lg n)$ but $O(n)$. This
 is a linear time algorithm. \cite{CLRS} provides the detailed proof.
 
-Below C++ example program implements this heap building function.
+Below ANSI C example program implements this heap building function.
 
-\lstset{language=C++}
+\lstset{language=C}
 \begin{lstlisting}
-template<class Array, class LessOp>
-void build_heap(Array& a, unsigned n, LessOp lt){
-  unsigned i = (n-1)>>1;
-  do {
-      heapify(a, i, n, lt);
-  } while (i--);
+void build_heap(Key* a, int n, Less lt) {
+    int i;
+    for (i = (n-1) >> 1; i >= 0; --i)
+        heapify(a, i, n, lt);
 }
 \end{lstlisting}
 
@@ -453,16 +452,16 @@ array, then shrink the array size by one.
 Removing the last element from the array takes
 only constant $O(1)$ time, and \textproc{Heapify} is bound to $O(\lg n)$.
 Thus the whole algorithm performs in $O(\lg n)$ time. The following
-example C++ program implements this algorithm.
+example ANSI C program implements this algorithm\footnote{This program does not
+actually remove the last element, it reuse the last cell to store the popped
+result}.
 
-\lstset{language=C++}
+\lstset{language=C}
 \begin{lstlisting}
-template<class E, class T, class LessOp>
-E heap_pop(T& a, unsigned& n, LessOp lt){
-  E top = heap_top(a);
-  a[0] = a[n-1];
-  heapify(a, 0, --n, lt);
-  return top;
+Key pop(Key* a, int n, Less lt) {
+    swap(a, 0, --n);
+    heapify(a, 0, n, lt);
+    return a[n];
 }
 \end{lstlisting}
 
@@ -492,18 +491,13 @@ If $k$ is greater than the length of the array,
 we need return the whole array as the result. That's why it calls
 the \textproc{Min} function to determine the number of loops.
 
-Below example C++ program implements the top-$k$ algorithm.
+Below example Python program implements the top-$k$ algorithm.
 
-\lstset{language=C++}
+\lstset{language=Python}
 \begin{lstlisting}
-template<class Iter, class Array, class LessOp>
-void heap_top_k(Iter res, unsigned k,
-                Array& a, unsigned& n, LessOp lt){
-  build_heap(a, n, lt);
-  unsigned i, count = min(k, n);
-  for(i=0; i<count; ++i)
-    *res++=heap_pop(a, n, lt);
-}
+def top_k(x, k, less_p = MIN_HEAP):
+    build_heap(x, less_p)
+    return [heap_pop(x, less_p) for i in range(min(k, len(x)))]
 \end{lstlisting}
 
 \subsubsection{Decrease key}
