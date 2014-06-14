@@ -74,12 +74,12 @@ Key pop(Key* a, int n, Less lt) {
 
 /*
  * Find the top k elements
- * in-place put the top k elements in array[0...k-1]
+ * in-place put the top k elements in array[n-k, n-k+1, ..., n-1]
  */
 int tops(int k, Key* a, int n, Less lt) {
     build_heap(a, n, lt);
-    for (k = MIN(k, n) - 1; k; --k)
-        heapify(++a, 0, --n, lt);
+    for (k = MIN(k, n); k; --k)
+        pop(a, n--, lt);
     return k;
 }
 
@@ -103,18 +103,14 @@ void push(Key* a, int n, Key k, Less lt) {
     heap_fix(a, n, lt);
 }
 
-/* in-place sort by performing n heapify */
+/* perform pop n times */
 void heap_sort_slow(Key* a, int n) {
-    printf("sort: ");
-    printn(a, n);
+    int len = n;
     build_heap(a, n, less);
-    printf("heap: ");
-    printn(a, n);
-    while(--n) {
-        printf("top=%d, heap: ", *a);
-        heapify(++a, 0, n, less);
-        printn(a, n);
-    }
+    while(n)
+        pop(a, n--, less);
+    while (n < len) /* reverse */
+        swap(a, n++, --len);
 }
 
 /* R.W. Floyd heap-sort algorithm */
@@ -150,19 +146,10 @@ void test_heapsort(void (*fsort)(Key*, int)) {
     }
 }
 
-void test_heapify() {
-    Key xs[] = {4, 10, 9, 13, 12, 18, 18};
-    heapify(xs, 1, sizeof(xs)/sizeof(xs[0]), less);
-    printf("heap(1): ");
-    printn(xs, sizeof(xs)/sizeof(xs[0]));
-    exit(1);
-}
-
 int main(int argc, char** argv) {
-    //test_heapify();
     printf("test heap sort slow\n");
     test_heapsort(heap_sort_slow);
-    //printf("test heap sort\n");
-    //test_heapsort(heap_sort);
+    printf("test heap sort\n");
+    test_heapsort(heap_sort);
     return 0;
 }
