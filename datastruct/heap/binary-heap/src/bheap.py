@@ -21,7 +21,7 @@
 MIN_HEAP = lambda a, b: a < b
 MAX_HEAP = lambda a, b: a > b
 
-# auxiliary functions 
+# auxiliary functions
 
 def parent(i):
     return (i+1)//2-1
@@ -94,7 +94,7 @@ def heap_fix(x, i, less_p = MIN_HEAP):
 
 def top_k(x, k, less_p = MIN_HEAP):
     build_heap(x, less_p)
-    return [heap_pop(x, less_p) for i in range(min(k, len(x)))]
+    return [heap_pop(x, less_p) for _ in range(min(k, len(x)))]
 
 class TestHeap:
     def __init__(self):
