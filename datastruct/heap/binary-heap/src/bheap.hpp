@@ -179,16 +179,6 @@ void heap_sort_slow(Iter res, Array& a, unsigned int n, LessOp lt){
     *res++=heap_pop(a, n, lt);
 }
 
-// In-place sort by n-heapify with Range
-template<class R, class LessOp>
-void heap_sort_slow(R a, LessOp lt){
-  build_heap(a, lt);
-  do{
-    ++a.first;
-    heapify(a, 0, lt);
-  }while(a.size()>0);
-}
-
 // Robert W. Floyd method, inplace fast
 template<class Array, class GreaterOp>
 void heap_sort(Array& a, unsigned int n, GreaterOp gt){
@@ -262,17 +252,6 @@ void heap_top_k(Iter res, unsigned int k,
   unsigned int count = std::min(k, n);
   for(unsigned int i=0; i<count; ++i)
     *res++=heap_pop(a, n, lt);
-}
-
-//in-place put the top-k elements in front of the range
-template<class R, class LessOp>
-void heap_top_k(R a, typename R::size_t k, LessOp lt){
-  typename R::size_t count = std::min(k, a.size());
-  build_heap(a, lt);
-  while(count--){
-    ++a.first;
-    heapify(a, 0, lt);
-  }
 }
 
 // helper function to print both STL containers and
@@ -418,7 +397,6 @@ public:
     test_build_heap();
     test_heap_sort();
     test_heap_push();
-    test_heap_top_k();
   }
 
 private:
@@ -468,15 +446,9 @@ private:
 
   void test_heap_sort(){
     // CLRS Figure 6.4
-    std::cout<<"test heap sort with pop-n method\n";
     const int a[] = {16, 14, 10, 8, 7, 9, 3, 2, 4, 1};
     const int r[] = {1, 2, 3, 4, 7, 8, 9, 10, 14, 16};
     const unsigned int n = sizeof(a)/sizeof(a[0]);
-    int x[n];
-    std::copy(a, a+n, x);
-    heap_sort_slow(range(x, n), MinHeap<int>());
-    print_range(range(x, n));
-    assert(std::equal(r, r+n, x));
 
     std::cout<<"test heap sort with Floyd method\n";
     std::vector<int> y(a, a+n);
@@ -496,18 +468,7 @@ private:
     const int r[] = {17, 16, 10, 8, 14, 9, 3, 2, 4, 1, 7};
     assert(std::equal(r, r+n, x.begin()));
   }
-
-  void test_heap_top_k(){
-    std::cout<<"test top k elements\n";
-    const int a[] = {4, 1, 3, 2, 16, 9, 10, 14, 8, 7};
-    unsigned int n = sizeof(a)/sizeof(a[0]);
-    std::vector<int> x(a, a+n);
-    heap_top_k(range(x.begin(), x.end()), 3, MaxHeap<int>());
-    print_range(range(x.begin(), 3));
-    const int r[] = {16, 14, 10};
-    assert(std::equal(r, r+3, x.begin()));
-  }
 };
 
 
-#endif //_B_TREE_
+#endif //_B_HEAP_
