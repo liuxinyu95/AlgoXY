@@ -765,7 +765,7 @@ after merge, the new root is still the smallest element.
 Because both left and right children are binary trees conforming heap property,
 the two trivial cases can be defined immediately.
 
-\be
+\[
 merge(H_1, H_2) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
@@ -774,22 +774,9 @@ merge(H_1, H_2) = \left \{
   ? & Otherwise
   \end{array}
 \right.
-\ee
+\]
 
-Where $\Phi$ means empty heap. It could be NIL in other programming environment.
-This can also be described in pseudo code:
-
-\begin{algorithmic}[1]
-\Function{Merge}{$L, R$}
-  \If{$L = NIL$}
-    \State \Return $R$
-  \ElsIf{$R = NIL$}
-    \State \Return $L$
-  \Else
-    \State $...$
-  \EndIf
-\EndFunction
-\end{algorithmic}
+Where $\Phi$ means empty heap.
 
 If neither left nor right child is empty, because they all fit
 heap property, the top elements of them are all the minimum respectively.
@@ -866,169 +853,117 @@ We skip the proof here, readers can refer to \cite{brono-book} and \cite{TAOCP}
 for more information. With this theorem, algorithms operate along this path are
 all bound to $O(\lg n)$.
 
-\subsection*{Definition of Leftist heap in Haskell}
-
-In Haskell the definition of Leftist tree is almost as same as the
-binary search tree except there is a rank field added.
+We can reuse the binary tree definition, and augment with a rank field to
+define the Leftist tree. For example in form of $(r, k, L, R)$ for non-empty
+case. The below Haskell defines Leftist tree.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
 data LHeap a = E -- Empty
              | Node Int a (LHeap a) (LHeap a) -- rank, element, left, right
-               deriving (Eq, Show)
 \end{lstlisting}
 
-In order to access the rank field, a helper function is provided.
+For empty tree, the rank is defined as zero. Otherwise, it's the value
+of the augmented field. A $rank(H)$ function can be
+given to cover both cases.
 
+\be
+rank(H) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  0 & H = \Phi \\
+  r & Otherwise, H = (r, k, L, R)
+  \end{array}
+\right.
+\ee
+
+Here is the example Haskell rank function.
+
+\lstset{language=Haskell}
 \begin{lstlisting}
-rank::LHeap a -> Int
 rank E = 0
 rank (Node r _ _ _) = r
 \end{lstlisting}
 
-\subsection*{Definition of Leftist heap in Scheme/Lisp}
-
-In Scheme/Lisp, list is used to represent the Leftist tree. In order
-to output the tree easily in in-order format, a node is arranged as
-(left rank element right). Some auxiliary functions are defined
-to access these fields of a node.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (left t)
-  (if (null? t) '() (car t)))
-
-(define (rank t)
-  (if (null? t) 0 (cadr t)))
-
-(define (elem t)
-  (if (null? t) '() (caddr t)))
-
-(define (right t)
-  (if (null? t) '() (cadddr t)))
-\end{lstlisting}
-
-And a construction function is provided so that a node can be
-built explicitly.
-
-\begin{lstlisting}
-(define (make-tree l s x r) ;; l: left, s: rank, x: elem, r: right
-  (list l s x r))
-\end{lstlisting}
+In the rest of this section, we denote $rank(H)$ as $r_H$
 
 % ================================================================
 %                 Merge
 % ================================================================
 \subsection{Merge}
 
-In order to realize `merge', an auxiliary algorithm is given to
-compare the ranks and do swapping if necessary.
+In order to realize `merge', we need develop the auxiliary algorithm
+to compare the ranks and swap the children if necessary.
 
-\begin{algorithmic}[1]
-\Function{LEFTIFY}{$T$}
-  \State $l \gets LEFT(T), r \gets RIGHT(T)$
-  \State $k \gets KEY(T)$
-  \If{$RANK(l) < RANK(r)$}
-    \State $RANK(T) \gets RANK(L) + 1$
-  \Else
-    \State $RANK(T) \gets RANK(R) + 1$
-    \State Exchange $l \leftrightarrow r$
-  \EndIf
-\EndFunction
-\end{algorithmic}
+\be
+mk(k, A, B) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (r_A + 1, k, B, A) & r_A < r_B \\
+  (r_B + 1, k, A, B) & Otherwise
+  \end{array}
+\right.
+\ee
 
-The algorithm compares the rank of the left and
-right sub trees, pick the less one and add it by one as the
-rank of the modified node. If the rank of left side is greater,
-it will also swap the left and right children.
+This function takes three arguments, a key and two sub trees $A$, and $B$.
+if the rank of $A$ is smaller, it builds a bigger tree with $B$ as the left child,
+and $A$ as the right child. It increment the rank of $A$ by 1 as the
+rank of the new tree; Otherwise if $B$ holds the smaller rank, then $A$ is
+set as the left child, and $B$ becomes the right. The resulting rank
+is $r_b + 1$.
 
-The reason why rank need to be increased by one is because there
-is a new key added on top of the tree, which causes the rank
-increase.
+The reason why rank need be increased by one is because there
+is a new key added on top of the tree. It causes the rank
+increasing.
 
-With $LEFTIFY$ defined, merge algorithm can be provided as the
-following.
+Denote the key, the left and right children for $H_1$ and $H_2$ as
+$k_1, L_1, R_1$, and $k_2, L_2, R_2$ respectively.
+The $merge(H_1, H_2)$ function can be completed by using this auxiliary
+tool as below
 
-\begin{algorithmic}[1]
-\Function{MERGE}{$L, R$}
-  \If{$L = NIL$}
-    \State \Return $R$
-  \ElsIf{$R = NIL$}
-    \State \Return $L$
-  \Else
-    \State $T \gets CREATE-NEW-NODE()$
-    \If{$KEY(L) < KEY(R)$}
-      \State $KEY(T) \gets KEY(L)$
-      \State $LEFT(T) \gets LEFT(L)$
-      \State $RIGHT(T) \gets MERGE(RIGHT(L), R)$
-    \Else
-      \State $KEY(T) \gets KEY(R)$
-      \State $LEFT(T) \gets LEFT(R)$
-      \State $RIGHT(T) \gets MERGE(L, RIGHT(R))$
-    \EndIf
-    \State $LEFTIFY(T)$
-  \EndIf
-  \State \Return $T$
-\EndFunction
-\end{algorithmic}
+\be
+merge(H_1, H_2) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  H_2 & H_1 = \Phi \\
+  H_1 & H_2 = \Phi \\
+  mk(k_1, L_1, merge(R_1, H_2)) & k_1 < k_2 \\
+  mk(k_2, L_2, merge(H_1, R_2)) & otherwise
+  \end{array}
+\right.
+\ee
 
-Note that $MERGE$ algorithm always operate on right side, and call
-$LEFITFY$ to ensure the `Leftist property, so that this algorithm
-is bound to $O(\lg N)$.
+The $merge$ function is always recursively called on the right side,
+and the Leftist property is maintained. These facts ensure the performance
+being bound to $O(\lg n)$.
 
-\subsection*{Merge in Haskell}
-
-Translate the algorithm to Haskell lead to the following program.
-Here we modified the pseudo code to a pure functional style.
+The following Haskell example code implements the merge program.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-merge::(Ord a)=>LHeap a -> LHeap a -> LHeap a
 merge E h = h
 merge h E = h
 merge h1@(Node _ x l r) h2@(Node _ y l' r') =
     if x < y then makeNode x l (merge r h2)
     else makeNode y l' (merge h1 r')
 
-makeNode::a -> LHeap a -> LHeap a -> LHeap a
 makeNode x a b = if rank a < rank b then Node (rank a + 1) x b a
                  else Node (rank b + 1) x a b
-\end{lstlisting}
-
-\subsection*{Merge in Scheme/Lisp}
-
-In Scheme/Lisp, the $LEFTIFY$ algorithm can be defined as an
-inner function inside $MERGE$.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (merge t1 t2)
-  (define (make-node x a b)
-    (if (< (rank a) (rank b))
-	(make-tree b (+ (rank a) 1) x a)
-	(make-tree a (+ (rank b) 1) x b)))
-  (cond ((null? t1) t2)
-	((null? t2) t1)
-	((< (elem t1) (elem t2)) (make-node (elem t1) (left t1) (merge (right t1) t2)))
-	(else (make-node (elem t2) (left t2) (merge t1 (right t2))))))
 \end{lstlisting}
 
 \subsubsection{Merge operation in implicit binary heap by array}
 
 In most cases implicit binary heap by array performs very fast, and
 it fits modern computer with cache technology well. However, merge
-is the algorithm bounds to $O(N)$ time. The best you can do is
-concatenate two arrays together and make a heap of the result \cite{NIST}.
+is the algorithm bounds to $O(n)$ time. The best way is to
+concatenate two arrays together and make a heap for this array \cite{NIST}.
 
 \begin{algorithmic}[1]
-\Function{MERGE-HEAP}{$A, B$}
-  $C \gets CONCAT(A, B)$
-  $BUILD-HEAP(C)$
+\Function{Merge-Heap}{$A, B$}
+  \State $C \gets$ \Call{Concat}{$A, B$}
+  \State \Call{Build-Heap}{$C$}
 \EndFunction
 \end{algorithmic}
-
-We omit the implementation of this algorithm in C++ and Python because
-they are trivial.
 
 % ================================================================
 %                 Basic heap operations
