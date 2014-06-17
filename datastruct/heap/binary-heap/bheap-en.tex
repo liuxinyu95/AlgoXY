@@ -771,7 +771,7 @@ merge(H_1, H_2) = \left \{
   {r@{\quad:\quad}l}
   H_2 & H_1 = \Phi \\
   H_1 & H_2 = \Phi \\
-  ? & Otherwise
+  ? & otherwise
   \end{array}
 \right.
 \]
@@ -872,7 +872,7 @@ rank(H) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   0 & H = \Phi \\
-  r & Otherwise, H = (r, k, L, R)
+  r & otherwise, H = (r, k, L, R)
   \end{array}
 \right.
 \ee
@@ -900,7 +900,7 @@ mk(k, A, B) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   (r_A + 1, k, B, A) & r_A < r_B \\
-  (r_B + 1, k, A, B) & Otherwise
+  (r_B + 1, k, A, B) & otherwise
   \end{array}
 \right.
 \ee
@@ -953,9 +953,9 @@ makeNode x a b = if rank a < rank b then Node (rank a + 1) x b a
 
 \subsubsection{Merge operation in implicit binary heap by array}
 
-In most cases implicit binary heap by array performs very fast, and
+Implicit binary heap by array performs very fast in most cases, and
 it fits modern computer with cache technology well. However, merge
-is the algorithm bounds to $O(n)$ time. The best way is to
+is the algorithm bounds to $O(n)$ time. The typical realization is to
 concatenate two arrays together and make a heap for this array \cite{NIST}.
 
 \begin{algorithmic}[1]
@@ -970,153 +970,72 @@ concatenate two arrays together and make a heap for this array \cite{NIST}.
 % ================================================================
 \subsection{Basic heap operations}
 
-Most of the basic heap operations can be implemented easily with $MERGE$
-algorithm define above.
+Most of the basic heap operations can be implemented with $merge$
+algorithm defined above.
 
-\subsubsection{Find minimum (top) and delete minimum (pop)}
-Since we keep the smallest element in root node, finding the minimum
-value (top element) is trivial. It's a $O(1)$ operation.
+\subsubsection{Top and pop}
+Because the smallest element is always held in root, it's trivial
+to find the minimum value. It's constant $O(1)$ operation. Below
+equation extracts the root from non-empty heap $H = (r, k, L, R)$.
+The error handling for empty case is skipped here.
 
-\begin{algorithmic}[1]
-\Function{TOP}{$T$}
-  \State \Return $KEY(T)$
-\EndFunction
-\end{algorithmic}
+\be
+top(H) = k
+\ee
 
-While if the top element popped, left and right children are merged
-so the heap updated.
+For pop operation, firstly, the top element is removed, then
+left and right children are merged to a new heap.
 
-\begin{algorithmic}[1]
-\Function{POP}{$T$}
-  \State \Return $MERGE(LEFT(T), RIGHT(T))$
-\EndFunction
-\end{algorithmic}
+\be
+pop(H) = merge(L, R)
+\ee
 
-Note that pop operation on Leftist heap takes $O(\lg N)$ time.
-
-\subsubsection*{Find minimum (top) and delete minimum in Haskell}
-
-We skip the error handling of operation on an empty
-Leftist heap.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-findMin :: LHeap a -> a
-findMin (Node _ x _ _) = x
-\end{lstlisting}
-
-\begin{lstlisting}
-deleteMin :: (Ord a) => LHeap a -> LHeap a
-deleteMin (Node _ _ l r) = merge l r
-\end{lstlisting}
-
-\subsubsection*{Find minimum (top) and delete minimum in Scheme/Lisp}
-
-With merge function defined, these operations are trivial to implement
-in Scheme/Lisp.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (find-min t)
-  (elem t))
-
-(define (delete-min t)
-  (merge (left t) (right t)))
-\end{lstlisting}
+Because it calls $merge$ directly, the pop operation on Leftist heap is bound
+to $O(\lg n)$.
 
 \subsubsection{Insertion}
 
-To insert a new key to the heap, one solution is to create a single
-leaf node from the key, and perform merge with this leaf node and
-the Leftist tree.
+To insert a new element, one solution is to create a single
+leaf node with the element, and then merge this leaf node to
+the existing Leftist tree.
 
-\begin{algorithmic}[1]
-\Function{INSERT}{$T, k$}
-  \State $x \gets CREATE-NEW-NODE()$
-  \State $KEY(x) \gets k$
-  \State $RAKN(x) \gets 1$
-  \State $LEFT(x), RIGHT(x) \gets NIL$
-  \State \Return $MERGE(x, T)$
-\EndFunction
-\end{algorithmic}
+\be
+insert(H, k) = merge(H, (1, k, \Phi, \Phi))
+\ee
 
-Since insert still call merge inside, the algorithm is bound to $O(\lg N)$
-time.
+It is $O(\lg n)$ algorithm since insertion also calls $merge$ directly.
 
-\subsubsection*{Insertion in Haskell}
+There is a convenient way to build the Leftist heap from
+a list. We can continously insert the elements one by one
+to the empty heap. This can be realized by folding.
 
-Translating the above algorithm to Haskell is trivial.
+\be
+build(L) = fold(insert, \Phi, L)
+\ee
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-insert::(Ord a)=> LHeap a -> a -> LHeap a
-insert h x = merge (Node 1 x E E) h
-\end{lstlisting}
-
-In order to provide a convenient way to build a Leftist heap from
-a list, an auxiliary function is given as the following.
-
-\begin{lstlisting}
-fromList :: (Ord a) => [a] -> LHeap a
-fromList = foldl insert E
-\end{lstlisting}
-
-This function can be used like this.
-
-\begin{lstlisting}
-fromList [9, 4, 16, 7, 10, 2, 14, 3, 8, 1]
-\end{lstlisting}
-
-It will create a Leftist heap as below.
-
-\begin{verbatim}
-Node 1 1 (Node 3 2 (Node 2 4 (Node 2 7 (Node 1 16 E E)
-(Node 1 10 E E)) (Node 1 9 E E)) (Node 2 3 (Node 1 14 E E)
-(Node 1 8 E E))) E
-\end{verbatim}
-
-Figure \ref{fig:leftist-tree} shows the result respectively.
+Figure \ref{fig:leftist-tree} shows one example Leftist tree
+built in this way.
 
 \begin{figure}[htbp]
    \begin{center}
    	  \includegraphics[scale=0.5]{img/leftist-tree.ps}
-    \caption{A Leftist tree.} \label{fig:leftist-tree}
+    \caption{A Leftist tree built from list $\{9, 4, 16, 7, 10, 2, 14, 3, 8, 1\}$.}
+    \label{fig:leftist-tree}
    \end{center}
 \end{figure}
 
-\subsubsection*{Insertion in Scheme/Lisp}
+The following example Haskell code gives reference implementation
+for the Leftist tree operations.
 
-Based on the algorithm, once inserting a new element, a leaf node
-is created and merge to the heap.
-
-\lstset{language=lisp}
+\lstset{language=Haskell}
 \begin{lstlisting}
-(define (insert t x)
-  (merge (make-tree '() 1 x '()) t))
-\end{lstlisting}
+insert h x = merge (Node 1 x E E) h
 
-This function can be verified by continuously insert all elements
-from a list so that a Leftist heap can be built as a result.
+findMin (Node _ x _ _) = x
 
-\begin{lstlisting}
-(define (from-list lst)
-  (fold-left insert '() lst))
-\end{lstlisting}
+deleteMin (Node _ _ l r) = merge l r
 
-One example test case which is equivalent to the Haskell program
-is shown like the following.
-
-\begin{lstlisting}
-(define (test-from-list)
-  (from-list '(16 14 10 8 7 9 3 2 4 1)))
-\end{lstlisting}
-
-Evaluate this function yields a Leftist tree, which can be output
-in in-order as below.
-
-\begin{lstlisting}
-((((((((() 1 16 ()) 1 14 ()) 1 10 ()) 1 8 ()) 2 7 (() 1 9 ())) 1 3
-()) 2 2 (() 1 4 ())) 1 1 ())
+fromList = foldl insert E
 \end{lstlisting}
 
 % ================================================================
@@ -1125,81 +1044,34 @@ in in-order as below.
 \subsection{Heap sort by Leftist Heap}
 
 With all the basic operations defined, it's straightforward to
-implement heap sort in a $N$-popping way. Once we need sort a
-list of elements, we first build a Leftist heap from the list.
-Then repeatedly pop the minimum element from the heap until heap
-is empty.
+implement heap sort. We can firstly turn the list into a Leftist
+heap, then continously extract the minimum
+element from it.
 
-First is the algorithm to build the Leftist heap by insert all
-elements to an empty heap.
+\be
+sort(L) = heapSort(build(L))
+\ee
 
-\begin{algorithmic}[1]
-\Function{BUILD-HEAP}{$A$}
-  \State $H \gets NIL$
-  \For{each $x$ in $A$}
-    \State $T \gets INSERT(T, x)$
-  \EndFor
-  \State \Return $T$
-\EndFunction
-\end{algorithmic}
+\be
+heapSort(H) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & H = \Phi \\
+  \{top(H)\} \cup heapSort(pop(H)) & otherwise
+  \end{array}
+\right.
+\ee
 
-And the heap sort algorithm is as same as the generic one presented
-in \ref{heap-sort}.
-
-Note this algorithm is bound to $O(N \lg N)$ time.
-
-\subsection*{Heap sort in Haskell}
-
-In Haskell program, since we have already defined the `fromList'
-auxiliary function to build Leftist heap from a list, the heap sort
-algorithm can utilize it.
+Because pop is logarithm operation, and it is recursively called $n$ times,
+this algorithm takes $O(n \lg n)$ time in total. The following Haskell
+example program implements heap sort with Leftist tree.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-heapSort :: (Ord a) => [a] -> [a]
 heapSort = hsort . fromList where
     hsort E = []
     hsort h = (findMin h):(hsort $ deleteMin h)
 \end{lstlisting} %$
-
-Here is an example case which is used in previous C++ and Python
-programs.
-
-\begin{lstlisting}
-heapSort [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
-\end{lstlisting}
-
-It will output the same result as the following.
-
-\begin{verbatim}
-[1,2,3,4,7,8,9,10,14,16]
-\end{verbatim}
-
-\subsection*{Heap sort in Scheme/Lisp}
-
-In Scheme/Lisp program, we can first use `from-list' function
-to turn a list of element into a Leftist heap, then repeatedly
-pop the smallest one to a result list.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (heap-sort lst)
-  (define (hsort t)
-    (if (null? t) '() (cons (find-min t) (hsort (delete-min t)))))
-  (hsort (from-list lst)))
-\end{lstlisting}
-
-Here is a simple test case.
-
-\begin{lstlisting}
-heap-sort '(16 14 10 8 7 9 3 2 4 1))
-\end{lstlisting}
-
-Evaluate the case will out put an ordered list.
-
-\begin{lstlisting}
-(1 2 3 4 7 8 9 10 14 16)
-\end{lstlisting}
 
 % ================================================================
 %                 Skew Heap
