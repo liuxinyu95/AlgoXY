@@ -1278,19 +1278,94 @@ This is the last step in splay operation.
 \end{itemize}
 
 Although there are 6 different cases, they can be handled in the
-environment supports pattern matching. Denote the binary tree
-in form $(L, k, R)$. When access key $x$ in tree $T$, the splay
+environments support pattern matching. Denote the binary tree
+in form $(L, k, R)$. When access key $Y$ in tree $T$, the splay
 operation can be defined as below.
 
 \be
-splay(T, x) = \left \{
+splay(T, X) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
-  (A, k, (B, p (C, g, D))) & T = (((A, k, B), p, C), g, D), x = k \\
-
+  (a, X, (b, P, (c, G, d))) & T = (((a, X, b), P, c), G, d), X = Y \\
+  (((a, G, b), P, c), X, d) & T= (a, G, (b, P, (c, X, d))), X = Y \\
+  ((a, P, b), X, (c, G, d)) & T = (a, P, (b, X, c), G, d), X = Y \\
+  ((a, G, b), X, (c, P, d)) & T = (a, G, ((b, X, c), P, d)), X = Y \\
+  (a, X, (b, P, c)) & T = ((a, X, b), P, c), X = Y \\
+  ((a, P, b), X, c) & T = (a, P, (b, X, c)), X = Y \\
+  T &  otherwise
   \end{array}
 \right.
 \ee
+
+The first two clauses handle the 'zig-zig' cases; the next two
+clauses handle the 'zig-zag' cases; the last two clauses handle
+the zig cases. The tree aren't changed for all other situations.
+
+The following Haskell program implements this splay function.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+data STree a = E -- Empty
+             | Node (STree a) a (STree a) -- left, key, right
+
+splay :: (Eq a) => STree a -> a ->STree a
+-- zig-zig
+splay t@(Node (Node (Node a x b) p c) g d) y =
+    if x == y then Node a x (Node b p (Node c g d)) else t
+splay t@(Node a g (Node b p (Node c x d))) y =
+    if x == y then Node (Node (Node a g b) p c) x d else t
+-- zig-zag
+splay t@(Node (Node a p (Node b x c)) g d) y =
+    if x == y then Node (Node a p b) x (Node c g d) else t
+splay t@(Node a g (Node (Node b x c) p d)) y =
+    if x == y then Node (Node a g b) x (Node c p d) else t
+-- zig
+splay t@(Node (Node a x b) p c) y = if x == y then Node a x (Node b p c) else t
+splay t@(Node a p (Node b x c)) y = if x == y then Node (Node a p b) x c else t
+-- otherwise
+splay t _ = t
+\end{lstlisting}
+
+With splay operation defined, every time when insert a new key,
+we call the splay function to adjut the tree.
+If the tree is empty, the result is a leaf; otherwise we compare this key
+with the root, if it is less than the root, we recursively insert it into
+the left child, and perform splaying after that; else the key is inserted
+into the right child.
+
+\be
+insert(T, x) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (\Phi, x, \Phi) & T = \Phi \\
+  splay((insert(L, x), k, R), x) & T = (L, k, R), x < k \\
+  splay(L, k, insert(R, x)) & otherwise
+  \end{array}
+  \right.
+\ee
+
+The following Haskell program implements this insertion algorithm.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+insert E y = Node E y E
+insert (Node l x r) y
+    | x > y     = splay (Node (insert l y) x r) y
+    | otherwise = splay (Node l x (insert r y)) y
+\end{lstlisting}
+
+Figure \ref{fig:splay-result} shows the result of using this function.
+It inserts the ordered elements $\{1, 2, ..., 10\}$
+one by one to the empty tree. This would build a very poor result
+which donwgrade to linked-list with normal binary search tree.
+The splay method creates more balanced result.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.5]{img/splay-tree.ps}
+  \caption{Splaying helps improving the balance.}
+  \label{fig:splay-result}
+\end{figure}
 
 Okasaki found a simple rule for Splaying \cite{okasaki-book},
 that every time we follow

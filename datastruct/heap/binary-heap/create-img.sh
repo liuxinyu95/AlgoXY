@@ -1,4 +1,4 @@
-#!/usr/bin/sh
+#!/bin/sh
 
 CONV="../../tree/red-black-tree/src/rbt2dot.py"
 
@@ -27,4 +27,5 @@ CONV="../../tree/red-black-tree/src/rbt2dot.py"
 #$CONV -o img/zig-zag-b.dot "(((. a:N .) P (. b:N .)) X ((. c:N .) G (. d:N .)))"
 #$CONV -o img/zig-a.dot "(((. a:N .) X (. b:N .)) P (. c:N .))"
 #$CONV -o img/zig-b.dot "((. a:N .) X ((. b:N .) P (. c:N .)))"
-$CONV -o img/splay-tree.dot "((((. 1 .) 2 .) 3 .) 4 ((. 5 .) 6 (((. 7 .) 8 .) 9 (. 10 .))))"
+#$CONV -o img/splay-tree.dot "((((. 1 .) 2 .) 3 .) 4 ((. 5 .) 6 (((. 7 .) 8 .) 9 (. 10 .))))
+$CONV -o img/splay-tree.dot "((((. 1 .) 2 (. 3 .)) 4 .) 5 ((((. 6 .) 7 (. 8 .)) 9 .) 10 .))"
