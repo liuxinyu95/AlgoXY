@@ -1372,11 +1372,11 @@ Whenever we follow
 two left branches, or two right branches continously, we rotate
 the two nodes.
 
-Based on this rule, the Splaying can be realized in such a way.
+Based on this rule, splaying can be realized in such a way.
 When we access node for a key $x$ (can be during the process of
 inserting a node, or looking up a node, or deleting a node), if
-we traverse two left branches (or two right branches), we
-partition the tree in two part $L$ and $R$, where $L$ contains all
+we traverse two left branches or two right branches, we
+partition the tree in two parts $L$ and $R$, where $L$ contains all
 nodes smaller than $x$, and $R$ contains all the rest.
 We can then create a new tree (for instance in insertion),
 with $x$ as the root, $L$ as the left child, and $R$ being the right child.
@@ -1414,23 +1414,28 @@ partition(T, p) = \left \{
   \right.
 \ee
 
-\subsection*{Definition of Splay heap in Haskell}
+Function $partition(T, p)$ takes a tree $T$, and a pivot $p$ as arguments.
+The first clause is edge case. The partition result for empty is
+a pair of empty left and right trees. Otherwise, denote the tree
+as $(L, k, R)$. we need compare the pivot $p$ and the root $k$.
+If $k < p$, there are two sub-cases. one is trival case that
+$R$ is empty. According to the property of binary search tree,
+All elements are less than $p$, so the result pair is $(T, \Phi)$;
+For the other case, $R = (L', k', R')$, we need further compare
+$k'$ with the pivot $p$. If $k' < p$ is also true, we recursively
+partiton $R'$ with the pivot, all the elements less than $p$ in
+$R'$ is held in tree $A$, and the rest is in tree $B$. The
+result pair can be composed with two trees, one is $((L, k, L'), k', A)$;
+the other is $B$. If the key of the right sub tree is not less than
+the pivot. we recursively partition $L'$ with the pivot to give
+the intermediate pair $(A, B)$, the final pair trees can be
+composed with $(L, k, A)$ and $(B, k', R')$. There is a symmetric
+cases for $p \leq k$. They are handled in the last three clauses.
 
-Since Splay tree is a special binary search tree, the definition of
-them are same.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-data STree a = E -- Empty
-             | Node (STree a) a (STree a) -- left, element, right
-               deriving (Eq, Show)
-\end{lstlisting}
-
-Translate the above algorithm into Haskell gets the following partition
+Translating the above algorithm into Haskell yields the following partition
 program.
 
 \begin{lstlisting}
-partition :: (Ord a) => STree a -> a -> (STree a, STree a)
 partition E _ = (E, E)
 partition t@(Node l x r) y
     | x < y =
@@ -1455,406 +1460,108 @@ partition t@(Node l x r) y
                   (Node l' x' small, Node big x r)
 \end{lstlisting}
 
-In a language which supports `pattern matching' such as Haskell,
-Splay can be implemented in a very simple and straightforward style
-by translating the figure \ref{fig:zig-zig}, \ref{fig:zig-zag} and
-\ref{fig:zig} directly into patterns. Note that for each step,
-there are two left-right symmetric cases.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
--- splay by pattern matching
-splay :: (Eq a) => STree a -> a ->STree a
--- zig-zig
-splay t@(Node (Node (Node a x b) p c) g d) y =
-    if x == y then Node a x (Node b p (Node c g d)) else t
-splay t@(Node a g (Node b p (Node c x d))) y =
-    if x == y then Node (Node (Node a g b) p c) x d else t
--- zig-zag
-splay t@(Node (Node a p (Node b x c)) g d) y =
-    if x == y then Node (Node a p b) x (Node c g d) else t
-splay t@(Node a g (Node (Node b x c) p d)) y =
-    if x == y then Node (Node a g b) x (Node c p d) else t
--- zig
-splay t@(Node (Node a x b) p c) y = if x == y then Node a x (Node b p c) else t
-splay t@(Node a p (Node b x c)) y = if x == y then Node (Node a p b) x c else t
--- otherwise
-splay t _ = t
-\end{lstlisting}
-
-\subsection*{Definition of Splay heap in Scheme/Lisp}
-
-Since Splay heap is essentially binary search tree. The definition
-is same. In order to output the tree in in-order. we arrange it
-as (left element right) format.
-
-Some auxiliary functions to access left child, element, right
-child and constructor are defined as same as in ref{skew-heap-def-lisp}.
-
-The function which can partition the tree into 2 parts according to
-a pivot value based on algorithm $PARTITION$ is defined as the following.
-It's a bit complex, but not hard. We compared the pivot and the element
-and traverse the tree based on binary search tree property. In case
-there are two left (or right) children traversed, the tree is rotated
-by splaying. It makes the tree more and more balanced.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (partition t pivot)
-  (if (null? t)
-      (cons '() '())
-      (let ((l (left t))
-	    (x (elem t))
-	    (r (right t)))
-	(if (< x pivot)
-	    (if (null? r)
-		(cons t '())
-		(let ((l1 (left r))
-		      (x1 (elem r))
-		      (r1 (right r)))
-		  (if (< x1 pivot)
-		      (let* ((p (partition r1 pivot))
-			     (small (car p))
-			     (big (cdr p)))
-			(cons (make-tree (make-tree l x l1) x1 small) big))
-		      (let* ((p (partition l1 pivot))
-			     (small (car p))
-			     (big (cdr p)))
-			(cons (make-tree l x small) (make-tree big x1 r1))))))
-	    (if (null? l)
-		(cons '() t)
-		(let ((l1 (left l))
-		      (x1 (elem l))
-		      (r1 (right l)))
-		  (if (> x1 pivot)
-		      (let* ((p (partition l1 pivot))
-			     (small (car p))
-			     (big (cdr p)))
-			(cons small (make-tree l1 x1 (make-tree r1 x r))))
-		      (let* ((p (partition r1 pivot))
-			     (small (car p))
-			     (big (cdr p)))
-			(cons (make-tree l1 x1 small) (make-tree big x r))))))))))
-\end{lstlisting}
-
-Although there is no direct pattern matching language feature supporting in
-Scheme/Lisp, it possible to provide a splay function by guard clause.
-Compare to the Haskell one, it is a bit more complex.
-
-\begin{lstlisting}
-(define (splay l x r y)
-  (cond ((eq? y (elem (left l))) ;; zig-zig
-	 (make-tree (left (left l))
-		    (elem (left l))
-		    (make-tree (right (left l))
-			       (elem l)
-			       (make-tree (right l) x r))))
-	((eq? y (elem (right r))) ;; zig-zig
-	 (make-tree (make-tree (make-tree l x (left r))
-			       (elem r)
-			       (left (right r)))
-		    (elem (right r))
-		    (right (right r))))
-	((eq? y (elem (right l))) ;; zig-zag
-	 (make-tree (make-tree (left l) (elem l) (left (right l)))
-		    (elem (right l))
-		    (make-tree (right (right l)) x r)))
-	((eq? y (elem (left r))) ;; zig-zag
-	 (make-tree (make-tree l x (left (left r)))
-		    (elem (left r))
-		    (make-tree (right (left r)) (elem r) (right r))))
-	((eq? y (elem l)) ;; zig
-	 (make-tree (left l) (elem l) (make-tree (right l) x r)))
-	((eq? y (elem r)) ;; zig
-	 (make-tree (make-tree l x (left r)) (elem r) (right r)))
-	(else (make-tree l x r))))
-\end{lstlisting}
-
 % ================================================================
 %                 Basic heap operations
 % ================================================================
-\subsection{Basic heap operations}
+Alternatively, insertion can be realized with $partition$ algorithm.
+When insert a new element $k$ into
+the splay heap $T$, we can first partition the heap into two trees, $L$ and $R$. Where
+$L$ contains all nodes smaller than $k$, and $R$ contains the rest.
+We then construct a new node, with $k$ as the root and $L$, $R$ as the children.
 
-There are two methods to implement basic heap operations for Splay
-heap. One is by using $PARTITION$ algorithm we defined, the other
-is to utilize a $SPLAY$ process, which can be realized in pattern matching
-way in languages equipped with this feature.
+\be
+insert(T, k) = (L, k, R), (L, R) = partition(T, k)
+\ee
 
-\subsubsection{Insertion}
-
-If using $PARTITION$ algorithm, once we want to insert a new $x$ into
-a heap $T$, we can first partition it into two trees, $L$ and $R$. Where
-L contains all nodes smaller than $x$, and $R$ contains all bigger ones.
-We then construct a new node, with $x$ as the root and $L$, $R$ as children.
-
-\begin{algorithmic}[1]
-\Function{INSERT}{$T, x$}
-  \State $(L, R) \gets PARTITION(T, x)$
-  \State \Return $CREATE-NODE(L, x, R)$
-\EndFunction
-\end{algorithmic}
-
-If there is a $SPLAY$ algorithm defined, the insert can be done in a
-recursive way as the following.
-
-\begin{algorithmic}[1]
-\Function{INSERT'}{$T, x$}
-  \If{$T = NIL$}
-    \State \Return $CREATE-NODE(NIL, x, NIL)$
-  \EndIf
-  \If{$KEY(T) < x$}
-    \State $LEFT(T) \gets INSERT'(LEFT(T), x)$
-  \Else
-    \State $RIGHT(T) \gets INSERT'(RIGHT(T), x)$
-  \EndIf
-  \State \Return $SPLAY(T, x)$
-\EndFunction
-\end{algorithmic}
-
-\subsubsection*{Insertion in Haskell}
-
-It's easy to translate the above algorithms into Haskell.
+The corresponding Haskell example program is as the folloing.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-insert :: (Ord a) => STree a -> a -> STree a
 insert t x = Node small x big where (small, big) = partition t x
 \end{lstlisting}
 
-And the pattern matching one is in recursive manner as below.
-
-\begin{lstlisting}
-insert' :: (Ord a) => STree a -> a -> STree a
-insert' E y = Node E y E
-insert' (Node l x r) y
-    | x > y     = splay (Node (insert' l y) x r) y
-    | otherwise = splay (Node l x (insert' r y)) y
-\end{lstlisting}
-
-\subsubsection*{Insertion in Scheme/Lisp}
-
-By using partition method, when insert a new element to the Splay
-heap, we use this element as the pivot to partition the tree.
-After that we set this new element as the new root, the sub tree
-contains all elements smaller than root as the left child, and
-the others as the right child. Note that we intend not handle the
-duplicated elements case, because it quite possible to contains
-them in Splay heap.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (insert t x)
-  (let* ((p (partition t x))
-	 (small (car p))
-	 (big (cdr p)))
-    (make-tree small x big)))
-\end{lstlisting}
-
-And if use splay function, the insert can be implemented straightforward
-like binary search tree, except that we need apply splaying recursively
-after that.
-
-\begin{lstlisting}
-(define (insert-splay t x)
-  (cond ((null? t) (make-tree '() x '()))
-	((> (elem t) x)
-	 (splay (insert-splay (left t) x) (elem t) (right t) x))
-	(else
-	 (splay (left t) (elem t) (insert-splay (right t) x) x))))
-\end{lstlisting}
-
-\subsubsection{Verify how Splay improve the balance}
-In order to show how Splaying improves the balance of binary search
-tree, we first insert a list of ordered element to the tree and then
-performs a large number of arbitrary node access.
-
-A look-up algorithm is provided with Splaying operation inside.
-
-\begin{algorithmic}[1]
-\Function{LOOKUP}{$T, x$}
-  \If{$KEY(T) = x$}
-    \State \Return $T$
-  \ElsIf{$KEY(T) > x$}
-    \State $LEFT(T) \gets LOOKUP(LEFT(T), x)$
-  \Else
-    \State $RIGHT(T) \gets LOOKUP(RIGHT(T), x)$
-  \EndIf
-  \State \Return $SPLAY(T, x)$
-\EndFunction
-\end{algorithmic}
-
-Translate this algorithm into Haskell yields the following program\footnote{$LOOKUP$ algorithm in other language is skipped.}.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-lookup' :: (Ord a) => STree a -> a -> STree a
-lookup' E _ = E
-lookup' t@(Node l x r) y
-    | x == y    = t
-    | x > y     = splay (Node (lookup' l y) x r) y
-    | otherwise = splay (Node l x (lookup' r y)) y
-\end{lstlisting}
-
-Next we can create a Splay heap by inserting sequence number from
-1 to 10. After that, We random select from a number from this range,
-and perform looking up 1000 times as below.
-
-\begin{lstlisting}
-testSplay = do
-  xs <- sequence (replicate 1000 (randomRIO(1, 10)))
-  putStrLn $ show (foldl lookup' t xs)
-      where
-        t = foldl insert' (E::STree Int) [1..10]
-\end{lstlisting} %$
-
-Run these test will make the tree quite balance. Below is an example
-result. Figure \ref{fig:splay-result} shows the tree after splaying.
-
-\begin{verbatim}
-Node (Node (Node (Node E 1 E) 2 E) 3 E) 4 (Node (Node E 5 E) 6 (Node
-(Node (Node E 7 E) 8 E) 9 (Node E 10 E)))
-\end{verbatim}
-
-\begin{figure}[htbp]
-   \begin{center}
-   	  \includegraphics[scale=0.5]{img/splay-tree.ps}
-          \caption{Splaying helps improving the balance.} \label{fig:splay-result}
-   \end{center}
-\end{figure}
-
-
-\subsubsection{Find minimum (top) and delete minimum (pop)}
-Since Splay tree is just a special binary search tree, so the minimum
+\subsubsection{Top and pop}
+Since splay tree is just a special binary search tree, the minimum
 element is stored in the left most node. We need keep traversing
-the left child.
+the left child to realize the top operation. Denote the none empty
+tree $T=(L, k, R)$, the $top(T)$ function can be defined as below.
 
-\begin{algorithmic}[1]
-\Function{FIND-MIN}{$T$}
-  \If{$LEFT(T) = NIL$}
-    \State \Return $KEY(T)$
-  \Else
-    \State \Return $FIND-MIN(LEFT(T))$
-  \EndIf
-\EndFunction
-\end{algorithmic}
+\be
+top(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  k & L = \Phi \\
+  top(L) & otherwise
+  \end{array}
+  \right.
+\ee
 
-And for pop operation, the algorithm need keep traversing in left
-and also remove the minimum element from the tree. In case there
-are two left nodes traversed, a splaying operation should be performed.
+This is exactly the $min(T)$ algorithm for binary search tree.
 
-\begin{algorithmic}[1]
-\Function{DEL-MIN}{$T$}
-  \If{$LEFT(T) = NIL$}
-    \State \Return $RIGHT(T)$
-  \ElsIf{$LEFT(LEFT(T)) = NIL$}
-    \State $LEFT(T) \gets RIGHT(LEFT(T))$
-    \State \Return $T$
-  \Else
-    \Comment{Splaying}
-    \State $l \gets LEFT(T)$
-    \State $r \gets CREATE-NEW-NODE()$
-    \State $LEFT(r) \gets RIGHT(l)$
-    \State $KEY(r) \gets KEY(T)$
-    \State $RIGHT(r) \gets RIGHT(T)$
-    \State $T' \gets CREATE-NEW-NODE()$
-    \State $LEFT(T') \gets DEL-MIN(LEFT(l))$
-    \State $KEY(T') \gets KEY(l)$
-    \State $RIGHT(T') \gets r$
-    \State \Return $T'$
-  \EndIf
-\EndFunction
-\end{algorithmic}
+For pop operation, the algorithm need remove the minimum element from the
+tree. Whenever there
+are two left nodes traversed, the splaying operation should be performed.
 
-Note that the find minimum and delete minimum algorithms both are
-bound to $O(\lg N)$.
+\be
+pop(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  R & T = (\Phi, k, R) \\
+  (R', k, R) & T = ((\Phi, k', R') k, R) \\
+  (pop(L'), k', (R', k, R)) & T = ((L', k', R'), k, R)
+  \end{array}
+  \right.
+\ee
 
-\subsubsection*{Find minimum (top) and delete minimum in Haskell}
+Note that the third clause performs splaying without explictly call
+the $partition$ function. It utilizes the properity of binary
+search tree directly.
 
-When translate the above algorithms into Haskell, one option is to
-use pattern matching.
+Both the top and pop algorithms are bound to $O(\lg n)$ time because
+the splay tree is balanced.
+
+The following Haskell example programs implement the top and pop
+operations.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-findMin :: STree a -> a
 findMin (Node E x _) = x
 findMin (Node l x _) = findMin l
 
-deleteMin :: STree a -> STree a
 deleteMin (Node E x r) = r
 deleteMin (Node (Node E x' r') x r) = Node r' x r
 deleteMin (Node (Node l' x' r') x r) = Node (deleteMin l') x' (Node r' x r)
 \end{lstlisting}
 
-\subsubsection*{Find minimum (top) and delete minimum in Scheme/Lisp}
-
-In Scheme/Lisp, finding minimum element means keep traversing to left;
-while for max-heap, we need change the program to keep traversing to
-right.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (find-min t)
-  (if (null? (left t))
-      (elem t)
-      (find-min (left t))))
-\end{lstlisting}
-
-And for delete minimum program, except for trivial case, splaying also
-need be performed if we traverse in left twice.
-
-\begin{lstlisting}
-(define (delete-min t)
-  (cond ((null? (left t)) (right t))
-	((null? (left (left t))) (make-tree (right (left t)) (elem t) (right t)))
-	(else (make-tree (delete-min (left (left t)))
-			 (elem (left t))
-			 (make-tree (right (left t)) (elem t) (right t)))))
-\end{lstlisting}
-
 \subsubsection{Merge}
-Merge is another basic operation for heaps as it is widely used in Graph algorithms. By using $PARTITION$ algorithm, merge can be realized in $O(\lg N)$ time.
+Merge is another basic operation for heaps as it is widely used in Graph algorithms. By using the $partition$ algorithm, merge can be realized in $O(\lg n)$ time.
 
-When merging two Splay trees, for non-trivial case, we can take the root element of the first tree as the new root element, then partition the second tree with the new root as the pivot value. After that we recursively merge
-the children of the first tree with the partition result. This algorithm is shown as the following.
+When merging two splay trees, for non-trivial case, we can take the root of the first tree as the new root, then partition the second tree with this new root as the pivot. After that we recursively merge
+the children of the first tree to the partition result. This algorithm is defined as the following.
 
-\begin{algorithmic}[1]
-\Function{MERGE}{$T1, T2$}
-  \If{$T1 = NIL$}
-    \State \Return $T2$
-  \Else
-    \State $L \gets LEFT(T1)$
-    \State $R \gets RIGHT(T1)$
-    \State $k \gets KEY(T1)$
-    \State $(L', R') \gets PARTITION(T2, k)$
-    \State \Return $CREATE-NODE(MERGE(L, L'), k MERGE(R, R'))$
-  \EndIf
-\EndFunction
-\end{algorithmic}
+\be
+merge(T_1, T_2) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  T_2 & T_1 = \Phi \\
+  (merge(L, A), k, merge(R, B)) & T_1 = (L, k, R), (A, B) = partition(T_2, k)
+  \end{array}
+  \right.
+\ee
 
-\subsubsection*{Merge two Splay heaps in Haskell}
-In Haskell, we can handle the trivial and non-trivial case by pattern matching.
+If the first heap is empty, the result is definitely the second heap. Otherwise,
+denote the first splay heap as $(L, k, R)$, we parition $T_2$ with $k$ as the
+pivot to yield $(A, B)$, where $A$ contains all the elements in $T_2$ which are
+less than $k$, and $B$ holds the rest. We next recurisvely merge $A$ with $L$;
+and merge $B$ with $R$ as the new children for $T_1$.
+
+Translating the defintion to Haskell gives the following example program.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-merge :: (Ord a) => STree a -> STree a -> STree a
 merge E t = t
 merge (Node l x r) t = Node (merge l l') x (merge r r')
     where (l', r') = partition t x
-\end{lstlisting}
-
-\subsubsection*{Merge two Splay heaps in Scheme/Lisp}
-
-In Scheme/Lisp, we translate the above algorithm strictly as the following.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (merge t1 t2)
-  (if (null? t1)
-      t2
-      (let* ((p (partition t2 (elem t1)))
-	     (small (car p))
-	     (big (cdr p)))
-	(make-tree (merge (left t1) small) (elem t1) (merge (right t1) big)))))
 \end{lstlisting}
 
 % ================================================================
@@ -1872,78 +1579,42 @@ matter what the underground data structure is.
 % ================================================================
 \section{Notes and short summary}
 
-In this post, we reviewed the definition of binary heap, and adjust it
-a bit so that as long as the heap property is maintained, all binary
+In this chapter, we define binary heap more general
+so that as long as the heap property is maintained, all binary
 representation of data structures can be used to implement binary heap.
 
-This enable us not only limit to the popular implicit binary heap
-by array, but also extend to explicit binary heaps including Leftist
-heap, Skew heap and Splay heap. Note that, the implicit binary heap
-by array is particularly convenient for imperative implementation
-because it intense uses random index access which can be mapped to
-a completely binary tree. It's hard to directly find functional
+This definition doesn't limit to the popular array based binary
+heap, but also extends to the explicit binary heaps including Leftist
+heap, Skew heap and Splay heap. The array based binary heap
+is particularly convenient for the imperative implementation
+because it intensely uses random index access which can be mapped to
+a completely binary tree. It's hard to find directly functional
 counterpart in this way.
 
 However, by using explicit binary tree, functional implementation
-can be easily achieved, most of them have $O(\lg N)$ worst case
+can be achieved, most of them have $O(\lg n)$ worst case
 performance, and some of them even reach $O(1)$ amortize time.
-Okasaki in \cite{okasaki-book} shows good analysis of these data
+Okasaki in \cite{okasaki-book} shows detailed analysis of these data
 structures.
 
-In this post, Only pure functional realization for Leftist heap,
-Skew heap, and Splay heap are explained, they are all possible to
-be implemented in imperative way. I skipped them only for the
-purpose of presenting comparable functional algorithm to the
-implicit binary heap by array.
+In this chapter, only purely functional realization for Leftist heap,
+Skew heap, and Splay heap are explained, they can all be realized
+in imperative approaches.
 
 It's very natural to extend the concept from binary tree to
-K-ary (K-way) tree, which leads to other useful heap concept such as
-Binomial heaps, Fibonacci heaps and pairing heaps. I'll introduce
-them in a separate post later.
+$k$-ary ($k$-way) tree, which leads to other useful heaps such as
+Binomial heap, Fibonacci heap and pairing heap. They are introduced
+in the next chapter.
 
 % ================================================================
-%                 Appendix
+%                 Exercise
 % ================================================================
-\section{Appendix} \label{appendix}
-%\appendix
-All programs provided along with this article are free for
-downloading.
-
-\subsection{Prerequisite software}
-GNU Make is used for easy build some of the program. For C++ and ANSI C programs,
-GNU GCC and G++ 3.4.4 are used.
-For Haskell programs GHC 6.10.4 is used
-for building. For Python programs, Python 2.5 is used for testing, for
-Scheme/Lisp program, MIT Scheme 14.9 is used.
-
-all source files are put in one folder. Invoke 'make' or 'make all'
-will build C++ Program.
-
-There is no separate Haskell main program module, however, it is possible to run the program in GHCi.
-
+\begin{Exercise}
 \begin{itemize}
-\item bheap.hpp. This is the C++ source file contains binary heap defintion and functions, There are two types of approach, one is the ``reference + size'' way, the other is ``range'' representation.
-
-\item test.cpp. This is the main C++ program to test bheap.hpp module.
-
-\item bheap.py. This is the Python source file for binary heap implementation. It's a self-contained program with test cases embedded. run it directly will performs all test cases. It is also possible to import it as a module.
-
-\item LeftistHeap.hs. This is the Haskell program for Leftist Heap with some simple test cases as well. It can be loaded to GHCi directly.
-
-\item SkewHeap.hs. This is the Haskell program for Skew heap defintion. Some very simple test cases are provided.
-
-\item SplayHeap.hs. This is the Haskell proram for Splay heap definition.
-
-\item lefitst.scm. This is the Scheme/Lisp program for Leftist heap.
-
-\item skewheap.scm. This is the Scheme/Lisp program for Skew heap. Same as leftist.scm, some gerneric functions are reused.
-
-\item genheap.scm. This is the Scheme/Lisp general heap function utilities which are all same for varies of heaps. It can be overwritten afterwards.
-
-\item splayheap.scm. This is the Scheme/Lisp program for Splay heap definition.
+\item Realize the imperative Leftist heap, Skew heap, and Splay heap.
 \end{itemize}
+\end{Exercise}
 
-download position: http://sites.google.com/site/algoxy/btree/bheap.zip
 
 \begin{thebibliography}{99}
 
