@@ -151,164 +151,47 @@ the total number of keys satisifes the following inequality.
 \be
 \begin{array}{rl}
 n & \geq 1 + (t-1)(2 + 2t + 2t^2 + ... + 2t^{h-1}) \\
+  & = 1 + 2(t-1) \displaystyle \sum_{k=0}^{h-1} t^k \\
   & = 1 + 2(t-1) \displaystyle \frac{t^h-1}{t-1} \\
   & = 2t^h - 1
 \end{array}
 \ee
 
-The reason why B-tree is balanced, is because the height is
-the logorithm of the number of node.
+Thus we have the inequality between the height and the number
+of keys.
 
 \be
 h \leq \log_t \frac{n+1}{2}
 \ee
 
-In this chapter, we will firstly introduce how to generate B-tree by insertion.
-Two different methods will be explained. One is the classic method
-as in \cite{CLRS},
-the other is the modify-fix approach which is quite similar to the
-red-black tree solution \cite{okasaki-rbtree} \cite{wiki-b-tree}.
-We will next explain how to delete
-element from B-tree and how to look up a key.
+This is the reason why B-tree is balanced. The simplest B-tree
+is so called 2-3-4 tree, where $t=2$, that every node except
+root contains 2 or 3 or 4 keys. red-black tree can be mapped
+to 2-3-4 tree essentially.
 
-% ================================================================
-%                 Definition
-% ================================================================
-\section{Definition}
-\label{btree-definition}
-
-Similar as Binary search tree, B-tree can be defined recursively.
-Because there are multiple keys and children, a collection container
-can be used to store them.
-
-\subsection*{Definition of B-tree in C++}
-ISO C++ support using const integral number as template parameter.
-This feature can used to define B-tree with different minimum degree
-as different type.
-
-\lstset{language=C++}
-\begin{lstlisting}
-// t: minimum degree of B-tree
-template<class K, int t>
-struct BTree{
-  typedef K key_type;
-  typedef std::vector<K> Keys;
-  typedef std::vector<BTree*> Children;
-
-  BTree(){}
-
-  ~BTree(){
-    for(typename Children::iterator it=children.begin();
-        it!=children.end(); ++it)
-      delete (*it);
-  }
-
-  bool full(){ return keys.size() == 2*t-1; }
-
-  bool leaf(){
-    return children.empty();
-  }
-
-  Keys keys;
-  Children children;
-};
-\end{lstlisting}
-
-In order to support random access to keys and children, the
-inner data structure uses STL vector. The node will recursively
-release all its children. and a two simple auxiliary member
-functions ``full'' and ``leaf'' are provided to test if a node
-is full or is a leaf node.
-
-\subsection*{Definition of B-tree in Python}
-
-If the minimum degree is 2, the B-tree is commonly called as 2-3-4 tree.
-For illustration purpose, I set 2-3-4 tree as default.
+The following Python code shows example B-tree definition.
+It explicitly pass $t$ when create a node.
 
 \lstset{language=Python}
 \begin{lstlisting}
-TREE_2_3_4 = 2 #by default, create 2-3-4 tree
-
-class BTreeNode:
-    def __init__(self, t=TREE_2_3_4, leaf=True):
-        self.leaf = leaf
+class BTree:
+    def __init__(self, t):
         self.t = t
-        self.keys = [] #self.data = ...
+        self.keys = []
         self.children = []
 \end{lstlisting}
 
-It's quite OK for B-tree not only store keys, but also store satellite data.
-However, satellite data is omitted in this post.
+B-tree nodes commonly have satellite data as well. We ignore
+satellite data for illustration purpose.
 
-Also there are some auxiliary member functions defined
+In this chapter, we will firstly introduce how to generate B-tree by insertion.
+Two different methods will be explained. One is the classic method
+as in \cite{CLRS}, that we split the node before insertion if it's full;
+the other is the modify-fix approach which is quite similar to the
+red-black tree solution \cite{okasaki-rbtree} \cite{wiki-b-tree}.
+We will next explain how to delete
+key from B-tree and how to look up a key.
 
-\begin{lstlisting}
-class BTreeNode:
-    #...
-    def is_full(self):
-        return len(self.keys) == 2*self.t-1
-\end{lstlisting}
-
-This member function is used to test if a node is full.
-
-\subsection*{Definition of B-tree in Haskell}
-In Haskell, record syntax is used to define BTree, so that keys and children
-can be access easily later on. Some auxiliary functions are also provided.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-data BTree a = Node{ keys :: [a]
-                   , children :: [BTree a]
-                   , degree :: Int} deriving (Eq, Show)
-
--- Auxiliary functions
-empty deg = Node [] [] deg
-
-full::BTree a -> Bool
-full tr = (length $ keys tr) > 2*(degree tr)-1
-\end{lstlisting} %$
-
-\subsection*{Definition of B-tree in Scheme/Lisp}
-In Scheme/Lisp, because a list can contain both children and keys at
-same time, we can organize a B-tree with children and keys interspersed
-in list. for instance, below list represents a B-tree, the root has one
-key ``c'' and two children, the left child is a leaf node, with keys ``A''
-and ``B'', while the right child is also a leaf with keys ``D'' and ``E''.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(("A" "B") "C" ("D" "E"))
-\end{lstlisting}
-
-However, this definition doesn't hold the information of minimum degree $t$.
-The solution is to pass $t$ as an argument for all operations.
-
-Some auxiliary functions are provided so that we can access and test a
-B-tree easily.
-
-\begin{lstlisting}
-(define (keys tr)
-  (if (null? tr)
-      '()
-      (if (list? (car tr))
-	  (keys (cdr tr))
-	  (cons (car tr) (keys (cdr tr))))))
-
-(define (children tr)
-  (if (null? tr)
-      '()
-      (if (list? (car tr))
-	  (cons (car tr) (children (cdr tr)))
-	  (children (cdr tr)))))
-
-(define (leaf? tr)
-  (or (null? tr)
-      (not (list? (car tr)))))
-\end{lstlisting}
-
-Here we assume the key is a simple value, such as a number, or a string,
-but not a list. In case we find a element is a list, it represents a
-child B-tree. All above functions are defined based on this assumption.
 
 % ================================================================
 %                 Insertion
