@@ -25,7 +25,7 @@ class BTreeNode:
         self.keys = [] #self.data = ...
         self.children = []
 
-    # self: (...x, key[i]=k, ...) ==> 
+    # self: (...x, key[i]=k, ...) ==>
     # self: (...x, key'[i], y, key'[i+1]=k...)
     def split_child(self, i):
         t = self.t
@@ -61,6 +61,9 @@ class BTreeNode:
 
     def can_remove(self):
         return len(self.keys) >= self.t
+
+def is_leaf(t):
+    return t.children == []
 
 # insertion
 def B_tree_insert(tr, key): # + data parameter
@@ -143,7 +146,7 @@ def B_tree_delete(tr, key):
     if tr.keys==[]: # tree shrinks in height
         tr = tr.children[0]
     return tr
-    
+
 def B_tree_search(tr, key):
     for i in range(len(tr.keys)):
         if key<= tr.keys[i]:
@@ -212,7 +215,7 @@ class BTreeTest:
         tr.children[0].children=[BTreeNode(t), BTreeNode(t), BTreeNode(t), BTreeNode(t)]
         tr.children[0].children[0].keys=["A", "B"]
         tr.children[0].children[1].keys=["D", "E", "F"]
-        tr.children[0].children[2].keys=["J", "K", "L"]        
+        tr.children[0].children[2].keys=["J", "K", "L"]
         tr.children[0].children[3].keys=["N", "O"]
         tr.children[1].keys=["T", "X"]
         tr.children[1].children=[BTreeNode(t), BTreeNode(t), BTreeNode(t)]
