@@ -6,7 +6,7 @@ btree-insert-2-3-4 btree-insert-3 insert-before insert-after \
 btree-insert-fp-234 btree-insert-fp-3 btree-del-before btree-del-F \
 btree-del-M btree-del-G btree-del-D btree-del-B btree-del-U \
 btree-del-fp-before btree-del-fp-E btree-del-fp-G btree-del-fp-A \
-btree-del-fp-M btree-del-fp-U
+btree-del-fp-M btree-del-fp-U btree-insert-simple1 btree-insert-simple2
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
@@ -20,7 +20,7 @@ all: convert dot
 
 convert: $(IMG_OBJECTS)
 
-# for details, refer to: 
+# for details, refer to:
 #    http://www.gnu.org/software/autoconf/manual/make/
 # Makefile syntax, replace each '%' to 'eps
 $(IMG_OBJECTS): % : %.eps
