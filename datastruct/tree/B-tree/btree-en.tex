@@ -271,42 +271,12 @@ as $C_j(x)$. Below algorithm describes how to split the $i$-th child for a given
 \EndProcedure
 \end{algorithmic}
 
-This algorithm take 2 parameters, one is a B-tree node, the other
-is the index to indicate which child will be split.
-
-\subsubsection*{Split implemented in C++}
-The algorithm can be implemented in C++ as a member function of
-B-tree node.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<class K, int t>
-struct BTree{
-
-  //...
-
-  void split_child(int i){
-    BTree<K, t>* x = children[i];
-    BTree<K, t>* y = new BTree<K, t>();
-    keys.insert(keys.begin()+i, x->keys[t-1]);
-    children.insert(children.begin()+i+1, y);
-    y->keys = Keys(x->keys.begin()+t, x->keys.end());
-    x->keys = Keys(x->keys.begin(), x->keys.begin()+t-1);
-    if(!x->leaf()){
-      y->children = Children(x->children.begin()+t, x->children.end());
-      x->children = Children(x->children.begin(), x->children.begin()+t);
-    }
-  }
-\end{lstlisting}
-
-\subsubsection*{Split implemented in Python}
-We can define splitting operation as a member method of B-tree
-as the following.
+The following example Python program implements this
 
 \lstset{language=Python}
 \begin{lstlisting}
-class BTreeNode:
-    #...
+class BTree:
+
     def split_child(self, i):
         t = self.t
         x = self.children[i]
@@ -319,61 +289,6 @@ class BTreeNode:
             y.children = x.children[t:]
             x.children = x.children[:t]
 \end{lstlisting}
-
-\subsubsection{Functional splitting}
-
-For functional algorithm, splitting will return a tuple, which contains the
-left part and right as B-Trees, along with a key.
-
-\begin{algorithmic}[1]
-\Function{B-TREE-SPLIT}{$node$}
-  \State $ks \leftarrow KEYS(node)[1 ... t-1]$
-  \State $ks' \leftarrow KEYS(node)[t+1 ... 2t-1]$
-  \If{$node$ is not leaf}
-    \State $cs \leftarrow CHILDREN(node)[1 ... t]$
-    \State $cs' \leftarrow CHILDREN(node)[t ... 2t]$
-  \EndIf
-  \State \Return $(CREATE-B-TREE(ks, cs), KEYS(node)[t], CREATE-B-TREE(ks', cs'))$
-\EndFunction
-\end{algorithmic}
-
-\subsubsection*{Split implemented in Haskell}
-Haskell prelude provide take/drop functions to get the part
-of the list. These functions just returns empty list if the
-list passed in is empty. So there is no need to test if
-the node is leaf.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-split :: BTree a -> (BTree a, a, BTree a)
-split (Node ks cs t) = (c1, k, c2) where
-    c1 = Node (take (t-1) ks) (take t cs) t
-    c2 = Node (drop t ks) (drop t cs) t
-    k  = head (drop (t-1) ks)
-\end{lstlisting}
-
-\subsubsection*{Split implemented in Scheme/Lisp}
-As mentioned previously, the minimum degree $t$ is passed as an argument.
-The splitting is performed according to $t$.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (split tr t)
-  (if (leaf? tr)
-      (list (list-head tr (- t 1))
-	    (list-ref tr (- t 1))
-	    (list-tail tr t))
-      (list (list-head tr (- (* t 2) 1))
-	    (list-ref tr (- (* t 2) 1))
-	    (list-tail tr (* t 2)))))
-\end{lstlisting}
-
-When splitting a leaf node, because there is no child at all, the
-program simply take the first $t-1$ keys and the last $t-1$ keys
-to form two child, and left the $t$-th key as the only key of the
-new node. It will return these 3 parts in a list. When splitting
-a branch node, children must be also taken into account, that's
-why the first $2t-1$ and the last $2t-1$ elements are taken.
 
 %=========================================================================
 %       Split before insertion
@@ -714,6 +629,46 @@ to the C++ program outputs.
 (((A), C, (D)), E, ((G, J, K), M, (N, O)), P, ((R), S, (T), U, (V), X, (Y, Z)))
 ((A, C), D, (E, G, J, K), M, (N, O), P, (R, S), T, (U, V, X, Y, Z))
 \end{verbatim}
+
+
+\subsubsection{Functional splitting}
+
+For functional algorithm, splitting will return a tuple, which contains the
+left part and right as B-Trees, along with a key.
+
+\begin{algorithmic}[1]
+\Function{B-TREE-SPLIT}{$node$}
+  \State $ks \leftarrow KEYS(node)[1 ... t-1]$
+  \State $ks' \leftarrow KEYS(node)[t+1 ... 2t-1]$
+  \If{$node$ is not leaf}
+    \State $cs \leftarrow CHILDREN(node)[1 ... t]$
+    \State $cs' \leftarrow CHILDREN(node)[t ... 2t]$
+  \EndIf
+  \State \Return $(CREATE-B-TREE(ks, cs), KEYS(node)[t], CREATE-B-TREE(ks', cs'))$
+\EndFunction
+\end{algorithmic}
+
+\subsubsection*{Split implemented in Haskell}
+Haskell prelude provide take/drop functions to get the part
+of the list. These functions just returns empty list if the
+list passed in is empty. So there is no need to test if
+the node is leaf.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+split :: BTree a -> (BTree a, a, BTree a)
+split (Node ks cs t) = (c1, k, c2) where
+    c1 = Node (take (t-1) ks) (take t cs) t
+    c2 = Node (drop t ks) (drop t cs) t
+    k  = head (drop (t-1) ks)
+\end{lstlisting}
+
+When splitting a leaf node, because there is no child at all, the
+program simply take the first $t-1$ keys and the last $t-1$ keys
+to form two child, and left the $t$-th key as the only key of the
+new node. It will return these 3 parts in a list. When splitting
+a branch node, children must be also taken into account, that's
+why the first $2t-1$ and the last $2t-1$ elements are taken.
 
 % ================================================================
 %               Insert and fix method

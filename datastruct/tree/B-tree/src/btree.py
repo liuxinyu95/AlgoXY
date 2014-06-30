@@ -19,28 +19,10 @@
 TREE_2_3_4 = 2 #by default, create 2-3-4 tree
 
 class BTreeNode:
-    def __init__(self, t=TREE_2_3_4, leaf=True):
-        self.leaf = leaf
+    def __init__(self, t=TREE_2_3_4):
         self.t = t
         self.keys = [] #self.data = ...
         self.children = []
-
-    # self: (...x, key[i]=k, ...) ==>
-    # self: (...x, key'[i], y, key'[i+1]=k...)
-    def split_child(self, i):
-        t = self.t
-        x = self.children[i]
-        y = BTreeNode(t, x.leaf)
-        self.keys.insert(i, x.keys[t-1])
-        self.children.insert(i+1, y)
-        y.keys = x.keys[t:]
-        x.keys = x.keys[:t-1]
-        if not y.leaf:
-            y.children = x.children[t:]
-            x.children = x.children[:t]
-        #disk_write(y)
-        #disk_write(z)
-        #disk_write(x)
 
     def merge_children(self, i):
         #merge children[i] and children[i+1] by pushing keys[i] down
@@ -65,13 +47,25 @@ class BTreeNode:
 def is_leaf(t):
     return t.children == []
 
+def split_child(node, i):
+    t = node.t
+    x = node.children[i]
+    y = BTreeNode(t)
+    node.keys.insert(i, x.keys[t-1])
+    node.children.insert(i+1, y)
+    y.keys = x.keys[t:]
+    x.keys = x.keys[:t-1]
+    if not is_leaf(x):
+        y.children = x.children[t:]
+        x.children = x.children[:t]
+
 # insertion
 def B_tree_insert(tr, key): # + data parameter
     root = tr
     if root.is_full():
-        s = BTreeNode(root.t, False)
+        s = BTreeNode(root.t)
         s.children.insert(0, root)
-        s.split_child(0)
+        split_child(s, 0)
         root = s
     B_tree_insert_nonfull(root, key)
     return root
@@ -84,7 +78,7 @@ def ordered_insert(lst, x):
         i=i-1
 
 def B_tree_insert_nonfull(tr, key):
-    if tr.leaf:
+    if is_leaf(tr):
         ordered_insert(tr.keys, key)
         #disk_write(tr)
     else:
@@ -93,7 +87,7 @@ def B_tree_insert_nonfull(tr, key):
             i = i-1
         #disk_read(tr.children[i])
         if tr.children[i].is_full():
-            tr.split_child(i)
+            split_child(tr, i)
             if key>tr.keys[i]:
                 i = i+1
         B_tree_insert_nonfull(tr.children[i], key)
@@ -103,7 +97,7 @@ def B_tree_delete(tr, key):
     i = len(tr.keys)
     while i>0:
         if key == tr.keys[i-1]:
-            if tr.leaf:  # case 1 in CLRS
+            if is_leaf(tr):  # case 1 in CLRS
                 tr.keys.remove(key)
                 #disk_write(tr)
             else: # case 2 in CLRS
@@ -124,18 +118,18 @@ def B_tree_delete(tr, key):
         else:
             i = i-1
     # case 3
-    if tr.leaf:
+    if is_leaf(tr):
         return tr #key doesn't exist at all
     if not tr.children[i].can_remove():
         if i>0 and tr.children[i-1].can_remove(): #left sibling
             tr.children[i].keys.insert(0, tr.keys[i-1])
             tr.keys[i-1] = tr.children[i-1].keys.pop()
-            if not tr.children[i].leaf:
+            if not is_leaf(tr.children[i]):
                 tr.children[i].children.insert(0, tr.children[i-1].children.pop())
         elif i<len(tr.children) and tr.children[i+1].can_remove(): #right sibling
             tr.children[i].keys.append(tr.keys[i])
             tr.keys[i]=tr.children[i+1].keys.pop(0)
-            if not tr.children[i].leaf:
+            if not is_leaf(tr.children[i]):
                 tr.children[i].children.append(tr.children[i+1].children.pop(0))
         else: # case 3b
             if i>0:
@@ -153,7 +147,7 @@ def B_tree_search(tr, key):
             break
     if key == tr.keys[i]:
         return (tr, i)
-    if tr.leaf:
+    if is_leaf(tr):
         return None
     else:
         if key>tr.keys[-1]:
@@ -163,7 +157,7 @@ def B_tree_search(tr, key):
 
 def B_tree_to_str(tr):
     res = "("
-    if tr.leaf:
+    if is_leaf(tr):
         res += ", ".join(tr.keys)
     else:
         for i in range(len(tr.keys)):
@@ -208,9 +202,9 @@ class BTreeTest:
     def test_delete(self):
         print "test delete"
         t = 3
-        tr = BTreeNode(t, False)
+        tr = BTreeNode(t)
         tr.keys=["P"]
-        tr.children=[BTreeNode(t, False), BTreeNode(t, False)]
+        tr.children=[BTreeNode(t), BTreeNode(t)]
         tr.children[0].keys=["C", "G", "M"]
         tr.children[0].children=[BTreeNode(t), BTreeNode(t), BTreeNode(t), BTreeNode(t)]
         tr.children[0].children[0].keys=["A", "B"]
