@@ -18,7 +18,7 @@
 
 TREE_2_3_4 = 2 #by default, create 2-3-4 tree
 
-class BTreeNode:
+class BTree:
     def __init__(self, t=TREE_2_3_4):
         self.t = t
         self.keys = [] #self.data = ...
@@ -50,7 +50,7 @@ def is_leaf(t):
 def split_child(node, i):
     t = node.t
     x = node.children[i]
-    y = BTreeNode(t)
+    y = BTree(t)
     node.keys.insert(i, x.keys[t-1])
     node.children.insert(i+1, y)
     y.keys = x.keys[t:]
@@ -63,7 +63,7 @@ def split_child(node, i):
 def B_tree_insert(tr, key): # + data parameter
     root = tr
     if root.is_full():
-        s = BTreeNode(root.t)
+        s = BTree(root.t)
         s.children.insert(0, root)
         split_child(s, 0)
         root = s
@@ -167,7 +167,7 @@ def B_tree_to_str(tr):
     return res
 
 def list_to_B_tree(l, t=TREE_2_3_4):
-    tr = BTreeNode(t)
+    tr = BTree(t)
     for x in l:
         tr = B_tree_insert(tr, x)
     return tr
@@ -202,17 +202,17 @@ class BTreeTest:
     def test_delete(self):
         print "test delete"
         t = 3
-        tr = BTreeNode(t)
+        tr = BTree(t)
         tr.keys=["P"]
-        tr.children=[BTreeNode(t), BTreeNode(t)]
+        tr.children=[BTree(t), BTree(t)]
         tr.children[0].keys=["C", "G", "M"]
-        tr.children[0].children=[BTreeNode(t), BTreeNode(t), BTreeNode(t), BTreeNode(t)]
+        tr.children[0].children=[BTree(t), BTree(t), BTree(t), BTree(t)]
         tr.children[0].children[0].keys=["A", "B"]
         tr.children[0].children[1].keys=["D", "E", "F"]
         tr.children[0].children[2].keys=["J", "K", "L"]
         tr.children[0].children[3].keys=["N", "O"]
         tr.children[1].keys=["T", "X"]
-        tr.children[1].children=[BTreeNode(t), BTreeNode(t), BTreeNode(t)]
+        tr.children[1].children=[BTree(t), BTree(t), BTree(t)]
         tr.children[1].children[0].keys=["Q", "R", "S"]
         tr.children[1].children[1].keys=["U", "V"]
         tr.children[1].children[2].keys=["Y", "Z"]
