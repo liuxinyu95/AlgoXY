@@ -60,14 +60,14 @@ def split_child(node, i):
         x.children = x.children[:t]
 
 # insertion
-def B_tree_insert(tr, key): # + data parameter
+def insert(tr, key): # + data parameter
     root = tr
     if root.is_full():
         s = BTree(root.t)
         s.children.insert(0, root)
         split_child(s, 0)
         root = s
-    B_tree_insert_nonfull(root, key)
+    insert_nonfull(root, key)
     return root
 
 def ordered_insert(lst, x):
@@ -77,7 +77,7 @@ def ordered_insert(lst, x):
         (lst[i-1], lst[i]) = (lst[i], lst[i-1])
         i=i-1
 
-def B_tree_insert_nonfull(tr, key):
+def insert_nonfull(tr, key):
     if is_leaf(tr):
         ordered_insert(tr.keys, key)
         #disk_write(tr)
@@ -90,7 +90,7 @@ def B_tree_insert_nonfull(tr, key):
             split_child(tr, i)
             if key>tr.keys[i]:
                 i = i+1
-        B_tree_insert_nonfull(tr.children[i], key)
+        insert_nonfull(tr.children[i], key)
 
 # deletion
 def B_tree_delete(tr, key):
@@ -169,7 +169,7 @@ def B_tree_to_str(tr):
 def list_to_B_tree(l, t=TREE_2_3_4):
     tr = BTree(t)
     for x in l:
-        tr = B_tree_insert(tr, x)
+        tr = insert(tr, x)
     return tr
 
 class BTreeTest:

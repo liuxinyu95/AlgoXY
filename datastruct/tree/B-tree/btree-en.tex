@@ -271,237 +271,93 @@ as $C_j(x)$. Below algorithm describes how to split the $i$-th child for a given
 \EndProcedure
 \end{algorithmic}
 
-The following example Python program implements this
+The following example Python program implements this child spliting algorithm.
 
 \lstset{language=Python}
 \begin{lstlisting}
-class BTree:
-
-    def split_child(self, i):
-        t = self.t
-        x = self.children[i]
-        y = BTreeNode(t, x.leaf)
-        self.keys.insert(i, x.keys[t-1])
-        self.children.insert(i+1, y)
-        y.keys = x.keys[t:]
-        x.keys = x.keys[:t-1]
-        if not y.leaf:
-            y.children = x.children[t:]
-            x.children = x.children[:t]
+def split_child(node, i):
+    t = node.t
+    x = node.children[i]
+    y = BTree(t)
+    node.keys.insert(i, x.keys[t-1])
+    node.children.insert(i+1, y)
+    y.keys = x.keys[t:]
+    x.keys = x.keys[:t-1]
+    if not is_leaf(x):
+        y.children = x.children[t:]
+        x.children = x.children[:t]
 \end{lstlisting}
 
 %=========================================================================
 %       Split before insertion
 %=========================================================================
-\subsection{Split before insert method}
-\label{split before insertion}
 
-Note that the split solution will push a key up to its parent node,
-It is possible that the parent node be full if it has already
-$2t-1$ keys.
+After splitting, a key is pushed up to its parent node.
+It is quite possible that the parent node has already been full.
+And this pushing violates the B-tree property.
 
-Regarding to this issue, the \cite{CLRS} provides a solution to check
-every node from root along the path until leaf, in case there is a
-node in this path is full. the split is applied. Since the parent
-of this node has been examined except the root node, which ensure
-the parent node has less than $2t-1$ keys, the pushing up of one
-key won't make the parent full. This approach need only a single
-pass down the tree without need of any back-tracking.
+In order to solve this problem, we can check from the root along
+the path of insertion traversing till the leaf. If there is any node
+in this path is full, the splitting is applied. Since the parent
+of this node has been examined, it is ensured that there are
+less than $2t-1$ keys in the parent. It won't make the
+parent full if pushing up one key. This approach only need one single
+pass down the tree without any back-tracking.
 
-The main insert algorithm will first check if the root node need
-split. If yes, it will create a new node, and set the root as the
-only child, then performs splitting. and set the new node as the
-root. After that, the algorithm will try to insert the key to the
-non-full node.
+If the root need splitting, a new node is created as the new root.
+There is no keys in this new created root, and the previous root is
+set as the only child. After that, splitting is performed top-down.
+And we can insert the new key finally.
 
 \begin{algorithmic}[1]
-\Function{B-TREE-INSERT}{$T, k$}
-  \State $r \leftarrow T$
-  \If{$r$ is full}
-    \State $s \leftarrow CREATE-NODE()$
-    \State $APPEND(CHILDREN(s), r)$
-    \State $B-TREE-SPLIT-CHILD(s, 1)$
-    \State $r \leftarrow s$
+\Function{Insert}{$T, k$}
+  \State $r \gets T$
+  \If{$r$ is full} \Comment{root is full}
+    \State $s \gets$ \Call{CREATE-NODE}{}
+    \State $\mathbb{C}(s) \gets \{r\}$
+    \State \Call{Split-Child}{$s, 1$}
+    \State $r \gets s$
   \EndIf
-  \State $B-TREE-INSERT-NONFULL(r, k)$
-  \State \Return $r$
+  \State \Return \Call{Insert-Nonfull}{$r, k$}
 \EndFunction
 \end{algorithmic}
 
-The algorithm $B-TREE-INSERT-NONFUL$ assert that the node passed in
-is not full. If it is a leaf node, the new key is just inserted to
-the proper position based on its order. If it is a branch node. The algorithm
+Where algorithm \textproc{Insert-Nonfull} assumes the node passed in
+is not full. If it is a leaf node, the new key is inserted to
+the proper position based on the order; Otherwise, the algorithm
 finds a proper child node to which the new key will be inserted.
-If this child node is full, the splitting will be performed firstly.
+If this child is full, splitting will be performed.
 
 \begin{algorithmic}[1]
-\Procedure{B-TREE-INSERT-NONFUL}{$T, k$}
+\Function{Insert-Nonfull}{$T, k$}
   \If{$T$ is leaf}
-    \State $i \leftarrow 1$
-    \While{$i \leq LENGTH(KEYS(T))$ and $k>KEYS(T)[i]$}
-      \State $i \leftarrow i+1$
+    \State $i \gets 1$
+    \While{$i \leq |\mathbb{K}(T)| \land k > K_i(T)$}
+      \State $i \gets i+1$
     \EndWhile
-    \State $INSERT(KEYS(T), i, k)$
+    \State \Call{Insert}{$\mathbb{K}(T), i, k$}
+    \State \Return $T$
   \Else
-    \State $i \leftarrow LENGTH(KEYS(T))$
-    \While{$i>1 and k < KEYS(T)[i]$}
-      \State $i \leftarrow i-1$
+    \State $i \gets |\mathbb{K}(T)|$
+    \While{$i>1 \land k < K_i(T)$}
+      \State $i \gets i-1$
     \EndWhile
-    \If{$CHILDREN(T)[i]$ is full}
-      \State $B-TREE-SPLIT-CHILD(T, i)$
-      \If{$k > KEYS(T)[i]$}
-        \State $i \leftarrow i+1$
+    \If{$C_i(T)$ is full}
+      \State \Call{Split-Child}{$T, i$}
+      \If{$k > K_i(T)$}
+        \State $i \gets i+1$
       \EndIf
     \EndIf
-    \State $B-TREE-INSERT-NONFULL(CHILDREN(T)[i], k)$
+    \State \Return \Call{Insert-Nonfull}{$C_i(T), k$}
   \EndIf
-\EndProcedure
+\EndFunction
 \end{algorithmic}
 
-Note that this algorithm is actually recursive. Consider B-tree typically
-has minimum degree t relative to magnetic disk structure, and it is balanced
-tree, Even small depth can support huge amount of data
+This algorithm is recursive. In B-tree,
+the minimum degree $t$ is typically relative to magnetic disk structure.
+Even small depth can support huge amount of data
 (with $t=10$, maximum to 10 billion data can be stored in a B-tree with height of 10).
-Of course it is easy to eliminate the recursive call to improve the algorithm.
-
-In the below language specific implementations, I'll eliminate recursion in
-C++ program, and show the recursive version in Python program.
-
-\subsubsection*{Insert implemented in C++}
-The main insert program in C++ examine if the root is full and performs splitting
-accordingly. Then it will call insert\_nonfull to do the further process.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<class K, int t>
-BTree<K, t>* insert(BTree<K, t>* tr, K key){
-  BTree<K, t>* root(tr);
-  if(root->full()){
-    BTree<K, t>* s = new BTree<K, t>();
-    s->children.push_back(root);
-    s->split_child(0);
-    root = s;
-  }
-  return insert_nonfull(root, key);
-}
-\end{lstlisting}
-
-The recursion is eliminated in insert\_nonfull function. If the current
-node is leaf, it will call ordered\_insert to insert the key to the correct
-position. If it is branch node, the program will find the proper child
-tree and set it as the current node in next loop. Splitting is performed
-if the child tree is full.
-
-\begin{lstlisting}
-template<class K, int t>
-BTree<K, t>* insert_nonfull(BTree<K, t>* tr, K key){
-  typedef typename BTree<K, t>::Keys Keys;
-  typedef typename BTree<K, t>::Children Children;
-
-  BTree<K, t>* root(tr);
-  while(!tr->leaf()){
-    unsigned int i=0;
-    while(i < tr->keys.size() && tr->keys[i] < key)
-      ++i;
-    if(tr->children[i]->full()){
-      tr->split_child(i);
-      if(key > tr->keys[i])
-        ++i;
-    }
-    tr = tr->children[i];
-  }
-  ordered_insert(tr->keys, key);
-  return root;
-}
-\end{lstlisting}
-
-Where the ordered\_insert is defined as the following.
-
-\begin{lstlisting}
-template<class Coll>
-void ordered_insert(Coll& coll, typename Coll::value_type x){
-  typename Coll::iterator it = coll.begin();
-  while(it != coll.end() && *it < x)
-    ++it;
-  coll.insert(it, x);
-}
-\end{lstlisting}
-
-For convenience, I defined auxiliary functions to convert a
-list of keys into the B-tree.
-
-\begin{lstlisting}
-template<class T>
-T* insert_key(T* t, typename T::key_type x){
-  return insert(t, x);
-}
-
-template<class Iterator, class T>
-T* list_to_btree(Iterator first, Iterator last, T* t){
-  return std::accumulate(first, last, t,
-                         std::ptr_fun(insert_key<T>));
-}
-\end{lstlisting}
-
-In order to print the result as human readable string, a recursive
-convert function is provided.
-
-\begin{lstlisting}
-template<class T>
-std::string btree_to_str(T* tr){
-  typename T::Keys::iterator k;
-  typename T::Children::iterator c;
-
-  std::ostringstream s;
-  s<<"(";
-  if(tr->leaf()){
-    k=tr->keys.begin();
-    s<<*k++;
-    for(; k!=tr->keys.end(); ++k)
-      s<<", "<<*k;
-  }
-  else{
-    for(k=tr->keys.begin(), c=tr->children.begin();
-        k!=tr->keys.end(); ++k, ++c)
-      s<<btree_to_str(*c)<<", "<<*k<<", ";
-    s<<btree_to_str(*c);
-  }
-  s<<")";
-  return s.str();
-}
-\end{lstlisting}
-
-With all the above defined program, some simple test cases can be
-fed to verify the program.
-
-\begin{lstlisting}
-const char* ss[] = {"G", "M", "P", "X", "A", "C", "D", "E", "J", "K", \
-                    "N", "O", "R", "S", "T", "U", "V", "Y", "Z"};
-BTree<std::string, 2>* tr234=list_to_btree(ss, ss+sizeof(ss)/sizeof(char*),
-                                           new BTree<std::string, 2>);
-std::cout<<"2-3-4 tree of ";
-std::copy(ss, ss+sizeof(ss)/sizeof(char*),
-          std::ostream_iterator<std::string>(std::cout, ", "));
-std::cout<<"\n"<<btree_to_str(tr234)<<"\n";
-delete tr234;
-
-BTree<std::string, 3>* tr = list_to_btree(ss, ss+sizeof(ss)/sizeof(char*),
-                                          new BTree<std::string, 3>);
-std::cout<<"B-tree with t=3 of ";
-std::copy(ss, ss+sizeof(ss)/sizeof(char*),
-          std::ostream_iterator<std::string>(std::cout, ", "));
-std::cout<<"\n"<<btree_to_str(tr)<<"\n";
-delete tr;
-\end{lstlisting}
-
-Run these lines will generate the following result:
-
-\begin{verbatim}
-2-3-4 tree of G, M, P, X, A, C, D, E, J, K, N, O, R, S, T, U, V, Y, Z,
-(((A), C, (D)), E, ((G, J, K), M, (N, O)), P, ((R), S, (T), U, (V), X, (Y, Z)))
-B-tree with t=3 of G, M, P, X, A, C, D, E, J, K, N, O, R, S, T, U, V, Y, Z,
-((A, C), D, (E, G, J, K), M, (N, O), P, (R, S), T, (U, V, X, Y, Z))
-\end{verbatim}
+The recursion can also be eleminated. This is left as exercise to the reader.
 
 Figure \ref{fig:btree-insert} shows the result.
 
@@ -2535,7 +2391,11 @@ B-tree are defined to maintain the balance properties, all operations
 mentioned here perform $O(lgN)$ where $N$ is the number of the
 keys in a B-tree.
 
-
+\begin{Exercise}
+\begin{itemize}
+\item Eleminate the recursion in imperative B-tree insertion algorithm.
+\end{itemize}
+\end{Exercise}
 % ================================================================
 %                 Appendix
 % ================================================================
