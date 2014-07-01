@@ -38,14 +38,14 @@ class BTree:
         #disk_write(self)
         return key
 
-    def is_full(self):
-        return len(self.keys) == 2*self.t-1
-
     def can_remove(self):
         return len(self.keys) >= self.t
 
 def is_leaf(t):
     return t.children == []
+
+def is_full(node):
+    return len(node.keys) >= 2 * node.t - 1
 
 def split_child(node, i):
     t = node.t
@@ -60,15 +60,14 @@ def split_child(node, i):
         x.children = x.children[:t]
 
 # insertion
-def insert(tr, key): # + data parameter
+def insert(tr, key):
     root = tr
-    if root.is_full():
+    if is_full(root):
         s = BTree(root.t)
         s.children.insert(0, root)
         split_child(s, 0)
         root = s
-    insert_nonfull(root, key)
-    return root
+    return insert_nonfull(root, key)
 
 def ordered_insert(lst, x):
     i = len(lst)
@@ -86,11 +85,12 @@ def insert_nonfull(tr, key):
         while i>0 and key < tr.keys[i-1]:
             i = i-1
         #disk_read(tr.children[i])
-        if tr.children[i].is_full():
+        if is_full(tr.children[i]):
             split_child(tr, i)
             if key>tr.keys[i]:
                 i = i+1
         insert_nonfull(tr.children[i], key)
+    return tr
 
 # deletion
 def B_tree_delete(tr, key):
