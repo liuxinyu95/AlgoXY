@@ -288,6 +288,14 @@ def split_child(node, i):
         x.children = x.children[:t]
 \end{lstlisting}
 
+Where function \texttt{is\_leaf} test if a node is leaf.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def is_leaf(t):
+    return t.children == []
+\end{lstlisting}
+
 %=========================================================================
 %       Split before insertion
 %=========================================================================
@@ -336,7 +344,6 @@ If this child is full, splitting will be performed.
       \State $i \gets i+1$
     \EndWhile
     \State \Call{Insert}{$\mathbb{K}(T), i, k$}
-    \State \Return $T$
   \Else
     \State $i \gets |\mathbb{K}(T)|$
     \While{$i>1 \land k < K_i(T)$}
@@ -348,8 +355,9 @@ If this child is full, splitting will be performed.
         \State $i \gets i+1$
       \EndIf
     \EndIf
-    \State \Return \Call{Insert-Nonfull}{$C_i(T), k$}
+    \State \Call{Insert-Nonfull}{$C_i(T), k$}
   \EndIf
+  \State \Return $T$
 \EndFunction
 \end{algorithmic}
 
@@ -371,45 +379,40 @@ it varies when $t=3$.
   \caption{Insertion result} \label{fig:btree-insert}
 \end{figure}
 
-\subsubsection*{Insert implemented in Python}
-Implement the above insertion algorithm in Python is straightforward, we change
-the index starts from 0 instead of 1.
-
+Below example Python program implements this algorithm.
 \lstset{language=Python}
 \begin{lstlisting}
-def B_tree_insert(tr, key): # + data parameter
+def insert(tr, key):
     root = tr
-    if root.is_full():
-        s = BTreeNode(root.t, False)
+    if is_full(root):
+        s = BTree(root.t)
         s.children.insert(0, root)
-        s.split_child(0)
+        split_child(s, 0)
         root = s
-    B_tree_insert_nonfull(root, key)
-    return root
+    return insert_nonfull(root, key)
 \end{lstlisting}
 
 And the insertion to non-full node is implemented as the following.
 
 \begin{lstlisting}
-def B_tree_insert_nonfull(tr, key):
-    if tr.leaf:
+def insert_nonfull(tr, key):
+    if is_leaf(tr):
         ordered_insert(tr.keys, key)
-        #disk_write(tr)
     else:
         i = len(tr.keys)
         while i>0 and key < tr.keys[i-1]:
             i = i-1
-        #disk_read(tr.children[i])
-        if tr.children[i].is_full():
-            tr.split_child(i)
+        if is_full(tr.children[i]):
+            split_child(tr, i)
             if key>tr.keys[i]:
                 i = i+1
-        B_tree_insert_nonfull(tr.children[i], key)
+        insert_nonfull(tr.children[i], key)
+    return tr
 \end{lstlisting}
 
-Where the function ``ordered\_insert'' function is used to insert an element
-to an ordered list. Since Python standard list don't support order information.
-The program is written as below.
+Where function \texttt{ordered\_insert} is used to insert an element
+to an ordered list. Function \texttt{is\_full} tests if a node contains
+$2t-1$ keys.
 
 \begin{lstlisting}
 def ordered_insert(lst, x):
@@ -418,70 +421,17 @@ def ordered_insert(lst, x):
     while i>0 and lst[i]<lst[i-1]:
         (lst[i-1], lst[i]) = (lst[i], lst[i-1])
         i=i-1
+
+def is_full(node):
+    return len(node.keys) >= 2 * node.t - 1
 \end{lstlisting}
 
 For the array based collection, append on the tail is much more effective than
 insert in other position, because the later takes $O(n)$ time, if the length
-of the collection is $n$. This program will first append the new element at
-the end of the existing collection, then iterate from the last element to
-the first one, and check if the current two elements next to each other
+of the collection is $n$. The \texttt{ordered_insert} program firstly appends
+ the new element at the end of the existing collection, then iterates from the
+last element to the first one, and checks if the current two elements next to each other
 are ordered. If not, these two elements will be swapped.
-
-For easily creating a B-tree from a list of keys, we can write a simple helper
-function.
-
-\begin{lstlisting}
-def list_to_B_tree(l, t=TREE_2_3_4):
-    tr = BTreeNode(t)
-    for x in l:
-        tr = B_tree_insert(tr, x)
-    return tr
-\end{lstlisting}
-
-By default, this function will create a 2-3-4 tree, and user can specify the
-minimum degree as the second parameter. The first parameter is a list of keys.
-This function will repeatedly insert every key into the B-tree which starts
-from an empty tree.
-
-In order to print the B-tree out for verification, an auxiliary printing
-function is provided.
-
-\begin{lstlisting}
-def B_tree_to_str(tr):
-    res = "("
-    if tr.leaf:
-        res += ", ".join(tr.keys)
-    else:
-        for i in range(len(tr.keys)):
-            res+= B_tree_to_str(tr.children[i]) + ", " + tr.keys[i] + ", "
-        res += B_tree_to_str(tr.children[len(tr.keys)])
-    res += ")"
-    return res
-\end{lstlisting}
-
-After that, some smoke test cases can be use to verify the insertion
-program.
-
-\begin{lstlisting}
-class BTreeTest:
-    def run(self):
-        self.test_insert()
-
-    def test_insert(self):
-        lst = ["G", "M", "P", "X", "A", "C", "D", "E", "J", "K", \
-               "N", "O", "R", "S", "T", "U", "V", "Y", "Z"]
-        tr = list_to_B_tree(lst)
-        print B_tree_to_str(tr)
-        print B_tree_to_str(list_to_B_tree(lst, 3))
-\end{lstlisting}
-
-Run the test cases prints two different B-trees. They are identical
-to the C++ program outputs.
-
-\begin{verbatim}
-(((A), C, (D)), E, ((G, J, K), M, (N, O)), P, ((R), S, (T), U, (V), X, (Y, Z)))
-((A, C), D, (E, G, J, K), M, (N, O), P, (R, S), T, (U, V, X, Y, Z))
-\end{verbatim}
 
 
 \subsubsection{Functional splitting}
