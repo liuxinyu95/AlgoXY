@@ -233,6 +233,8 @@ solve it.
 \subsection{Splitting}
 \label{split}
 
+\subsubsection{Split before insertion}
+
 If the node is full, one method to solve the problem is to
 split to node before insertion.
 
@@ -428,71 +430,63 @@ def is_full(node):
 
 For the array based collection, append on the tail is much more effective than
 insert in other position, because the later takes $O(n)$ time, if the length
-of the collection is $n$. The \texttt{ordered_insert} program firstly appends
+of the collection is $n$. The \texttt{ordered\_insert} program firstly appends
  the new element at the end of the existing collection, then iterates from the
 last element to the first one, and checks if the current two elements next to each other
 are ordered. If not, these two elements will be swapped.
 
-
-\subsubsection{Functional splitting}
-
-For functional algorithm, splitting will return a tuple, which contains the
-left part and right as B-Trees, along with a key.
-
-\begin{algorithmic}[1]
-\Function{B-TREE-SPLIT}{$node$}
-  \State $ks \leftarrow KEYS(node)[1 ... t-1]$
-  \State $ks' \leftarrow KEYS(node)[t+1 ... 2t-1]$
-  \If{$node$ is not leaf}
-    \State $cs \leftarrow CHILDREN(node)[1 ... t]$
-    \State $cs' \leftarrow CHILDREN(node)[t ... 2t]$
-  \EndIf
-  \State \Return $(CREATE-B-TREE(ks, cs), KEYS(node)[t], CREATE-B-TREE(ks', cs'))$
-\EndFunction
-\end{algorithmic}
-
-\subsubsection*{Split implemented in Haskell}
-Haskell prelude provide take/drop functions to get the part
-of the list. These functions just returns empty list if the
-list passed in is empty. So there is no need to test if
-the node is leaf.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-split :: BTree a -> (BTree a, a, BTree a)
-split (Node ks cs t) = (c1, k, c2) where
-    c1 = Node (take (t-1) ks) (take t cs) t
-    c2 = Node (drop t ks) (drop t cs) t
-    k  = head (drop (t-1) ks)
-\end{lstlisting}
-
-When splitting a leaf node, because there is no child at all, the
-program simply take the first $t-1$ keys and the last $t-1$ keys
-to form two child, and left the $t$-th key as the only key of the
-new node. It will return these 3 parts in a list. When splitting
-a branch node, children must be also taken into account, that's
-why the first $2t-1$ and the last $2t-1$ elements are taken.
-
 % ================================================================
 %               Insert and fix method
 % ================================================================
-\subsection{Insert then fix method}
-Another approach to implement B-tree insertion algorithm is just find
-the position for the new key and insert it. Since such insertion may
-violate B-tree properties. We can then apply a fixing procedure after
-that. If a leaf contains too much keys, we split it into 2 leafs and
-push a key up to the parent branch node. Of course this operation
-may cause the parent node violate the B-tree properties, so the
-algorithm need traverse from leaf to root to perform the fixing.
 
-By using recursive implementation these fixing method can also be
-realized from top to bottom.
+\subsubsection{Insert then fixing}
 
-\begin{algorithmic}[1]
-\Function{B-TREE-INSERT'}{$T, k$}
-  \State \Return $FIX-ROOT(RECURSIVE-INSERT(T, k))$
-\EndFunction
-\end{algorithmic}
+In functional settings, B-tree insertion can be realized in a way similar to
+red-black tree. When insert a key to red-black tree, it is firstly inserted
+as in the normal binary search tree, then recursive fixing is performed to
+resume the balance of the tree. B tree can be viewed as extension to the
+binary search tree, that each node contains multiple keys and children.
+We can firstly insert the key without considering if the node is full.
+Then perform fixing to satisfy the minimum degree constraint.
+
+\be
+insert(T, k) = fix(ins(T, k))
+\ee
+
+Function $ins(T, k)$ traverse the B tree $T$ from root to find a proper
+position where key $k$ can be inserted. After that, function $fix$ is
+applied to resume the B tree properties. Denote B-tree in a form of
+$(\mathbb{K}, \mathbb{C}, t)$, where $\mathbb{K}$ are keys, $\mathbb{C}$
+are children, and $t$ is the minimum degree.
+
+Below is the Haskell definition of B-tree.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+data BTree a = Node{ keys :: [a]
+                   , children :: [BTree a]
+                   , degree :: Int} deriving (Eq)
+\end{lstlisting}
+
+The insertion function can be provided based on this definition.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+insert tr x = fixRoot $ ins tr x
+\end{lstlisting} %$
+
+There are two cases when realize $ins(T, k)$ function. If the tree $T$ is
+leaf, $k$ is inserted to the keys; Otherwise if $T$ is the branch node, we
+need recursively insert $k$ to the proper child.
+
+\be
+ins(T, k) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (\{\mathbb{K}_1\} \cup \{k\} \cup \{\mathbb{K}_2\}, \Phi, t) & \mathbb{C} = \Phi, \forall k' \in \mathbb{K}_1, k'' \in \mathbb{K}_2 \Rightarrow k' \leq k \leq k'' \\
+  \end{array}
+\right.
+\ee
 
 Where $FIX-ROOT$ examine if the root node contains too many keys,
 and do splitting if necessary.
@@ -591,6 +585,44 @@ Where $FIX-FULL$ just calls splitting process.
 Note that splitting may push one extra key up to the parent node.
 However, even the push-up causes the violation of B-tree property,
 it will be recursively fixed.
+
+For functional algorithm, splitting will return a tuple, which contains the
+left part and right as B-Trees, along with a key.
+
+\begin{algorithmic}[1]
+\Function{B-TREE-SPLIT}{$node$}
+  \State $ks \leftarrow KEYS(node)[1 ... t-1]$
+  \State $ks' \leftarrow KEYS(node)[t+1 ... 2t-1]$
+  \If{$node$ is not leaf}
+    \State $cs \leftarrow CHILDREN(node)[1 ... t]$
+    \State $cs' \leftarrow CHILDREN(node)[t ... 2t]$
+  \EndIf
+  \State \Return $(CREATE-B-TREE(ks, cs), KEYS(node)[t], CREATE-B-TREE(ks', cs'))$
+\EndFunction
+\end{algorithmic}
+
+\subsubsection*{Split implemented in Haskell}
+Haskell prelude provide take/drop functions to get the part
+of the list. These functions just returns empty list if the
+list passed in is empty. So there is no need to test if
+the node is leaf.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+split :: BTree a -> (BTree a, a, BTree a)
+split (Node ks cs t) = (c1, k, c2) where
+    c1 = Node (take (t-1) ks) (take t cs) t
+    c2 = Node (drop t ks) (drop t cs) t
+    k  = head (drop (t-1) ks)
+\end{lstlisting}
+
+When splitting a leaf node, because there is no child at all, the
+program simply take the first $t-1$ keys and the last $t-1$ keys
+to form two child, and left the $t$-th key as the only key of the
+new node. It will return these 3 parts in a list. When splitting
+a branch node, children must be also taken into account, that's
+why the first $2t-1$ and the last $2t-1$ elements are taken.
+
 
 \subsubsection*{Insert implemented in Haskell}
 Realize the above recursive algorithm in Haskell can implement this
