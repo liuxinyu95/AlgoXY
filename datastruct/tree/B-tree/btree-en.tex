@@ -479,6 +479,21 @@ There are two cases when realize $ins(T, k)$ function. If the tree $T$ is
 leaf, $k$ is inserted to the keys; Otherwise if $T$ is the branch node, we
 need recursively insert $k$ to the proper child.
 
+Figure \ref{fig:recursive-insert} shows the branch case. The
+algorithm first locates the position. for certain key $k_i$,
+if the new key $k$ to be inserted satisfy $k_{i-1}<k<k_i$,
+Then we need recursively insert $k$ to child $c_i$.
+
+This position divides the node into 3 parts, the left part,
+the child $c_i$ and the right part.
+
+\begin{figure}[htbp]
+  \centering
+  \subfloat[Locate the child to insert.]{\includegraphics[scale=0.5]{img/insert-before.ps}} \\
+  \subfloat[Recursive insert.]{\includegraphics[scale=0.5]{img/insert-after.ps}}
+  \caption{Insert a key to a branch node} \label{fig:recursive-insert}
+\end{figure}
+
 \be
 ins(T, k) = \left \{
   \begin{array}
@@ -509,398 +524,91 @@ key and children; the second parameter is a child node. It examine
 if a B tree node made from these keys and children violates the
 minimum degree constraint and performs fixing if necessary.
 
->>TODO: describe make, then fixFull, then fixRoot
+\be
+make((K', C'), c, (K'', C'')) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  fixFull((K', C'), c, (K'', C'')) & full(c) \\
+  (K' \cup K'', C' \cup \{c\} \cup C'', t) & otherwise
+  \end{array}
+\right.
+\ee
 
-Where $FIX-ROOT$ examine if the root node contains too many keys,
-and do splitting if necessary.
+Where function $full(c)$ tests if the child $c$ is full.
+Function $fixFull$ splits the the child $c$, and forms a new B-tree node
+with the pushed up key.
 
-\begin{algorithmic}[1]
-\Function{FIX-ROOT}{$T$}
-  \If{$FULL?(T)$}
-    \State $T \leftarrow B-TREE-SPLIT(T)$
-  \EndIf
-  \State \Return $T$
-\EndFunction
-\end{algorithmic}
+\be
+fixFull((K', C'), c, (K'', C'')) = (K' \cup \{k\} \cup K'', C' \cup \{c_1, c_2\} \cup C'', t)
+\ee
 
-And the inner function $INSERT(T, k)$ will first check if $T$
-is leaf node or branch node. It will do directly insertion for leaf
-and recursively do insertion for branch.
+Where $(c_1, k, c_2) = split(c)$. During splitting, the first $t-1$ keys and $t$ childrens
+are extract to one new child, the last $t-1$ keys and $t$ children form another child.
+The $t$-th key is pushed up.
 
-\begin{algorithmic}[1]
-\Function{RECURSIVE-INSERT}{$T, k$}
-  \If{$LEAF?(T)$}
-    \State $INSERT(KEYS(T), k)$
-    \State \Return $T$
-  \Else
-    \State initialize empty arrays of $k', k'', c', c''$
-    \State $i \leftarrow 1$
-    \While{$i<=LENGTH(KEYS(T))$ and $KEYS(T)[i]<k$}
-      \State $APPEND(k', KEYS(T)[i])$
-      \State $APPEND(c', CHILDREN(T)[i])$
-      \State $i \leftarrow i+1$
-    \EndWhile
-    \State $k'' \leftarrow KEYS(T)[i...LENGTH(KEYS(T))]$
-    \State $c'' \leftarrow CHILDREN(T)[i+1...LENGTH(CHILDREN(T))]]$
-    \State $c \leftarrow CHILDREN(T)[i]$
-    \State $left \leftarrow (k', c')$
-    \State $right \leftarrow (k'', c'')$
-    \State \Return $MAKE-B-TREE(left, RECURSIVE-INSERT(c, k), right)$
-  \EndIf
-\EndFunction
-\end{algorithmic}
+With all the above functions defined, we can realize $fix(T)$ to complete the functional B-tree
+insertion algorithm. It firstly checks if the root contains too
+many keys. If it exceeds the limit, splitting will be applied.
+The split result will be used to make a new node, so the total
+height of the tree increases by one.
 
-Figure \ref{fig:recursive-insert} shows the branch case. The
-algorithm first locates the position. for certain key $k_i$,
-if the new key $k$ to be inserted satisfy $k_{i-1}<k<k_i$,
-Then we need recursively insert $k$ to child $c_i$.
+\be
+fix(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  c & T = (\Phi, \{c\}, t) \\
+  (\{k\}, \{c_1, c_2\}, t) & full(T), (c_1, k, c_2) = split(T) \\
+  T & otherwise
+  \end{array}
+\right.
+\ee
 
-This position divides the node into 3 parts, the left part,
-the child $c_i$ and the right part.
-
-\begin{figure}[htbp]
-       \begin{center}
-       	  \includegraphics[scale=0.5]{img/insert-before.ps}
-
-          a. locate the child to insert,
-
-          \includegraphics[scale=0.5]{img/insert-after.ps}
-
-          b. recursive insert,
-        \caption{Insert a key to a branch node} \label{fig:recursive-insert}
-       \end{center}
-\end{figure}
-
-The procedure $MAKE-B-TREE$ take 3 parameters, which relative to
-the left part, the result after insert $k$ to $c_i$ and right part.
-It tries to merge these 3 parts into a new B-tree branch node.
-
-However, insert key into a child may make this child violate the
-B-tree property if it exceed the limitation of the number of keys
-a node can have. $MAKE-B-TREE$ will detect such situation and try
-to fix the problem by splitting.
-
-\begin{algorithmic}[1]
-\Function{MAKE-B-TREE}{$L, C, R$}
-  \If{$FULL?(C)$}
-    \State \Return $FIX-FULL(L, C, R)$
-  \Else
-    \State $T \leftarrow CREATE-NEW-NODE()$
-    \State $KEYS(T) \leftarrow KEYS(L) + KEYS(R)$
-    \State $CHILDREN(T) \leftarrow CHILDREN(L)+[C]+CHILDREN(R)$
-    \State \Return $T$
-  \EndIf
-\EndFunction
-\end{algorithmic}
-
-Where $FIX-FULL$ just calls splitting process.
-
-\begin{algorithmic}[1]
-\Function{FIX-FULL}{$L, C, R$}
-  \State $(C', K, C'') \leftarrow B-TREE-SPLIT(C)$
-  \State $T \leftarrow CREATE-NEW-NODE()$
-  \State $KEYS(T) \leftarrow KEYS(L)+[K]+KEYS(R)$
-  \State $CHILDREN(T) \leftarrow CHILDREN(L)+[C', C'']+CHILDREN(R)$
-  \State \Return $T$
-\EndFunction
-\end{algorithmic}
-
-Note that splitting may push one extra key up to the parent node.
-However, even the push-up causes the violation of B-tree property,
-it will be recursively fixed.
-
-For functional algorithm, splitting will return a tuple, which contains the
-left part and right as B-Trees, along with a key.
-
-\begin{algorithmic}[1]
-\Function{B-TREE-SPLIT}{$node$}
-  \State $ks \leftarrow KEYS(node)[1 ... t-1]$
-  \State $ks' \leftarrow KEYS(node)[t+1 ... 2t-1]$
-  \If{$node$ is not leaf}
-    \State $cs \leftarrow CHILDREN(node)[1 ... t]$
-    \State $cs' \leftarrow CHILDREN(node)[t ... 2t]$
-  \EndIf
-  \State \Return $(CREATE-B-TREE(ks, cs), KEYS(node)[t], CREATE-B-TREE(ks', cs'))$
-\EndFunction
-\end{algorithmic}
-
-\subsubsection*{Split implemented in Haskell}
-Haskell prelude provide take/drop functions to get the part
-of the list. These functions just returns empty list if the
-list passed in is empty. So there is no need to test if
-the node is leaf.
+The following Haskell example code implements the B-tree insertion.
 
 \lstset{language=Haskell}
-\begin{lstlisting}
-split :: BTree a -> (BTree a, a, BTree a)
-split (Node ks cs t) = (c1, k, c2) where
-    c1 = Node (take (t-1) ks) (take t cs) t
-    c2 = Node (drop t ks) (drop t cs) t
-    k  = head (drop (t-1) ks)
-\end{lstlisting}
-
-When splitting a leaf node, because there is no child at all, the
-program simply take the first $t-1$ keys and the last $t-1$ keys
-to form two child, and left the $t$-th key as the only key of the
-new node. It will return these 3 parts in a list. When splitting
-a branch node, children must be also taken into account, that's
-why the first $2t-1$ and the last $2t-1$ elements are taken.
-
-
-\subsubsection*{Insert implemented in Haskell}
-Realize the above recursive algorithm in Haskell can implement this
-insert-fixing program.
-
-The main program is provided as the following.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-insert :: (Ord a)=> BTree a -> a -> BTree a
-insert tr x = fixRoot $ ins tr x
-\end{lstlisting} %$
-
-It will just call an auxiliary function `ins' then examine and
-fix the root node if contains too many keys.
-
 \begin{lstlisting}
 import qualified Data.List as L
 
---...
-
-ins :: (Ord a) => BTree a -> a -> BTree a
 ins (Node ks [] t) x = Node (L.insert x ks) [] t
 ins (Node ks cs t) x = make (ks', cs') (ins c x) (ks'', cs'')
     where
       (ks', ks'') = L.partition (<x) ks
       (cs', (c:cs'')) = L.splitAt (length ks') cs
-\end{lstlisting}
 
-The `ins' function uses pattern matching to handle the two different
-cases. If the node to be inserted is leaf, it will call insert
-function defined in Haskell standard library, which can insert the
-new key $x$ into the proper position to keep the order of the keys.
-
-If the node to be inserted is a branch node, the program will recursively
-insert the key to the child which has the range of keys cover $x$.
-After that, it will call `make' function to combine the result
-together as a new node. the examine and fixing are performed also
-by `make' function.
-
-The function `fixRoot' first check if the root node contains too
-many keys, if it exceeds the limit, splitting will be applied.
-The split result will be used to make a new node, so the total
-height of the tree increases.
-
-\begin{lstlisting}
-fixRoot :: BTree a -> BTree a
 fixRoot (Node [] [tr] _) = tr -- shrink height
 fixRoot tr = if full tr then Node [k] [c1, c2] (degree tr)
              else tr
     where
       (c1, k, c2) = split tr
-\end{lstlisting}
 
-The following is the implementation of `make' function.
-
-\begin{lstlisting}
-make :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
 make (ks', cs') c (ks'', cs'')
     | full c = fixFull (ks', cs') c (ks'', cs'')
     | otherwise = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
-\end{lstlisting}
 
-While `fixFull' are given like below.
-
-\begin{lstlisting}
-fixFull :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
 fixFull (ks', cs') c (ks'', cs'') = Node (ks'++[k]++ks'')
                                          (cs'++[c1,c2]++cs'') (degree c)
     where
       (c1, k, c2) = split c
+
+full tr = (length $ keys tr) > 2*(degree tr)-1
 \end{lstlisting}
 
-In order to print B-tree content out, an auxiliary function `toString'
-is provided to convert a B-tree to string.
-
-\begin{lstlisting}
-toString :: (Show a)=>BTree a -> String
-toString (Node ks [] _) = "("++(L.intercalate ", " (map show ks))++")"
-toString tr = "("++(toStr (keys tr) (children tr))++")" where
-    toStr (k:ks) (c:cs) = (toString c)++", "++(show k)++", "++(toStr ks cs)
-    toStr [] [c] = toString c
-\end{lstlisting}
-
-With all the above definition, the insertion program can be verified with
-some simple test cases.
-
-\begin{lstlisting}
-listToBTree::(Ord a)=>[a]->Int->BTree a
-listToBTree lst t = foldl insert (empty t) lst
-
-testInsert = do
-  putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 3
-  putStrLn $ toString $ listToBTree "GMPXACDEJKNORSTUVYZ" 2
-\end{lstlisting}
-
-Run `testInsert' will generate the following result.
-
-\begin{verbatim}
-(('A', 'C', 'D', 'E'), 'G', ('J', 'K'), 'M', ('N', 'O'), 'P', ('R', 'S'),
-'T', ('U', 'V', 'X', 'Y', 'Z'))
-((('A'), 'C', ('D')), 'E', (('G', 'J', 'K'), 'M', ('N')), 'O', (('P'),
-'R', ('S'), 'T', ('U'), 'V', ('X', 'Y', 'Z')))
-\end{verbatim}
+Figure \ref{fig:btree-insert-fp} shows the varies of results of building B-trees
+by continously inserting keys "GMPXACDEJKNORSTUVYZ".
 
 \begin{figure}[htbp]
-  \begin{center}
-    \includegraphics[scale=0.5]{img/btree-insert-fp-234.ps}
-
-    a. Insert result of a 2-3-4 tree (insert-fixing method),
-
-    \includegraphics[scale=0.5]{img/btree-insert-fp-3.ps}
-
-    b. Insert result of a B-tree with minimum degree of 3 (insert-fixing method).
-    \caption{insert and fixing results} \label{fig:btree-insert-fp}
-  \end{center}
+  \centering
+  \subfloat[Insert result of a 2-3-4 tree.]{\includegraphics[scale=0.5]{img/btree-insert-fp-234.ps}} \\
+  \subfloat[Insert result of a B-tree with $t = 3$]{\includegraphics[scale=0.5]{img/btree-insert-fp-3.ps}}
+    \caption{Insert then fixing results} \label{fig:btree-insert-fp}
 \end{figure}
 
-Compare the results output by C++ or Python program with this one,
+Compare to the imperative insertion result
 as shown in figure \ref{fig:btree-insert-fp}
-we can found that there are different points. However, the B-tree
-built by Haskell program is still valid because all B-tree properties
-are satisfied. The main reason for this difference is because of
-the approaching change.
+we can found that thet are different. However, they are all valid
+because all B-tree properties
+are satisfied.
 
-\subsubsection*{Insert implemented in Scheme/Lisp}
-The main function for insertion in Scheme/Lisp is given as the
-following.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (btree-insert tr x t)
-  (define (ins tr x)
-    (if (leaf? tr)
-	(ordered-insert tr x) ;;leaf
-	(let* ((res (partition-by tr x))
-	       (left (car res))
-	       (c (cadr res))
-	       (right (caddr res)))
-	  (make-btree left (ins c x) right t))))
-  (fix-root (ins tr x) t))
-\end{lstlisting}
-
-The program simply calls an internal function and performs fixing
-on it. The internal `ins' function examine if the current node
-is a leaf node. In case the node is a leaf, it only contains keys,
-we can located the position and insert the new key there. Otherwise,
-we partition the node into 3 parts, the left part, the child which
-the recursive insertion will performed on, and the right part.
-The program will do the recursive insertion and then combine
-these three part to a new node. fixing will be happened during the
-combination.
-
-Function `ordered-insert' can help to traverse a ordered list
-and insert the new key to proper position as below.
-
-\begin{lstlisting}
-(define (ordered-insert lst x)
-  (define (insert-by less-p lst x)
-    (if (null? lst)
-	(list x)
-	(if (less-p x (car lst))
-	    (cons x lst)
-	    (cons (car lst) (insert-by less-p (cdr lst) x)))))
-  (if (string? x)
-      (insert-by string<? lst x)
-      (insert-by < lst x)))
-\end{lstlisting}
-
-In order to deal with B-trees with key types both as string and
-as number, we abstract the less-than function as a parameter
-and pass it to an internal function.
-
-Function `partition-by' uses a similar approach.
-
-\begin{lstlisting}
-(define (partition-by tr x)
-  (define (part-by pred tr x)
-    (if (= (length tr) 1)
-	(list '() (car tr) '())
-	(if (pred (cadr tr) x)
-	    (let* ((res (part-by pred (cddr tr) x))
-		   (left (car res))
-		   (c (cadr res))
-		   (right (caddr res)))
-	      (list (cons-pair (car tr) (cadr tr) left) c right))
-	    (list '() (car tr) (cdr tr)))))
-  (if (string? x)
-      (part-by string<? tr x)
-      (part-by < tr x)))
-\end{lstlisting}
-
-Where `cons-pair' is a helper function which can put a key, a
-child in front of a B-tree.
-
-\begin{lstlisting}
-(define (cons-pair c k lst)
-  (cons c (cons k lst)))
-\end{lstlisting}
-
-In order to fixing the root of a B-tree, which contains too many
-keys, a `fix-root' function is provided.
-
-\begin{lstlisting}
-(define (full? tr t) ;; t: minimum degree
-  (> (length (keys tr))
-     (- (* 2 t) 1)))
-
-(define (fix-root tr t)
-  (cond ((full? tr t) (split tr t))
-	(else tr)))
-\end{lstlisting}
-
-When we turn the recursive insertion result to a new node, we
-need do fixing if the result node contains too many keys.
-
-\begin{lstlisting}
-(define (make-btree l c r t)
-  (cond ((full? c t) (fix-full l c r t))
-	(else (append l (cons c r)))))
-
-(define (fix-full l c r t)
-  (append l (split c t) r))
-\end{lstlisting}
-
-With all above facilities, we can test the program for verification.
-
-In order to build the B-tree easily from a list of keys, some simple
-helper functions are given.
-
-\begin{lstlisting}
-(define (list->btree lst t)
-  (fold-left (lambda (tr x) (btree-insert tr x t)) '() lst))
-
-(define (str->slist s)
-  (if (string-null? s)
-      '()
-      (cons (string-head s 1) (str->slist (string-tail s 1)))))
-\end{lstlisting}
-
-A same simple test case as the Haskell one is feed to our program.
-
-\begin{lstlisting}
-(define (test-insert)
-  (list->btree (str->slist "GMPXACDEJKNORSTUVYZBFHIQW") 3))
-\end{lstlisting}
-
-Evaluate `test-insert' function can get a B-tree.
-
-\begin{lstlisting}
-((("A" "B") "C" ("D" "E" "F") "G" ("H" "I" "J" "K")) "M"
-(("N" "O") "P" ("Q" "R" "S") "T" ("U" "V") "W" ("X" "Y" "Z")))
-\end{lstlisting}
-
-It is as same as the result output by the Haskell program.
 
 % ================================================================
 %               Deletion
