@@ -630,19 +630,18 @@ keys; or do some fixing after the deletion if the node has too few keys.
 % ================================================================
 \subsection{Merge before delete method}
 
-The first case is the trivial, if the key $k$ to be deleted
-can be located in node $x$ and $x$ is a leaf node. we can directly
-remove $k$ from $x$.
+We start from the easiest case. If the key $k$ to be deleted
+can be located in node $x$, and $x$ is a leaf node,
+we can directly remove $k$ from $x$. If $x$ is the root (the only
+node of the tree), we needn't worry about there are too few
+keys after deletion. This case is named as case 1 later.
 
-Note that this is a terminal case. For most B-trees which have
-not only a leaf node as the root. The program will first examine
-non-leaf nodes.
-
-The second case states that, the key $k$ can be located in node $x$,
-however, $x$ isn't a leaf node. In this case, there are 3 sub cases.
+In most cases, we start from the root, along a path to locate
+where is the node contains $k$. If $k$ can be located in the
+internal node $x$, there are three sub cases.
 
 \begin{itemize}
-\item If the child node $y$ precedes $k$ contains enough keys (more than $t$).
+\item Case 2a, If the child $y$ precedes $k$ contains enough keys (more than $t$).
 We replace $k$ in node $x$ with $k'$, which is
 the predecessor of $k$ in child $y$. And recursively remove $k'$
 from $y$.
@@ -650,479 +649,211 @@ from $y$.
 The predecessor of $k$ can be easily located as the last key of child
 $y$.
 
-\item If $y$ doesn't contains enough keys, while the child node $z$
+This is shown in figure \ref{fig:btree-del-case2a}.
+
+\begin{figure}[htbp]
+  \centering
+    \includegraphics[scale=0.5]{img/btree-del-case2a.eps}
+    \caption{Replace and delete from predecessor.} \label{fig:btree-del-case2a}
+\end{figure}
+
+\item Case 2b, If $y$ doesn't contain enough keys, while the child $z$
 follows $k$ contains more than $t$ keys. We replace $k$ in node $x$
 with $k''$, which is the successor of $k$ in child $z$. And recursively
 remove $k''$ from $z$.
 
 The successor of $k$ can be easily located as the first key of child $z$.
 
-\item Otherwise, if neither $y$, nor $z$ contains enough keys, we
+This sub-case is illustrated in figure \ref{fig:btree-del-case2b}.
+
+\begin{figure}[htbp]
+  \centering
+    \includegraphics[scale=0.5]{img/btree-del-case2b.eps}
+    \caption{Replace and delete from successor.} \label{fig:btree-del-case2b}
+\end{figure}
+
+\item Case 2c, Otherwise, if neither $y$, nor $z$ contains enough keys, we
 can merge $y$, $k$ and $z$ into one new node, so that this new node
 contains $2t-1$ keys. After that, we can then recursively do the removing.
 
 Note that after merge, if the current node doesn't contain any keys,
-which means $k$ is the only key in $x$, $y$ and $z$ are the only two
+which means $k$ is the only key in $x$. $y$ and $z$ are the only two
 children of $x$. we need shrink the tree height by one.
 \end{itemize}
 
-The case 2 is illustrated as in figure \ref{fig:btree-del-case2a},
-\ref{fig:btree-del-case2b}, and \ref{fig:btree-del-case2c}.
+Figure \ref{fig:btree-del-case2c} illustrates this sub-case.
 
 \begin{figure}[htbp]
-  \begin{center}
-    \includegraphics[scale=0.5]{img/btree-del-case2a.eps}
-    \caption{case 2a. Replace and delete from predecessor.} \label{fig:btree-del-case2a}
-  \end{center}
-\end{figure}
-
-\begin{figure}[htbp]
-  \begin{center}
-    \includegraphics[scale=0.5]{img/btree-del-case2b.eps}
-    \caption{case 2b. Replace and delete from successor.} \label{fig:btree-del-case2b}
-  \end{center}
-\end{figure}
-
-\begin{figure}[htbp]
-  \begin{center}
+  \centering
     \includegraphics[scale=0.5]{img/btree-del-case2c.eps}
-    \caption{case 2c. Merge and delete.} \label{fig:btree-del-case2c}
-  \end{center}
+    \caption{Merge and delete.} \label{fig:btree-del-case2c}
 \end{figure}
-
-Note that although we use recursive way to delete keys in case 2, the
-recursion can be turned into pure imperative way. We'll show such
-program in C++ implementation.
 
 the last case states that, if $k$ can't be located in node $x$, the algorithm
-need try to find a child node $c_i$ of $x$, so that sub-tree $c_i$ may
+need find a child node $c_i$ in $x$, so that the sub-tree $c_i$
 contains $k$. Before the deletion is recursively applied in $c_i$, we
-need be sure that there are at least $t$ keys in $c_i$. If there are
-not enough keys, we need do the following adjustment.
+need make sure that there are at least $t$ keys in $c_i$. If there are
+not enough keys, the following adjustment is performed.
 
 \begin{itemize}
-\item We check the two sibling of $c_i$, which are $c_{i-1}$ and $c_{i+1}$.
-If either one of them contains enough keys (at least $t$ keys), we move
+\item Case 3a, We check the two sibling of $c_i$, which are $c_{i-1}$ and $c_{i+1}$.
+If either one contains enough keys (at least $t$ keys), we move
 one key from $x$ down to $c_i$, and move one key from the sibling up to
 $x$. Also we need move the relative child from the sibling to $c_i$.
 
-This operation makes $c_i$ contains enough keys OK for deletion. we can
+This operation makes $c_i$ contains enough keys for deletion. we can
 next try to delete $k$ from $c_i$ recursively.
 
-\item In case neither one of the two siblings contains enough keys, we then
+Figure \ref{fig:btree-del-case3a} illustrates this case.
+
+\begin{figure}[htbp]
+  \centering
+    \includegraphics[scale=0.5]{img/btree-del-case3a.eps}
+    \caption{Borrow from the right sibling.}
+    \label{fig:btree-del-case3a}
+\end{figure}
+
+\item Case 3b, In case neither one of the two siblings contains enough keys, we then
 merge $c_i$, a key from $x$, and either one of the sibling into a new
-node, and do the deletion on this new node.
+node. Then do the deletion on this new node.
 \end{itemize}
 
-Case 3 is illustrated in figure \ref{fig:btree-del-case3a}, \ref{fig:btree-del-case3b}.
+Figure \ref{fig:btree-del-case3b} shows this case.
 
 \begin{figure}[htbp]
-  \begin{center}
-    \includegraphics[scale=0.5]{img/btree-del-case3a.eps}
-    \caption{case 3a. Borrow from left sibling.} \label{fig:btree-del-case3a}
-  \end{center}
-\end{figure}
-
-\begin{figure}[htbp]
-  \begin{center}
+  \centering
     \includegraphics[scale=0.5]{img/btree-del-case3b.eps}
-    \caption{case 3b. Borrow Merge and delete.} \label{fig:btree-del-case3b}
-  \end{center}
+    \caption{Merge $c_i$, $k$, and $c_{i+1}$ to a new node.}
+    \label{fig:btree-del-case3b}
 \end{figure}
 
-By implementing the above 3 cases into pseudo code, the B-tree delete algorithm
-can be given as the following.
-
-First there are some auxiliary functions to do some simple test and operations
-on a B-tree.
+Before define the B-tree delete algorithm, we need provide some auxiliary
+functions. Function \textproc{Can-Del} tests if a node contains enough keys
+for deletion.
 
 \begin{algorithmic}[1]
-\Function{CAN-DEL}{$T$}
-  \State \Return number of keys of  $T \ge t$
+\Function{Can-Del}{$T$}
+  \State \Return $|\mathbb{K}(T)| \ge t$
 \EndFunction
 \end{algorithmic}
 
-Function $CAN-DEL$ test if a B-tree node contains enough keys (no less than
-$t$ keys).
+Procedure \textproc{Merge-Children}($T, i$) merges child $C_i(T)$, key $K_i(T)$,
+and child $C_{i+1}(T)$ into one big node.
 
 \begin{algorithmic}[1]
-\Procedure{MERGE-CHILDREN}{$T, i$} \Comment{Merge children $i$ and $i+1$}
-  \State $x \leftarrow CHILDREN(T)[i]$
-  \State $y \leftarrow CHILDREN(T)[i+1]$
-  \State $APPEND(KEYS(x), KEYS(T)[i])$
-  \State $CONCAT(KEYS(x), KEYS(y))$
-  \State $CONCAT(CHILDREN(x), CHILDREN(y)$
-  \State $REMOVE(KEYS(T), i)$
-  \State $REMOVE(CHILDREN(T), i+1)$
+\Procedure{Merge-Children}{$T, i$} \Comment{Merge $C_i(T)$, $K_i(T)$, and $C_{i+1}(T)$}
+  \State $x \gets C_i(T)$
+  \State $y \gets C_{i+1}(T)$
+  \State $\mathbb{K}(x) \gets \mathbb{K}(x) \cup \{K_i(T)\} \cup \mathbb{K}(y)$
+  \State $\mathbb{C}(x) \gets \mathbb{C}(x) \cup \mathbb{C}(y)$
+  \State \Call{Remove-At}{$\mathbb{K}(T), i$}
+  \State \Call{Remove-At}{$\mathbb{C}(T), i+1$}
 \EndProcedure
 \end{algorithmic}
 
-Procedure $MERGE-CHILDREN$ merges the $i$-th child, the $i$-th key,
+Procedure \textproc{Merge-Children} merges the $i$-th child, the $i$-th key,
 and $i+1$-th child of node $T$ into a new child, and remove the
-$i$-th key and $i+1$-th child after merging.
+$i$-th key and $i+1$-th child from $T$ after merging.
 
-With these helper functions, the main algorithm of B-tree deletion is described
-as below.
+With these functions defined, the B-tree deletion algorithm can be given by
+realizing the above 3 cases.
 
 \begin{algorithmic}[1]
-\Function{B-TREE-DELETE}{$T, k$}
-  \State $i \leftarrow 1$
-  \While{$i <= LENGTH(KEYS(T))$}
-    \If{$k = KEYS(T)[i]$}
+\Function{Delete}{$T, k$}
+  \State $i \gets 1$
+  \While{$i \leq |\mathbb{K}(T)|$}
+    \If{$k = K_i(T)$}
       \If{$T$ is leaf} \Comment{case 1}
-        \State $REMOVE(KEYS(T), k)$
+        \State \Call{Remove}{$\mathbb{K}(T), k$}
       \Else \Comment{case 2}
-        \If{$CAN-DEL(CHILDREN(T)[i])$} \Comment{case 2a}
-          \State $KEYS(T)[i] \leftarrow LAST-KEY(CHILDREN(T)[i])$
-          \State $B-TREE-DELETE(CHILDREN(T)[i], KEYS(T)[i])$
-        \ElsIf{$CAN-DEL(CHILDREN(T)[i+1])$} \Comment{case 2b}
-          \State $KEYS(T)[i] \leftarrow FIRST-KEY(CHILDREN(T)[i+1])$
-          \State $B-TREE-DELETE(CHILDREN(T)[i+1], KEYS(T)[i])$
+        \If{\Call{Can-Del}{$C_i(T)$}} \Comment{case 2a}
+          \State $K_i(T) \gets$ \Call{Last-Key}{$C_i(T)$}
+          \State \Call{Delete}{$C_i(T), K_i(T)$}
+        \ElsIf{\Call{Can-Del}{$C_{i+1}(T)$}} \Comment{case 2b}
+          \State $K_i(T) \gets$ \Call{First-Key}{$C_{i+1}(T)$}
+          \State \Call{Delete}{$C_{i+1}(T), K_i(T)$}
         \Else \Comment{case 2c}
-          \State $MERGE-CHILDREN(T, i)$
-          \State $B-TREE-DELETE(CHILDREN(T)[i], k)$
-          \If{$KEYS(T) = NIL$}
-            \State $T \leftarrow CHILDREN(T)[i]$ \Comment{Shrinks height}
+          \State \Call{Merge-Children}{$T, i$}
+          \State \Call{Delete}{$C_i(T), k$}
+          \If{$\mathbb{K}(T) = NIL$}
+            \State $T \gets C_i(T)$ \Comment{Shrinks height}
           \EndIf
         \EndIf
       \EndIf
       \State \Return $T$
-    \ElsIf{$k < KEYS(T)[i]$}
-      \State $BREAK$
+    \ElsIf{$k < K_i(T)$}
+      \State Break
     \Else
-      \State $i \leftarrow i+1$
+      \State $i \gets i+1$
     \EndIf
   \EndWhile
   \Statex
   \If{$T$ is leaf}
-    \State \Return $T$ \Comment{$k$ doesn't exist in $T$ at all}
+    \State \Return $T$ \Comment{$k$ doesn't exist in $T$.}
   \EndIf
-  \If{not $CAN-DEL(CHILDREN(T)[i])$}  \Comment{case 3}
-    \If{$i>1$ and $CAN-DEL(CHILDREN(T)[i-1])$} \Comment{case 3a: left sibling}
-      \State $INSERT(KEYS(CHILDREN(T)[i]), KEYS(T)[i-1])$
-      \State $KEYS(T)[i-1] \leftarrow POP-BACK(KEYS(CHILDREN(T)[i-1]))$
-      \If{$CHILDREN(T)[i]$ isn't leaf}
-        \State $c \leftarrow POP-BACK(CHILDREN(CHILDREN(T)[i-1]))$
-        \State $INSERT(CHILDREN(CHILDREN(T)[i]), c)$
+  \If{$\lnot$ \Call{Can-Del}{$C_i(T)$}}  \Comment{case 3}
+    \If{$i>1 \land$ \Call{Can-Del}{$C_{i-1}(T)$}} \Comment{case 3a: left sibling}
+      \State \Call{Insert}{$\mathbb{K}(C_i(T)), K_{i-1}(T)$}
+      \State $K_{i-1}(T) \gets$ \Call{Pop-Back}{$\mathbb{K}(C_{i-1}(T))$}
+      \If{$C_i(T)$ isn't leaf}
+        \State $c \gets$ \Call{Pop-Back}{$\mathbb{C}(C_{i-1}(T))$}
+        \State \Call{Insert}{$\mathbb{C}(C_i(T)), c$}
       \EndIf
-    \ElsIf{$i<=LENGTH(CHILDREN(T))$ and $CAN-DEL(CHILDREN(T)[i+1]$} \Comment{case 3a: right sibling}
-      \State $APPEND(KEYS(CHILDREN(T)[i]), KEYS(T)[i])$
-      \State $KEYS(T)[i] \leftarrow POP-FRONT(KEYS(CHILDREN(T)[i+1]))$
-      \If{$CHILDREN(T)[i]$ isn't leaf}
-        \State $c \leftarrow POP-FRONT(CHILDREN(CHILDREN(T)[i+1]))$
-        \State $APPEND(CHILDREN(CHILDREN(T)[i]), c)$
+    \ElsIf{$i \leq |\mathbb{C}(T)| \land$ \Call{Can-Del}{$C_{i_1}(T)$}} \Comment{case 3a: right sibling}
+      \State \Call{Append}{$\mathbb{K}(C_i(T)), K_i(T)$}
+      \State $K_i(T) \gets$ \Call{Pop-Front}{$\mathbb{K}(C_{i+1}(T))$}
+      \If{$C_i(T)$ isn't leaf}
+        \State $c \gets$ \Call{Pop-Front}{$\mathbb{C}(C_{i+1}(T))$}
+        \State \Call{Append}{$\mathbb{C}(C_i(T)), c$}
       \EndIf
     \Else \Comment{case 3b}
       \If{$i>1$}
-        \State $MERGE-CHILDREN(T, i-1)$
+        \State \Call{Merge-Children}{$T, i-1$}
       \Else
-        \State $MERGE-CHILDREN(T, i)$
+        \State \Call{Merge-Children}{$T, i$}
       \EndIf
     \EndIf
   \EndIf
-  \State $B-TREE-DELETE(CHILDREN(T)[i], k)$ \Comment {recursive delete}
-  \If{$KEYS(T) = NIL$} \Comment {Shrinks height}
-    \State $T \gets CHILDREN(T)[1]$
+  \State \Call{Delete}{$C_i(T), k$} \Comment {recursive delete}
+  \If{$\mathbb{K}(T) = NIL$} \Comment {Shrinks height}
+    \State $T \gets C_1(T)$
   \EndIf
   \State \Return $T$
 \EndFunction
 \end{algorithmic}
 
-\subsubsection{Merge before deletion algorithm implemented in C++}
-The C++ implementation given here isn't simply translate the above
-pseudo code into C++. The recursion can be eliminated in a pure
-imperative program.
-
-In order to simplify some B-tree node operation, some auxiliary
-member functions are added to the B-tree node class definition.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<class K, int t>
-struct BTree{
-  //...
-  // merge children[i], keys[i], and children[i+1] to one node
-  void merge_children(int i){
-    BTree<K, t>* x = children[i];
-    BTree<K, t>* y = children[i+1];
-    x->keys.push_back(keys[i]);
-    concat(x->keys, y->keys);
-    concat(x->children, y->children);
-    keys.erase(keys.begin()+i);
-    children.erase(children.begin()+i+1);
-    y->children.clear();
-    delete y;
-  }
-
-  key_type replace_key(int i, key_type key){
-    keys[i]=key;
-    return key;
-  }
-
-  bool can_remove(){ return keys.size() >=t; }
-  //...
-\end{lstlisting}
-
-Function `replace\_key' can update the $i$-th key of a node with a
-new value. Typically, this new value is pulled from a child node as
-described in deletion algorithm. It will return the new value.
-
-Function `can\_remove' will test if a node contains enough keys for
-further deletion.
-
-Function `merge\_children' can merge the $i$-th child, the $i$-th key,
-and the $i+1$-th children into one node. This operation is reverse
-operation of splitting, it can double the keys of a node, so that
-such adjustment can ensure a node has enough keys for further deleting.
-
-Note that, unlike the other languages equipped with GC, in C++ program,
-the memory must be released after merging.
-
-This function uses `concat' function to concatenate two collections.
-It is defined as the following.
-
-\begin{lstlisting}
-template<class Coll>
-void concat(Coll& x, Coll& y){
-  std::copy(y.begin(), y.end(),
-            std::insert_iterator<Coll>(x, x.end()));
-}
-\end{lstlisting}
-
-With these helper functions, the main program of B-tree deleting
-is given as below.
-
-\begin{lstlisting}
-template<class T>
-T* del(T* tr, typename T::key_type key){
-  T* root(tr);
-  while(!tr->leaf()){
-    unsigned int i = 0;
-    bool located(false);
-    while(i < tr->keys.size()){
-      if(key == tr->keys[i]){
-        located = true;
-        if(tr->children[i]->can_remove()){ //case 2a
-          key = tr->replace_key(i, tr->children[i]->keys.back());
-          tr->children[i]->keys.pop_back();
-          tr = tr->children[i];
-        }
-        else if(tr->children[i+1]->can_remove()){ //case 2b
-          key = tr->replace_key(i, tr->children[i+1]->keys.front());
-          tr->children[i+1]->keys.erase(tr->children[i+1]->keys.begin());
-          tr = tr->children[i+1];
-        }
-        else{ //case 2c
-          tr->merge_children(i);
-          if(tr->keys.empty()){ //shrinks height
-            T* temp = tr->children[0];
-            tr->children.clear();
-            delete tr;
-            tr = temp;
-          }
-        }
-        break;
-      }
-      else if(key > tr->keys[i])
-        i++;
-      else
-        break;
-    }
-    if(located)
-      continue;
-    if(!tr->children[i]->can_remove()){ //case 3
-      if(i>0 && tr->children[i-1]->can_remove()){
-        // case 3a: left sibling
-        tr->children[i]->keys.insert(tr->children[i]->keys.begin(),
-                                     tr->keys[i-1]);
-        tr->keys[i-1] = tr->children[i-1]->keys.back();
-        tr->children[i-1]->keys.pop_back();
-        if(!tr->children[i]->leaf()){
-          tr->children[i]->children.insert(tr->children[i]->children.begin(),
-                                           tr->children[i-1]->children.back());
-          tr->children[i-1]->children.pop_back();
-        }
-      }
-      else if(i<tr->children.size() && tr->children[i+1]->can_remove()){
-        // case 3a: right sibling
-        tr->children[i]->keys.push_back(tr->keys[i]);
-        tr->keys[i] = tr->children[i+1]->keys.front();
-        tr->children[i+1]->keys.erase(tr->children[i+1]->keys.begin());
-        if(!tr->children[i]->leaf()){
-          tr->children[i]->children.push_back(tr->children[i+1]->children.front());
-          tr->children[i+1]->children.erase(tr->children[i+1]->children.begin());
-        }
-      }
-      else{
-        if(i>0)
-          tr->merge_children(i-1);
-        else
-          tr->merge_children(i);
-      }
-    }
-    tr = tr->children[i];
-  }
-  tr->keys.erase(remove(tr->keys.begin(), tr->keys.end(), key),
-                 tr->keys.end());
-  if(root->keys.empty()){ //shrinks height
-    T* temp = root->children[0];
-    root->children.clear();
-    delete root;
-    root = temp;
-  }
-  return root;
-}
-\end{lstlisting}
-
-Please note how the recursion be eliminated. The main loop terminates
-only if the current node which is examined is a leaf. Otherwise, the
-program will go through the B-tree along the path which may contains
-the key to be deleted, and do proper adjustment including borrowing
-keys from other nodes, or merging to make the candidate nodes along
-this path all have enough keys to perform deleting.
-
-In order to verify this program, a quick and simple parsing function
-which can turn a B-tree description string into a B-tree is provided.
-Error handling of parsing is omitted for illusion purpose.
-
-\begin{lstlisting}
-template<class T>
-T* parse(std::string::iterator& first, std::string::iterator last){
-  T* tr = new T;
-  ++first; //'('
-  while(first!=last){
-    if(*first=='('){ //child
-      tr->children.push_back(parse<T>(first, last));
-    }
-    else if(*first == ',' || *first == ' ')
-      ++first; //skip deliminator
-    else if(*first == ')'){
-      ++first;
-      return tr;
-    }
-    else{ //key
-      typename T::key_type key;
-      while(*first!=',' && *first!=')')
-        key+=*first++;
-      tr->keys.push_back(key);
-    }
-  }
-  //should never run here
-  return 0;
-}
-
-template<class T>
-T* str_to_btree(std::string s){
-  std::string::iterator first(s.begin());
-  return parse<T>(first, s.end());
-}
-\end{lstlisting}
-
-After that, the testing can be performed as below.
-
-\begin{lstlisting}
-  void test_delete(){
-    std::cout<<"test delete...\n";
-    const char* s="(((A, B), C, (D, E, F), G, (J, K, L), M, (N, O)), "
-                  "P, ((Q, R, S), T, (U, V), X, (Y, Z)))";
-    typedef BTree<std::string, 3> BTr;
-    BTr* tr = str_to_btree<BTr>(s);
-    std::cout<<"before delete:\n"<<btree_to_str(tr)<<"\n";
-    const char* ks[] = {"F", "M", "G", "D", "B", "U"};
-    for(unsigned int i=0; i<sizeof(ks)/sizeof(char*); ++i)
-      tr=__test_del__(tr, ks[i]);
-    delete tr;
-  }
-
-  template<class T>
-  T* __test_del__(T* tr, typename T::key_type key){
-    std::cout<<"delete "<<key<<"==>\n";
-    tr = del(tr, key);
-    std::cout<<btree_to_str(tr)<<"\n";
-    return tr;
-  }
-\end{lstlisting}
-
-Run `test\_delete' will generate the below result.
-
-\begin{verbatim}
-test delete...
-before delete:
-(((A, B), C, (D, E, F), G, (J, K, L), M, (N, O)), P, ((Q, R, S), T, (U, V), X, (Y, Z)))
-delete F==>
-(((A, B), C, (D, E), G, (J, K, L), M, (N, O)), P, ((Q, R, S), T, (U, V), X, (Y, Z)))
-delete M==>
-(((A, B), C, (D, E), G, (J, K), L, (N, O)), P, ((Q, R, S), T, (U, V), X, (Y, Z)))
-delete G==>
-(((A, B), C, (D, E, J, K), L, (N, O)), P, ((Q, R, S), T, (U, V), X, (Y, Z)))
-delete D==>
-((A, B), C, (E, J, K), L, (N, O), P, (Q, R, S), T, (U, V), X, (Y, Z))
-delete B==>
-((A, C), E, (J, K), L, (N, O), P, (Q, R, S), T, (U, V), X, (Y, Z))
-delete U==>
-((A, C), E, (J, K), L, (N, O), P, (Q, R), S, (T, V), X, (Y, Z))
-\end{verbatim}
-
 Figure \ref{fig:result-del1}, \ref{fig:result-del2}, and \ref{fig:result-del3}
-show this deleting test process step by step. The nodes modified are shaded.
-The first 5 steps are as same as the example shown in textbook\cite{CLRS} figure 18.8.
+show the deleting process step by step. The nodes modified are shaded.
 
 \begin{figure}[htbp]
-    \begin{center}
-      \includegraphics[scale=0.5]{img/btree-del-before.ps}
-
-      a. A B-tree before performing deleting;
-
-      \includegraphics[scale=0.5]{img/btree-del-F.ps}
-
-      b. After delete key 'F', case 1;
-      \caption{Result of B-tree deleting program (1)} \label{fig:result-del1}
-    \end{center}
+  \centering
+  \subfloat[A B-tree before deleting.]{\includegraphics[scale=0.5]{img/btree-del-before.ps}} \\
+  \subfloat[After delete key 'F', case 1.]{\includegraphics[scale=0.5]{img/btree-del-F.ps}}
+  \caption{Result of B-tree deleting (1).} \label{fig:result-del1}
 \end{figure}
 
 \begin{figure}[htbp]
-    \begin{center}
-      \includegraphics[scale=0.5]{img/btree-del-M.ps}
-
-      c. After delete key 'M', case 2a;
-
-      \includegraphics[scale=0.5]{img/btree-del-G.ps}
-
-      d. After delete key 'G', case 2c;
-      \caption{Result of B-tree deleting program (2)} \label{fig:result-del2}
-    \end{center}
+  \centering
+  \subfloat[After delete key 'M', case 2a.]{\includegraphics[scale=0.5]{img/btree-del-M.ps}} \\
+  \subfloat[After delete key 'G', case 2c.]{\includegraphics[scale=0.5]{img/btree-del-G.ps}}
+  \caption{Result of B-tree deleting program (2)} \label{fig:result-del2}
 \end{figure}
 
 \begin{figure}[htbp]
-    \begin{center}
-      \includegraphics[scale=0.5]{img/btree-del-D.ps}
-
-      e. After delete key 'D', case 3b, and height is shrunk;
-
-      \includegraphics[scale=0.5]{img/btree-del-B.ps}
-
-      f. After delete key 'B', case 3a, borrow from right sibling;
-
-      \includegraphics[scale=0.5]{img/btree-del-U.ps}
-
-      g. After delete key 'U', case 3a, borrow from left sibling;
-
-      \caption{Result of B-tree deleting program (3)} \label{fig:result-del3}
-    \end{center}
+  \centering
+  \subfloat[After delete key 'D', case 3b, and height is shrunk.]{\includegraphics[scale=0.5]{img/btree-del-D.ps}} \\
+  \subfloat[After delete key 'B', case 3a, borrow from right sibling.]{\includegraphics[scale=0.5]{img/btree-del-B.ps}} \\
+  \subfloat[After delete key 'U', case 3a, borrow from left sibling.]{\includegraphics[scale=0.5]{img/btree-del-U.ps}}
+  \caption{Result of B-tree deleting program (3)} \label{fig:result-del3}
 \end{figure}
 
+The following example Python program implements the B-tree deletion algorithm.
 
-\subsubsection{Merge before deletion algorithm implemented in Python}
-In Python implementation, detailed memory management can be handled by
-GC. Similar as the C++ program, some auxiliary member functions
-are added to B-tree node definition.
-
+TODO: Change the member function to global function.
 \lstset{language=Python}
 \begin{lstlisting}
 class BTreeNode:
-    #...
     def merge_children(self, i):
-        #merge children[i] and children[i+1] by pushing keys[i] down
         self.children[i].keys += [self.keys[i]]+self.children[i+1].keys
         self.children[i].children += self.children[i+1].children
         self.keys.pop(i)
@@ -1135,12 +866,6 @@ class BTreeNode:
     def can_remove(self):
         return len(self.keys) >= self.t
 \end{lstlisting}
-
-The member function names are same with the C++ program, so that the
-meaning for each of them can be referred in previous sub section.
-
-In contrast to the C++ program, a recursion approach similar to the
-pseudo code is used in this Python program.
 
 \begin{lstlisting}
 def B_tree_delete(tr, key):
@@ -1191,61 +916,6 @@ def B_tree_delete(tr, key):
         tr = tr.children[0]
     return tr
 \end{lstlisting}
-
-In order to verify the deletion program, similar test cases are
-fed to the function.
-
-\begin{lstlisting}
-def test_delete():
-    print "test delete"
-    t = 3
-    tr = BTreeNode(t, False)
-    tr.keys=["P"]
-    tr.children=[BTreeNode(t, False), BTreeNode(t, False)]
-    tr.children[0].keys=["C", "G", "M"]
-    tr.children[0].children=[BTreeNode(t), BTreeNode(t), BTreeNode(t), BTreeNode(t)]
-    tr.children[0].children[0].keys=["A", "B"]
-    tr.children[0].children[1].keys=["D", "E", "F"]
-    tr.children[0].children[2].keys=["J", "K", "L"]
-    tr.children[0].children[3].keys=["N", "O"]
-    tr.children[1].keys=["T", "X"]
-    tr.children[1].children=[BTreeNode(t), BTreeNode(t), BTreeNode(t)]
-    tr.children[1].children[0].keys=["Q", "R", "S"]
-    tr.children[1].children[1].keys=["U", "V"]
-    tr.children[1].children[2].keys=["Y", "Z"]
-    print B_tree_to_str(tr)
-    lst = ["F", "M", "G", "D", "B", "U"]
-    reduce(__test_del__, lst, tr)
-
-def __test_del__(tr, key):
-    print "delete", key
-    tr = B_tree_delete(tr, key)
-    print B_tree_to_str(tr)
-    return tr
-\end{lstlisting}
-
-In this test case, the B-tree is constructed manually. It is identical to
-the B-tree built in C++ deleting test case. Run the test function will
-generate the following result.
-
-\begin{verbatim}
-test delete
-(((A, B), C, (D, E, F), G, (J, K, L), M, (N, O)), P, ((Q, R, S), T, (U, V), X, (Y, Z)))
-delete F
-(((A, B), C, (D, E), G, (J, K, L), M, (N, O)), P, ((Q, R, S), T, (U, V), X, (Y, Z)))
-delete M
-(((A, B), C, (D, E), G, (J, K), L, (N, O)), P, ((Q, R, S), T, (U, V), X, (Y, Z)))
-delete G
-(((A, B), C, (D, E, J, K), L, (N, O)), P, ((Q, R, S), T, (U, V), X, (Y, Z)))
-delete D
-((A, B), C, (E, J, K), L, (N, O), P, (Q, R, S), T, (U, V), X, (Y, Z))
-delete B
-((A, C), E, (J, K), L, (N, O), P, (Q, R, S), T, (U, V), X, (Y, Z))
-delete U
-((A, C), E, (J, K), L, (N, O), P, (Q, R), S, (T, V), X, (Y, Z))
-\end{verbatim}
-
-This result is as same as the one output by C++ program.
 
 % ================================================================
 %               Delete and fix method
