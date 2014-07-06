@@ -870,7 +870,6 @@ def B_tree_delete(tr, key):
         if key == tr.keys[i-1]:
             if tr.leaf:  # case 1 in CLRS
                 tr.keys.remove(key)
-                #disk_write(tr)
             else: # case 2 in CLRS
                 if tr.children[i-1].can_remove(): # case 2a
                     key = tr.replace_key(i-1, tr.children[i-1].keys[-1])
@@ -919,78 +918,75 @@ def B_tree_delete(tr, key):
 
 \subsection{Delete and fix method}
 
-From previous sub-sections, we see how complex is the deletion algorithm,
+The merge and delete algorithm is a bit complex.
 There are several cases, and in each case, there are sub cases to deal.
 
-Another approach to design the deleting algorithm is a kind of delete-then-fix
-way. It is similar to the insert-then-fix strategy.
+Another approach to design the deleting algorithm is to perfrom fixing
+after deletion. It is similar to the insert-then-fix strategy.
 
-When we need delete a key from a B-tree, we firstly try to locate
-which node this key is contained. This will be a traverse process
-from the root node towards leaves. We start from root node, If the
-key doesn't exist in the node, we'll traverse deeper and deeper
-until we rich a node.
+When delete a key from B-tree, we firstly locate
+which node this key is contained. We traverse
+from the root to the leaves till find this key in some node.
 
-If this node is a leaf node, we can remove the key directly, and then
+If this node is a leaf, we can remove the key, and then
 examine if the deletion makes the node contains too few keys to
-maintain the B-tree balance properties.
+satisfy the B-tree balance properties.
 
-If it is a branch node, removing the key will break the node into
-two parts, we need merge them together. The merging is a recursive
-process which can be shown in figure \ref{fig:del-fp-merge}.
+If it is a branch node, removing the key breaks the node into
+two parts. We need merge them together. The merging is a recursive
+process which is shown in figure \ref{fig:del-fp-merge}.
 
 \begin{figure}[htbp]
-    \begin{center}
-      \includegraphics[scale=0.5]{img/btree-del-fp-merge.eps}
-      \caption{Delete a key from a branch node. Removing $k_i$ breaks
-the node into 2 parts, left part and right part. Merging these 2 parts
+  \centering
+  \includegraphics[scale=0.5]{img/btree-del-fp-merge.eps}
+  \caption{Delete a key from a branch node. Removing $k_i$ breaks
+the node into 2 parts. Merging these 2 parts
 is a recursive process. When the two parts are leaves, the merging
 terminates.} \label{fig:del-fp-merge}
-    \end{center}
 \end{figure}
 
 When do merging, if the two nodes are not leaves, we merge the keys
 together, and recursively merge the last child of the left part
-and the first child of the right part as one new child node. Otherwise,
+and the first child of the right part to one new node. Otherwise,
 if they are leaves, we merely put all keys together.
 
-Till now, we do the deleting in straightforward way. However, deleting
-will decrease the number of keys of a node, and it may result in
-violating the B-tree balance properties. The solution is to perform a
-fixing along the path we traversed from root.
+Till now, the deleting in performed in straightforward way. However, deleting
+decreases the number of keys of a node, and it may result in
+violating the B-tree balance properties. The solution is to perform
+fixing along the path traversed from root.
 
 \begin{figure}[htbp]
-    \begin{center}
-      \includegraphics[scale=0.5]{img/btree-del-fp-make.eps}
-      \caption{Denote $c_i'$ as the result of recursively deleting
-key $k$, from child $c_i$, we should do fixing when making the
-left part, $c_i'$ and right part together to a new node.} \label{fig:del-fp-make}
-    \end{center}
+  \centering
+  \includegraphics[scale=0.5]{img/btree-del-fp-make.eps}
+  \caption{After delete key $k$ from node $c_i$, denote the result
+as $c_i'$. The fixing makes a new node from the
+left part, $c_i'$ and the right part.}
+  \label{fig:del-fp-make}
 \end{figure}
 
-When we do recursive deletion, the branch node is broken into 3 parts.
-The left part contains all keys less than $k$, say $k_1, k_2, ..., k_{i-1}$,
+During the recursive deletion, the branch node is broken into 3 parts.
+The left part contains all keys less than $k$, includes $k_1, k_2, ..., k_{i-1}$,
 and children $c_1, c_2, ..., c_{i-1}$, the right part contains all keys
 greater than $k$, say $k_i, k_{i+1}, ..., k_{n+1}$, and children
-$c_{i+1}, c_{i+2}, ..., c_{n+1}$, the child $c_i$ which recursive deleting
-applied becomes $c_i'$. We need make these 3 parts to a new node
+$c_{i+1}, c_{i+2}, ..., c_{n+1}$. Then key $k$ is recursively deleted
+from child $c_i$. Denote the result becomes $c_i'$ after that.
+We need make a new node from these 3 parts,
 as shown in figure \ref{fig:del-fp-make}.
 
-At this time point, we can examine if $c_i'$ contains enough keys,
-it the number of keys is to less (less than $t-1$, but not $t$ in
-contrast to merge and delete approach), we can either borrow a key-child
-pair from left part or right part, and do a inverse operation of
-splitting. Figure \ref{fig:del-fp-fixlow} shows an example of borrow from left part.
+At this time point, we need examine if $c_i'$ contains enough keys.
+If there are to less keys (less than $t-1$, but not $t$ in
+contrast to the merge-and-delete approach), we can either borrow a key-child
+pair from the left or the right part, and do inverse operation of
+splitting. Figure \ref{fig:del-fp-fixlow} shows example of borrowing from the left part.
 
 \begin{figure}[htbp]
-    \begin{center}
-      \includegraphics[scale=0.5]{img/btree-del-fp-fixlow.eps}
-      \caption{Borrow a key-child pair from left part and
+  \centering
+  \includegraphics[scale=0.5]{img/btree-del-fp-fixlow.eps}
+  \caption{Borrow a key-child pair from left part and
 un-split to a new child.} \label{fig:del-fp-fixlow}
-    \end{center}
 \end{figure}
 
-In case both left part and right part is empty, we can simply
+If both left part and right part are empty, we can simply
 push $c_i'$ up.
 
 \subsubsection{Delete and fix algorithm implemented functionally}
