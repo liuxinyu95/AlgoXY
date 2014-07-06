@@ -24,28 +24,25 @@ class BTree:
         self.keys = [] #self.data = ...
         self.children = []
 
-    def merge_children(self, i):
-        #merge children[i] and children[i+1] by pushing keys[i] down
-        self.children[i].keys += [self.keys[i]]+self.children[i+1].keys
-        self.children[i].children += self.children[i+1].children
-        self.keys.pop(i)
-        self.children.pop(i+1)
-        #disk_write(self)
-        #disk_write(self.children[i])
-
-    def replace_key(self, i, key):
-        self.keys[i] = key
-        #disk_write(self)
-        return key
-
-    def can_remove(self):
-        return len(self.keys) >= self.t
-
 def is_leaf(t):
     return t.children == []
 
 def is_full(node):
     return len(node.keys) >= 2 * node.t - 1
+
+def can_remove(tr):
+    return len(tr.keys) >= tr.t
+
+def replace_key(tr, i, k):
+    tr.keys[i] = k
+    return k
+
+def merge_children(tr, i):
+    #merge children[i] and children[i+1] by pushing keys[i] down
+    tr.children[i].keys += [tr.keys[i]] + tr.children[i+1].keys
+    tr.children[i].children += tr.children[i+1].children
+    tr.keys.pop(i)
+    tr.children.pop(i+1)
 
 def split_child(node, i):
     t = node.t
@@ -101,14 +98,14 @@ def B_tree_delete(tr, key):
                 tr.keys.remove(key)
                 #disk_write(tr)
             else: # case 2 in CLRS
-                if tr.children[i-1].can_remove(): # case 2a
-                    key = tr.replace_key(i-1, tr.children[i-1].keys[-1])
+                if can_remove(tr.children[i-1]): # case 2a
+                    key = replace_key(tr, i-1, tr.children[i-1].keys[-1])
                     B_tree_delete(tr.children[i-1], key)
-                elif tr.children[i].can_remove(): # case 2b
-                    key = tr.replace_key(i-1, tr.children[i].keys[0])
+                elif can_remove(tr.children[i]): # case 2b
+                    key = replace_key(tr, i-1, tr.children[i].keys[0])
                     B_tree_delete(tr.children[i], key)
                 else: # case 2c
-                    tr.merge_children(i-1)
+                    merge_children(tr, i-1)
                     B_tree_delete(tr.children[i-1], key)
                     if tr.keys==[]: # tree shrinks in height
                         tr = tr.children[i-1]
@@ -120,22 +117,22 @@ def B_tree_delete(tr, key):
     # case 3
     if is_leaf(tr):
         return tr #key doesn't exist at all
-    if not tr.children[i].can_remove():
-        if i>0 and tr.children[i-1].can_remove(): #left sibling
+    if not can_remove(tr.children[i]):
+        if i>0 and can_remove(tr.children[i-1]): #left sibling
             tr.children[i].keys.insert(0, tr.keys[i-1])
             tr.keys[i-1] = tr.children[i-1].keys.pop()
             if not is_leaf(tr.children[i]):
                 tr.children[i].children.insert(0, tr.children[i-1].children.pop())
-        elif i<len(tr.children) and tr.children[i+1].can_remove(): #right sibling
+        elif i<len(tr.children) and can_remove(tr.children[i+1]): #right sibling
             tr.children[i].keys.append(tr.keys[i])
             tr.keys[i]=tr.children[i+1].keys.pop(0)
             if not is_leaf(tr.children[i]):
                 tr.children[i].children.append(tr.children[i+1].children.pop(0))
         else: # case 3b
             if i>0:
-                tr.merge_children(i-1)
+                merge_children(tr, i-1)
             else:
-                tr.merge_children(i)
+                merge_children(tr, i)
     B_tree_delete(tr.children[i], key)
     if tr.keys==[]: # tree shrinks in height
         tr = tr.children[0]
