@@ -924,6 +924,10 @@ There are several cases, and in each case, there are sub cases to deal.
 Another approach to design the deleting algorithm is to perfrom fixing
 after deletion. It is similar to the insert-then-fix strategy.
 
+\be
+delete(T, k) = fix(del(T, k))
+\ee
+
 When delete a key from B-tree, we firstly locate
 which node this key is contained. We traverse
 from the root to the leaves till find this key in some node.
@@ -989,40 +993,35 @@ un-split to a new child.} \label{fig:del-fp-fixlow}
 If both left part and right part are empty, we can simply
 push $c_i'$ up.
 
-\subsubsection{Delete and fix algorithm implemented functionally}
+Denote the B-tree as $T=(K, C, t)$, the $del(T, k)$ function delete key $k$
+from the tree.
 
-By summarize all above analysis, we can draft the delete and fix
-algorithm.
+\be
+del(T, k) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (delete(K, k), \Phi, t) & C = \Phi \\
+  merge((K_1, C_1, t), (K_2, C_2, t)) & k_i = k \\
+  make((K_1', C_1'), del(c, k), (K_2', C_2')) & k \notin K
+  \end{array}
+\right.
+\ee
 
-\begin{algorithmic}[1]
-\Function{B-TREE-DELETE'}{$T, k$}
-  \State \Return $FIX-ROOT(DEL(T, k))$
-\EndFunction
+\[
+\begin{array}{l}
+K_1 = \{k_1, k_2, ..., k_{i-1}\} \\
+K_2 = \{k_{i+1}, k_{i+2}, ..., k_m\} \\
+C_1 = \{c_1, c_2, ..., c_i\} \\
+C_2 = \{c_{i+1}, c_{i+2}, ..., c_{m+1}\}
+\end{array}
+\]
 
-\Function{DEL}{$T, k$}
-  \If{$CHILDREN(T) = NIL$}\Comment{leaf node}
-    \State $DELETE(KEYS(T), k)$
-    \State \Return $T$
-  \Else \Comment{branch node}
-    \State $n \gets LENGTH(KEYS(T))$
-    \State $i \gets LOWER-BOUND(KEYS(T), k)$
-    \If{$KEYS(T)[i] = k$}
-      \State $k_l \gets KEYS(T)[1, ..., i-1]$
-      \State $k_r \gets KEYS(T)[i+1, ..., n]$
-      \State $c_l \gets CHILDREN(T)[1, ..., i]$
-      \State $c_r \gets CHILDREN(T)[i+1, ..., n+1]$
-      \State \Return $MERGE(CREATE-B-TREE(k_l, c_l), CREATE-B-TREE(k_r, c_r))$
-    \Else
-      \State $k_l \gets KEYS(T)[1, ..., i-1]$
-      \State $k_r \gets KEYS(T)[i, ..., n]$
-      \State $c \gets CHILDREN(T)[i]$
-      \State $c_l \gets CHILDREN(T)[1, ..., i-1]$
-      \State $c_r \gets CHILDREN(T)[i+1, ..., n+1]$
-      \State \Return $MAKE((k_l, c_l), c, (k_r, c_r))$
-    \EndIf
-  \EndIf
-\EndFunction
-\end{algorithmic}
+\[
+\begin{array}{l}
+(K_1', K_2') = (\{k' | k' \in K, k' < k \}, \{k' | k' \in K, k < k' \}) \\
+(C_1', \{c\} \cup C_2') = splitAt(|K_1'|, C)
+\end{array}
+\]
 
 The main delete function will call an internal $DEL$ function to
 performs the work, after that, it will apply $FIX-ROOT$ to check
