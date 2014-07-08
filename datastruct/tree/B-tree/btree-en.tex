@@ -444,7 +444,7 @@ are ordered. If not, these two elements will be swapped.
 In functional settings, B-tree insertion can be realized in a way similar to
 red-black tree. When insert a key to red-black tree, it is firstly inserted
 as in the normal binary search tree, then recursive fixing is performed to
-resume the balance of the tree. B tree can be viewed as extension to the
+resume the balance of the tree. B-tree can be viewed as extension to the
 binary search tree, that each node contains multiple keys and children.
 We can firstly insert the key without considering if the node is full.
 Then perform fixing to satisfy the minimum degree constraint.
@@ -453,9 +453,9 @@ Then perform fixing to satisfy the minimum degree constraint.
 insert(T, k) = fix(ins(T, k))
 \ee
 
-Function $ins(T, k)$ traverse the B tree $T$ from root to find a proper
+Function $ins(T, k)$ traverse the B-tree $T$ from root to find a proper
 position where key $k$ can be inserted. After that, function $fix$ is
-applied to resume the B tree properties. Denote B-tree in a form of
+applied to resume the B-tree properties. Denote B-tree in a form of
 $T = (K, C, t)$, where $K$ represents keys, $C$ represents children,
 and $t$ is the minimum degree.
 
@@ -521,7 +521,7 @@ represented as $C_2'$.
 Here the key $k$ need be recursively inserted into child $c$. Function
 $make$ takes 3 parameter. The first and the third are pairs of
 key and children; the second parameter is a child node. It examine
-if a B tree node made from these keys and children violates the
+if a B-tree node made from these keys and children violates the
 minimum degree constraint and performs fixing if necessary.
 
 \be
@@ -1096,34 +1096,20 @@ fixLow(P_l, c, P_r) = \left \{
 \right.
 \ee
 
-Function $UN-SPLIT$ defines as the inverses operation of splitting.
+Function $unsplit(T_1, k, T_2)$ is the inverse operation to splitting.
+It forms a new B-tree nodes from two small nodes and a key.
 
-\begin{algorithmic}[1]
-\Function{UN-SPLIT}{$L, k, R$}
-  \State $T \gets CREATE-B-TREE-NODE()$
-  \State $KEYS(T) \gets KEYS(L)+[k]+KEYS(R)$
-  \State $CHILDREN(T) \gets CHILDREN(L)+CHILDREN(R)$
-  \State \Return $T$
-\EndFunction
-\end{algorithmic}
+\be
+unsplit(T_1, k, T_2) = (K_1 \cup \{k\} \cup K_2, C_1 \cup C_2, t)
+\ee
 
-TODO: fix-root function
-
-
-
-\subsubsection{Delete and fix algorithm implemented in Haskell}
-Based on the analysis of delete-then-fixing approach, a Haskell
-program can be provided accordingly.
-
-The core deleting function is simple, it just call an internal
-removing function, then examine the root node to see if the
-height of the tree can be shrunk.
+The following example Haskell program implements the B-tree deletion
+algorithm.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
 import qualified Data.List as L
 
-delete :: (Ord a) => BTree a -> a -> BTree a
 delete tr x = fixRoot $ del tr x
 
 del:: (Ord a) => BTree a -> a -> BTree a
@@ -1136,59 +1122,19 @@ del (Node ks cs t) x =
     where
       (ks', ks'') = L.partition (<x) ks
       (cs', (c:cs'')) = L.splitAt (length ks') cs
-\end{lstlisting} %$
 
-Let's focus on the `del' function, if try to delete a key from
-a leaf node, it just calls delete function defined in Data.List
-library. If the key doesn't exist at all, the pre-defined
-delete function will simply return the list without any modification.
-For the case of deleting a key from a branch node, it will first examine
-if the key can be located in this node, and apply recursive merge
-after remove this key. Otherwise, it will locate the proper child
-and do recursive delete-then-fixing on this child.
-
-Note that `partition' and 'splitAt' functions defined in Data.List
-can help to split the key and children list at the position that
-all elements on the left is less than the key while the right part
-are greater than the key.
-
-The recursive merge program has two patterns, merge two leaves and
-merge two branches. It is given as the following.
-
-\begin{lstlisting}
-merge :: BTree a -> BTree a -> BTree a
 merge (Node ks [] t) (Node ks' [] _) = Node (ks++ks') [] t
 merge (Node ks cs t) (Node ks' cs' _) = make (ks, init cs)
                                              (merge (last cs) (head cs'))
                                              (ks', tail cs')
-\end{lstlisting}
 
-Where `init', `last', 'tail' functions are used to manipulate
-list which are defined in Haskell prelude.
-
-The fixing part of delete-then-fixing is defined inside 'make'
-function.
-
-\begin{lstlisting}
-make :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
 make (ks', cs') c (ks'', cs'')
     | full c = fixFull (ks', cs') c (ks'', cs'')
     | low c  = fixLow  (ks', cs') c (ks'', cs'')
     | otherwise = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
-\end{lstlisting}
 
-Where function `low' is used to test if a node contains too few keys.
-
-\begin{lstlisting}
-low::BTree a -> Bool
 low tr = (length $ keys tr) < (degree tr)-1
-\end{lstlisting} %$
 
-The real fixing is implemented by try to borrow keys either from
-left sibling or right sibling as the following.
-
-\begin{lstlisting}
-fixLow :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
 fixLow (ks'@(_:_), cs') c (ks'', cs'') = make (init ks', init cs')
                                               (unsplit (last cs') (last ks') c)
                                               (ks'', cs'')
@@ -1196,253 +1142,36 @@ fixLow (ks', cs') c (ks''@(_:_), cs'') = make (ks', cs')
                                               (unsplit c (head ks'') (head cs''))
                                               (tail ks'', tail cs'')
 fixLow _ c _ = c
-\end{lstlisting}
 
-Note that by using `x@(\_:\_)' like pattern can help to ensure 'x' is
-not empty. Here function `unsplit' is used which will do inverse
-splitting operation like below.
-
-\begin{lstlisting}
-unsplit :: BTree a -> a -> BTree a -> BTree a
 unsplit c1 k c2 = Node ((keys c1)++[k]++(keys c2))
                        ((children c1)++(children c2)) (degree c1)
 \end{lstlisting}
 
-In order to verify the Haskell program, we can provide some simple
-test cases.
-
-\begin{lstlisting}
-import Control.Monad (foldM_, mapM_)
-
-testDelete = foldM_ delShow (listToBTree "GMPXACDEJKNORSTUVYZBFHIQW" 3) "EGAMU"
-  where
-    delShow tr x = do
-      let tr' = delete tr x
-      putStrLn $ "delete "++(show x)
-      putStrLn $ toString tr'
-      return tr'
-\end{lstlisting}
-
-Where function `listToBTree' and `toString' are defined in previous section when we
-explain insertion algorithm.
-
-Run this function will generate the following result.
-
-\begin{verbatim}
-delete 'E'
-((('A', 'B'), 'C', ('D', 'F'), 'G', ('H', 'I', 'J', 'K')), 'M',
-(('N', 'O'), 'P', ('Q', 'R', 'S'), 'T', ('U', 'V'), 'W', ('X', 'Y', 'Z')))
-delete 'G'
-((('A', 'B'), 'C', ('D', 'F'), 'H', ('I', 'J', 'K')), 'M',
-(('N', 'O'), 'P', ('Q', 'R', 'S'), 'T', ('U', 'V'), 'W', ('X', 'Y', 'Z')))
-delete 'A'
-(('B', 'C', 'D', 'F'), 'H', ('I', 'J', 'K'), 'M', ('N', 'O'),
-'P', ('Q', 'R', 'S'), 'T', ('U', 'V'), 'W', ('X', 'Y', 'Z'))
-delete 'M'
-(('B', 'C', 'D', 'F'), 'H', ('I', 'J', 'K', 'N', 'O'), 'P',
-('Q', 'R', 'S'), 'T', ('U', 'V'), 'W', ('X', 'Y', 'Z'))
-delete 'U'
-(('B', 'C', 'D', 'F'), 'H', ('I', 'J', 'K', 'N', 'O'), 'P',
-('Q', 'R', 'S', 'T', 'V'), 'W', ('X', 'Y', 'Z'))
-\end{verbatim}
-
-If we try to delete the same key from the same B-tree as in merge and fixing
-approach, we can found that the result is different by using delete-then-fixing
-methods. Although the results are not as same as each other, both satisfy
-the B-tree properties, so they are all correct.
+When delete the same keys from the B-tree as in merge and fixing
+approach, the results are different. However, both satisfy
+the B-tree properties, so they are all valid.
 
 \begin{figure}[htbp]
-    \begin{center}
-      \includegraphics[scale=0.5]{img/btree-del-fp-before.ps}
-
-      a. A B-tree before performing deleting;
-
-      \includegraphics[scale=0.5]{img/btree-del-fp-E.ps}
-
-      b. After delete key 'E'
-      \caption{Result of delete-then-fixing (1)} \label{fig:result-del-fp1}
-    \end{center}
+  \centering
+  \subfloat[B-tree before deleting]{\includegraphics[scale=0.5]{img/btree-del-fp-before.ps}}\\
+  \subfloat[After delete key 'E'.]{\includegraphics[scale=0.5]{img/btree-del-fp-E.ps}}
+  \caption{Result of delete-then-fixing (1)} \label{fig:result-del-fp1}
 \end{figure}
 
 \begin{figure}[htbp]
-    \begin{center}
-      \includegraphics[scale=0.5]{img/btree-del-fp-G.ps}
-
-      c. After delete key 'G';
-
-      \includegraphics[scale=0.5]{img/btree-del-fp-A.ps}
-
-      d. After delete key 'A';
-      \caption{Result of delete-then-fixing (2)} \label{fig:result-del-fp2}
-    \end{center}
+  \centering
+  \subfloat[After delete key 'G',]{\includegraphics[scale=0.5]{img/btree-del-fp-G.ps}} \\
+  \subfloat[After delete key 'A'.]{\includegraphics[scale=0.5]{img/btree-del-fp-A.ps}}
+  \caption{Result of delete-then-fixing (2)} \label{fig:result-del-fp2}
 \end{figure}
 
 \begin{figure}[htbp]
-    \begin{center}
-      \includegraphics[scale=0.5]{img/btree-del-fp-M.ps}
-
-      e. After delete key 'M';
-
-      \includegraphics[scale=0.5]{img/btree-del-fp-U.ps}
-
-      f. After delete key 'U';
-      \caption{Result of delete-then-fixing (3)} \label{fig:result-del-fp3}
-    \end{center}
+  \centering
+  \subfloat[After delete key 'M'.]{\includegraphics[scale=0.5]{img/btree-del-fp-M.ps}} \\
+  \subfloat[After delete key 'U'.]{\includegraphics[scale=0.5]{img/btree-del-fp-U.ps}}
+  \caption{Result of delete-then-fixing (3)} \label{fig:result-del-fp3}
 \end{figure}
 
-
-\subsubsection{Delete and fix algorithm implemented in Scheme/Lisp}
-In order to implement delete program in Scheme/Lisp, we provide an
-extra function to test if a node contains too few keys after deletion.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (low? tr t) ;; t: minimum degree
-  (< (length (keys tr))
-     (- t 1)))
-\end{lstlisting}
-
-And some general purpose list manipulation functions are defined.
-
-\begin{lstlisting}
-(define (rest lst k)
-  (list-tail lst (- (length lst) k)))
-
-(define (except-rest lst k)
-  (list-head lst (- (length lst) k)))
-
-(define (first lst)
-  (if (null? lst) '() (car lst)))
-
-(define (last lst)
-  (if (null? lst) '() (car (last-pair lst))))
-
-(define (inits lst)
-  (if (null? lst) '() (except-last-pair lst)))
-\end{lstlisting}
-
-Function `rest' can extract the last $k$ elements from a list, while
-`except-rest' used to extract all except the last $k$ elements.
-`first' can be treat as a safe `car', it will return empty list but not
-throw exception when the list is empty. Function `last' returns the
-last element of a list, and if the list is empty, it will return
-empty result. Function `inits' returns all excluding the last element.
-
-And a inversion operation of splitting is provided.
-
-\begin{lstlisting}
-(define (un-split lst)
-  (let ((c1 (car lst))
-	(k (cadr lst))
-	(c2 (caddr lst)))
-    (append c1 (list k) c2)))
-\end{lstlising}
-
-The main function of deletion is defined as the following.
-
-\begin{lstlisting}
-(define (btree-delete tr x t)
-  (define (del tr x)
-    (if (leaf? tr)
-	(delete x tr)
-	(let* ((res (partition-by tr x))
-	       (left (car res))
-	       (c (cadr res))
-	       (right (caddr res)))
-	  (if (equal? (first right) x)
-	      (merge-btree (append left (list c)) (cdr right) t)
-	      (make-btree left (del c x) right t)))))
-  (fix-root (del tr x) t))
-\end{lstlisting}
-
-It is implemented in a similar way as the insertion, call an internal
-defined `del' function then apply fixing process on it. In the internal
-deletion fiction, if the B-tree is a leaf node, the standard list
-deleting function defined in standard library is applied. If it is
-a branch node, we call the `partition-by' function defined previously.
-This function will divide the node into 3 parts, all children and
-keys less than $x$ as the left part, a child node next, all keys not less
-than (greater than or equal to) $x$ and children s the right part.
-
-If the first key in right part is equal to $x$, it means $x$ can
-be located in this node, we remove $x$ from right and then
-call `merge-btree' to merge left+c, right-$x$ to one new node.
-
-\begin{lstlisting}
-(define (merge-btree tr1 tr2 t)
-  (if (leaf? tr1)
-      (append tr1 tr2)
-      (make-btree (inits tr1)
-		  (merge-btree (last tr1) (car tr2) t)
-		  (cdr tr2)
-		  t)))
-\end{lstlisting}
-
-Otherwise, $x$ may be located in c, so we need recursively try
-to delete $x$ from c.
-
-Function `fix-root' is updated to handle the cases for deletion
-as below.
-
-\begin{lstlisting}
-(define (fix-root tr t)
-  (cond ((null? tr) '()) ;; empty tree
-	((full? tr t) (split tr t))
-	((null? (keys tr)) (car tr)) ;; shrink height
-	(else tr)))
-\end{lstlisting}
-
-We added one case to handle if a node contains too few keys
-after deleting in `make-btree'.
-
-\begin{lstlisting}
-(define (make-btree l c r t)
-  (cond ((full? c t) (fix-full l c r t))
-	((low? c t) (fix-low l c r t))
-	(else (append l (cons c r)))))
-\end{lstlisting}
-
-Where `fix-low' is defined to try to borrow a key and a child
-either from left sibling or right sibling.
-
-\begin{lstlisting}
-(define (fix-low l c r t)
-  (cond ((not (null? (keys l)))
-	 (make-btree (except-rest l 2)
-		     (un-split (append (rest l 2) (list c)))
-		     r t))
-	((not (null? (keys r)))
-	 (make-btree l
-		     (un-split (cons c (list-head r 2)))
-		     (list-tail r 2) t))
-	(else c)))
-\end{lstlisting}
-
-In order to verify the the deleting program, a simple test is
-fed to the above defined function.
-
-\begin{lstlisting}
-(define (test-delete)
-  (define (del-and-show tr x)
-    (let ((r (btree-delete tr x 3)))
-      (begin (display r) (display "\n") r)))
-  (fold-left del-and-show
-	     (list->btree (str->slist "GMPXACDEJKNORSTUVYZBFHIQW") 3)
-	     (str->slist "EGAMU")))
-\end{lstlisting}
-
-Run the test will generate the following result.
-
-\begin{lstlisting}
-(((A B) C (D F) G (H I J K)) M ((N O) P (Q R S) T (U V) W (X Y Z)))
-(((A B) C (D F) H (I J K)) M ((N O) P (Q R S) T (U V) W (X Y Z)))
-((B C D F) H (I J K) M (N O) P (Q R S) T (U V) W (X Y Z))
-((B C D F) H (I J K N O) P (Q R S) T (U V) W (X Y Z))
-((B C D F) H (I J K N O) P (Q R S T V) W (X Y Z))
-\end{lstlisting}
-
-Compare with the output by the Haskell program in previous section,
-it can be found they are same.
 
 % ================================================================
 %               Searching
