@@ -1051,98 +1051,50 @@ merge(T_1, T_2) = \left \{
 \right.
 \ee
 
-TODO: make function
+The $make$ function defined above only handles the case that a node
+contains too many keys due to insertion. When delete key, it may
+cause a node contains too few keys. We need test and fix this
+situation as well.
 
-The main delete function will call an internal $DEL$ function to
-performs the work, after that, it will apply $FIX-ROOT$ to check
-if need to shrink the tree height. So the $FIX-ROOT$ function we
-defined in insertion section should be updated as the following.
+\be
+make((K', C'), c, (K'', C'')) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  fixFull((K', C'), c, (K'', C'')) & full(c) \\
+  fixLow((K', C'), c, (K'', C'')) & low(c) \\
+  (K' \cup K'', C' \cup \{c\} \cup C'', t) & otherwise
+  \end{array}
+\right.
+\ee
 
-\begin{algorithmic}[1]
-\Function{FIX-ROOT}{$T$}
-  \If{$KEYS(T) = NIL$} \Comment{Single child, shrink the height}
-    \State $T \gets CHILDREN(T)[1]$
-  \ElsIf{$FULL?(T)$}
-    \State $T \gets B-TREE-SPLIT(T)$
-  \EndIf
-  \State \Return $T$
-\EndFunction
-\end{algorithmic}
+Where $low(T)$ checks if there are too few keys less than $t-1$.
+Function $fixLow(P_l, c, P_r)$ takes three arguments, the left pair of keys and children,
+a child node, and the right pair of keys and chidren.
+If the left part isn't empty, we borrow a pair of key-child, and
+do un-splitting to make the child contain enough keys, then recursively
+call $make$; If the right part isn't empty, we borrow a pair
+from the right; and if both sides are empty, we
+return the child node as result. In this case, the height of the tree
+shrinks.
 
-For the recursive merging, the algorithm is given as below.
-The left part and right part are passed as parameters. If
-they are leaves, we just put all keys together. Otherwise,
-we recursively merge the last child of left and the first child
-of right to a new child, and make this new merged child and
-the other two parts it breaks into a new node.
+Denote the left part $P_l = (K_l, C_l)$. If $K_l$ isn't empty, the last
+key and child are represented as $k_{l, m}$ and $c_{l, m}$ respectively.
+The rest keys and children become $K_l'$ and $C_l'$; Similarily, the
+right part is denoted as $P_r = (K_r, C_r)$. If $K_r$ isn't empty, the
+first key and child are represented as $k_{r, 1}$, and $c_{r, 1}$. The
+rest keys and children are $K_r'$ and $C_r'$. Below equation gives
+the definition of $fixLow$.
 
-\begin{algorithmic}[1]
-\Function{MERGE}{$L, R$}
-  \If{$L, R$ are leaves}
-    \State $T \gets CREATE-NEW-NODE()$
-    \State $KEYS(T) \gets KEYS(L)+KEYS(R)$
-    \State \Return $T$
-  \Else
-    \State $m gets LENGTH(KEYS(L))$
-    \State $n gets LENGTH(KEYS(R))$
-    \State $k_l \gets KEYS(L)$
-    \State $k_r \gets KEYS(R)$
-    \State $c_l \gets CHILDREN(L)[1, ..., m-1]$
-    \State $c_r \gets CHILDREN(R)[2, ..., n]$
-    \State $c \gets MERGE(CHILDREN(L)[m], CHILDREN(R)[1])$
-    \State \Return $MAKE-B-TREE((k_l, c_l), c, (k_r, c_r))$
-  \EndIf
-\EndFunction
-\end{algorithmic}
-
-In order to make the three parts, the left $L$, the right $R$ and
-the child $c_i'$ into a node, we need examine if $c_i$ contains
-enough keys, together with the process of ensure it contains not too
-much keys during insertion, we updated the algorithm like the following.
-
-\begin{algorithmic}[1]
-\Function{MAKE-B-TREE}{$L, C, R$}
-  \If{$FULL?(C)$}
-    \State \Return $FIX-FULL(L, C, R)$
-  \ElsIf{$LOW?(C)$}
-    \State \Return $FIX-LOW(L, C, R)$
-  \Else
-    \State $T \leftarrow CREATE-NEW-NODE()$
-    \State $KEYS(T) \leftarrow KEYS(L) + KEYS(R)$
-    \State $CHILDREN(T) \leftarrow CHILDREN(L)+[C]+CHILDREN(R)$
-    \State \Return $T$
-  \EndIf
-\EndFunction
-\end{algorithmic}
-
-Where $FIX-LOW$ is defined as the following. In case the left part
-isn't empty, it will borrow a key-child pair from the left, and
-do un-split to make the child contains enough keys, then recursively
-call $MAKE-B-TREE$; If the left part is empty, it will try to borrow
-key-child pair from the right part, and if both sides are empty, it
-will returns the child node as result, so that the height shrinks.
-
-\begin{algorithmic}[1]
-\Function{FIX-LOW}{$L, C, R$}
-  \State $k_l, c_l \gets L$
-  \State $k_r, c_r \gets R$
-  \State $m \gets LENGTH(k_l)$
-  \State $n \gets LENGTH(k_r)$
-  \If{$k_l \ne NIL$}
-    \State $k_l' \gets k_l[1, ..., m-1]$
-    \State $c_l' \gets c_l[1, ..., m-1]$
-    \State $C' \gets UN-SPLIT(c_l[m], k_l[m], C)$
-    \State \Return $MAKE-B-TREE((k_l', c_l'), C', R)$
-  \ElsIf{$k_r \ne NIL$}
-    \State $k_r' \gets k_r[2, ..., n]$
-    \State $c_r' \gets c_r[2, ..., n]$
-    \State $C' \gets UN-SPLIT(C, k_r[1], c_r[1])$
-    \State \Return $MAKE-B-TREE(L, C', (k_r', c_r'))$
-  \Else
-    \State \Return $C$
-  \EndIf
-\EndFunction
-\end{algorithmic}
+\be
+fixLow(P_l, c, P_r) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  make((K_l', C_l'), unsplit(c_{l, m}, k_{l, m}, c), (K_r, C_r)) & K_l \neq \Phi \\
+  make((K_r, C_r), unsplit(c, k_{r, 1}, c_{r, 1}), (K_r', C_r')) & K_r \neq \Phi \\
+  c & otherwise
+  \end{array}
+\right.
+\ee
 
 Function $UN-SPLIT$ defines as the inverses operation of splitting.
 
@@ -1154,6 +1106,10 @@ Function $UN-SPLIT$ defines as the inverses operation of splitting.
   \State \Return $T$
 \EndFunction
 \end{algorithmic}
+
+TODO: fix-root function
+
+
 
 \subsubsection{Delete and fix algorithm implemented in Haskell}
 Based on the analysis of delete-then-fixing approach, a Haskell
