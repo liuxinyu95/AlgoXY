@@ -1231,33 +1231,34 @@ def B_tree_search(tr, key):
             tr = tr.children[i]
 \end{lstlisting}
 
-\subsection{Functional search algorithm}
-The imperative algorithm can be turned into Functional by performing
-recursive search on a child in case key can't be located in current
-node.
+The search algorithm can also be realized by recursion. When search
+key $k$ in B-tree $T = (K, C, t)$, we partition the keys with $k$.
 
-\begin{algorithmic}[1]
-\Function{B-TREE-SEARCH}{$T, k$}
-  \State $i \gets FIND-FIRST( \lambda_xx>=k, KEYS(T))$
-  \If{$i$ exists and $k = KEYS(T)[i]$}
-    \State \Return $(T, i)$
-  \EndIf
-  \If{$T$ is leaf}
-    \State \Return $NIL$ \Comment{$k$ doesn't exist at all}
-  \Else
-    \State \Return $B-TREE-SEARCH(CHILDREN(T)[i], k)$
-  \EndIf
-\EndFunction
-\end{algorithmic}
+\[
+\begin{array}{l}
+K_1 = \{ k' | k' < k \} \\
+K_2 = \{ k' | k \leq k' \}
+\end{array}
+\]
 
-\subsubsection*{Search program in Haskell}
-In Haskell program, we first filter out all keys less than the
-key to be searched. Then check the first element in the result.
-If it matches, we return the current node along with the index
-as a tuple. Where the index start from `0'. If it doesn't match,
-We then do recursive search till leaf node.
+Thus $K_1$ contains all the keys less than $k$, and $K_2$ holds the
+rest. If the first element in $K_2$ is equal to $k$, we find the key.
+Otherwise, we recursively search the key in child $c_{|K_1|+1}$.
 
-\lstset{language=C++}
+\be
+search(T, k) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (T, |K_1|+1) & k \in K_2 \\
+  \Phi & C = \Phi \\
+  search(c_{|K_1|+1}, k) & otherwise
+  \end{array}
+\right.
+\ee
+
+Below example Haskell program implements this algorithm.
+
+\lstset{language=Haskell}
 \begin{lstlisting}
 search :: (Ord a)=> BTree a -> a -> Maybe (BTree a, Int)
 search tr@(Node ks cs _) k
@@ -1270,142 +1271,27 @@ search tr@(Node ks cs _) k
       len = length $ filter (<k) ks
 \end{lstlisting}
 
-The verification test cases are provided as the following.
-
-\begin{lstlisting}
-testSearch = mapM_ (showSearch (listToBTree lst 3)) $ lst++"L"
-    where
-      showSearch tr x = do
-        case search tr x of
-          Just (_, i) -> putStrLn $ "found" ++ (show x)
-          Nothing -> putStrLn $ "not found" ++ (show x)
-      lst = "GMPXACDEJKNORSTUVYZBFHIQW"
-\end{lstlisting} %$
-
-Here we construct a B-tree from a series of string, then
-we check if each element in this string can be located.
-Finally, an non-existed element ``L'' is fed to verify the
-failure case.
-
-Run this test function generates the following results.
-
-\begin{verbatim}
-found'G'
-found'M'
-...
-found'W'
-not found'L'
-\end{verbatim}
-
-\subsubsection*{Search program in Scheme/Lisp}
-Because we intersperse children and keys in one list in
-Scheme/Lisp B-tree definition, the search function just
-move one step a head to locate the key in a node.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (btree-search tr x)
-  ;; find the smallest index where keys[i]>= x
-  (define (find-index tr x)
-    (let ((pred (if (string? x) string>=? >=)))
-      (if (null? tr)
-	  0
-	  (if (and (not (list? (car tr))) (pred (car tr) x))
-	      0
-	      (+ 1 (find-index (cdr tr) x))))))
-  (let ((i (find-index tr x)))
-    (if (and (< i (length tr)) (equal? x (list-ref tr i)))
-	(cons tr i)
-	(if (leaf? tr) #f (btree-search (list-ref tr (- i 1)) x)))))
-\end{lstlisting}
-
-The program defines an inner function to find the index of the
-first element which is greater or equal to the key we are searching.
-
-If the key pointed by this index matches, we are done. Otherwise,
-this index points to a child which may contains this key. The program
-will return false result in case the current node is a leaf node.
-
-We can run the below testing function to verify this searching
-program.
-
-\begin{lstlisting}
-(define (test-search)
-  (define (search-and-show tr x)
-    (if (btree-search tr x)
-	(display (list "found " x))
-	(display (list "not found " x))))
-  (let* ((lst (str->slist "GMPXACDEJKNORSTUVYZBFHIQW"))
-	 (tr (list->btree lst 3)))
-    (map (lambda (x) (search-and-show tr x)) (cons "L" lst))))
-\end{lstlisitng}
-
-A non-existed key ``L'' is firstly fed, and then all elements
-which used to form the B-tree are looked up for verification.
-
-\begin{lstlisting}
-(not found  L)(found  G)(found  M) ... (found  W)
-\end{lstlisting}
 
 % ================================================================
 %                 Short summary
 % ================================================================
 \section{Notes and short summary}
-In this post, we explained the B-tree data structure as a kind of
+In this chapter, we explained the B-tree data structure as a kind of
 extension from binary search tree. The background knowledge of
 magnetic disk access is skipped, user can refer to \cite{CLRS}
 for detail. For the three main operations, insertion, deletion,
 and searching, both imperative and functional algorithms are
-illustrated. The complexity isn't discussed here, However, since
-B-tree are defined to maintain the balance properties, all operations
-mentioned here perform $O(lgN)$ where $N$ is the number of the
-keys in a B-tree.
+given. They traverse from the root to the leaf. All the three
+operations perform in time proportion to the height of the tree.
+Because B-tree always maintains the balance properties. The
+performance is ensured to bound to $O(\lg n)$ time,
+where $n$ is the number of the keys in B-tree.
 
 \begin{Exercise}
 \begin{itemize}
 \item Eleminate the recursion in imperative B-tree insertion algorithm.
 \end{itemize}
 \end{Exercise}
-% ================================================================
-%                 Appendix
-% ================================================================
-\section{Appendix} \label{appendix}
-%\appendix
-All programs provided along with this article are free for
-downloading.
-
-\subsection{Prerequisite software}
-GNU Make is used for easy build some of the program. For C++ and ANSI C programs,
-GNU GCC and G++ 3.4.4 are used.
-For Haskell programs GHC 6.10.4 is used
-for building. For Python programs, Python 2.5 is used for testing, for
-Scheme/Lisp program, MIT Scheme 14.9 is used.
-
-all source files are put in one folder. Invoke 'make' or 'make all'
-will build C++ and Haskell program.
-
-Run 'make Haskell' will separate build Haskell program. the executable
-file is ``htest'' (with .exe
-in Window like OS). It is also possible to run the program in GHCi.
-
-\subsection{Tools}
-
-Besides them, I use graphviz to draw most of the figures in this post. In order to
-translate the B-tree output to dot script. A Haskell tool is provided.
-It can be used like this.
-
-\begin{verbatim}
-bt2dot filename.dot "string"
-\end{verbatim}
-
-Where filename.dot is the output file for the dot script. It can
-parse the string which describes B-tree content and translate it
-into dot script.
-
-This source code of this tool is BTr2dot.hs, it can also be downloaded
-with this article.
-
-download position: http://sites.google.com/site/algoxy/btree/btree.zip
 
 \begin{thebibliography}{99}
 
@@ -1414,10 +1300,6 @@ Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest and Clifford Stein. ``I
 
 \bibitem{wiki-b-tree}
 B-tree, Wikipedia. http://en.wikipedia.org/wiki/B-tree
-
-\bibitem{lxy-bst}
-Liu Xinyu. ``Comparison of imperative and functional implementation of
-binary search tree''. http://sites.google.com/site/algoxy/bstree
 
 \bibitem{okasaki-rbtree}
 Chris Okasaki. ``FUNCTIONAL PEARLS Red-Black Trees in a Functional Setting''. J. Functional Programming. 1998
