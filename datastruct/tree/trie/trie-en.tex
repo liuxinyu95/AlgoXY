@@ -108,49 +108,119 @@ turn into integers. Where should we insert decimal 3, for example, to the trie?
   \caption{a big-endian trie} \label{fig:big-endian-trie}
 \end{figure}
 
-One approach is to treat all prefix zero as effective bits.
-Suppose an integer is represented in 32-bits, If we want to insert key 1 to a trie,
-it will end up with a 32-levels tree.
-There are 31 node has only 1 left sub tree and the last node has
-a right sub tree. It is very inefficient in terms of space.
+One approach is to treat all the prefix zero as effective bits.
+Suppose the integer is represented with 32-bits, If we want to insert key 1,
+it ends up with a tree of 32 levels.
+There are 31 nodes, each only has the left sub tree. the last node only has
+the right sub tree. It is very inefficient in terms of space.
 
-Chris Okasaki shows a method to solve this problem in \cite{okasaki-int-map}. Instead of
-normal big-endian integer, we can use little-endian integer as key. By using little-endian,
-decimal integer 1 is represent as binary 1, if we insert it to an empty binary trie, we
-get a trie with a root and a right leaf. There is only 1 level. For integer 3, it is 11 in
-binary, we needn't add any prefix 0, the position in the trie is unique.
+Okasaki shows a method to solve this problem in \cite{okasaki-int-map}. Instead of
+using big-endian integer, we can use the little-endian integer to represent key.
+Thus decimal integer 1 is represented as binary 1. Insert it to the empty binary
+trie, the result is a trie with a root and a right leaf.
+There is only 1 level. decimal 2 is represented as 01, and decimal 3 is 11
+in little-eidan binary format. There is no need to add
+any prefix 0, the position in the trie is uniquely determined.
 
 %=========================================================================
 %       Definition of integer trie
 %=========================================================================
-\subsection{Definition of Integer Trie}
+\subsection{Definition of integer Trie}
 Trie is invented by Edward Fredkin. It comes from ``retrieval'', pronounce
 as /'tri:/ by the inventor, while it is pronounced /'trai/ ``try''
 by other authors \cite{wiki-trie}.
-The definition of little-endian binary trie is simple, we can reuse the structure
-of binary tree, with its left sub tree to store 0 part and right tree to store 1 part.
-The augment data can be stored as value.
 
-\subsubsection*{Definition of little-endian integer Trie in C++}
-We can utilize C++ template to abstract the value stored in Trie. The type
-of key is integer. Each node contains a value, a left child and a right child.
+In order to define the little-endian binary trie, we can reuse the structure
+of binary tree. The left sub tree is encoded as 0 and the right sub tree
+is encoded as 1. The node can be used to store some satellite data.
 
-\lstset{language=C++}
+The following example Python code defines integer trie. It uses
+field \texttt{value} to store satellite data.
+
+\lstset{language=Python}
 \begin{lstlisting}
-template<class T>
-struct IntTrie{
-  IntTrie():value(), left(0), right(0){}
-  ~IntTrie(){
-    delete left;
-    delete right;
-  }
-  T value;
-  IntTrie* left;
-  IntTrie* right;
-};
+class IntTrie:
+    def __init__(self):
+        self.left = self.right = None
+        self.value = None
 \end{lstlisting}
 
-In order to simplify the release, recursive destruction is added.
+
+% ================================================================
+%               Insertion of integer trie
+% ================================================================
+\subsection{Insertion}
+
+Since the key is little-endian integer, when insert a key, we take the
+bit one by one from the right most (LSB).
+If it is 0, we go to the left, otherwise go to the right
+for 1. If the child is empty, we need create a new node, and repeat this to
+the last bit (MSB) of the key.
+
+%\begin{algorithm}
+\begin{algorithmic}[1]
+\Function{Insert}{$T, k, v$}
+  \If{$T =$ NIL}
+    \State $T \gets$ \Call{EmptyNode}{}
+  \EndIf
+  \State $p \gets T$
+  \While{$k \neq 0$}
+    \If{\Call{Even?}{$k$}}
+      \If{\Call{Left}{$p$} = NIL}
+        \State \Call{Left}{$p$} $\gets$ \Call{EmptyNode}{}
+      \EndIf
+      \State $p \gets$ \Call{Left}{$p$}
+    \Else
+      \If{\Call{Right}{$p$} = NIL}
+        \State \Call{Right}{$p$} $\gets$ \Call{EmptyNode}{}
+      \EndIf
+      \State $p \gets$ \Call{Right}{$p$}
+    \EndIf
+    \State $k \gets \lfloor k/2 \rfloor$
+  \EndWhile
+  \State \Call{Data}{$p$} $\gets v$
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
+%\end{algorithm}
+
+This algorithm takes 3 arguments, a Trie $T$, a key $k$, and the satellite
+date $v$. The following Python example code implements the insertion algorithm.
+The satellite data is optional, it is empty by default.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def trie_insert(t, key, value = None):
+    if t is None:
+        t = IntTrie()
+    p = t
+    while key != 0:
+        if key & 1 == 0:
+            if p.left is None:
+                p.left = IntTrie()
+            p = p.left
+        else:
+            if p.right is None:
+                p.right = IntTrie()
+            p = p.right
+        key = key>>1
+    p.value = value
+    return t
+\end{lstlisting}
+
+Figure \ref{int-trie} shows a trie which is created by inserting
+pairs of key and value
+\{$ 1 \rightarrow a, 4 \rightarrow b, 5 \rightarrow c, 9 \rightarrow d$\}
+to the empty trie.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.5]{img/int-trie.ps}
+  \caption{An little-endian integer binary trie for the map
+          \{$ 1 \rightarrow a, 4 \rightarrow b, 5 \rightarrow c, 9 \rightarrow d$\}.}
+  \label{fig:int-trie}
+\end{figure}
+
 
 \subsubsection*{Definition of little-endian integer Trie in Haskell}
 In trie, since a node may not contains value, so we use Haskell Maybe data to represent
@@ -180,283 +250,6 @@ value Empty = Nothing
 
 In order to access the children and value some helper functions are given.
 
-\subsubsection*{Definition of little-endian integer Trie in Python}
-The definition of integer trie in Python is shown as below. All fields
-are initialized as empty values.
-
-\lstset{language=Python}
-\begin{lstlisting}
-class IntTrie:
-    def __init__(self):
-        self.value = None
-        self.left = self.right = None
-\end{lstlisting}
-
-left child and right child represent sub Trie branches, and value is used to
-store actual data.
-
-\subsubsection*{Definition of little-endian integer Trie in Scheme/Lisp}
-In Scheme/Lisp, we provides some helper functions to create and access
-Trie data. The underground data structure is still list.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-;; Definition
-
-(define (make-int-trie l v r) ;; left, value, right
-  (list l v r))
-
-;; Helpers
-(define (left trie)
-  (if (null? trie) '() (car trie)))
-
-(define (value trie)
-  (if (null? trie) '() (cadr trie)))
-
-(define (right trie)
-  (if (null? trie) '() (caddr trie)))
-\end{lstlisting}
-
-Some helper functions are provided for easy access to children and value.
-
-% ================================================================
-%               Insertion of integer trie
-% ================================================================
-\subsection{Insertion of integer trie}
-
-\subsubsection{Iterative insertion algorithm}
-Since the key is little-endian, when we insert a key into trie, we take the
-bit from right most (LSB). If it is 0, we go to the left child, and go to right
-for 1. if the child is empty, we need create new node, and repeat this until
-meet the last bit (MSB) of the integer. Below is the iterative algorithm
-of insertion.
-
-%\begin{algorithm}
-\begin{algorithmic}[1]
-\Procedure{INT-TRIE-INSERT}{$T, x, data$}
-\If{$T = NIL$}
-   \State $T \leftarrow EmptyNode$ \EndIf
-
-  \State $p \gets T$
-  \While{$x \neq 0$}
-    \If{$EVEN(x) = TRUE$}
-      \State $p \leftarrow LEFT(p)$
-    \Else
-      \State $p \leftarrow RIGHT(p)$
-    \EndIf
-    \If{$p = NIL$}
-      \State $p \leftarrow EmptyNode$ \EndIf
-    \State $x \leftarrow x/2$
-  \EndWhile
-  \State $DATA(p) \leftarrow data$
-\EndProcedure
-\end{algorithmic}
-%\end{algorithm}
-
-\subsubsection*{Insertion of integer Trie in C++}
-With C++ language we can speed up the above even/odd test and key update with
-bit-wise operation.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<class T>
-IntTrie<T>* insert(IntTrie<T>* t, int key, T value=T()){
-  if(!t)
-    t = new IntTrie<T>();
-
-  IntTrie<T>* p = t;
-  while(key){
-    if( (key&0x1) == 0){
-      if(!p->left) p->left = new IntTrie<T>();
-      p = p->left;
-    }
-    else{
-      if(!p->right) p->right = new IntTrie<T>();
-      p = p->right;
-    }
-    key>>=1;
-  }
-  p->value = value;
-  return t;
-}
-\end{lstlisting}
-
-In order to verify this program, some helper functions are provided to
-simplify the repeat insertions. And we also provide a function to convert
-the Trie to readable string.
-
-\begin{lstlisting}
-template<class T, class Iterator>
-IntTrie<T>* list_to_trie(Iterator first, Iterator last){
-  IntTrie<T>* t(0);
-  for(;first!=last; ++first)
-    t = insert(t, *first);
-  return t;
-}
-
-template<class T, class Iterator>
-IntTrie<T>* map_to_trie(Iterator first, Iterator last){
-  IntTrie<T>* t(0);
-  for(;first!=last; ++first)
-    t = insert(t, first->first, first->second);
-  return t;
-}
-
-template<class T>
-std::string trie_to_str(IntTrie<T>* t, int prefix=0, int depth=0){
-  std::stringstream s;
-  s<<"("<<prefix;
-  if(t->value!=T())
-    s<<":"<<t->value;
-  if(t->left)
-    s<<", "<<trie_to_str(t->left, prefix, depth+1);
-  if(t->right)
-    s<<", "<<trie_to_str(t->right, (1<<depth)+prefix, depth+1);
-  s<<")";
-  return s.str();
-}
-\end{lstlisting}
-
-Function list\_to\_trie just inserts keys, all values are treated as default
-value as type T, while map\_to\_trie inserts both keys and values repeatedly.
-Function trie\_to\_str helps to convert a Trie to literal string in a modified
-pre-order traverse.
-
-The verification cases are as the following.
-
-\begin{lstlisting}
-const int lst[] = {1, 4, 5};
-std::list<int> l(lst, lst+sizeof(lst)/sizeof(int));
-
-IntTrie<int>* ti = list_to_trie<int, std::list<int>::iterator>(l.begin(), l.end());
-std::copy(l.begin(), l.end(),
-          std::ostream_iterator<int>(std::cout, ", "));
-std::cout<<"==>"<<trie_to_str(ti)<<"\n";
-
-IntTrie<char>* tc;
-typedef std::list<std::pair<int, char> > Dict;
-const int  keys[] = {4, 1, 5, 9};
-const char vals[] = "bacd";
-Dict m;
-for(int i=0; i<sizeof(keys)/sizeof(int); ++i)
-  m.push_back(std::make_pair(keys[i], vals[i]));
-tc = map_to_trie<char, Dict::iterator>(m.begin(), m.end());
-std::copy(keys, keys+sizeof(keys)/sizeof(int),
-          std::ostream_iterator<int>(std::cout, ", "));
-std::cout<<"==>"<<trie_to_str(tc);
-\end{lstlisting}
-
-The above code lines will output results in console like this.
-\begin{verbatim}
-1, 4, 5, ==>(0, (0, (0, (4))), (1, (1, (5))))
-4, 1, 5, 9, ==>(0, (0, (0, (4:b))), (1:a, (1, (1, (9:d)), (5:c))))
-\end{verbatim}
-
-\subsubsection*{Insertion of integer trie in Python}
-Imperative implementation of insertion in Python can be easily given by translating
-the pseudo code of the algorithm.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def trie_insert(t, key, value = None):
-    if t is None:
-        t = IntTrie()
-
-    p = t
-    while key != 0:
-        if key & 1 == 0:
-            if p.left is None:
-                p.left = IntTrie()
-            p = p.left
-        else:
-            if p.right is None:
-                p.right = IntTrie()
-            p = p.right
-        key = key>>1
-    p.value = value
-    return t
-\end{lstlisting}
-
-In order to test this insertion program, some test helpers are provided:
-
-\begin{lstlisting}
-def trie_to_str(t, prefix=0, depth=0):
-    to_str = lambda x: "%s" %x
-    str="("+to_str(prefix)
-    if t.value is not None:
-        str += ":"+t.value
-    if t.left is not None:
-        str += ", "+trie_to_str(t.left, prefix, depth+1)
-    if t.right is not None:
-        str += ", "+trie_to_str(t.right, (1<<depth)+prefix, depth+1)
-    str+=")"
-    return str
-
-def list_to_trie(l):
-    t = None
-    for x in l:
-        t = trie_insert(t, x)
-    return t
-
-def map_to_trie(m):
-    t = None
-    for k, v in m.items():
-        t = trie_insert(t, k, v)
-    return t
-\end{lstlisting}
-
-Function trie\_to\_str can print the contents of trie in pre-order,
-It doesn't only print the value of the node, but also print the edge information.
-
-Function list\_to\_trie can repeatedly insert a list of keys into a trie, since the
-default parameter of value is None, so all data relative to keys are empty. If the
-data isn't empty, function map\_to\_trie can insert a list of key-value pairs into
-the trie.
-
-Then a test class is given to encapsulate test cases:
-
-\begin{lstlisting}
-class IntTrieTest:
-    def run(self):
-        self.test_insert()
-
-    def test_insert(self):
-        t = None
-        t = trie_insert(t, 0);
-        t = trie_insert(t, 1);
-        t = trie_insert(t, 4);
-        t = trie_insert(t, 5);
-        print trie_to_str(t)
-        t1 = list_to_trie([1, 4, 5])
-        print trie_to_str(t1)
-        t2 = map_to_trie({4:'b', 1:'a', 5:'c', 9:'d'})
-        print trie_to_str(t2)
-
-if __name__ == "__main__":
-    IntTrieTest().run()
-\end{lstlisting}
-
-Running this program will print the following result.
-
-\begin{verbatim}
-(0, (0, (0, (4))), (1, (1, (5))))
-(0, (0, (0, (4))), (1, (1, (5))))
-(0, (0, (0, (4:b))), (1:a, (1, (1, (9:d)), (5:c))))
-\end{verbatim}
-
-Please note that by pre-order traverse trie, we can get a 'lexical' order
-result of the keys. For instance, the last result print the little-endian
-format of key 1, 4, 5, 9 as below.
-
-\begin{verbatim}
-001
-1
-1001
-101
-\end{verbatim}
-
-They are in lexical order. We'll go back to this feature of trie later in
-alphabetic trie section.
 
 \subsubsection{Recursive insertion algorithm}
 Insertion can also be implemented in a recursive manner. If the LSB is 0, it
@@ -538,15 +331,6 @@ This will output:
 (((. 0 (. 4:'b' .)) 0 .) 0 (((. 1 (. 9:'d' .)) 1 (. 5:'c' .)) 1:'a' .))
 \end{verbatim}
 
-Figure \ref{int-trie} shows this result.
-\begin{figure}[htbp]
-       \begin{center}
-	\includegraphics[scale=0.5]{img/int-trie.ps}
-        \caption{An little-endian integer binary trie for the map
-          \{$ 1 \rightarrow a, 4 \rightarrow b, 5 \rightarrow c, 9 \rightarrow d$\}.}
-        \label{fig:int-trie}
-       \end{center}
-\end{figure}
 
 \subsubsection*{Insertion of integer Trie in Scheme/Lisp}
 
