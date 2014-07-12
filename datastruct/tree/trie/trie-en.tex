@@ -396,38 +396,39 @@ of big-endian Patricia\cite{okasaki-int-map}.
 % ================================================================
 %                 Definition of int patricia tree
 % ================================================================
-\subsection{Definition of Integer Patricia tree}
-Integer Patricia tree is a special kind of binary tree, it is
+\subsection{Definition}
+
+Integer Patricia tree is a special kind of binary tree. It is either
+empty or is a node. There are two different types of node.
+
 \begin{itemize}
-\item either a leaf node contains an integer key and a value
-\item or a branch node, contains a left child and a right child. The
-integer keys of two children shares the longest common prefix bits,
-the next bit of the left child's key is zero while it is one for right
-child's key.
+\item It can be a leaf contains integer key and optional satellite data;
+\item or a branch node, contains the left and the right children. The
+two children shares the longest common prefix bits for their keys.
+For the left child, the next bit of the key is zero, while the next
+bit is one for the right child.
 \end{itemize}
 
-\subsubsection*{Definition of big-endian integer Patricia tree in Haskell}
-If we translate the above recursive definition to Haskell, we can get
-below Integer Patrica Tree code.
+The following Haskell example code defines Patricia accordingly.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-data IntTree a = Empty
-               | Leaf Key a
-               | Branch Prefix Mask (IntTree a) (IntTree a) -- prefix, mask, left, right
-
 type Key = Int
 type Prefix = Int
 type Mask = Int
+
+data IntTree a = Empty
+               | Leaf Key a
+               | Branch Prefix Mask (IntTree a) (IntTree a)
 \end{lstlisting}
 
 In order to tell from which bit the left and right children differ, a
-mask is recorded by the branch node. Typically, a mask is $2^n$, all
-lower bits than n doesn't belong to common prefix
+mask is recorded in the branch node. Typically, a mask is power of 2,
+like $2^n$ for some non-negative integer $n$, all
+bits being lower than $n$ don't belong to the common prefix.
 
-\subsubsection*{Definition of big-endian integer Patricia tree in Python}
-Such definition can be represent in Python similarly. Some helper
-functions are provided for easy operation later on.
+The following Python example code defines Patricia as well as
+some auxiliary functions.
 
 \lstset{language=Python}
 \begin{lstlisting}
@@ -458,113 +459,11 @@ class IntTree:
             return self.prefix
 \end{lstlisting}
 
-Some helper member functions are provided in this definition. When
-Initialized, prefix, mask and children are all set to invalid value.
-Note the get\_prefix() function, in case the prefix hasn't been
-initialized, which means it is a leaf node, the key itself is returned.
-
-\subsubsection*{Definition of big-endian integer Patricia tree in C++}
-
-With ISO C++, the type of the data stored in Patricia can be abstracted
-as a template parameter. The definition is similar to the python version.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<class T>
-struct IntPatricia{
-  IntPatricia(int k=0, T v=T()):
-    key(k), value(v), prefix(k), mask(1), left(0), right(0){}
-
-  ~IntPatricia(){
-    delete left;
-    delete right;
-  }
-
-  bool is_leaf(){
-    return left == 0 && right == 0;
-  }
-
-  bool match(int x){
-    return (!is_leaf()) && (maskbit(x, mask) == prefix);
-  }
-
-  void replace_child(IntPatricia<T>* x, IntPatricia<T>* y){
-    if(left == x)
-      left = y;
-    else
-      right = y;
-  }
-
-  void set_children(IntPatricia<T>* l, IntPatricia<T>* r){
-    left = l;
-    right = r;
-  }
-
-  int key;
-  T value;
-  int prefix;
-  int mask;
-  IntPatricia* left;
-  IntPatricia* right;
-};
-\end{lstlisting}
-
-In order to release the memory easily, the program just recursively
-deletes the children in destructor. The default value of type T
-is used for initialization. The prefix is initialized to be the same
-value as key.
-
-For the member function match(), I'll explain it in later part.
-
-\subsubsection*{Definition of big-endian integer Patricia tree in
-Scheme/Lisp}
-
-In Scheme/Lisp program, the data structure behind is still list, we
-provide creator functions and accessors to create Patricia and access
-the children, key, value, prefix and mask.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (make-leaf k v) ;; key and value
-  (list k v))
-
-(define (make-branch p m l r) ;; prefix, mask, left and right
-  (list p m l r))
-
-;; Helpers
-(define (leaf? t)
-  (= (length t) 2))
-
-(define (branch? t)
-  (= (length t) 4))
-
-(define (key t)
-  (if (leaf? t) (car t) '()))
-
-(define (value t)
-  (if (leaf? t) (cadr t) '()))
-
-(define (prefix t)
-  (if (branch? t) (car t) '()))
-
-(define (mask t)
-  (if (branch? t) (cadr t) '()))
-
-(define (left t)
-  (if (branch? t) (caddr t) '()))
-
-(define (right t)
-  (if (branch? t) (cadddr t) '()))
-\end{lstlisting}
-
-Function key and value are only applicable to leaf node while prefix,
-mask, children accessors are only applicable to branch node. So we
-test the node type in these functions.
 
 % ================================================================
 %                 Insertion of int patricia tree
 % ================================================================
-\subsection{Insertion of Integer Patricia tree}
+\subsection{Insertion}
 When insert a key into a integer Patricia tree, if the tree is empty,
 we can just create a leaf node with the given key and data. (as shown
 in figure \ref{fig:int-patricia-insert-a}).
