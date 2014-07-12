@@ -774,43 +774,38 @@ with the insertion algorithm.
 % ================================================================
 %                 Lookup in int patricia tree
 % ================================================================
-\subsection{Look up in Integer Patricia tree}
-Consider the property of integer Patricia tree, to look up a
-key, we test if the key has common prefix with the root, if yes, we
-then check the next bit differs from common prefix is zero or one. If
-it is zero, we then do look up in the left child, else we turn to
-right.
+\subsection{Look up}
+Consider the property of integer Patricia tree. When look up a
+key, if it has common prefix with the root,
+then we check the next bit. If
+this bit is zero, we recursively look up the left child;
+otherwise if the bit is one, we next look up the right child.
 
-\subsubsection{Iterative looking up in integer Patricia tree}
-
-In case we reach a leaf node, we can directly check if the key of the
+When reach a leaf node, we can directly check if the key of the
 leaf is equal to what we are looking up. This algorithm can be
 described with the following pseudo code.
 
 \begin{algorithmic}[1]
-\Function{INT-PATRICIA-LOOK-UP}{$T, x$}
-  \If{$T = NIL$}
-    \State \Return $NIL$ \EndIf
-
-  \While{$T$ is not $LEAF$ and $MATCH(x, PREFIX(T), MASK(T))$}
-    \If{$ZERO(x, MASK(T))$}
-      \State $T \leftarrow LEFT(T)$
+\Function{Look-Up}{$T, k$}
+  \If{$T =$ NIL}
+    \State \Return $NIL$ \Comment{Not found}
+  \EndIf
+  \While{$T$ is not leaf, and \textproc{Match}($k$, \Call{Prefix}{$T$}, \Call{Mask}{$T$})}
+    \If{\textproc{Zero?}($k$, \Call{Mask}{$T$})}
+      \State $T \gets$ \Call{Left}{$T$}
     \Else
-      \State $T \leftarrow RIGHT(T)$
+      \State $T \gets$ \Call{Right}{$T$}
     \EndIf
   \EndWhile
-
-  \If{$T$ is $LEAF$ and $KEY(T)=x$}
-    \State \Return $DATA(T)$
+  \If{$T$ is leaf, and \Call{Key}{$T$} $=k$}
+    \State \Return \Call{Data}{$T$}
   \Else
-    \State \Return $NIL$
+    \State \Return $NIL$ \Comment{Not found}
   \EndIf
 \EndFunction
 \end{algorithmic}
 
-\subsubsection*{Look up in big-endian integer Patricia tree in Python}
-With Python, we can directly translate the pseudo code into valid
-program.
+Below Python example program implements the looking up algorithm.
 
 \lstset{language=Python}
 \begin{lstlisting}
@@ -828,95 +823,35 @@ def lookup(t, key):
         return None
 \end{lstlisting}
 
-We can verify this program by some simple smoke test cases.
+The looking up algorithm can also be realized in recursive apporach.
+If the Patricia tree $T$ is empty, or it's a singleton leaf with
+different key from what we are looking up, the result is empty to
+indicate not found error; If the tree is a singleton leaf, and the
+key of this leaf is equal to what we are looking up, we are done.
+Otherwise, $T$ is a branch node, we need check if the common
+prefix matches the key to be looked up, and recursively look up
+the child according to the next bit. If the common prefix doesn't
+match the key, it means the key doesn't exist in the tree. We
+can return empty result to indicate not found error.
 
-\begin{lstlisting}
-print "test look up"
-t = map_to_patricia({1:'x', 4:'y', 5:'z'})
-print "look up 4: ", lookup(t, 4)
-print "look up 0: ", lookup(t, 0)
-\end{lstlisting}
+\be
+lookup(T, k) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & T = \Phi \lor (T = (k', v), k' \neq k) \\
+  v & T = (k', v), k' = k \\
+  lookup(T_l, k) & T = (p, m, T_l, T_r), match(k, p, m), zero(k, m) \\
+  lookup(T_r, k) & T = (p, m, T_l, T_r), match(k, p, m), \lnot zero(k, m) \\
+  \Phi & otherwise
+  \end{array}
+\right.
+\ee
 
-We can get similar output as below.
-
-\begin{verbatim}
-test look up
-look up 4:  y
-look up 0:  None
-\end{verbatim}
-
-\subsubsection*{Look up in big-endian integer Patricia tree in C++}
-
-With C++ language, if the program doesn't find the key, we can either
-raise exception to indicate a search failure or return a special
-value.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<class T>
-T lookup(IntPatricia<T>* t, int key){
-  if(!t)
-    return T(); //or throw exception
-
-  while( (!t->is_leaf()) && t->match(key)){
-    if(zero(key, t->mask))
-      t = t->left;
-    else
-      t = t->right;
-  }
-  if(t->is_leaf() && t->key == key)
-    return t->value;
-  else
-    return T(); //or throw exception
-}
-\end{lstlisting}
-
-We can try some test cases to search keys in a Patricia tree we
-created when test insertion.
-
-\begin{lstlisting}
-std::cout<<"\nlook up 4: "<<lookup(tc, 4)
-         <<"\nlook up 0: "<<lookup(tc, 0)<<"\n";
-\end{lstlisting}
-
-The output result is as the following.
-
-\begin{verbatim}
-look up 4: y
-look up 0:
-\end{verbatim}
-
-\subsubsection{Recursive looking up in integer Patricia tree}
-
-We can easily change the while-loop in above iterative algorithm into
-recursive calls, so that we can have a functional approach.
-
-\begin{algorithmic}[1]
-\Function{INT-PATRICIA-LOOK-UP'}{$T, x$}
-  \If{$T = NIL$}
-    \State \Return $NIL$
-  \ElsIf{$T$ is a leaf and $x = KEY(T)$}
-    \State \Return $VALUE(T)$
-  \ElsIf{$MATCH(x, PREFIX(T), MASK(T))$}
-    \If{$ZERO(x, MASK(T))$}
-      \State \Return $INT-PATRICIA-LOOK-UP'(LEFT(T), x)$
-    \Else
-      \State \Return $INT-PATRICIA-LOOK-UP'(RIGHT(T), x)$
-    \EndIf
-  \Else
-    \State \Return $NIL$
-  \EndIf
-\EndFunction
-\end{algorithmic}
-
-\subsubsection*{Look up in big-endian integer Patricia tree in Haskell}
-By changing the above if-then-else into pattern matching, we can get
-Haskell version of looking up program.
+The following Haskell example program implements this recursive
+looking up algorithm.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
--- look up a key
-search :: IntTree a -> Key -> Maybe a
 search t k
   = case t of
       Empty -> Nothing
@@ -927,68 +862,6 @@ search t k
              | otherwise -> Nothing
 \end{lstlisting}
 
-And we can test this program with looking up some keys in the
-previously created Patricia tree.
-
-\begin{lstlisting}
-testIntTree = "t=" ++ (toString t) ++ "\nsearch t 4: " ++ (show $ search t 4) ++
-              "\nsearch t 0: " ++ (show $ search t 0)
-    where
-      t = fromList [(1, 'x'), (4, 'y'), (5, 'z')]
-
-main = do
-  putStrLn testIntTree
-\end{lstlisting}
-
-The output result is as the following.
-
-\begin{verbatim}
-t=[0@8](1:'x', [4@2](4:'y', 5:'z'))
-search t 4: Just 'y'
-search t 0: Nothing
-\end{verbatim}
-
-\subsubsection*{Look up in big-endian integer Patricia tree in
-Scheme/Lisp}
-
-Scheme/Lisp program for looking up is similar in case the tree is
-empty, we just returns nothing; If it is a leaf node and the key is
-equal to the number we are looking for, we find the result; If it is
-branch, we need test if binary format of the prefix matches the
-number, then we recursively search either in left child or in right
-child according to the next bit after mask is zero or not.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (lookup t k)
-  (cond ((null? t) '())
-	((leaf? t) (if (= (key t) k) (value t) '()))
-	((branch? t) (if (match? k (prefix t) (mask t))
-			 (if (zero-bit? k (mask t))
-			     (lookup (left t) k)
-			     (lookup (right t) k))
-			 '()))))
-\end{lstlisting}
-
-We can test it with the Patricia tree we create in the insertion
-program.
-
-\begin{lstlisting}
-(define (test-int-patricia)
-  (define t (list->trie (list '(1 "x") '(4 "y") '(5 "z"))))
-  (display t) (newline)
-  (display "lookup 4: ") (display (lookup t 4)) (newline)
-  (display "lookup 0: ") (display (lookup t 0)) (newline))
-\end{lstlisting}
-
-The result is like below.
-
-\begin{lstlisting}
-(test-int-patricia)
-(0 8 (1 x) (4 2 (4 y) (5 z)))
-lookup 4: y
-lookup 0: ()
-\end{lstlisting}
 
 % ================================================================
 %                 Alphabetic trie
@@ -997,12 +870,12 @@ lookup 0: ()
 Integer based Trie and Patricia Tree can be a good start point. Such
 technical plays important role in Compiler implementation. Okasaki
 pointed that the widely used Haskell Compiler GHC (Glasgow Haskell
-Compiler), utilizes a similar implementation for several years before
+Compiler), utilizes the similar implementation for several years before
 1998 \cite{okasaki-int-map}.
 
 While if we extend the type of the key from integer to alphabetic
-value, Trie and Patricia tree can be very useful in textual manipulation
-engineering problems.
+value, Trie and Patricia tree can be very powerful in solving
+textual manipulation problems.
 
 % ================================================================
 %                 Definition of Alphabetic trie
