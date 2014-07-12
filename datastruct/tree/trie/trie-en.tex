@@ -85,7 +85,11 @@ most programming environment.
 \label{int-trie}
 
 The data structure shown in figure \ref{fig:radix-tree} is
-called as \emph{binary trie}. A binary
+called as \emph{binary trie}.
+Trie is invented by Edward Fredkin. It comes from ``retrieval'', pronounce
+as /'tri:/ by the inventor, while it is pronounced /'trai/ ``try''
+by other authors \cite{wiki-trie}.
+A binary
 trie is a special binary tree in which the placement of each key is controlled by
 its bits, each 0 means ``go left'' and each 1 means ``go
 right''\cite{okasaki-int-map}.
@@ -126,16 +130,23 @@ any prefix 0, the position in the trie is uniquely determined.
 %       Definition of integer trie
 %=========================================================================
 \subsection{Definition of integer Trie}
-Trie is invented by Edward Fredkin. It comes from ``retrieval'', pronounce
-as /'tri:/ by the inventor, while it is pronounced /'trai/ ``try''
-by other authors \cite{wiki-trie}.
-
 In order to define the little-endian binary trie, we can reuse the structure
-of binary tree. The left sub tree is encoded as 0 and the right sub tree
-is encoded as 1. The node can be used to store some satellite data.
+of binary tree.
+A binary trie node is either empty, or a branch node. The branch
+node contains a left child, a right node, and optional value as
+satellite data.
+The left sub tree is encoded as 0 and the right sub tree
+is encoded as 1.
 
-The following example Python code defines integer trie. It uses
-field \texttt{value} to store satellite data.
+The following example Haskell code defines the trie algebraic data type.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+data IntTrie a = Empty
+               | Branch (IntTrie a) (Maybe a) (IntTrie a)
+\end{lstlisting}
+
+Below is another example definition in Python.
 
 \lstset{language=Python}
 \begin{lstlisting}
@@ -221,181 +232,57 @@ to the empty trie.
   \label{fig:int-trie}
 \end{figure}
 
+Because the definition of the integer trie is recursive, it's nature to define
+the insertion algorithm recursively. If the LSB is 0, it
+means that the key to be inserted is even, we recursively insert
+to the left child, we can divide the key by 2 to get
+rid of the LSB. If the LSB is 1, the key is odd number, the recursive
+insertion is applied to the right child. For trie $T$,
+denote the left and right children as $T_l$ and $T_r$ respectively.
+Thus $T = (T_l, d, T_r)$, where $d$ is the optional satellite data.
+if $T$ is empty, $T_l$, $T_r$ and $d$ are defined as empty as well.
 
-\subsubsection*{Definition of little-endian integer Trie in Haskell}
-In trie, since a node may not contains value, so we use Haskell Maybe data to represent
-this situation. A IntTrie node is either an empty node, or a branch node. The branch
-node contains a left child a `Maybe' value and a right child.
+\be
+insert(T, k, v) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (T_l, v, T_r) & k = 0 \\
+  (insert(T_l, k / 2, v), d, T_r) & even(k) \\
+  (T_l, d, insert(T_r, \lfloor k / 2 \rfloor, v)) & otherwise
+  \end{array}
+\right.
+\ee
+
+If the key to be inserted already exists, this algorithm just
+overwrites the previous stored data. It can be replaced with
+other alternatives, such as storing data as with linked-list etc.
+
+The following Haskell example program implements the insertion
+algorithm.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-data IntTrie a = Empty
-               | Branch (IntTrie a) (Maybe a) (IntTrie a) -- left, value, right
+insert t 0 x = Branch (left t) (Just x) (right t)
+insert t k x | even k = Branch (insert (left t) (k `div` 2) x) (value t) (right t)
+             | otherwise = Branch (left t) (value t) (insert (right t) (k `div` 2) x)
 
-type Key = Int
-
--- helpers
-left :: IntTrie a -> IntTrie a
 left (Branch l _ _) = l
 left Empty = Empty
 
-right :: IntTrie a -> IntTrie a
 right (Branch _ _ r) = r
 right Empty = Empty
 
-value :: IntTrie a -> Maybe a
 value (Branch _ v _) = v
 value Empty = Nothing
 \end{lstlisting}
 
-In order to access the children and value some helper functions are given.
-
-
-\subsubsection{Recursive insertion algorithm}
-Insertion can also be implemented in a recursive manner. If the LSB is 0, it
-means that the key to be inserted is an even number, we recursively insert the
-date to left child, we can divide the number by 2 and round to integer to get
-rid of the LSB. If the LSB is 1, the key is then an odd number, the recursive
-insertion will be happened to right child. This algorithm is described as below.
-
-\begin{algorithmic}[1]
-\Function{INT-TRIE-INSERT'}{$T, x, data$}
-  \If{$T = NIL$}
-    \State $T \gets CREATE-EMPTY-NODE()$
-  \EndIf
-  \If{$x = 0$}
-    \State $VALUE(T) \leftarrow data$
-  \Else
-    \If {$EVEN(x)$}
-      \State $LEFT(T) \leftarrow INT-TRIE-INSERT'(LEFT(T), x/2, data)$
-    \Else
-      \State $RIGHT(T) \leftarrow INT-TRIE-INSERT'(RIGHT(T), x/2, data)$
-    \EndIf
-  \EndIf
-  \State \Return $T$
-\EndFunction
-\end{algorithmic}
-
-\subsubsection*{Insertion of integer Trie in Haskell}
-To simplify the problem, If user insert a data with key already exists, we just
-overwrite the previous stored data. This approach can be easily replaced with
-other methods, such as storing data as a linked list etc.
-
-Insertion integer key into a trie can be implemented with Haskell as below.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-insert :: IntTrie a -> Key -> a -> IntTrie a
-insert t 0 x = Branch (left t) (Just x) (right t)
-insert t k x =
-  if even k
-       then Branch (insert (left t) (k `div` 2) x) (value t) (right t)
-       else Branch (left t) (value t) (insert (right t) (k `div` 2) x)
-\end{lstlisting}
-
-If the key is zero, we just insert the data to current node, in other
-cases, the program go down along the trie according to the last bit
-of the key.
-
-To test this program, some test helper functions are provided.
-
-\begin{lstlisting}
-fromList :: [(Key, a)] -> IntTrie a
-fromList xs = foldl ins Empty xs where
-    ins t (k, v) = insert t k v
-
--- k = ... a2, a1, a0 ==> k' = ai * m + k, where m=2^i
-toString :: (Show a)=>IntTrie a -> String
-toString t = toStr t 0 1 where
-    toStr Empty k m = "."
-    toStr tr k m = "(" ++ (toStr (left tr) k (2*m)) ++
-                      " " ++ (show k) ++ (valueStr (value tr)) ++
-                      " " ++ (toStr (right tr) (m+k) (2*m)) ++ ")"
-    valueStr (Just x) = ":" ++ (show x)
-    valueStr _ = ""
-\end{lstlisting}
+TODO: complex analsysis
 
 fromList function can create a trie from a list of integer-data pairs.
 toString function can turn a trie data structure to readable string
 for printing. This is a modified in-order tree traverse, since the number
 stored is in little-endian, the program store the $2^m$ to calculate
 the keys. The following code shows a test.
-
-\begin{lstlisting}
-main = do
-  putStrLn (toString (fromList [(1, 'a'), (4, 'b'), (5, 'c'), (9, 'd')]))
-\end{lstlisting}
-
-This will output:
-\begin{verbatim}
-(((. 0 (. 4:'b' .)) 0 .) 0 (((. 1 (. 9:'d' .)) 1 (. 5:'c' .)) 1:'a' .))
-\end{verbatim}
-
-
-\subsubsection*{Insertion of integer Trie in Scheme/Lisp}
-
-Insertion program implemented with Scheme/Lisp is quite similar, since
-Scheme has a complex numeric system, it will use fraction instead of
-round to integer, we minus the key by 1 before divide it with 2.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-;; Insertion
-;;   if user insert an existed value, just overwrite the old value
-;;   usage: (insert t k x) t: trie, k: key, x: value
-(define (insert t k x)
-  (if (= k 0)
-      (make-int-trie (left t) x (right t))
-      (if (even? k)
-	  (make-int-trie (insert (left t) (/ k 2) x) (value t) (right t))
-	  (make-int-trie (left t) (value t) (insert (right t) (/ (- k 1) 2) x)))))
-\end{lstlisting}
-
-In order to make creation of Trie from a list of key-value pairs easy,
-here is a helper function.
-
-\begin{lstlisting}
-(define (list->trie lst) ;;lst is list of pairs
-  (define (insert-pair t p)
-    (insert t (car p) (cadr p)))
-  (fold-left insert-pair '() lst))
-\end{lstlisting}
-
-In order to convert the Trie to a readable string, a converter
-function is given as the following.
-
-\begin{lstlisting}
-(define (trie->string trie)
-  (define (value->string x)
-    (cond ((null? x) ".")
-	  ((number? x) (number->string x))
-	  ((string? x) x)
-	  (else "unknown value")))
-  (define (trie->str t k m)
-    (if (null? t)
-	"."
-	(string-append "(" (trie->str (left t) k (* m 2)) " "
-		       (number->string k) (value->string (value t)) " "
-		       (trie->str (right t) (+ m k) (* m 2)) ")")))
-  (trie->str trie 0 1))
-\end{lstlisting}
-
-To verify the program, we can test it with a easy test case.
-
-\begin{lstlisting}
-(define (test-int-trie)
-  (define t (list->trie (list '(1 "a") '(4 "b") '(5 "c") '(9 "d"))))
-  (display (trie->string t)) (newline))
-\end{lstlisting}
-
-Evaluate this test function will generate below output.
-
-\begin{lstlisting}
-(test-int-trie)
-(((. 0. (. 4b .)) 0. .) 0. (((. 1. (. 9d .)) 1. (. 5c .)) 1a .))
-\end{lstlisting}
-
-Which is identical to the Haskell output.
 
 % ================================================================
 %               Look up in integer binary trie
