@@ -49,9 +49,7 @@ def maskbit(x, mask):
     return x & (~(mask-1))
 
 def match(key, tree):
-    if tree.is_leaf():
-        return False
-    return maskbit(key, tree.mask) == tree.prefix
+    return (not tree.is_leaf()) and maskbit(key, tree.mask) == tree.prefix
 
 def zero(x, mask):
     return x & (mask>>1) == 0
