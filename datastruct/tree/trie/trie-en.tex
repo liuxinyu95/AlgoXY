@@ -284,71 +284,29 @@ resurses $m$ levels. The performance is bound to $O(m)$ time.
 % ================================================================
 \subsection{Look up}
 
-\subsubsection{Iterative looking up algorithm}
-
-To look up a key in a little-endian integer binary trie. We take each
-bit of the key from left (LSB), and go left or right according to if
-the bit is 0, until we consumes all bits. this algorithm can be described
-as below pseudo code.
+To look up key $k$ in the little-endian integer binary trie. We take each
+bit of $k$ from the left (LSB), then go left if this bit is 0, otherwise,
+we go right. The looking up completes when all bits are consumed.
 
 \begin{algorithmic}[1]
-\Function{INT-TRIE-LOOKUP}{$T, x$}
-  \While{$x \neq 0$ and $T \neq NIL$}
-    \If{$EVEN(x) = TRUE$}
-      \State $T \leftarrow LEFT(T)$
+\Function{Lookup}{$T, k$}
+  \While{$x \neq 0 \land T \neq $NIL}
+    \If{ \Call{Even?}{$x$} }
+      \State $T \gets$ \Call{Left}{$T$}
     \Else
-      \State $T \leftarrow RIGHT(T)$
+      \State $T \gets$ \Call{Right}{$T$}
     \EndIf
-    \State $x \leftarrow x/2$
+    \State $k \gets \lfloor k/2 \rfloor$
   \EndWhile
-  \If{$T \neq NIL$}
-    \State \Return $DATA(T)$
+  \If{$T \neq $ NIL}
+    \State \Return \Call{Data}{$T$}
   \Else
-    \State \Return $NIL$ \EndIf
+    \State \Return not found \EndIf
 \EndFunction
 \end{algorithmic}
 
-\subsubsection*{Look up implemented in C++}
-In C++, we can test the LSB by using bit-wise operation. The following code
-snippet searches a key in an integer Trie. If the target node is found, the
-value of that node is returned, else it will return the default value of the
-value type\footnote{One good alternative is to raise exception if not found}.
-\lstset{language=C++}
-\begin{lstlisting}
-template<class T>
-T lookup(IntTrie<T>* t, int key){
-  while(key && t){
-    if( (key & 0x1) == 0)
-      t = t->left;
-    else
-      t = t->right;
-    key>>=1;
-  }
-  if(t)
-    return t->value;
-  else
-    return T();
-}
-\end{lstlisting}
-
-To verify this program, some simple test cases are provided.
-
-\begin{lstlisting}
-std::cout<<"\nlook up 4: "<<lookup(tc, 4)
-         <<"\nlook up 9: "<<lookup(tc, 9)
-         <<"\nlook up 0: "<<lookup(tc, 0);
-\end{lstlisting}
-
-Where 'tc' is the Trie we created in insertion section. the output is like below.
-\begin{verbatim}
-look up 4: b
-look up 9: d
-look up 0:
-\end{verbatim}
-
-\subsubsection*{Look up implemented in Python}
-By translating the pseudo code algorithm, we can easily get a python
-implementation.
+Below Python example code uses bit-wise operation to implements the
+looking up algorithm.
 
 \lstset{language=Python}
 \begin{lstlisting}
@@ -365,120 +323,36 @@ def lookup(t, key):
         return None
 \end{lstlisting}
 
-In this implementation, instead of using even-odd property, bit-wise
-manipulation is used to test if a bit is 0 or 1.
+Looking up can also be define in recusrive manner. If the tree is
+empty, the lookup fails; If $k=0$, the satellite data is the result
+to be found; If the last bit is 0, we recurisvely look up the
+left child; otherwise, we look up the right child.
 
-Here is the smoke test of the lookup function.
+\be
+lookup(T, k) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & T = \Phi \\
+  d & k = 0 \\
+  lookup(T_l, k / 2) & even(k) \\
+  lookup(T_r, \lfloor k / 2 \rfloor) & otherwise
+  \end{array}
+\right.
+\ee
 
-\begin{lstlisting}
-class IntTrieTest:
-    #...
-    def test_lookup(self):
-        t = map_to_trie({4:'y', 1:'x', 5:'z'})
-        print "look up 4: ", lookup(t, 4)
-        print "look up 5: ", lookup(t, 5)
-        print "look up 0: ", lookup(t, 0)
-\end{lstlisting}
-
-The output of the test cases is as below.
-
-\begin{verbatim}
-look up 4:  y
-look up 5:  z
-look up 0:  None
-\end{verbatim}
-
-\subsubsection{Recursive looking up algorithm}
-
-Looking up in integer Trie can also be implemented in recursive manner.
-We take the LSB of the key to be found, if it is 0, we recursively look
-it up in left child, else in right child.
-
-\begin{algorithmic}[1]
-\Function{INT-TRIE-LOOKUP'}{$T, x$}
-  \If{$T = NIL$}
-    \State \Return $NIL$
-  \ElsIf{$x = 0$}
-    \State \Return $VALUE(T)$
-  \ElsIf{$EVEN(x)$}
-    \State \Return $INT-TRIE-LOOKUP'(LEFT(T), x/2)$
-  \Else
-    \State \Return $INT-TRIE-LOOKUP'(RIGHT(T), x/2)$
-  \EndIf
-\EndFunction
-\end{algorithmic}
-
-\subsubsection*{Look up implemented in Haskell}
-In Haskell, we can use pattern matching to realize the above long if-then-else statements.
-The program is as the following.
+The following Haskell example program implements the recursive
+look up algorithm.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-search :: IntTrie a -> Key -> Maybe a
 search Empty k = Nothing
 search t 0 = value t
 search t k = if even k then search (left t) (k `div` 2)
              else search (right t) (k `div` 2)
 \end{lstlisting}
 
-If trie is empty, we simply returns nothing; if key is zero we return the
-value of current node; in other case we recursively search either left
-child or right child according to the LSB is 0 or not.
-
-To test this program, we can write a smoke test case as following.
-
-\begin{lstlisting}
-testIntTrie = "t=" ++ (toString t) ++
-              "\nsearch t 4: " ++ (show $ search t 4) ++
-              "\nsearch t 0: " ++ (show $ search t 0)
-    where
-      t = fromList [(1, 'a'), (4, 'b'), (5, 'c'), (9, 'd')]
-
-main = do
-  putStrLn testIntTrie
-\end{lstlisting}
-
-This program will output these result.
-
-\begin{verbatim}
-t=(((. 0 (. 4:'b' .)) 0 .) 0 (((. 1 (. 9:'d' .)) 1 (. 5:'c' .)) 1:'a' .))
-search t 4: Just 'b'
-search t 0: Nothing
-\end{verbatim}
-
-\subsubsection*{Look up implemented in Scheme/Lisp}
-
-Scheme/Lisp implementation is quite similar. Note that we decrees key
-by 1 before divide it with 2.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (lookup t k)
-  (if (null? t) '()
-      (if (= k 0) (value t)
-	  (if (even? k)
-	      (lookup (left t) (/ k 2))
-	      (lookup (right t) (/ (- k 1) 2))))))
-\end{lstlisting}
-
-Test cases use the same Trie which is created in insertion section.
-
-\begin{lstlisting}
-(define (test-int-trie)
-  (define t (list->trie (list '(1 "a") '(4 "b") '(5 "c") '(9 "d"))))
-  (display (trie->string t)) (newline)
-  (display "lookup 4: ") (display (lookup t 4)) (newline)
-  (display "lookup 0: ") (display (lookup t 0)) (newline))
-\end{lstlisting}
-
-the result is as same as the one output by Haskell program.
-
-\begin{lstlisting}
-(test-int-trie)
-(((. 0. (. 4b .)) 0. .) 0. (((. 1. (. 9d .)) 1. (. 5c .)) 1a .))
-lookup 4: b
-lookup 0: ()
-\end{lstlisting}
+The looking up algorithm is bound to $O(m)$ time, where $m$ is the
+number of bits for a given key.
 
 % ================================================================
 %               Int Patricia
