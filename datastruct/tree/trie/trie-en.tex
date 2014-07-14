@@ -1007,8 +1007,8 @@ key to be inserted as $K = k_1k_2...k_n$, where $k_i$ is the $i$-th
 character. $K'$ is the rest of characters except $k_1$. $v'$ is the
 satallite data to be inserted.
 The trie is in form $T = (v, C)$, where $v$ is the satellite
-data, and $C = \{(c_1, T_1), (c_2, T_2), ..., (c_m, T_m)\}$ is the
-map of children, which map from character $c_i$ to
+data, $C = \{(c_1, T_1), (c_2, T_2), ..., (c_m, T_m)\}$ is the
+map of children. It maps from character $c_i$ to
 sub-tree $T_i$. if $T$ is empty, then $C$ is also empty.
 
 \be
@@ -1021,53 +1021,34 @@ insert(T, K, v') = \left \{
 \right.
 \ee
 
-If the key is empty, the previous value $v$ is overwritten with the
-new value $v'$. Otherwise, we need check the children and perform
+If the key is empty, the previous value $v$ is overwritten with
+$v'$. Otherwise, we need check the children and perform
 recursive insertion. This is realized in function $ins(C, k_1, K', v')$.
 It examines key-sub tree pairs in $C$ one by one. Let $C'$ be
-the rest of
+the rest of pairs except for the first one. This function
+can be defined as below.
 
 \be
 ins(C, k_1, K', v') = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   \{(k_1, insert(\Phi, K', v'))\} & C = \Phi \\
-  \{\} \cup C'
+  \{k_1, insert(T_1, K', v')\} \cup C' & k_1 = c_1 \\
+  \{(c_1, T_1)\} \cup ins(C', k_1, K', v') & otherwise
   \end{array}
 \right.
 \ee
 
-The iterative algorithms can transform to recursive algorithm by such
-approach. We take one character from
-the key, and locate the child branch, then recursively insert the left
-characters of the key to that branch. If the branch is empty, we
-create a new node and add it to children before doing the recursively insertion.
+If $C$ is empty, we create a pair, mapping from character $k_1$ to
+a new empty tree, and recursively insert the rest characters.
+Otherwise, the algorithm locates the child which is mapped
+from $k_1$ for further insertion.
 
-\begin{algorithmic}[1]
-\Function{TRIE-INSERT'}{$T, key, data$}
-\If{$T = NIL$}
-  \State $T \leftarrow EmptyNode$ \EndIf
-
-\If{$key = NIL$}
-  \State $VALUE(T) \leftarrow data$
-\Else
-  \State $p \leftarrow FIND(CHILDREN(T), FIRST(key))$
-  \If{$p = NIL$}
-    \State $p \leftarrow APPEND(CHILDREN(T), FIRST(key), EmptyNode)$
-  \EndIf
-  \State $TRIE-INSERT'(p, REST(key), data)$
-\EndIf
-\State \Return $T$
-\EndFunction
-\end{algorithmic}
-
-\subsubsection*{Insertion of alphabetic trie in Haskell}
-To realize the insertion in Haskell, The only thing we need do is
-to translate the for-each loop into recursive call.
+The following Haskell example program implements the insertion
+algorithm.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-insert :: Trie a -> String -> a -> Trie a
 insert t []     x = Trie (Just x)  (children t)
 insert t (k:ks) x = Trie (value t) (ins (children t) k ks x) where
     ins [] k ks x = [(k, (insert empty ks x))]
@@ -1076,164 +1057,11 @@ insert t (k:ks) x = Trie (value t) (ins (children t) k ks x) where
                         else p:(ins ps k ks x)
 \end{lstlisting}
 
-If the key is empty, the program reaches the trivial terminator case.
-It just set the value. In other case, it examine the children recursively.
-Each element of the children is a pair, contains a character and
-a branch.
-
-Some helper functions are provided as the following.
-
-\begin{lstlisting}
-fromList :: [(String, a)] -> Trie a
-fromList xs = foldl ins empty xs where
-    ins t (k, v) = insert t k v
-
-toString :: (Show a)=> Trie a -> String
-toString t = toStr t "" where
-    toStr t prefix = "(" ++ prefix ++ showMaybe (value t) ++
-                     (concat (map (\(k, v)-> ", " ++ toStr v (prefix++[k])))
-                                 (sort (children t)))
-                     ++ ")"
-    showMaybe Nothing = ""
-    showMaybe (Just x)  = ":" ++ show x
-
-sort :: (Ord a)=>[(a, b)] -> [(a, b)]
-sort [] = []
-sort (p:ps) = sort xs ++ [p] ++ sort ys where
-    xs = [x | x<-ps, fst x <= fst p ]
-    ys = [y | y<-ps, fst y > fst p ]
-\end{lstlisting}
-
-The fromList function provide an easy way to repeatedly extract
-key-value pairs from a list and insert them into a Trie.
-
-Function toString can print the Trie in a modified pre-order way.
-Because the children stored in a unsorted list, a sort function is
-provided to sort the branches. The quick-sort algorithm is used.
-
-We can test the above program with the below test cases.
-
-\begin{lstlisting}
-testTrie = "t=" ++ (toString t)
-    where
-      t = fromList [("a", 1), ("an", 2), ("another", 7), ("boy", 3),
-                   ("bool", 4), ("zoo", 3)]
-
-main = do
-  putStrLn testTrie
-\end{lstlisting}
-
-The program outputs:
-
-\begin{verbatim}
-t=(, (a:1, (an:2, (ano, (anot, (anoth, (anothe, (another:7))))))),
-(b, (bo, (boy:3), (boo, (bool:4)))), (z, (zo, (zoo:3))))
-\end{verbatim}
-
-It is identical to the ANSI C result except the values we inserted.
-
-\subsubsection*{Insertion of alphabetic trie in Scheme/Lisp}
-
-In order to manipulate string like list, we provide two helper
-function to provide car, cdr like operations for string.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (string-car s)
-  (string-head s 1))
-
-(define (string-cdr s)
-  (string-tail s 1))
-\end{lstlisting}
-
-After that, we can implement insert program as the following.
-
-\begin{lstlisting}
-(define (insert t k x)
-  (define (ins lst k ks x) ;; return list of child
-    (if (null? lst)
-	(list (make-child k (insert '() ks x)))
-	(if (string=? (key (car lst)) k)
-	    (cons (make-child k (insert (tree (car lst)) ks x)) (cdr lst))
-	    (cons (car lst) (ins (cdr lst) k ks x)))))
-  (if (string-null? k)
-      (make-trie x (children t))
-      (make-trie (value t)
-		 (ins (children t) (string-car k) (string-cdr k) x))))
-\end{lstlisting}
-
-In order to print readable string for a Trie, we provide a pre-order
-manner of Trie traverse function. It can convert a Trie to string.
-
-\begin{lstlisting}
-(define (trie->string t)
-  (define (value->string x)
-    (cond ((null? x) ".")
-	  ((number? x) (number->string x))
-	  ((string? x) x)
-	  (else "unknown value")))
-  (define (trie->str t prefix)
-    (define (child->str c)
-      (string-append ", " (trie->str (tree c) (string-append prefix (key c)))))
-    (let ((lst (map child->str (sort-children (children t)))))
-      (string-append "(" prefix (value->string (value t))
-		     (fold-left string-append "" lst) ")")))
-  (trie->str t ""))
-\end{lstlisting}
-
-Where sort-children is a quick sort algorithm to sort all children of
-a node based on keys.
-
-\begin{lstlisting}
-(define (sort-children lst)
-  (if (null? lst) '()
-      (let ((xs (filter (lambda (c) (string<=? (key c) (key (car lst))))
-			(cdr lst)))
-	    (ys (filter (lambda (c) (string>?  (key c) (key (car lst))))
-			(cdr lst))))
-	(append (sort-children xs)
-		(list (car lst))
-		(sort-children ys)))))
-\end{lstlisting}
-
-Function filter is only available after $R^6RS$, for $R^5RS$, we define
-the filter function manually.
-
-\begin{lstlisting}
-(define (filter pred lst)
-  (keep-matching-items lst pred))
-\end{lstlisting}
-
-With all of these definition, we can test our insert program with some
-simple test cases.
-
-\begin{lstlisting}
-(define (test-trie)
-  (define t (list->trie (list '("a" 1) '("an" 2) '("another" 7)
-                              '("boy" 3) '("bool" 4) '("zoo" 3))))
-  (define t2 (list->trie (list '("zoo" 3) '("bool" 4) '("boy" 3)
-                               '("another" 7) '("an" 2) '("a" 1))))
-  (display (trie->string t)) (newline)
-  (display (trie->string t2)) (newline))
-\end{lstlisting}
-
-In the above test program, function trie->string is reused, it is
-previous defined for integer trie.
-
-Evaluate test-trie function will output the following result.
-
-\begin{lstlisting}
-(test-trie)
-(., (a1, (an2, (ano., (anot., (anoth., (anothe., (another7))))))),
-    (b., (bo., (boo., (bool4)), (boy3))), (z., (zo., (zoo3))))
-(., (a1, (an2, (ano., (anot., (anoth., (anothe., (another7))))))),
-    (b., (bo., (boo., (bool4)), (boy3))), (z., (zo., (zoo3))))
-\end{lstlisting}
 
 % ================================================================
 %                 Look up in Alphabetic trie
 % ================================================================
-\subsection{Look up in alphabetic trie}
+\subsection{Look up}
 To look up a key in a Trie, we also extract the character from the
 key string one by one. For each character, we search among the children
 branches to see if there is a branch represented by this character.
