@@ -61,9 +61,9 @@ struct Trie* insert(struct Trie* t, const char* key, void* value){
 }
 
 void* lookup(struct Trie* t, const char* key) {
-    char c;
-    for(c = *key; c && t && t->children[c - 'a']; ++key, t = t->children[c - 'a']);
-    return t ? t->data : NULL;
+    while (*key && t && t->children[*key - 'a'])
+        t = t->children[*key++ - 'a'];
+    return (*key || !t) ? NULL : t->data;
 }
 
 // test helpers
