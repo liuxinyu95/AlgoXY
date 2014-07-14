@@ -60,6 +60,12 @@ struct Trie* insert(struct Trie* t, const char* key, void* value){
     return t;
 }
 
+void* lookup(struct Trie* t, const char* key) {
+    char c;
+    for(c = *key; c && t && t->children[c - 'a']; ++key, t = t->children[c - 'a']);
+    return t ? t->data : NULL;
+}
+
 // test helpers
 void print_trie(struct Trie* t, const char* prefix){
     printf("(%s", prefix);
@@ -79,18 +85,27 @@ void print_trie(struct Trie* t, const char* prefix){
 
 struct Trie* test_insert(){
     struct Trie* t=0;
-    t = insert(t, "a", 0);
-    t = insert(t, "an", 0);
-    t = insert(t, "another", 0);
-    t = insert(t, "boy", 0);
-    t = insert(t, "bool", 0);
-    t = insert(t, "zoo", 0);
+    t = insert(t, "a", strdup("A"));
+    t = insert(t, "an", strdup("AN"));
+    t = insert(t, "another", strdup("ANOTHER"));
+    t = insert(t, "boy", strdup("BOY"));
+    t = insert(t, "bool", strdup("BOOL"));
+    t = insert(t, "zoo", strdup("ZOO"));
     print_trie(t, "");
+    printf("\n");
     return t;
+}
+
+void test_lookup(struct Trie* t) {
+    void* v = lookup(t, "another");
+    printf("lookup 'another' ==> %s\n", v ? (char*)v : "not found");
+    v = lookup(t, "boolean");
+    printf("lookup 'boolean' ==> %s\n", v ? (char*)v : "not found");
 }
 
 int main(int argc, char** argv){
     struct Trie* t = test_insert();
+    test_lookup(t);
     destroy(t);
     return 0;
 }
