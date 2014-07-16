@@ -173,18 +173,18 @@ the last bit (MSB) of the key.
 \begin{algorithmic}[1]
 \Function{Insert}{$T, k, v$}
   \If{$T =$ NIL}
-    \State $T \gets$ \Call{EmptyNode}{}
+    \State $T \gets$ \Call{Empty-Node}{}
   \EndIf
   \State $p \gets T$
   \While{$k \neq 0$}
     \If{\Call{Even?}{$k$}}
       \If{\Call{Left}{$p$} = NIL}
-        \State \Call{Left}{$p$} $\gets$ \Call{EmptyNode}{}
+        \State \Call{Left}{$p$} $\gets$ \Call{Empty-Node}{}
       \EndIf
       \State $p \gets$ \Call{Left}{$p$}
     \Else
       \If{\Call{Right}{$p$} = NIL}
-        \State \Call{Right}{$p$} $\gets$ \Call{EmptyNode}{}
+        \State \Call{Right}{$p$} $\gets$ \Call{Empty-Node}{}
       \EndIf
       \State $p \gets$ \Call{Right}{$p$}
     \EndIf
@@ -954,12 +954,12 @@ Below pseudo code describes the insertion algorithm.
 \begin{algorithmic}[1]
 \Function{Insert}{$T, k, v$}
   \If{$T = $ NIL}
-    \State $T \gets $ \Call{EmptyNode}{}
+    \State $T \gets $ \Call{Empty-Node}{}
   \EndIf
   \State $p \gets T$
   \For{each $c$ in $k$}
     \If{\Call{Children}{$p$}[c] = NIL}
-      \State \Call{Children}{$p$}[c] $\gets$ \Call{EmptyNode}{}
+      \State \Call{Children}{$p$}[c] $\gets$ \Call{Empty-Node}{}
     \EndIf
     \State $p \gets $ \Call{Children}{$p$}[c]
   \EndFor
@@ -1241,54 +1241,50 @@ $s_i$ may be the prefix of $s$ as in figure \ref{fig:patricia-insert} (d).
   \label{fig:patricia-insert}
 \end{figure}
 
-\subsubsection{Iterative insertion algorithm for alphabetic Patricia}
-
-The insertion algorithm can be described as below pseudo code.
+The insertion algorithm can be described as below.
 
 \begin{algorithmic}[1]
-\Function{PATRICIA-INSERT}{$T, key, value$}
-\If{$T = NIL$}
-   \State $T \leftarrow NewNode$ \EndIf
-
-  \State $p=T$
+\Function{Insert}{$T, k, v$}
+  \If{$T = $ NIL}
+   \State $T \gets$ \Call{Empty-Node}{}
+  \EndIf
+  \State $p \gets T$
   \Loop
-    \State $match \leftarrow FALSE$
-    \For{each $i$ in $CHILDREN(p)$}
-      \If{$key = KEY(i)$}
-        \State $VALUE(p) \leftarrow value$
+    \State $match \gets$ FALSE
+    \For{each $(s_i, T_i) \in$ \Call{Children}{$p$}}
+      \If{$k = s_i$}
+        \State \Call{Value}{$p$} $\gets v$
         \State \Return $T$
       \EndIf
-
-      \State $prefix \leftarrow LONGEST-COMMON-PREFIX(key, KEY(i))$
-      \State $key1 \leftarrow key$ subtract $prefix$
-      \State $key2 \leftarrow KEY(i)$ subtract $prefix$
-      \If{$prefix \neq NIL$}
-        \State $match \leftarrow TRUE$
-        \If{$key2 = NIL$}
-          \State $p \leftarrow TREE(i)$
-          \State $key \leftarrow key$ substract $prefix$
+      \State $c \gets$ \Call{LCP}{$k, s_i$}
+      \State $k_1 \gets k - c$
+      \State $k_2 \gets s_i - c$
+      \If{$c \neq $ NIL}
+        \State $match \gets$ TRUE
+        \If{$k_2 = $ NIL} \Comment{$s_i$ is prefix of $k$}
+          \State $p \gets T_i$
+          \State $k \gets k_1$
           \State break
-        \Else
-          \State $CHILDREN(p)[prefix] \leftarrow BRANCH(key1, value, key2, TREE(i))$
-          \State DELETE $CHILDREN(p)[KEY(i)]$
+        \Else \Comment{Branch out a new leaf}
+          \State \Call{Children}{$p$} $\gets$ \Call{Children}{$p$} $\cup$ ($c$, \Call{Branch}{$k_1, v, k_2, T_i$})
+          \State \textproc{Delete}(\Call{Children}{$p$}, $(s_i, T_i)$)
           \State \Return $T$
         \EndIf
       \EndIf
-
-      \If{$match = FALSE$}
-        \State $CHILDREN(p)[key] \leftarrow CREATE-LEAF(value)$
-      \EndIf
     \EndFor
-
+    \If{$\lnot match$} \Comment{Add a new leaf}
+      \State \Call{Children}{$p$} $\gets$ \Call{Children}{$p$} $\cup$ ($k$, \Call{Create-Leaf}{$v$})
+      \State \Return $T$
+    \EndIf
   \EndLoop
   \State \Return $T$
 \EndFunction
 \end{algorithmic}
 
-In the above algorithm, LONGEST-COMMON-PREFIX function will find the longest
-common prefix of two given string, for example, string ``bool'' and ``boy''
-has longest common prefix ``bo''. BRANCH function will create a branch node
-and update keys accordingly.
+In the above algorithm, \textproc{LCP} function finds the longest
+common prefix of two given strings, for example, string ``bool'' and ``boy''
+has the longest common prefix ``bo''. \textproc{Branch} function creates a branch node
+and updates keys accordingly.
 
 \subsubsection*{Insertion of alphabetic Patricia in C++}
 in C++, to support implicit type conversion we utilize the KeyType and
