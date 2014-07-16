@@ -58,7 +58,7 @@ def insert(t, key, value = None):
             (prefix, k1, k2)=lcp(key, k)
             if prefix != "":
                 match = True
-                if k2 == "": 
+                if k2 == "":
                     # example: insert "antoher" into "an", go on traversing
                     node = tr
                     key = k1
@@ -69,7 +69,7 @@ def insert(t, key, value = None):
                     return t
         if not match: # add a new leaf
             node.children[key] = Patricia(value)
-            break
+            return t
     return t
 
 def lookup(t, key):
@@ -132,4 +132,3 @@ class PatriciaTest:
 
 if __name__ == "__main__":
     PatriciaTest().run()
-    
