@@ -1266,14 +1266,14 @@ The insertion algorithm can be described as below.
           \State $k \gets k_1$
           \State break
         \Else \Comment{Branch out a new leaf}
-          \State \Call{Children}{$p$} $\gets$ \Call{Children}{$p$} $\cup$ ($c$, \Call{Branch}{$k_1, v, k_2, T_i$})
+          \State \Call{Children}{$p$} $\gets$ \Call{Children}{$p$} $\cup \{$ ($c$, \Call{Branch}{$k_1, v, k_2, T_i$}) $\}$
           \State \textproc{Delete}(\Call{Children}{$p$}, $(s_i, T_i)$)
           \State \Return $T$
         \EndIf
       \EndIf
     \EndFor
     \If{$\lnot match$} \Comment{Add a new leaf}
-      \State \Call{Children}{$p$} $\gets$ \Call{Children}{$p$} $\cup$ ($k$, \Call{Create-Leaf}{$v$})
+      \State \Call{Children}{$p$} $\gets$ \Call{Children}{$p$} $\cup \{$ ($k$, \Call{Create-Leaf}{$v$}) $\}$
       \State \Return $T$
     \EndIf
   \EndLoop
@@ -1282,178 +1282,61 @@ The insertion algorithm can be described as below.
 \end{algorithmic}
 
 In the above algorithm, \textproc{LCP} function finds the longest
-common prefix of two given strings, for example, string ``bool'' and ``boy''
-has the longest common prefix ``bo''. \textproc{Branch} function creates a branch node
+common prefix of two given strings, for example, string `bool' and `boy'
+has the longest common prefix `bo'. The substruction symbol '-' for
+strings gives the different part of two strings. For example `bool' - `bo' = `ol'. \textproc{Branch} function creates a branch node
 and updates keys accordingly.
 
-\subsubsection*{Insertion of alphabetic Patricia in C++}
-in C++, to support implicit type conversion we utilize the KeyType and
-ValueType as parameter types. If we define Patricia<std::string,
-std::string>, we can directly provide char* parameters. the algorithm
-is implemented as the following.
+The longest common prefix can be extracted by checking the characters in the two
+strings one by one till there are two characters don't match.
 
-\lstset{language=C++}
-\begin{lstlisting}
-template<class K, class V>
-Patricia<K, V>* insert(Patricia<K, V>* t,
-                       typename Patricia<K, V>::KeyType key,
-                       typename Patricia<K, V>::ValueType value=V()){
-  if(!t)
-    t = new Patricia<K, V>();
+\begin{algorithmic}[1]
+\Function{LCP}{$A, B$}
+  \State $i \gets 1 $
+  \While{$i \leq |A| \land i \leq |B| \land A[i] = B[i]$}
+    \State $i \gets i + 1$
+  \EndWhile
+  \State \Return $A[1...i-1]$
+\EndFunction
+\end{algorithmic}
 
-  Patricia<K, V>* p = t;
-  typedef typename Patricia<K, V>::Children::iterator Iterator;
-  for(;;){
-    bool match(false);
-    for(Iterator it = p->children.begin(); it!=p->children.end(); ++it){
-      K k=it->first;
-      if(key == k){
-        p->value = value; //overwrite
-        return t;
-      }
-      K prefix = lcp(key, k);
-      if(!prefix.empty()){
-        match=true;
-        if(k.empty()){ //e.g. insert "another" into "an"
-          p = it->second;
-          break;
-        }
-        else{
-          p->children[prefix] = branch(key, new Patricia<K, V>(value),
-                                       k, it->second);
-          p->children.erase(it);
-          return t;
-        }
-      }
-    }
-    if(!match){
-      p->children[key] = new Patricia<K, V>(value);
-      break;
-    }
-  }
-  return t;
-}
-\end{lstlisting}
+There are two cases when branch out a new leaf. \textproc{Branch}($s_1, T_1, s_2, T_2$)
+takes two different keys and two trees. If $s_1$ is empty, we are
+dealing the case such as insert key `an' into a child bound to
+string `another'. We set $T_2$ as the child of $T_1$. Otherwise,
+we create a new branch node and set $T_1$ and $T_2$ as the two children.
 
-Where the lcp and branch functions are defined like this.
+\begin{algorithmic}[1]
+\Function{Branch}{$s_1, T_1, s_2, T_2$}
+  \If{$s_1 = \Phi$}
+    \State \Call{Children}{$T_1$} $\gets$ \Call{Children}{$T_1$} $\cup \{(s_2, T_2)\}$
+    \State \Return $T_1$
+  \EndIf
+  \State $T \gets$ \Call{Empty-Node}{}
+  \State \Call{Children}{$T$} $\gets \{(s_1, T_1), (s_2, T_2)\}$
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
 
-\begin{lstlisting}
-template<class K>
-K lcp(K& s1, K& s2){
-  typename K::iterator it1(s1.begin()), it2(s2.begin());
-  for(; it1!=s1.end() && it2!=s2.end() && *it1 == *it2; ++it1, ++it2);
-  K res(s1.begin(), it1);
-  s1 = K(it1, s1.end());
-  s2 = K(it2, s2.end());
-  return res;
-}
-
-template<class T>
-T* branch(typename T::KeyType k1, T* t1,
-          typename T::KeyType k2, T* t2){
-  if(k1.empty()){ //e.g. insert "an" into "another"
-    t1->children[k2] = t2;
-    return t1;
-  }
-  T* t = new T();
-  t->children[k1] = t1;
-  t->children[k2] = t2;
-  return t;
-}
-\end{lstlisting}
-
-Function lcp() will extract the longest common prefix and modify its
-parameters. Function branch() will create a new node and set the 2
-nodes to be merged as the children. There is a special case, if the
-key of one node is sub-string of the other, it will chain them
-together.
-
-We find the implementation of patricia\_to\_str() will be very same
-as trie\_to\_str(), so we can reuse it. Also the convert from a list
-of keys to trie can be reused
-
-\begin{lstlisting}
-// list_to_trie
-template<class Iterator, class T>
-T* list_to_trie(Iterator first, Iterator last, T* t){
-  typedef typename T::ValueType ValueType;
-  return std::accumulate(first, last, t,
-                         std::ptr_fun(insert_key<T, ValueType>));
-}
-\end{lstlisting}
-
-We put all of the helper function templates to a utility header file,
-and we can test patricia insertion program as below.
-
-\begin{lstlisting}
-template<class Iterator>
-void test_list_to_patricia(Iterator first, Iterator last){
-  typedef Patricia<std::string, std::string> PatriciaType;
-  PatriciaType* t(0);
-  t = list_to_trie(first, last, t);
-  std::copy(first, last,
-            std::ostream_iterator<std::string>(std::cout, ", "));
-  std::cout<<"\n==>"<<trie_to_str(t)<<"\n";
-  delete t;
-}
-
-void test_insert(){
-  const char* lst1[] = {"a", "an", "another", "b", "bob", "bool", "home"};
-  test_list_to_patricia(lst1, lst1+sizeof(lst1)/sizeof(char*));
-
-  const char* lst2[] = {"home", "bool", "bob", "b", "another", "an", "a"};
-  test_list_to_patricia(lst2, lst2+sizeof(lst2)/sizeof(char*));
-
-  const char* lst3[] = {"romane", "romanus", "romulus"};
-  test_list_to_patricia(lst3, lst3+sizeof(lst3)/sizeof(char*));
-
-  typedef Patricia<std::string, std::string> PatriciaType;
-  PatriciaType* t(0);
-  const char* keys[] = {"001", "100", "101"};
-  const char* vals[] = {"y", "x", "z"};
-  for(unsigned int i=0; i<sizeof(keys)/sizeof(char*); ++i)
-    t = insert(t, std::string(keys[i]), std::string(vals[i]));
-  std::copy(keys, keys+sizeof(keys)/sizeof(char*),
-	    std::ostream_iterator<std::string>(std::cout, ", "));
-  std::cout<<"==>"<<trie_to_str(t)<<"\n";
-  delete t;
-}
-\end{lstlisting}
-
-Running test\_insert() function will generate the following output.
-
-\begin{verbatim}
-a, an, another, b, bob, bool, home,
-==>(, (a, (an, (another))), (b, (bo, (bob), (bool))), (home))
-home, bool, bob, b, another, an, a,
-==>(, (a, (an, (another))), (b, (bo, (bob), (bool))), (home))
-romane, romanus, romulus,
-==>(, (rom, (roman, (romane), (romanus)), (romulus)))
-001, 100, 101, ==>(, (001:y), (10, (100:x), (101:z)))
-\end{verbatim}
-
-\subsubsection*{Insertion of alphabetic Patrica Tree in Python}
-By translate the insertion algorithm into Python language, we can get a
-program as below.
+The following example Python program implements the Patricia insertion algorithm.
 
 \lstset{language=Python}
 \begin{lstlisting}
 def insert(t, key, value = None):
     if t is None:
         t = Patricia()
-
     node = t
-    while(True):
+    while True:
         match = False
         for k, tr in node.children.items():
             if key == k: # just overwrite
                 node.value = value
                 return t
-            (prefix, k1, k2)=lcp(key, k)
+            (prefix, k1, k2) = lcp(key, k)
             if prefix != "":
                 match = True
                 if k2 == "":
-                    # example: insert "another" into "an", go on traversing
+                    # example: insert "antoher" into "an", go on traversing
                     node = tr
                     key = k1
                     break
@@ -1463,26 +1346,24 @@ def insert(t, key, value = None):
                     return t
         if not match: # add a new leaf
             node.children[key] = Patricia(value)
-            break
+            return t
     return t
 \end{lstlisting}
 
-Where the longest common prefix finding and branching functions are implemented
-as the following.
+Where the functions to find the longest common prefix, and branch out are
+implemented as below.
 
 \begin{lstlisting}
-# longest common prefix
 # returns (p, s1', s2'), where p is lcp, s1'=s1-p, s2'=s2-p
 def lcp(s1, s2):
-    j=0
-    while j<=len(s1) and j<=len(s2) and s1[0:j]==s2[0:j]:
-        j+=1
-    j-=1
+    j = 0
+    while j < len(s1) and j < len(s2) and s1[j] == s2[j]:
+        j += 1
     return (s1[0:j], s1[j:], s2[j:])
 
 def branch(key1, tree1, key2, tree2):
     if key1 == "":
-        #example: insert "an" into "another"
+        #example: insert "an" into "antoher"
         tree1.children[key2] = tree2
         return tree1
     t = Patricia()
@@ -1490,56 +1371,6 @@ def branch(key1, tree1, key2, tree2):
     t.children[key2] = tree2
     return t
 \end{lstlisting}
-
-Function lcp check every characters of two strings are same one by one
-till it met a different one or either of the string finished.
-
-In order to test the insertion program, some helper functions are
-provided.
-
-\begin{lstlisting}
-def to_string(t):
-    return trie_to_str(t)
-
-def list_to_patricia(l):
-    return from_list(l, insert)
-
-def map_to_patricia(m):
-    return from_map(m, insert)
-\end{lstlisting}
-
-We can reuse the trie\_to\_str since their implementation are same.
-to\_string function can turn a Patricia tree into string by traversing it
-in pre-order. list\_to\_patricia helps to convert a list of object into
-a Patricia tree by repeatedly insert every elements into the tree. While
-map\_to\_string does similar thing except it can convert a list of key-value
-pairs into a Patricia tree.
-
-Then we can test the insertion program with below test cases.
-
-\begin{lstlisting}
-class PatriciaTest:
-    #...
-    def test_insert(self):
-        print "test insert"
-        t = list_to_patricia(["a", "an", "another", "b", "bob", "bool", "home"])
-        print to_string(t)
-        t = list_to_patricia(["romane", "romanus", "romulus"])
-        print to_string(t)
-        t = map_to_patricia({"001":'y', "100":'x', "101":'z'})
-        print to_string(t)
-        t = list_to_patricia(["home", "bool", "bob", "b", "another", "an", "a"]);
-        print to_string(t)
-\end{lstlisting}
-
-These test cases will output a series of result like this.
-
-\begin{verbatim}
-(, (a, (an, (another))), (b, (bo, (bob), (bool))), (home))
-(, (rom, (roman, (romane), (romanus)), (romulus)))
-(, (001:y), (10, (100:x), (101:z)))
-(, (a, (an, (another))), (b, (bo, (bob), (bool))), (home))
-\end{verbatim}
 
 \subsubsection{Recursive insertion algorithm for alphabetic Patricia}
 

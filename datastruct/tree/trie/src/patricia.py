@@ -28,10 +28,9 @@ class Patricia:
 # longest common prefix
 # returns (p, s1', s2'), where p is lcp, s1'=s1-p, s2'=s2-p
 def lcp(s1, s2):
-    j=0
-    while j<=len(s1) and j<=len(s2) and s1[0:j]==s2[0:j]:
-        j+=1
-    j-=1
+    j = 0
+    while j < len(s1) and j < len(s2) and s1[j] == s2[j]:
+        j += 1
     return (s1[0:j], s1[j:], s2[j:])
 
 def branch(key1, tree1, key2, tree2):
@@ -47,15 +46,14 @@ def branch(key1, tree1, key2, tree2):
 def insert(t, key, value = None):
     if t is None:
         t = Patricia()
-
     node = t
-    while(True):
+    while True:
         match = False
         for k, tr in node.children.items():
             if key == k: # just overwrite
                 node.value = value
                 return t
-            (prefix, k1, k2)=lcp(key, k)
+            (prefix, k1, k2) = lcp(key, k)
             if prefix != "":
                 match = True
                 if k2 == "":
