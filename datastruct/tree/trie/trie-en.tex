@@ -1558,51 +1558,38 @@ def lookup(t, key):
             return None
 \end{lstlisting}
 
-To implement the look up recursively, we just look up among the children
-of the Patricia tree.
+This algorithm can also be realized recursively. For Patricia in form
+$T = (v, C)$, it calls another function to find among the children $C$.
 
-\begin{algorithmic}[1]
-\Function{PATRICIA-LOOK-UP'}{$T, key$}
-  \If{$T = NIL$}
-    \State \Return $NIL$
-  \Else
-    \State \Return $FIND-IN-CHILDREN(CHILDREN(T), key)$
-  \EndIf
-\EndFunction
-\end{algorithmic}
+\be
+lookup(T, k) = find(C, k)
+\ee
 
-The real recursion happens in FIND-IN-CHILDREN call, we pass the
-children list as an argument. If it is not empty, we take first child,
-and check if the prefix of this child is equal to the key; the value
-of this child will be returned if they are same; if the prefix of the
-child is just a prefix of the key, we recursively find in this child
-with updated key.
+If $C$ is empty, the looking up fails; Otherwise, For $C = \{(k_1, T_1), (k_2, T_2), ..., (k_n, T_n)\}$, we firstly examine if $k$ is the prefix of $k_1$, if not the
+recursively check the rest paris denoted as $C'$.
 
-\begin{algorithmic}[1]
-\Function{FIND-IN-CHILDREN}{$l, key$}
-  \If{$l = NIL$}
-    \State \Return $NIL$
-  \ElsIf{$KEY(FIRST(l)) = key$}
-    \State \Return $VALUE(FIRST(l))$
-  \ElsIf{$KEY(FIRST(l))$ is prefix of $key$}
-    \State $key \leftarrow key$ subtract $KEY(FIRST(l))$
-    \State \Return $PATRICIA-LOOK-UP'(FIRST(l), key)$
-  \Else
-    \State \Return $FIND-IN-CHILDREN(REST(l), key)$
-  \EndIf
-\EndFunction
-\end{algorithmic}
+\be
+find(C, k) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & C = \Phi \\
+  v_{T_1} & k = k_1 \\
+  lookup(T_1, k - k_1) & k_1 \sqsubset k \\
+  find(C', k) & otherwise
+  \end{array}
+\right.
+\ee
 
-\subsubsection*{Look up in alphabetic Patrica Tree in Haskell}
-In Haskell implementation, the above algorithm should be turned
-into recursive way.
+Where $A \sqsubset B$ means string $A$ is prefix of $B$. $find$ mutually
+calls $lookup$ if some child is bound to a string which is prefix of
+the key.
+
+Below Haskell example program implements the looking up algorithm.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
--- lookup
 import qualified Data.List
 
-find :: Patricia a -> Key -> Maybe a
 find t k = find' (children t) k where
     find' [] _ = Nothing
     find' (p:ps) k
@@ -1612,87 +1599,6 @@ find t k = find' (children t) k where
     diff k1 k2 = drop (length (lcp k1 k2)) k2
 \end{lstlisting}
 
-When we search a given key in a Patricia tree, we recursively check each
-of the child. If there are no children at all, we stop the recursion and
-indicate a look up failure. In other case, we pick the prefix-node pair
-one by one. If the prefix is as same as the given key, it means the target
-node is found and the value of the node is returned. If the key has common
-prefix with the child, the key will be updated by removing the longest
-common prefix and we performs looking up recursively.
-
-We can verify the above Haskell program with the following simple cases.
-
-\begin{lstlisting}
-testPatricia = "t1=" ++ (toString t1) ++ "\n" ++
-               "find t1 another =" ++ (show (find t1 "another")) ++ "\n" ++
-               "find t1 bo = " ++ (show (find t1 "bo")) ++ "\n" ++
-               "find t1 boy = " ++ (show (find t1 "boy")) ++ "\n" ++
-               "find t1 boolean = " ++ (show (find t1 "boolean"))
-    where
-      t1 = fromList [("a", 1), ("an", 2), ("another", 7), ("boy", 3),
-           ("bool", 4), ("zoo", 3)]
-
-main = do
-  putStrLn testPatricia
-\end{lstlisting}
-
-The output is as below.
-
-\begin{verbatim}
-t1=(, (a:1, (an:2, (another:7))), (bo, (bool:4), (boy:3)), (zoo:3))
-find t1 another =Just 7
-find t1 bo = Nothing
-find t1 boy = Just 3
-find t1 boolean = Nothing
-\end{verbatim}
-
-
-\subsubsection*{Look up in alphabetic Patricia Tree in Scheme/Lisp}
-
-The Scheme/Lisp program is given as the following. The function
-delegate the looking up to an inner function which will check each
-child to see if the key binding to the child match the string we are
-looking for.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (lookup t k)
-  (define (find lst k) ;; lst, [(k patricia)]
-    (if (null? lst) '()
-	(cond ((string=? (key (car lst)) k) (value (tree (car lst))))
-	      ((string-prefix? (key (car lst)) k)
-	       (lookup (tree (car lst))
-		     (string-tail k (string-length (key (car lst))))))
-	      (else (find (cdr lst) k)))))
-  (find (children t) k))
-\end{lstlisting}
-
-In order to verify this program, some simple test cases are given to
-search in the Patricia we created in previous section.
-
-\begin{lstlisting}
-(define (test-patricia)
-  (define t (list->trie (list '("a" 1) '("an" 2) '("another" 7)
-                        '("boy" 3) '("bool" 4) '("zoo" 3))))
-  (display (trie->string t)) (newline)
-  (display "lookup another: ") (display (lookup t "another")) (newline)
-  (display "lookup bo: ") (display (lookup t "bo")) (newline)
-  (display "lookup boy: ") (display (lookup t "boy")) (newline)
-  (display "lookup by: ") (display (lookup t "by")) (newline)
-  (display "lookup boolean: ") (display (lookup t "boolean")) (newline))
-\end{lstlisting}
-
-This program will output the same result as the Haskell one.
-
-\begin{lstlisting}
-(test-patricia)
-(., (a1, (an2, (another7))), (bo., (bool4), (boy3)), (zoo3))
-lookup another: 7
-lookup bo: ()
-lookup boy: 3
-lookup by: ()
-lookup boolean: ()
-\end{lstlisting}
 
 % ================================================================
 %                 Trie and Patrica used in Industry
