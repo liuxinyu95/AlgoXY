@@ -1502,109 +1502,48 @@ lcp (x:xs) (y:ys) = if x == y then x:(lcp xs ys) else []
 %                 Look up in Alphabetic Patrica Tree
 % ================================================================
 \subsection{Look up}
-Different with Trie, we can't take each character from the key to look up.
-We need check each child to see if it is a prefix of the key to be found.
-If there is such a child, we then remove the prefix from
-the key, and search this updated key in that child. if we can't find any
-children as a prefix of the key, it means the looking up failed.
 
-\subsubsection{Iterative look up algorithm for alphabetic Patricia tree}
+When look up a key, we can't examine the characters one by one
+as in trie. Start from the root, we need search among the children
+to see if any one is bound to a prefix of the key.
+If there is such a child, we update the key by removing the prefix
+part, and recursively look up the updated key in this child.
+If there aren't any children bound to any prefix of the key,
+the looking up fails.
 
-This algorithm can be described in pseudo code as below.
 \begin{algorithmic}[1]
-\Function{PATRICIA-LOOK-UP}{$T, key$}
-  \If{$T = NIL$}
-     \State \Return $NIL$ \EndIf
-
+\Function{Look-Up}{$T, k$}
+  \If{$T = $ NIL}
+     \State \Return not found
+   \EndIf
   \Repeat
-    \State $match \leftarrow FALSE$
-    \For{each $i$ in $CHILDREN(T)$}
-      \If{$key = KEY(i)$}
-        \State \Return $VALUE(TREE(i))$
+    \State $match \gets$ FALSE
+    \For{$\forall (k_i, T_i) \in $ \Call{Children}{$T$}}
+      \If{$k = k_i$}
+        \State \Return \Call{Data}{$T_i$}
       \EndIf
-      \If{$KEY(i)$ IS-PREFIX-OF $key$}
-        \State $match \leftarrow TRUE$
-        \State $key \leftarrow key$ subtract $KEY(i)$
-        \State $T \leftarrow TREE(i)$
+      \If{$k_i$ is prefix of $k$}
+        \State $match \gets$ TRUE
+        \State $k \gets k - k_i$
+        \State $T \gets T_i$
         \State break
       \EndIf
     \EndFor
-  \Until{$match = FALSE$}
-  \State \Return $NIL$
+  \Until{$\lnot match$}
+  \State \Return not found
 \EndFunction
 \end{algorithmic}
 
-\subsubsection*{Look up in alphabetic Patrica Tree in C++}
-In C++, we abstract the key type as a template parameter. By refer to
-the KeyType defined in Patricia, we can get the support of implicitly
-type conversion. If we can't find the key in a Patricia tree, the
-below program returns default value of data type. One alternative is
-to throw exception.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<class K, class V>
-V lookup(Patricia<K, V>* t, typename Patricia<K, V>::KeyType key){
-  typedef typename Patricia<K, V>::Children::iterator Iterator;
-  if(!t)
-    return V(); //or throw exception
-  for(;;){
-    bool match(false);
-    for(Iterator it=t->children.begin(); it!=t->children.end(); ++it){
-      K k = it->first;
-      if(key == k)
-        return it->second->value;
-      K prefix = lcp(key, k);
-      if((!prefix.empty()) && k.empty()){
-        match = true;
-        t = it->second;
-        break;
-      }
-    }
-    if(!match)
-      return V(); //or throw exception
-  }
-}
-\end{lstlisting}
-
-To verify the look up program, we test it with the following simple
-test cases.
-
-\begin{lstlisting}
-Patricia<std::string, int>* t(0);
-const char* keys[] = {"a", "an", "another", "boy", "bool", "home"};
-const int vals[] = {1, 2, 7, 3, 4, 4};
-for(unsigned int i=0; i<sizeof(keys)/sizeof(char*); ++i)
-  t = insert(t, keys[i], vals[i]);
-std::cout<<"\nlookup another: "<<lookup(t, "another")
-         <<"\nlookup boo: "<<lookup(t, "boo")
-         <<"\nlookup boy: "<<lookup(t, "boy")
-         <<"\nlookup by: "<<lookup(t, "by")
-         <<"\nlookup boolean: "<<lookup(t, "boolean")<<"\n";
-delete t;
-\end{lstlisting}
-
-This program will output the the result like below.
-
-\begin{verbatim}
-lookup another: 7
-lookup boo: 0
-lookup boy: 3
-lookup by: 0
-lookup boolean: 0
-\end{verbatim}
-
-\subsubsection*{Look up in alphabetic Patricia Tree in Python}
-The implementation of looking up in Python is similar to the pseudo code.
-Because Python don't support repeat-until loop directly, a while loop is
-used instead.
+Below Python example program implements the looking up algorithm.
+It reuses the \texttt{lcp(s1, s2)} function
+defined previously to test if a string is the prefix of the other.
 
 \lstset{language=Python}
 \begin{lstlisting}
 def lookup(t, key):
     if t is None:
         return None
-    while(True):
+    while True:
         match = False
         for k, tr in t.children.items():
             if k == key:
@@ -1618,32 +1557,6 @@ def lookup(t, key):
         if not match:
             return None
 \end{lstlisting}
-
-We can verify the looking up program as below.
-
-\begin{lstlisting}
-class PatriciaTest:
-    # ...
-    def test_lookup(self):
-        t = map_to_patricia({"a":1, "an":2, "another":7, "b":1, "bob":3, \
-                            "bool":4, "home":4})
-        print "search t another", lookup(t, "another")
-        print "search t boo", lookup(t, "boo")
-        print "search t bob", lookup(t, "bob")
-        print "search t boolean", lookup(t, "boolean")
-\end{lstlisting}
-
-The test result output in console is like the following.
-
-\begin{verbatim}
-search t another 7
-search t boo None
-search t bob 3
-search t boolean None
-\end{verbatim}
-
-\subsubsection{Recursive look up algorithm for alphabetic Patricia
-tree}
 
 To implement the look up recursively, we just look up among the children
 of the Patricia tree.

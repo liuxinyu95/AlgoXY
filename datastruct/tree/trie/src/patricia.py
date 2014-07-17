@@ -73,7 +73,7 @@ def insert(t, key, value = None):
 def lookup(t, key):
     if t is None:
         return None
-    while(True):
+    while True:
         match = False
         for k, tr in t.children.items():
             if k == key:
