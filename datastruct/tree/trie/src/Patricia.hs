@@ -34,28 +34,25 @@ leaf x = Patricia (Just x) []
 insert :: Patricia a -> Key -> a -> Patricia a
 insert t k x = Patricia (value t) (ins (children t) k x) where
     ins []     k x = [(k, Patricia (Just x) [])]
-    ins (p:ps) k x 
-        | (fst p) == k 
+    ins (p:ps) k x
+        | (fst p) == k
             = (k, Patricia (Just x) (children (snd p))):ps --overwrite
-        | match (fst p) k 
+        | match (fst p) k
             = (branch k x (fst p) (snd p)):ps
-        | otherwise 
+        | otherwise
             = p:(ins ps k x)
 
-match :: Key -> Key -> Bool
-match [] _ = False
-match _ [] = False
-match x y = head x == head y
+match x y = x /= [] && y /= [] && head x == head y
 
 branch :: Key -> a -> Key -> Patricia a -> (Key, Patricia a)
-branch k1 x k2 t2 
-    | k1 == k 
-        -- ex: insert "an" into "another" 
+branch k1 x k2 t2
+    | k1 == k
+        -- ex: insert "an" into "another"
         = (k, Patricia (Just x) [(k2', t2)])
-    | k2 == k 
+    | k2 == k
         -- ex: insert "another" into "an"
         = (k, insert t2 k1' x)
-    | otherwise = (k, Patricia Nothing [(k1', leaf x), (k2', t2)]) 
+    | otherwise = (k, Patricia Nothing [(k1', leaf x), (k2', t2)])
    where
       k = lcp k1 k2
       k1' = drop (length k) k1
@@ -105,4 +102,3 @@ testPatricia = "t1=" ++ (toString t1) ++ "\n" ++
     where
       t1 = fromList [("a", 1), ("an", 2), ("another", 7), ("boy", 3), ("bool", 4), ("zoo", 3)]
       t2 = fromList [("zoo", 3), ("bool", 4), ("boy", 3), ("another", 7), ("an", 2), ("a", 1)]
-
