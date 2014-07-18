@@ -1869,8 +1869,8 @@ keys than PC. Figure \ref{fig:itut-keypad} shows one example.
   \label{fig:itut-keypad}
 \end{figure}
 
-There are typical 2 methods to input an English word/phrase with ITU-T key pad.
-For instance, if user wants to enter a word ``home'', He can press the key
+There are typical two methods to input English word or phrases with ITU-T key pad.
+For instance, if user wants to enter a word `home', He can press the key
 in below sequence.
 
 \begin{itemize}
@@ -1880,91 +1880,79 @@ in below sequence.
 \item Press key '3' twice to enter the letter 'e';
 \end{itemize}
 
-Another high efficient way is to simplify the key press sequence like the
-following.
+Another much quicker way is to just press the following keys.
 
 \begin{itemize}
-\item Press key '4', '6', '6', '3', word ``home'' appears on top of the candidate list;
-\item Press key '*' to change a candidate word, so word ``good'' appears;
-\item Press key '*' again to change another candidate word, next word ``gone'' appears;
+\item Press key '4', '6', '6', '3', word `home' appears on top of the candidate list;
+\item Press key '*' to change a candidate word, so word `good' appears;
+\item Press key '*' again to change another candidate word, next word `gone' appears;
 \item ...
 \end{itemize}
 
-Compare these 2 method, we can see method 2 is much easier for the end user, and
-it is operation efficient. The only overhead is to store a candidate words dictionary.
+Compare these two methods, we can see the second one is much easier for the end user.
+The only overhead is to store a dictionary of candidate words.
 
-Method 2 is called as T9 input method, or predictive input method
+Method 2 is called as `T9' input method, or predictive input method
 \cite{wiki-t9}, \cite {wiki-predictive-text}. The abbreviation 'T9' stands
-for 'textonym'. In this section, I'll show an example implementation of T9
-by using Trie and Patricia.
+for 'textonym'. It start with 'T' with 9 characters. T9 input can also be
+realized with trie or Patricia.
 
 In order to provide candidate words to user, a dictionary must be prepared
-in advance. Trie or Patricia can be used to store the Dictionary. In the real
-commercial software, complex indexing dictionary is used. We show the very
-simple Trie and Patricia only for illustration purpose.
+in advance. Trie or Patricia can be used to store the dictionary. The
+commercial T9 implementations typically use complex indexing dictionary in
+both file system and cache. The realization shown here is for illustration
+purpose only.
 
-\subsubsection{Iterative algorithm of T9 looking up}
+Firsly, we need define the T9 mapping, which maps from digit to candidate
+characers.
 
-Below pseudo code shows how to realize T9 with Trie.
+\be
+\begin{array}{ll}
+M_{T9} = \{ & 2 \rightarrow 'abc', 3 \rightarrow 'def', 4 \rightarrow 'ghi', \\
+           & 5 \rightarrow 'jkl', 6 \rightarrow 'mno', 7 \rightarrow 'pqrs', \\
+           & 8 \rightarrow 'tuv', 9 \rightarrow 'wxyz' \}
+\end{array}
+\ee
+
+With this mapping, $M_{T9}[i]$ returns the corresponding characters for digit $i$.
+
+Suppose user input digits $K = k_1k_2...k_n$, If $K$ isn't empty, denote the
+rest digits except for $k_1$ as $K'$,
+below pseudo code shows how to realize T9 with trie.
 
 \begin{algorithmic}[1]
-\Function{TRIE-LOOK-UP-T9}{$T, key$}
-  \State $PUSH-BACK(Q, NIL, key, T)$
-  \State $r \leftarrow NIL$
-  \While{$Q$ is not empty}
-    \State $p, k, t \leftarrow POP-FRONT(Q)$
-    \State $i \leftarrow FIRST-LETTER(k)$
-    \For{each $c$ in $T9-MAPPING(i)$}
-      \If{$c$ is in $CHILDREN(t)$}
-        \State $k' \leftarrow k$ subtract $i$
-        \If{$k'$ is empty}
-          \State $APPEND(r, p+c)$
+\Function{Look-Up-T9}{$T, K$}
+  \State $Q \gets \{(\Phi, K, T)\}$
+  \State $R \gets \Phi$
+  \While{$Q \neq \Phi$}
+    \State $(prefix, K, T) \gets$ \Call{Pop}{$Q$}
+    \For{each $c$ in $M_{T9}[k_1]$}
+      \If{$c \in $ \Call{Children}{$T$}}
+        \If{$K' = \Phi$}
+          \State $R \gets R \cup \{prefix + c\}$
         \Else
-          \State $PUSH-BACK(Q, p+c, k', CHILDREN(t)[c])$
+          \State \textproc{Push}($Q, prefix + c, K', $ \Call{Children}{$t$})$[c]$)
         \EndIf
       \EndIf
     \EndFor
   \EndWhile
-  \State \Return $r$
+  \State \Return $R$
 \EndFunction
 \end{algorithmic}
 
-This is actually a bread-first search program. It utilizes a queue to store
-the current node and key string we are examining. The algorithm takes the first
-digit from the key, looks up it in T9 mapping to get all English letters
-corresponding to this digit. For each letter, if it can be found in the children
-of current node, the node along with the English string found so far are
-push back to the queue. In case all digits are examined, a candidate is found.
-We'll append this candidate to the result list. The loop will terminate when
-the queue is empty.
+Where $prefix + c$ means appending character $c$ to the end of string $prefix$.
+Again, this algorithm performs BFS search with a queue $Q$. The queue is
+intialized with a tuple $(prefix, K, T)$, containing empty prefix, the digit sequence to be
+searched, and the trie. It keeps picking the tuple from the queue as far as
+it isn't empty. Then get the candidate characters from the first digit to
+be processed via the T9 map. For each character $c$, if there is a sub-tree
+bound to it, we created a new tuple, update the prefix by appending $c$,
+using the rest of digits to update $K$, and use that sub-tree. This new tuple
+is pushed back to the queue for further searching. If all the digits are
+processed, it means a candidate word is found. We put this word to the
+result list $R$.
 
-Since Trie is not space effective, minor modification of the above program can
-work with Patricia, which can help to save extra spaces.
-
-\begin{algorithmic}[1]
-\Function{PATRICIA-LOOK-UP-T9}{$T, key$}
-  \State $PUSH-BACK(Q, NIL, key, T)$
-  \State $r \leftarrow NIL$
-  \While{$Q$ is not empty}
-    \State $p, k, t \leftarrow POP-FRONT(Q)$
-    \For{each $child$ in $CHILDREN(t)$}
-      \State $k' \leftarrow CONVERT-T9(KEY(child))$
-      \If{$k'$ IS-PREFIX-OF $k$}
-        \If{$k' = k$}
-          \State $APPEND(r, p+KEY(child))$
-        \Else
-          \State $PUSH-BACK(Q, p+KEY(child), k-k', child)$
-        \EndIf
-      \EndIf
-    \EndFor
-  \EndWhile
-  \State \Return $r$
-\EndFunction
-\end{algorithmic}
-
-\subsubsection*{T9 implementation in Python}
-
-In Python implementation, T9 looking up is realized in a typical bread-first search algorithm as the following.
+The following example program in Python implements this T9 search with trie.
 
 \lstset{language=Python}
 \begin{lstlisting}
@@ -1990,47 +1978,56 @@ def trie_lookup_t9(t, key):
     return res
 \end{lstlisting}
 
-Function trie\_lookup\_t9 check if the parameters are valid first. Then
-it push the initial data into a queue. The program repeatedly pop the item
-from the queue, including what node it will examine next, the number sequence
-string, and the alphabetic string it has been searched.
+Because trie is not space effective, we can modify the above algorithm with
+Patricia solution. As far as the queue isn't empty, the algorithm pops the
+tuple. This time, we examine all the prefix-sub tree pairs. For every pair
+$(k_i, T_i)$, we convert the alphabetic prefix $k_i$ back to digits sequence $D$
+by looking up the T9 map. If $D$ exactly matches the digits of what user input,
+we find a candidate word; otherwise if the digit sequence is prefix of what user inputs,
+the program creats a new tuple, updates the prefix, the digits to be processed,
+and the sub-tree. Then put the tuple back to the queue for further search.
 
-For each popped item, the program takes the next digit from the number
-sequence, and looks up in T9 map to find the corresponding English letters.
-With all these letters, if they can be found in the children of the current
-node, we'll push this child along with the updated number sequence string
-and updated alphabetic string into the queue. In case we process all
-numbers, we find a candidate result.
+\begin{algorithmic}[1]
+\Function{Look-Up-T9}{$T, K$}
+  \State $Q \gets \{(\Phi, K, T)\}$
+  \State $R \gets \Phi$
+  \While{$Q \neq \Phi$}
+    \State $(prefix, K, T) \gets$ \Call{Pop}{$Q$}
+    \For{each $(k_i, T_i) \in $ \Call{Children}{$T$}}
+      \State $D \gets$ \Call{Convert-T9}{$k_i$}
+      \If{$D \sqsubset K$} \Comment{$D$ is prefix of $K$}
+        \If{$D = K$}
+          \State $R \gets R \cup \{prefix + k_i\}$
+        \Else
+          \State \textproc{Push}($Q, prefix + k_i, K - D, T_i$)
+        \EndIf
+      \EndIf
+    \EndFor
+  \EndWhile
+  \State \Return $R$
+\EndFunction
+\end{algorithmic}
 
-We can verify the above program with the following test cases.
+Function \textproc{Convert-T9}($K$) converts each character in $K$ back to digit.
 
-\begin{lstlisting}
-class LookupTest:
-    def __init__(self):
-        t9dict = ["home", "good", "gone", "hood", "a", "another", "an"]
-        self.t9t = trie.list_to_trie(t9dict)
+\begin{algorithmic}[1]
+\Function{Convert-T9}{$K$}
+  \State $D \gets \Phi$
+  \For{each $c \in K$}
+     \For{each $(d \rightarrow S) \in M_{T9}$}
+       \If{$c \in S$}
+         \State $D \gets D \cup \{d\}$
+         \State break
+       \EndIf
+     \EndFor
+  \EndFor
+  \State \Return $D$
+\EndFunction
+\end{algorithmic}
 
-    def test_trie_t9(self):
-        print "search 4 ", trie_lookup_t9(self.t9t, "4")
-        print "search 46 ", trie_lookup_t9(self.t9t, "46")
-        print "search 4663 ", trie_lookup_t9(self.t9t, "4663")
-        print "search 2 ", trie_lookup_t9(self.t9t, "2")
-        print "search 22 ", trie_lookup_t9(self.t9t, "22")
-\end{lstlisting}
+The following example Python program implements the T9 input method with Patricia.
 
-If we run the test, it will output a very same result as the above Haskell
-program.
-
-\begin{verbatim}
-search 4  [('g', None), ('h', None)]
-search 46  [('go', None), ('ho', None)]
-search 4663  [('gone', None), ('good', None), ('home', None), ('hood', None)]
-search 2  [('a', None)]
-search 22  []
-\end{verbatim}
-
-To save the spaces, Patricia can be used instead of Trie.
-
+\lstset{language=Python}
 \begin{lstlisting}
 def patricia_lookup_t9(t, key):
     if t is None or key == "":
@@ -2048,242 +2045,6 @@ def patricia_lookup_t9(t, key):
                     q.append((prefix+k, key[len(k):], tr))
     return res
 \end{lstlisting}
-
-Compare to the implementation with Trie, they are very similar. We also
-used a bread-first search approach. The different part is that we convert
-the string of each child to number sequence string according to T9 mapping.
-if it is prefix of the key we are looking for, we push this child along with
-updated key and prefix. In case we examined all digits, we find a candidate
-result.
-
-The convert function is a reverse mapping process as below.
-\begin{lstlisting}
-def toT9(s):
-    res=""
-    for c in s:
-        for k, v in T9MAP.items():
-            if string.find(v, c)>=0:
-                res+=k
-                break
-        #error handling skipped.
-    return res
-\end{lstlisting}
-
-For illustration purpose, the error handling for invalid letters is skipped.
-If we feed the program with the same test cases, we can get a result as the
-following.
-
-\begin{verbatim}
-search 4  []
-search 46  [('go', None), ('ho', None)]
-search 466  []
-search 4663  [('good', None), ('gone', None), ('home', None), ('hood', None)]
-search 2  [('a', None)]
-search 22  []
-\end{verbatim}
-
-The result is slightly different from the one output by Trie. The reason is
-as same as what we analyzed in Haskell implementation. It is easily to modify
-the program to output a similar result.
-
-\subsubsection*{T9 implemented in C++}
-
-First we define T9 mapping as a Singleton object, this is because we
-want to it can be used both in Trie look up and Patricia look up programs.
-
-\lstset{language=C++}
-\begin{lstlisting}
-struct t9map{
-  typedef std::map<char, std::string> Map;
-  Map map;
-
-  t9map(){
-    map['2']="abc";
-    map['3']="def";
-    map['4']="ghi";
-    map['5']="jkl";
-    map['6']="mno";
-    map['7']="pqrs";
-    map['8']="tuv";
-    map['9']="wxyz";
-  }
-
-  static t9map& inst(){
-    static t9map i;
-    return i;
-  }
-};
-\end{lstlisting}
-
-Note in other languages or keypad layout, we can define different
-mappings and pass them as an argument to the looking up function.
-
-With this mapping, the looking up in Trie can be given as
-below. Although we want to keep the genericity of the program, for
-illustration purpose, we just simply use the t9 mapping directly.
-
-In order to keep the code as short as possible, a boost library tool,
-boost::tuple is used. For more about boost::tuple, please refer to \cite{boost-book}.
-
-\begin{lstlisting}
-template<class K, class V>
-std::list<std::pair<K, V> > lookup_t9(Trie<K, V>* t,
-				      typename Trie<K, V>::KeyType key)
-{
-  typedef std::list<std::pair<K, V> > Result;
-  typedef typename Trie<K, V>::KeyType Key;
-  typedef typename Trie<K, V>::Char Char;
-
-  if((!t) || key.empty())
-    return Result();
-
-  Key prefix;
-  std::map<Char, Key> m = t9map::inst().map;
-  std::queue<boost::tuple<Key, Key, Trie<K, V>*> > q;
-  q.push(boost::make_tuple(prefix, key, t));
-  Result res;
-  while(!q.empty()){
-    boost::tie(prefix, key, t) = q.front();
-    q.pop();
-    Char c = *key.begin();
-    key = Key(key.begin()+1, key.end());
-    if(m.find(c) == m.end())
-      return Result();
-    Key cs = m[c];
-    for(typename Key::iterator it=cs.begin(); it!=cs.end(); ++it)
-      if(t->children.find(*it)!=t->children.end()){
-	if(key.empty())
-	  res.push_back(std::make_pair(prefix+*it, t->children[*it]->value));
-	else
-	  q.push(boost::make_tuple(prefix+*it, key, t->children[*it]));
-      }
-  }
-  return res;
-}
-\end{lstlisting}
-
-This program will first check if the Patricia tree or the key are
-empty to deal with with trivial case. It next initialize a queue, and
-push one tuple to it. the tuple contains 3 elements, a prefix to
-represent a string the program has been searched, current key it need
-look up, and a node it will examine.
-
-Then the program repeatedly pops the tuple from the queue, takes the
-first character from the key, and looks up in T9 map to get a
-candidate English letter list. With each letter in this list, the
-program examine if it exists in the children of current node. In case
-it find such a child, if there is no left letter to look up, it means
-we found a candidate result, we push it to the result list. Else, we
-create a new tuple with updated prefix, key and this child; the push
-it to the queue for later process.
-
-Below are some simple test cases for verification.
-
-\begin{lstlisting}
-Trie<std::string, std::string>* t9trie(0);
-const char* t9dict[] = {"home", "good", "gone", "hood", "a", "another", "an"};
-t9trie = list_to_trie(t9dict, t9dict+sizeof(t9dict)/sizeof(char*), t9trie);
-std::cout<<"test t9 lookup in Trie\n"
-         <<"search 4 "<<lop_to_str(lookup_t9(t9trie, "4"))<<"\n"
-	 <<"serach 46 "<<lop_to_str(lookup_t9(t9trie, "46"))<<"\n"
-	 <<"serach 4663 "<<lop_to_str(lookup_t9(t9trie, "4663"))<<"\n"
-	 <<"serach 2 "<<lop_to_str(lookup_t9(t9trie, "2"))<<"\n"
-	 <<"serach 22 "<<lop_to_str(lookup_t9(t9trie, "22"))<<"\n\n";
-delete t9trie;
-\end{lstlisting}
-
-It will output the same result as the Python program.
-
-\begin{verbatim}
-test t9 lookup in Trie
-search 4 [(g, ), (h, ), ]
-serach 46 [(go, ), (ho, ), ]
-serach 4663 [(gone, ), (good, ), (home, ), (hood, ), ]
-serach 2 [(a, ), ]
-serach 22 []
-\end{verbatim}
-
-In order to save space, a looking up program for Patricia is also
-provided.
-
-\begin{lstlisting}
-template<class K, class V>
-std::list<std::pair<K, V> > lookup_t9(Patricia<K, V>* t,
-				      typename Patricia<K, V>::KeyType key)
-{
-  typedef std::list<std::pair<K, V> > Result;
-  typedef typename Patricia<K, V>::KeyType Key;
-  typedef typename Key::value_type Char;
-  typedef typename Patricia<K, V>::Children::iterator Iterator;
-
-  if((!t) || key.empty())
-    return Result();
-
-  Key prefix;
-  std::map<Char, Key> m = t9map::inst().map;
-  std::queue<boost::tuple<Key, Key, Patricia<K, V>*> > q;
-  q.push(boost::make_tuple(prefix, key, t));
-  Result res;
-  while(!q.empty()){
-    boost::tie(prefix, key, t) = q.front();
-    q.pop();
-    for(Iterator it=t->children.begin(); it!=t->children.end(); ++it){
-      Key digits = t9map::inst().toT9(it->first);
-      if(is_prefix_of(digits, key)){
-	if(digits == key)
-	  res.push_back(std::make_pair(prefix+it->first, it->second->value));
-	else{
-	  key =Key(key.begin()+it->first.size(), key.end());
-	  q.push(boost::make_tuple(prefix+it->first, key, it->second));
-	}
-      }
-    }
-  }
-  return res;
-}
-\end{lstlisting}
-
-The program is similar to the one with Trie very much. This is a
-typical bread-first search approach. Note that we added a member
-function to\_t9() to convert a English word/phrase back to digit
-number string. This member function is implemented as the following.
-
-\begin{lstlisting}
-struct t9map{
-  //...
-  std::string to_t9(std::string s){
-    std::string res;
-    for(std::string::iterator c=s.begin(); c!=s.end(); ++c){
-      for(Map::iterator m=map.begin(); m!=map.end(); ++m){
-	std::string val = m->second;
-	if(std::find(val.begin(), val.end(), *c)!=val.end()){
-	  res.push_back(m->first);
-	  break;
-	}
-      }
-    } // skip error handling.
-    return res;
-  }
-\end{lstlisting}
-
-The error handling for invalid letters is omitted in order to keep the
-code short for easy understanding. We can use the very similar test
-cases as above except we need change the Trie to Patrica. It will
-output as below.
-
-\begin{verbatim}
-test t9 lookup in Patricia
-search 4 []
-serach 46 [(go, ), (ho, ), ]
-serach 466 []
-serach 4663 [(gone, ), (good, ), ]
-serach 2 [(a, ), ]
-serach 22 []
-\end{verbatim}
-
-The result is slightly different, please refer to the Haskell section
-for the reason of this difference. It is very easy to modify the
-program to output the very same result as Trie's one.
 
 \subsubsection{Recursive algorithm of T9 looking up}
 
@@ -2516,6 +2277,14 @@ find 22: ()
 Note the result is a bit different, the reason is described in Haskell
 section. It is easy to modify the program, so that Trie and Patricia
 approach give the very same result.
+
+\begin{Exercise}
+\begin{itemize}
+\item For the T9 input, compare the results of the algorithms realized with trie and Patricia,
+the sequences are different. Why does this happen? How to modify the algorithm so that they
+output the candidates with the same sequence?
+\end{itemize}
+\end{Exercise}
 
 % ================================================================
 %                 Short summary
