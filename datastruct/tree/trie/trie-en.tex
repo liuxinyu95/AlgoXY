@@ -2169,114 +2169,6 @@ but also check
 \begin{lstlisting}
     f (k, _) = s `Data.List.isPrefixOf` (toT9 k)
 \end{lstlisting}
-)
-
-\subsubsection*{T9 implemented in Scheme/Lisp}
-
-In Scheme/Lisp, T9 map is defined as a list of pairs.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define map-T9 (list '("2" "abc") '("3" "def") '("4" "ghi") '("5" "jkl")
-		     '("6" "mno") '("7" "pqrs") '("8" "tuv") '("9" "wxyz")))
-\end{lstlisting}
-
-The main searching function is implemented as the following.
-
-\begin{lstlisting}
-(define (find-T9 t k) ;; return [(key value)]
-  (define (accumulate-find lst child)
-    (append (map-string-append (key child) (find-T9 (tree child) (string-cdr k)))
-	    lst))
-  (define (lookup-child lst c) ;; lst, list of childen [(key tree)], c, char
-    (let ((res (find-matching-item map-T9 (lambda (x) (string=? c (car x))))))
-      (if (not res) '()
-	  (filter (lambda (x) (substring? (key x) (cadr res))) lst))))
-  (if (string-null? k) (list (cons k (value t)))
-      (fold-left accumulate-find '() (lookup-child (children t) (string-car k)))))
-\end{lstlisting}
-
-This function contains 2 inner functions. If the string is empty, the
-program returns a one element list. The element is a string value pair.
-For the none trivial case, the program will call inner function to
-find in each child and then put them together by using fold-left high
-order function.
-
-To test this T9 search function, a very simple dictionary is
-established by using Trie insertion. Then we test by calling find-T9
-function on several digits sequences.
-
-\begin{lstlisting}
-(define dict-T9 (list '("home" ()) '("good" ()) '("gone" ()) '("hood" ())
-		      '("a" ()) '("another" ()) '("an" ())))
-
-(define (test-trie-T9)
-  (define t (list->trie dict-T9))
-  (display "find 4: ") (display (find-T9 t "4")) (newline)
-  (display "find 46: ") (display (find-T9 t "46")) (newline)
-  (display "find 4663: ") (display (find-T9 t "4663")) (newline)
-  (display "find 2: ") (display (find-T9 t "2")) (newline)
-  (display "find 22: ") (display (find-T9 t "22")) (newline))
-\end{lstlisting}
-
-Evaluate this test function will output below result.
-
-\begin{verbatim}
-find 4: ((g) (h))
-find 46: ((go) (ho))
-find 4663: ((gone) (good) (hood) (home))
-find 2: ((a))
-find 22: ()
-\end{verbatim}
-
-In order to be more space effective, Patricia can be used to replace
-Trie. The search program modified as the following.
-
-\begin{lstlisting}
-(define (find-T9 t k)
-  (define (accumulate-find lst child)
-    (append (map-string-append (key child) (find-T9 (tree child) (string- k (key child))))
-	    lst))
-  (define (lookup-child lst k)
-    (filter (lambda (child) (string-prefix? (str->t9 (key child)) k)) lst))
-  (if (string-null? k) (list (cons "" (value t)))
-      (fold-left accumulate-find '() (lookup-child (children t) k))))
-\end{lstlisting}
-
-In this program a string helper function 'string-' is defined to get
-the different part of two strings. It is defined like below.
-
-\begin{lstlisting}
-(define (string- x y)
-  (string-tail x (string-length y)))
-\end{lstlisting}
-
-Another function is 'str->t9' it will convert a alphabetic string back
-to digit sequence base on T9 mapping.
-
-\begin{lstlisting}
-(define (str->t9 s)
-  (define (unmap-t9 c)
-    (car (find-matching-item map-T9 (lambda (x) (substring? c (cadr x))))))
-  (if (string-null? s) ""
-      (string-append (unmap-t9 (string-car s)) (str->t9 (string-cdr s)))))
-\end{lstlisting}
-
-We can feed the almost same test cases, and the result is output as
-the following.
-
-\begin{verbatim}
-find 4: ()
-find 46: ((go) (ho))
-find 466: ()
-find 4663: ((good) (gone) (home) (hood))
-find 2: ((a))
-find 22: ()
-\end{verbatim}
-
-Note the result is a bit different, the reason is described in Haskell
-section. It is easy to modify the program, so that Trie and Patricia
-approach give the very same result.
 
 \begin{Exercise}
 \begin{itemize}
@@ -2289,18 +2181,19 @@ output the candidates with the same sequence?
 % ================================================================
 %                 Short summary
 % ================================================================
-\section{Short summary}
+\section{Summary}
 
-In this post, we start from the Integer base trie and Patricia, the
-map data structure based on integer patricia plays an important role
-in Compiler implementation. Next, alphabetic Trie and Patricia are
-given, and I provide a example implementation to illustrate how to
-realize a predictive e-dictionary and a T9 input method. Although they
-are far from the real implementation in commercial software. They show
-a very simple approach of manipulating text. There are still some
-interesting problem can not be solved by Trie or Patrica directly, how
-ever, some other data structures such as suffix tree have close
-relationship with them. I'll note something about suffix tree in other post.
+In this chapter, we start from the integer base trie and Patricia. The
+map data structure based on integer Patricia plays an important role
+in Compiler implementation. Alphabetic trie and Patricia are
+natural extensions. They can be used to manipulate text infromation.
+As examples, predictive e-dictionary and a T9 input method are
+realized with trie or Patricia. Although these examples
+are different from the real implementation in commercial software.
+They show simple approaches to solve some problems. There are still some
+interesting problems can not be solved with trie or Patrica directly,
+however, Other data structures, such as suffix tree, have close
+relationship with them. Suffix tree is introduced in the next chatper.
 
 % ================================================================
 %                 Appendix
