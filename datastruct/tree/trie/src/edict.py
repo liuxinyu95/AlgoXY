@@ -48,7 +48,7 @@ def patricia_lookup(t, key, n):
     if t is None:
         return None
     prefix = ""
-    while(True):
+    while True:
         match = False
         for k, tr in t.children.items():
             if string.find(k, key) == 0: #is prefix of
@@ -64,7 +64,7 @@ def patricia_lookup(t, key, n):
 
 T9MAP={'2':"abc", '3':"def", '4':"ghi", '5':"jkl", \
        '6':"mno", '7':"pqrs", '8':"tuv", '9':"wxyz"}
-                
+
 def trie_lookup_t9(t, key):
     if t is None or key == "":
         return None
