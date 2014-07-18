@@ -1908,30 +1908,30 @@ characers.
 
 \be
 \begin{array}{ll}
-M_{T9} = \{ & 2 \rightarrow 'abc', 3 \rightarrow 'def', 4 \rightarrow 'ghi', \\
-           & 5 \rightarrow 'jkl', 6 \rightarrow 'mno', 7 \rightarrow 'pqrs', \\
-           & 8 \rightarrow 'tuv', 9 \rightarrow 'wxyz' \}
+M_{T9} = \{ & 2 \rightarrow abc, 3 \rightarrow def, 4 \rightarrow ghi, \\
+           & 5 \rightarrow jkl, 6 \rightarrow mno, 7 \rightarrow pqrs, \\
+           & 8 \rightarrow tuv, 9 \rightarrow wxyz \}
 \end{array}
 \ee
 
 With this mapping, $M_{T9}[i]$ returns the corresponding characters for digit $i$.
 
-Suppose user input digits $K = k_1k_2...k_n$, If $K$ isn't empty, denote the
-rest digits except for $k_1$ as $K'$,
+Suppose user input digits $D = d_1d_2...d_n$, If $D$ isn't empty, denote the
+rest digits except for $d_1$ as $D'$,
 below pseudo code shows how to realize T9 with trie.
 
 \begin{algorithmic}[1]
-\Function{Look-Up-T9}{$T, K$}
-  \State $Q \gets \{(\Phi, K, T)\}$
+\Function{Look-Up-T9}{$T, D$}
+  \State $Q \gets \{(\Phi, D, T)\}$
   \State $R \gets \Phi$
   \While{$Q \neq \Phi$}
-    \State $(prefix, K, T) \gets$ \Call{Pop}{$Q$}
-    \For{each $c$ in $M_{T9}[k_1]$}
+    \State $(prefix, D, T) \gets$ \Call{Pop}{$Q$}
+    \For{each $c$ in $M_{T9}[d_1]$}
       \If{$c \in $ \Call{Children}{$T$}}
-        \If{$K' = \Phi$}
+        \If{$D' = \Phi$}
           \State $R \gets R \cup \{prefix + c\}$
         \Else
-          \State \textproc{Push}($Q, prefix + c, K', $ \Call{Children}{$t$})$[c]$)
+          \State \textproc{Push}($Q, (prefix + c, D', $ \Call{Children}{$t$}$[c])$)
         \EndIf
       \EndIf
     \EndFor
@@ -1942,12 +1942,12 @@ below pseudo code shows how to realize T9 with trie.
 
 Where $prefix + c$ means appending character $c$ to the end of string $prefix$.
 Again, this algorithm performs BFS search with a queue $Q$. The queue is
-intialized with a tuple $(prefix, K, T)$, containing empty prefix, the digit sequence to be
+intialized with a tuple $(prefix, D, T)$, containing empty prefix, the digit sequence to be
 searched, and the trie. It keeps picking the tuple from the queue as far as
 it isn't empty. Then get the candidate characters from the first digit to
 be processed via the T9 map. For each character $c$, if there is a sub-tree
 bound to it, we created a new tuple, update the prefix by appending $c$,
-using the rest of digits to update $K$, and use that sub-tree. This new tuple
+using the rest of digits to update $D$, and use that sub-tree. This new tuple
 is pushed back to the queue for further searching. If all the digits are
 processed, it means a candidate word is found. We put this word to the
 result list $R$.
@@ -1981,25 +1981,25 @@ def trie_lookup_t9(t, key):
 Because trie is not space effective, we can modify the above algorithm with
 Patricia solution. As far as the queue isn't empty, the algorithm pops the
 tuple. This time, we examine all the prefix-sub tree pairs. For every pair
-$(k_i, T_i)$, we convert the alphabetic prefix $k_i$ back to digits sequence $D$
-by looking up the T9 map. If $D$ exactly matches the digits of what user input,
+$(k_i, T_i)$, we convert the alphabetic prefix $k_i$ back to digits sequence $D'$
+by looking up the T9 map. If $D'$ exactly matches the digits of what user input,
 we find a candidate word; otherwise if the digit sequence is prefix of what user inputs,
 the program creats a new tuple, updates the prefix, the digits to be processed,
 and the sub-tree. Then put the tuple back to the queue for further search.
 
 \begin{algorithmic}[1]
-\Function{Look-Up-T9}{$T, K$}
-  \State $Q \gets \{(\Phi, K, T)\}$
+\Function{Look-Up-T9}{$T, D$}
+  \State $Q \gets \{(\Phi, D, T)\}$
   \State $R \gets \Phi$
   \While{$Q \neq \Phi$}
-    \State $(prefix, K, T) \gets$ \Call{Pop}{$Q$}
+    \State $(prefix, D, T) \gets$ \Call{Pop}{$Q$}
     \For{each $(k_i, T_i) \in $ \Call{Children}{$T$}}
-      \State $D \gets$ \Call{Convert-T9}{$k_i$}
-      \If{$D \sqsubset K$} \Comment{$D$ is prefix of $K$}
-        \If{$D = K$}
+      \State $D' \gets$ \Call{Convert-T9}{$k_i$}
+      \If{$D' \sqsubset D$} \Comment{$D'$ is prefix of $D$}
+        \If{$D' = D$}
           \State $R \gets R \cup \{prefix + k_i\}$
         \Else
-          \State \textproc{Push}($Q, prefix + k_i, K - D, T_i$)
+          \State \textproc{Push}($Q, (prefix + k_i, D - D', T_i)$)
         \EndIf
       \EndIf
     \EndFor
@@ -2046,77 +2046,73 @@ def patricia_lookup_t9(t, key):
     return res
 \end{lstlisting}
 
-\subsubsection{Recursive algorithm of T9 looking up}
+T9 input method can also be realized recursively. Let's first define
+the trie solution. The algorithm takes two arguments, a trie storing
+all the candidate words, and a sequence of digits that is input by
+the user. If the sequence is empty, the result is empty as well;
+Otherwise, it looks up $C$ to find those children which are bound
+to the first digit $d_1$ according to T9 map.
 
-\subsubsection*{T9 implemented in Haskell}
+\be
+findT9(T, D) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{ \Phi \} & D = \Phi \\
+  fold(f, \Phi, lookupT9(d_1, C)) & otherwise
+  \end{array}
+\right.
+\ee
 
-In Haskell, we first define a map from key pad to English letter. When user
-input a key pad number sequence, we take each number and check from the Trie.
-All children match the number should be investigated. Below is a Haskell
-program to realize T9 input.
+Where folding is defined in Appendix A. Function $f$ takes two arguments,
+an intermediate list of candidates which is initialized empty, and
+a pair $(c, T')$, where $c$ is candidate character, to which sub tree $T'$
+is bound. It append $c$ to all the candidate words, and concatenate
+this to the result list.
+
+\be
+f(L, (c, T')) = mapAppend(c, findT9(T', D')) \cup L
+\ee
+
+Function $lookupT9(k, C)$ checks all the possible characters mapped to digit $k$.
+If the character is bound to some child in $C$, it is record as one candidate.
+
+\be
+lookupT9(d, C) =  fold(g, \Phi, M_{T9}[k])
+\ee
+
+Where
+
+\be
+g(L, k) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  L & find(C, k) = \Phi \\
+  \{(k, T')\} \cup L & find(C, k) = T'
+  \end{array}
+\right.
+\ee
+
+Below Haskell example program implements the T9 look up algorithm with trie.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
 mapT9 = [('2', "abc"), ('3', "def"), ('4', "ghi"), ('5', "jkl"),
          ('6', "mno"), ('7', "pqrs"), ('8', "tuv"), ('9', "wxyz")]
 
-lookupT9 :: Char -> [(Char, b)] -> [(Char, b)]
+findT9 t [] = [("", value t)]
+findT9 t (k:ks) = foldl f [] (lookupT9 k (children t))
+    where
+      f lst (c, tr) = (mapAppend c (findT9 tr ks)) ++ lst
+
 lookupT9 c children = case lookup c mapT9 of
         Nothing -> []
         Just s  -> foldl f [] s where
              f lst x = case lookup x children of
                  Nothing -> lst
                  Just t  -> (x, t):lst
-
--- T9-find in Trie
-findT9:: Trie a -> String -> [(String, Maybe a)]
-findT9 t [] = [("", Trie.value t)]
-findT9 t (k:ks) = foldl f [] (lookupT9 k (children t))
-    where
-      f lst (c, tr) = (mapAppend c (findT9 tr ks)) ++ lst
 \end{lstlisting}
 
-findT9 is the main function, it takes 2 parameters, a Trie and a number
-sequence string. In non-trivial case, it calls lookupT9 function to
-examine all children which match the first number.
-
-For each matched child, the program recursively calls findT9 on it with
-the left numbers, and we use mapAppend to insert the currently finding letter
-in front of all results. The program use foldl to combine all these together.
-
-Function lookupT9 is used to filtered all possible children who match a
-number. It first call lookup function on mapT9, so that a string of possible
-English letters can be identified. Next we call lookup for each candidate
-letter to see if there is a child can match the letter. We use foldl to
-collect all such child together.
-
-This program can be verified by using some simple test cases.
-
-\begin{lstlisting}
-testFindT9 = "press 4: " ++ (show $ take 5 $ findT9 t "4")++
-             "\npress 46: " ++ (show $ take 5 $ findT9 t "46")++
-             "\npress 4663: " ++ (show $ take 5 $ findT9 t "4663")++
-             "\npress 2: " ++ (show $ take 5 $ findT9 t "2")++
-             "\npress 22: " ++ (show $ take 5 $ findT9 t "22")
-    where
-      t = Trie.fromList lst
-      lst = [("home", 1), ("good", 2), ("gone", 3), ("hood", 4),
-             ("a", 5), ("another", 6), ("an", 7)]
-\end{lstlisting}
-
-The program will output below result.
-
-\begin{verbatim}
-press 4: [("g",Nothing),("h",Nothing)]
-press 46: [("go",Nothing),("ho",Nothing)]
-press 4663: [("gone",Just 3),("good",Just 2),("home",Just 1),("hood",Just 4)]
-press 2: [("a",Just 5)]
-press 22: []
-\end{verbatim}
-
-The value of each child is just for illustration, we can put empty value instead
-and only returns candidate keys for a real input application.
-
+TODO:
 Tries consumes to many spaces, we can provide a Patricia version as alternative.
 
 \begin{lstlisting}
