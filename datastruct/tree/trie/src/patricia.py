@@ -35,7 +35,7 @@ def lcp(s1, s2):
 
 def branch(key1, tree1, key2, tree2):
     if key1 == "":
-        #example: insert "an" into "antoher"
+        #example: insert "an" into "another"
         tree1.children[key2] = tree2
         return tree1
     t = Patricia()
@@ -57,7 +57,7 @@ def insert(t, key, value = None):
             if prefix != "":
                 match = True
                 if k2 == "":
-                    # example: insert "antoher" into "an", go on traversing
+                    # example: insert "another" into "an", go on traversing
                     node = tr
                     key = k1
                     break
