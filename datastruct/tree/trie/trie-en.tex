@@ -2066,12 +2066,15 @@ findT9(T, D) = \left \{
 Where folding is defined in Appendix A. Function $f$ takes two arguments,
 an intermediate list of candidates which is initialized empty, and
 a pair $(c, T')$, where $c$ is candidate character, to which sub tree $T'$
-is bound. It append $c$ to all the candidate words, and concatenate
+is bound. It append character $c$ to all the candidate words, and concatenate
 this to the result list.
 
 \be
 f(L, (c, T')) = mapAppend(c, findT9(T', D')) \cup L
 \ee
+
+Note this $mapAppend$ function is a bit different from the pevious one defined
+in e-dictionary application. The first argument is a character, but not a string.
 
 Function $lookupT9(k, C)$ checks all the possible characters mapped to digit $k$.
 If the character is bound to some child in $C$, it is record as one candidate.
@@ -2102,7 +2105,7 @@ mapT9 = [('2', "abc"), ('3', "def"), ('4', "ghi"), ('5', "jkl"),
 findT9 t [] = [("", value t)]
 findT9 t (k:ks) = foldl f [] (lookupT9 k (children t))
     where
-      f lst (c, tr) = (mapAppend c (findT9 tr ks)) ++ lst
+      f lst (c, tr) = (mapAppend' c (findT9 tr ks)) ++ lst
 
 lookupT9 c children = case lookup c mapT9 of
         Nothing -> []
@@ -2110,60 +2113,62 @@ lookupT9 c children = case lookup c mapT9 of
              f lst x = case lookup x children of
                  Nothing -> lst
                  Just t  -> (x, t):lst
+
+mapAppend' x lst = map (\p->(x:(fst p), snd p)) lst
 \end{lstlisting}
 
-TODO:
-Tries consumes to many spaces, we can provide a Patricia version as alternative.
+There are few modifications when change the realization from trie to Patricia.
+Firstly, the sub-tree is bound to prefix string, but not a single character.
+
+\be
+findT9(T, D) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{ \Phi \} & D = \Phi \\
+  fold(f, \Phi, findPrefixT9(D, C)) & otherwise
+  \end{array}
+\right.
+\ee
+
+The list for folding is given by calling function $findPrefixT9(D, C)$.
+And $f$ is also modified to reflect this change. It appends the
+candidate prefix $D'$ in front of every result ouput by the
+recursive search, and then accumulates the words.
+
+\be
+f(L, (D', T')) = mapAppend(D', findT9(T', D - D')) \cup L
+\ee
+
+Function $findPrefixT9(D, C)$ examines all the children. For
+every pair $(k_i, T_i)$, if converting $k_i$ back to digits
+yields a prefix of $D$, then this pair is selected as a
+candidate.
+
+\be
+findPrefixT9(D, C) = \{ (k_i, T_i) |(k_i, T_i) \in C, convertT9(k_i) \sqsubset D\}
+\ee
+
+Function $convertT9(k)$ converts every alphabetic character in $k$ back
+to digits according to T9 map.
+
+\be
+convertT9(K) = \{ d | \forall c \in k, \exists (d \rightarrow S) \in M_{T9} \Rightarrow c \in S\}
+\ee
+
+The following example Haskell program implements the T9 input algorithm
+with Patricia.
 
 \begin{lstlisting}
-findPrefixT9' :: String -> [(String, b)] -> [(String, b)]
-findPrefixT9' s lst = filter f lst where
-    f (k, _) = (toT9 k) `Data.List.isPrefixOf` s
-
-toT9 :: String -> String
-toT9 [] = []
-toT9 (x:xs) = (unmapT9 x mapT9):(toT9 xs) where
-    unmapT9 x (p:ps) = if x `elem` (snd p) then (fst p) else unmapT9 x ps
-
-findT9' :: Patricia a -> String -> [(String, Maybe a)]
-findT9' t [] = [("", value t)]
-findT9' t k = foldl f [] (findPrefixT9' k (children t))
+findT9 t [] = [("", value t)]
+findT9 t k = foldl f [] (findPrefixT9 k (children t))
     where
-      f lst (s, tr) = (mapAppend' s (findT9' tr (k `diff` s))) ++ lst
+      f lst (s, tr) = (mapAppend s (findT9 tr (k `diff` s))) ++ lst
       diff x y = drop (length y) x
-\end{lstlisting}
 
-In this program, we don't check one digit at a time, we take all the digit
-sequence, and we examine all children of the Patricia node. For each child,
-the program convert the prefix string to number sequence by using function
-toT9, if the result is prefix of what user input, we go on search in this
-child and append the prefix in front of all further results.
-
-If we tries the same test case, we can find the result is a bit different.
-
-\begin{verbatim}
-press 4: []
-press 46: [("go",Nothing),("ho",Nothing)]
-press 466: []
-press 4663: [("good",Just 2),("gone",Just 3),("home",Just 1),("hood",Just 4)]
-press 2: [("a",Just 5)]
-press 22: []
-\end{verbatim}
-
-If user press key '4', because the dictionary (represent by Patricia) doesn't
-contain any candidates matches it, user will get an empty candidates list.
-The same situation happens when he enters ``466''. In real input method
-implementation, such user experience isn't good, because it displays nothing
-although user presses the key several times. One improvement is to
-predict what user will input next by display a partial result. This can be
-easily achieved by modify the above program. (Hint: not only check
-\begin{lstlisting}
-findPrefixT9' s lst = filter f lst where
+findPrefixT9 s lst = filter f lst where
     f (k, _) = (toT9 k) `Data.List.isPrefixOf` s
-\end{lstlisting}
-but also check
-\begin{lstlisting}
-    f (k, _) = s `Data.List.isPrefixOf` (toT9 k)
+
+toT9 = map (\c -> head $ [ d |(d, s) <- mapT9, c `elem` s])
 \end{lstlisting}
 
 \begin{Exercise}
@@ -2183,12 +2188,11 @@ In this chapter, we start from the integer base trie and Patricia. The
 map data structure based on integer Patricia plays an important role
 in Compiler implementation. Alphabetic trie and Patricia are
 natural extensions. They can be used to manipulate text infromation.
-As examples, predictive e-dictionary and a T9 input method are
+As examples, predictive e-dictionary and T9 input method are
 realized with trie or Patricia. Although these examples
 are different from the real implementation in commercial software.
-They show simple approaches to solve some problems. There are still some
-interesting problems can not be solved with trie or Patrica directly,
-however, Other data structures, such as suffix tree, have close
+They show simple approaches to solve some problems.
+Other important data structure, such as suffix tree, has close
 relationship with them. Suffix tree is introduced in the next chatper.
 
 \begin{thebibliography}{99}
