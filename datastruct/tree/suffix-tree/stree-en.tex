@@ -204,18 +204,19 @@ Suffix link is drawn in dotted style. In figure \ref{fig:strie-cacao}, the suffi
 node $A$ points to node $B$, and the suffix link of node $B$ points to node $C$.
 
 \subsection{On-line construction}
-For a string $S$, Suppose we have construct suffix Trie for its $i$-th prefix
-$s_1s_2...s_i$. We denote the suffix Trie for this $i$-th prefix as $SuffixTrie(S_i)$.
-Let's consider how can we obtain $SuffixTrie(S_{i+1})$ from $SuffixTrie(S_i)$.
 
-If we list all suffixes corresponding to $SuffixTrie(S_i)$, from the longest
-$S_i$ to the shortest empty string, we get table \ref{tab:suffixes_s_i}. There
-are total $i+1$ suffixes.
+For string $S$, Suppose we have constructed suffix trie for the $i$-th prefix
+$S_i=s_1s_2...s_i$. Denote it as $SuffixTrie(S_i)$.
+Let's consider how to obtain $SuffixTrie(S_{i+1})$ from $SuffixTrie(S_i)$.
+
+If list all suffixes corresponding to $SuffixTrie(S_i)$, from the longest
+(which is $S_i$) to the shortest (which is empty), we can get
+table \ref{tab:suffixes_s_i}. There are total $i+1$ suffixes.
 
 \begin{table}
   \begin{tabular}{r}
     suffix string \\
-    $s_1s_2...s_i$ \\
+    $s_1s_2s_3...s_i$ \\
     $s_2s_3...s_i$ \\
     ... \\
     $s_{i-1}s_i$ \\
@@ -226,88 +227,91 @@ are total $i+1$ suffixes.
   \label{tab:suffixes_s_i}
 \end{table}
 
-The most straightforward way is to append $s_{i+1}$ to each of the suffix in above
-table, and add a new empty suffix. This operation can be implemented as create
-a new node, and append the new node as a child with edge bind to character $s_{i+1}$.
+One solution is to append the character $s_{i+1}$ to every suffix in this
+table, then add another empty string. This idea can be realized by adding
+a new child for every node in the trie, and binding all these new
+child with edge of character $s_{i+1}$.
 
 \begin{algorithm}
 \begin{algorithmic}[1]
-\For{each $node$ in $SuffixTrie(S_i)$}
-  \State $CHILDREN(node)[s_{i+1}] \leftarrow CREATE-NEW-NODE()$
+\For{$\forall T \in SuffixTrie(S_i)$}
+  \State \Call{Children}{$T$}[$s_{i+1}$] $\gets$ \Call{Create-Empty-Node}{}
 \EndFor
 \end{algorithmic}
-\caption{Initial version of update $SuffixTrie(S_i)$ to $SuffixTrie(S_{i+1})$.}
+\caption{Update $SuffixTrie(S_i)$ to $SuffixTrie(S_{i+1})$, initial version.}
 \label{algo:strie1}
 \end{algorithm}
 
-However, some node in $SuffixTrie(S_i)$ may have already $s_{i+1}$-child.
-For example, in figure \ref{fig:strie-cac}, Node $X$ and $Y$ are corresponding
-for suffix 'cac' and 'ac', they don't have 'a'-child.
-While node $Z$, which represents for suffix 'c' has 'a'-child already.
+However, some nodes in $SuffixTrie(S_i)$ may have the $s_{i+1}$-child already.
+For example, in figure \ref{fig:strie-cac}, node $X$ and $Y$ are corresponding
+for suffix 'cac' and 'ac' respectively. They don't have the 'a'-child.
+But node $Z$, which represents suffix 'c' has the 'a'-child already.
 
 \begin{figure}[htbp]
-   \begin{center}
-     \includegraphics[scale=0.5]{img/strie-cac.ps}
-     \includegraphics[scale=0.5]{img/strie-caca.ps}
-     \caption{Suffix Trie of ``cac'' and ``caca''}
-     \label{fig:strie-cac}
-   \end{center}
+  \centering
+  \subfloat[Suffix trie for string ``cac''.]{\hspace{.2\textwidth}\includegraphics[scale=0.5]{img/strie-cac.ps}\hspace{.2\textwidth}}
+  \subfloat[Suffix trie for string ``caca''.]{\hspace{.2\textwidth}\includegraphics[scale=0.5]{img/strie-caca.ps}\hspace{.2\textwidth}}
+  \caption{Suffix Trie of ``cac'' and ``caca''}
+  \label{fig:strie-cac}
 \end{figure}
 
-When we append $s_{i+1}$, in this case it is 'a', to $SuufixTrie(S_i)$. We need create
-a new node and append the new node to $X$ and $Y$, however, we needn't create new
-node to $Z$, because node $Z$ has already a child node with edge 'a'. So
-$SuffixTrie(S_{i+1})$, in this case it is for ``caca'', is shown in right part of
-figure \ref{fig:strie-cac}.
+When append $s_{i+1}$ to $SuffixTrie(S_i)$. In this example $s_{i+1}$ is character 'a'.
+We need create new nodes for $X$ and $Y$, but we needn't do this
+for $Z$.
 
-If we check each node as the same order as in table \ref{tab:suffixes_s_i}, we can
-stop immediately once we find a node which has a $s_{i+1}$-child. This is because
-if a node $X$ in $SuffixTrie(S_i)$ has already a $s_{i+1}$-child, then according to the
-definition of suffix link, all suffix nodes $X'$ of $X$ in $SuffixTrie(S_i)$ must
-also have $s_{i+1}$-child. In other words, let $c=s_{i+1}$, if $wc$ is a sub-string
+If check the nodes one by one according to table \ref{tab:suffixes_s_i}, we can
+stop immediately when meet a node which has the $s_{i+1}$-child. This is because
+if node $X$ in $SuffixTrie(S_i)$ has the $s_{i+1}$-child, according to the
+definition of suffix link, any suffix nodes $X'$ of $X$ in $SuffixTrie(S_i)$ must
+also have the $s_{i+1}$-child. In other words, let $c=s_{i+1}$, if $wc$ is a sub-string
 of $S_i$, then every suffix of $wc$ is also a sub-string of $S_i$ \cite{ukkonen95}.
-The only exception is root node, which represents for empty string ``''.
+The only exception is the root, which represents for empty string ``''.
 
 According to this fact, we can refine the algorithm \ref{algo:strie1} to
+the following.
 
 \begin{algorithm}
   \begin{algorithmic}[1]
-  \For{each $node$ in $SuffixTrie(S_i)$ in descending order of suffix length}
-    \If{$CHILDREN(node)[s_{i+1}] = NIL$}
-      \State $CHILDREN(node)[s_{i+1}] \leftarrow CREATE-NEW-NODE()$
+  \For{each $T \in SuffixTrie(S_i)$ in descending order of suffix length}
+    \If{\Call{Children}{$T$}[$s_{i+1}$] = NIL}
+      \State \Call{Children}{$T$}[$s_{i+1}$] $\gets$ \Call{Create-Empty-Node}{}
     \Else
       \State break
     \EndIf
   \EndFor
   \end{algorithmic}
-  \caption{Revised version of update $SuffixTrie(S_i)$ to $SuffixTrie(S_{i+1})$.}
+  \caption{Update $SuffixTrie(S_i)$ to $SuffixTrie(S_{i+1})$, second version.}
   \label{algo:strie2}
 \end{algorithm}
 
-The next unclear question is how to iterate all nodes in $SuffixTrie(S_i)$
-in descending order of suffix string length? We can define the top of a suffix
-Trie as the deepest leaf node, by using suffix link for each node, we can
-traverse suffix Trie until the root. Note that the top of $SuffixTrie(NIL)$
-is root, so we can get a final version of on-line construction algorithm for
-suffix Trie.
+The next question is how to iterate all nodes
+in descending order of the suffix length? Define the {\em top} of a suffix
+trie as the deepest leaf node. This definition ensures the top represents
+the longest suffix. Along the suffix link from the top to the next node,
+the length of the suffix decrease by one. This fact tells us that
+We can traverse the suffix tree from the top
+to the root by using the suffix links. And the order of such traversing
+is exactly what we want.
+Finally, there is a special suffix trie for empty string $SuffixTrie(NIL)$,
+We define the top equals to the root in this case.
 
 \begin{algorithmic}
-\Function{INSERT}{$top, c$}
-  \If{$top = NIL$}
-    \State $top \leftarrow CREATE-NEW-NODE()$
+\Function{Insert}{$top, c$}
+  \If{$top = $ NIL} \Comment{The trie is empty}
+    \State $top \gets$ \Call{Create-Empty-Node}{}
   \EndIf
-  \State $node \leftarrow top$
-  \State $node' \leftarrow CREATE-NEW-NODE()$
-  \While{$node \ne NIL \land CHILDREN(node)[c] = NIL$}
-    \State $CHILDREN(node)[c] \leftarrow CREATE-NEW-NODE()$
-    \State $SUFFIX-LINK(node') \leftarrow CHILDREN(node)[c]$
-    \State $node' \leftarrow CHILDREN(node)[c]$
-    \State $node \leftarrow SUFFIX-LINK(node)$
+  \State $node \gets top$
+  \State $node' \gets$ \Call{Create-Empty-Node}{} \Comment{dummy init value}
+  \While{$node \neq$ NIL $\land$ \Call{Children}{$node$}[$c$] = NIL}
+    \State \Call{Children}{$node$}[$c$] $\gets$ \Call{Create-Empty-Node}{}
+    \State \Call{Suffix-Link}{$node'$} $\gets$ \Call{Children}{$node$}[$c$]
+    \State $node' \gets$ \Call{Children}{$node$}[$c$]
+    \State $node \gets$ \Call{Suffix-Link}{$node$}
   \EndWhile
-  \If{$node \ne NIL$}
-    \State $SUFFIX-LINK(node') \leftarrow CHILDREN(node)[c]$
+  \If{$node \neq$ NIL}
+    \State \Call{Suffix-Link}{$node'$} $\gets$ \Call{Children}{$node$}[$c$]
   \EndIf
-  \State \Return $CHILDREN(top)[c]$
+  \State \Return \Call{Children}{$top$}[$c$] \Comment{returns the new top}
 \EndFunction
 \end{algorithmic}
 
