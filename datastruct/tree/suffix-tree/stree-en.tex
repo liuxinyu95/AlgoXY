@@ -561,117 +561,116 @@ We explain this special case in detail in later sections.
 
 In \ref{ap-and-ep}, we mentioned, all updating to leaves is trivial, because we
 only need append the new coming character to the leaf. With reference pair,
-it means, when we update $SuffixTree(S_i)$ to $SuffixTree(S_{i+1})$,
-For all reference pairs with form $(node, (l, i))$, they are leaves, they will
-be change to $(node, (l, i+1))$ next time. Ukkonen defined leaf as
-$(node, (l, \infty))$, here $\infty$ means ``open to grow''. We can omit all
+it means, when update $SuffixTree(S_i)$ to $SuffixTree(S_{i+1})$,
+all reference pairs in form $(node, (l, i))$, are leaves. They will
+change to $(node, (l, i+1))$ next time. Ukkonen defines leaf in form
+$(node, (l, \infty))$, here $\infty$ means ``open to grow''. We can skip all
 leaves until the suffix tree is completely constructed. After that, we can
 change all $\infty$ to the length of the string.
 
-So the main algorithm only cares about {\em positions} from active point
-to end point. However, how to find the active point and end point?
+So the main algorithm only cares about {\em positions} from the active point
+to the end point. However, how to find the active point and the end point?
 
-When we start from the very beginning, there is only a root node, there are
-no branches nor leaves. The active point should be $(root, \epsilon)$, or
-$(root, (1, 0))$ (the string index start from 1).
+When start suffix tree construction, there is only a root node. There aren't
+any branches or leaves. The active point should be $(root, \epsilon)$, or
+$(root, (1, 0))$ (the string index starts from 1).
 
-About the end point, it's a position we can finish updating $SuffixTree(S_i)$.
-According to the algorithm for suffix Trie, we know it should be a
-{\em position} which has $s_{i+1}$-child already. Because a position
-in suffix Trie may not be an explicit node in suffix tree. If $(node, (l, r))$
+For the end point, it is a position where we can finish updating $SuffixTree(S_i)$.
+According to the suffix trie algorithm, we know it should be a
+{\em position} which has the $s_{i+1}$-child already. Because a position
+in suffix trie may not be an explicit node in suffix tree, if $(node, (l, r))$
 is the end point, there are two cases.
 
 \begin{enumerate}
-\item $(l, r)=\epsilon$, it means node itself an end point, so node has a
-$s_{i+1}$-child. Which means $CHILDREN(node)[s_{i+1}] \ne NIL$
-\item otherwise, $l \leq r$, end point is an implicit position.
-It must satisfy $s_{i+1}=s_{l'+|(l, r)|}$, where $CHILDREN(node)[s_l]=((l', r'), node')$.
-and $|(l, r)|$ means the length of string $(l, r)$. it is equal to $r-l+1$.
-This is illustrate in figure \ref{fig:implicit-end-point}. We can
+\item $(l, r)=\epsilon$. It means the node itself is the end point. This node has the
+$s_{i+1}$-child, which means \textproc{Children}($node$)[$s_{i+1}$] $\neq$ NIL;
+\item Otherwise, $l \leq r$, the end point is an implicit position.
+It must satisfy $s_{i+1}=s_{l'+|(l, r)|}$, where
+\textproc{Children}($node$)[$s_l$]$=((l', r'), node')$, $|(l, r)|$ means
+the length of sub-string $(l, r)$. It equals to $r-l+1$.
+This is illustrated in figure \ref{fig:implicit-end-point}. We can
 also say that $(node, (l, r))$ has a $s_{i+1}$-child implicitly.
 \end{enumerate}
 
 \begin{figure}[htbp]
-   \begin{center}
-     \includegraphics[scale=0.5]{img/implicit-end-point.eps}
-     \caption{Implicit end point}
-     \label{fig:implicit-end-point}
-   \end{center}
+  \centering
+  \includegraphics[scale=0.5]{img/implicit-end-point.eps}
+  \caption{Implicit end point}
+  \label{fig:implicit-end-point}
 \end{figure}
 
-Ukkonen found a very important fact that if the $(node, (l, i))$ is the end
-point of $SuffixTree(S_i)$, then $(node, (l, i+1))$ is the active point
+Ukkonen finds a very important fact that if $(node, (l, i))$ is the end
+point of $SuffixTree(S_i)$, then $(node, (l, i+1))$ is the active point of
 $SuffixTree(S_{i+1})$.
 
 This is because if $(node, (l, i))$ is the end point of $SuffixTree(S_i)$,
-It must have a $s_{i+1}$-child (either explicitly or implicitly).
-If the suffix this end point represents is $s_ks_{k+1}...s_i$, it is the longest
+it must have a $s_{i+1}$-child (either explicitly or implicitly).
+If this end point represents suffix $s_ks_{k+1}...s_i$, it is the longest
 suffix in $SuffxiTree(S_i)$ which satisfies $s_ks_{k+1}...s_is_{i+1}$ is a sub-string
-of $S_i$. Consider $S_{i+1}$, $s_ks_{k+1}...s_is_{i+1}$ must occurs at least
+of $S_i$. Consider $S_{i+1}$, $s_ks_{k+1}...s_is_{i+1}$ must occur at least
 twice in $S_{i+1}$, so position $(node, (l, i+1))$ is the active point of
 $SuffixTree(S_{i+1})$. Figure \ref{fig:ep-ap} shows about this truth.
 
 \begin{figure}[htbp]
-   \begin{center}
-     \includegraphics[scale=0.5]{img/ep-ap.eps}
-     \caption{End point in $SuffixTree(S_i)$ and active point in $SuffixTree(S_{i+1})$.}
-     \label{fig:ep-ap}
-   \end{center}
+  \centering
+  \includegraphics[scale=0.5]{img/ep-ap.eps}
+  \caption{End point in $SuffixTree(S_i)$ and active point in $SuffixTree(S_{i+1})$.}
+  \label{fig:ep-ap}
 \end{figure}
 
-At this time point, the algorithm of Ukkonen's on-line construction can
+Summarize the above facts, the algorithm of Ukkonen's on-line construction can
 be given as the following.
 
 %\begin{algorithm}
 \begin{algorithmic}[1]
-\Function{UPDATE}{$node, (l, i)$}
-  \State $prev \leftarrow CREATE-NEW-NODE()$
-  \While{$TRUE$}
-    \State $(finish, node') \leftarrow END-POINT-BRANCH?(node, (l, i-1), s_i)$
-    \If{$finish = TRUE$}
-      \State $BREAK$
+\Function{Update}{$node, (l, i)$}
+  \State $prev \gets$ \Call{Create-Empty-Node}{} \Comment{Initilized as sentinel} %
+  \Loop \Comment{Traverse along the suffix links}
+    \State $(finish, node') \gets$ \Call{End-Point-Branch?}{$node, (l, i-1), s_i$}
+    \If{$finish$}
+      \State break
     \EndIf
-    \State $CHILDREN(node')[s_i] \leftarrow ((i, \infty), CREATE-NEW-NODE())$
-    \State $SUFFIX-LINK(prev) \leftarrow node'$
-    \State $prev \leftarrow node'$
-    \State $(node, l) = CANONIZE(SUFFIX-LINK(node), (l, i-1))$
-  \EndWhile
-  \State $SUFFIX-LINK(prev) \leftarrow node$
-  \State \Return $(node, l)$
+    \State \Call{Children}{$node'$}[$s_i$] $\gets$ ($(i, \infty)$, \Call{Create-Empty-Node}{})
+    \State \Call{Suffix-Link}{$prev$} $\gets node'$
+    \State $prev \gets node'$
+    \State $(node, l) = $ \textproc{Canonize}(\Call{Suffix-Link}{$node$}, $(l, i-1)$)
+  \EndLoop
+  \State \Call{Suffix-Link}{$prev$} $\gets node$
+  \State \Return $(node, l)$ \Comment{The end point}
 \EndFunction
 \end{algorithmic}
 %\caption{Update $SuffixTree(S_{i-1})$}
 %\label{algo:update}
 %\end{algorithm}
 
-This algorithm takes a parameter as reference pair $(node, (l, i))$, note that
+This algorithm takes reference pair $(node, (l, i))$ as arguments, note that
 position $(node, (l, i-1)$ is the active point for $SuffixTree(S_{i-1})$.
-Next we enter a loop, this loop will go along with the suffix link until it
-found the current position $(node, (l, i-1))$ is the end point. If it is not
-end point, the function $END-POINT-BRANCH?()$ will return a position, from
-where the new leaf node will be branch out.
+Then we start a loop, this loop goes along the suffix links until
+the current position $(node, (l, i-1))$ is the end point. Otherwise,
+function \textproc{End-Point-Branch?} returns a position, from
+where the new leaf branch out.
 
-$END-POINT-BRANCH?()$ algorithm is implemented as below.
+The \textproc{End-Point-Branch?} algorithm is realized as below.
 
 %\begin{algorithm}
 \begin{algorithmic}
-\Function{END-POINT-BRANCH?}{$node, (l, r), c$}
+\Function{End-Point-Branch?}{$node, (l, r), c$}
   \If{$(l, r) = \epsilon$}
-    \If{$node = NIL$}
-      \State \Return $(TRUE, root)$
+    \If{$node = $ NIL}
+      \State \Return (TRUE, $root$)
     \Else
-      \State \Return $(CHILDREN(node)[c] = NIL?, node)$
+      \State \Return (\Call{Children}{$node$}[$c$] = NIL, $node$)
     \EndIf
   \Else
-    \State $((l', r'), node') \leftarrow CHILDREN(node)[s_l]$
-    \State $pos \leftarrow l'+|(l, r)|$
-    \If{$s_{pos}=c$}
-      \State \Return $(TRUE, node)$
+    \State $((l', r'), node') \gets$ \Call{Children}{$node$}[$s_l$]
+    \State $pos \gets l' + |(l, r)|$
+    \If{$s_{pos} = c$}
+      \State \Return (TRUE, $node$)
     \Else
-      \State $p \leftarrow CREATE-NEW-NODE()$
-      \State $CHILDREN(node)[s_{l'}] \leftarrow ((l', pos-1), p)$
-      \State $CHILDREN(p)[s_{pos}] \leftarrow ((pos, r'), node')$
-      \State \Return $(FALSE, p)$
+      \State $p \gets$ \Call{Create-Empty-Node}{}
+      \State \Call{Children}{$node$}[$s_{l'}$] $\gets ((l', pos-1), p)$
+      \State \Call{Children}{$p$}[$s_{pos}$] $\gets ((pos, r'), node')$
+      \State \Return (FALSE, $p$)
     \EndIf
   \EndIf
 \EndFunction
@@ -680,27 +679,27 @@ $END-POINT-BRANCH?()$ algorithm is implemented as below.
 %\label{algo:branch}
 %\end{algorithm}
 
-If the position is $(root, \epsilon)$, which means we have gone along suffix links to
-the root, we return $TRUE$ to indicate the updating can be finished for this round.
+If the position is $(root, \epsilon)$, it means we have arrived at the root.
+It's definitely the end point, so that we can finish this round of updating.
 If the position is in form of $(node, \epsilon)$, it means the reference pair represents
-an explicit node, we just test if this node has already $c$-child, where $c=s_i$. and
-if not, we can just branching out a leaf from this node.
+an explicit node, we can examine if this node has already the $c$-child, where $c=s_i$.
+If not, we need branch out a leaf.
 
-In other case, which means the position $(node, (l, r))$ points to a implicit node.
-We need find the exact position next to it to see if it is $c$-child implicitly.
-If yes, we meet a end point, the updating loop can be finished, else, we make
-the position an explicit node, and return it for further branching.
+Otherwise, the position $(node, (l, r))$ points to an implicit node.
+We need find the exact position next to it to see if there is a $c$-child.
+If yes, we meet an end point, the updating loop can be finished; else, we turn
+the position to an explicit node, and return it for further branching.
 
-With the previous defined $CANONIZE()$ function, we can finalize the Ukkonen's algorithm.
+We can finalize the Ukkonen's algorithm as below.
 
 %\begin{algorithm}
 \begin{algorithmic}[1]
-\Function{SUFFIX-TREE}{$S$}
-  \State $root \leftarrow CREATE-NEW-NODE()$
-  \State $node \leftarrow root, l \leftarrow 0$
-  \For{$i \leftarrow 1$ to $LENGTH(S)$}
-    \State $(node, l) = UPDATE(node, (l, i))$
-    \State $(node, l) = CANONIZE(node, (l, i))$
+\Function{Suffix-Tree}{$S$}
+  \State $root \gets$ \Call{Create-Empty-Node}{}
+  \State $node \gets root, l \gets 0$
+  \For{$i \gets 1$ to $|S|$}
+    \State $(node, l) = $ \Call{Update}{$node, (l, i)$}
+    \State $(node, l) = $ \Call{Canonize}{$node, (l, i)$}
   \EndFor
   \State \Return $root$
 \EndFunction
@@ -709,32 +708,26 @@ With the previous defined $CANONIZE()$ function, we can finalize the Ukkonen's a
 %\label{algo:ukkonen2}
 %\end{algorithm}
 
-Figure \ref{fig:cons-stree-cacao} shows the phases when constructing the
-suffix tree for string ``cacao'' with Ukkonen's algorithm.
+Figure \ref{fig:cons-stree-cacao} shows the steps when constructing the
+suffix tree for string ``cacao''.
 
 \begin{figure}[htbp]
-   \begin{center}
-     \includegraphics[scale=0.5]{img/strie-empty.ps}empty
-     \includegraphics[scale=0.5]{img/stree-c.ps}``c''
-     \includegraphics[scale=0.5]{img/stree-ca.ps}``ca''
-     \includegraphics[scale=0.5]{img/stree-cac.ps}``cac'' \newline
-     \includegraphics[scale=0.5]{img/stree-caca.ps}``caca''
-     \includegraphics[scale=0.5]{img/stree-cacao.ps}``cacao''
-     \caption{Construction of suffix tree for ``cacao'', the 6 phases are shown, only the last layer of suffix links are shown in dotted arrow.}
-     \label{fig:cons-stree-cacao}
-   \end{center}
+  \centering
+  \subfloat[Empty]{\hspace{.1\textwidth}\includegraphics[scale=0.5]{img/strie-empty.ps}\hspace{.1\textwidth}}
+  \subfloat[``c'']{\hspace{.1\textwidth}\includegraphics[scale=0.5]{img/stree-c.ps}\hspace{.1\textwidth}}
+  \subfloat[``ca'']{\hspace{.1\textwidth}\includegraphics[scale=0.5]{img/stree-ca.ps}\hspace{.1\textwidth}} \\
+  \subfloat[``cac'']{\hspace{.1\textwidth}\includegraphics[scale=0.5]{img/stree-cac.ps}\hspace{.1\textwidth}}
+  \subfloat[``caca'']{\hspace{.1\textwidth}\includegraphics[scale=0.5]{img/stree-caca.ps}\hspace{.1\textwidth}}
+  \subfloat[``cacao'']{\hspace{.1\textwidth}\includegraphics[scale=0.5]{img/stree-cacao.ps}\hspace{.1\textwidth}}
+  \caption{Construct suffix tree for ``cacao''. There are 6 steps. Only the last layer of suffix links are shown in dotted arrow.}
+  \label{fig:cons-stree-cacao}
 \end{figure}
 
-Note that it needn't setup suffix link for leaf nodes, only branch nodes
-have been set suffix links.
+Note that we needn't set suffix link for leaf nodes, only branch nodes
+need suffix links.
 
-\subsubsection{Implementation of Ukkonen's algorithm in imperative languages}
-The 2 main features of Ukkonen's algorithm are intense use of suffix link and
-on-line update. So it will be very suitable to implement in imperative language.
-
-\subsubsection*{Ukkonen's algorithm in Python}
-The node definition is as same as the suffix Trie, however, the exact meaning
-for children field are not same.
+The following example Python program implements Ukkonen's algorithm.
+First is the node definition.
 
 \lstset{language=Python}
 \begin{lstlisting}
@@ -744,15 +737,9 @@ class Node:
         self.suffix = suffix
 \end{lstlisting}
 
-The children for suffix tree actually represent to the node transition
-with reference pair. if the transition is
-$CHILDREN(node)[s_l] \leftarrow ((l, r) node')$,
-The key type of the children is the character, which is corresponding
-to $s_l$, the data; the data type of the children is the reference pair.
-
 Because there is only one copy of the complete string, all sub-strings
 are represent in $(left, right)$ pairs, and the leaf are open pairs
-as $(left, \infty)$, so we provide a tree definition in Python as below.
+as $(left, \infty)$. The suffix tree is defined like below.
 
 \begin{lstlisting}
 class STree:
@@ -762,11 +749,8 @@ class STree:
         self.root = Node()
 \end{lstlisting}
 
-The infinity is defined as the length of the string plus a big number, we'll
-benefit from python's list[a:b] expression that if the right index exceed to the
-length of the list, the result is from left to the end of the list.
-
-For convenience, I provide 2 helper functions for later use.
+The infinity is defined as the length of the string plus a big number.
+Some auxiliar functions are definded.
 
 \begin{lstlisting}
 def substr(str, str_ref):
@@ -789,18 +773,7 @@ def suffix_tree(str):
         (node, l) = update(t, node, (l, i))
         (node, l) = canonize(t, node, (l, i))
     return t
-\end{lstlisting}
 
-In the main entry, we initialize the tree and let the node points to the
-root, at this time point, the active point is $(root, \epsilon)$, which
-is (root, (0, -1)) in Python. we pass the active point to update() function
-in a loop from the left most index to the right most index of the string.
-Inside the loop, update() function returns the end point, and we need
-convert it to canonical reference pair for the next time update.
-
-the update() function is realized like the following.
-
-\begin{lstlisting}
 def update(t, node, str_ref):
     (l, i) = str_ref
     c = t.str[i] # current char
@@ -812,30 +785,10 @@ def update(t, node, str_ref):
         p.children[c]=((i, t.infinity), Node())
         prev.suffix = p
         prev = p
-        # go up along suffix link
         (node, l) = canonize(t, node.suffix, (l, i-1))
     prev.suffix = node
     return (node, l)
-\end{lstlisting}
 
-Different with Ukkonen's original program, I didn't use sentinel node.
-The reference passed in is $(node, (l, i)$, the active point is
-$(node, (l, i-1))$ actually, we passed the active point to branch()
-function. If it is end point, branch() function will return true
-as the first element in the result. we then terminate the loop immediately.
-Otherwise, branch() function will return the node which need to branch
-out a new leaf as the second element in the result. The program
-then create the new leaf, set it as open pair, and then go up along
-with suffix link. The prev variable first point to a dummy node,
-this can simplify the logic, and it used to record the position along
-the boundary path. by the end of the loop, we'll finish the last
-updating of the suffix link and return the end point. Since the end
-point is always in form of (node, (l, i-1)), only (node, l) is returned.
-
-Function branch() is used to test if a position is the end point
-and turn the implicit node to explicit node if necessary.
-
-\begin{lstlisting}
 def branch(t, node, str_ref, c):
     (l, r) = str_ref
     if length(str_ref)<=0: # (node, empty)
@@ -848,20 +801,12 @@ def branch(t, node, str_ref, c):
         pos = l1+length(str_ref)
         if t.str[pos]==c:
             return (True, node)
-        else:             # node--->branch_node--->node1
+        else:
             branch_node = Node()
             node.children[t.str[l1]]=((l1, pos-1), branch_node)
             branch_node.children[t.str[pos]] = ((pos, r1), node1)
             return (False, branch_node)
-\end{lstlisting}
 
-Because I don't use sentinel node, the special case is handled
-in the first if-clause.
-
-The canonize() function helps to convert a reference pair to
-canonical reference pair.
-
-\begin{lstlisting}
 def canonize(t, node, str_ref):
     (l, r) = str_ref
     if node is None:
@@ -870,479 +815,14 @@ def canonize(t, node, str_ref):
         else:
             return canonize(t, t.root, (l+1, r))
     while l<=r: # str_ref is not empty
-        ((l1, r1), child) = node.children[t.str[l]] # node--(l', r')-->child
-        if r-l >= r1-l1: #node--(l',r')-->child--->...
-            l += r1-l1+1 # remove |(l',r')| chars from (l, r)
+        ((l1, r1), child) = node.children[t.str[l]]
+        if r-l >= r1-l1:
+            l += r1-l1+1
             node = child
         else:
             break
     return (node, l)
 \end{lstlisting}
-
-Before testing the suffix tree construction algorithm, some helper
-functions to convert the suffix tree to human readable string are
-given.
-
-\begin{lstlisting}
-def to_lines(t, node):
-    if len(node.children)==0:
-        return [""]
-    res = []
-    for c, (str_ref, tr) in sorted(node.children.items()):
-        lines = to_lines(t, tr)
-        edge_str = substr(t.str, str_ref)
-        lines[0] = "|--"+edge_str+"-->"+lines[0]
-        if len(node.children)>1:
-            lines[1:] = map(lambda l: "|"+" "*(len(edge_str)+5)+l, lines[1:])
-        else:
-            lines[1:] = map(lambda l: " "+" "*(len(edge_str)+6)+l, lines[1:])
-        if res !=[]:
-            res.append("|")
-        res += lines
-    return res
-
-def to_str(t):
-    return "\n".join(to_lines(t, t.root))
-\end{lstlisting}
-
-They are quite similar to the helper functions for suffix Trie print. The different
-part is mainly cause by the reference pair of string.
-
-In order to verify the implementation, some very simple test cases are feed to the
-algorithm as below.
-
-\begin{lstlisting}
-class SuffixTreeTest:
-    def __init__(self):
-        print "start suffix tree test"
-
-    def run(self):
-        strs = ["cacao", "mississippi", "banana$"] #$ special terminator
-        for s in strs:
-            self.test_build(s)
-
-    def test_build(self, str):
-        for i in range(len(str)):
-            self.__test_build(str[:i+1])
-
-
-    def __test_build(self, str):
-        print "Suffix Tree ("+str+"):\n", to_str(suffix_tree(str)),"\n"
-\end{lstlisting}
-
-Here is a result snippet which shows the construction phases for string ``cacao''
-
-\begin{verbatim}
-Suffix Tree (c):
-|--c-->
-
-Suffix Tree (ca):
-|--a-->
-|
-|--ca-->
-
-Suffix Tree (cac):
-|--ac-->
-|
-|--cac-->
-
-Suffix Tree (caca):
-|--aca-->
-|
-|--caca-->
-
-Suffix Tree (cacao):
-|--a-->|--cao-->
-|      |
-|      |--o-->
-|
-|--ca-->|--cao-->
-|       |
-|       |--o-->
-|
-|--o-->
-\end{verbatim}
-
-The result is identical to the one which is shown in figure \ref{fig:cons-stree-cacao}.
-
-\subsubsection*{Ukkonen's algorithm in C++}
-\label{ukkonen-c++}
-Ukkonen's algorithm has much use of pairs, including reference pair and
-sub-string index pair. Although STL provided std::pair tool, it is lack of
-variable binding ability, for example (x, y)=apair like assignment isn't
-legal C++ code. boost::tuple provides a handy tool, tie(). I'll give a mimic
-tool like boost::tie so that we can bind two variables to a pair.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T1, typename T2>
-struct Bind{
-  Bind(T1& r1, T2& r2):x1(r1), x2(r2){}
-  Bind(const Bind& r):x1(r.x1), x2(r.x2){}
-
-  // Support implicit type conversion
-  template<typename U1, typename U2>
-  Bind& operator=(const std::pair<U1, U2>& p){
-    x1 = p.first;
-    x2 = p.second;
-    return *this;
-  }
-  T1& x1;
-  T2& x2;
-};
-
-template<typename T1, typename T2>
-Bind<T1, T2> tie(T1& r1, T2& r2){
-  return Bind<T1, T2>(r1, r2);
-}
-\end{lstlisting}
-
-With this tool, we can tie variables like the following.
-
-\begin{lstlisting}
-int l, r;
-tie(l, r) = str_pair;
-\end{lstlisting}
-
-We define sub-string index pair and reference pair like below.
-First is string index reference pair.
-
-\begin{lstlisting}
-struct StrRef: public std::pair<int, int>{
-  typedef std::pair<int, int> Pair;
-  static std::string str;
-  StrRef():Pair(){}
-  StrRef(int l, int r):Pair(l, r){}
-  StrRef(const Pair& ref):Pair(ref){}
-
-  std::string substr(){
-    int l, r;
-    tie(l, r) = *this;
-    return str.substr(l, len());
-  }
-
-  int len(){
-    int l, r;
-    tie(l, r) = *this;
-    return r-l+1;
-  }
-};
-
-std::string StrRef::str="";
-\end{lstlisting}
-
-Because there is only one copy of the complete string, a static variable
-is used to store it. substr() function is used to convert a pair of left,
-right index into the sub-string. Function len() is used to calculate the
-length of a sub-string.
-
-Ukkonen's reference pair is defined in the same way.
-
-\begin{lstlisting}
-struct Node;
-
-struct RefPair: public std::pair<Node*, StrRef>{
-  typedef std::pair<Node*, StrRef> Pair;
-  RefPair():Pair(){}
-  RefPair(Node* n, StrRef s):Pair(n, s){}
-  RefPair(const Pair& p):Pair(p){}
-  Node* node(){ return first; }
-  StrRef str(){ return second; }
-};
-\end{lstlisting}
-
-With these definition, the node type of suffix tree
-can be defined.
-
-\begin{lstlisting}
-struct Node{
-  typedef std::string::value_type Key;
-  typedef std::map<Key, RefPair> Children;
-
-  Node():suffix(0){}
-  ~Node(){
-    for(Children::iterator it=children.begin();
-        it!=children.end(); ++it)
-      delete it->second.node();
-  }
-
-  Children children;
-  Node* suffix;
-};
-\end{lstlisting}
-
-The children of a node is defined as a map with reference pairs stored.
-In order for easy memory management, a recursive approach is used.
-
-The final suffix tree is defined with a string and a root node.
-
-\begin{lstlisting}
-struct STree{
-  STree(std::string s):str(s),
-                       infinity(s.length()+1000),
-                       root(new Node)
-  { StrRef::str = str; }
-
-  ~STree() { delete root; }
-  std::string str;
-  int infinity;
-  Node* root;
-};
-\end{lstlisting}
-
-the infinity is defined as the length of the string plus a big number.
-Infinity will be used for leaf node as the `open to append' meaning.
-
-Next is the main entry of Ukkonen's algorithm.
-
-\begin{lstlisting}
-STree* suffix_tree(std::string s){
-  STree* t=new STree(s);
-  Node* node = t->root; // init active point as (root, empty)
-  for(unsigned int i=0, l=0; i<s.length(); ++i){
-    tie(node, l) = update(t, node, StrRef(l, i));
-    tie(node, l) = canonize(t, node, StrRef(l, i));
-  }
-  return t;
-}
-\end{lstlisting}
-
-The program start from the initialized active point, and repeatedly
-call update(), the returned end point will be canonized and used
-for the next active point.
-
-Function update() is implemented as below.
-
-\begin{lstlisting}
-std::pair<Node*, int> update(STree* t, Node* node, StrRef str){
-  int l, i;
-  tie(l, i)=str;
-  Node::Key c(t->str[i]); //current char
-  Node dummy, *p;
-  Node* prev(&dummy);
-  while((p=branch(t, node, StrRef(l, i-1), c))!=0){
-    p->children[c]=RefPair(new Node(), StrRef(i, t->infinity));
-    prev->suffix = p;
-    prev = p;
-    // go up along suffix link
-    tie(node, l) = canonize(t, node->suffix, StrRef(l, i-1));
-  }
-  prev->suffix = node;
-  return std::make_pair(node, l);
-}
-\end{lstlisting}
-
-In this function, pair (node, (l, i-1)) is the real active point
-position. It is fed to branch() function. If the position is
-end point, branch will return NULL pointer, so the while loop
-terminates. else a node for branching out a new leaf is returned.
-Then the program will go up along with suffix links and update
-the previous suffix link accordingly. The end point will be
-returned as the result of this function.
-
-Function branch() is implemented as the following.
-
-\begin{lstlisting}
-Node* branch(STree* t, Node* node, StrRef str, Node::Key c){
-  int l, r;
-  tie(l, r) = str;
-  if(str.len()<=0){ // (node, empty)
-    if(node && node->children.find(c)==node->children.end())
-      return node;
-    else
-      return 0; // either node is empty (_|_), or is EP
-  }
-  else{
-    RefPair rp = node->children[t->str[l]];
-    int l1, r1;
-    tie(l1, r1) = rp.str();
-    int pos = l1+str.len();
-    if(t->str[pos]==c)
-      return 0;
-    else{ // node--->branch_node--->node1
-      Node* branch_node = new Node();
-      node->children[t->str[l1]]=RefPair(branch_node, StrRef(l1, pos-1));
-      branch_node->children[t->str[pos]] = RefPair(rp.node(), StrRef(pos, r1));
-      return branch_node;
-    }
-  }
-}
-\end{lstlisting}
-
-If the position is (NULL, empty), it means the program arrive at the
-root position, NULL pointer is returned to indicate the updating can
-be terminated. If the position is in form of $(node, \epsilon)$, it
-then check if the node has already a $s_i$-child. In other case, it
-means the position point to a implicit node, we need extra process
-to test if it is end point. If not, a splitting happens to convert the
-implicit node to explicit one.
-
-The function to canonize a reference pair is given below.
-
-\begin{lstlisting}
-std::pair<Node*, int> canonize(STree* t, Node* node, StrRef str){
-  int l, r;
-  tie(l, r)=str;
-  if(!node)
-    if(str.len()<=0)
-      return std::make_pair(node, l);
-    else
-      return canonize(t, t->root, StrRef(l+1, r));
-  while(l<=r){ //str isn't empty
-    RefPair rp = node->children[t->str[l]];
-    int l1, r1;
-    tie(l1, r1) = rp.str();
-    if(r-l >= r1-l1){
-      l += rp.str().len(); // remove len() from (l, r)
-      node = rp.node();
-    }
-    else
-      break;
-  }
-  return std::make_pair(node, l);
-}
-\end{lstlisting}
-
-In order to test the program, some helper functions are provided
-to represent the suffix tree as string. Among them, some are very
-common tools.
-
-\begin{lstlisting}
-// map (x+) coll in Haskell
-// boost lambda: transform(first, last, first, x+_1)
-template<class Iter, class T>
-void map_add(Iter first, Iter last, T x){
-  std::transform(first, last, first,
-                 std::bind1st(std::plus<T>(), x));
-}
-
-// x ++ y in Haskell
-template<class Coll>
-void concat(Coll& x, Coll& y){
-  std::copy(y.begin(), y.end(),
-            std::insert_iterator<Coll>(x, x.end()));
-}
-\end{lstlisting}
-
-map\_add() will add a value to every element in a collection.
-concat can concatenate tow collections together.
-
-the suffix tree to string function is finally provided like this.
-
-\begin{lstlisting}
-std::list<std::string> to_lines(Node* node){
-  typedef std::list<std::string> Result;
-  Result res;
-  if(node->children.empty()){
-    res.push_back("");
-    return res;
-  }
-  for(Node::Children::iterator it = node->children.begin();
-      it!=node->children.end(); ++it){
-    RefPair rp = it->second;
-    Result lns = to_lines(rp.node());
-    std::string edge = rp.str().substr();
-    *lns.begin() = "|--" + edge + "-->" + (*lns.begin());
-    map_add(++lns.begin(), lns.end(),
-            std::string("|")+std::string(edge.length()+5, ' '));
-    if(!res.empty())
-      res.push_back("|");
-    concat(res, lns);
-  }
-  return res;
-}
-
-std::string to_str(STree* t){
-  std::list<std::string> ls = to_lines(t->root);
-  std::ostringstream s;
-  std::copy(ls.begin(), ls.end(),
-            std::ostream_iterator<std::string>(s, "\n"));
-  return s.str();
-}
-\end{lstlisting}
-
-After that, the program can be verified by some simple test cases.
-
-\begin{lstlisting}
-class SuffixTreeTest{
-public:
-  SuffixTreeTest(){
-    std::cout<<"Start suffix tree test\n";
-  }
-  void run(){
-    test_build("cacao");
-    test_build("mississippi");
-    test_build("banana$"); //$ as special terminator
-  }
-private:
-  void test_build(std::string str){
-    for(unsigned int i=0; i<str.length(); ++i)
-      test_build_step(str.substr(0, i+1));
-  }
-
-  void test_build_step(std::string str){
-    STree* t = suffix_tree(str);
-    std::cout<<"Suffix Tree ("<<str<<"):\n"
-             <<to_str(t)<<"\n";
-    delete t;
-  }
-};
-\end{lstlisting}
-
-Below are snippet of suffix tree construction phases.
-
-\begin{verbatim}
-Suffix Tree (b):
-|--b-->
-
-Suffix Tree (ba):
-|--a-->
-|
-|--ba-->
-
-Suffix Tree (ban):
-|--an-->
-|
-|--ban-->
-|
-|--n-->
-
-Suffix Tree (bana):
-|--ana-->
-|
-|--bana-->
-|
-|--na-->
-
-Suffix Tree (banan):
-|--anan-->
-|
-|--banan-->
-|
-|--nan-->
-
-Suffix Tree (banana):
-|--anana-->
-|
-|--banana-->
-|
-|--nana-->
-
-Suffix Tree (banana$):
-|--$-->
-|
-|--a-->|--$-->
-|      |
-|      |--na-->|--$-->
-|      |       |
-|      |       |--na$-->
-|
-|--banana$-->
-|
-|--na-->|--$-->
-|       |
-|       |--na$-->
-\end{verbatim}
 
 \subsubsection{Functional algorithm for suffix tree construction}
 Ukkonen's algorithm is in a manner of on-ling updating and suffix
