@@ -825,59 +825,42 @@ def canonize(t, node, str_ref):
 \end{lstlisting}
 
 \subsubsection{Functional suffix tree construction}
-Ukkonen's algorithm is in a manner of on-ling updating and suffix
-link plays very important role. Such properties can't be realized
-in a functional approach. Giegerich and Kurtz found Ukkonen's algorithm
-can be transformed to McCreight's algorithm\cite{GieKur97}. These
-two and the algorithm found by Weiner are all $O(n)$-algorithms.
-They also conjecture (although it isn't proved) that any sequential
-suffix tree construction not base on the important concepts, such
-as suffix links, active suffixes, etc., will fail to meet $O(n)$-criterion.
 
-There is implemented in PLT/Scheme\cite{plt-stree} based on
-Ukkonen's algorithm, However it updates suffix links during the
-processing, so it is not pure functional approach.
+Giegerich and Kurtz found Ukkonen's algorithm
+can be transformed to McCreight's algorithm\cite{GieKur97}.
+The three suffix tree construction algorithms found by
+Weiner, McCreight, and Ukkonen are all bound to $O(n)$ time.
+Giegerich and Kurtz conjectured any sequential
+suffix tree construction method doesn't base on
+suffix links, active suffixes, etc., fails to meet the
+$O(n)$-criterion.
+
+There is implementation in PLT/Scheme\cite{plt-stree} based on
+Ukkonen's algorithm, However, it updates suffix links during the
+processing, which is not purely functional.
 
 A lazy suffix tree construction method is discussed in \cite{GieKur95}.
-And this method is contribute to Haskell Hackage by Bryan O'Sullivan.
-\cite{Hackage-STree}.
+And this method is contributed to Haskell Hackage by Bryan O'Sullivan.
+\cite{Hackage-STree}. The method depends on the lazy evaluation property.
+The tree won't be constructed until it is traversed.
+However, it can't ensure the $O(n)$ performance
+if the programming environments or languages don't support
+lazy evalutation.
 
-This method benefit from the lazy evaluation property of
-Haskell programming languages, so that the tree won't be constructed
-until it is traversed. However, I think it is still a kind of brute-force
-method. In other functional programming languages such as ML.
-It can't be $O(n)$ algorithm.
-
-I will provide a pure brute-force implementation which is similar
-but not 100\% same in this post.
-
-\subsubsection*{Brute-force suffix tree construction in Haskell}
-
-For brute-force implementation, we needn't suffix link at all. The definition
-of suffix node is plain straightforward.
+The following Haskell program defines the suffix tree. A suffix tree
+is either a leaf, or a branch containing mulitple sub trees. Each
+sub tree is bound to a string.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-data Tr = Lf | Br [(String, Tr)] deriving (Eq, Show)
+data Tr = Lf | Br [(String, Tr)] deriving (Eq)
 type EdgeFunc = [String]->(String, [String])
 \end{lstlisting}
 
-The edge function plays interesting role. it takes a list of strings,
-and extract a prefix of these strings, the prefix may not be the
-longest prefix, and empty string is also possible. Whether extract
-the longest prefix or just return them trivially can be defined by different
-edge functions.
-
-For easy implementation, we limit the character set as below.
-
-\begin{lstlisting}
-alpha = ['a'..'z']++['A'..'Z']
-\end{lstlisting}
-
-This is only for illustration purpose, only the English lower case and upper
-case letters are included. We can of course includes other characters if necessary.
-
-The core algorithm is given in list comprehension style.
+The edge function extracts a common prefix from a list of strings.
+The prefix returned by edge function may not be the longest one,
+empty string is also allowed. The exact behavior can be customized
+with different edge functions.
 
 \begin{lstlisting}
 lazyTree::EdgeFunc -> [String] -> Tr
@@ -887,6 +870,10 @@ lazyTree edge = build where
                          a<-alpha,
                          xs@(x:_) <-[[cs | c:cs<-ss, c==a]],
                          (prefix, ss')<-[edge xs]]
+\end{lstlisting}
+
+\begin{lstlisting}
+alpha = ['a'..'z']++['A'..'Z']
 \end{lstlisting}
 
 lazyTree function takes a list of string, it will generate a radix
@@ -940,25 +927,6 @@ suffixTree::String->Tr
 suffixTree = lazyTree edgeTree . tails
 \end{lstlisting}
 
-Below snippet is the result of constructing suffix Trie/tree for
-string ``mississippi''.
-
-\begin{verbatim}
-SuffixTree("mississippi")=Br [("i",Br [("ppi",Lf),("ssi",Br [("ppi",Lf),
-("ssippi",Lf)])]),("mississippi",Lf),("p",Br [("i",Lf),("pi",Lf)]),("s",
-Br [("i",Br [("ppi",Lf),("ssippi",Lf)]),("si",Br [("ppi",Lf),("ssippi",
-Lf)])])]
-SuffixTrie("mississippi")=Br [("i",Br [("p",Br [("p",Br [("i",Lf)])]),
-("s",Br [("s",Br [("i",Br [("p",Br [("p",Br [("i",Lf)])]),("s",Br [("s",
-Br [("i",Br [("p",Br [("p",Br [("i",Lf)])])])])])])])])]),("m",Br [("i",
-Br [("s",Br [("s",Br [("i",Br [("s",Br [("s",Br [("i",Br [("p",Br [("p",
-Br [("i",Lf)])])])])])])])])])]),("p",Br [("i",Lf),("p",Br [("i",Lf)])]),
-("s",Br [("i",Br [("p",Br [("p",Br [("i",Lf)])]),("s",Br [("s",Br [("i",
-Br [("p",Br [("p",Br [("i",Lf)])])])])])]),("s",Br [("i",Br [("p",Br
-[("p",Br [("i",Lf)])]),("s",Br [("s",Br [("i",Br [("p",Br [("p",Br
-[("i",Lf)])])])])])])])])]
-\end{verbatim}
-
 Function lazyTree is common for all radix trees, the normal Patricia
 and Trie can also be constructed with it.
 
@@ -968,157 +936,6 @@ trie = lazyTree edgeTrie
 
 patricia::[String]->Tr
 patricia = lazyTree edgeTree
-\end{lstlisting}
-
-Let's test it with some simple cases.
-
-\begin{lstlisting}
-trie ["zoo", "bool", "boy", "another", "an", "a"]
-patricia ["zoo", "bool", "boy", "another", "an", "a"]
-\end{lstlisting}
-
-The results are as below.
-
-\begin{verbatim}
-Br [("a",Br [("n",Br [("o",Br [("t",Br [("h",Br [("e",
-Br [("r",Lf)])])])])])]),("b",Br [("o",Br [("o",Br [("l",Lf)]),
-("y",Lf)])]),("z",Br [("o",Br [("o",Lf)])])]
-
-Br [("another",Lf),("bo",Br [("ol",Lf),("y",Lf)]),("zoo",Lf)]
-\end{verbatim}
-
-This is reason why I think the method is brute-force.
-
-\subsubsection*{Brute-force suffix tree construction in Scheme/Lisp}.
-
-The Functional implementation in Haskell utilizes list comprehension, which
-is a handy syntax tool. In Scheme/Lisp, we use functions instead.
-
-In MIT scheme, there are special functions to manipulate strings, which
-is a bit different from list. Below are helper functions to simulate
-car and cdr function for string.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (string-car s)
-  (if (string=? s "")
-      ""
-      (string-head s 1)))
-
-(define (string-cdr s)
-  (if (string=? s "")
-      ""
-      (string-tail s 1)))
-\end{lstlisting}
-
-The edge functions will extract common prefix from a list of strings.
-For Trie, only the first common character will be extracted.
-
-\begin{lstlisting}
-;; (edge-trie '("an" "another" "and"))
-;;  ==> ("a" "n" "nother" "nd")
-(define (edge-trie ss)
-  (cons (string-car (car ss)) (map string-cdr ss)))
-\end{lstlisting}
-
-While for suffix tree, we need extract the longest common prefix.
-
-\begin{lstlisting}
-;; (edge-tree '("an" "another" "and"))
-;;   ==> ("an" "" "other" "d")
-(define (edge-tree ss)
-  (cond ((= 1 (length ss)) (cons (car ss) '()))
-	((prefix? ss)
-	 (let* ((res (edge-tree (map string-cdr ss)))
-		(prefix (car res))
-		(ss1 (cdr res)))
-	   (cons (string-append (string-car (car ss)) prefix) ss1)))
-	(else (cons "" ss))))
-
-;; test if a list of strings has common prefix
-;; (prefix '("an" "another" "and")) ==> true
-;; (prefix '("" "other" "d")) ==> false
-(define (prefix? ss)
-  (if (null? ss)
-      '()
-      (let ((c (string-car (car ss))))
-	(null? (filter (lambda (s) (not (string=? c (string-car s))))
-		       (cdr ss))))))
-\end{lstlisting}
-
-For some old version of MIT scheme, there isn't definition for
-partition function, so I defined one like below.
-
-\begin{lstlisting}
-;; overwrite the partition if not support SRFI 1
-;; (partition (> 5) '(1 6 2 7 3 9 0))
-;;   ==>((6 7 9) 1 2 3 0)
-(define (partition pred lst)
-  (if (null? lst)
-      (cons '() '())
-      (let ((res (partition pred (cdr lst))))
-	(if (pred (car lst))
-	    (cons (cons (car lst) (car res)) (cdr res))
-	    (cons (car res) (cons (car lst) (cdr res)))))))
-\end{lstlisting}
-
-Function groups can group a list of strings based on the first
-letter of each string.
-
-\begin{lstlisting}
-;; group a list of strings based on first char
-;; ss shouldn't contains "" string, so filter should be done first.
-;; (groups '("an" "another" "bool" "and" "bar" "c"))
-;;  ==> (("an" "another" "and") ("bool" "bar") ("c"))
-(define (groups ss)
-  (if (null? ss)
-      '()
-      (let* ((c (string-car (car ss)))
-	     (res (partition (lambda (x) (string=? c (string-car x))) (cdr ss))))
-	(append (list (cons (car ss) (car res)))
-		(groups (cdr res))))))
-\end{lstlisting}
-
-Function remove-empty can remove the empty string from the string list.
-
-\begin{lstlisting}
-(define (remove-empty ss)
-  (filter (lambda (s) (not (string=? "" s))) ss))
-\end{lstlisting}
-
-With all the above tools, the core brute-force algorithm can be implemented
-like the following.
-
-\begin{lstlisting}
-(define (make-tree edge ss)
-  (define (bld-group grp)
-    (let* ((res (edge grp))
-	   (prefix (car res))
-	   (ss1 (cdr res)))
-      (cons prefix (make-tree edge ss1))))
-  (let ((ss1 (remove-empty ss)))
-    (if (null? ss1) '()
-	(map bld-group (groups ss1)))))
-\end{lstlisting}
-
-The final suffix tree and suffix Trie construction algorithms can
-be given.
-
-\begin{lstlisting}
-(define (suffix-tree s)
-  (make-tree edge-tree (tails s)))
-
-(define (suffix-trie s)
-  (make-tree edge-trie (tails s)))
-\end{lstlisting}
-
-Below snippet are quick verification of this program.
-
-\begin{lstlisting}
-(suffix-trie "cacao")
-;Value 66: (("c" ("a" ("c" ("a" ("o"))) ("o"))) ("a" ("c" ("a" ("o"))) ("o")) ("o"))
-(suffix-tree "cacao")
-;Value 67: (("ca" ("cao") ("o")) ("a" ("cao") ("o")) ("o"))
 \end{lstlisting}
 
 % ================================================================
