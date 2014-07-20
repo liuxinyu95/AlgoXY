@@ -203,6 +203,17 @@ This link is defined as {\em the suffix link} of node $A$\cite{ukkonen95}.
 Suffix link is drawn in dotted style. In figure \ref{fig:strie-cacao}, the suffix link of
 node $A$ points to node $B$, and the suffix link of node $B$ points to node $C$.
 
+Suffix link is valid for all nodes except the root. We can add a suffix link field to
+the trie definition. Below Python example code shows this update.
+
+\lstset{language=Python}
+\begin{lstlisting}
+class STrie:
+    def __init__(self, suffix=None):
+        self.children = {}
+        self.suffix = suffix
+\end{lstlisting}
+
 \subsection{On-line construction}
 
 For string $S$, Suppose we have constructed suffix trie for the $i$-th prefix
@@ -300,96 +311,93 @@ We define the top equals to the root in this case.
   \If{$top = $ NIL} \Comment{The trie is empty}
     \State $top \gets$ \Call{Create-Empty-Node}{}
   \EndIf
-  \State $node \gets top$
-  \State $node' \gets$ \Call{Create-Empty-Node}{} \Comment{dummy init value}
-  \While{$node \neq$ NIL $\land$ \Call{Children}{$node$}[$c$] = NIL}
-    \State \Call{Children}{$node$}[$c$] $\gets$ \Call{Create-Empty-Node}{}
-    \State \Call{Suffix-Link}{$node'$} $\gets$ \Call{Children}{$node$}[$c$]
-    \State $node' \gets$ \Call{Children}{$node$}[$c$]
-    \State $node \gets$ \Call{Suffix-Link}{$node$}
+  \State $T \gets top$
+  \State $T' \gets$ \Call{Create-Empty-Node}{} \Comment{dummy init value}
+  \While{$T \neq$ NIL $\land$ \Call{Children}{$T$}[$c$] = NIL}
+    \State \Call{Children}{$T$}[$c$] $\gets$ \Call{Create-Empty-Node}{}
+    \State \Call{Suffix-Link}{$T'$} $\gets$ \Call{Children}{$T$}[$c$]
+    \State $T' \gets$ \Call{Children}{$T$}[$c$]
+    \State $T \gets$ \Call{Suffix-Link}{$T$}
   \EndWhile
-  \If{$node \neq$ NIL}
-    \State \Call{Suffix-Link}{$node'$} $\gets$ \Call{Children}{$node$}[$c$]
+  \If{$T \neq$ NIL}
+    \State \Call{Suffix-Link}{$T'$} $\gets$ \Call{Children}{$T$}[$c$]
   \EndIf
   \State \Return \Call{Children}{$top$}[$c$] \Comment{returns the new top}
 \EndFunction
 \end{algorithmic}
 
-The above function $INSERT()$, can update $SuffixTrie(S_i)$ to $SuffixTrie(S_{i+1})$.
-It receives two parameters, one is the top node of $SuffixTrie(S_i)$, the other
-is the character of $s_{i+1}$. If the top node is NIL, which means that there is
-no root node yet, it create the root node then. Compare to the algorithm given
-by Ukkonen \cite{ukkonen95}, I use a dummy node $node'$ to keep tracking the
-previous created new node. In the main loop, the algorithm check each node
-to see if it has $s_{i+1}$-child, if not, it will create new node, and bind the
-edge to character $s_{i+1}$. Then it go up along the suffix link until either
-arrives at root node, or find a node which has $s_{i+1}$-child already. After
-the loop, if the node point to some where in the Trie, the algorithm will
-make the last suffix link point to that place. The new top position is returned
-as the final result.
+Function \textproc{Insert}, updates $SuffixTrie(S_i)$ to $SuffixTrie(S_{i+1})$.
+It takes two arguments, one is the top of $SuffixTrie(S_i)$, the other
+is $s_{i+1}$ character. If the top is NIL, it means the tree is empty,
+so there is no root. The algorithm creates a root node in this case.
+A sentinel empty node $T'$ is created. It keeps tracking the previous
+created new node. In the main loop, the algorithm checks every node
+one by one along the suffix link. If the node hasn't the $s_{i+1}$-child,
+it then creates a new node, and binds the edge to character $s_{i+1}$.
+The algorithm repeatedly goes up along the suffix link until either
+arrives at the root, or find a node which has the $s_{i+1}$-child already.
+After the loop, if the node isn't empty, it means we stop at a node
+which has the $s_{i+1}$-child.
+The last suffix link then points to that child.
+Finally, the new top position is returned, so that we can futher
+insert other characters to the suffix trie.
 
-and the main part of the algorithm is as below:
+For a given string $S$, the suffix trie can be built by repeatedly
+calling \textproc{Insert} function.
+
 \begin{algorithmic}[1]
-\Procedure{SUFFIX-TRIE}{$S$}
-  \State $t \leftarrow NIL$
-  \For{$i$ from 1 to $LENGTH(S)$}
-    \State $t \leftarrow INSERT(t, s_i)$
+\Function{Suffix-Trie}{$S$}
+  \State $t \gets$ NIL
+  \For{$i \gets 1$ to $|S|$}
+    \State $t \gets$ \Call{Insert}{$t, s_i$}
   \EndFor
-\EndProcedure
+  \State \Return $t$
+\EndFunction
 \end{algorithmic}
 
-Figure \ref{fig:cons-strie-cacao} shows the phases of on-line construction
-of suffix Trie for ``cacao''. Only the last layer of suffix links are shown.
+This algorithm returns the top of the suffix trie, but not the root.
+In order to access the root, we can traverse along the suffix link.
+
+\begin{algorithmic}[1]
+\Function{Root}{$T$}
+  \While{\Call{Suffix-Link}{$T$} $\neq$ NIL}
+    \State $T \gets$ \Call{Suffix-Link}{$T$}
+  \EndWhile
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
+
+Figure \ref{fig:cons-strie-cacao} shows the steps
+when construct suffix trie for ``cacao''.
+Only the last layer of suffix links are shown.
 
 \begin{figure}[htbp]
-   \begin{center}
-     \includegraphics[scale=0.5]{img/strie-empty.ps}empty
-     \includegraphics[scale=0.5]{img/strie-c.ps}``c''
-     \includegraphics[scale=0.5]{img/strie-ca.ps}``ca''
-     \includegraphics[scale=0.5]{img/strie-cac.ps}``cac'' \newline
-     \includegraphics[scale=0.5]{img/strie-caca.ps}``caca''
-     \includegraphics[scale=0.5]{img/strie-cacao.ps}``cacao''
-     \caption{Construction of suffix Trie for ``cacao'', the 6 phases are shown, only the last layer of suffix links are shown in dotted arrow.}
-     \label{fig:cons-strie-cacao}
-   \end{center}
+  \centering
+  \subfloat[Emtpy]{\hspace{.1\textwidth}\includegraphics[scale=0.5]{img/strie-empty.ps}\hspace{.1\textwidth}}
+  \subfloat[``c'']{\hspace{.1\textwidth}\includegraphics[scale=0.5]{img/strie-c.ps}\hspace{.1\textwidth}}
+  \subfloat[``ca'']{\hspace{.1\textwidth}\includegraphics[scale=0.5]{img/strie-ca.ps}\hspace{.1\textwidth}} \\
+  \subfloat[``cac'']{\hspace{.1\textwidth}\includegraphics[scale=0.5]{img/strie-cac.ps}\hspace{.1\textwidth}}
+  \subfloat[``caca'']{\hspace{.1\textwidth}\includegraphics[scale=0.5]{img/strie-caca.ps}\hspace{.1\textwidth}}
+  \subfloat[``cacao'']{\hspace{.1\textwidth}\includegraphics[scale=0.5]{img/strie-cacao.ps}\hspace{.1\textwidth}}
+  \caption{Construct suffix trie for ``cacao''. There are 6 steps. Only the last layer of suffix links are shown in dotted arrow.}
+  \label{fig:cons-strie-cacao}
 \end{figure}
 
-According to the suffix Trie on-line construction process, the computation time
-is proportion to the size of suffix Trie. However, in the worse case, this is
-$O(n^2)$, where $n=LENGTH(S)$. One example is $S=a^nb^n$, that there are $n$
+For \textproc{Insert} algorihtm, the computation time
+is proportion to the size of suffix trie. In the worse case, the suffix trie is
+built in $O(n^2)$ time, where $n = |S|$. One example is $S=a^nb^n$, that there are $n$
 characters of $a$ and $n$ characters of $b$.
 
-\subsubsection{Suffix Trie on-line construction program in Python and C++}
-The above algorithm can be easily implemented with imperative languages such as C++ and Python.
-In this section, I'll first give the defitions of the suffix Trie node. After that, I'll
-show the algorithms. In order to test and verify the programs, I'll provide some helper
-functions to print the Trie as human readable strings and give some look-up function as well.
-
-\subsubsection*{Definition of suffix Trie node in Python}
-With Python programming language, we can define the node in suffix Trie with two fields, one
-is a dictionary of children, the key is the character binding to an edge, and the value
-is the child node. The other field is suffix link, it points to a node which represents for
-the suffix string of this one.
+The following example Python program implements the suffix trie construction algorithm.
 
 \lstset{language=Python}
 \begin{lstlisting}
-class STrie:
-    def __init__(self, suffix=None):
-        self.children = {}
-        self.suffix = suffix
-\end{lstlisting}
+def suffix_trie(str):
+    t = None
+    for c in str:
+        t = insert(t, c)
+    return root(t)
 
-By default, the suffix link for a node is initialized as empty, it will be set during the
-main construction algorithm.
-
-\subsubsection*{Definition of suffix Trie node in C++}
-
-\subsubsection*{Suffix Trie on-line construction algorithm in Python}
-The main algorithm of updating $SuffixTrie(S_i)$ to $SuffixTrie(S_{i+1})$ is as below.
-It takes the top position node and the character to be updated as parameters.
-
-\lstset{language=Python}
-\begin{lstlisting}
 def insert(top, c):
     if top is None:
         top=STrie()
@@ -402,193 +410,12 @@ def insert(top, c):
     if node is not None:
         new_node.suffix = node.children[c]
     return top.children[c] #update top
-\end{lstlisting}
 
-The main entry point of the program iterates all characters of a given string, and
-call the insert() function repeatedly.
-
-\begin{lstlisting}
-def suffix_trie(str):
-    t = None
-    for c in str:
-        t = insert(t, c)
-    return root(t)
-\end{lstlisting}
-
-Because insert() function returns the updated top position, the program calls
-a function to return the root node as the final result. This function is implemented
-as the following.
-
-\begin{lstlisting}
 def root(node):
     while node.suffix is not None:
         node = node.suffix
     return node
 \end{lstlisting}
-
-It will go along with the suffix links until reach the root node.
-
-In order to verify the program, we need convert the suffix Trie to human readable
-string. This is realized in a recursive way for easy illustration purpose.
-
-\begin{lstlisting}
-def to_lines(t):
-    if len(t.children)==0:
-        return [""]
-    res = []
-    for c, tr in sorted(t.children.items()):
-        lines = to_lines(tr)
-        lines[0] = "|--"+c+"-->"+lines[0]
-        if len(t.children)>1:
-            lines[1:] = map(lambda l: "|      "+l, lines[1:])
-        else:
-            lines[1:] = map(lambda l: "       "+l, lines[1:])
-        if res !=[]:
-            res.append("|")
-        res += lines
-    return res
-
-def to_str(t):
-    return "\n".join(to_lines(t))
-\end{lstlisting}
-
-With the to\_str() helper function, we can test our program with
-some simple cases.
-
-\begin{lstlisting}
-class SuffixTrieTest:
-    def __init__(self):
-        print "start suffix trie test"
-
-    def run(self):
-        self.test_build()
-
-    def __test_build(self, str):
-        print "Suffix Trie ("+str+"):\n", to_str(suffix_trie(str)),"\n"
-
-    def test_build(self):
-        str="cacao"
-        for i in range(len(str)):
-            self.__test_build(str[:i+1])
-\end{lstlisting}
-
-Run this test program will output the below result.
-
-\begin{verbatim}
-start suffix trie test
-Suffix Trie (c):
-|--c-->
-
-Suffix Trie (ca):
-|--a-->
-|
-|--c-->|--a-->
-
-Suffix Trie (cac):
-|--a-->|--c-->
-|
-|--c-->|--a-->|--c-->
-
-Suffix Trie (caca):
-|--a-->|--c-->|--a-->
-|
-|--c-->|--a-->|--c-->|--a-->
-
-Suffix Trie (cacao):
-|--a-->|--c-->|--a-->|--o-->
-|      |
-|      |--o-->
-|
-|--c-->|--a-->|--c-->|--a-->|--o-->
-|             |
-|             |--o-->
-|
-|--o-->
-\end{verbatim}
-
-Compare with figure \ref{fig:cons-strie-cacao}, we can find that the results are identical.
-
-\subsubsection*{Suffix Trie on-line construction algorithm in C++}
-With ISO C++, we define the suffix Trie node as a struct.
-
-\lstset{language=C++}
-\begin{lstlisting}
-struct Node{
-  typedef std::string::value_type Key;
-  typedef std::map<Key, Node*> Children;
-
-  Node(Node* suffix_link=0):suffix(suffix_link){}
-  ~Node(){
-    for(Children::iterator it=children.begin();
-        it!=children.end(); ++it)
-      delete it->second;
-  }
-
-  Children children;
-  Node* suffix;
-};
-\end{lstlisting}
-
-The difference between a standard Trie node definition is
-the suffix link member pointer.
-
-The insert function will updating from the top position of
-the suffix Trie.
-
-\begin{lstlisting}
-Node* insert(Node* top, Node::Key c){
-  if(!top)
-    top = new Node();
-  Node dummy;
-  Node *node(top), *prev(&dummy);
-  while(node && (node->children.find(c)==node->children.end())){
-    node->children[c] = new Node(node);
-    prev->suffix = node->children[c];
-    node = node->suffix;
-  }
-  if(node)
-    prev->suffix = node->children[c];
-  return top->children[c];
-}
-\end{lstlisting}
-
-If the top points to null pointer, it means the Trie hasn't been
-initialized yet. Instead of using sentinel as Ukkonen did in his
-paper, I explicitly test if the loop can be terminated when it
-goes back along the suffix link to the root node. A dummy node
-is used for simplify the logic. At the end of the program, the
-new top position is returned.
-
-In order to find the root node of a suffix Trie, a helper function
-is provided as below.
-
-\begin{lstlisting}
-Node* root(Node* node){
-  for(; node->suffix; node=node->suffix);
-  return node;
-}
-\end{lstlisting}
-
-The main entry for the suffix Trie on-line construction is
-defined like the following.
-
-\begin{lstlisting}
-Node* suffix_trie(std::string s){
-  return root(std::accumulate(s.begin(), s.end(), (Node*)0,
-                              std::ptr_fun(insert)));
-}
-\end{lstlisting}
-
-This C++ program will generate the same result as the Python
-program, the output/printing part is skipped here. Please
-refer to section \ref{ukkonen-c++} for the details about how
-to convert suffix Trie to string.
-
-\subsection{Alternative functional algorithm}
-Because functional approach isn't suitable for on-line updating.
-I'll provide a declarative style suffix Trie build algorithm in later
-section together with suffix tree building algorithm.
-
 
 % ================================================================
 %               Suffix Tree
