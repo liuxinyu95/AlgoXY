@@ -85,13 +85,52 @@ suffix tree for 'bananas', as shown in figure \ref{fig:stree-bananas}, is quite 
   \caption{The suffix tree for `bananas'} \label{fig:stree-bananas}
 \end{figure}
 
-To create suffix trie or suffix tree for a given string, we can utilize the
-insertion algorithmS explained in previous chatper
-for trie and Patricia. But this method isn't efficient
-enough in terms of speed and spaces. By using suffix link concpet, we can
-on-line construct suffix trie fast. Because trie isn't space efficient,
-Ukkonen found a method, which can on-line construct suffix tree in linear time.
-In this chapter, we explain Ukkonen's algorithm, and show
+To create suffix suffix tree for a given string, we can utilize the
+insertion algorithmS explained in previous chatper for Patricia.
+
+\begin{algorithmic}[1]
+\Function{Suffix-Tree}{$S$}
+  \State $T \gets$ NIL
+  \For{$i \gets 1$ to $|S|$}
+    \State $T \gets$ \textproc{Patricia-Insert}($T$, \Call{Right}{$S, i$})
+  \EndFor
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
+
+For non-empty string $S=s_1s_2...s_i...s_n$ of length $n = |S|$, function
+\textproc{Right}($S, i$) $= s_is_{i+1...s_n}$. It extracts the sub-string of $S$
+from the $i$-th character to the last one. This straightforward algorithm
+can also be defined as below.
+
+\be
+suffix_T(S) = fold(insert_{patricia}, \Phi, suffixes(S))
+\ee
+
+Where function $suffixes(S)$ gives all the suffixes for string $S$. If
+the string is empty, the result is one empty string; otherwise, $S$
+itself is one suffix, the others can be given by recursively call
+$suffixes(S')$, where $S'$ is given by drop the first character from $S$.
+
+\be
+suffixes(S) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{ \Phi \} & S = \Phi \\
+  \{S\} \cup suffixes(S') & otherwise
+  \end{array}
+\right.
+\ee
+
+This solution constructs suffix tree in $O(n^2)$ time, for string of length $n$.
+It totally inserts $n$ suffixes to the tree, and each
+insertion takes linear time proportion to the length of the suffix.
+The efficiency isn't good enough.
+
+In this chapter, we firstly explain a fast on-line suffix trie construction
+solution by using suffix link concpet. Because trie isn't space efficient,
+we next introduce a linear time on-line suffix tree construction algorithm
+found by Ukkonen. and show
 how to solve some interesting string manipulation problems with
 suffix tree.
 
@@ -119,101 +158,52 @@ Thus suffix trie needs much more spaces.
 If we pack all nodes which have only one child, the suffix
 trie is turned into a suffix tree.
 
-%=========================================================================
-%       Trivial construction of Suffix Trie and Suffix Tree
-%=========================================================================
-\subsection{Trivial construction methods of Suffix Tree}
-\label{trivial-cons}
-
-By repeatedly applying the insertion algorithms\cite{lxy-trie} for Trie and Patricia
-on each suffixes of a word, Suffix Trie and tree can be built in a trivial way.
-
-Below algorithm illustrates this approach for suffix tree.
-
-\begin{algorithmic}[1]
-\Function{TRIVIAL-SUFFIX-TREE}{$S$}
-  \State $T \leftarrow NIL$
-  \For{$i$ from $1$ to $LENGTH(S)$}
-    \State $T \leftarrow PATRICIA-INSERT(T, RIGHT(S, i))$
-  \EndFor
-  \State \Return $T$
-\EndFunction
-\end{algorithmic}
-
-Where function $RIGHT(S, i)$ will extract sub-string of S from left to right most.
-Similar functional algorithm can also be provided in this way.
-
-\begin{algorithmic}[1]
-\Function{TRIVIAL-SUFFIX-TREE'}{$S$}
-  \State \Return $FOLD-LEFT(PATRICIA-INSERT, NIL, TAILS(S))$
-\EndFunction
-\end{algorithmic}
-
-Function TAILS() returns a list of all suffixes for string S. In Haskell, Module
-Data.List provides this function already. In Scheme/Lisp, it can be implemented as below.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (tails s)
-  (if (string-null? s)
-      '("")
-      (cons s (tails (string-tail s 1)))))
-\end{lstlisting}
-
-The trivial suffix Trie/tree construction method takes $O(n^2)$ time, where $n$ is the
-length of the word. Although the string manipulation can be very fast by using suffix
-tree, slow construction will be the bottleneck of the whole process.
+We can reuse the trie definition for suffix tree. Each node is bound to a
+character, and contains mutiple sub trees as children. A child can be
+refered from the bounded character.
 
 % ================================================================
 %               Online construction of Suffix Trie
 % ================================================================
-\subsection{On-line construction of suffix Trie}
+\subsection{Node transfer and suffix link}
 
-Analysis of construction for suffix Trie can be a good start point in finding
-the linear time suffix tree construction algorithm. In Ukkonen's paper\cite{ukkonen95},
-finite-state automation, transition function and suffix function are used to
-build the mathematical model for suffix Trie/tree.
+For string $S$ of length $n$, define $S_i=s_1s_2...s_i$.
+It is the prefix contains the first $i$ characters.
 
-In order to make it easy for understanding, let's explain the above concept with
-the elements of Trie data structure.
-
-With a set of alphabetic, a string with length $n$ can be defined as $S=s_1s_2...s_n$.
-And we define $S[i]=s_1s_2...s_i$, which contains the first $i$ characters.
-
-In a suffix Trie, each node represents a suffix string. for example in figure
-\ref{fig:strie-cacao}, node X represents suffix 'a', by adding a character 'c',
-node X transfers to node Y which represents suffix 'ac'. We say node X and edge labeled 'c'
-transfers to node Y. This relationship can be denoted in pseudo code as below.
+\index{Suffix tree!node transfer}
+In suffix trie, each node represents a suffix string. for example in figure
+\ref{fig:strie-cacao}, node $X$ represents suffix 'a', by adding character 'c',
+node $X$ transfers to $Y$ which represents suffix 'ac'. We say node $X$ transfer
+to $Y$ with the edge of character 'c'\cite{ukkonen95}.
 
 \begin{figure}[htbp]
-   \begin{center}
-     \includegraphics[scale=0.4]{img/strie-cacao.ps}
-     \caption{node $X \leftarrow$ ``a'', node $Y \leftarrow$ ``ac'', $X$ transfers to $Y$ with character 'c'}
-     \label{fig:strie-cacao}
-   \end{center}
+  \centering
+  \includegraphics[scale=0.45]{img/strie-cacao.ps}
+  \caption{Suffix trie for string ``cacao''. Node $X \gets$ ``a'', node $Y \gets$ ``ac'', $X$ transfers to $Y$ with character 'c'}
+  \label{fig:strie-cacao}
 \end{figure}
 
-$Y \leftarrow CHILDREN(X)[c]$
+\begin{algorithmic}
+\State $Y \gets$ \Call{Children}{$X$}[$c$]
+\end{algorithmic}
 
-It's equal to the following C++ and Python code.
+We also say that node $X$ has a 'c'-child $Y$. Below Python expression
+reflects this concept.
 
 \lstset{language=python}
 \begin{lstlisting}
 y = x.children[c]
 \end{lstlisting}
 
-We also say that node x has a c-child y.
+\index{Suffix link}
+If node $A$ in a suffix trie represents suffix $s_is_{i+1}...s_n$,
+and node $B$ represents suffix $s_{i+1}s_{i+2}...s_n$, we say node $B$
+represents {\em the suffix} of node $A$. We can create a link from $A$ to $B$.
+This link is defined as {\em the suffix link} of node $A$\cite{ukkonen95}.
+Suffix link is drawn in dotted style. In figure \ref{fig:strie-cacao}, the suffix link of
+node $A$ points to node $B$, and the suffix link of node $B$ points to node $C$.
 
-If a node $A$ in a suffix Trie represents for a suffix $s_is_{i+1}...s_n$,
-and node $B$ represents for suffix $s_{i+1}s_{i+2}...s_n$, we say node $B$
-represents for the suffix of node $A$. We can create a link from $A$ to $B$.
-This link is defined as the suffix link of node $A$. In this post, we show
-suffix link in dotted style. In figure \ref{fig:strie-cacao}, suffix link of
-node $A$ points to node $B$, and suffix link of node $B$ points to node $C$.
-Suffix link is an important tool in Ukkonen's on-line construction algorithm,
-it is also used in some other algorithms running on the suffix tree.
-
-\subsubsection{on-line construction algorithm for suffix Trie}
+\subsection{On-line construction}
 For a string $S$, Suppose we have construct suffix Trie for its $i$-th prefix
 $s_1s_2...s_i$. We denote the suffix Trie for this $i$-th prefix as $SuffixTrie(S_i)$.
 Let's consider how can we obtain $SuffixTrie(S_{i+1})$ from $SuffixTrie(S_i)$.
