@@ -1296,7 +1296,7 @@ The function \text{Match-Fork} checks if the children satisfy the common sub-str
 \Function{Match-Fork}{$T$}
   \If{$|$ \Call{Children}{$T$} $| = 2$}
     \State $\{(s_1, T_1), (s_2, T_2)\} \gets$ \Call{Children}{$T$}
-    \State \Return $T_1$ is leaf $\land T_2$ is leaf $\land$ \Call{Xor}{$\$_1 \in s_1, \$_2 \in s_2)$}
+    \State \Return $T_1$ is leaf $\land T_2$ is leaf $\land$ \Call{Xor}{$\$_1 \in s_1, \$_1 \in s_2)$}
   \EndIf
   \State \Return FALSE
 \EndFunction
@@ -1331,74 +1331,36 @@ def is_leaf(node):
 def match_fork(t, node):
     if len(node.children)==2:
         [(_, (str_ref1, tr1)), (_, (str_ref2, tr2))]=node.children.items()
-        return is_leaf(tr1) and is_leaf(tr2) and \
-            (t.substr(str_ref1).find(TERM2)!=-1) != \
-            (t.substr(str_ref2).find(TERM2)!=-1)
+        return is_leaf(tr1) and is_leaf(tr2) and
+            (t.substr(str_ref1).find('#')!=-1) !=
+            (t.substr(str_ref2).find('#')!=-1)
     return False
 \end{lstlisting}
 
-\subsubsection{Find the longest common sub-string recursively}
 The longest common sub-string finding algorithm can also be
-realized in functional way.
+realized recursively. If the suffix tree $T$ is a leaf, the result is empty;
+Otherwise, we examine all children in $T$. For those satisfy the matching
+criteria, the sub-string are collected as candidates; for those don't
+matching, we recursively search the common sub-string among the children.
+The longest candidate is selected as the final result.
 
-\begin{algorithmic}[1]
-\Function{LONGEST-COMMON-SUBSTRING'}{$T$}
-  \If{$T$ is leaf}
-    \State \Return $Empty$
-  \Else
-    \State \Return $PROC(CHILDREN(T))$
-  \EndIf
-\EndFunction
-\end{algorithmic}
+\be
+LCS(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & leaf(T) \\
+  \begin{array}{ll}
+    longest( & \{s_i | (s_i, T_i) \in C, match(T_i)\} \cup \\
+             & \{s_i \cup LCS(T_i) | (s_i, T_i) \in C, \lnot match(T_i)\})
+  \end{array} & otherwise
+  \end{array}
+\right.
+\ee
 
-If the generalized suffix tree is just a leaf, empty string is
-returned to indicate the trivial result. In other case, we
-need process the children of the tree.
-
-\begin{algorithmic}[1]
-\Function{PROC}{$L$}
-  \If{$L$ is empty}
-    \State \Return $Empty$
-  \Else
-    \State $(s, node) \leftarrow FIRST(L)$
-    \If{$MATCH-FORK(node)$}
-      \State $x \leftarrow s$
-    \Else
-      \State $x \leftarrow LONGEST-COMMON-SUBSTRING'(node)$
-      \If{$x \neq Empty$}
-        \State $x \leftarrow s + x$
-      \EndIf
-    \EndIf
-    \State $y \leftarrow PROC(LEFT(L))$
-    \If{$LENGTH(x) > LENGTH(y)$}
-      \State \Return $x$
-    \Else
-      \State \Return $y$
-    \EndIf
-  \EndIf
-\EndFunction
-\end{algorithmic}
-
-If the children list is empty, the algorithm returns empty
-string. In other case, the first element, as a pair of edge
-string and a child node, is first picked, if this child node
-match the fork criteria (one is in pattern ``...$\$_1$...'',
-the other in pattern ``...$\$_2$'' without $\$_1$), then the edge string is
-a candidate. The algorithm will process the rest children
-list and compare with this candidate. The longer one will
-be returned as the final result.
-If it doesn't match the fork criteria, we need go on find the
-longest common sub-string from this child node recursively.
-and do the similar comparison afterward.
-
-\subsubsection*{Find the longest common sub-string in Haskell}
-Similar as the longest repeated sub-string problem, there
-are two alternative, one is to just return the first longest
-common sub-string. The other is to return all the candidates.
+The following Haskell example program implements the longest common sub-string algorithm.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-lcs::Tr->[String]
 lcs Lf = []
 lcs (Br lst) = find $ filter (not .isLeaf . snd) lst where
     find [] = []
@@ -1406,97 +1368,12 @@ lcs (Br lst) = find $ filter (not .isLeaf . snd) lst where
                        (if match t
                         then s:(find xs)
                         else  (map (s++) (lcs t)) ++ (find xs))
-\end{lstlisting} %$
 
-Most of the program is as same as the one for finding the longest
-repeated sub-string. The ``match'' function is defined to check
-the fork criteria.
-
-\begin{lstlisting}
 match (Br [(s1, Lf), (s2, Lf)]) = ("#" `isInfixOf` s1) /= ("#" `isInfixOf` s2)
 match _ = False
 \end{lstlisting} %$
 
-If the function ``maximumBy'' defined in Data.List is used, only
-the first candidate will be found.
-
-\begin{lstlisting}
-lcs'::Tr->String
-lcs' Lf = ""
-lcs' (Br lst) = find $ filter (not . isLeaf . snd) lst where
-    find [] = ""
-    find ((s, t):xs) = maximumBy (compare `on` length)
-                       (if match t then [s, find xs]
-                           else [tryAdd s (lcs' t), find xs])
-    tryAdd x y = if y=="" then "" else x++y
-\end{lstlisting} %$
-
-We can test this program by some simple cases, below are the
-snippet of the result in GHCi.
-
-\begin{lstlisting}
-lcs $ suffixTree "baby#ababa$"
-["bab"]
-\end{lstlisting}
-
-\subsubsection*{Find the longest common sub-string in Scheme/Lisp}
-It can be found from the Haskell program, that the common structure
-of the lrs and lcs are very similar to each other, this hint us
-that we can abstract to a common search function.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (search-stree t match)
-  (define (find lst)
-    (if (null? lst)
-	'()
-	(let ((s (edge (car lst)))
-	      (tr (children (car lst))))
-	  (max-by (compare-on string-length)
-		  (if (match tr)
-		      (cons s (find (cdr lst)))
-		      (append
-		       (map (lambda (x) (string-append s x)) (search-stree tr match))
-		       (find (cdr lst))))))))
-  (if (leaf? t)
-      '()
-      (find (filter (lambda (x) (not (leaf? x))) t))))
-\end{lstlisting}
-
-This function takes a suffix tree and a function to test if a node
-match a certain criteria. It will filter out all leaf node first,
-then repeatedly check if each branch node match the criteria. If matches
-the function will compare the edge string to see if it is the longest one,
-else, it will recursively check the child node until either fails or
-matches.
-
-The longest common sub-string function can be then implemented with
-this function.
-
-\begin{lstlisting}
-(define (xor x y)
-  (not (eq? x y)))
-
-(define (longest-common-substring s1 s2)
-  (define (match-fork t)
-    (and (eq? 2 (length t))
-	 (and (leaf? (car t)) (leaf? (cadr t)))
-	 (xor (substring? TERM2 (edge (car t)))
-	     (substring? TERM2 (edge (cadr t))))))
-  (search-stree (suffix-tree (string-append s1 TERM2 s2 TERM1)) match-fork))
-\end{lstlisting}
-
-We can test this function with some simple cases:
-
-\begin{lstlisting}
-(longest-common-substring "xbaby" "ababa")
-;Value 11: ("bab")
-
-(longest-common-substring "ff" "bb")
-;Value: ()
-\end{lstlisting}
-
-\subsection{Find the longest palindrome in a string}
+\subsection{Find the longest palindrome}
 A palindrome is a string, $S$, such that $S=reverse(S)$, for instance,
 in English, ``level'', ``rotator'', ``civic'' are all palindrome.
 
