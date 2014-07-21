@@ -1217,58 +1217,24 @@ def update_max(lst, x):
     return lst
 \end{lstlisting}
 
-\subsubsection{Find the longest repeated sub-string in functional approach}
-Searching the deepest branch can also be realized in functional way.
+Searching the deepest branch can also be realized recursively.
 If the tree is just a leaf node, empty string is returned, else the
-algorithm will try to find the longest repeated sub-string from the
-children of the tree.
+algorithm tries to find the longest repeated sub-string from the
+children.
 
-\begin{algorithmic}[1]
-\Function{LONGEST-REPEATED-SUBSTRING'}{$T$}
-  \If{$T$ is leaf}
-    \State \Return $Empty$
-  \Else
-    \State \Return $PROC(CHILDREN(T))$
-  \EndIf
-\EndFunction
-\end{algorithmic}
+\be
+LRS(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & leaf(T) \\
+  longest(\{s_i \cup LRS(T_i) | (s_i, T_i) \in C, \lnot leaf(T_i)\}) & otherwise
+  \end{array}
+\right.
+\ee
 
-\begin{algorithmic}[1]
-\Function{PROC}{$L$}
-  \If{$L$ is empty}
-    \State \Return $Empty$
-  \Else
-    \State $(s, node) \leftarrow FIRST(L)$
-    \State $x \leftarrow s + LONGEST-REPEATED-SUBSTRING'(T)$
-    \State $y \leftarrow PROC(REST(L))$
-    \If{$LENGTH(x) > LENGTH(y)$}
-      \State \Return $x$
-    \Else
-      \State \Return $y$
-    \EndIf
-  \EndIf
-\EndFunction
-\end{algorithmic}
-
-In $PROC$ function, the first element, which is a pair of edge string
-and a child node, will be examine firstly. We recursively call the
-algorithm to find the longest repeated sub-string from the child node,
-and append it to the edge string. Then we compare this candidate
-sub string with the result obtained from the rest of the children.
-The longer one will be returned as the final result.
-
-Note that in case $x$ and $y$ have the same length, it is easy to
-modify the program to return both of them.
-
-\subsubsection*{Find the longest repeated sub-string in Haskell}
-We'll provide 2 versions of Haskell implementation. One version
-just returns the first candidate in case there are multiple sub-strings
-which have the same length as the longest sub-string. The other
-version returns all possible candidates.
-
+The following Haskell example program implements the longest repeated sub-string algorithm.
 \lstset{language=Haskell}
 \begin{lstlisting}
-isLeaf::Tr -> Bool
 isLeaf Lf = True
 isLeaf _ = False
 
@@ -1278,134 +1244,6 @@ lrs' (Br lst) = find $ filter (not . isLeaf . snd) lst where
     find [] = ""
     find ((s, t):xs) = maximumBy (compare `on` length) [s++(lrs' t), find xs]
 \end{lstlisting} %$
-
-In this version, we used the maximumBy function provided in Data.List
-module. it will only return the first maximum value in a list.
-In order to return all maximum candidates, we need provide a customized
-function.
-
-\begin{lstlisting}
-maxBy::(Ord a)=>(a->a->Ordering)->[a]->[a]
-maxBy _ [] = []
-maxBy cmp (x:xs) = foldl maxBy' [x] xs where
-    maxBy' lst y = case cmp (head lst) y of
-                     GT -> lst
-                     EQ -> lst ++ [y]
-                     LT -> [y]
-
-lrs::Tr->[String]
-lrs Lf = [""]
-lrs (Br lst) = find $ filter (not . isLeaf . snd) lst where
-    find [] = [""]
-    find ((s, t):xs) = maxBy (compare `on` length)
-                             ((map (s++) (lrs t)) ++ (find xs))
-\end{lstlisting} %$
-
-We can feed some simple test cases and compare the results of
-these 2 different program to see their difference.
-
-\begin{lstlisting}
-testLRS s = "LRS(" ++ s ++ ")=" ++ (show $ lrs $ suffixTree (s++"$")) ++ "\n"
-
-testLRS' s = "LRS'(" ++ s ++ ")=" ++ (lrs' $ suffixTree (s++"$")) ++ "\n"
-
-
-test = concat [ f s | s<-["mississippi", "banana", "cacao", "foofooxbarbar"],
-                      f<-[testLRS, testLRS']]
-\end{lstlisting} %$
-
-Below are the results printed out.
-
-\begin{verbatim}
-LRS(mississippi)=["issi"]
-LRS'(mississippi)=issi
-LRS(banana)=["ana"]
-LRS'(banana)=ana
-LRS(cacao)=["ca"]
-LRS'(cacao)=ca
-LRS(foofooxbarbar)=["bar","foo"]
-LRS'(foofooxbarbar)=foo
-\end{verbatim}
-
-\subsubsection*{Find the longest repeated sub-string in Scheme/Lisp}
-Because the underground data structure is list in Scheme/Lisp,
-in order to access the suffix tree components easily, some helper
-functions are provided.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (edge t)
-  (car t))
-
-(define (children t)
-  (cdr t))
-
-(define (leaf? t)
-  (null? (children t)))
-\end{lstlisting}
-
-Similar with the Haskell program, a function which can find all
-the maximum values on a special measurement rules are given.
-
-\begin{lstlisting}
-(define (compare-on func)
-  (lambda (x y)
-    (cond ((< (func x) (func y)) 'lt)
-	  ((> (func x) (func y)) 'gt)
-	  (else 'eq))))
-
-(define (max-by comp lst)
-  (define (update-max xs x)
-    (case (comp (car xs) x)
-      ('lt (list x))
-      ('gt xs)
-      (else (cons x xs))))
-  (if (null? lst)
-      '()
-      (fold-left update-max (list (car lst)) (cdr lst))))
-\end{lstlisting}
-
-Then the main function for searching the longest repeated sub-strings
-can be implemented as the following.
-
-\begin{lstlisting}
-(define (lrs t)
-  (define (find lst)
-    (if (null? lst)
-	'("")
-	(let ((s (edge (car lst)))
-	      (tr (children (car lst))))
-	  (max-by (compare-on string-length)
-		  (append
-		   (map (lambda (x) (string-append s x)) (lrs tr))
-		   (find (cdr lst)))))))
-  (if (leaf? t)
-      '("")
-      (find (filter (lambda (x) (not (leaf? x))) t))))
-
-(define (longest-repeated-substring s)
-  (lrs (suffix-tree (string-append s TERM1))))
-\end{lstlisting}
-
-Where TERM1 is defined as ``\$'' string.
-
-Same test cases can be used to verify the results.
-
-\begin{lstlisting}
-(define (test-main)
-  (let ((fs (list longest-repeated-substring))
-	(ss '("mississippi" "banana" "cacao" "foofooxbarbar")))
-    (map (lambda (f) (map f ss)) fs)))
-\end{lstlisting}
-
-This test program can be easily extended by adding new test
-functions as a element of fs list. the result of the above
-function is as below.
-
-\begin{lstlisting}
-(test-main)
-;Value 16: ((("issi") ("ana") ("ca") ("bar" "foo")))
-\end{lstlisting}
 
 \subsection{Find the longest common sub-string}
 The longest common sub-string of two strings, can also be quickly found
