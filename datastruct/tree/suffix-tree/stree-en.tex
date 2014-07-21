@@ -894,7 +894,24 @@ build(edge, X) =  = \left \{
 \right.
 \ee
 
+The algorithm categorizes all suffixes by the
+first letter in several groups. It removes the first letter for each element in every group.
+For example, the suffixes $\{$``acac'', ``cac'', ``ac'', ``c''$\}$ are
+categorized to groups $\{$('a', [``cac'', ``c'']), ('c', [``ac'', ``''])$\}$.
+
+\be
+group(X, c) = \{C' | \{c_1\} \cup C' \in X, c_1 = c\}
+\ee
+
+Function $group$ enumerates all suffixes in $X$, for each one, denote the first
+character as $c_1$, the rest characters as $C'$. If $c_1$ is same as
+the given character $c$, then $C'$ is collected.
+
+Below example Haskell program implements the generic radix tree building algorithm.
+
 \begin{lstlisting}
+alpha = ['a'..'z']++['A'..'Z']
+
 lazyTree::EdgeFunc -> [String] -> Tr
 lazyTree edge = build where
     build [[]] = Lf
@@ -904,71 +921,76 @@ lazyTree edge = build where
                          (prefix, ss')<-[edge xs]]
 \end{lstlisting}
 
+Different edge functions produce different radix trees. Since edge function
+extracts common prefix from a set of strings. The simplest one constantly
+uses the empty string as the common prefix. This edge function builds a trie.
+
+\be
+edgeTrie(X) = (\Phi, X)
+\ee
+
+We can also realize an edge function, that extracts the longest common prefix.
+Such edge function builds a patricia.
+Denote the strings as $X = \{x_1, x_2, ..., x_n\}$, for the each string $x_i$,
+let the initial character be $c_i$, and the rest characters in $x_i$ as $W_i$.
+If there is only one string in $X$, the longest common prefix is definitely
+this string; If there are two strings start with different initial characters,
+the longest common prefix is empty; Otherwise,it means all the strings
+share the same initial character. This character definitely belongs to
+the longest common prefix. We can remove it from all strings, and recursively
+call the edge function.
+
+\be
+edgeTree(X) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (x_1, \{ \Phi \}) & X = \{ x_1 \} \\
+  (\Phi, X) & |X| > 1, \exists x_i \in X, c_i \neq c_1 \\
+  (\{c_1\} \cup p, Y) & (p, Y) = edgeTree(\{ W_i | x_i \in X \})
+  \end{array}
+\right.
+\ee
+
+Here are some examples for $edgeTree$ function.
+\[
+\begin{array}{l}
+edgeTree(\{ \text{``an'', ``another'', ``and''}\}) = (\text{``an''}, \{\text{``'', ``other'', ``d''}\}) \\
+edgeTree(\{ \text{``bool'', ``foo, ``bar''}\}) = (\text{``''}, \{\text{``bool'', ``fool'', ``bar''}\})
+\end{array}
+\]
+
+The following example Haskell program implements this edge function.
+
 \begin{lstlisting}
-alpha = ['a'..'z']++['A'..'Z']
-\end{lstlisting}
-
-lazyTree function takes a list of string, it will generate a radix
-tree (for example a Trie or a Patricia) from these string.
-
-It will categorize all strings with the first letter in several groups,
-and remove the first letter for each elements in every group.
-For example, for the string list [``acac'', ``cac'', ``ac'', ``c'']
-the categorized group will be [('a', [``cac'', ``c'']), ('c', [``ac'', ``''])].
-For easy understanding, I left the first letter, and write the groups
-as tuple. then all strings with same first letter (removed) will
-be fed to edge function.
-
-Different edge function produce different radix trees. The most trivial
-one will build a Trie.
-
-\begin{lstlisting}
-edgeTrie::EdgeFunc
-edgeTrie ss = ("", ss)
-\end{lstlisting}
-
-If the edge function extract the longest common prefix, then it will
-build a Patricia.
-
-\begin{lstlisting}
--- ex:
---   edgeTree ["an", "another", "and"] = ("an", ["", "other", "d"])
---   edgeTree ["bool", "foo", "bar"] = ("", ["bool", "foo", "bar"])
---
--- some helper comments
---   let awss@((a:w):ss) = ["an", "another", "and"]
---       (a:w) = "an",  ss = ["another", "and"]
---       a='a', w="n"
---       rests awss = w:[u| _:u<-ss] = ["n", "nother", "nd"]
---
 edgeTree::EdgeFunc
 edgeTree [s] = (s, [[]])
 edgeTree awss@((a:w):ss) | null [c|c:_<-ss, a/=c] = (a:prefix, ss')
                          | otherwise              = ("", awss)
                          where (prefix, ss') = edgeTree (w:[u| _:u<-ss])
-edgeTree ss = ("", ss) -- (a:w):ss can't be match <==> head ss == ""
+edgeTree ss = ("", ss)
 \end{lstlisting}
 
-We can build suffix Trie and suffix tree with the above two functions.
+For any given string, we can build suffix trie and suffix tree by feeding suffixes to these
+two edge functions.
 
-\begin{lstlisting}
-suffixTrie::String->Tr
-suffixTrie = lazyTree edgeTrie . tails -- or init . tails
+\be
+suffixTrie(S) = build(edgeTrie, suffixes(S))
+\ee
 
-suffixTree::String->Tr
-suffixTree = lazyTree edgeTree . tails
-\end{lstlisting}
+\be
+suffixTree(S) = build(edgeTree, suffixes(S))
+\ee
 
-Function lazyTree is common for all radix trees, the normal Patricia
-and Trie can also be constructed with it.
+Because the $build(edge, X)$ is generic, it can be used to build other radix trees, such
+as the normal prefix trie and Patricia.
 
-\begin{lstlisting}
-trie::[String]->Tr
-trie = lazyTree edgeTrie
+\be
+trie(S) = build(edgeTrie, prefixes(S))
+\ee
 
-patricia::[String]->Tr
-patricia = lazyTree edgeTree
-\end{lstlisting}
+\be
+tree(S) = build(edgeTree, prefixes(S))
+\ee
 
 % ================================================================
 %               Suffix tree applications
