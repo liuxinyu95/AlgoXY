@@ -26,13 +26,12 @@ TERM2 = '#'
 # find if a how many occurrence of a substring
 # the algorithm is similar to the standard patricia one.
 def lookup_pattern(t, node, s):
-    f = (lambda x: 1 if x==0 else x)
     while True:
         match = False
         for _, (str_ref, tr) in node.children.items():
             edge = t.substr(str_ref)
             if string.find(edge, s)==0: #s `isPrefixOf` edge
-                return f(len(tr.children))
+                return max(len(tr.children), 1)
             elif string.find(s, edge)==0: #edge `isPrefixOf` s
                 match = True
                 node = tr
