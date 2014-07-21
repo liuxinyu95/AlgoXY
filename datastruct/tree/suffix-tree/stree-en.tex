@@ -1128,9 +1128,6 @@ Readers can refer to \cite{ukkonen-lec} and \cite{ukkonen-search} for details.
 
 \subsection{Find the longest repeated sub-string}
 
-If we go one step ahead from \ref{substring-lookup}, below result can
-be found.
-
 {\em After adding a special terminator character to string S, The
 longest repeated sub-string can be found by searching the
 deepest branches in suffix tree.}
@@ -1138,34 +1135,32 @@ deepest branches in suffix tree.}
 Consider the example suffix tree shown in figure \ref{fig:stree-mississippis}
 
 \begin{figure}[htbp]
-   \begin{center}
-      \includegraphics[scale=0.5]{img/stree-mississippis.ps}
-      \caption{The suffix tree for `mississippi\$'} \label{fig:stree-mississippis}
-   \end{center}
+  \centering
+  \includegraphics[scale=0.5]{img/stree-mississippis.ps}
+  \caption{The suffix tree for `mississippi\$'} \label{fig:stree-mississippis}
 \end{figure}
 
-There are 3 branch nodes, A, B, and C which depth is 3. However, A represents
-the longest repeated sub-string ``issi''. B and C represent for ``si'', ``ssi'',
-they are all shorter than A.
+There are three branch nodes, $A$, $B$, and $C$ with depth 3. However, $A$ represents
+the longest repeated sub-string ``issi''. $B$ and $C$ represent for ``si'', ``ssi'',
+they are shorter than $A$.
 
 This example tells us that the ``depth'' of the branch node should be measured
-by the number of characters traversed from the root.
+by the number of characters traversed from the root. But not the number of
+explicit branch nodes.
 
-\subsubsection{Find the longest repeated sub-string in imperative approach}
-According to the above analysis, to find the longest repeated sub-string
-can be turned into a BFS (Bread First Search) in a suffix tree.
+To find the longest repeated sub-string, we can perform BFS in the suffix tree.
 
 \begin{algorithmic}[1]
-\Function{LONGEST-REPEATED-SUBSTRING}{$T$}
-  \State $Q \leftarrow (NIL, ROOT(T))$
-  \State $R \leftarrow NIL$
+\Function{Longest-Repeated-Substring}{$T$}
+  \State $Q \gets$ (NIL, \Call{Root}{$T$})
+  \State $R \gets$ NIL
   \While{$Q$ is not empty}
-    \State $(s, node) \leftarrow POP(Q)$
-    \For{each $((l, r), node')$ in $CHILDREN(node)$}
-      \If{$node'$ is not leaf}
-        \State $s' \leftarrow CONCATENATE(s, (l, r))$
-        \State $PUSH(Q, (s', node'))$
-        \State $UPDATE(R, s')$
+    \State $(s, T) \gets$ \Call{Pop}{$Q$}
+    \For{each $((l, r), T') \in$ \Call{Children}{$T$}}
+      \If{$T'$ is not leaf}
+        \State $s' \gets$ \Call{Concatenate}{$s, (l, r)$}
+        \State \Call{Push}{$Q, (s', T')$}
+        \State $R \gets$ \Call{Update}{$R, s'$}
       \EndIf
     \EndFor
   \EndWhile
@@ -1173,34 +1168,32 @@ can be turned into a BFS (Bread First Search) in a suffix tree.
 \EndFunction
 \end{algorithmic}
 
-where algorithm $UPDATE()$ will compare the longest repeated sub-string
-candidates. If two candidates have the same length, one simple solution
-is just take one as the final result, the other solution is to maintain
-a list contains all candidates with same length.
+This algorithm initializes a queue with a pair of an
+empty string and the root. Then it repeatedly examine the candidate in the queue.
+
+For each node, the algorithm examines each children one by one.
+If it is a branch node, the child is pushed back
+to the queue for further search. And the sub-string represented
+by this child will be treated as a candidate of the
+longest repeated sub-string.
+
+Function \textproc{Update}($R, s'$) updates the longest repeated
+sub-string candidates. If multiple candidates have the same length, they
+are all kept in a result list.
 
 \begin{algorithmic}[1]
-\Function{UPDATE}{$l, x$}
-  \If{$l = NIL$ or $LENGTH(l[1]) < LENGTH(x)$}
-    \State \Return $l \leftarrow [x]$
-  \ElsIf {$LENGTH(l[1]) = LENGTH(x)$}
-    \State \Return $APPEND(l, x)$
+\Function{Update}{$L, s$}
+  \If{$L =$ NIL $\lor |l_1| < |s|$}
+    \State \Return $l \gets \{ s \}$
   \EndIf
+  \If {$|l_1| = |s|$}
+    \State \Return \Call{Append}{$L, s$}
+  \EndIf
+  \State \Return $L$
 \EndFunction
 \end{algorithmic}
 
-Note that the index of a list starts from 1 in this algorithm.
-This algorithm will first initialize a queue with a pair of an
-empty string and the root node. Then it will repeatedly pop from
-the queue, examine the candidate node until the queue is empty.
-
-For each node, the algorithm will expand all children, if it is
-a branch node (which is not a leaf), the node will be pushed back
-to the queue for future examine. And the sub-string represented
-by this node will be compared to see if it is a candidate of the
-longest repeated sub-string.
-
-\subsubsection*{Find the longest repeated sub-string in Python}
-The above algorithm can be translated into Python program as the following.
+The above algorithm can be implemented in Python as the following example program.
 
 \lstset{language=Python}
 \begin{lstlisting}
@@ -1219,157 +1212,10 @@ def lrs(t):
 def update_max(lst, x):
     if lst ==[] or len(lst[0]) < len(x):
         return [x]
-    elif len(lst[0]) == len(x):
+    if len(lst[0]) == len(x):
         return lst + [x]
-    else:
-        return lst
+    return lst
 \end{lstlisting}
-
-In order to verify this program, some simple test cases are fed.
-
-\begin{lstlisting}
-class StrSTreeTest:
-    #...
-
-    def run(self):
-        #...
-        self.test_lrs()
-
-    def test_lrs(self):
-        self.__test_lrs__("mississippi")
-        self.__test_lrs__("banana")
-        self.__test_lrs__("cacao")
-        self.__test_lrs__("foofooxbarbar")
-
-    def __test_lrs__(self, s):
-        print "longest repeated substrings of", s, "=", self.util.find_lrs(s)
-\end{lstlisting}
-
-By running the test case, the result like below can be obtained.
-
-\begin{verbatim}
-longest repeated substrings of mississippi = ['issi']
-longest repeated substrings of banana = ['ana']
-longest repeated substrings of cacao = ['ca']
-longest repeated substrings of foofooxbarbar = ['bar', 'foo']
-\end{verbatim}
-
-\subsubsection*{Find the longest repeated sub-string in C++}
-With C++, we can utilize the STL queue library in the implementation
-of BFS(Bread First Search).
-
-\lstset{language=C++}
-\begin{lstlisting}
-typedef std::list<std::string> Strings;
-
-Strings lrs(const STree* t){
-  std::queue<std::pair<std::string, Node*> > q;
-  Strings res;
-  q.push(std::make_pair(std::string(""), t->root));
-  while(!q.empty()){
-    std::string s;
-    Node* node;
-    tie(s, node) = q.front();
-    q.pop();
-    for(Node::Children::iterator it = node->children.begin();
-        it!=node->children.end(); ++it){
-      RefPair rp = it->second;
-      if(!(rp.node()->children.empty())){
-        std::string s1 = s + rp.str().substr();
-        q.push(std::make_pair(s1, rp.node()));
-        update_max(res, s1);
-      }
-    }
-  }
-  return res;
-}
-\end{lstlisting}
-
-Firstly, the empty string and root node is pushed to the queue
-as initialized value. Then the program repeatedly pop from the queue,
-examine it to see if any child of the node is not a leaf node,
-push it back to the queue and check if it is the deepest one.
-
-The function ``update\_max()'' is implemented to record all the
-longest strings.
-
-\begin{lstlisting}
-void update_max(Strings& res, std::string s){
-  if(res.empty() || (*res.begin()).length() < s.length()){
-    res.clear();
-    res.push_back(s);
-    return;
-  }
-  if((*res.begin()).length() == s.length())
-    res.push_back(s);
-}
-\end{lstlisting}
-
-Since the cost of construction a suffix tree is big ($O(n)$ with
-Ukkonen's algorithm), some lazy initialization approach is used in
-the main entrance of the finding program.
-
-\begin{lstlisting}
-const char TERM1 = '$';
-
-class STreeUtil{
-public:
-  STreeUtil():t(0){}
-  ~STreeUtil(){ delete t; }
-
-  Strings find_lrs(std::string s){
-    lazy(s);
-    return lrs(t);
-  }
-
-private:
-  void lazy(std::string s){
-    if((!t) || t->str != s+TERM1){
-      delete t;
-      t = suffix_tree(s+TERM1);
-    }
-  }
-  STree* t;
-};
-\end{lstlisting} %$
-
-In order to verify the program, some test cases are provided. output
-for list of strings can be easily realized by overloading ``operator<<''.
-
-\begin{lstlisting}
-class StrSTreeTest{
-public:
-  StrSTreeTest(){
-    std::cout<<"start string manipulation over suffix tree test\n";
-  }
-
-  void run(){
-    test_lrs();
-  }
-
-  void test_lrs(){
-    __test_lrs("mississippi");
-    __test_lrs("banana");
-    __test_lrs("cacao");
-    __test_lrs("foofooxbarbar");
-  }
-private:
-  void __test_lrs(std::string s){
-    std::cout<<"longest repeated substirng of "<<s<<"="
-             <<util.find_lrs(s)<<"\n";
-  }
-  STreeUtil util;
-};
-\end{lstlisting}
-
-Running these test cases, we can obtain the following result.
-\begin{verbatim}
-start string manipulation over suffix tree test
-longest repeated substirng of mississippi=[issi, ]
-longest repeated substirng of banana=[ana, ]
-longest repeated substirng of cacao=[ca, ]
-longest repeated substirng of foofooxbarbar=[bar, foo, ]
-\end{verbatim}
 
 \subsubsection{Find the longest repeated sub-string in functional approach}
 Searching the deepest branch can also be realized in functional way.
