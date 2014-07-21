@@ -1019,31 +1019,55 @@ summarizes this kind of problems as sub-string motifs:
 counts of all sub-string motifs of $S$ in $O(n)$ time, although $S$ may have
 $O(n^2)$ sub-strings.}
 
+\subsubsection{Find the number of sub-string occurrence}
+
 Every internal node in $SuffixTree(S)$ is corresponding
 to a sub-string occurs multiple times in $S$. If this sub-string occurs
-$k$ times in $S$, then there are total $k$ leaves under this node\cite{ukkonen-lec}.
+$k$ times in $S$, then there are total $k$ sub-trees under this node\cite{ukkonen-lec}.
 
-\subsubsection{Algorithm of finding the number of sub-string occurrence}
-The algorithm is almost as same as the Patricia looking up algorithm,
-please refer to \cite{lxy-trie} for detail, the only difference is that
-the number of the children is returned when a node matches the pattern.
+\begin{algorithmic}[1]
+\Function{Lookup-Pattern}{$T, s$}
+  \Loop
+    \State $match \gets$ FALSE
+    \For{$\forall (s_i, T_i) \in$ \textproc{Values}(\Call{Children}{$T$})}
+      \If{$s \sqsubset s_i$}
+        \State \Return \textproc{Max}($|$\Call{Children}{$T_i$}$|$, 1)
+      \ElsIf{$s_i \sqsubset s$}
+        \State $match \gets$ TRUE
+        \State $T \gets T_i$
+        \State $s \gets s - s_i$
+        \State break
+      \EndIf
+    \EndFor
+    \If{$\lnot match$}
+      \State \Return 0
+    \EndIf
+  \EndLoop
+\EndFunction
+\end{algorithmic}
 
-\subsubsection*{Find number of sub-string occurrence in Python}
+When look up a sub-string pattern $s$ in text $w$, we build the suffix tree $T$ from the
+text. Start from the root, we iterate all children. For every
+string reference pair $s_i$ and sub-tree $T_i$, we check if the $s$ is prefix of $s_i$.
+If yes, the number of sub-trees in $T_i$ is returned as the result.
+There is a special case that $T_i$ is a leaf without any children. We need return 1 but
+not zero. This is why we use the maximum function.
+Otherwise, if $s_i$ is prefix of $s$, then we remove $s_i$ part from $s$, and recursively
+look up in $T_i$.
 
-In Ukkonen's algorithm, there is only one copy
-of string, and all edges are represent with index pairs. There are
-some changes because of this reason.
+The following Python program implements this algorithm.
 
 \lstset{language=Python}
 \begin{lstlisting}
-def lookup_pattern(t, node, s):
-    f = (lambda x: 1 if x==0 else x)
+# the algorithm is similar to the standard patricia one.
+def lookup_pattern(t, s):
+    node = t.root
     while True:
         match = False
         for _, (str_ref, tr) in node.children.items():
-            edge = t.substr(str_ref)
+            edge = substr(t, str_ref)
             if string.find(edge, s)==0: #s `isPrefixOf` edge
-                return f(len(tr.children))
+                return max(len(tr.children), 1)
             elif string.find(s, edge)==0: #edge `isPrefixOf` s
                 match = True
                 node = tr
@@ -1054,165 +1078,36 @@ def lookup_pattern(t, node, s):
     return 0 # not found
 \end{lstlisting}
 
-In case a branch node matches the pattern, it means there is at least
-one occurrence even if the number of children is zero. That's why
-a local lambda function is defined.
+This algorithm can also be realized in recursive way. For the non-leaf
+suffix tree $T$, denote the children as $C = \{(s_1, T_1), (s_2, T_2), ...\}$.
+We search the sub string among the children.
 
-I added a member function in STree to convert a string index
-pair to string as below.
+\be
+lookup_{pattern}(T, s) = find(C, s)
+\ee
 
-\begin{lstlisting}
-class STree:
-    #...
-    def substr(self, sref):
-        return substr(self.str, sref)
-\end{lstlisting}
+If children $C$ is empty, it means the sub string doesn't occurs at all.
+Otherwise, we examine the first pair $(s_1, T_1)$, if $s$ is prefix of $s_1$,
+then the number of sub-trees in $T_1$ is the result. If $s_1$ is prefix
+of $s$, we remove $s_1$ from $s$, and recursively look up it in $T_1$;
+otherwise, we go on to examine the rest children denoted as $C'$.
 
-In lookup\_pattern() function, it takes a suffix tree which
-is built from the string.
-A node is passed as the position to be looked up, it is root node when
-starting. Parameter s is the string to be searched.
+\be
+find(C, s) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  0 & C = \Phi \\
+  max(1, |C_1|) & s \sqsubset s_1 \\
+  lookup_{pattern}(T_1, s - s_1) & s_1 \sqsubset s \\
+  find(C', s) & otherwise
+  \end{array}
+\right.
+\ee
 
-The algorithm iterate all children of the node, it convert the string
-index reference pair to edge sub-string, and check if s is prefix of the
-the edge string, if matches, then the program can be terminated, the
-number of the branches of this node will be returned as the number
-of the occurrence of this sub-string. Note that no branch means there
-is only 1 occurrence. In case the edge is prefix of s, we then
-updated the node and string to be searched and go on the searching.
-
-Because construction of the suffix tree is expensive, so we only
-do it when necessary. We can do a lazy initialization as below.
-
-\begin{lstlisting}
-TERM1 = '$' # $: special terminator
-
-class STreeUtil:
-    def __init__(self):
-        self.tree = None
-
-    def find_pattern(self, str, pattern):
-        if self.tree is None or self.tree.str!=str+TERM1:
-            self.tree = stree.suffix_tree(str+TERM1)
-        return lookup_pattern(self.tree, self.tree.root, pattern)
-\end{lstlisting}
-
-We always append special terminator to the string, so that there won't
-be any suffix becomes the prefix of the other\cite{wiki-suffix-tree}.
-
-Some simple test cases are given to verify the program.
-
-\begin{lstlisting}
-class StrSTreeTest:
-    def run(self):
-        self.test_find_pattern()
-
-    def test_find_pattern(self):
-        util=STreeUtil()
-        self.__test_pattern__(util, "banana", "ana")
-        self.__test_pattern__(util, "banana", "an")
-        self.__test_pattern__(util, "banana", "anan")
-        self.__test_pattern__(util, "banana", "nana")
-        self.__test_pattern__(util, "banana", "ananan")
-
-    def __test_pattern__(self, u, s, p):
-        print "find pattern", p, "in", s, ":", u.find_pattern(s, p)
-\end{lstlisting}
-
-And the output is like the following.
-
-\begin{verbatim}
-find pattern ana in banana : 2
-find pattern an in banana : 2
-find pattern anan in banana : 1
-find pattern nana in banana : 1
-find pattern ananan in banana : 0
-\end{verbatim}
-
-\subsubsection*{Find the number of sub-string occurrence in C++}
-In C++, do-while is used as the repeat-until structure, the program
-is almost as same as the standard Patricia looking up function.
-
-\lstset{language=C++}
-\begin{lstlisting}
-int lookup_pattern(const STree* t, std::string s){
-  Node* node = t->root;
-  bool match(false);
-  do{
-    match=false;
-    for(Node::Children::iterator it = node->children.begin();
-        it!=node->children.end(); ++it){
-      RefPair rp = it->second;
-      if(rp.str().substr().find(s)==0){
-        int res = rp.node()->children.size();
-        return res == 0? 1 : res;
-      }
-      else if(s.find(rp.str().substr())==0){
-        match = true;
-        node = rp.node();
-        s = s.substr(rp.str().substr().length());
-        break;
-      }
-    }
-  }while(match);
-  return 0;
-}
-\end{lstlisting}
-
-An utility class is defined and it support lazy initialization to save
-the cost of construction of suffix tree.
-
-\begin{lstlisting}
-class STreeUtil{
-public:
-  STreeUtil():t(0){}
-  ~STreeUtil(){ delete t; }
-
-  int find_pattern(std::string s, std::string pattern){
-    lazy(s);
-    return lookup_pattern(t, pattern);
-  }
-private:
-  void lazy(std::string s){
-    if((!t) || t->str != s+TERM1){
-      delete t;
-      t = suffix_tree(s+TERM1);
-    }
-  }
-  STree* t;
-};
-\end{lstlisting}
-
-The same test cases can be feed to this C++ program.
-
-\begin{lstlisting}
-class StrSTreeTest{
-public:
-  void test_find_pattern(){
-    __test_pattern("banana", "ana");
-    __test_pattern("banana", "an");
-    __test_pattern("banana", "anan");
-    __test_pattern("banana", "nana");
-    __test_pattern("banana", "ananan");
-  }
-pivate:
-  void __test_pattern(std::string s, std::string ptn){
-    std::cout<<"find pattern "<<ptn<<" in "<<s<<": "
-             <<util.find_pattern(s, ptn)<<"\n";
-  }
-
-  STreeUtil util;
-};
-\end{lstlisting}
-
-And the same result will be obtained like the Python program.
-
-\subsubsection*{Find the number of sub-string occurrence in Haskell}
-The Haskell program is just turn the looking up into recursive way.
+The following Haskell example code implements this algorithm.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-lookupPattern :: Tr -> String -> Int
 lookupPattern (Br lst) ptn = find lst where
     find [] = 0
     find ((s, t):xs)
@@ -1222,62 +1117,14 @@ lookupPattern (Br lst) ptn = find lst where
     numberOfBranch (Br ys) = length ys
     numberOfBranch _ = 1
 
-findPattern :: String -> String -> Int
 findPattern s ptn = lookupPattern (suffixTree $ s++"$") ptn
 \end{lstlisting}
 
-To verify it, the test cases are fed to the program as the following
-\begin{lstlisting}
-testPattern = ["find pattern "++p++" in banana: "++
-               (show $ findPattern "banana" p)
-                   | p<- ["ana", "an", "anan", "nana", "anana"]]
-\end{lstlisting} %$
+We always append special terminator to the string (the `\$' in above program),
+so that there won't be any suffix becomes the prefix of the other\cite{wiki-suffix-tree}.
 
-Launching GHCi, evaluate the instruction can output the same result
-as the above programs.
-
-\begin{lstlisting}
- putStrLn $ unlines testPattern
-\end{lstlisting} %$
-
-\subsubsection*{Find the number of sub-string occurrence in Scheme/Lisp}
-Because the underground data structure of suffix tree is list in
-Scheme/Lisp program, we needn't define a inner find function as
-in Haskell program.
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (lookup-pattern t ptn)
-  (define (number-of-branches node)
-    (if (null? node) 1 (length node)))
-  (if (null? t) 0
-      (let ((s (edge (car t)))
-	    (tr (children (car t))))
-	(cond ((string-prefix? ptn s)(number-of-branches tr))
-	      ((string-prefix? s ptn)
-	       (lookup-pattern tr (string-tail ptn (string-length s))))
-	      (else lookup-pattern (cdr t) ptn)))))
-\end{lstlisting}
-
-The test cases are fed to this program via a list.
-
-\begin{lstlisting}
-(define (test-pattern)
-  (define (test-ptn t s)
-    (cons (string-append "find pattern " s " in banana" )
-	  (lookup-pattern t s)))
-  (let ((t (suffix-tree "banana")))
-    (map (lambda (x) (test-ptn t x)) '("ana" "an" "anan" "nana" "anana"))))
-\end{lstlisting}
-
-Evaluate this test function can generate a result list as the following.
-\begin{lstlisting}
-(test-pattern)
-;Value 16: (("find pattern ana in banana" . "ana") ("find pattern an in banana" . "an") ("find pattern anan in banana" . "anan") ("find pattern nana in banana" . "nana") ("find pattern anana in banana" . "anana"))
-\end{lstlisting}
-
-\subsubsection{Complete pattern search}
-For search pattern like ``a**n'' with suffix tree, please refer to \cite{ukkonen-lec} and \cite{ukkonen-search}.
+Suffix tree also supports searching pattern like ``a**n'', we skip it here.
+Readers can refer to \cite{ukkonen-lec} and \cite{ukkonen-search} for details.
 
 \subsection{Find the longest repeated sub-string}
 
