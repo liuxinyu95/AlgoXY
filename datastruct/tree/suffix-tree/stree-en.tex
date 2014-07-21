@@ -1246,12 +1246,13 @@ lrs' (Br lst) = find $ filter (not . isLeaf . snd) lst where
 \end{lstlisting} %$
 
 \subsection{Find the longest common sub-string}
-The longest common sub-string of two strings, can also be quickly found
-by using suffix tree. A typical solution is to build a generalized suffix
-tree for two strings. If the two strings are denoted as $txt_1$ and
+
+The longest common sub-string, can also be quickly found
+with suffix tree. The solution is to build a generalized suffix
+tree. If the two strings are denoted as $txt_1$ and
 $txt_2$, a generalized suffix tree is $SuffixTree(txt_1\$_1txt_2\$_2)$.
 Where $\$_1$ is a special terminator character for $txt_1$, and
-$\$_2$ is another special terminator character for $txt_2$.
+$\$_2 \neq \$_1$ is another special terminator character for $txt_2$.
 
 The longest common sub-string is indicated by the deepest branch node, with
 two forks corresponding to both ``...$\$_1$...'' and ``...$\$_2$''(no $\$_1$).
@@ -1259,30 +1260,28 @@ The definition of the {\em deepest} node is as same as the one for
 the longest repeated sub-string, it is the number of characters traversed
 from root.
 
-If a node has ``...$\$_1$...'' beneath it, then the node must represent
-to a sub-string of $txt_1$, as $\$_1$ is the terminator of $txt_1$.
-On the other hand, since it also has ``...$\$_2$'' (without $\$_1$) child, this node
-must represent to a sub-string of $txt_2$ too. Because of it's a deepest
-one satisfied this criteria. The node indicates to the longest common
+If a node has ``...$\$_1$...'' under it, the node must represent
+a sub-string of $txt_1$, as $\$_1$ is the terminator of $txt_1$.
+On the other hand, since it also has ``...$\$_2$'' (without $\$_1$), this node
+must represent a sub-string of $txt_2$ too. Because it's the deepest
+one satisfied this criteria, so the node represents the longest common
 sub-string.
 
-\subsubsection{Find the longest common sub-string imperatively}
-Based on the above analysis, a BFS (bread first search) algorithm
-can be used to find the longest common sub-string.
+Again, we can use BFS (bread first search) to find the longest common sub-string.
 
 \begin{algorithmic}[1]
-\Function{LONGEST-COMMON-SUBSTRING}{$T$}
-  \State $Q \leftarrow (NIL, ROOT(T))$
-  \State $R \leftarrow NIL$
+\Function{Longest-Common-Substring}{$T$}
+  \State $Q \gets$ (NIL, \Call{Root}{$T$})
+  \State $R \gets$ NIL
   \While{$Q$ is not empty}
-    \State $(s, node) \leftarrow POP(Q)$
-    \If{$MATCH-FORK(node)$}
-      \State $UPDATE(R, s)$
+    \State $(s, T) \gets$ \Call{POP}{$Q$}
+    \If{\Call{Match-Fork}{$T$}}
+      \State $R \gets$ \Call{Update}{$R, s$}
     \EndIf
-    \For{each $((l, r), node')$ in $CHILDREN(node)$}
-      \If{$node'$ is not leaf}
-        \State $s' \leftarrow CONCATENATE(s, (l, r))$
-        \State $PUSH(Q, (s', node'))$
+    \For{each $((l, r), T') \in $ \Call{Children}{$T$}}
+      \If{$T'$ is not leaf}
+        \State $s' \gets$ \Call{Concatenate}{$s, (l, r)$}
+        \State \Call{Push}{$Q, (s', T')$}
       \EndIf
     \EndFor
   \EndWhile
@@ -1290,13 +1289,26 @@ can be used to find the longest common sub-string.
 \EndFunction
 \end{algorithmic}
 
-The most part is as same as the algorithm for finding the longest repeated
-sub-sting. The function $MATCH-FORK()$ will check if the children of a
-node satisfy the common sub-string criteria.
+Most part is as same as the the longest repeated sub-sting searching algorithm.
+The function \text{Match-Fork} checks if the children satisfy the common sub-string criteria.
 
-\subsubsection*{Find the longest common sub-string in Python}
-By translate the imperative algorithm in Python, the following program can
-be obtained.
+\begin{algorithmic}[1]
+\Function{Match-Fork}{$T$}
+  \If{$|$ \Call{Children}{$T$} $| = 2$}
+    \State $\{(s_1, T_1), (s_2, T_2)\} \gets$ \Call{Children}{$T$}
+    \State \Return $T_1$ is leaf $\land T_2$ is leaf $\land$ \Call{Xor}{$\$_1 \in s_1, \$_2 \in s_2)$}
+  \EndIf
+  \State \Return FALSE
+\EndFunction
+\end{algorithmic}
+
+In this function, it checks if the two children
+are both leaf. One contains $\$_2$, while the
+other doesn't. This is because
+if one child is a leaf, it always contains $\$_1$
+according to the definition of suffix tree.
+
+The following Python program implement the longest common sub-string program.
 
 \lstset{language=Python}
 \begin{lstlisting}
@@ -1312,11 +1324,7 @@ def lcs(t):
                 s1 = s + t.substr(str_ref)
                 queue.append((s1, tr))
     return res
-\end{lstlisting}
 
-Where we define the function match\_fork() as below.
-
-\begin{lstlisting}
 def is_leaf(node):
     return node.children=={}
 
@@ -1328,126 +1336,6 @@ def match_fork(t, node):
             (t.substr(str_ref2).find(TERM2)!=-1)
     return False
 \end{lstlisting}
-
-In this function, it checks if the two children of a node
-are both leaf, and one contains TERM2 character, while the
-other doesn't. This is because
-if one child node is a leaf, it will always contains TERM1
-character according to the definition of suffix tree.
-
-Note, the main interface of the function is to add TERM2 to
-the first string and append TERM1 to the second string.
-
-\begin{lstlisting}
-class STreeUtil:
-    def __init__(self):
-        self.tree = None
-
-    def __lazy__(self, str):
-        if self.tree is None or self.tree.str!=str+TERM1:
-            self.tree = stree.suffix_tree(str+TERM1)
-
-    def find_lcs(self, s1, s2):
-        self.__lazy__(s1+TERM2+s2)
-        return lcs(self.tree)
-\end{lstlisting}
-
-We can test this program like below:
-
-\begin{lstlisting}
-util = STreeUtil()
-print "longest common substring of ababa and baby =", util.find_lcs("ababa", "baby")
-\end{lstlisting}
-
-And the output will be something like:
-\begin{verbatim}
-longest common substring of ababx and baby = ['bab']
-\end{verbatim}
-
-\subsubsection*{Find the longest common sub-string in C++}
-In C++ implementation, we first define the special terminator
-characters for the generalized suffix tree of two strings.
-
-\lstset{language=C++}
-\begin{lstlisting}
-const char TERM1 = '$';
-const char TERM2 = '#';
-\end{lstlisting} %$
-
-Since the program need frequently test if a node is a branch
-node or leaf node, a helper function is provided.
-
-\begin{lstlisting}
-bool is_leaf(Node* node){
-  return node->children.empty();
-}
-\end{lstlisting}
-
-The criteria for a candidate node is that it has two children.
-One in pattern ``...\#...'', the other in pattern ``...\$''.
-
-\begin{lstlisting}
-bool match_fork(Node* node){
-  if(node->children.size() == 2){
-    RefPair rp1, rp2;
-    Node::Children::iterator it = node->children.begin();
-    rp1 = (it++)->second;
-    rp2 = it->second;
-    return (is_leaf(rp1.node()) && is_leaf(rp2.node())) &&
-      (rp1.str().substr().find(TERM2)!=std::string::npos)!=
-      (rp2.str().substr().find(TERM2)!=std::string::npos);
-  }
-  return false;
-}
-\end{lstlisting}
-
-The main program in BFS(Bread First Search) approach is given
-as below.
-
-\begin{lstlisting}
-Strings lcs(const STree* t){
-  std::queue<std::pair<std::string, Node*> > q;
-  Strings res;
-  q.push(std::make_pair(std::string(""), t->root));
-  while(!q.empty()){
-    std::string s;
-    Node* node;
-    tie(s, node) = q.front();
-    q.pop();
-    if(match_fork(node))
-      update_max(res, s);
-    for(Node::Children::iterator it = node->children.begin();
-        it!=node->children.end(); ++it){
-      RefPair rp = it->second;
-      if(!is_leaf(rp.node())){
-        std::string s1 = s + rp.str().substr();
-        q.push(std::make_pair(s1, rp.node()));
-      }
-    }
-  }
-  return res;
-}
-\end{lstlisting}
-
-After that we can finalize the interface in a lazy way as the following.
-
-\begin{lstlisting}
-class STreeUtil{
-public:
-  //...
-  Strings find_lcs(std::string s1, std::string s2){
-    lazy(s1+TERM2+s2);
-    return lcs(t);
-  }
-//...
-\end{lstlisting}
-
-This C++ program can generate similar result as the Python one if same
-test cases are given.
-
-\begin{verbatim}
-longest common substring of ababa, baby =[bab, ]
-\end{verbatim}
 
 \subsubsection{Find the longest common sub-string recursively}
 The longest common sub-string finding algorithm can also be
