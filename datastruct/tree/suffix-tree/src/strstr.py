@@ -58,10 +58,9 @@ def lrs(t):
 def update_max(lst, x):
     if lst ==[] or len(lst[0]) < len(x):
         return [x]
-    elif len(lst[0]) == len(x):
+    if len(lst[0]) == len(x):
         return lst + [x]
-    else:
-        return lst
+    return lst
 
 # search the longest common substring
 #  t = SuffixTree(s1#s2$)
