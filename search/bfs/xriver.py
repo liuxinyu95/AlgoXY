@@ -51,7 +51,7 @@ def pretty_print(s):
         for (a, b) in ms:
             print wgc(a), "====", wgc(b)
         print "total", len(ms) - 1, "steps"
-    print "total", len(s), "soluitons"
+    print "total", len(s), "solutions"
 
 def wgc(x):
     return [n for (i, n) in [(1, "wolf"), (2, "goat"), (3, "cabbage"), (4, "farmer")] 
