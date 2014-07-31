@@ -1,4 +1,14 @@
 BOOK = main-en
+XELATEX = $(shell which xelatex > /dev/null)
+
+ifdef XELATEX
+LATEX = xelatex
+DVIPDFM = echo
+else
+LATEX = latex
+DVIPDFM = dvipdfmx
+endif
+
 SRC = common-en.tex main-en.tex
 CHAPTERS = others/preface/preface-en \
 datastruct/tree/binary-search-tree/bstree-en \
@@ -27,10 +37,10 @@ index:
 	makeindex $(BOOK)
 
 $(BOOK).pdf: image $(SRC) $(CHAPTER_OBJS)
-	latex $(BOOK).tex
+	$(LATEX) $(BOOK).tex
 	makeindex $(BOOK).idx
-	latex $(BOOK).tex
-	dvipdfmx $(BOOK)
+	$(LATEX) $(BOOK).tex
+	$(DVIPDFM) $(BOOK)
 
 clean:
 	rm -f *.aux *.toc *.lon *.lor *.lof *.ilg *.idx *.ind *.out *.log *.exa
