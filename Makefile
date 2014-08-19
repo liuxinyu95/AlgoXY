@@ -1,4 +1,4 @@
-BOOK = main-en
+BOOK = main-zh-cn
 XELATEX = $(shell which xelatex > /dev/null)
 
 ifdef XELATEX
@@ -9,8 +9,8 @@ LATEX = latex
 DVIPDFM = dvipdfmx
 endif
 
-SRC = common-en.tex main-en.tex
-CHAPTERS = others/preface/preface-en \
+SRC = common-zh-cn.tex main-zh-cn.tex
+CHAPTERS = others/preface/preface-zh-cn \
 datastruct/tree/binary-search-tree/bstree-en \
 sorting/insertion-sort/isort-en \
 datastruct/tree/red-black-tree/rbtree-en datastruct/tree/AVL-tree/avltree-en \
