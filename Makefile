@@ -11,7 +11,7 @@ endif
 
 SRC = common-zh-cn.tex main-zh-cn.tex
 CHAPTERS = others/preface/preface-zh-cn \
-datastruct/tree/binary-search-tree/bstree-en \
+datastruct/tree/binary-search-tree/bstree-zh-cn \
 sorting/insertion-sort/isort-en \
 datastruct/tree/red-black-tree/rbtree-en datastruct/tree/AVL-tree/avltree-en \
 datastruct/tree/trie/trie-en \

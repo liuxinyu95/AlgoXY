@@ -1,7 +1,7 @@
-HEADER = 
-SOURCE = bstree-en.tex
-OBJECT = bstree-en
-TEX = latex
+HEADER =
+SOURCE = bstree-zh-cn.tex
+OBJECT = bstree-zh-cn
+TEX = xelatex
 
 .PHONY: all
 
@@ -19,12 +19,11 @@ haskell:
 image:
 	make -C img
 
-pdf: $(OBJECT).dvi
-	dvipdfmx $(OBJECT)
+pdf: image
+	$(TEX) $(OBJECT)
+	$(TEX) $(OBJECT)
 
-tex: image
-	latex $(OBJECT)
-	latex $(OBJECT)
+tex: pdf
 
 html: image
 	htlatex.bat $(OBJECT) "html, imgdir:img/"
