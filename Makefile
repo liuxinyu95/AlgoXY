@@ -13,7 +13,7 @@ SRC = common-zh-cn.tex main-zh-cn.tex
 CHAPTERS = others/preface/preface-zh-cn \
 datastruct/tree/binary-search-tree/bstree-zh-cn \
 sorting/insertion-sort/isort-zh-cn \
-datastruct/tree/red-black-tree/rbtree-en datastruct/tree/AVL-tree/avltree-en \
+datastruct/tree/red-black-tree/rbtree-zh-cn datastruct/tree/AVL-tree/avltree-en \
 datastruct/tree/trie/trie-en \
 datastruct/tree/suffix-tree/stree-en datastruct/tree/B-tree/btree-en \
 datastruct/heap/binary-heap/bheap-en sorting/select-sort/ssort-en \
