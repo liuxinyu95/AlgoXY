@@ -14,15 +14,15 @@ CHAPTERS = others/preface/preface-zh-cn \
 datastruct/tree/binary-search-tree/bstree-zh-cn \
 sorting/insertion-sort/isort-zh-cn \
 datastruct/tree/red-black-tree/rbtree-zh-cn datastruct/tree/AVL-tree/avltree-zh-cn \
-datastruct/tree/trie/trie-en \
-datastruct/tree/suffix-tree/stree-en datastruct/tree/B-tree/btree-en \
-datastruct/heap/binary-heap/bheap-en sorting/select-sort/ssort-en \
-datastruct/heap/other-heaps/kheap-en \
-datastruct/elementary/queue/queue-en \
-datastruct/elementary/sequence/sequence-en \
-sorting/dc-sort/dcsort-en \
-search/search-en \
-others/appendix/list/list-en
+datastruct/tree/trie/trie-zh-cn \
+datastruct/tree/suffix-tree/stree-zh-cn datastruct/tree/B-tree/btree-zh-cn \
+datastruct/heap/binary-heap/bheap-zh-cn sorting/select-sort/ssort-zh-cn \
+datastruct/heap/other-heaps/kheap-zh-cn \
+datastruct/elementary/queue/queue-zh-cn \
+datastruct/elementary/sequence/sequence-zh-cn \
+sorting/dc-sort/dcsort-zh-cn \
+search/search-zh-cn \
+others/appendix/list/list-zh-cn
 CHAPTER_OBJS = $(foreach file, $(CHAPTERS), $(file).dvi)
 
 all: $(BOOK).pdf

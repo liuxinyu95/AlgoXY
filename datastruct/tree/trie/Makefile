@@ -1,7 +1,7 @@
-HEADER = 
-SOURCE = trie-en.tex
-OBJECT = trie-en
-TEX = latex
+HEADER =
+SOURCE = trie-zh-cn.tex
+OBJECT = trie-zh-cn
+TEX = xelatex
 
 .PHONY: all
 
@@ -19,16 +19,15 @@ haskell:
 image:
 	make -C img
 
-pdf: $(OBJECT).dvi
-	dvipdfmx $(OBJECT)
+pdf: image
+	$(TEX) $(OBJECT)
+	$(TEX) $(OBJECT)
 
-tex: image
-	latex $(OBJECT)
-	latex $(OBJECT)
+tex: pdf
 
 html: image
-	htlatex.bat trie-en "html, imgdir:img/"
+	htlatex.bat $(OBJECT) "html, imgdir:img/"
 	mv *.png img/
 
 clean:
-	rm *.aux *.dvi *.log *.out *.pdf *~
+	rm -f *.aux *.dvi *.log *.out *.pdf *~

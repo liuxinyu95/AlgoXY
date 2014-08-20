@@ -1,8 +1,8 @@
-HEADER = 
-SOURCE = list-en.tex
-OBJECT = list-en
+HEADER =
+OBJECT = list-zh-cn
 OBJECT2 = list-cpptp-en
-TEX = latex
+SOURCE = $(OBJECT).tex
+TEX = xelatex
 
 .PHONY: all
 
@@ -23,16 +23,15 @@ tool:
 image:
 	make -C img
 
-pdf: $(OBJECT).dvi
-	dvipdfmx $(OBJECT)
+pdf: image
+	$(TEX) $(OBJECT)
+	$(TEX) $(OBJECT)
 
-tex: image
-	latex $(OBJECT)
-	latex $(OBJECT)
+tex: pdf
 
 cpptp:
-	latex $(OBJECT2)
-	latex $(OBJECT2)
+	$(TEX) $(OBJECT2)
+	$(TEX) $(OBJECT2)
 
 html: image
 	htlatex.bat $(OBJECT) "html, imgdir:img/"
