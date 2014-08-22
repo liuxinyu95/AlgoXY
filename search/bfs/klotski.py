@@ -24,6 +24,8 @@
 # 3 7 8 5
 # 6 0 0 9
 
+from collections import deque
+
 START = [[(1, 1), (2, 1)],
          [(1, 4), (2, 4)],
          [(3, 1), (4, 1)],
@@ -38,17 +40,17 @@ class Node:
         self.parent = p
 
 def solve(start):
-    visit = [normalize(start)]
-    queue = [Node(start)]
-    while queue != []:
-        cur = queue.pop(0)
+    visit = set([normalize(start)])
+    queue = deque([Node(start)])
+    while queue:
+        cur = queue.popleft()
         layout = cur.layout
         if layout[-1] == [(4, 2), (4, 3), (5, 2), (5, 3)]:
             return cur
         else:
             for brd in expand(layout, visit):
                 queue.append(Node(brd, cur))
-                visit.append(normalize(brd))
+                visit.add(normalize(brd))
     return None # no solution
 
 def expand(layout, visit):
@@ -58,7 +60,7 @@ def expand(layout, visit):
         return m[y - 1][x - 1] in [0, i]
     def unique(brd):
         (m, n) = (normalize(brd), normalize(mirror(brd)))
-        return all(m != v and n != v for v in visit)
+        return m not in visit and n not in visit
     s = []
     d = [(0, -1), (0, 1), (-1, 0), (1, 0)]
     m = matrix(layout)
@@ -91,7 +93,7 @@ def mirror(layout):
     return [[(y, 5 - x) for (y, x) in r] for r in layout]
 
 def normalize(layout):
-    return sorted([sorted(r) for r in layout])
+    return tuple(sorted(tuple([tuple(sorted(r)) for r in layout])))
 
 # pretty print
 def output(node):
