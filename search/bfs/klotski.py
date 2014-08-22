@@ -93,7 +93,7 @@ def mirror(layout):
     return [[(y, 5 - x) for (y, x) in r] for r in layout]
 
 def normalize(layout):
-    return tuple(sorted(tuple([tuple(sorted(r)) for r in layout])))
+    return tuple(sorted([tuple(sorted(r)) for r in layout]))
 
 # pretty print
 def output(node):
