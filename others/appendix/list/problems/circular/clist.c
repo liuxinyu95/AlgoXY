@@ -24,6 +24,23 @@ int is_circular(struct Node* h) {
     return 0;
 }
 
+/*Locate where the loop starts*/
+struct Node* find_loop(struct Node* h) {
+    struct Node *a, *b;
+    a = b = h;
+    while (a && b) {
+        a = a->next;
+        b = b->next;
+        if (!b) break;
+        b = b->next;
+        if (a == b) {
+            for (b = h; b != a; a = a->next, b = b->next);
+            return a;
+        }
+    }
+    return NULL; /*no loop*/
+}
+
 struct Node* create(int n, int k, int circular) {
     struct Node *p, *t = NULL, *h = NULL;
     while(n--) {
@@ -42,11 +59,17 @@ struct Node* create(int n, int k, int circular) {
 
 void release(struct Node* h, int n) {
     struct Node* p;
-    while (--n) {
+    while (n--) {
         p = h;
         h = h->next;
         free(p);
     }
+}
+
+struct Node* get_at(struct Node* h, int k) {
+    while(h && k--)
+        h = h->next;
+    return h;
 }
 
 void test() {
@@ -57,6 +80,7 @@ void test() {
         circular = rand() % 2;
         struct Node* h = create(n, k, circular);
         assert(is_circular(h) == circular);
+        assert(find_loop(h) == (circular? get_at(h, k) : NULL));
         release(h, n);
     }
     printf("%d test cases passed\n", N);
