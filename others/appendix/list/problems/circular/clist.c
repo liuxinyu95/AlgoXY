@@ -2,6 +2,8 @@
 #include <assert.h>
 #include <stdio.h>
 
+/*Circular linked-list problem is a speical Cycle detection problem*/
+
 #define N 100
 
 struct Node {
@@ -10,6 +12,8 @@ struct Node {
 };
 
 /*Detect if a linked-list is circular*/
+
+/* Method 1, Robert W. Floyd algorithm, AKA tortoise and hare algorithm. */
 int is_circular(struct Node* h) {
     struct Node *a, *b;
     a = b = h;
@@ -24,7 +28,28 @@ int is_circular(struct Node* h) {
     return 0;
 }
 
+/* Method 2, reverse list
+ * After reversing, a normal linked-list exchange its head and tail;
+ * while a reversed circular linked-list, its new head is as same as its original head.
+ *
+ * However, there will be memory leak, as the nodes in the curcle are lost.
+ */
+
+int detect(struct Node* h) {
+    struct Node *h1, *tail, *p;
+    tail = p = h;
+    while (h) {
+        h = p->next;
+        p->next = h1;
+        h1 = p;
+        p = h;
+    }
+    return h1 == tail;
+}
+
 /*Locate where the loop starts*/
+
+/* Method 1, Robert W. Floyd tortoise and hare algorithm. */
 struct Node* find_loop(struct Node* h) {
     struct Node *a, *b;
     a = b = h;
