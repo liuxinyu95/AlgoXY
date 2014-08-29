@@ -70,7 +70,7 @@ struct Node* find_loop(struct Node* h) {
  * Returns NULL if no cycle, otherwise, returns the connection point
 */
 struct Node* find_cycle(struct Node* h) {
-    struct Node *a, *b;  /*the slow and fast pointers*/
+    struct Node *a, *b;
     int n = 0, power = 1;
     a = b = h;
     do {
