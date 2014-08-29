@@ -66,6 +66,31 @@ struct Node* find_loop(struct Node* h) {
     return NULL; /*no loop*/
 }
 
+/* Method 2, Richard P. Brent's algorithm
+ * Returns NULL if no cycle, otherwise, returns the connection point
+*/
+struct Node* find_cycle(struct Node* h) {
+    struct Node *a, *b;  /*the slow and fast pointers*/
+    int n = 0, power = 1;
+    a = b = h;
+    do {
+        if (n == power) {
+            a = b;
+            power <<= 1;
+            n = 0;
+        }
+        if (!b) break;
+        b = b->next;
+        ++n;
+    } while (a && b && a != b);
+
+    if (!a || !b) return NULL;
+
+    for (b = h; n; --n, b = b->next);
+    for (a = h; a != b; a = a->next, b = b->next);
+    return a; /*or b*/
+}
+
 struct Node* create(int n, int k, int circular) {
     struct Node *p, *t = NULL, *h = NULL;
     while(n--) {
@@ -106,6 +131,7 @@ void test() {
         struct Node* h = create(n, k, circular);
         assert(is_circular(h) == circular);
         assert(find_loop(h) == (circular? get_at(h, k) : NULL));
+        assert(find_cycle(h) == (circular? get_at(h, k) : NULL));
         release(h, n);
     }
     printf("%d test cases passed\n", N);
