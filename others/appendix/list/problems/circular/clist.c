@@ -31,20 +31,23 @@ int is_circular(struct Node* h) {
 /* Method 2, reverse list
  * After reversing, a normal linked-list exchange its head and tail;
  * while a reversed circular linked-list, its new head is as same as its original head.
- *
- * However, there will be memory leak, as the nodes in the curcle are lost.
  */
 
-int detect(struct Node* h) {
-    struct Node *h1, *tail, *p;
-    tail = p = h;
+struct Node* reverse(struct Node* h) {
+    struct Node *p = h, *h1 = NULL;
     while (h) {
         h = p->next;
         p->next = h1;
         h1 = p;
         p = h;
     }
-    return h1 == tail;
+    return h1;
+}
+
+int detect(struct Node* h) {
+    struct Node* h1 = reverse(h);
+    reverse(h1); /*resume the original list*/
+    return h == h1;
 }
 
 /*Locate where the loop starts*/
@@ -130,6 +133,7 @@ void test() {
         circular = rand() % 2;
         struct Node* h = create(n, k, circular);
         assert(is_circular(h) == circular);
+        assert(detect(h) == circular);
         assert(find_loop(h) == (circular? get_at(h, k) : NULL));
         assert(find_cycle(h) == (circular? get_at(h, k) : NULL));
         release(h, n);
