@@ -1,4 +1,5 @@
 \documentclass{article}
+\usepackage{subfig}
 \usepackage{tikz}
 
 \usepackage{amsmath}
@@ -336,6 +337,123 @@ struct Node* find_cycle(struct Node* h) {
 }
 \end{lstlisting}
 
+\section*{Other method}
+Another method to detect if there is a cycle without pointing the cycle starting point is to reverse
+the list. For a linked-list without circle, its tail becomes the new head after reversing. But
+for a linked-list with circle, the reversed head is same. Figure \ref{fig:reverse} shows the result.
+
+\begin{figure}[htdp]
+\centering
+\subfloat[Stage 1, the part before the circle is reversed]{
+\begin{tikzpicture}[scale=1.5]
+  % trace
+  \draw[dashed, very thin] (-2cm, 1cm) -- (0, 1cm);
+  \draw[dashed, very thin] (0,0) circle [radius=1cm];
+
+  % leading nodes
+  \foreach \x in {-2, -1.7, ..., -1.4} {
+    \draw[thick] (\x cm, 1cm) +(-0.1, -0.1) rectangle ++(0.1, 0.1);
+    \draw[thick, <-] (\x cm, 1cm) -- +(0.2, 0);
+  }
+
+  % cricular starting points
+  \draw[thick, <-] (-0.3cm, 1cm) -- (-0.1cm, 1cm);
+
+  \draw (-2cm, 1.2cm) node[above]{$O$};
+  \draw (0, 1.2cm) node[above]{$A$};
+
+  % circular nodes
+  \foreach \deg/\rot in {90/0, 60/-30, 30/-60, 0/-90, 180/90, 150/60, 120/30} {
+    \draw[thick] (\deg : 1cm) +(-0.1, -0.1) rectangle ++(0.1, 0.1);
+    \draw[thick, ->] (\deg : 1cm) -- +(\rot : 0.2);
+  }
+\end{tikzpicture}
+}
+
+\subfloat[Stage 2, the circle part is reversed]{
+\begin{tikzpicture}[scale=1.5]
+  % trace
+  \draw[dashed, very thin] (-2cm, 1cm) -- (0, 1cm);
+  \draw[dashed, very thin] (0,0) circle [radius=1cm];
+
+  % leading nodes
+  \foreach \x in {-2, -1.7, ..., -1.4} {
+    \draw[thick] (\x cm, 1cm) +(-0.1, -0.1) rectangle ++(0.1, 0.1);
+    \draw[thick, <-] (\x cm, 1cm) -- +(0.2, 0);
+  }
+
+  % cricular starting points
+  \draw[thick, <-] (-0.3cm, 1cm) -- (-0.1cm, 1cm);
+
+  \draw (-2cm, 1.2cm) node[above]{$O$};
+  \draw (0, 1.2cm) node[above]{$A$};
+
+  % circular nodes
+  \foreach \deg/\rot in {90/0, 60/-30, 30/-60, 0/-90, 180/90, 150/60, 120/30} {
+    \draw[thick] (\deg : 1cm) +(-0.1, -0.1) rectangle ++(0.1, 0.1);
+    \draw[thick, <-] (\deg : 1cm) -- +(\rot : 0.2);
+  }
+\end{tikzpicture}
+}
+
+\subfloat[Stage 3, The nodes between the original head and the circule is revresed back]{
+\begin{tikzpicture}[scale=1.5]
+  % trace
+  \draw[dashed, very thin] (-2cm, 1cm) -- (0, 1cm);
+  \draw[dashed, very thin] (0,0) circle [radius=1cm];
+
+  % leading nodes
+  \foreach \x in {-2, -1.7, ..., -1.4} {
+    \draw[thick] (\x cm, 1cm) +(-0.1, -0.1) rectangle ++(0.1, 0.1);
+    \draw[red, thick, ->] (\x cm, 1cm) -- +(0.2, 0);
+  }
+
+  \draw (-2cm, 1.2cm) node[above]{$O$};
+  \draw (0, 1.2cm) node[above]{$A$};
+
+  % cricular starting points
+  \draw[red, thick, ->] (-0.3cm, 1cm) -- (-0.1cm, 1cm);
+
+  % circular nodes
+  \foreach \deg/\rot in {90/0, 60/-30, 30/-60, 0/-90, 180/90, 150/60, 120/30} {
+    \draw[thick] (\deg : 1cm) +(-0.1, -0.1) rectangle ++(0.1, 0.1);
+    \draw[thick, <-] (\deg : 1cm) -- +(\rot : 0.2);
+  }
+\end{tikzpicture}
+}
+\caption{Reverse a circular list.}
+\label{fig:reverse}
+\end{figure}
+
+After all the pointers being reversed in stage 1 and 2, the reversing doesn't
+stop, but goes along with the line $AO$. Since all the nodes in section $AO$
+have already been reversed, these pointers are restored. We can compare if
+the new head is changed to tell if there is a cycle. After that, we need
+perform another reversing to restore the linked-list back.
+
+The following ANSI C code implements this solution.
+
+\lstset{language=C}
+\begin{lstlisting}
+struct Node* reverse(struct Node* h) {
+    struct Node *p = h, *h1 = NULL;
+    while (h) {
+        h = p->next;
+        p->next = h1;
+        h1 = p;
+        p = h;
+    }
+    return h1;
+}
+
+int detect(struct Node* h) {
+    struct Node* h1 = reverse(h);
+    reverse(h1); /*resume the original list*/
+    return h == h1;
+}
+\end{lstlisting}
+
+
 The complete ANSI C example program with test is distributed with this article.
 
 \section*{Further reading}
@@ -375,5 +493,7 @@ Donald E. Knuth. ``The Art of Computer Programming, Volume 2: Seminumerical Algo
 Cycle dection. Wikipedia. http://en.wikipedia.org/wiki/Cycle\_detection
 
 \end{thebibliography}
+
+% TODO: Added formalized cycle detection as appendix
 
 \end{document}
