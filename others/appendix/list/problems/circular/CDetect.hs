@@ -17,13 +17,24 @@ findCycle x0 f = (k, n) where
 
 
 -- Floyd's method by using infinity
---findCycle' x0 f = (k, n) where
+findCycle' x0 f = (length sec, length cycle) where
+  xs@(x:xs') = iterate f x0
+  ys@(y:ys') = iterate (f.f) x0
+  neq (x, y) = x /= y
+  converge = fst $ unzip $ dropWhile neq (zip xs' ys')
+  (sec, (z:zs)) = span neq (zip xs converge)
+  cycle = z : takeWhile (z /=) zs
 
 -- Verification
 f k m n | n < k = n + 1
         | otherwise = (n + 1 - k) `mod` m + k
 
-prop_cycle :: Int -> Int -> Bool
-prop_cycle b c = (k, m) == findCycle 0 (f k m) where
-  k = (abs b) `mod` 1000
-  m = if c == 0 then 1 else (abs c) `mod` 1000
+-- limit the k, m < 1000 to save the running time
+norm k m = ((abs k) `mod` 1000, max 1 (abs m) `mod` 1000)
+
+prop_floyd :: Int -> Int -> Bool
+prop_floyd b c = (k, m) == findCycle 0 (f k m) where
+  (k, m) = norm b c
+
+prop_floyd' :: Int -> Int -> Bool
+prop_floyd' b c = (k, m) == findCycle' 0 (f k m) where (k, m) = norm b c
