@@ -1,5 +1,6 @@
 module CDetect where
 
+import Data.List (elemIndex)
 import Test.QuickCheck
 
 -- Cycle detection problem
@@ -20,10 +21,11 @@ findCycle x0 f = (k, n) where
 findCycle' x0 f = (length sec, length cycle) where
   xs@(x:xs') = iterate f x0
   ys@(y:ys') = iterate (f.f) x0
-  neq (x, y) = x /= y
   converge = fst $ unzip $ dropWhile neq (zip xs' ys')
   (sec, (z:zs)) = span neq (zip xs converge)
   cycle = z : takeWhile (z /=) zs
+
+neq (x, y) = x /= y
 
 -- Mehod 2, Richard P. Brent's algorithm
 detectCycle x0 f = (k, n) where
@@ -35,6 +37,17 @@ detectCycle x0 f = (k, n) where
   converge p q n m | n == m = converge q (f q) 1 (2*m)
                    | p == q = n
                    | otherwise = converge p (f q) (n + 1) m
+
+-- Brent's method by using infinity
+detectCycle' x0 f = (k, n) where
+  xs = iterate f x0
+  n = converge xs 1
+  k = length $ takeWhile neq (zip xs (drop n xs))
+  converge (x:xs) m = let
+      (ys, zs) = splitAt m xs in
+      case elemIndex x ys of
+        Nothing -> converge zs (2*m)
+        (Just idx) -> idx + 1
 
 -- Verification
 
@@ -53,3 +66,6 @@ prop_floyd' = prop_cycle findCycle'
 
 prop_brent :: Int -> Int -> Bool
 prop_brent = prop_cycle detectCycle
+
+prop_brent' :: Int -> Int -> Bool
+prop_brent' = prop_cycle detectCycle'
