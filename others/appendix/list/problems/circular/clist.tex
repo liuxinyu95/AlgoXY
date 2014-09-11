@@ -1,4 +1,5 @@
 \documentclass{article}
+
 \usepackage{subfig}
 \usepackage{tikz}
 
@@ -6,6 +7,27 @@
 \usepackage{listings}
 \usepackage{algorithm}
 \usepackage[noend]{algpseudocode} %for pseudo code, include algorithmicsx automatically
+
+% for better Haskell code outlook
+\lstdefinelanguage{Haskell}{
+  basicstyle=\small\ttfamily,
+  flexiblecolumns=false,
+  basewidth={0.5em,0.45em},
+  literate={+}{{$+$}}1 {/}{{$/$}}1 {*}{{$*$}}1 {=}{{$=$}}1
+           {>}{{$>$}}1 {<}{{$<$}}1 {\\}{{$\lambda$}}1
+           {\\\\}{{\char`\\\char`\\}}1
+           {->}{{$\rightarrow$}}2 {>=}{{$\geq$}}2 {<-}{{$\leftarrow$}}2
+           {<=}{{$\leq$}}2 {=>}{{$\Rightarrow$}}2
+           {\ .}{{$\circ$}}2 {\ .\ }{{$\circ$}}2
+           {>>}{{>>}}2 {>>=}{{>>=}}2
+           {|}{{$\mid$}}1
+}[keywords,comments,strings]
+
+\lstloadlanguages{C, Haskell, Python}
+
+\lstset{
+  showstringspaces = false
+}
 
 \begin{document}
 
@@ -543,7 +565,81 @@ period of the cycle.
 \EndFunction
 \end{algorithmic}
 
-TODO: The functional realization
+The cycle detection solution can be defined in purely functional form. For Floyd's method, we
+need define a function $converge(a, b)$. It applies function $f$ on $a$, and applies $f$ twice
+on $b$, then recursively finds the converge point where $a = b$.
+
+\begin{equation}
+converge(a, b) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  a & a = b \\
+  converge(f(a), f(f(b))) & otherwise
+  \end{array}
+\right.
+\end{equation}
+
+Then we can start finding the converge point by calling $x_i = converge(f(x_0), f(f(x_0)))$.
+After that, we start from $x_0$ and $x_i$ to find the connection point $x_k$.
+
+\begin{equation}
+connect(a, b, k) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (k, a) & a = b \\
+  connect(f(a), f(b), k + 1) & otherwise
+  \end{array}
+\right.
+\end{equation}
+
+Because iterating $f$ on $x_0$ of $k$ times will arrive at the connection point $A$, and so as
+from the converge point $x_k$. This function returns a pair of values. One is $k$, the other is
+the connection point. This funciton is called in form of $connect(x_0, x_i, 0)$, where the third
+parameter zero is the initial value of $k$.
+
+Since the connection point $x_k$ is the starting point of the cycle, we can traverse the cycle
+from it to count the circumference $n$.
+
+\begin{equation}
+traverse(a) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  1 & a = x_k \\
+  1 + traverse(f(a)) & otherwise
+  \end{array}
+\right.
+\end{equation}
+
+The final Floyd's algorithm can be realized as below.
+
+\begin{equation}
+floyd(x_0, f) = (k, n)
+\end{equation}
+
+Where
+\[
+\left \{
+\begin{array}{l}
+(k, x_k) = connect(x_0, converge(f(x_0), f(f(x_0))), 0) \\
+n = traverse(x_k)
+\end{array}
+\right .
+\]
+
+The following Haskell example program implements this algorithm.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+findCycle x0 f = (k, n) where
+  (k, p) = connect x0 (converge (f x0) (f $ f x0)) 0
+  n = traverse (f p)
+  converge a b | a == b = a
+               | otherwise = converge (f a) (f $ f b)
+  connect a b cnt | a == b = (cnt, a)
+                  | otherwise = connect (f a) (f b) (cnt + 1)
+  traverse a | a == p = 1
+             | otherwise = 1 + traverse (f a)
+\end{lstlisting}
 
 \begin{thebibliography}{99}
 
