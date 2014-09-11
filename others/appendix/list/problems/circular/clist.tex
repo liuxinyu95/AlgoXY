@@ -480,8 +480,6 @@ int detect(struct Node* h) {
 \end{lstlisting}
 
 
-The complete ANSI C example program with test is distributed with this article.
-
 \section{Cycle detection}
 Circular list is a special case of general Cycle detection problem \cite{wiki-cycle-detection}.
 For any function $f$ maps finite set $S$ to itself with any initial value $x_0$, the sequence of the
@@ -679,6 +677,8 @@ combines these ideas.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
+neq (x, y) = x /= y
+
 findCycle' x0 f = (length sec, length cycle) where
   xs@(x:xs') = iterate f x0
   ys@(y:ys') = iterate (f.f) x0
@@ -688,6 +688,92 @@ findCycle' x0 f = (length sec, length cycle) where
 \end{lstlisting}
 
 \subsection{Brent's algorithm}
+In Brent's algorithm, the cycle period $n$ is calculated first. We define a function $converge(a, b, n, m)$.
+Let $m$ be the power of 2 series $1, 2, 4, 8, ...$, and check if we converge within $m$ recursions.
+
+\begin{equation}
+converge(a, b, n, m) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  converge(a, f(a), 1, 2m) & n = m \\
+  n & a = b \\
+  converge(a, f(a), n+1, m) & otherwise
+  \end{array}
+\right.
+\end{equation}
+
+If $n=m$, it means we can't converge within $m$ steps, we reset the start point to $a$, the period counter
+$n$ to 1, and try again within $2m$ steps; When $a = b$, it converges. $n$ records the circumference. Other
+wise, we step a head. The cycle length $n$ is given as $n = converge(x_0, f(x_0), 1, 1)$.
+
+With $n$ caculated, we can get $k$ by finding the connection point $k = connect(x_0, f^n(x_0))$, where
+$f^n(x_0)$ means applying function $f$ to $x_0$ with $n$ times.
+
+\begin{equation}
+connect(a, b) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  0 & a = b \\
+  1 + connect(f(a), f(b))
+  \end{array}
+\right.
+\end{equation}
+
+The following Haskell example program implement Brent's algorithm.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+detectCycle x0 f = (k, n) where
+  n = converge x0 (f x0) 1 1
+  q = foldr ($) x0 (replicate n f)
+  k = connect x0 q
+  connect p q | p == q = 0
+              | otherwise = 1 + connect (f p) (f q)
+  converge p q n m | n == m = converge q (f q) 1 (2*m)
+                   | p == q = n
+                   | otherwise = converge p (f q) (n + 1) m
+\end{lstlisting}
+
+Brent's algorithm can be realized with infinite series as well in programming environment that supports
+lazy evaluation. We start $m$ from 1, then 2, 4, ... For each $m$, we search the converge point in
+a section series of length $m$. For any given infinite values $Y = \{y_1, y_2, y_3, ...\}$, let
+$Y' = \{y_2, y_3, ...\}$. We split $Y'$ at position $m$,
+$(Y_1, Y_2) = splitAt(m, Y')$. Then we search $y_1$ in $Y_1$. If we fail to find it, we need
+recursively seach the converge point in a section of length $2m$ in $Y_2$. Otherwise the
+position of $y_1$ in $Y_1$ is the length of the cycle.
+
+\begin{equation}
+converge(Y, m) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  i & y_1 = y_i, y_i \in Y_1 \\
+  converge(Y_2, 2m) & y_1 \notin Y_1
+  \end{array}
+\right.
+\end{equation}
+
+With $n$ calculated, we can get $k$ like below.
+
+\begin{equation}
+k = |takeWhile(\lambda_{(x_i, x_j)} \cdot x_i \neq x_j, zip(\{x_0, x_1, ... \}, \{x_{n}, x_{n+1}, ...\}))|
+\end{equation}
+
+The following Haskell example program implements this method by using infinite series and lazy evaluation.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+detectCycle' x0 f = (k, n) where
+  xs = iterate f x0
+  n = converge xs 1
+  k = length $ takeWhile neq (zip xs (drop n xs))
+  converge (x:xs) m = let
+      (ys, zs) = splitAt m xs in
+      case elemIndex x ys of
+        Nothing -> converge zs (2*m)
+        (Just idx) -> idx + 1
+\end{lstlisting}
+
+The complete ANSI C and Haskell example programs with test are distributed with this article.
 
 \begin{thebibliography}{99}
 
