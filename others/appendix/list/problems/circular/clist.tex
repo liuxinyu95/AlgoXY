@@ -565,6 +565,8 @@ period of the cycle.
 \EndFunction
 \end{algorithmic}
 
+\section{Functional approach}
+\subsection{Floyd's algorithm}
 The cycle detection solution can be defined in purely functional form. For Floyd's method, we
 need define a function $converge(a, b)$. It applies function $f$ on $a$, and applies $f$ twice
 on $b$, then recursively finds the converge point where $a = b$.
@@ -640,6 +642,52 @@ findCycle x0 f = (k, n) where
   traverse a | a == p = 1
              | otherwise = 1 + traverse (f a)
 \end{lstlisting}
+
+In the environments that support lazy evaluation, the solution can also be realized by using infinite series.
+Denote $X = \{x_0, x_1, x_2, ...\}$, and $X' = \{ x_1, x_2, ...\}$ contains the rest of elements except
+for $x_0$. Taking the even number indexed elements $Y = \{x_0, x_2, x_4, ...\}$, and let $Y' = \{x_2, x_4, ...\}$
+be the rest elements in $Y$. $Y$ contains all the possible values that applies $f$ twice from $x_0$.
+If we pairing $X'$ and $Y'$, as $zip(X', Y') = \{(x_1, x_2), (x_2, x_4), ... (x_j, x_{2j}), ...\}$
+We can examine the pairs one by one till to the converge point that the two values in the pair are equal.
+Dropping all the examined pairs, we can have an infinite series of pairs from the converge point
+
+\begin{equation}
+\begin{array}{rl}
+zip(C, D) & = \{(x_i, x_i), (x_{i+1}, x_{2(i+1)}), ...\} \\
+  & = dropWhile(\lambda_{(x_j, x_k)} \cdot x_j \neq x_k, zip(X', Y'))
+\end{array}
+\end{equation}
+
+Thus $C = \{x_i, x_{i+1}, ...\}$. At this stage, we can pairing $X$ and $C$ to search the connection point
+in $zip(X, C) = \{(x_0, x_i), (x_1, x_{i+1}), ...\}$. Where the two values in the pair are equal. Then
+we break the infinite series into two parts $Z_1, Z_2$, the first part contains elements before the
+connection point $A$. The length of it is $k = |Z_1|$. And we can count the cycle from the second part.
+
+\begin{equation}
+(Z_1, Z_2) = span(\lambda_{(x_i, x_j)} \cdot x_i \neq x_j, zip(X, C))
+\end{equation}
+
+In order to find the cycle in $Z_2 = \{(x_k, x_k), (x_{k+1}, x_{k+1}), ...\}$, we examine from the second
+pair one by one till meet $(x_k, x_k)$ again.
+
+\begin{equation}
+n = 1 + |takeWhile(\lambda_{(x_i, x_j)} \cdot x_i = x_j = x_k, Z_2')|
+\end{equation}
+
+Where $Z_2'$ contains all the pairs from the second one in $Z_2$. The following Haskell example program
+combines these ideas.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+findCycle' x0 f = (length sec, length cycle) where
+  xs@(x:xs') = iterate f x0
+  ys@(y:ys') = iterate (f.f) x0
+  converge = fst $ unzip $ dropWhile neq (zip xs' ys')
+  (sec, (z:zs)) = span neq (zip xs converge)
+  cycle = z : takeWhile (z /=) zs
+\end{lstlisting}
+
+\subsection{Brent's algorithm}
 
 \begin{thebibliography}{99}
 
