@@ -78,10 +78,18 @@ We'll explain a linear time algorithm found by Glenn K. Manacher in 1975 \cite{M
 This method scan the string and reuse the information gained during the scan.
 
 For given string $S = \{s_1, s_2, ..., s_n\}$, let $P = \{p_1, p_2, ... p_n\}$ be a table.
+$p_i$ is defined as the following.
+
+\begin{equation}
+p_i = max \{ d | \{s_{i-d}, ..., s_{i+d}\} \textrm{\ is palindrome}, d = 1, 2, 3, ...\}
+\label{eq:p-table}
+\end{equation}
+
+We call $P$ the palindrome table.
 $p_i$ tells us how long we can extend from the $i$-th element in $S$ to
 left and right to form a palindrome. In other words the sub-string
-$\{s_{i-p_i}, s_{i-p_i+1}, ..., s_i, s_{i+1}, ..., s_{i+p_i}\}$ is the longest one at the
-center of $s_i$. We donote this sub-string as $S_{(i, p_i)}$.
+$\{s_{i-p_i}, s_{i-p_i+1}, ..., s_i, ..., s_{i+p_i}\}$ is the longest palindromic sub-string
+at the center of $i$. We donote this sub-string as $S_{(i, p_i)}$.
 Below table shows an example for string `eneven'.
 
 %\begin{table}
@@ -98,11 +106,118 @@ $S_{(i, p_i)}$ & e & ene & e & neven & e & n \\
 
 The first value $p_1 = 1$, the palindrome at the center of the first element contains
 only one character ``e''. The second value $p_2 = 2$, it means we can extend from
-the second element, which is `n' to 2 characters to left and right. It gives the
-palindrome ``ene''. The fourth value $p_4 = 3$, we can extend 3 characters at the
-center of of `v' to both sides to get the palindrome ``neven''. We can view
+the second element 2 characters to both sides. It gives the
+palindrome ``ene''. The fourth value $p_4 = 3$, we can extend 3 characters to get
+the palindrome ``neven''. We can think
 $p_i$ as the `radius' of the palindrome at center $i$.
 
+However, there is a problem in the definition of $p_i$. In equation (\ref{eq:p-table}),
+the length of the palindrome is forced to be odd number. It doesn't work
+for even length. For example, the $P$ table for string $S = ...issi...$ is below.
+
+\begin{tabular}{|c|c|c|c|c|c|c|}
+\hline
+$S$ & ... & i & s & s & i & ... \\
+\hline
+$P$ & ... & 1 & 1 & 1 & 1 & ... \\
+\hline
+\end{tabular}
+
+Acutally, we need it to be something like below.
+
+\begin{tabular}{|c|c|c|c|c|c|c|c|}
+\hline
+$S$ & ... & i & s &   & s & i & ... \\
+\hline
+$P$ & ... &   &   & 2 &   &   & ... \\
+\hline
+\end{tabular}
+
+One solution is to insert a special delimiter $\# \notin S$ between all elements in $S$ to
+turn it into another string $S'$.
+
+\begin{equation}
+S' = \{\#, s_1, \#, s_2, \#, ..., \#, s_n, \#\}
+\end{equation}
+
+There are two cases.
+
+\begin{itemize}
+\item For the odd length palindrome, Let the length be $L = 2k + 1$.
+
+\begin{tikzpicture}[scale=2.5]
+  \draw (-1.5cm, .4) node{$s_{i-k}$};
+  \draw (-1cm, .4) node{...};
+  \draw (-0.5cm, .4) node{$s_{i-1}$};
+  \draw (0, .4) node{$s_i$};
+  \draw (0.5cm, .4) node{$s_{i+1}$};
+  \draw (1cm, .4) node{...};
+  \draw (1.5cm, .4) node{$s_{i+k}$};
+
+  \foreach \x in {-1.75, -1.25, ..., 1.75} {
+    \draw (\x cm, 0) node{\#};
+  }
+
+  \draw (-1.5cm, 0) node{$s_{i-k}$};
+  \draw (-1cm, 0) node{...};
+  \draw (-0.5cm, 0) node{$s_{i-1}$};
+  \draw (0, 0) node{$s_i$};
+  \draw (0.5cm, 0) node{$s_{i+1}$};
+  \draw (1cm, 0) node{...};
+  \draw (1.5cm, 0) node{$s_{i+k}$};
+
+  \draw[->] (0, .3) -- (0, .2) node[right]{Transform} -- (0, .1);
+
+\end{tikzpicture}
+
+After the transformation, the center of the new palindrome is still $s_i$. In the
+new palindrome talbe $P'$, the value correspond to $s_i$ is $p'_j = 2k + 2$.
+
+\item For the even length palindrome, Let the length be $L = 2k$.
+
+\begin{tikzpicture}[scale=2.5]
+  \draw (-1.75cm, .5) node{$s_{i-k+1}$};
+  \draw (-1.25cm, .5) node{...};
+  \draw (-0.75cm, .5) node{$s_{i-1}$};
+  \draw (-0.25cm, .5) node{$s_i$};
+  \draw (.25cm, .5) node{$s_{i+1}$};
+  \draw (0.75cm, .5) node{$s_{i+2}$};
+  \draw (1.25cm, .5) node{...};
+  \draw (1.75cm, .5) node{$s_{i+k}$};
+
+  \draw[dashed, very thin] (0, .35) -- (0, .6);
+  \foreach \x/\y in {0.25/0.3, 0.75/0.25, 1.75/0.2} {
+    \draw[dashed, very thin, <->] (-\x cm, .4) .. controls (0, \y) .. (\x cm, .4);
+  }
+
+  \foreach \x in {-2, -1.5, ..., 2} {
+    \draw (\x cm, 0) node{\#};
+  }
+
+  \draw (-1.75cm, .0) node{$s_{i-k+1}$};
+  \draw (-1.25cm, .0) node{...};
+  \draw (-0.75cm, .0) node{$s_{i-1}$};
+  \draw (-0.25cm, .0) node{$s_i$};
+  \draw (.25cm, .0) node{$s_{i+1}$};
+  \draw (0.75cm, .0) node{$s_{i+2}$};
+  \draw (1.25cm, .0) node{...};
+  \draw (1.75cm, .0) node{$s_{i+k}$};
+
+  \foreach \x/\y in {0.25/-0.2, 0.75/-0.25, 1.75/-0.3} {
+    \draw[dashed, very thin, <->] (-\x cm, -0.1) .. controls (0, \y) .. (\x cm, -0.1);
+  }
+
+  \draw[->] (0, .3) -- (0, .2) node[right]{Transform} -- (0, .1);
+
+\end{tikzpicture}
+
+After the transformation, the center of the new palindrome becomes a delimiter \#. In the
+new palindrome talbe $P'$, the value correspond to the new center is $p'_j = 2k + 1$.
+\end{itemize}
+
+In both cases, we have the relationship $L = p'_j - 1$.
+
+The maximum value in table $P$ is bound to the longest palindromic sub-string.
 
 \section{The brute-force scan}
 
