@@ -2,7 +2,6 @@
 
 #include <stdio.h>
 #include <stdlib.h> /* for malloc/free */
-#include <string.h> /* for memset */
 
 #define N 16
 
@@ -13,16 +12,20 @@ static unsigned prime[1<<N];
  */
 void sieve(unsigned m) {
     unsigned i, j, n = 1 << m;
-    memset(prime, 1, n);
-    printf("start sieve proc n = %u, m = %u...\n", n, m);
-    for (i = 2; i < n; ++i)
+    for (i = 0; i < n; ++i)
+        prime[i] = 1;
+    printf("start sieve proc n = %u, m = %u...\n", n, 1<<(m/2));
+    for (i = 2; i < 1<<(m/2); ++i)
         if (prime[i])
-            for (j = i + i; j < n; j += i)
+            for (j = i*i; j < n; j += i) {
+                if (j == 127) printf("127!!!\n");
                 prime[j] = 0;
+            }
     printf("sieve done\n");
     for (i = 2; i < n; ++i)
         if (prime[i])
             printf("%u, ", i);
+    printf("i=%u\n", i);
 }
 
 /*
@@ -42,7 +45,7 @@ unsigned perfect_number(unsigned m) {
         while (!prime[p])
             --p;
         mp = (1<<p) - 1;  /*Mersenne prime: 2^p - 1*/
-        printf("p = %u, mp=%u\n", p, mp);
+        printf("p = %u, mp=%u, prime[mp]=%u\n", p, mp, prime[mp]);
     } while (!prime[mp] && --p);
     return mp * (1<<(p - 1));
 }
