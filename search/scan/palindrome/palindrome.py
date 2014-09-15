@@ -42,7 +42,7 @@ def manacher_palindrome(s):
             p[i] = p[i] + 1
         if j + p[j] < i + p[i]:
             j = i
-        m = max(m, (p[i] - 1, i // 2))
+        m = max(m, (p[i] - 1, i))
     return m
 
 def test():
@@ -50,7 +50,7 @@ def test():
     for s in ss:
         (n, i) = manacher_palindrome(s)
         assert(n == brute_force_palindrome(s))
-        print s[i + (n // 2) -n + 1 : i + (n //2) + 1]
+        print s[(i-n+1)/2 : (i+ n-1)/2+1]
 
 if __name__ == "__main__":
     test()
