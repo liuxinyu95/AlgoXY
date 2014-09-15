@@ -13,14 +13,16 @@ static unsigned prime[1<<N];
  */
 void sieve(unsigned m) {
     unsigned i, j, n = 1 << m;
-    m = 1 << (m/2); /* m = sqrt(n) */
     memset(prime, 1, n);
-    printf("start sieve proc till %ud...\n", m);
-    for (i = 2; i < m; ++i)
+    printf("start sieve proc n = %u, m = %u...\n", n, m);
+    for (i = 2; i < n; ++i)
         if (prime[i])
             for (j = i + i; j < n; j += i)
                 prime[j] = 0;
     printf("sieve done\n");
+    for (i = 2; i < n; ++i)
+        if (prime[i])
+            printf("%u, ", i);
 }
 
 /*
@@ -35,7 +37,7 @@ void sieve(unsigned m) {
 unsigned perfect_number(unsigned m) {
     unsigned mp, p = m / 2;
     printf("try p=%u\n", p);
-    sieve(p + 1);
+    sieve(p);
     do {
         while (!prime[p])
             --p;
