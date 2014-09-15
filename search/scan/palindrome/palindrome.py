@@ -29,5 +29,28 @@ def brute_force_palindrome(s):
             k = k + 1
     return max(p) - 1
 
+# Manacher's algorithm, linear O(n) time.
+def manacher_palindrome(s):
+    s = DELIMITER + DELIMITER.join(s) + DELIMITER
+    n = len(s)
+    p = [0] * n
+    j = 0
+    m = (-1, 0)  # (max length so far, position)
+    for i in xrange(n):
+        p[i] = min(p[2*j-i], j + p[j] - i)
+        while 0 <= i - p[i] and i + p[i] < n and s[i-p[i]] == s[i+p[i]]:
+            p[i] = p[i] + 1
+        if j + p[j] < i + p[i]:
+            j = i
+        m = max(m, (p[i] - 1, i // 2))
+    return m
+
+def test():
+    ss = ["Mississippi", "level", "cacab", "cocoa"]
+    for s in ss:
+        (n, i) = manacher_palindrome(s)
+        assert(n == brute_force_palindrome(s))
+        print s[i + (n // 2) -n + 1 : i + (n //2) + 1]
+
 if __name__ == "__main__":
-    print brute_force_palindrome("Mississippi")
+    test()
