@@ -4,19 +4,21 @@
 #include <stdlib.h> /* for malloc/free */
 #include <string.h> /* for memset */
 
-#define N 16
+#define N 29  /* There are 2^3 = 8 bits in each byte */
+#define PRIME(n)  (prime[(n) >> 3] & (1 << ((n) & 0x07)))
+#define CLEAR_PRIME(n) prime[(n) >> 3] &= ~ (1 << ((n) & 0x07))
 
-static char prime[1<<N];
+static unsigned char prime[1<<N];
 
 /* Sieve of Eratosthenes
  */
 void sieve(unsigned n) {
     unsigned i, j;
-    memset(prime, 1, n);
+    memset(prime, 0xff, n / sizeof(unsigned char));
     for (i = 2; i*i < n; ++i)
-        if (prime[i])
+        if (PRIME(i))
             for (j = i*i; j < n; j += i)
-                prime[j] = 0;
+                CLEAR_PRIME(j);
 }
 
 /*
@@ -32,15 +34,15 @@ unsigned perfect_number(unsigned m) {
     unsigned mp, p = m / 2;
     sieve(1 << p);
     do {
-        while (!prime[p])
+        while (!PRIME(p))
             --p;
         mp = (1<<p) - 1;  /*Mersenne prime: 2^p - 1*/
-        printf("p = %u, mp=%u, prime[mp]=%u\n", p, mp, prime[mp]);
-    } while (!prime[mp] && --p);
+        printf("p = %u, mp=%u, prime[mp]=%u\n", p, mp, PRIME(mp));
+    } while (!PRIME(mp) && --p);
     return mp * (1<<(p - 1));
 }
 
 int main(int argc, char** argv) {
-    printf("the largest perfect number < 2^16 is %u\n", perfect_number(16));
+    printf("the largest perfect number < 2^16 is %u\n", perfect_number(32));
     return 0;
 }
