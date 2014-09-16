@@ -1,7 +1,6 @@
 /* Find the perfect number by using Mersonne prime */
 
 #include <stdio.h>
-#include <stdlib.h> /* for malloc/free */
 #include <string.h> /* for memset */
 
 #define N 29  /* There are 2^3 = 8 bits in each byte */
@@ -10,8 +9,7 @@
 
 static unsigned char prime[1<<N];
 
-/* Sieve of Eratosthenes
- */
+/* Sieve of Eratosthenes */
 void sieve(unsigned n) {
     unsigned i, j;
     memset(prime, 0xff, n / sizeof(unsigned char));
@@ -25,7 +23,7 @@ void sieve(unsigned n) {
  * find the largest perfect number not greater than 2^m
  * Euclid-Euler theorem:
  * All the even perfect number can be expressed as
- *    m(m-1)/2, where m is Mersenne prime: m = 2^p - 1, p is prime.
+ *    m(m-1)/2, where m-1 is Mersenne prime: m-1 = 2^p - 1, p is prime.
  *
  * In other words:
  *    2^(p-1)*(2^p-1) for prime number p, and Mersenne prime 2^p-1.
