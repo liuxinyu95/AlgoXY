@@ -2,30 +2,21 @@
 
 #include <stdio.h>
 #include <stdlib.h> /* for malloc/free */
+#include <string.h> /* for memset */
 
 #define N 16
 
-static unsigned prime[1<<N];
+static char prime[1<<N];
 
 /* Sieve of Eratosthenes
- * Find all the prime numbers not greater than 2^m
  */
-void sieve(unsigned m) {
-    unsigned i, j, n = 1 << m;
-    for (i = 0; i < n; ++i)
-        prime[i] = 1;
-    printf("start sieve proc n = %u, m = %u...\n", n, 1<<(m/2));
-    for (i = 2; i < 1<<(m/2); ++i)
+void sieve(unsigned n) {
+    unsigned i, j;
+    memset(prime, 1, n);
+    for (i = 2; i*i < n; ++i)
         if (prime[i])
-            for (j = i*i; j < n; j += i) {
-                if (j == 127) printf("127!!!\n");
+            for (j = i*i; j < n; j += i)
                 prime[j] = 0;
-            }
-    printf("sieve done\n");
-    for (i = 2; i < n; ++i)
-        if (prime[i])
-            printf("%u, ", i);
-    printf("i=%u\n", i);
 }
 
 /*
@@ -39,8 +30,7 @@ void sieve(unsigned m) {
  */
 unsigned perfect_number(unsigned m) {
     unsigned mp, p = m / 2;
-    printf("try p=%u\n", p);
-    sieve(p);
+    sieve(1 << p);
     do {
         while (!prime[p])
             --p;
