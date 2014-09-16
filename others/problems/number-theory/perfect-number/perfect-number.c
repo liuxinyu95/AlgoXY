@@ -37,12 +37,11 @@ unsigned perfect_number(unsigned m) {
         while (!PRIME(p))
             --p;
         mp = (1<<p) - 1;  /*Mersenne prime: 2^p - 1*/
-        printf("p = %u, mp=%u, prime[mp]=%u\n", p, mp, PRIME(mp));
     } while (!PRIME(mp) && --p);
     return mp * (1<<(p - 1));
 }
 
 int main(int argc, char** argv) {
-    printf("the largest perfect number < 2^16 is %u\n", perfect_number(32));
+    printf("the largest perfect number < 2^32 is %u\n", perfect_number(32));
     return 0;
 }
