@@ -23,10 +23,8 @@ def brute_force_palindrome(s):
     n = len(s)
     p = [0] * n
     for i in xrange(n):
-        k = 0
-        while 0 <= i-k and i+k < n and s[i-k] == s[i+k]:
+        while 0 <= i-p[i] and i+p[i] < n and s[i-p[i]] == s[i+p[i]]:
             p[i] = p[i] + 1
-            k = k + 1
     return max(p) - 1
 
 # Manacher's algorithm, linear O(n) time.
