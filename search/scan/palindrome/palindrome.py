@@ -37,7 +37,7 @@ def manacher_palindrome(s):
     j = 0
     m = (-1, 0)  # (max length so far, position)
     for i in xrange(n):
-        p[i] = min(p[2*j-i], j + p[j] - i)
+        p[i] = 1 if j + p[j] < i else min(p[2*j-i], j + p[j] - i)
         while 0 <= i - p[i] and i + p[i] < n and s[i-p[i]] == s[i+p[i]]:
             p[i] = p[i] + 1
         if j + p[j] < i + p[i]:
@@ -46,7 +46,7 @@ def manacher_palindrome(s):
     return m
 
 def test():
-    ss = ["Mississippi", "level", "cacab", "cocoa"]
+    ss = ["Mississippi", "level", "cacab", "cocoa", "aaa", "abc"]
     for s in ss:
         (n, i) = manacher_palindrome(s)
         assert(n == brute_force_palindrome(s))

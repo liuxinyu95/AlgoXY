@@ -17,8 +17,8 @@ unsigned manacher_palindrome(char* str) {
         s[2*i] = DELIMITER;
         s[2*i + 1] = str[i];
     }
-    for (i = j = m = p[0] = 0, n = 2*n + 1; i < n; ++i) {
-        p[i] = 2*j >= i ? min(p[2*j - i], j + p[j] - i) : j + p[j] - i;
+    for (i = j = m = p[0] = 1, n = 2*n + 1; i < n; ++i) {
+        p[i] = i < j + p[j]? min(p[2*j - i], j + p[j] - i) : 1;
         while (p[i] <= i && i + p[i] < n && s[i-p[i]] == s[i+p[i]])
             ++p[i];
         j = (j + p[j] < i + p[i]) ? i : j;
@@ -28,7 +28,7 @@ unsigned manacher_palindrome(char* str) {
 }
 
 void test() {
-    char* ss[] = {"Mississippi", "level", "cacab", "cocoa"};
+    char* ss[] = {"Mississippi", "level", "cacab", "cocoa", "aaa", "abc"};
     int i;
     for (i = 0; i < sizeof(ss)/sizeof(ss[0]); ++i)
         printf("longest palindrome for %s, len=%u\n", ss[i], manacher_palindrome(ss[i]));
