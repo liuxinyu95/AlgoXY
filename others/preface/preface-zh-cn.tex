@@ -372,16 +372,13 @@ int min_free(int* xs, int n){
 依照此方法实现的C语言程序仅用时0.016秒就输出了正确答案859963392，比暴力解法快了2500倍。
 
 %% Functional 1Q solution
-Improvement 1 can also be considered in recursive way. Suppose $X$ is the infinity
-series for all numbers which only contain factors of 2, 3, or 5. The following
-formula shows an interesting relationship.
+这一解法也可以用递归的方式给出，令$X$为所有仅含有因子2、3或5的整数的无穷序列。下面的等式给出了一个有趣的关系。
 
 \be
   X = \{1\} \cup \{2x: \forall x \in X\} \cup \{3x: \forall x \in X \} \cup \{5x: \forall x \in X \}
 \ee
 
-Where we can define $\cup$ to a special form so that all elements are stored in order
-as well as unique to each other. Suppose that $X=\{x_1, x_2, x_3...\}$, $Y=\{y_1, y_2, y_3, ...\}$, $X' = \{x_2, x_3, ...\}$ and $Y'=\{y_2, y_3, ...\}$. We have
+其中符号$\cup$表示去除重复并保持大小顺序。若$X=\{x_1, x_2, x_3...\}$，$Y=\{y_1, y_2, y_3, ...\}$，$X' = \{x_2, x_3, ...\}$，$Y'=\{y_2, y_3, ...\}$，我们可以定义$\cup$如下：
 
 \[
 X \cup Y = \left \{
@@ -395,9 +392,7 @@ X \cup Y = \left \{
 \right.
 \]
 
-In a functional programming language such as Haskell, which supports
-lazy evaluation, The above infinity series functions can be translate
-into the following program.
+在支持惰性求值的函数式编程语言，例如Haskell中，上述无穷序列及函数可以定义为如下代码：
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -410,54 +405,39 @@ merge (x:xs) (y:ys) | x <y = x : merge xs (y:ys)
                     | otherwise = y : merge (x:xs) ys
 \end{lstlisting}
 
-By evaluate ns !! (n-1), we can get the 1500th number as
-below.
+通过求\texttt{ns !! (n-1)}，我们可以得到第1500个丑数：
 
 \begin{verbatim}
 >ns !! (1500-1)
 859963392
 \end{verbatim}
 
-\subsection{Improvement 2}
-Considering the above solution, although it is much faster than the brute-force one,
-It still has some drawbacks. It produces many duplicated numbers and they are
-finally dropped when examine the queue. Secondly, it does linear scan and insertion
-to keep the order of all elements in the queue, which degrade the ENQUEUE operation
-from $O(1)$ to $O(|Q|)$.
+\subsection{改进二}
+上面的解法虽然比暴力法快了很多，但是仍然有一些不足。它会产生很多的重复的元素，并且最终都被丢弃了。其次，它
+需要扫描队列以保证队列中的元素有序。这将入队操作从常数时间$O(1)$退化为线性时间$O(|Q|)$。
 
-If we use three queues instead of using only one, we can improve the solution one
-step ahead. Denote these queues as $Q_2$, $Q_3$, and $Q_5$, and we initialize
-them as $Q_2=\{ 2 \}$, $Q_3 = \{ 3\}$ and $Q_5 = \{ 5 \}$. Each time we DEQUEUEed
-the smallest one from $Q_2$, $Q_3$, and $Q_5$ as $x$. And do the following test:
+我们可以用三个队列来进行改进。这三个队列表示为$Q_2$，$Q_3$和$Q_5$。它们初始化为$Q_2=\{ 2 \}$，$Q_3 = \{ 3\}$和$Q_5 = \{ 5 \}$。我们每次从这三个队列的头部选择最小的一个元素$x$取出，然后进行下面的检查：
 
 \begin{itemize}
-\item If $x$ comes from $Q_2$, we ENQUEUE $2x$, $3x$, and $5x$ back to
-$Q_2$, $Q_3$, and $Q_5$ respectively;
-\item If $x$ comes from $Q_3$, we only need ENQUEUE $3x$ to $Q_3$, and $5x$ to $Q_5$;
-We needn't ENQUEUE $2x$ to $Q_2$, because $2x$ have already existed in $Q_3$;
-\item If $x$ comes from $Q_5$, we only need ENQUEUE $5x$ to $Q_5$; there is
-no need to ENQUEUE $3x$, $5x$ to $Q_3$, $Q_5$ because they have already been
-in the queues;
+\item 如果$x$是从$Q_2$取出的，我们将$2x$加入$Q_2$，$3x$加入$Q_3$，$5x$加入$Q_5$。
+\item 如果$x$是从$Q_3$取出的，我们只将$3x$加入$Q_3$，$5x$加入$Q_5$，而不需要将$2x$加入$Q_2$。这是因为$2x$已经在$Q_3$中了。
+\item 如果$x$是从$Q_5$取出的，我们只将$5x$加入$Q_5$，而不需要处理$2x$和$3x$了。
 \end{itemize}
 
-We repeatedly ENQUEUE the smallest one until we find the $n$-th element.
+我们不断重这三个队列中取出最小的，直到取出第$n$个元素。
 
 \begin{figure}[htbp]
-       \begin{center}
-       	  \includegraphics[scale=0.5]{img/q235-1.ps}
-       	  \includegraphics[scale=0.5]{img/q235-2.ps}
-       	  \includegraphics[scale=0.5]{img/q235-3.ps}
-       	  \includegraphics[scale=0.5]{img/q235-4.ps}
-        \caption{First 4 steps of constructing numbers with $Q_2$, $Q_3$, and $Q_5$. \newline
-        1. Queues are initialized with 2, 3, 5 as the only element;\newline
-        2. New elements 4, 6, and 10 are pushed back; \newline
-        3. New elements 9, and 15, are pushed back; \newline
-        4. New elements 8, 12, and 20 are pushed back; \newline
-        5. New element 25 is pushed back.} \label{fig:q235}
-       \end{center}
+  \renewcommand*\thesubfigure{\arabic{subfigure}}
+  \centering
+  \subfloat[初始状态，2、3和5作为三个队列的唯一元素。新元素4、6和10被分别加入三个队列。]{\includegraphics[scale=0.5]{img/q235-1.ps}}
+  \subfloat[新元素9和15被加入队列。]{\includegraphics[scale=0.5]{img/q235-2.ps}} \\
+  \subfloat[新元素8、12和20被加入队列。]{\includegraphics[scale=0.5]{img/q235-3.ps}} \\
+  \subfloat[新元素25被加入队列。]{\includegraphics[scale=0.5]{img/q235-4.ps}}
+  \caption{使用三个队列$Q_2$、$Q_3$和$Q_5$来构造丑数的前4步。}
+  \label{fig:q235}
 \end{figure}
 
-The algorithm based on this idea is implemented as below.
+按照这个思路，算法可以实现如下。
 
 \begin{algorithmic}[1]
 \Function{Get-Number}{$n$}
@@ -489,12 +469,7 @@ The algorithm based on this idea is implemented as below.
 \EndFunction
 \end{algorithmic}
 
-This algorithm loops $n$ times, and within each loop, it extract one head
-element from the three queues, which takes constant time. Then it appends
-one to three new elements at the end of queues which bounds to constant time
-too. So the total time of the algorithm bounds to $O(n)$. The C++ program
-translated from this algorithm shown below takes less than 1 $\mu$s to
-produce the 1500th number, 859963392.
+算法循环$n$次，每次循环，它从三个队列中取出最小的一个元素，这一步需要常数时间。接着它根据取出元素的队列，产生一到三个新元素放入队列，这一步也是常数时间。因此整个算法是$O(n)$的。按照此算法实现的C++程序如下，它仅用了不到1$\mu$秒就输出了第1500个丑数859963392。
 
 \lstset{language=C++}
 \begin{lstlisting}
