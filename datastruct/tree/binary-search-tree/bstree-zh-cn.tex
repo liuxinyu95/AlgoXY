@@ -181,22 +181,13 @@ insert(T, k) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   node(\phi, k, \phi) & T = \phi \\
-  node(insert(L, k), Key, R) & k < Key \\
-  node(L, Key, insert(R, k)) & otherwise
+  node(insert(T_l, k), k', T_r) & k < k' \\
+  node(T_l, k', insert(T_r, k)) & otherwise
   \end{array}
 \right.
 \ee
 
-其中
-\[
-  \begin{array}{l}
-  L = left(T), \\
-  R = right(T), \\
-  Key = key(T).
-  \end{array}
-\]
-
-函数$node$以给定的左子树、key和右子树为参数创建一个新节点。符号$\phi$表示NIL或空。函数$left$、$right$和$key$用以获取节点的左、右子树和key。
+其中，当$T$不为空时，$T_l$, $T_r$和$k'$分别是它的左右子树和key。函数$node$以给定的左子树、key和右子树为参数创建一个新节点。符号$\phi$表示NIL或空。
 
 将上述函数直接翻译为Haskell代码可以得到下面的程序：
 
@@ -267,12 +258,10 @@ insert (Node l x r) k | k < x = Node (insert l k) x r
 
 遍历是指依次访问二叉树中的每个元素。有三种遍历方法，分别是前序遍历、中序遍历和后序遍历。它们是按照访问根节点和子节点的先后顺序命名的。
 
-我们使用符号来标记一棵树的三个部分：左子树为$left$，根，包括key和satellite data为$current$（也称为当前节点），右子树为$right$。三种遍历方法可以用这些符号定义如下：
-
 \begin{itemize}
-\item 前序遍历：先访问$current$，然后访问$left$，最后访问$right$；
-\item 中序遍历：先访问$left$，然后访问$current$，最后访问$right$；
-\item 后序遍历：先访问$left$，然后访问$right$，最后访问$current$。
+\item 前序遍历：先访问key，然后访问左子树，最后访问右子树；
+\item 中序遍历：先访问左子树，然后访问key，最后访问右子树；
+\item 后序遍历：先访问左子树，然后访问右子树，最后访问key。
 \end{itemize}
 
 \index{前序遍历} \index{中序遍历} \index{后序遍历}
@@ -287,7 +276,7 @@ insert (Node l x r) k | k < x = Node (insert l k) x r
 \item 后序遍历：2, 1, 3, 7, 9, 14, 10, 16, 8, 4。
 \end{itemize}
 
-对二叉搜索树进行中序遍历，元素就会按照从小到大输出。二叉搜索树的定义保证了这一有趣的性质，作为练习，请读者思考如何证明它。
+对二叉搜索树进行中序遍历，元素就会按照从小到大输出。二叉搜索树的定义保证了这一有趣的性质，作为练习，请读者思考如何证明。
 
 中序遍历的算法可以描述为：
 \begin{itemize}
@@ -295,7 +284,7 @@ insert (Node l x r) k | k < x = Node (insert l k) x r
 \item 否则先中序遍历左子树，然后访问key，最后再中序遍历右子树。
 \end{itemize}
 
-这一描述本身是递归的，对于形如$T = (T_l, k, T_r)$的二叉树，我们可以将其翻译成下面的抽象map函数，其中$T_l$, $T_r$和$k$分别代表左右子树和key。
+这一描述本身是递归的，如果二叉树非空，令$T_l$, $T_r$和$k$分别代表左右子树和key。我们可以定义下面的抽象map函数。
 
 \be
 map(f, T) = \left \{
@@ -354,36 +343,31 @@ toList Empty = []
 toList (Node l x r) = toList l ++ [x] ++ toList r
 \end{lstlisting}
 
-This provides us a method to sort a list of elements. We can first
-build a BST from the list, then output the tree
-by in-order traversing. This method is called as `tree sort'.
-Let's denote the list $X = \{x_1, x_2, x_3, ..., x_n\}$.
+我们因此得到了一个排序的方法：先把一个无序的列表转化为一个二叉搜索树，然后再用中序遍历把树转换回列表。这一排序方法被称为“树排序”。记待排序列表为$X = \{x_1, x_2, x_3, ..., x_n\}$。
 
 \be
   sort(X) = toList(fromList(X))
 \ee
 
-And we can write it in function composition form.
+我们也可以写成函数组合（function composition）的形式：
 
 \[
   sort = toList . fromList
 \]
 
-Where function $fromList$ repeatedly insert every element to a
-BST.
+其中函数$fromList$不断地将元素从列表中插入到一棵空的二叉搜索树中。
 
 \be
   fromList(X)= foldL(insert, \phi, X)
 \ee
 
-It can also be written in partial application form like below.
+这一表达也可以写成partial application的形式\footnote{亦称为“Curried”形式来纪念数学家和逻辑学家Haskell Curry。}。
 
 \[
   fromList = foldL \quad insert \quad \phi
 \]
 
-For the readers who are not familiar with folding from left, this function
-can also be defined recursively as the following.
+对于不熟悉从左侧进行folding的读者，这一函数也可以递归地定义如下：
 
 \[
 fromList(X) = \left \{
@@ -395,10 +379,7 @@ fromList(X) = \left \{
 \right .
 \]
 
-We'll intense use folding function as well as the function composition
-and partial evaluation in the future, please refer to appendix of this
-book or \cite{wiki-fold}
-\cite{func-composition} and \cite{curry} for more information.
+我们将会大量使用folding、函数组合和parital求值的概念。读者可以参考本书的附录A或其他参考资料，如\cite{wiki-fold}、\cite{func-composition}以及\cite{curry}。
 
 \begin{Exercise}
 
