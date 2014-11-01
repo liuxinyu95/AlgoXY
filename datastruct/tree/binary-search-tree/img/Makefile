@@ -1,4 +1,4 @@
-IMG_OBJECTS = 
+IMG_OBJECTS =
 DOT_OBJECTS = lvr btexample bst-1 node-layout node-layout-parent \
 lisp-layout del-leaf del-lc-before del-lc-after del-rc-before \
 del-rc-after del-branch-before del-branch-after
@@ -15,7 +15,7 @@ all: convert dot
 
 convert: $(IMG_OBJECTS)
 
-# for details, refer to: 
+# for details, refer to:
 #    http://www.gnu.org/software/autoconf/manual/make/
 # Makefile syntax, replace each '%' to 'eps
 $(IMG_OBJECTS): % : %.eps
@@ -31,7 +31,7 @@ $(DOT_OBJECTS): % : %.ps
 
 # Makefile auto variable: $< first prerequisite, $@ target
 %.ps : %.dot
-	dot -Tps -o $@ $<
+	dot -Gsize="8,10.5" -Tps -o $@ $<
 
 png: $(PNG_OBJECTS)
 
