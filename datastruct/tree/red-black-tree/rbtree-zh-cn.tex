@@ -548,75 +548,70 @@ makeBlack t = t
    \caption{一个子节点为双重黑色空节点，另外一个子分支不为空。} \label{fig:db-fix-1-nil}
 \end{figure}
 
-但是，如果两个子节点中，有一个是双重黑色的空节点，另外一个也是空节点，就需要把双重黑色的属性推到上一层。如图\ref{fig:db-fix-2-nil}所示，如果删除节点1，我们用一个双重黑色空节点代替它。于是节点2就有了两个空子节点，其中一个是双重黑色的。这种情况下，我们需要把节点2染成双重黑色，它的两个字节点就可以变成普通的空节点了。
+但是，如果两个子节点中，有一个是双重黑色的空节点，另外一个也是空节点，就需要把双重黑色的属性推到上一层。如图\ref{fig:db-fix-2-nil}所示，如果删除节点1，我们用一个双重黑色空节点代替它。于是节点2就有了两个空子节点，其中一个是双重黑色的。这种情况下，我们需要把节点2染成双重黑色，它的两个子节点就可以变成普通的空节点了。
 
 \begin{figure}[htbp]
    \centering
-   \subfloat[Delete 1 from the tree.]{\includegraphics[scale=0.4]{img/db-fix.ps}} \\
-   \subfloat[After 1 is sliced off, it is doubly-black empty.]{\includegraphics[scale=0.4]{img/db-fix-2-nil-before.ps}}
-   \subfloat[We must push the doubly-blackness up to node 2.]{\includegraphics[scale=0.4]{img/db-fix-2-nil-after.ps}}
-   \caption{One child is doubly-black empty node, the other child is empty.} \label{fig:db-fix-2-nil}
+   \subfloat[从树中删除1。]{\includegraphics[scale=0.4]{img/db-fix.ps}} \\
+   \subfloat[节点1被“切下”后，变成了双重黑色的空节点。]{\includegraphics[scale=0.4]{img/db-fix-2-nil-before.ps}}
+   \subfloat[把双重黑色的属性推到上一层，节点2被染成双重黑色。]{\includegraphics[scale=0.4]{img/db-fix-2-nil-after.ps}}
+   \caption{两个子节点都为空，其中一个是双重黑色。} \label{fig:db-fix-2-nil}
 \end{figure}
 
-Based on above analysis, in order to fix the doubly-black empty node, we define
-the function partially like the following.
+根据上面的分析，为了修复双重黑色的空节点，我们将函数中这部份逻辑定义如下：
 
 \be
 fixBlack^2(T) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
-  node(\mathcal{B}^2, \phi, Key, \phi) & (L = \phi \land R = \Phi) \lor (L = \Phi \land R = \phi) \\
-  node(\mathcal{C}, \phi, Key, R) & L=\Phi \land R \neq \phi \\
-  node(\mathcal{C}, L, Key, \phi) & R=\Phi \land L \neq \phi \\
+  (\mathcal{B}^2, \phi, k, \phi) & (T_l = \phi \land T_r = \Phi) \lor (T_l = \Phi \land T_r = \phi) \\
+  (\mathcal{C}, \phi, k, T_r) & T_l=\Phi \land T_r \neq \phi \\
+  (\mathcal{C}, T_l, k, \phi) & T_r=\Phi \land T_l \neq \phi \\
   ... & ...
   \end{array}
 \right .
 \label{eq:db-nil}
 \ee
 
-After dealing with doubly-black empty node, we need to fix the case that the
-sibling of the doubly-black node is black and it has one red child.
-In this situation, we can fix the doubly-blackness with one rotation.
-Actually there are 4 different sub-cases, all of them can be transformed
-to one uniformed pattern. They are shown in the figure \ref{fig:del-case1}.
-These cases are described in \cite{CLRS} as case 3 and case 4.
+我们接下来解决双重黑色的节点的兄弟节点为黑色，并且该兄弟节点有一个红色的子节点的情况。我们可以通过旋转操作来修复。总共有四种不同的细分情况，它们全部可以变换到一种统一的形式。如图\ref{fig:del-case1}所示，它们对应于\cite{CLRS}中的第三种和第四种情况。
 
 \begin{figure}[htbp]
    \centering
    \includegraphics[scale=0.4]{img/del-case1.eps}
-   \caption{Fix the doubly black by rotation, the sibling of the doubly-black node is black, and it has one red child.} \label{fig:del-case1}
+   \caption{双重黑色节点的兄弟节点为黑色，并且该兄弟节点有一个红色子节点。这种情况可以通过一次旋转操作来修复。}
+   \label{fig:del-case1}
 \end{figure}
 
-The handling of these 4 sub-cases can be defined on top of formula \ref{eq:db-nil}.
+我们可以在式（\ref{eq:db-nil}）的基础上，增加这四种细分情况的处理：
 
 \be
 fixBlack^2(T) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   ... & ... \\
-  node(\mathcal{C}, node(\mathcal{B}, mkBlk(A), x, B), y, node(\mathcal{B}, C, z, D)) & p 1.1 \\
-  node(\mathcal{C}, node(\mathcal{B}, A, x, B), y, node(\mathcal{B}, C, z, mkBlk(D))) & p 1.2 \\
+  (\mathcal{C}, (\mathcal{B}, mkBlk(A), x, B), y, (\mathcal{B}, C, z, D)) & p 1.1 \\
+  (\mathcal{C}, (\mathcal{B}, A, x, B), y, (\mathcal{B}, C, z, mkBlk(D))) & p 1.2 \\
   ... & ...
   \end{array}
 \right .
 \label{eq:db-case-1}
 \ee
 
-where $p 1.1$ and $p 1.2$ each represent 2 patterns as the following.
+其中$p 1.1$和$p 1.2$各代表两种细分情况：
 
 \[
-p 1.1 = \left \{ \begin{array}{l}
-  node(\mathcal{C}, A, x, node(\mathcal{B}, node(\mathcal{R}, B, y, C), z, D)) \land Color(A) = \mathcal{B}^2 \\
+p 1.1 : \left \{ \begin{array}{l}
+  T = (\mathcal{C}, A, x, (\mathcal{B}, (\mathcal{R}, B, y, C), z, D)) \land color(A) = \mathcal{B}^2 \\
   \lor \\
-  node(\mathcal{C}, A, x, node(\mathcal{B}, B, y, node(\mathcal{R}, C, z, D))) \land Color(A) = \mathcal{B}^2
+  T = (\mathcal{C}, A, x, (\mathcal{B}, B, y, (\mathcal{R}, C, z, D))) \land color(A) = \mathcal{B}^2
   \end{array} \right \}
 \]
 
 \[
-p 1.2 = \left \{ \begin{array}{l}
-  node(\mathcal{C}, node(\mathcal{B}, A, x, node(\mathcal{R}, B, y, C)), z, D) \land Color(D) = \mathcal{B}^2 \\
+p 1.2 : \left \{ \begin{array}{l}
+  T = (\mathcal{C}, (\mathcal{B}, A, x, (\mathcal{R}, B, y, C)), z, D) \land color(D) = \mathcal{B}^2 \\
   \lor \\
-  node(\mathcal{C}, node(\mathcal{B}, node(\mathcal{R}, A, x, B), y, C), z, D) \land Color(D) = \mathcal{B}^2
+  T = (\mathcal{C}, (\mathcal{B}, (\mathcal{R}, A, x, B), y, C), z, D) \land color(D) = \mathcal{B}^2
   \end{array} \right \}
 \]
 
