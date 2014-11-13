@@ -736,7 +736,7 @@ fixDB color l k r = Node color l k r
 \begin{Exercise}
 
 \begin{itemize}
-\item 选用一种编程语言，实现本节提到的标记――重建删除算法：也就是先将要删除的节点标记，但不进行真正的删除。当被标记的节点数目超过50\%的时候，用全部未标记的节点重建树。
+\item 选用一种编程语言，实现本节提到的“标记――重建”删除算法：也就是先将要删除的节点标记，但不进行真正的删除。当被标记的节点数目超过50\%的时候，用全部未标记的节点重建树。
 \item 为什么不需要在$mkBlk$的调用处，显示地再调用$fixBlack^2$?
 \end{itemize}
 
@@ -745,46 +745,37 @@ fixDB color l k r = Node color l k r
 \section{imperative的红黑树算法$\star$}
 \index{红黑树!imperative插入}
 
-We almost finished all the content in this chapter. By induction
-the patterns, we can implement the red-black tree in a simple way
-compare to the imperative tree rotation solution. However, we
-should show the comparator for completeness.
+通过归纳红，我们能够简洁地实现红黑树。作为对比，我们来看一下传统的imperative红黑树算法。
 
-For insertion, the basic idea is to use the similar algorithm
-as described in binary search tree. And then fix the balance
-problem by rotation and return the final result.
+插入算法的基本思想仍然和二叉搜索树相同。此外，算法需要通过树的旋转操作修复平衡。
 
 \begin{algorithmic}[1]
 \Function{Insert}{$T, k$}
   \State $root \gets T$
   \State $x \gets$ \Call{Create-Leaf}{$k$}
-  \State \Call{Color}{$x$} $\gets RED$
-  \State $parent \gets NIL$
-  \While{$T \neq NIL$}
-    \State $parent \gets T$
+  \State \Call{Color}{$x$} $\gets$ RED
+  \State $p \gets$ NIL
+  \While{$T \neq$ NIL}
+    \State $p \gets T$
     \If{$k <$ \Call{Key}{$T$}}
       \State $T \gets $ \Call{Left}{$T$}
     \Else
       \State $T \gets $ \Call{Right}{$T$}
     \EndIf
   \EndWhile
-  \State \Call{Parent}{$x$} $\gets parent$
-  \If{$parent = NIL$} \Comment{tree $T$ is empty}
+  \State \Call{Parent}{$x$} $\gets p$
+  \If{$p =$ NIL} \Comment{tree $T$ is empty}
     \State \Return $x$
-  \ElsIf{$k <$ \Call{Key}{$parent$}}
-    \State \Call{Left}{$parent$} $\gets x$
+  \ElsIf{$k <$ \Call{Key}{$p$}}
+    \State \Call{Left}{$p$} $\gets x$
   \Else
-    \State \Call{Right}{$parent$} $\gets x$
+    \State \Call{Right}{$p$} $\gets x$
   \EndIf
   \State \Return \Call{Insert-Fix}{$root, x$}
 \EndFunction
 \end{algorithmic}
 
-The only difference from the binary search tree insertion algorithm
-is that we set the color of the new node as red, and perform fixing
-before return. It is easy to translate the pseudo code to real
-imperative programming language, for instance Python \footnote{C,
-and C++ source codes are available along with this book}.
+在普通的二叉搜索树插入算法的基础上，当插入一个新节点时，我们将其染成红色。然后修复平衡并返回。上述算法可以转换为下面的Python例子程序\footnote{相应的C和C++语言的例子程序也可以同本书一并获得。}。
 
 \lstset{language=Python}
 \begin{lstlisting}
@@ -807,22 +798,17 @@ def rb_insert(t, key):
     return rb_insert_fix(root, x)
 \end{lstlisting}
 
-There are 3 base cases for fixing, and if we take the left-right
-symmetric into consideration. there are total 6 cases.
-Among them two cases can be merged together, because they all have
-uncle node in red color, we can toggle the parent color and
-uncle color to black and set grand parent color to red.
-With this merging, the fixing algorithm can be realized as the following.
+总共有3种基本情况需要修复。如果考虑左右对称，则需要修复6种情况。其中有两种可以合并。它们的父节点，以及父节点的兄弟节点均为红色。我们可以把它们变为黑色，然后把祖父节点染为红色。修复算法的实现如下：
 
 \begin{algorithmic}[1]
 \Function{Insert-Fix}{$T, x$}
-  \While{\Call{Parent}{$x$} $\neq NIL$ and \textproc{Color}(\Call{Parent}{$x$}) $= RED$}
-    \If{\textproc{Color}(\Call{Uncle}{$x$}) $= RED$}
+  \While{\Call{Parent}{$x$} $\neq$ NIL $\land$ \textproc{Color}(\Call{Parent}{$x$}) = RED}
+    \If{\textproc{Color}(\Call{Uncle}{$x$}) $=$ RED}
       \Comment{Case 1, x's uncle is red}
-      \State \textproc{Color}(\Call{Parent}{$x$}) $\gets BLACK$
-      \State \textproc{Color}(\Call{Grand-Parent}{$x$}) $\gets RED$
-      \State \textproc{Color}(\Call{Uncle}{$x$}) $\gets BLACK$
-      \State $x \gets$ \Call{Grandparent}{$x$}
+      \State \textproc{Color}(\Call{Parent}{$x$}) $\gets$ BLACK
+      \State \textproc{Color}(\Call{Grand-Parent}{$x$}) $\gets$ RED
+      \State \textproc{Color}(\Call{Uncle}{$x$}) $\gets$ BLACK
+      \State $x \gets$ \Call{Grand-Parent}{$x$}
     \Else
       \Comment{x's uncle is black}
       \If{\Call{Parent}{$x$} = \textproc{Left}(\Call{Grand-Parent}{$x$})}
@@ -832,8 +818,8 @@ With this merging, the fixing algorithm can be realized as the following.
           \State $T \gets$ \Call{Left-Rotate}{$T, x$}
         \EndIf
         \Comment{Case 3, x is a left child}
-        \State \textproc{Color}(\Call{Parent}{$x$}) $\gets BLACK$
-        \State \textproc{Color}(\Call{Grand-Parent}{$x$}) $\gets RED$
+        \State \textproc{Color}(\Call{Parent}{$x$}) $\gets$ BLACK
+        \State \textproc{Color}(\Call{Grand-Parent}{$x$}) $\gets$ RED
         \State $T \gets$ \textproc{Right-Rotate}($T$, \Call{Grand-Parent}{$x$})
       \Else
          \If{ $x =$ \textproc{Left}(\Call{Parent}{$x$})}
@@ -842,26 +828,20 @@ With this merging, the fixing algorithm can be realized as the following.
           \State $T \gets$ \Call{Right-Rotate}{$T, x$}
         \EndIf
         \Comment{Case 3, Symmetric}
-        \State \textproc{Color}(\Call{Parent}{$x$}) $\gets BLACK$
-        \State \textproc{Color}(\Call{Grand-Parent}{$x$}) $\gets RED$
+        \State \textproc{Color}(\Call{Parent}{$x$}) $\gets$ BLACK
+        \State \textproc{Color}(\Call{Grand-Parent}{$x$}) $\gets$ RED
         \State $T \gets$ \textproc{Left-Rotate}($T$, \Call{Grand-Parent}{$x$})
       \EndIf
     \EndIf
   \EndWhile
-  \State \Call{Color}{$T$} $\gets BLACK$
+  \State \Call{Color}{$T$} $\gets$ BLACK
   \State \Return $T$
 \EndFunction
 \end{algorithmic}
 
-This program takes $O(\lg N)$ time to insert a new key to the red-black tree.
-Compare this pseudo code and the $balance$ function we defined in previous
-section, we can see the difference. They differ not only in terms of
-simplicity, but also in logic. Even if we feed the same series of keys to
-the two algorithms, they may build different red-black trees. There
-is a bit performance overhead in the pattern matching algorithm.
-Okasaki discussed about the difference in detail in his paper\cite{okasaki}.
+这一算法向红黑树种插入key的复杂度为$O(\lg n)$。和前面定义的$balance$函数相比，我们可以发现它们的差异。两种方法不仅仅在篇幅长短上不同，具体的逻辑也不一样。即使输入同一组key的序列，两种方法会也构造出不同的红黑树。使用模式匹配的算法存在一些性能上的损失。Okasaki在\cite{okasaki}中给出了详细的解释。
 
-Translate the above algorithm to Python yields the below program.
+上述修复算法可以实现为如下的Python例子程序。
 
 \begin{lstlisting}
 # Fix the red->red violation
@@ -893,28 +873,22 @@ def rb_insert_fix(t, x):
     return t
 \end{lstlisting}
 
-Figure \ref{fig:imperative-insert} shows the results of feeding same
-series of keys to the above python insertion program. Compare them with
-figure \ref{fig:insert-example}, one can tell the difference clearly.
+图\ref{fig:imperative-insert}给出了两棵红黑树，它们是使用和图\ref{fig:insert-example}中完全相同的序列构造出的。我们可以发现它们明显不同。
 
 \begin{figure}[htbp]
    \centering
    \subfloat[]{\includegraphics[scale=0.4]{img/clrs-fig-13-4.ps}}
    \subfloat[]{\includegraphics[scale=0.4]{img/python-insert.ps}}
-   \caption{Red-black trees created by imperative algorithm.}
+   \caption{Imperative算法构建出的红黑树。}
    \label{fig:imperative-insert}
 \end{figure}
 
-We skip the red-black tree delete algorithm in imperative settings, because it
-is even more complex than the insertion. The implementation of deleting is
-left as an exercise of this chapter.
+红黑树的imperative删除算法更加复杂，我们不再给出。作为练习，读者可以通过树的旋转，尝试实现红黑树的删除算法。
 
 \begin{Exercise}
 
 \begin{itemize}
-\item Implement the red-black tree deleting algorithm in your favorite
-imperative programming language. you can refer to \cite{CLRS} for algorithm
-details.
+\item 使用一种imperative编程语言实现红黑树的删除算法。可以参考\cite{CLRS}中给出的不同情况。
 \end{itemize}
 
 \end{Exercise}
