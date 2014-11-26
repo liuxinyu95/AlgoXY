@@ -1,4 +1,4 @@
-IMG_OBJECTS = hand-of-cards
+IMG_OBJECTS =
 DOT_OBJECTS = in-place-sort array-shift
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
