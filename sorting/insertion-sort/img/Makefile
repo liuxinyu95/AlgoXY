@@ -1,4 +1,4 @@
-IMG_OBJECTS = hand-of-cards
+IMG_OBJECTS =
 DOT_OBJECTS = in-place-sort array-shift
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
@@ -13,7 +13,7 @@ all: convert dot
 
 convert: $(IMG_OBJECTS)
 
-# for details, refer to: 
+# for details, refer to:
 #    http://www.gnu.org/software/autoconf/manual/make/
 # Makefile syntax, replace each '%' to 'eps
 $(IMG_OBJECTS): % : %.eps
