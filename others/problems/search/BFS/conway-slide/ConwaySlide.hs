@@ -1,11 +1,13 @@
 module ConwaySlide where
 
-solve [] _ = [] -- no slution
-solve (q@(n:ns):qs) h | n == [0, 7, 6, 5, 4, 3, 2, 1] = reverse q
-                      | otherwise = let (cs, h') = (slide q h) in solve (qs ++ cs) h'
+import Data.Map (insert, singleton, notMember, (!))
 
-slide q@(n:_) h = (map (:q) ns, ns ++ h) where
-  ns = [n' | n' <- map ($ n) [left, right, up, down], n' /= [], n' `notElem` h]
+solve [] _ = [] -- no slution
+solve (q@(n, _):qs) h | n == [0, 7, 6, 5, 4, 3, 2, 1] = backtrack q h []
+                      | otherwise = let (cs, h') = (slide n h) in solve (qs ++ cs) h'
+
+slide n h = ([(n', n) | n' <- ns], foldr (\n' h' -> insert n' n h') h ns) where
+  ns = [n' | n' <- map ($ n) [left, right, up, down], n' /= [], n' `notMember` h]
 
 -- xxxa0xxx -> xxx0axxx
 right (0:xs) = (last xs):(init xs) ++ [0]
@@ -22,4 +24,7 @@ down _ = []
 up (a:b:c:d:0:xs) = 0:b:c:d:a:xs
 up _ = []
 
-ans = solve [[[0..7]]] [[0..7]]
+backtrack (n, n') h ns | n == n' = ns
+                       | otherwise = backtrack (n', h ! n') h (n:ns)
+
+ans = solve [([0..7], [0..7])] (singleton [0..7] [0..7])
