@@ -2,7 +2,7 @@ module ConwaySlide where
 
 -- BFS solution to Conway slide puzzle
 -- A map is introduced to
---    1, record the visited states to avoid duplicated attemptation;
+--    1, record the visited states to avoid duplicated attempts;
 --    2, For every state, record its parent state. The initial state has itself as the parent.
 -- map, key: state, value: parent state.
 
@@ -14,7 +14,7 @@ module ConwaySlide where
 -- |       |       |
 -- 3 ----- 4 ------5
 --
--- as [0, 1, 2, 3, 4, 5, 6, 7]
+-- be [0, 1, 2, 3, 4, 5, 6, 7]
 -- Where 0 represents the free cell. The goal is to transform to final state
 -- [0, 7, 6, 5, 4, 3, 2, 1].
 --
