@@ -7,8 +7,7 @@ def solve():
     q = deque([(s0, None)])
     visit = {tuple(s0)}
     while q:
-        s = q.pop()
-        (n, _) = s
+        (n, _) = s = q.pop()
         if n == [0, 7, 6, 5, 4, 3, 2, 1]:
             return backtrack(s)
         else:
@@ -21,8 +20,7 @@ def backtrack(s):
     while p is not None:
         r.append(n)
         (n, p) = p
-    r.append(n)
-    return r[::-1]
+    return [n] + r[::-1]
 
 def slide(s, visit):
     (n, _) = s
