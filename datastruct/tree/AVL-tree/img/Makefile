@@ -1,4 +1,4 @@
-IMG_OBJECTS = 
+IMG_OBJECTS =
 DOT_OBJECTS = Nh-lvr insert-ll insert-lr insert-rl insert-rr insert-fixed avl-example
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
@@ -13,7 +13,7 @@ all: convert dot
 
 convert: $(IMG_OBJECTS)
 
-# for details, refer to: 
+# for details, refer to:
 #    http://www.gnu.org/software/autoconf/manual/make/
 # Makefile syntax, replace each '%' to 'eps
 $(IMG_OBJECTS): % : %.eps
@@ -29,7 +29,7 @@ $(DOT_OBJECTS): % : %.ps
 
 # Makefile auto variable: $< first prerequisite, $@ target
 %.ps : %.dot
-	dot -Tps -o $@ $<
+	dot -Gsize="8,10.5" -Tps -o $@ $<
 
 png: $(PNG_OBJECTS)
 
