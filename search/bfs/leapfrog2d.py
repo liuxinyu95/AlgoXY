@@ -25,18 +25,29 @@ def solve(i, j, start, end):
         c = stack.pop()
         if c[0] == ((i, j), end):
             s.append([b for (_, b) in c][::-1])
+            return s # find the 1st
         else:
             for m in moves(c[0]):
                 stack.append([m] + c)
     return s
 
+DELTA = [(0, 1), (1, 0), (0, -1), (-1, 0)]
 def moves(s):
     ((i, j), m) = s
-    delta = [(0, 1), (1, 0), (0, -1), (-1, 0)]
     return [((i+di, j+dj), swap(m, i, j, di, dj))
-            for (di, dj) in (delta + [(dx*2, dy*2) for (dx, dy) in delta])
-            if 0 <= i + di && i + di < 5 && 0 <= j + dj && j + dj < 5 &&
+            for (di, dj) in (DELTA + [(dx*2, dy*2) for (dx, dy) in DELTA])
+            if 0 <= i + di and i + di < 5 and 0 <= j + dj and j + dj < 5 and
                m[i+di][j+dj] == - (di+dj) / abs(di + dj)]
+
+def swap(m, i, j, di, dj):
+    a = [_[:] for _ in m]
+    (a[i+di][j+dj], a[i][j]) = (a[i][j], a[i+di][j+dj])
+    return a
+
+CMAP = {0:"*", 2:" ", 1:"B", -1:"W"}
+def output(ms):
+    for m in ms:
+        print "\n".join([" ".join([CMAP[x] for x in r]) for r in m]), "\n"
 
 def test():
     start = [[1,  1,  1,  2,  2],
@@ -45,9 +56,9 @@ def test():
              [2,  2, -1, -1, -1],
              [2,  2, -1, -1, -1]]
     end = [[-x if abs(x) < 2 else x for x in r] for r in start]
-    s = solve(2, 2, start, end):
+    s = solve(2, 2, start, end)
     for m in s:
-        print m
+        output(m)
         print "total", len(m) - 1, "steps"
     print "total", len(s), "solutions"
 
