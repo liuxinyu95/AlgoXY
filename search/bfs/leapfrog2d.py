@@ -84,7 +84,7 @@ def test():
     s = solve(2, 2, start, end)
     for m in s:
         print "\n".join([" ".join([CMAP[x] for x in r]) for r in m]), "\n"
-    print "total", len(s) - 1, "steps"
+    print "total", len(s) - 1, "steps" # best solution: 46 steps
 
 
 if __name__ == "__main__":
