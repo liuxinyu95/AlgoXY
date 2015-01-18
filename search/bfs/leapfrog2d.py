@@ -1,3 +1,19 @@
+# leapfrog2d.py
+# Copyright (C) 2015 Liu Xinyu (liuxinyu95@gmail.com)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 # Problem reference:
 # Mathematical puzzles of Sam Loyd, selected and edited by Martin Gardner. 1959 by Dover Publications, Inc.
 # Chinese translation:
@@ -18,18 +34,24 @@
 # rules: leap or hop to exchange all the blacks and whites
 # the movement can only happen either vertically or horizontally, but not in diagonal direction.
 
+# BFS solution
+
+from collections import deque
+
 def solve(i, j, start, end):
-    stack = [[((i, j), start)]]
-    s = []
-    while stack != []:
-        c = stack.pop()
-        if c[0] == ((i, j), end):
-            s.append([b for (_, b) in c][::-1])
-            return s # find the 1st
+    visit = set([normalize(start)])
+    queue = deque([[((i, j), start)]])
+    while queue:
+        c = queue.popleft()
+        if snd(c[0]) == end:
+            return [snd(_) for _ in c][::-1] # stop after finding the 1st solution
         else:
             for m in moves(c[0]):
-                stack.append([m] + c)
-    return s
+                layout = normalize(snd(m))
+                if layout not in visit:
+                    queue.append([m] + c)
+                    visit.add(layout)
+    return None
 
 DELTA = [(0, 1), (1, 0), (0, -1), (-1, 0)]
 def moves(s):
@@ -44,11 +66,14 @@ def swap(m, i, j, di, dj):
     (a[i+di][j+dj], a[i][j]) = (a[i][j], a[i+di][j+dj])
     return a
 
-CMAP = {0:"*", 2:" ", 1:"B", -1:"W"}
-def output(ms):
-    for m in ms:
-        print "\n".join([" ".join([CMAP[x] for x in r]) for r in m]), "\n"
+def snd(p):
+    (_, b) = p
+    return b
 
+def normalize(m):
+    return tuple([tuple(r) for r in m])
+
+CMAP = {0:"*", 2:" ", 1:"B", -1:"W"}
 def test():
     start = [[1,  1,  1,  2,  2],
              [1,  1,  1,  2,  2],
@@ -58,9 +83,9 @@ def test():
     end = [[-x if abs(x) < 2 else x for x in r] for r in start]
     s = solve(2, 2, start, end)
     for m in s:
-        output(m)
-        print "total", len(m) - 1, "steps"
-    print "total", len(s), "solutions"
+        print "\n".join([" ".join([CMAP[x] for x in r]) for r in m]), "\n"
+    print "total", len(s) - 1, "steps"
+
 
 if __name__ == "__main__":
     test()
