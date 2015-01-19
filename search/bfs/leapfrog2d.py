@@ -25,11 +25,12 @@
 
 # B, B, B
 # B, B, B
-# B, B, *
-#       W, W, W
+# B, B, *, W, W
 #       W, W, W
 #       W, W, W
 
+# The board is combined by two 3x3 squares. There are 16 pieces (8 black and 8 white)
+# and an empty cell.
 # where B is black piece, W is white piece, * is empty cell.
 # rules: leap or hop to exchange all the blacks and whites
 # the movement can only happen either vertically or horizontally, but not in diagonal direction.
