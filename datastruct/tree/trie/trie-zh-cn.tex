@@ -329,7 +329,7 @@ data IntTree a = Empty
                | Branch Prefix Mask (IntTree a) (IntTree a)
 \end{lstlisting}
 
-为了表示从哪一位开始左右分支的key变得不相同，分支节点中保存了mask信息。通常mask是2的整数次幂，形如$2^n$其中$n$是非负整数。所有低于$n$的二进制位都不属于key的公共前缀。
+为了表示从哪一位开始左右分支的key变得不相同，分支节点中保存了mask（掩码）信息。通常mask是2的整数次幂，形如$2^n$其中$n$是非负整数。所有低于$n$的二进制位都不属于key的公共前缀。
 
 下面的Python例子代码定义了patricia和相应的辅助函数。
 
@@ -391,7 +391,7 @@ class IntTree:
   \label{fig:int-patricia-insert-b}
 \end{figure}
 
-如果树既不为空，也不是一个单独的叶子节点，我们需要先比较待插入的key和根节点中纪录的最长公共前餟是否一致。如果一致，则根据解下来的位是0还是1决定在左侧还是右侧递归进行插入。例如，若将整数14（二进制1110）插入图\ref{fig:int-patricia-insert-b}中所示的树中，由于最长公共前餟是$11oo$而解下来的一位（$2^1$位）是1，所以需要将14递归插入到右子树。
+如果树既不为空，也不是一个单独的叶子节点，我们需要先比较待插入的key和根节点中纪录的最长公共前餟是否一致。如果一致，则根据接下来的位是0还是1决定在左侧还是右侧递归进行插入。例如，若将整数14（二进制1110）插入图\ref{fig:int-patricia-insert-b}中所示的树中，由于最长公共前餟是$11oo$而接下来的一位（$2^1$位）是1，所以需要将14递归插入到右子树。
 
 最后，如果待插入的key和根节点中纪录的最长公共前餟不一致，我们需要从根节点分出一个新的枝杈。图\ref{fig:int-patricia-insert-c}展示了这两种不同的情况。
 
@@ -418,55 +418,27 @@ insert(T, k, v) = \left \{
 \right.
 \ee
 
-The first clause deals with the edge cases, that either $T$ is empty or
-it is a leaf node with the same key. The algorithm overwrites the previous
-value for the later case.
+第一行处理边界情况，$T$或者为空，或者是一个表示同样key的叶子节点。这里我们用新的值覆盖以前存在的数据。
 
-The second clause handles the case that $T$ is a leaf node, but with different
-key. Here we need branch out another new leaf. We need extract the longest
-common prefix, and determine which leaf should be set as the left, and
-which should be set as the right child. Function $join(k_1, T_1, K_2, T_2)$
-does this work. We'll define it later.
+第二行处理$T$为叶子节点，但是key不同的情况。这时需要分支出一个新的叶子节点，为此，我们需要计算出最长公共前餟，并判断哪个在左侧，哪个在右侧。函数$join(k_1, T_1, K_2, T_2)$负责这些处理，我们稍后会定义它。
 
-The third clause deals with the case that $T$ is a branch node, the
-longest common prefix matches the key to be inserted, and the next
-bit to the common prefix is zero. Here we need recursively insert
-to the left child.
+第三、四行处理$T$为分支节点，且分支代表的前餟和待插入的key一致的情况。如果接下来的一位是0，则第三行会递归向左侧分支进行插入。否则第四行递归向右侧分支插入。
 
-The fourth clause handles the similar case as the third clause, except
-that the next bit to the common prefix is one, but not zero. We need
-recursively insert to the right child.
+最后一行处理$T$为分支节点，但是key不一致的情况。我门需要调用$join$函数来分支出一个新的叶子节点。
 
-The last clause is for the case that the key to be inserted doesn't
-match the longest common prefix stored in the branch. We need branch
-out a new leaf by calling the $join$ function.
+接下来需要定义函数$match(k, p, m)$用以判断整数$k$在掩码$m$以上的位是否和$p$一致。也就是检查$p$在掩码以上的位是否为$k$的一个前餟。例如，一个分支节点的key表示为二进制为$(p_np_{n-1} ... p_i...p_0)_2$，待插入的key $k$的二进制形式为$(k_nk_{n-1} ... k_i ... k_0)_2$，掩码mask为$(100...0)_2=2^i$。则称$k$、$p$、$m$一致当且仅当对于任意$j$, $i \leq j \leq n$有$p_j=k_j$。
 
-We need define function $match(k, p, m)$ to test if the key $k$, has
-the same prefix $p$ above the masked bits $m$.
-For example, suppose the prefix stored in a branch node is
-$(p_np_{n-1} ... p_i...p_0)_2$ in binary, key $k$ is
-$(k_nk_{n-1} ... k_i ... k_0)_2$ in binary, and the mask is
-$(100...0)_2=2^i$. They match if and only if $p_j=k_j$ for all $i \leq j \leq n$.
+我们可以通过判断等式$mask(k, m) = p$来实现$match$函数。其中$mask(x, m) = \overline{m-1} \& x$。即先对$m-1$按位取反，然后将结果和$x$按位进行与运算。
 
-One solution to realize match is to test if $mask(k, m) = p$ is satisfied.
-Where $mask(x, m) = \overline{m-1} \& x$, that we perform bitwise-not of $m-1$, then
-perform bitwise-and with $x$.
-
-Function $zero(k, m)$ test the next bit of the common prefix is zero.
-With the help of the mask $m$, we can shift $m$ one bit to the right,
-then perform bitwise and with the key.
+函数$zero(k, m)$检查公共前餟后接下来的一位是否为0。我们可以将掩码$m$向右做1位移位运算，接下来和$k$进行按位与运算。
 
 \be
 zero(k, m) = x \& shift_r(m, 1)
 \ee
 
-If the mask $m = (100..0)_2 = 2^i$, $k = (k_nk_{n-1}...k_i1...k_0)_2$,
-because the bit next to $k_i$ is 1, $zero(k, m)$ returns false value;
-if $k = (k_nk_{n-1}...k_i0...k_0)_2$, then the result is true.
+举例来说，若$m = (100..0)_2 = 2^i$、$k = (k_nk_{n-1}...k_i1...k_0)_2$，由于$k_i$的下一位是1，所以$zero(k, m)$的结果为false；反之，若$k = (k_nk_{n-1}...k_i0...k_0)_2$，则结果为true。
 
-Function $join(p_1, T_1, p_2, T_2)$ takes two different prefixes and trees.
-It extracts the longest common prefix of $p_1$ and $p_2$, create a
-new branch node, and set $T_1$ and $T_2$ as the two children.
+函数$join(p_1, T_1, p_2, T_2)$接受两个前餟和两棵树作为参数。它找出$p_1$与$p_2$的最长公共前餟，然后创建一个新的分支节点，并将$T_1$和$T_2$作为子节点。
 
 \be
 join(p_1, T_1, p_2, T_2) = \left \{
