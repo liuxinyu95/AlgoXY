@@ -3,6 +3,7 @@ module LeapFrog2D where
 import qualified Data.Map as M --(singleton, insert, (!), notMember)
 import Data.Bits
 import Data.Ix (inRange)
+import Debug.Trace
 
 -- BFS search
 -- Input a queue and the visited board layout history
@@ -16,21 +17,24 @@ type Point = (Int, Int)
 type Layout = (Point, Integer)
 type History = M.Map Layout Layout
 
+traceLog msg a = trace (msg ++ (show a)) a
+
 ans = solve [s0] (M.singleton s0 s0) where
   solve :: [Layout] -> History -> [Layout]
   solve [] _ = []
   solve (c@((i,j), n):cs) h | n == end = backtrack c h []
-                            | otherwise = let (cs', h') = move (i, j) n h in solve (cs ++ cs') h'
-  s0 = ((3, 3), start)
-  start = let r = [1,1,1,0,0] in norm $ bin $ concat [r, r, r, reverse r, reverse r]
-  end = norm (complement start)
+                            | otherwise = let (cs', h') = move (i, j) n h in solve (cs ++ (traceLog "cs'=" cs')) h'
+s0 = ((3, 3), start)
+
+start = let r = [1,1,1,0,0] in norm $ bin $ concat [r, r, r, reverse r, reverse r]
+end = norm (complement start)
 
 move :: Point -> Integer -> History -> ([Layout], History)
 move p n h = (cs, foldr (\c h' -> M.insert c (p, n) h') h cs) where
   delta = concat [[(di, dj), (2*di, 2*dj)] | (di, dj) <- [(0, 1), (1, 0), (0, -1), (-1, 0)]]
-  cs = [(p, n') | d <- delta, let p' = p `offset` d,
+  cs = [(p', n') | d <- delta, let p' = p `offset` d,
         inBoard p', getAt n p' == signum (fst d + snd d),
-        let n' = norm $ swapbits n p p', (p, n') `M.notMember` h]
+        let n' = norm $ swapbits n p p', (p', n') `M.notMember` h]
 
 backtrack c h cs = let c' = h M.! c in if c' == c then cs else backtrack c' h (c:cs)
 
@@ -62,13 +66,14 @@ setAt n 0 p = clrbit n (idx p)
 idx :: Point -> Int
 idx (i, j) = 5 * (i-1) + j - 1
 
-norm :: Bits a => a -> a
-norm = (mask .&.) where
-  mask = foldl setbit 0 (map idx [(1, 4), (1, 5), (2, 4), (2, 5), (3, 3), (4, 1), (4, 2), (5, 1), (5, 2)])
+mask :: Integer
+mask = foldl setbit 0 (map idx [(1, 4), (1, 5), (2, 4), (2, 5), (3, 3), (4, 1), (4, 2), (5, 1), (5, 2)])
+
+norm = (mask .&.)
 
 offset (x, y) (dx, dy) = (x+dx, y+dy)
 
-inBoard p = inRange s1 p && inRange s2 p where
+inBoard p = inRange s1 p || inRange s2 p where
   s1 = ((1, 1), (3, 3))
   s2 = ((1, 1) `offset` (2, 2), (3, 3) `offset` (2, 2))
 
