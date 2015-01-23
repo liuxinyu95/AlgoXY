@@ -1,8 +1,10 @@
 module LeapFrog2D where
 
-import Data.Map (singleton, insert, (!), notMember)
+import qualified Data.Map as M
+import Data.Sequence (singleton, ViewL(..), viewl, null, (|>))
 import Data.Bits
 import Data.Ix (inRange)
+import Prelude hiding (null)
 
 -- Problem reference:
 -- Mathematical puzzles of Sam Loyd, selected and edited by Martin Gardner. 1959 by Dover Publications, Inc.
@@ -47,21 +49,22 @@ end = bin $ concat [[0,0,0,0,0],
 
 bin = foldl1 (\n d -> 2*n + d)
 
-ans = solve [s0] (singleton s0 s0) where
-  solve [] _ = []
-  solve (c@(p, n):cs) h | n == end = backtrack c h []
-                        | otherwise = let (cs', h') = move p n h in solve (cs ++ cs') h' -- ++
+ans = solve (singleton s0) (M.singleton s0 s0) where
+  solve q h | null q = []
+            | otherwise = let (c@(p, n) :< q') = viewl q in
+    if n == end then backtrack c h []
+    else let (cs', h') = move p n h in solve (foldl (|>) q' cs') h'
   s0 = ((3, 3), start)
 
-move p n h = (cs, foldr (\c h' -> insert c (p, n) h') h cs) where
+move p n h = (cs, foldr (\c h' -> M.insert c (p, n) h') h cs) where
   cs = [(p', n') |
         d <- [(0, 1), (1, 0), (0, -1), (-1, 0), (0, 2), (2, 0), (0, -2), (-2, 0)],
         let p' = p `offset` d,
         inBoard p', getAt n p' == (- signum (fst d + snd d)),
-        let n' = norm p' $ swapbits n p p', (p', n') `notMember` h]
+        let n' = norm p' $ swapbits n p p', (p', n') `M.notMember` h]
   offset (x, y) (dx, dy) = (x + dx, y + dy)
 
-backtrack c h cs = let c' = h ! c in if c' == c then (c:cs) else backtrack c' h (c:cs)
+backtrack c h cs = let c' = h M.! c in if c' == c then (c:cs) else backtrack c' h (c:cs)
 
 setbit n i = n .|. (1 `shiftL` i)
 
