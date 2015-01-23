@@ -17,7 +17,7 @@ type Point = (Int, Int)
 type Layout = (Point, Integer)
 type History = M.Map Layout Layout
 
-traceLog msg a = trace (msg ++ (show a)) a
+traceLog msg a = a --trace (msg ++ (show a)) a
 
 start = bin $ concat [[1,1,1,0,0],
                       [1,1,1,0,0],
@@ -46,7 +46,7 @@ move p n h = (cs, foldr (\c h' -> M.insert c (p, n) h') h cs) where
         inBoard p', getAt n p' == (- signum (fst d + snd d)),
         let n' = norm p' $ swapbits n p p', (p', n') `M.notMember` h]
 
-backtrack c h cs = let c' = h M.! c in if c' == c then cs else backtrack c' h (c:cs)
+backtrack c h cs = let c' = h M.! c in if c' == c then (c:cs) else backtrack c' h (c:cs)
 
 -- bitwise functions
 
