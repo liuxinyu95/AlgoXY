@@ -98,4 +98,4 @@ toStr (p, n) = unlines [[piece n p (i, j) | i <-[1..5]] | j <-[1..5]] where
 
 output = do
   mapM_ (putStrLn . toStr) ans
-  putStrLn $ "total " ++ (show $ length ans) ++ " steps" where
+  putStrLn $ "total " ++ (show $ length ans) ++ " steps"
