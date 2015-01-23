@@ -29,10 +29,10 @@ import Prelude hiding (null)
 
 -- BFS search
 -- Input a queue and the visited board layout history
---   The element in queue is a board layout, a board layout is pair:
+--   The element in queue is a board layout, a board layout is a pair of 2 parts:
 --     One is the position (i,j) indicating where is the free cell;
 --     The other is a binary number represents the board.
---   The history is map from a layout n to layout n'.
+--   The history is a map from layout n to layout n'.
 --     Where n' is the parent state of n, (n can be achieved from some movement from n')
 
 start = bin $ concat [[1,1,1,0,0],
