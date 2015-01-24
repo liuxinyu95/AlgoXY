@@ -70,7 +70,7 @@ setbit n i = n .|. (1 `shiftL` i)
 
 clrbit n i = n .&. (complement (1 `shiftL` i))
 
-getbit n i = (fromIntegral::Integer -> Int) ((n `shiftR` i) .&. 1) where
+getbit n i = (n `shiftR` i) .&. 1
 
 inBoard p = inRange ((1, 1), (3, 3)) p || inRange ((3, 3), (5, 5)) p
 
