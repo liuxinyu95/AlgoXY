@@ -49,7 +49,7 @@ def solve(i, j, start, end):
         else:
             for m in moves(c[0]):
                 layout = normalize(snd(m))
-                if layout not in visit:
+                if True or layout not in visit:
                     queue.append([m] + c)
                     visit.add(layout)
     return None
