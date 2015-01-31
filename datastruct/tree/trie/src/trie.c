@@ -26,7 +26,7 @@ struct Trie {
     void* data;
 };
 
-struct Trie* create_node(){
+struct Trie* create_node() {
     struct Trie* t = (struct Trie*) malloc(sizeof(struct Trie));
     int i;
     for (i=0; i<26; ++i)
@@ -35,7 +35,7 @@ struct Trie* create_node(){
     return t;
 }
 
-void destroy(struct Trie* t){
+void destroy(struct Trie* t) {
     int i;
     if(t) {
         for (i=0; i<26; ++i)
@@ -46,7 +46,7 @@ void destroy(struct Trie* t){
     }
 }
 
-struct Trie* insert(struct Trie* t, const char* key, void* value){
+struct Trie* insert(struct Trie* t, const char* key, void* value) {
     int c;
     struct Trie *p;
     if(!t)
@@ -67,13 +67,13 @@ void* lookup(struct Trie* t, const char* key) {
 }
 
 // test helpers
-void print_trie(struct Trie* t, const char* prefix){
+void print_trie(struct Trie* t, const char* prefix) {
     printf("(%s", prefix);
     if(t->data)
         printf(":%s", (char*)(t->data));
     int i;
-    for(i=0; i<26; ++i){
-        if(t->children[i]){
+    for (i=0; i<26; ++i) {
+        if(t->children[i]) {
             printf(", ");
             char* new_prefix=(char*)malloc(strlen(prefix+1)*sizeof(char));
             sprintf(new_prefix, "%s%c", prefix, i+'a');
@@ -83,7 +83,7 @@ void print_trie(struct Trie* t, const char* prefix){
     printf(")");
 }
 
-struct Trie* test_insert(){
+struct Trie* test_insert() {
     struct Trie* t=0;
     t = insert(t, "a", strdup("A"));
     t = insert(t, "an", strdup("AN"));
@@ -103,7 +103,7 @@ void test_lookup(struct Trie* t) {
     printf("lookup 'boolean' ==> %s\n", v ? (char*)v : "not found");
 }
 
-int main(int argc, char** argv){
+int main(int argc, char** argv) {
     struct Trie* t = test_insert();
     test_lookup(t);
     destroy(t);
