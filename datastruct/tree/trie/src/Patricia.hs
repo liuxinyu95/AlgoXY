@@ -18,7 +18,7 @@
 
 module Patricia where
 
-import qualified Data.List
+import Data.List (isPrefixOf)
 
 type Key = String
 
