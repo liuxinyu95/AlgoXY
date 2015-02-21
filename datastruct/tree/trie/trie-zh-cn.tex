@@ -1664,12 +1664,7 @@ def patricia_lookup_t9(t, key):
     return res
 \end{lstlisting}
 
-T9 input method can also be realized recursively. Let's first define
-the trie solution. The algorithm takes two arguments, a trie storing
-all the candidate words, and a sequence of digits that is input by
-the user. If the sequence is empty, the result is empty as well;
-Otherwise, it looks up $C$ to find those children which are bound
-to the first digit $d_1$ according to T9 map.
+也可以使用递归的方式实现T9输入法。我们首先定义使用trie的解。算法接受两个参数：一棵保存有所有候选单词的词典trie，和用户输入的数字串。如果数字串为空，则结果亦为空；否则，算法查找所有的子分支映射$C$，利用T9映射，找到和首位数字$d_1$匹配的全部子分支。
 
 \be
 findT9(T, D) = \left \{
@@ -1681,27 +1676,21 @@ findT9(T, D) = \left \{
 \right.
 \ee
 
-Where folding is defined in Appendix A. Function $f$ takes two arguments,
-an intermediate list of candidates which is initialized empty, and
-a pair $(c, T')$, where $c$ is candidate character, to which sub tree $T'$
-is bound. It append character $c$ to all the candidate words, and concatenate
-this to the result list.
+其中folding的详细定义可以参考附录A。函数$f$接受两个参数：一个候选单词列表的中间结果，这一列表初始为空；另一个参数是“字符—子树”映射对$(c, T')$。它将$c$附加到所有候选单词的尾部，然后将结果连接起来：
 
 \be
 f(L, (c, T')) = mapAppend(c, findT9(T', D')) \cup L
 \ee
 
-Note this $mapAppend$ function is a bit different from the previous one defined
-in e-dictionary application. The first argument is a character, but not a string.
+注意这里的$mapAppend$函数和前面电子词典一节中的定义略有不同。第一个参数是一个字符，而非字符串。
 
-Function $lookupT9(k, C)$ checks all the possible characters mapped to digit $k$.
-If the character is bound to some child in $C$, it is record as one candidate.
+函数$lookupT9(k, C)$检查所有数字$k$映射到的字符。如果某字符恰好映射到一个子分支，就将其记录为一个候选项。
 
 \be
 lookupT9(d, C) =  fold(g, \phi, M_{T9}[k])
 \ee
 
-Where
+其中
 
 \be
 g(L, k) = \left \{
@@ -1713,7 +1702,7 @@ g(L, k) = \left \{
 \right.
 \ee
 
-Below Haskell example program implements the T9 look up algorithm with trie.
+下面的Haskell例子程序使用trie实现了T9输入法。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -1735,8 +1724,7 @@ lookupT9 c children = case lookup c mapT9 of
 mapAppend' x lst = map (\p->(x:(fst p), snd p)) lst
 \end{lstlisting}
 
-There are few modifications when change the realization from trie to Patricia.
-Firstly, the sub-tree is bound to prefix string, but not a single character.
+我们可以略做修改，使用Patricia替换trie来实现递归的T9输入法。首先所有的子树不再对应到字符，而是对应到字符串。
 
 \be
 findT9(T, D) = \left \{
@@ -1748,33 +1736,25 @@ findT9(T, D) = \left \{
 \right.
 \ee
 
-The list for folding is given by calling function $findPrefixT9(D, C)$.
-And $f$ is also modified to reflect this change. It appends the
-candidate prefix $D'$ in front of every result output by the
-recursive search, and then accumulates the words.
+算法针对函数调用$findPrefixT9(D, C)$的结果进行folding。$f$需要做同样的改动：它将候选前缀$D'$添加到递归查找结果的所有单词前面，然后将候选列表连接起来。
 
 \be
 f(L, (D', T')) = mapAppend(D', findT9(T', D - D')) \cup L
 \ee
 
-Function $findPrefixT9(D, C)$ examines all the children. For
-every pair $(k_i, T_i)$, if converting $k_i$ back to digits
-yields a prefix of $D$, then this pair is selected as a
-candidate.
+函数$findPrefixT9(D, C)$检查所有的子分支映射$C$。针对每个映射对$(k_i, T_i)$，如果将$k_i$转换回数字串后，是$D$的某个前缀，则这一映射对就被列入候选项。
 
 \be
 findPrefixT9(D, C) = \{ (k_i, T_i) |(k_i, T_i) \in C, convertT9(k_i) \sqsubset D\}
 \ee
 
-Function $convertT9(k)$ converts every alphabetic character in $k$ back
-to digits according to T9 map.
+函数$convertT9(k)$利用T9映射，将$k$中的每个字符转换回数字。
 
 \be
 convertT9(K) = \{ d | \forall c \in k, \exists (d \rightarrow S) \in M_{T9} \Rightarrow c \in S\}
 \ee
 
-The following example Haskell program implements the T9 input algorithm
-with Patricia.
+下面的Haskell例子程序使用Patricia实现了T9输入法。
 
 \begin{lstlisting}
 findT9 t [] = [("", value t)]
