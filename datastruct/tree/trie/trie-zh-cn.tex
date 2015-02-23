@@ -69,7 +69,7 @@ Radix树并不在节点中存储key，信息由边来代表。图中节点中标
 \label{int-trie}
 \index{Radix tree!整数trie}
 
-图\ref{fig:radix-tree}中所示的数据结构常被称为\emph{binary trie}。Trie是Edward Fredkin提出的。它来自英文单词retrieval，最开始发音为/'tri:/。但是许多人都把它读作/'trai/(和英文单词try的发音相同)\cite{wiki-trie}。Trie也被称为前餟树（prefix tree）。一棵binary trie是一种特殊的二叉树，每个key存放的位置由它的全部二进制位来决定。0表示“向左”，而1表示“向右”\cite{okasaki-int-map}。
+图\ref{fig:radix-tree}中所示的数据结构常被称为\emph{binary trie}。Trie是Edward Fredkin提出的。它来自英文单词retrieval，最开始发音为/'tri:/。但是许多人都把它读作/'trai/(和英文单词try的发音相同)\cite{wiki-trie}。Trie也被称为前缀树（prefix tree）。一棵binary trie是一种特殊的二叉树，每个key存放的位置由它的全部二进制位来决定。0表示“向左”，而1表示“向右”\cite{okasaki-int-map}。
 
 由于整数可以表示为二进制，我们可以用整数代替0/1串作为key。当把一个整数插入到trie时，我们首先将其转化为二进制，然后检查第一位，若为0，则递归插入到左侧分支，若为1，则插入到右侧分支。
 
@@ -190,7 +190,7 @@ insert(T, k, v) = \left \{
 \right.
 \ee
 
-如果待插入的key已经存在，这一算法会覆盖原来存储的数据。也可以采用其他处理方法，如使用链表保存新数据而不是覆盖。
+如果待插入的key已经存在，这一算法会覆盖原来存储的数据。也可以采用其他处理方法，如使用链表保存新数据而避免覆盖已有的数据。
 
 下面的Haskell例子程序实现了这一插入算法。
 
@@ -218,7 +218,7 @@ value Empty = Nothing
 \subsection{查找}
 \index{整数trie!查找}
 
-在整数binary trie中查找key $k$时，我们从$k$的右侧，逐位检查，如果为0，就继续在左侧分支查找，否则若为1，则在右侧分支查找。当所有位都处理完，查找结束。
+在整数binary trie中查找key $k$时，我们从$k$的右侧，逐位检查，如果为0，就继续在左侧分支查找；如果为1，则在右侧分支查找。当所有位都处理完，查找结束。
 
 \begin{algorithmic}[1]
 \Function{Lookup}{$T, k$}
@@ -254,7 +254,7 @@ def lookup(t, key):
         return None
 \end{lstlisting}
 
-查找操作也可以递归定义。如果树为空，则查找失败；如果$k=0$，则返回当前根节点中存储的数据。否则根据最后一位是0还是1，递归在左右分支进行查找。
+我们也可以用递归的方式定义查找算法。如果树为空，则查找失败；如果$k=0$，则返回当前根节点中存储的数据。否则根据最后一位是0还是1，递归在左右分支进行查找。
 
 \be
 lookup(T, k) =  \left \{
@@ -286,11 +286,11 @@ search t k = if even k then search (left t) (k `div` 2)
 \section{整数Patricia}
 \label{int-patricia}
 \index{整数Patricia}
-\index{整数前餟树}
+\index{整数前缀树}
 
-Trie最大的缺点是浪费空间。如图\ref{int-trie}所示，只有叶子节点存储了最终的数据。大多数情况下，整数trie中存在许多只包含一个孩子的节点。为了提高空间利用率，我们可以将一连串“独生子女”压缩成一个节点。Patricia就是这样的数据结构，由Donald R. Morrison在1968年提出。Patricia是英文：Practical algorithm to retrieve information coded in alphanumeric的首字母缩写\cite{patricia-morrison}。它本质上是一种前餟树。
+Trie最大的缺点是浪费空间。如图\ref{int-trie}所示，只有叶子节点存储了最终的数据。大多数情况下，整数trie中有许多只包含一个孩子的节点。为了提高空间利用率，我们可以将一连串“独生子女”压缩成一个节点。Patricia就是这样的数据结构，由Donald R. Morrison在1968年提出。Patricia是英文：Practical algorithm to retrieve information coded in alphanumeric的首字母缩写\cite{patricia-morrison}。它本质上是一种前缀树。
 
-Okasaki给出了整数Patricia的实现\cite{okasaki-int-map}。将图\ref{fig:int-trie}中只有一个子树的节点合并为后，可以得到一棵如图\ref{fig:little-endian-patricia}所示的树。
+Okasaki给出了整数Patricia的实现\cite{okasaki-int-map}。将图\ref{fig:int-trie}中只有一个子树的节点合并后，可以得到一棵如图\ref{fig:little-endian-patricia}所示的树。
 
 \begin{figure}[htbp]
   \centering
@@ -300,23 +300,23 @@ Okasaki给出了整数Patricia的实现\cite{okasaki-int-map}。将图\ref{fig:i
   \label{fig:little-endian-patricia}
 \end{figure}
 
-观察此图，可以发现分支节点所代表的key是它包含的所有分支的公共前餟。这些分支的key一开始都一样，然后从某一点开始出现不同。和trie相比，Patricia节省了很多空间。
+观察此图，可以发现分支节点所代表的key是它的所有子分支的公共前缀。这些子分支的key一开始都一样，然后从某一点开始出现不同。和trie相比，Patricia节省了很多空间。
 
-和整数trie不同，Patricia可以使用大端（big-endian）而不会遇到\ref{int-trie}中所描述的0前餟问题。第一位有效数字前的0全都被去除以节省空间。Okasaki在\cite{okasaki-int-map}中列出了大端patricia的优点。
+和整数trie不同，Patricia可以使用大端（big-endian）而不会遇到\ref{int-trie}中所描述的0前缀问题。第一位有效数字前的0全都被去除以节省空间。Okasaki在\cite{okasaki-int-map}中列出了大端Patricia的优点。
 
 % ================================================================
 %                 Definition of int patricia tree
 % ================================================================
 \subsection{定义}
 
-整数patricia是一种特殊的二叉树。它或者为空，或者是一个节点。节点有两种类型：
+整数Patricia是一种特殊的二叉树。它或者为空，或者是一个节点。节点有两种类型：
 
 \begin{itemize}
 \item 叶子节点：包含一个整数key和相应的数据（可以没有数据）；
-\item 分支节点：包含左右子分支。两个子分支的key具有最长的二进制公共前缀。其中左左侧子分支的下一位是0，而右侧子分支的下一位是1。
+\item 分支节点：包含左右子分支。两个子分支的key具有最长的二进制公共前缀。其中左侧子分支的下一位是0，而右侧子分支的下一位是1。
 \end{itemize}
 
-下面的Haskell例子代码定义了patricia：
+下面的Haskell例子代码定义了Patricia：
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -329,9 +329,9 @@ data IntTree a = Empty
                | Branch Prefix Mask (IntTree a) (IntTree a)
 \end{lstlisting}
 
-为了表示从哪一位开始左右分支的key变得不相同，分支节点中保存了mask（掩码）信息。通常mask是2的整数次幂，形如$2^n$其中$n$是非负整数。所有低于$n$的二进制位都不属于key的公共前缀。
+为了表示从哪一位开始左右分支的key变得不相同，分支节点中保存了mask（掩码）信息。通常mask是2的整数次幂，形如$2^n$，其中$n$是非负整数。所有低于$n$的二进制位都不属于key的公共前缀。
 
-下面的Python例子代码定义了patricia和相应的辅助函数。
+下面的Python例子代码定义了Patricia和相应的辅助函数。
 
 \lstset{language=Python}
 \begin{lstlisting}
@@ -382,7 +382,7 @@ class IntTree:
   \label{fig:int-patricia-insert-a}
 \end{figure}
 
-如果树只有一个叶子节点$x$，我们把待插入的key和数据放入一个新的叶子节点$y$中。然后创建一个新的分支节点，并令$x$和$y$为这一新分支节点的两个子节点。为了确定$y$应该在左边还是右边，我们需要找到$x$和$y$的最长公共前餟。举个例子，假设$key(x)$为12（二进制1100）,$key(y)$为15（二进制1111），则最长公共前餟为二进制$11oo$，其中$o$代表的二进制位我们并不关心，我们可以使用一个整数来mask掉这些不关心的位。在这个例子中，可以用4（二进制100）作为mask。最长公共前餟后面的一位代表$2^1$。$key(x)$中这一位是0，而$key(y)$中这一位是1。因此$x$是左子树，而$y$是右子树。这个例子如图\ref{fig:int-patricia-insert-b}所示。
+如果树只有一个叶子节点$x$，我们把待插入的key和数据放入一个新的叶子节点$y$中。然后创建一个新的分支节点，并令$x$和$y$为这一新分支节点的两个子节点。为了确定$y$应该在左边还是右边，我们需要找到$x$和$y$的最长公共前缀。举个例子，假设$key(x)$为12（二进制1100）,$key(y)$为15（二进制1111），则最长公共前缀为二进制$11oo$，其中$o$代表我们不关心的二进制位，我们可以使用一个整数来mask掉这些位。在这个例子中，可以用4（二进制100）作为mask。最长公共前缀后面的一位代表$2^1$。$key(x)$中这一位是0，而$key(y)$中这一位是1。因此$x$是左子树，而$y$是右子树。这个例子如图\ref{fig:int-patricia-insert-b}所示。
 
 \begin{figure}[htbp]
   \centering
@@ -391,19 +391,19 @@ class IntTree:
   \label{fig:int-patricia-insert-b}
 \end{figure}
 
-如果树既不为空，也不是一个单独的叶子节点，我们需要先比较待插入的key和根节点中纪录的最长公共前餟是否一致。如果一致，则根据接下来的位是0还是1决定在左侧还是右侧递归进行插入。例如，若将整数14（二进制1110）插入图\ref{fig:int-patricia-insert-b}中所示的树中，由于最长公共前餟是$11oo$而接下来的一位（$2^1$位）是1，所以需要将14递归插入到右子树。
+如果树既不为空，也不是一个单独的叶子节点，我们需要先比较待插入的key和根节点中记录的最长公共前缀是否一致。如果一致，则根据接下来的位是0还是1递归地在左侧或右侧进行插入。例如，若将整数14（二进制1110）插入图\ref{fig:int-patricia-insert-b}中所示的树中，由于最长公共前缀是$11oo$而接下来的一位（$2^1$位）是1，所以需要将14递归插入到右子树。
 
-最后，如果待插入的key和根节点中纪录的最长公共前餟不一致，我们需要从根节点分出一个新的枝杈。图\ref{fig:int-patricia-insert-c}展示了这两种不同的情况。
+最后，如果待插入的key和根节点中记录的最长公共前缀不一致，我们需要从根节点分出一个新的枝杈。图\ref{fig:int-patricia-insert-c}展示了这两种不同的情况。
 
 \begin{figure}[htbp]
   \centering
-  \subfloat[插入key 14。它和最长公共前餟$(1100)_2$一致。需要将其递归插入到右侧分支中。]{\includegraphics[scale=0.5]{img/int-patricia-insert-c.ps}}\\
-  \subfloat[插入key 5。它和最长公共前餟$(1100)_2$不一致。需要新分杈出一个分支。]{\includegraphics[scale=0.5]{img/int-patricia-insert-d.ps}}
+  \subfloat[插入key 14。它和最长公共前缀$(1100)_2$一致。需要将其递归插入到右侧分支中。]{\includegraphics[scale=0.5]{img/int-patricia-insert-c.ps}}\\
+  \subfloat[插入key 5。它和最长公共前缀$(1100)_2$不一致。需要新分杈出一个分支。]{\includegraphics[scale=0.5]{img/int-patricia-insert-d.ps}}
   \caption{向分支节点插入key。}
   \label{fig:int-patricia-insert-c}
 \end{figure}
 
-记key为$k$，数据为$v$的节点为$(k, v)$，分支节点记为$(p, m, T_l, T_r)$，其中$p$代表最长公共前餟，$m$表示mask，$T_l$和$T_r$分别代表左右子分支。上述情况可以归纳为下面的插入算法：
+记key为$k$，数据为$v$的节点为$(k, v)$，分支节点记为$(p, m, T_l, T_r)$，其中$p$代表最长公共前缀，$m$表示mask，$T_l$和$T_r$分别代表左右子分支。上述情况可以归纳为下面的插入算法：
 
 \be
 insert(T, k, v) = \left \{
@@ -418,19 +418,19 @@ insert(T, k, v) = \left \{
 \right.
 \ee
 
-第一行处理边界情况，$T$或者为空，或者是一个表示同样key的叶子节点。这里我们用新的值覆盖以前存在的数据。
+第一行处理边界情况，$T$或者为空，或者是一个具有同样key的叶子节点。这里我们用新的值覆盖已存在的数据。
 
-第二行处理$T$为叶子节点，但是key不同的情况。这时需要分支出一个新的叶子节点，为此，我们需要计算出最长公共前餟，并判断哪个在左侧，哪个在右侧。函数$join(k_1, T_1, K_2, T_2)$负责这些处理，我们稍后会定义它。
+第二行处理$T$为叶子节点，但是key不同的情况。这时需要分支出一个新的叶子节点，为此，我们需要计算出最长公共前缀，并判断哪个在左侧，哪个在右侧。函数$join(k_1, T_1, k_2, T_2)$负责这些处理，我们稍后会定义它。
 
-第三、四行处理$T$为分支节点，且分支代表的前餟和待插入的key一致的情况。如果接下来的一位是0，则第三行会递归向左侧分支进行插入。否则第四行递归向右侧分支插入。
+第三、四行处理$T$为分支节点，且分支代表的前缀和待插入的key一致的情况。如果接下来的一位是0，则第三行会递归向左侧分支进行插入。否则第四行递归向右侧分支插入。
 
 最后一行处理$T$为分支节点，但是key不一致的情况。我门需要调用$join$函数来分支出一个新的叶子节点。
 
-接下来需要定义函数$match(k, p, m)$用以判断整数$k$在掩码$m$以上的位是否和$p$一致。也就是检查$p$在掩码以上的位是否为$k$的一个前餟。例如，一个分支节点的key表示为二进制为$(p_np_{n-1} ... p_i...p_0)_2$，待插入的key $k$的二进制形式为$(k_nk_{n-1} ... k_i ... k_0)_2$，掩码mask为$(100...0)_2=2^i$。则称$k$、$p$、$m$一致当且仅当对于任意$j$, $i \leq j \leq n$有$p_j=k_j$。
+接下来需要定义函数$match(k, p, m)$用以判断整数$k$在掩码$m$以上的位是否和$p$一致。也就是检查$p$在掩码以上的位是否为$k$的一个前缀。例如，一个分支节点的key表示为二进制$(p_np_{n-1} ... p_i...p_0)_2$，待插入的key $k$的二进制形式为$(k_nk_{n-1} ... k_i ... k_0)_2$，掩码mask为$(100...0)_2=2^i$。则称$k$、$p$、$m$一致当且仅当对于任意$j$, $i \leq j \leq n$有$p_j=k_j$。
 
-我们可以通过判断等式$mask(k, m) = p$来实现$match$函数。其中$mask(x, m) = \overline{m-1} \& x$。即先对$m-1$按位取反，然后将结果和$x$按位进行与运算。
+我们可以通过判断等式$mask(k, m) = p$是否成立来实现$match$函数。其中$mask(x, m) = \overline{m-1} \& x$。即先对$m-1$按位取反，然后将结果和$x$按位进行与运算。
 
-函数$zero(k, m)$检查公共前餟后接下来的一位是否为0。我们可以将掩码$m$向右做1位移位运算，接下来和$k$进行按位与运算。
+函数$zero(k, m)$检查公共前缀接下来的一位是否为0。我们可以将掩码$m$向右做1位移位运算，接下来和$k$进行按位与运算。
 
 \be
 zero(k, m) = x \& shift_r(m, 1)
@@ -438,7 +438,7 @@ zero(k, m) = x \& shift_r(m, 1)
 
 举例来说，若$m = (100..0)_2 = 2^i$、$k = (k_nk_{n-1}...k_i1...k_0)_2$，由于$k_i$的下一位是1，所以$zero(k, m)$的结果为false；反之，若$k = (k_nk_{n-1}...k_i0...k_0)_2$，则结果为true。
 
-函数$join(p_1, T_1, p_2, T_2)$接受两个前餟和两棵树作为参数。它找出$p_1$与$p_2$的最长公共前餟，然后创建一个新的分支节点，并将$T_1$和$T_2$作为子节点。
+函数$join(p_1, T_1, p_2, T_2)$接受两个前缀和两棵树作为参数。它找出$p_1$与$p_2$的最长公共前缀，然后创建一个新的分支节点，并将$T_1$和$T_2$作为子节点。
 
 \be
 join(p_1, T_1, p_2, T_2) = \left \{
