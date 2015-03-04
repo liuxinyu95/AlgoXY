@@ -324,88 +324,58 @@ def root(node):
 \section{后缀树}
 \index{后缀树}
 
-Suffix trie isn't space efficient, and the construction time
-is quadratic. If don't care about the speed, we can compress the
-suffix trie to suffix tree\cite{trivial-stree-java}. Ukkonen
-found a linear time on-line suffix tree construction algorithm
-in 1995.
+后缀trie既耗费空间，构造起来又慢（平方时间复杂度）。有些实现仅仅将构后缀trie压缩成后缀树\cite{trivial-stree-java}，但是这样还不够理想。Ukkonen在1995年发表了一种高效的on-line构造算法，可以达在线性时间内构造后缀树。
 
 % ================================================================
 %               Online construction of suffix tree
 % ================================================================
-\subsection{On-line construction}
+\subsection{在线构造}
 
-\subsubsection{Active point and end point}
+\subsubsection{Active point和end point}
 \label{ap-and-ep}
-\index{Suffix tree!active point}
-\index{Suffix tree!end point}
+\index{后缀树!active point}
+\index{后缀树!end point}
 
-The suffix trie construction algorithm shows very
-important fact about what happens when $SuffixTrie(S_i)$ updates to
-$SuffixTrie(S_{i+1})$. Let's review the last two steps in figure
-\ref{fig:cons-strie-cacao}.
+在后缀trie构造算法中，我们可以从任意一个中间结果$SuffixTrie(S_i)$得到下一个结果$SuffixTrie(S_{i+1})$。这一点很具有启发性。我们观察一下图\ref{fig:cons-strie-cacao}中的最后两步。
 
-There are two different updates.
+一共有两种不同的更新：
 \begin{enumerate}
-\item All leaves are appended with a new node for $s_{i+1}$;
-\item Some non-leaf nodes are branched out with a new node for $s_{i+1}$.
+\item 所有的叶子节点都添加了一个代表字符$s_{i+1}$的新节点；
+\item 某些中间节点被分支出一个代表字符$s_{i+1}$的新节点。
 \end{enumerate}
 
-The first type of update is trivial, because for all new coming characters,
-we need do this work anyway. Ukkonen defines leaf as the 'open' node.
+其中第一种更新很简单易懂，我们总是要为下一个字符增加新节点。Ukkonen将所有的叶子节点定义为“开放节点”。
 
-The second type of update is important. We need figure out which internal
-nodes need branch out. We only focus on these nodes and apply the
-update.
+我们更加关心第二种更新。什么样的中间节点会被分支出新节点？我们希望能快速定位到它们，以实施更新。
 
-Ukkonen defines the path along the suffix links from the top to the end
-as 'boundary path'.
-Denote the nodes in boundary path  as, $n_1, n_2, ..., n_j, ..., n_k$.
-These nodes start from the leaf node (the first one is the top position),
-suppose that after the $j$-th node, they are not leaves any longer,
-we need repeatedly branch out from this time point till the $k$-th node.
+Ukkonen将从top沿着后缀链结前进的路径定义为“boundary路径”。记boundary路径上的各个节点为$n_1, n_2, ..., n_j, ..., n_k$。显然，第一个是叶子节点（为top），假设从第$j$个节点开始不再是叶子节点，此后我们需要不断分支出新节点直到处理完第$k$个。
 
-Ukkonen defines the first none-leaf node $n_j$ as 'active point' and the last
-node $n_k$ as 'end point'. The end point can be the root.
+Ukkonen将此路径上的第一个非叶子节点$n_j$定义为“active point”，最后一个节点$n_k$定义为“end point”，它有可能是根节点root。
 
-\subsubsection{Reference pair}
-\index{Suffix tree!reference pair}
+\subsubsection{引用对（Reference pair）}
+\index{后缀树!reference pair}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.5]{img/stree-bananas-label.ps}
-  \caption{Suffix tree of ``bananas''. $X$ transfer to $Y$ with sub-string ``na''.}
+  \caption{字符串“bananas”的后缀树。节点$X$通过子串“na”转移到节点$Y$。}
   \label{fig:stree-bananas-label}
 \end{figure}
 
-Figure \ref{fig:stree-bananas-label} shows the suffix tree of English word ``bananas''.
-Node $X$ represents suffix ``a''. By adding sub-string ``na'', node $X$ transfers
-to node $Y$, which represents suffix ``ana''.
-In other words, we can
-represent $Y$ with a pair of node and sub-string, like $(X, w)$, where $w=$ ``na''.
-Ukkonen defines
-such kind of pair as {\em reference pair}. Not only the explicit node, but also the
-implicit position in suffix tree can be represented with reference pair. For example,
-$(X$, ``n'' $)$ represents to a position which is not an explicit node. By using reference
-pair, we can represent every position in a suffix tree.
+图\ref{fig:stree-bananas-label}是字符串“bananas”对应的后缀树。节点$X$代表后缀“a”。通过添加子串“na”，节点$X$转移到代表后缀“ana”的节点$Y$。也就是说，我们可以将$Y$表达为一对值，由一个节点和一个子串组成。形如$(X, w)$，其中$w=$“na”。
 
-In order to save spaces, for string $S$, all sub-strings can
-be represented as a pair of index $(l, r)$, where $l$ is the left index and $r$ is the
-right index of the character for the sub-string. For instance, if $S=$ ``bananas'', and the
-index starts from 1, sub-string ``na'' can be represented with pair $(3, 4)$. As the result,
-there is only one copy of the complete string, and all positions in the suffix tree
-is defined as $(node, (l, r))$. This is the final form of reference pair.
+Ukkonen称这样的一对值为\underline{引用对}（reference pair）。不光所有的可见节点，而且连不可见的隐藏节点都可以用引用对来表示。例如$(X$, “n” $)$就表达了图\ref{fig:stree-bananas-label}中一个隐藏节点的位置。通过使用引用对，我们可以定位到后缀树中的任何位置。
 
-With reference pair, node transfer for suffix tree can be defined as the following.
+给定字符串$S$，它的所有子串都可以用一对索引$(l, r)$来确定。其中，$l$是子串最左侧字符的索引，而$r$是最右侧字符的索引。例如，若字符串$S=$“bananas”，并且索引从1开始，子串“na”可以表达为一对索引$(3, 4)$。通过使用索引对，我们可以仅仅保留一份字符串的完整拷贝，从而大量节省空间。后缀树中的任何位置都可以定义为形如$(node, (l, r))$的表达式。这就是引用对的最终形式。
+
+利用引用对，后缀树中的节点转移可以定义如下：
 
 \textproc{Children}($X$)[$s_l$] $\gets ((l, r), Y) \iff Y \gets (X, (l, r))$
 
-If character $s_l=c$, we say that node $X$ has a $c$-child, This child is $Y$.
-$Y$ can be transferred from $X$ with sub string $(l, r)$
-Each node can have at most one $c$-child.
+若字符$s_l=c$，我们称节点$X$有一个$c$子节点$Y$。$Y$可以由$X$通过子串$(l, r)$转移到。每个节点最多有一个$c$子节点。
 
-\subsubsection{canonical reference pair}
-\index{Suffix tree!Canonical reference pair}
+\subsubsection{归一化引用对}
+\index{后缀树!归一化引用对}
 
 It's obvious that the one position in a suffix tree may have multiple reference pairs.
 For example, node $Y$ in Figure \ref{fig:stree-bananas-label} can be either
