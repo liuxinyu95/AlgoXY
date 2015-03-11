@@ -84,7 +84,7 @@
 对于非空字符串$S=s_1s_2...s_i...s_n$，长度$n = |S|$，函数\textproc{Right}($S, i$) $= s_is_{i+1...s_n}$。它的结果是一个子串，从$S$的第$i$个字符直到末尾。这一直观的算法也可以定义如下：
 
 \be
-suffix_T(S) = fold(insert_{Patricia}, \Phi, suffixes(S))
+suffix_T(S) = fold(insert_{Patricia}, \phi, suffixes(S))
 \ee
 
 其中函数$suffixes(S)$枚举字符串$S$的所有后缀。如果字符串为空，结果是一个空串；否则$S$本身是自己的一个后缀，其余后缀可以通过递归调用$suffixes(S')$来获取。这里$S'$是$S$除去第一个字符以外的其他字符。
@@ -93,7 +93,7 @@ suffix_T(S) = fold(insert_{Patricia}, \Phi, suffixes(S))
 suffixes(S) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
-  \{ \Phi \} & S = \Phi \\
+  \{ \phi \} & S = \phi \\
   \{S\} \cup suffixes(S') & otherwise
   \end{array}
 \right.
@@ -656,33 +656,21 @@ data Tr = Lf | Br [(String, Tr)] deriving (Eq)
 type EdgeFunc = [String]->(String, [String])
 \end{lstlisting}
 
-The edge function extracts a common prefix from a list of strings.
-The prefix returned by edge function may not be the longest one,
-empty string is also allowed. The exact behavior can be customized
-with different edge functions.
+函数edge从一组字符串列表中提取出公共前缀。注意这里并不要求edge函数一定要返回最长的公共前缀，它也可以返回一个空串（空串显然是任何字符串的前缀）。我们可以使用不同的edge函数来产生出不同的树。
 
 \[
 build(edge, X)
 \]
 
-This defines a generic radix tree building function. It takes an
-edge function, and a set of strings. $X$ can be all suffixes of
-a string, so that we get suffix trie or suffix tree. We'll also
-explain later that $X$ can be all prefixes, which lead to normal
-prefix trie or Patricia.
+这是一个通用的radix树构造函数。它使用一个edge函数从一组字符串中构造树。如果$X$是某个字符串的全部后缀，构造结果就是后缀trie或者后缀树。如果$X$是某个字符串的全部前缀，结果将会是前缀trie或者Patricia。
 
-Suppose all the strings are built from a character set $\Sigma$.
-When build the tree, if the string is empty, $X$ only contains
-one empty string as well. The result tree is an empty leaf;
-Otherwise, we examine every character in $\Sigma$, group
-the strings in $X$ with their initial characters, the apply
-the edge function to these groups.
+设所有字符串含有的字符集为$\Sigma$。若用于构造树的字符串为空，$X$仅仅包含一个空串，构造的结果为一个空的叶子节点；否则，我们检查$\Sigma$中的每个字符，将$X$中的字符串按照起始字符分组，然后在每一组上应用edge函数。
 
 \be
-build(edge, X) =  = \left \{
+build(edge, X) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
-  leaf & X = \{ \Phi \} \\
+  leaf & X = \{ \phi \} \\
   \begin{array}{ll}
     branch(\{(\{c\} \cup p, & build(edge, X')) | \\
                             & c \in \Sigma, \\
@@ -693,20 +681,15 @@ build(edge, X) =  = \left \{
 \right.
 \ee
 
-The algorithm categorizes all suffixes by the
-first letter in several groups. It removes the first letter for each element in every group.
-For example, the suffixes $\{$``acac'', ``cac'', ``ac'', ``c''$\}$ are
-categorized to groups $\{$('a', [``cac'', ``c'']), ('c', [``ac'', ``''])$\}$.
+算法首先将全部的后缀按照首字符分成若干组，然后将每组中的首字符移除。例如，后缀$\{$“acac”, “cac”, “ac”, “c”$\}$被分成两组：$\{$(‘a’, [“cac”, “c”]), (‘c’, [“ac”, “”])$\}$。
 
 \be
 group(X, c) = \{C' | \{c_1\} \cup C' \in X, c_1 = c\}
 \ee
 
-Function $group$ enumerates all suffixes in $X$, for each one, denote the first
-character as $c_1$, the rest characters as $C'$. If $c_1$ is same as
-the given character $c$, then $C'$ is collected.
+函数$group$枚举$X$中的全部后缀，每个后缀的首字符记为$c_1$，余下字符记为$C'$。如果$c_1$和传入的字符$c$相等，则相应的$C'$就被归并到一组。
 
-Below example Haskell program implements the generic radix tree building algorithm.
+下面的Haskell例子程序实现了通用的radix树构造算法：
 
 \begin{lstlisting}
 alpha = ['a'..'z']++['A'..'Z']
@@ -720,12 +703,10 @@ lazyTree edge = build where
                          (prefix, ss')<-[edge xs]]
 \end{lstlisting}
 
-Different edge functions produce different radix trees. Since edge function
-extracts common prefix from a set of strings. The simplest one constantly
-uses the empty string as the common prefix. This edge function builds a trie.
+我们前面提到，不同的edge函数会导致构造出不同的radix树。唯一的要求就是edge函数能够提取出一组字符串的公共前缀。最简单的edge函数对任何输入都返回空串作为结果。这时我们会得到一棵trie。
 
 \be
-edgeTrie(X) = (\Phi, X)
+edgeTrie(X) = (\phi, X)
 \ee
 
 We can also realize an edge function, that extracts the longest common prefix.
@@ -743,8 +724,8 @@ call the edge function.
 edgeTree(X) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
-  (x_1, \{ \Phi \}) & X = \{ x_1 \} \\
-  (\Phi, X) & |X| > 1, \exists x_i \in X, c_i \neq c_1 \\
+  (x_1, \{ \phi \}) & X = \{ x_1 \} \\
+  (\phi, X) & |X| > 1, \exists x_i \in X, c_i \neq c_1 \\
   (\{c_1\} \cup p, Y) & (p, Y) = edgeTree(\{ W_i | x_i \in X \})
   \end{array}
 \right.
@@ -896,7 +877,7 @@ otherwise, we go on to examine the rest children denoted as $C'$.
 find(C, s) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
-  0 & C = \Phi \\
+  0 & C = \phi \\
   max(1, |C_1|) & s \sqsubset s_1 \\
   lookup_{pattern}(T_1, s - s_1) & s_1 \sqsubset s \\
   find(C', s) & otherwise
@@ -1027,7 +1008,7 @@ children.
 LRS(T) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
-  \Phi & leaf(T) \\
+  \phi & leaf(T) \\
   longest(\{s_i \cup LRS(T_i) | (s_i, T_i) \in C, \lnot leaf(T_i)\}) & otherwise
   \end{array}
 \right.
@@ -1150,7 +1131,7 @@ The longest candidate is selected as the final result.
 LCS(T) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
-  \Phi & leaf(T) \\
+  \phi & leaf(T) \\
   \begin{array}{ll}
     longest( & \{s_i | (s_i, T_i) \in C, match(T_i)\} \cup \\
              & \{s_i \cup LCS(T_i) | (s_i, T_i) \in C, \lnot match(T_i)\})
