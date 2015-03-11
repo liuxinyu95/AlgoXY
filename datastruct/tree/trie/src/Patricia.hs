@@ -18,7 +18,7 @@
 
 module Patricia where
 
-import qualified Data.List
+import Data.List (isPrefixOf)
 
 type Key = String
 
@@ -69,7 +69,7 @@ find t k = find' (children t) k where
     find' [] _ = Nothing
     find' (p:ps) k
           | (fst p) == k = value (snd p)
-          | (fst p) `Data.List.isPrefixOf` k = find (snd p) (diff (fst p) k)
+          | (fst p) `isPrefixOf` k = find (snd p) (diff (fst p) k)
           | otherwise = find' ps k
     diff k1 k2 = drop (length (lcp k1 k2)) k2
 
