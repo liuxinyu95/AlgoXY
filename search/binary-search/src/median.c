@@ -1,4 +1,38 @@
-/*Find the median of two sorted arrays*/
+/*
+ * median.c
+ * Copyright (C) 2015 Liu Xinyu (liuxinyu95@gmail.com)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*
+ * Find the median of two sorted arrays
+ *   O(lg(m+n)) time, and O(1) space
+ *
+ * Suppose the two arrays are A and B.
+ * Perform the following binary search first in A then B to find the median.
+ *
+ * Start from low = 0, high = |A|, guess i = floor (low + high)/2
+ * For the median m, there should be total half = floor (|A| + |B| + 1) / 2 elements not greater than it.
+ * Since there are i + 1 elements not greater than A[i] in A,
+ * There should be half - (i + 1) elements not greater than A[i] in B.
+ * Denote j = half - i - 2, thus we can compare if B[j] <= A[i] <= B[j + 1] is satified. This indicates
+ * That the guess is correct median.
+ * Otherwise, we can easily tell if the guess is too small or too big, then halve the elements to adjust
+ * the guess.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
