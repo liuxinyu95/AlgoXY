@@ -41,10 +41,10 @@ def kth(xs, x0, x1, ys, y0, y1, k):
     i, j = x0 + i, y0 + j
     if xs[i-1] < ys[j-1]:
         print "too small"
-        return kth(xs, i, x1, ys, y0, j, k - i)
+        return kth(xs, i, x1, ys, y0, j, k - i + x0)
     else:
         print "too big"
-        return kth(xs, x0, i, ys, j, y1, k - i)
+        return kth(xs, x0, i, ys, j, y1, k - j + y0)
 
 N = 20 #100
 
