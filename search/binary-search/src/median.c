@@ -31,6 +31,9 @@
  * That the guess is correct median.
  * Otherwise, we can easily tell if the guess is too small or too big, then halve the elements to adjust
  * the guess.
+ *
+ * [1]. MIT, Introduction to algorithm, problem set 9-1.
+ * [2]. Dr. Dobb's Finding the Median of Two Sorted Arrays Efficiently.
  */
 
 #include <stdio.h>
@@ -55,10 +58,6 @@ double medianof(int A[], int n) {
 int find(int A[], int m, int B[], int n) {
     int l = 0, u = m;
     int i, j, half = (m + n + 1) / 2;
-    if (!A || m == 0)
-        return medianof(B, n);
-    if (!B || n == 0)
-        return medianof(A, m);
     while (l < u) {
         i = (l + u) / 2;
         j = half - i - 2;
