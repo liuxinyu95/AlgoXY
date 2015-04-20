@@ -31,25 +31,38 @@ others/problems
     Develop a stack with min function to access the minimum element, pop/push/min should operate in O(1) time.
 
   search
+    divide-conquer
+      median of two sorted arrays with different lengths.
+      k-th element of two sorted arrays with different lengths.
     DFS
       crash-baloon
       ACM/ICPC problem,
+    BFS
+      Conway slide puzzle.
+      link-siblings in a complete binary trees in the same level.
+    LCS
+      Longest common subsequence.
 
-      subset-sum
+  subset-sum
       The subset-sum is a typical DP problem, but there exits brute-force DFS solution.
 
   sort-classes
     This is a topology sort problem.
 
-search/scan
-  majority-vote
-    Boyer-moore majority vote problem
+search
+  scan
+    majority-vote
+      Boyer-moore majority vote problem
 
-  max-sum
-    the maximum sum in a list (Jon Bentley, Programming pearls, Column 7)
+    max-sum
+      the maximum sum in a list (Jon Bentley, Programming pearls, Column 7)
 
-  palindrome
-    The Manacher's algorithm to find the longest palindrome string.
+    palindrome
+      The Manacher's algorithm to find the longest palindrome string.
 
-  rain-fill
-    Given a elevation map, compute how much water is able to trap after raining.
+    rain-fill
+      Given a elevation map, compute how much water is able to trap after raining.
+
+  binary-search/src
+    median.c
+      Find the median of two sorted arrays with different length. (Different approach than divide and conquer)
