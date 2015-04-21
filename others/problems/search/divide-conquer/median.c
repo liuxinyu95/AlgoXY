@@ -5,7 +5,7 @@
 /*
  * Find the meidan of two sorted arrays
  * For arrays, A of length m, and B of length n (index starts from 1)
- * Find the median by using find the k-th element method.
+ * Find the median by using the k-th element method.
  * Where
  *    median = k-th(A, B, k), k = floor(m + n) / 2 + 1) if m + n is odd
  *    median = (k-th(A, B, k) + k-th(A, B, k-1)) / 2 if m + n is even
