@@ -2,6 +2,26 @@
 #include <stdio.h>
 #include <math.h>
 
+/*
+ * Find the meidan of two sorted arrays
+ * For arrays, A of length m, and B of length n (index starts from 1)
+ * Find the median by using find the k-th element method.
+ * Where
+ *    median = k-th(A, B, k), k = floor(m + n) / 2 + 1) if m + n is odd
+ *    median = (k-th(A, B, k) + k-th(A, B, k-1)) / 2 if m + n is even
+ *
+ * In order to find the k-th element in A, and B
+ * Suppose m >= n, (exchange A, B otherwise)
+ * If B is empty, return the k-th element in A;
+ * If k = 1, return the minimum of A[1] and B[1]
+ * Otherwise, guess j = min(k/2, n), and i = k - j
+ * then compare A[i] and B[j]
+ * If A[i] < B[j], Drop all elements before A[i] and after B[j], then
+ * recursively find the (k - i)-th element in the rest.
+ * Othewise, Drop all elements before B[j] and after A[i], then recursively
+ * find the (k-j)-th element in the rest.
+ */
+
 #define N 10
 #define min(a, b) (a < b ? a : b)
 
@@ -20,7 +40,7 @@ int kth(int A[], int m, int B[], int n, int k) {
 double median(int A[], int m, int B[], int n) {
     int k = (m + n) / 2;
     double x = (double) kth(A, m, B, n, k + 1);
-    if (!((m + n) & 0x1)) /*odd*/
+    if (!((m + n) & 0x1)) /* even */
         x = (x + (double) kth(A, m, B, n, k) / 2.0;
     return x;
 }

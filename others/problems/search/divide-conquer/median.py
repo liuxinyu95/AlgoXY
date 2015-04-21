@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+# Find the median of two sorted arrays.
 # Recursive solution
 
 # For the two arrays A and B:
