@@ -21,26 +21,31 @@ def maxsum(xs):
 # solution 2: sub-set sum like DP solution
 def maxsum2(xs):
     n = len(xs)
-    if n <= 2:
-        return 0 if not xs else max(xs)
-    low = min(xs)
-    up = sum(xs)
-    if low == up:
-        return low
-    tab = [-1 for _ in xrange(up - low)] #-1: empty, else: the last selected index
+    m = 0 if not xs else max(xs)
+    if m == 0 or n <= 2:
+        return m;
+    s = sum(xs)
+    tab = [set() for _ in xrange(s)] #record the indices for the subset
     for i in xrange(n):
-        tab[xs[i] - low] = i
+        tab[xs[i]].add(tuple([i]))
     for i in xrange(n):
-        for v in xrange(up - low):
+        for v in xrange(s):
             v1 = v - xs[i]
-            if 0 <= v1 and v1 < up - low and tab[v1] not in [-1, i, i-1, i+1]:
-                tab[v] = i
-    for v in reversed(xrange(up - low)):
-        if tab[v] != -1:
-            return v + low
+            if 0 <= v1 and tab[v1]:
+                tab[v] = tab[v] | fromlist([tuple(sorted([i] + list(t))) for t in tab[v1] if not adjacent(i, t)])
+    for v in reversed(xrange(s)):
+        if tab[v]:
+            print tab[v]
+            return v
     return 0
 
-N = 10
+def fromlist(xs):
+    return set(tuple(sorted(xs)))
+
+def adjacent(i, t):
+    return i in t or (i-1) in t or (i+1) in t
+
+N = 20  # as solution 2 is very slow, don't set N too big.
 
 def test():
     for _ in xrange(N):
