@@ -35,7 +35,7 @@ def maxsum2(xs):
                 tab[v] = tab[v] | fromlist([tuple(sorted([i] + list(t))) for t in tab[v1] if not adjacent(i, t)])
     for v in reversed(xrange(s)):
         if tab[v]:
-            print tab[v]
+            #print tab[v]
             return v
     return 0
 
