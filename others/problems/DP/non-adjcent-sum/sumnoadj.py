@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+import random # for verification
+
 # maximum sum of non-adjacent numbers.
 
 # solution 1:
@@ -38,14 +40,13 @@ def maxsum2(xs):
             return v + low
     return 0
 
+N = 10
+
 def test():
-    check([])
-    check([1])
-    check([1, 2])
-    check([1, 2, 3])
-    check([1, 2, 3, 4])
-    check([0, 0, 0])
-    check([1, 1, 1])
+    for _ in xrange(N):
+        n = random.randint(0, N)
+        xs = [random.randint(0, N) for _ in xrange(n)]
+        check(xs)
 
 def check(xs):
     s, s1 = maxsum(xs), maxsum2(xs)
