@@ -1,3 +1,19 @@
+-- MaxSum.hs
+-- Copyright (C) 2015 Liu Xinyu (liuxinyu95@gmail.com)
+-- 
+-- This program is free software: you can redistribute it and/or modify
+-- it under the terms of the GNU General Public License as published by
+-- the Free Software Foundation, either version 3 of the License, or
+-- (at your option) any later version.
+-- 
+-- This program is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-- GNU General Public License for more details.
+-- 
+-- You should have received a copy of the GNU General Public License
+-- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 -- Max sum of non-adjacent elements
 
 module MaxSum where
@@ -18,9 +34,8 @@ maxsum2 xs = max a b where
 -- lazy infinite recursive definition similiar to Fibonacci
 maxsums [] = [0]
 maxsums [x] = [0, x]
-maxsums [x, y] = [0, x, max x y]
-maxsums (x:y:xs) = ms where
-  ms = 0 : x : (max x y) : zipWith3 (\x' m m' -> max (x' + m) m') xs (tail ms) (drop 2 ms)
+maxsums (x:xs) = ms where
+  ms = 0 : x : zipWith3 (\x' m m' -> max (x' + m) m') xs ms (tail ms)
 
 prop_maxsum :: [Int] -> Bool
 prop_maxsum xs = let ns = take 20 $ map (abs . (`mod` 100)) xs in maxsum ns == maxsum2 ns
