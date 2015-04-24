@@ -18,6 +18,10 @@ def maxsum(xs):
         i, e = x + e, max(i, e)
     return max(i, e)
 
+# variant of soluiton 1: folding
+def maxsum1(xs):
+    return max(reduce(lambda (i, e), n: (n + e, max(i, e)), xs, (0, 0)))
+
 # solution 2: sub-set sum like DP solution
 def maxsum2(xs):
     n = len(xs)
