@@ -1,4 +1,4 @@
-IMG_OBJECTS = 
+IMG_OBJECTS =
 DOT_OBJECTS = tree-array-map-tree tree-array-map-array \
 heapify-1 heapify-2 heapify-3 build-heap-array build-heap-1 \
 build-heap-2 build-heap-3 build-heap-4 build-heap-5 build-heap-6 \
@@ -18,7 +18,7 @@ all: convert dot
 
 convert: $(IMG_OBJECTS)
 
-# for details, refer to: 
+# for details, refer to:
 #    http://www.gnu.org/software/autoconf/manual/make/
 # Makefile syntax, replace each '%' to 'eps
 $(IMG_OBJECTS): % : %.eps
@@ -34,7 +34,7 @@ $(DOT_OBJECTS): % : %.ps
 
 # Makefile auto variable: $< first prerequisite, $@ target
 %.ps : %.dot
-	dot -Tps -o $@ $<
+	dot -Gsize="8,10.5" -Tps -o $@ $<
 
 png: $(PNG_OBJECTS)
 
