@@ -221,24 +221,24 @@ $1, 2, 4, 8, ..., 2^i, ...$.
 \EndFunction
 \end{algorithmic}
 
-虽然\textproc{Heapify}算法的复杂度为$O(\lg n)$，但是\textproc{Build-Heap}的复杂度不是$O(n \lg n)$，而是线性时间$O(n)$的。我们跳过了所有的叶子节点，最多有一半的节点被比较并向下移动一次；最多有$1/4$的节点被比较并向下移动两次；最多有$1/8$的节点被比较并向下移动三次……总共比较和移动次数的上限为：
+虽然\textproc{Heapify}算法的复杂度为$O(\lg n)$，但是\textproc{Build-Heap}的复杂度不是$O(n \lg n)$，而是线性时间$O(n)$的。我们跳过了所有的叶子节点，最多有$1/4$一半的节点被比较并向下移动一次；最多有$1/8$的节点被比较并向下移动两次；最多有$1/16$的节点被比较并向下移动三次……总共比较和移动次数的上限为：
 
 \be
-S = n (\frac{1}{2} + 2 \frac{1}{4} + 3 \frac{1}{8} + ...)
+S = n (\frac{1}{4} + 2 \frac{1}{8} + 3 \frac{1}{16} + ...)
 \label{eq:build-heap-1}
 \ee
 
 将两侧都乘以2：
 
 \be
-2S = n (1 + 2 \frac{1}{2} + 3 \frac{1}{4} + 4 \frac{1}{8} + ...)
+2S = n (\frac{1}{2} + 2 \frac{1}{4} + 3 \frac{1}{8} + ...)
 \label{eq:build-heap-2}
 \ee
 
 用式（\ref{eq:build-heap-2}）减去式（\ref{eq:build-heap-1}），我们有：
 
 \[
-S = n (1 + \frac{1}{2} + \frac{1}{4} + \frac{1}{8} + ...) = 2n
+S = n (\frac{1}{2} + \frac{1}{4} + \frac{1}{8} + ...) = n
 \]
 
 下面的C语言例子程序实现了堆构造算法：
@@ -281,48 +281,29 @@ void build_heap(Key* a, int n, Less lt) {
 % ================================================================
 \subsection{堆的基本操作}
 
-From the generic definition of heap (not necessarily the binary heap),
-It's essential to provides basic operations so that user can access
-the data and modify it.
+堆的通用定义要求我们提供一些基本操作使得用户可以获取或者改变数据。
 
-The most important operations include accessing the top element
-(find the minimum or maximum one), popping the top element
-from the heap, finding the top $n$ elements, decreasing a key (this
-is for min-heap, and it is increasing a key for max-heap), and
-insertion.
+最重要的操作包括获取顶部元素（查找最小或最大元素），弹出顶部元素，寻找最小（或最大）的前$k$个元素，减小某一元素的值（此操作对应最小堆，最大堆的相应操作是增加某一元素的值），以及插入新元素。
 
-For the binary tree, most of operations are bound to $O(\lg n)$ in
-worst-case, some of them, such as top is $O(1)$ constant time.
+对于用完全二叉树实现的堆，大部份操作的复杂度在最差情况下都是$O(\lg n)$的。有些操作，例如获取顶部元素，仅仅需要常数时间（$O(1)$）。
 
-\subsubsection{Access the top element (the minimum)}
-\index{Binary heap!top}
-We need provide a way to access the top element efficiently.
-For the binary tree realization, it is the
-root stores the minimum (maximum) value. This is the first
-element in the array.
+\subsubsection{获取顶部元素}
+\index{二叉堆!top}
+
+在用二叉树实现的堆中，根节点保存了最小（或最大）元素。根节点对应数组的第一个值。
 
 \begin{algorithmic}[1]
-\Function{TOP}{$A$}
+\Function{Top}{$A$}
   \State \Return $A[1]$
 \EndFunction
 \end{algorithmic}
 
-This operation is trivial. It takes $O(1)$ time.
-Here we skip the error handling for empty case. If the
-heap is empty, one option is to raise an error.
+这一简单操作是常数时间$O(1)$的。我们这里省略了对于空堆的错误处理。如果堆为空，我们可以返回一个错误。
 
-\subsubsection{Heap Pop}
-\index{Binary heap!pop}
+\subsubsection{弹出堆顶元素}
+\index{二叉堆!pop}
 
-Pop operation is more
-complex than accessing the top, because the heap property has to be maintained
-after the top element is removed.
-
-The solution is to apply \textproc{Heapify} algorithm to the
-next element after the root is removed.
-
-One simple but slow method based on this idea looks like
-the following.
+弹出操作比获取顶部元素要复杂一些。我们需要在移除顶部元素后，通过执行\textproc{Heapify}算法检查并恢复堆的性质。我们可以简单地给出下面的实现，但是它的性能并不好。
 
 \begin{algorithmic}[1]
 \Function{Pop-Slow}{$A$}
@@ -335,21 +316,11 @@ the following.
 \EndFunction
 \end{algorithmic}
 
-This algorithm firstly records the top element in $x$, then
-it removes the first element from the array, the size of
-this array is reduced by one. After that if the array isn't
-empty, \textproc{Heapify} will applied to the new array from
-the first element (It was previously the second one).
+这一算法首先用$x$记录下顶部元素，然后将数组中的第一个元素删除，数组的长度减一。如果此后数组不为空，就从新的第一个元素开始执行一次\textproc{Heapify}。
 
-Removing the first element from array takes $O(n)$ time,
-where $n$ is the length of the array. This is because
-we need shift all the rest elements one by one.
-This bottle neck slows the whole algorithm
-to linear time.
+从长度为$n$的数组中删除第一个元素需要线性时间$O(n)$。这是因为我们需要将所有剩余的元素依次向前移动一位。这一操作成为了整个算法的瓶颈，使得算法的复杂度升高了。
 
-In order to solve this problem, one alternative is
-to swap the first element with the last one in the
-array, then shrink the array size by one.
+为了解决这一问题，我们可以交换数组中的第一个和最后一个元素，然后将数组的长度减一。
 
 \begin{algorithmic}[1]
 \Function{Pop}{$A$}
@@ -364,12 +335,7 @@ array, then shrink the array size by one.
 \EndFunction
 \end{algorithmic}
 
-Removing the last element from the array takes
-only constant $O(1)$ time, and \textproc{Heapify} is bound to $O(\lg n)$.
-Thus the whole algorithm performs in $O(\lg n)$ time. The following
-example ANSI C program implements this algorithm\footnote{This program does not
-actually remove the last element, it reuse the last cell to store the popped
-result}.
+从数组的末尾删除最后一个元素仅需要常数时间$O(1)$，而\textproc{Heapify}算法的时间是$O(\lg n)$的。这样整体上弹出操作算法的复杂度为对数时间$O(\lg n)$。下面的C例子程序实现了这一算法\footnote{此程序并未删除最后一个元素，而是复用数组的最后一个cell来存储弹出的结果。}。
 
 \lstset{language=C}
 \begin{lstlisting}
@@ -380,12 +346,8 @@ Key pop(Key* a, int n, Less lt) {
 }
 \end{lstlisting}
 
-Since the top element is removed from the array, instead swapping,
-this program overwrites it with the last element before applying
-\textproc{Heapify}.
-
-\subsubsection{Find the top $k$ elements}
-\index{Binary heap!top-k}
+\subsubsection{寻找top $k$个元素}
+\index{二叉堆!top-k}
 
 With pop defined, it is easy to
 find the top $k$ elements from array.
