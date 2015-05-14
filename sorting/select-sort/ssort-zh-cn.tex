@@ -152,11 +152,7 @@ A' = A - \{ m \}
 实际实践一下，我们会发现，如果不对比较过的葡萄做记号，很快就会搞乱，我们会忘记哪些葡萄比较过了，哪些还没有。有两种方法可以解决这一问题，它们分别适合不同的数据结构。
 
 \subsection{标记}
-Method 1 is to label each grape with a number: $\{1, 2, ..., N\}$, and we systematically
-perform the comparison in the order of this sequence of labels. That we first
-compare grape number 1 and grape number 2, pick the bigger one; then we take grape
-number 3, and do the comparison, ... We repeat this process until arrive at
-grape number $N$. This is quite suitable for elements stored in an array.
+第一种方法是将葡萄标记上编号，例如：$\{1, 2, ..., n\}$，然后按照编号的顺序进行比较。先比较第一号葡萄和第二号葡萄，选择较大的留下；然后用第三号葡萄做比较……重复这一步骤直到第$n$号葡萄。标记方法很适合处理数组。
 
 \begin{algorithmic}
 \Function{Min}{$A$}
@@ -170,13 +166,9 @@ grape number $N$. This is quite suitable for elements stored in an array.
 \EndFunction
 \end{algorithmic}
 
-With \textproc{Min} defined, we can complete the basic version of selection sort
-(or naive version without any optimization in terms of time and space).
+使用\textproc{Min}函数，我们可以最终完成基本的选择排序（没有任何空间和时间上的优化）。
 
-However, this algorithm returns the value of the minimum element instead of its
-location (or the label of the grape), which needs a bit tweaking for the in-place version.
-Some languages such as ISO C++, support returning the reference as result, so that the
-swap can be achieved directly as below.
+上述查找最小元素的方法返回的是元素的值而非它的位置（葡萄的编号），如果要实现in-place排序，还需要做一些调整。某些语言，如C++支持返回引用作为结果，因此可以直接实现元素的交换。
 
 \lstset{language=C++}
 \begin{lstlisting}
@@ -191,14 +183,12 @@ T& min(T* from, T* to) {
 
 template<typename T>
 void ssort(T* xs, int n) {
-    int i;
-    for (i = 0; i < n; ++i)
+    for (int i = 0; i < n; ++i)
         std::swap(xs[i], min(xs+i, xs+n));
 }
 \end{lstlisting}
 
-In environments without reference semantics, the solution is to return the location
-of the minimum element instead of the value:
+在不支持引用语意的环境中，可以返回元素的位置，而不是值作为结果。
 
 \begin{algorithmic}
 \Function{Min-At}{$A$}
@@ -212,13 +202,9 @@ of the minimum element instead of the value:
 \EndFunction
 \end{algorithmic}
 
-Note that since we pass $A[i...]$ to \textproc{Min-At} as the argument, we assume the first
-element $A[i]$ as the smallest one, and examine all elements $A[i+1], A[i+2], ...$ one by one.
-Function \textproc{First-Index}() is used to retrieve $i$ from the input parameter.
+由于传入\textproc{Min-At}的数组实际是$A$的片断$A[i...]$，我们假设第一个元素$A[i]$是最小的一个，并且逐一检查元素$A[i+1], A[i+2], ...$。函数\textproc{First-Index}()用于从参数中获取索引$i$。
 
-The following Python example program, for example, completes the basic in-place
-selection sort algorithm based on this idea. It explicitly passes the range information
-to the function of finding the minimum location.
+下面的Python例子程序，根据这一思路实现了基本的in-place选择排序算法。它直接将数组片断的信息传入，并使用最小元素的位置。
 
 \lstset{language=Python}
 \begin{lstlisting}
@@ -237,26 +223,14 @@ def min_at(xs, i, n):
     return m
 \end{lstlisting}
 
-\subsection{Grouping}
-\index{selection sort!tail-recursive call minimum finding}
-Another method is to group all grapes in two parts: the group we have examined, and the rest we
-haven't. We denote these two groups as $A$ and $B$; All the elements (grapes) as $L$.
-At the beginning, we haven't examine any grapes at all, thus $A$ is empty ($\phi$), and
-$B$ contains all grapes. We can select arbitrary two grapes from $B$, compare them, and
-put the loser (the smaller one for example) to $A$. After that, we repeat this process
-by continuously picking arbitrary grapes from $B$, and compare with the winner of the
-previous time until $B$ becomes empty. At this time being, the final winner is the
-minimum element. And $A$ turns to be $L - \{min(L)\}$, which can be used for the next
-time minimum finding.
+\subsection{分组}
+\index{选择排序!尾递归查找最小值}
 
-There is an invariant of this method, that at any time, we have $L = A \cup \{m\} \cup B$,
-where $m$ is the winner so far we hold.
+另外一种方法是将全部葡萄分成两部份：一组包含已经检查并比较过的所有葡萄，另外一组包含剩余未比较过的。记这两组葡萄为$A$和$B$、全部的元素（葡萄）为$L$。在开始的时候，我们尚未处理任何葡萄，因此$A$为空（$\phi$），$B$包含全部葡萄。我们可以从$B$中任选两颗葡萄进行比较，然后将较小的一颗放入$A$。此后我们不断从$B$中选择葡萄，和上次比较的获胜者（较大的一颗）对比直到$B$变成空。这时，最后的获胜者就是最小的元素，而$A$中包含$L - \{min(L)\}$，可以用于下一轮的最小值查找。
 
-This approach doesn't need the collection of grapes being indexed (as being labeled
-in method 1). It's suitable for any traversable data structures, including linked-list
-etc. Suppose $b_1$ is an arbitrary element in $B$ if $B$ isn't empty, and $B'$ is
-the rest of elements with $b_1$ being removed,
-this method can be formalized as the below auxiliary function.
+这一方法的不变关系（invariant）为：在任何时候我们有：$L = A \cup \{m\} \cup B$，其中$m$为目前找到的获胜者。
+
+这一方法无需对葡萄进行编号。它适用于任何可被遍历的数据结构，包括链表等。令$b_1$为非空序列$B$中的任一元素，$B'$为除$b_1$外的剩余元素，上述方法可以形式化为如下函数。
 
 \be
 min'(A, m, B) =  \left \{
@@ -269,19 +243,13 @@ min'(A, m, B) =  \left \{
 \right.
 \ee
 
-In order to pick the minimum element, we call this auxiliary function by passing
-an empty $A$, and use an arbitrary element (for instance, the first one)
-to initialize $m$:
+为了选出最小元素，我们调用这一函数并传入空序列$A$。选取任何元素（例如第一个）来初始化$m$：
 
 \be
 extractMin(L) = min'(\phi, l_1, L')
 \ee
 
-Where $L'$ is all elements in $L$ except for the first one $l_1$. The algorithm
-$extractMin)$ doesn't not only find the minimum element, but also returns the
-updated collection which doesn't contain this minimum. Summarize this minimum
-extracting algorithm up to the basic selection sort definition, we can create
-a complete functional sorting program, for example as this Haskell code snippet.
+其中$L'$包含$L$中除$l_1$以外的剩余元素。算法$extractMin$不仅查找最小元素，还返回剩余元素以用于接下来的排序。下面的Haskell例子程序实现了这一算法。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
