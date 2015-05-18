@@ -873,74 +873,51 @@ void tsort(Key* xs, int n) {
 
 算法首先使用$O(n)$时间构建一棵锦标赛树，然后执行$n$次弹出操作，逐一从数种取出剩余元素的最大值。因为每次弹出操作的性能为$O(\lg n)$，所以锦标赛淘汰法排序的总体性能为$O(n \lg n)$。
 
-\subsubsection{Refine the tournament knock out}
-\index{Tounament knock out!explict infinity}
-It's possible to design the tournament knock out algorithm in purely functional approach. And we'll see
-that the two passes (first top-down replace the champion with $-\infty$, then bottom-up determine the
-new champion) in pop operation can be combined in recursive manner, so that we needn't the parent field
-any more. We can re-use the functional binary tree definition as the following example Haskell code.
+\subsubsection{锦标赛淘汰法的细节改进}
+\index{Tounament knock out!显式无穷}
+
+锦标赛淘汰法也可以用纯函数式的方式实现。我们会看到弹出操作中的两遍处理过程（第一遍自顶向下将冠军替换为$-\infty$；第二遍自底向上查找新的冠军）可以通过递归合并起来。于是不再需要存储父节点的引用。我们可以复用函数式的二叉树定义，如下面的例子Haskell代码所示：
 
 \lstset{language=Haskell}
 \begin{lstlisting}
 data Tr a = Empty | Br (Tr a) a (Tr a)
 \end{lstlisting}
 
-Thus a binary tree is either empty or a branch node contains a key, a left sub tree and a right sub tree.
-Both children are again binary trees.
+一棵二叉树或者为空，或者为一个分支节点，包含一个key和左右子树。每棵子树都是一棵二叉树。
 
-We've use hard coded big negative number to represents $-\infty$. However, this solution is ad-hoc, and
-it forces all elements to be sorted are greater than this pre-defined magic number. Some programming
-environments support algebraic type, so that we can define negative infinity explicitly. For instance,
-the below Haskell program setups the concept of infinity \footnote{The order of the definition of `NegInf',
-regular number, and `Inf' is significant if we want to derive the default, correct comparing behavior of `Ord'.
-Anyway, it's possible to specify the detailed order by make it as an instance of `Ord'. However, this is
-Language specific feature which is out of the scope of this book. Please refer to other textbook about Haskell.}.
+此前，我们使用一个较大的负整数来表示$-\infty$。但是这个方法是临时性的，有诸多不便。某些编程环境支持代数类型，这样就可以明确定义负无穷。例如下面的Haskell程序建立了无穷的定义\footnote{如果希望直接使用默认的\texttt{Ord}来比较大小，则需要按照负无穷、普通数字和正无穷的顺序来声明。当然，也可以将我们的类型声明为\texttt{Ord}的一个instance，然后给出大小比较的规则。这些是语言特有的性质，超出了本书的范围。读者可以参考其他Haskell资料}.。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
 data Infinite a = NegInf | Only a | Inf deriving (Eq, Ord)
 \end{lstlisting}
 
-From now on, we switch back to use the $min()$ function to determine the winner, so that the tournament selects the minimum
-instead of the maximum as the champion.
+接下来的部份，我们使用$min()$函数来决定比赛的胜者，相应的锦标赛树选择最小的元素作为冠军。
 
-Denote function $key(T)$ returns the key of the tree rooted at $T$. Function $wrap(x)$ wraps the element
-$x$ into a leaf node. Function $tree(l, k, r)$ creates a branch node, with $k$ as the key, $l$ and $r$
-as the two children respectively.
+记函数$key(T)$返回树$T$根节点的key。函数$wrap(x)$将元素$x$装入一个叶子节点。函数$tree(l, k, r)$构造一个分支节点。其中$k$是key，$l$和$r$分别是左右分支。
 
-The knock out process, can be represented as comparing two trees, picking the smaller key as the new
-key, and setting these two trees as children:
+在淘汰过程中，我们比较两棵树，选择较小的key作为新节点的key，进行比较的两棵树作为左右子树。
 
 \be
 branch(T_1, T_2) = tree(T_1, min(key(T_1), key(T_2)), T_2)
 \ee
 
-This can be implemented in Haskell word by word:
+对应的Haskell例子代码为：
 
 \lstset{language=Haskell}
 \begin{lstlisting}
 branch t1 t2 = Br t1 (min (key t1) (key t2)) t2
 \end{lstlisting}
 
-There is limitation in our tournament sorting algorithm so far. It only accepts collection of elements
-with size of $2^m$, or we can't build a complete binary tree. This can be actually solved in the tree
-building process. Remind that we pick two trees every time, compare and pick the winner. This is perfect
-if there are always even number of trees. Considering a case in football match, that one team is absent
-for some reason (sever flight delay or whatever), so that there left one team without a challenger.
-One option is to make this team the winner, so that it will attend the further games. Actually, we can
-use the similar approach.
+此前的锦标赛排序算法有一个限制。它要求待排序的元素个数必须是$2^m$，否则我们无法构造一棵完全二叉树。现在考虑如何克服这一问题。每次我们都选出两棵数，比较并且选择较大的。如果树的总数目为偶数，我们总能不断选出两棵。在真正的足球比赛中，如果某支球队因故缺席了比赛（例如航班延误），则会有一支球队没有对手。可以规定这支球队为胜者，直接进入接下来的比赛。我们完全可以使用类似的方法。
 
-To build the tournament tree from a list of elements, we wrap every element into a leaf, then start the
-building process.
+我们首先将所有元素装入一个叶子节点，然后开始构造锦标赛树。
 
 \be
 build(L) = build'(\{wrap(x) | x \in L\})
 \ee
 
-The $build'(\mathbb{T})$ function terminates when there is only one tree left in $\mathbb{T}$, which
-is the champion. This is the trivial edge case. Otherwise, it groups every two trees in a pair to determine
-the winners. When there are odd numbers of trees, it just makes the last tree as the winner to attend the
-next level of tournament and recursively repeats the building process.
+函数$build'(\mathbb{T})$中，如果列表$\mathbb{T}$中仅有一棵树，则此树就是最终结果。否则，它将每两棵树分成一组，然后决定胜者。如果有奇数棵树，就规定最后一棵树为胜者，可以进入下一轮比赛。然后我们递归调用这一构造算法。
 
 \be
 build'(\mathbb{T}) = \left \{
@@ -952,11 +929,9 @@ build'(\mathbb{T}) = \left \{
 \right.
 \ee
 
-Note that this algorithm actually handles another special cases, that the list to be sort is empty.
-The result is obviously empty.
+这一算法还能处理另外一种特殊情况：如果待排序的列表为空，则结果也为空。
 
-Denote $\mathbb{T} = \{ T_1, T_2, ...\}$ if there are at least two trees, and $\mathbb{T}'$ represents
-the left trees by removing the first two. Function $pair(\mathbb{T})$ is defined as the following.
+如果列表中至少有两棵树，记$\mathbb{T} = \{ T_1, T_2, ...\}$，而$\mathbb{T}'$表示除最初两棵树外的剩余树。函数$pair(\mathbb{T})$定义如下：
 
 \be
 pair(\mathbb{T}) = \left \{
@@ -968,7 +943,7 @@ pair(\mathbb{T}) = \left \{
 \right.
 \ee
 
-The complete tournament tree building algorithm can be implemented as the below example Haskell program.
+下面的Haskell例子代码给出了构造锦标赛树的完整程序。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -981,10 +956,7 @@ fromList = build . (map wrap) where
   pair ts = ts
 \end{lstlisting} %$
 
-When extracting the champion (the minimum) from the tournament tree, we need examine either the left child
-sub-tree or the right one has the same key, and recursively extract on that tree until arrive at the leaf
-node. Denote the left sub-tree of $T$ as $L$, right sub-tree as $R$, and $K$ as its key. We can define this popping
-algorithm as the following.
+为了从锦标赛树中取得冠军（最小元素），我们检查左右子树，看哪一棵子树的key和根节点的key相等。然后递归地从子树中取出冠军直到到达叶子节点。记$T$的左子树为$L$，右子树为$R$，$K$为key，弹出算法可以定义如下：
 
 \be
 pop(T) =  \left \{
@@ -997,7 +969,7 @@ pop(T) =  \left \{
 \right.
 \ee
 
-It's straightforward to translate this algorithm into example Haskell code.
+下面的Haskell例子代码实现了弹出算法。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -1006,20 +978,19 @@ pop (Br l k r) | k == key l = let l' = pop l in Br l' (min (key l') (key r)) r
                | k == key r = let r' = pop r in Br l (min (key l) (key r')) r'
 \end{lstlisting}
 
-Note that this algorithm only removes the current champion without returning it. So it's necessary to
-define a function to get the champion at the root node.
+注意这一算法仅仅将冠军元素删除而没有返回，因此有必要定义另外一个函数从根节点提取冠军元素。
 
 \be
 top(T) = key(T)
 \ee
 
-With these functions defined, tournament knock out sorting can be formalized by using them.
+使用这些定义好的函数，锦标赛淘汰排序法可以形式化为下面的等式：
 
 \be
 sort(L) = sort'(build(L))
 \ee
 
-Where $sort'(T)$ continuously pops the minimum element to form a result list
+其中$sort'(T)$不断从锦标赛树中弹出最小的元素：
 
 \be
 sort'(T) = \left \{
@@ -1032,7 +1003,7 @@ sort'(T) = \left \{
 \label{eq:tsort}
 \ee
 
-The rest of the Haskell code is given below to complete the implementation.
+下面的Haskell例子程序实现了完整的锦标赛淘汰排序算法。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -1045,8 +1016,7 @@ tsort = sort' . fromList where
     sort' t = (top t) : (sort' $ pop t)
 \end{lstlisting} %$
 
-And the auxiliary function \verb|only|, \verb|key|, \verb|wrap| accomplished with explicit infinity support are list
-as the following.
+其中用以支持无穷类型的辅助函数\texttt{only}、\texttt{key}和\texttt{wrap}定义如下：
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -1057,20 +1027,20 @@ wrap x = Br Empty (Only x) Empty
 
 \begin{Exercise}
   \begin{itemize}
-    \item Implement the helper function \verb|leaf()|, \verb|branch|, \verb|max()| \verb|lsleaf()|, and \verb|release()| to complete the imperative tournament tree program.
-    \item Implement the imperative tournament tree in a programming language support GC (garbage collection).
-    \item Why can our tournament tree knock out sort algorithm handle duplicated elements (elements with same value)? We say a sorting algorithm stable, if it keeps the original order of elements with same value. Is the tournament tree knock out sorting stable?
-    \item Design an imperative tournament tree knock out sort algorithm, which satisfies the following:
+    \item 实现命令式锦标赛淘汰法中的辅助函数\texttt{leaf()}、\texttt{branch}、\texttt{max()}、\texttt{isleaf()}和\texttt{release()}。
+    \item 在一门支持垃圾回收（GC）的语言中实现命令式的锦标赛淘汰法排序程序。
+    \item 为什么我们的锦标赛树淘汰法排序程序可以处理重复元素（元素的值相等）？如果相等元素的顺序经过排序后保持不变，我们称之为稳定排序。锦标赛树淘汰法排序是稳定排序么？
+    \item 设计一个命令式的锦标赛淘汰排序算法，满足下面的条件：
       \begin{itemize}
-        \item Can handle arbitrary number of elements;
-        \item Without using hard coded negative infinity, so that it can take elements with any value.
+        \item 可以处理任意数目的元素；
+        \item 不适用硬编码（hard code）的大负整数，可以处理任意值的元素。
       \end{itemize}
-    \item Compare the tournament tree knock out sort algorithm and binary tree sort algorithm, analyze efficiency both in time and space.
-    \item Compare the heap sort algorithm and binary tree sort algorithm, and do same analysis for them.
+    \item 比较锦标赛树淘汰算法和二叉搜索树排序算法，分析它们的时间和空间效率。
+    \item 比较堆排序算法和二叉搜索树排序算法，分析它们的时间和空间效率。
   \end{itemize}
 \end{Exercise}
 
-\subsection{Final improvement by using heap sort}
+\subsection{使用堆排序进行最后的改进}
 
 We manage improving the performance of selection based sorting to $O(n \lg n)$ by using tournament knock out.
 This is the limit of comparison based sort according to \cite{TAOCP}. However, there are still rooms for improvement.
