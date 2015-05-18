@@ -653,108 +653,70 @@ csort' xs = cocktail [] xs [] where
 
 \section{本质改进}
 
-Although cock-tail sort halves the numbers of loop, the performance is still bound to quadratic time.
-It means that, the method we developed so far handles big data poorly compare to other divide and conquer
-sorting solutions.
+虽然鸡尾酒排序将循环次数减半，但是性能仍然式平方级的。如果待序列很大，和其他分而治之的排序相比，选择排序的性能明显落后。
 
-To improve selection based sort essentially, we must analyze where is the bottle-neck. In order to sort
-the elements by comparison, we must examine all the elements for ordering. Thus the outer loop of selection
-sort is necessary. However, must it scan all the elements every time to select the minimum? Note that
-when we pick the smallest one at the first time, we actually traverse the whole collection, so that
-we know which ones are relative big, and which ones are relative small partially.
+为了从本质上改进选择排序，我们必须分析瓶颈出现在哪里。为了通过比较大小进行排序，必须检查所有元素间的大小顺序。因此外重循环是必须的。但是为了选出最小元素，我们必须每次都扫描全部元素么？当查找第一个最小元素时，我们实际遍历了全部的序列，因此我们知道哪些元素相对较小，哪些元素相对较大。
 
-The problem is that, when we select the further minimum elements, instead of re-using the ordering information
-we obtained previously, we drop them all, and blindly start a new traverse.
+问题在于当查找后继的最小元素时，我们没有复用这些已经获取到的关于相对大小的信息。而是从零开始，又盲目地进行遍历。
 
-So the key point to improve selection based sort is to re-use the previous result. There are several approaches,
-we'll adopt an intuitive idea inspired by football match in this chapter.
+提高选择排序的关键点在于重用已有的结果。存在几种不同的方法，其中一种是从足球比赛中得到启发的。
 
-\subsection{Tournament knock out}
+\subsection{锦标赛淘汰法}
 \index{Trounament knock out}
-The football world cup is held every four years. There are 32 teams from different continent
-play the final games. Before 1982, there were 16 teams compete for the tournament finals\cite{wiki-wc}.
 
-For simplification purpose, let's go back to 1978 and imagine a way to determine the champion:
-In the first round, the teams
-are grouped into 8 pairs to play the game; After that, there will be 8 winner, and 8 teams will
-be out. Then in the second round, these 8 teams are grouped into 4 pairs. This time there
-will be 4 winners after the second round of games; Then the top 4 teams are divided into
-2 pairs, so that there will be only two teams left for the final game.
+足球世界杯每四年举办一次。来自各个大洲的32支球队最终进入决赛。1982年前，决赛节点只有16支球队\cite{wiki-wc}。
 
-The champion is determined after the total 4 rounds of games. And there are actually $8+4+2+1 = 16$
-games. Now we have the world cup champion, however, the world cup game won't finish at this stage,
-we need to determine which is the silver medal team.
+简单起见，让我们回到1978年，并且想像一种特殊的方法来决定谁是冠军：在第一轮比赛中，所有参赛球队被分为8对进行比赛；比赛产生8支获胜球队，其余8支被淘汰。接下来，在第二轮比赛中，8支球队被分成4对。比赛产生4支获胜球队；然后这4支球队分成两对，比赛产生最终的两支球队争夺冠军。
 
-Readers may argue that isn't the team beaten by the champion at the final game the second best?
-This is true according to the real world cup rule. However, it isn't fair enough in some sense.
+经过4轮比赛，冠军就可产生。总共的比赛场次为：$8+4+2+1 = 16$。但是我们并不满足仅仅知道谁是冠军，我们还想知道哪支球队是亚军。
 
-We often heard about the so called `group of death', Let's suppose that Brazil team is
-grouped with Deutch team at the very beginning. Although both teams are quite strong, one of
-them must be knocked out. It's quite possible that even the team loss that game can beat
-all the other teams except for the champion. Figure \ref{fig:tournament-tree-1} illustrates such
-case.
+有人会问最后一场比赛中被冠军击败的队伍不是亚军么？在真实的世界杯中，的确如此。但是这个规则在某种程度上并不公平。
+
+我们常常听说过“死亡之组”，假设巴西对一开始就和荷兰队进行比赛。虽然它们两个都是强队，但是必须有一支在一上来就被淘汰。这支被淘汰的球队，很可能打败除冠军外的其他所有球队。图\ref{fig:tournament-tree-1}描述了这一情况。
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[scale=0.25]{img/tournament-tree-1.ps}
-  \caption{The element 15 is knocked out in the first round.}
+  \includegraphics[scale=0.6]{img/tournament-tree-1.ps}
+  \caption{元素15在第一轮就被淘汰。}
   \label{fig:tournament-tree-1}
 \end{figure}
 
-Imagine that every team has a number. The bigger the number, the stronger the team. Suppose
-that the stronger team always beats the team with smaller number, although this is not true
-in real world. But this simplification is fair enough for us to develop the tournament knock
-out solution. This maximum number which represents the champion is 16. Definitely, team with
-number 14 isn't the second best according to our rules. It should be 15, which is knocked
-out at the first round of comparison.
+假设每支队伍有一个代表其实力实例的数字。数字越大，实力越强。假设数字较大的队永远会战胜数字较小的队。虽然现实中不会这样，但是我们可以由此简化模型，给出一个锦标赛淘汰法的实现。代表冠军的数字为16,根据假设的规则，数字14不是亚军，而是在第一轮就被淘汰的15.
 
-The key question here is to find an effective way to locate the second maximum number in this
-tournament tree. After that, what we need is to apply the same method to select the third,
-the fourth, ..., to accomplish the selection based sort.
+我们需要找到一种快速的方法在锦标赛树中找到第二个最大值。此后，我们只要不断重复这一方法，逐一找出第三大，第四大……就可以完成基于选择的排序。
 
-One idea is to assign the champion a very small number (for instance, $-\infty$),
-so that it won't be selected next time, and the second best one, becomes the new champion.
-However, suppose there are $2^m$ teams for some natural number $m$, it still takes
-$2^{m-1} + 2^{m-2} + ... + 2 + 1 = 2^m$ times of comparison to determine the new
-champion. Which is as slow as the first time.
+一种办法是，把冠军的数字编程一个很小的值（例如$-\infty$），这样以后它就不会被选中，这样第二名就会成为新的冠军。但是，假设有$2^m$支球队，其中$m$是某个自然数，仍然需要$2^{m-1} + 2^{m-2} + ... + 2 + 1 = 2^m$次比较才能产生新的冠军，这和第一次寻找冠军花费的代价相同。
 
-Actually, we needn't perform a bottom-up comparison at all since the tournament tree
-stores plenty of ordering information. Observe that, the second best team must
-be beaten by the champion at sometime, or it will be the final winner. So we
-can track the path from the root of the tournament tree to the leaf of the
-champion, examine all the teams along with this path to find the second best team.
+实际上，我们无需再进行自底向上的比较。锦标赛树中保存了足够的顺序信息。注意实力第二强的队，一定在某个时刻被冠军击败，否则它就会是最终的冠军。因此我们可以从锦标赛树的根节点出发，沿着产生冠军的路径向叶子方向遍历，在这条路径上寻找第二强的队。
 
-In figure \ref{fig:tournament-tree-1}, this path is marked in gray color, the elements
-to be examined are $\{14, 13, 7, 15\}$. Based on this idea, we refine the algorithm
-like below.
+图\ref{fig:tournament-tree-1}中，这条路径被标记为灰色，需要检查的元素包括$\{14, 13, 7, 15\}$，根据这一思想，我们将算法调整如下：
 
 \begin{enumerate}
-\item Build a tournament tree from the elements to be sorted, so that the champion (the maximum) becomes the root;
-\item Extract the root from the tree, perform a top-down pass and replace the maximum with $-\infty$;
-\item Perform a bottom-up back-track along the path, determine the new champion and make it as the new root;
-\item Repeat step 2 until all elements have been extracted.
+\item 从待排序元素构建一棵锦标赛树，冠军（最大值）位于树根；
+\item 取出树根，自顶向下沿着冠军路径将最大值替换为$-\infty$；
+\item 自底向上沿着刚才的路径回溯，找出新的冠军，并将其置于树根；
+\item 重复步骤2，直到所有的元素都被取出。
 \end{enumerate}
 
-Figure \ref{fig:tournament-tree-2}, \ref{fig:tournament-tree-3}, and \ref{fig:tournament-tree-4}
-show the steps of applying this strategy.
+图\ref{fig:tournament-tree-2}、图\ref{fig:tournament-tree-3}、和图\ref{fig:tournament-tree-4}给出了这一排序的各个步骤。
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[scale=0.25]{img/tournament-tree-2.ps}
+  \includegraphics[scale=0.6]{img/tournament-tree-2.ps}
   \caption{Extract 16, replace it with $-\infty$, 15 sifts up to root.}
   \label{fig:tournament-tree-2}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[scale=0.25]{img/tournament-tree-3.ps}
+  \includegraphics[scale=0.6]{img/tournament-tree-3.ps}
   \caption{Extract 15, replace it with $-\infty$, 14 sifts up to root.}
   \label{fig:tournament-tree-3}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[scale=0.25]{img/tournament-tree-4.ps}
+  \includegraphics[scale=0.6]{img/tournament-tree-4.ps}
   \caption{Extract 14, replace it with $-\infty$, 13 sifts up to root.}
   \label{fig:tournament-tree-4}
 \end{figure}
