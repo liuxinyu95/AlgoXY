@@ -297,23 +297,16 @@ def link(t1, t2):
 \end{Exercise}
 
 \subsubsection*{}
-We mentioned linking is a constant time algorithm and it is true
-when using left-child,
-right-sibling approach, However, if we use container to manage the
-children, the performance depends on the concrete implementation of
-the container. If it is plain array,
-the linking time will be proportion to the number of children. In this
-chapter, we assume the time is constant. This is true if the container
-is implemented in linked-list.
 
-\subsubsection{Insert a new element to the heap (push)}
-\index{Binomial heap!insertion}
-As the rank of binomial trees in a forest is monotonically increasing,
-by using the $link$ function defined above, it's possible to define an
-auxiliary function, so that we can insert a new tree, with rank no bigger
-than the smallest one, to the heap which is a forest actually.
+如果使用“左侧孩子，右侧兄弟”的实现，链接可以在常数时间完成，但是如果使用容器来存储子树，则性能依赖于容器的具体实现。如果容器是基于数组的，链接操作的时间和子树的数目成正比；而如果使用链表，则为常数时间。本章中，我们认为这一时间是常数的。
 
-Denote the non-empty heap as $H = \{T_1, T_2, ..., T_n\}$, we define
+\subsubsection{插入新元素（push）}
+\index{二项式堆!插入}
+
+如果森林中的二项式树的rank是单调增的，通过使用$link$函数，我们可以定义一个辅助函数用于向堆中插入一棵新树。
+这棵新树的rank不大于森林中的任何树。
+
+记非空的堆为$H = \{T_1, T_2, ..., T_n\}$，我们定义：
 
 \be
 insertT(H, T) = \left \{
@@ -326,31 +319,17 @@ insertT(H, T) = \left \{
 \right .
 \ee
 
-where
+其中
 
 \[
   H' = \{ T_2, T_3, ..., T_n\}
 \]
 
-The idea is that for the empty heap, we set the new tree as the only
-element to create a singleton forest; otherwise, we compare the ranks
-of the new tree and the first tree in the forest, if they are same,
-we link them together, and recursively insert the linked result (a tree
-with rank increased by one) to the rest of the forest; If they are
-not same, since the pre-condition constraints the rank of the new
-tree, it must be the smallest, we put this new tree in front of
-all the other trees in the forest.
+如果堆为空，则新树为森林中唯一的一棵；否则，我们比较新树和森林中第一棵树的rank，如果相等，就将它们链接成一棵更大的树（rank加1），然后递归地插入到森林中；如果不等，根据限制条件，新树的rank必然是最小的，我们将它插入到森林中所有树的前面。
 
-From the binomial properties mentioned above, there are at most
-$O(\lg N)$ binomial trees in the forest, where $N$ is the total
-number of nodes. Thus function $insertT$ performs at most $O(\lg N)$
-times linking, which are all constant time operation. So the
-performance of $insertT$ is $O(\lg N)$.
-\footnote{There is interesting observation by comparing this
-operation with adding two binary numbers. Which will lead to
-topic of {\em numeric representation}\cite{okasaki-book}.}
+根据此前给出的二项式堆的性质，如果元素总数为$n$，森林中最多有$O(\lg n)$棵二项式树。函数$insertT$最多执行$O(\lg n)$次常数时间的链接操作。因此$insertT$的性能为$O(\lg n)$\footnote{观察这一操作和两个二进制数的加法，它们有很多相似性。可以引出一个有趣的题目：“numeric representation”\cite{okasaki-book}。}。
 
-The relative Haskell program is given as below.
+相应的Haskell例子程序如下：
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -360,29 +339,24 @@ insertTree ts@(t':ts') t = if rank t < rank t' then t:ts
                            else insertTree ts' (link t t')
 \end{lstlisting}
 
-With this auxiliary function, it's easy to realize the insertion.
-We can wrap the new element to be inserted as the only leaf of a tree,
-then insert this tree to the binomial heap.
+使用这一辅助函数，我们可以实现堆的插入算法。先将待插入元素装入一个叶子节点，然后将它插入到二项式堆中。
 
 \be
 insert(H, x) = insertT(H, node(0, x, \phi))
 \ee
 
-And we can continuously build a heap from a series of elements by folding.
-For example the following Haskell define a helper function 'fromList'.
+我们可以连续将若干元素通过folding插入到堆中，下面的Haskell例子程序定义了一个辅助函数\texttt{fromList}。
 
 \begin{lstlisting}
 fromList = foldl insert []
 \end{lstlisting}
 
-Since wrapping an element as a singleton tree takes $O(1)$ time,
-the real work is done in $insertT$, the performance of binomial
-heap insertion is bound to $O(\lg N)$.
+因为将元素放入叶子节点只需要常数时间，主要的工作由$insertT$完成，因此二项式堆的插入操作的性能为$O(\lg n)$。
 
-The insertion algorithm can also be realized with imperative approach.
+插入算法也可以用命令式的方式定义。
 
 \begin{algorithm}
-\caption{Insert a tree with 'left-child-right-sibling' method.}
+\caption{使用“左侧孩子，右侧兄弟”的实现插入一棵新树。}
 \label{alg:insert-tree}
 \begin{algorithmic}[1]
 \Function{Insert-Tree}{$H, T$}
@@ -396,16 +370,12 @@ The insertion algorithm can also be realized with imperative approach.
 \end{algorithmic}
 \end{algorithm}
 
-Algorithm \ref{alg:insert-tree} continuously linking the first tree
-in a heap with the new tree to be inserted if they have the same rank.
-After that, it puts the linked-list of the rest trees as the sibling,
-and returns the new linked-list.
+如果rank相等，算法\ref{alg:insert-tree}不断将堆中第一棵树和待插入的树链接到一起。此后，它将剩余的树作为兄弟链接到末尾，然后将新的链表返回。
 
-If using a container to manage the children of a node, the algorithm
-can be given in Algorithm \ref{alg:insert-tree1}.
+如果使用容器来存储子树，则算法定义为Algorithm \ref{alg:insert-tree1}。
 
 \begin{algorithm}
-\caption{Insert a tree with children managed by a container.}
+\caption{插入一棵新树，使用容器来存储子树。}
 \label{alg:insert-tree1}
 \begin{algorithmic}[1]
 \Function{Insert-Tree'}{$H, T$}
