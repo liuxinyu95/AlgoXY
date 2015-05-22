@@ -763,7 +763,7 @@ heapSort = hsort . fromList where
 
 为了在常数时间获得堆顶元素，我们需要记录哪一棵树的根节点保存了最小元素。
 
-根据这一思路，我们可以复用二项式树的定义。下面的Haskell例子程序给出了斐波那契树的定义。
+根据这一思路，我们可以在二项式堆的基础上给出斐波那契堆定义。如下面的Haskell例子程序所示：
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -772,8 +772,7 @@ data BiTree a = Node { rank :: Int
                      , children :: [BiTree a]}
 \end{lstlisting}
 
-The Fibonacci heap is either empty or a forest of binomial trees with
-the minimum element stored in a special one explicitly.
+斐波那契堆要么为空，要么是一个二项式树的森林，其中含有最小元素的树被单独保存。
 
 \begin{lstlisting}
 data FibHeap a = E | FH { size :: Int
@@ -781,11 +780,9 @@ data FibHeap a = E | FH { size :: Int
                         , trees :: [BiTree a]}
 \end{lstlisting}
 
-For convenient purpose, we also add a size field to record how many
-elements are there in a heap.
+方便起见，我们将堆中元素的个数也记录下来。
 
-The data layout can also be defined in imperative way as the following
-ANSI C code.
+斐波那契堆也可以用命令式的方式定义，如下面的C例子代码。
 
 \lstset{language=C}
 \begin{lstlisting}
@@ -803,59 +800,42 @@ struct FibHeap{
 };
 \end{lstlisting}
 
-For generality, Key can be a customized type, we use integer for illustration
-purpose.
+上面的代码中，Key可以是任何可比较大小的类型，简单起见我们假设类型为整数。
 
 \lstset{language=C}
 \begin{lstlisting}
 typedef int Key;
 \end{lstlisting}
 
-In this chapter, we use the circular doubly linked-list for imperative
-settings to realize the Fibonacci Heap as described in \cite{CLRS}.
-It makes many operations easy and fast. Note that, there are two extra
-fields added. A $degree$ also known as $rank$ for a node is the number
-of children of this node; Flag $mark$ is used only in decreasing key
-operation. It will be explained in detail in later section.
+我们在命令式实现中，使用循环双向链表\cite{CLRS}。这样可以简化很多操作并提供快速的性能。我们增加了两个额外的field。一个是\texttt{degree}，也称$rank$，定义为一个节点中子节点的数目；标志$mark$仅用于减小元素值的操作。我们稍后会加以介绍。
 
 
 % ================================================================
 %          Basic Heap operations
 % ================================================================
-\subsection{Basic heap operations}
-As we mentioned that Fibonacci heap is essentially binomial heap
-implemented in a lazy evaluation strategy, we'll reuse many algorithms
-defined for binomial heap.
+\subsection{基本堆操作}
 
-\subsubsection{Insert a new element to the heap}
-\index{Fibonacci Heap!insert}
-Recall the insertion algorithm of binomial  tree. It can be treated
-as a special case of merge operation, that one heap contains only
-a singleton tree. So that the inserting algorithm can be defined
-by means of merging.
+由于斐波那契堆本质上是惰性的二项式堆，我们将复用很多二项式堆的算法。
+
+\subsubsection{插入新元素}
+\index{斐波那契堆!插入}
+
+可以认为二项式堆的插入算法是一种特殊的合并操作，其中一个堆仅含有一棵一个叶节点的树。因此插入算法可以用合并操作来定义。
 
 \be
 insert(H, x) = merge(H, singleton(x))
 \label{eq:fib-insert}
 \ee
 
-where singleton is an auxiliary function to wrap an element to a
-one-leaf-tree.
+其中$singleton$是一个辅助函数，它构建出仅含有一个元素的树。
 
 \[
 singleton(x) = FibHeap(1, node(1, x, \phi), \phi)
 \]
 
-Note that function $FibHeap()$ accepts three parameters, a
-size value, which is 1 for this one-leaf-tree, a special tree
-which contains the minimum element as root, and a list of other
-binomial trees in the forest. The meaning of function $node()$ is
-as same as before, that it creates a binomial tree from a rank,
-an element, and a list of children.
+函数$FibHeap()$接受3个参数，一个是大小（size），因为只有一个元素，所以值为1，一棵特殊的树，树根存有堆中的最小元素，以及森林中剩余二项式树的列表。函数$node()$和以前的含意一样，它从一个rank值，一个元素，和一组子树列表构建一棵二项式树。
 
-Insertion can also be realized directly by appending the new node
-to the forest and updated the record of the tree which contains the
-minimum element.
+插入操作也可以实现为向森林中追加一个新节点，然后更新存有最小元素的树。
 
 \begin{algorithmic}[1]
 \Function{Insert}{$H, k$}
@@ -868,10 +848,9 @@ minimum element.
 \EndFunction
 \end{algorithmic}
 
-Where function $T_{min}()$ returns the tree which contains the minimum
-element at root.
+其中函数$T_{min}()$返回存有最小元素的树。
 
-The following C source snippet is a translation for this algorithm.
+下面的C例子代码实现了这一插入算法。
 
 \lstset{language=C}
 \begin{lstlisting}
@@ -885,13 +864,12 @@ struct FibHeap* insert_node(struct FibHeap* h, struct node* x){
 \end{lstlisting}
 
 \begin{Exercise}
-Implement the insert algorithm in your favorite imperative programming
-language completely. This is also an exercise to circular doubly linked list
-manipulation.
+选择一门命令式编程语言，实现完整的插入算法。这也是循环双向链表操作的一道习题。
 \end{Exercise}
 
-\subsubsection{Merge two heaps}
-\index{Fibonacci Heap!merge}
+\subsubsection{堆合并}
+\index{斐波那契堆!合并}
+
 Different with the merging algorithm of binomial heap, we post-pone
 the linking operations later. The idea is to just put all binomial
 trees from each heap together, and choose one special tree which
