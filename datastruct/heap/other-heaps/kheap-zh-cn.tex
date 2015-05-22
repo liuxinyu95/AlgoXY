@@ -951,39 +951,23 @@ top(H) = root(T_{min})
 \subsubsection{删除最小元素（弹出）}
 \index{斐波那契堆!弹出} \index{斐波那契堆!delete min}
 
-弹出（删除最小元素）操作是斐波那契堆中最复杂的。
+弹出（删除最小元素）操作是斐波那契堆中最复杂的。由于在合并操作中推迟了树的链接，我们需要在其他地方将其“补偿”回来。插入，合并和top都已经定义好了，弹出操作是唯一剩下可以进行“补偿”的地方。
 
-The pop (delete the minimum element) operation is the most complex
-one in Fibonacci heap. Since we postpone the tree consolidation
-in merge algorithm. We have to compensate it somewhere. Pop is
-the only place left as we have defined, insert, merge, top already.
+通过使用辅助数组，存在一个特别简洁的树归并（tree consolidatitoin）的算法\cite{CLRS}。我们稍后在命令式的实现中会介绍它。
 
-There is an elegant procedural algorithm to do the tree consolidation
-by using an auxiliary array\cite{CLRS}. We'll show it later in imperative
-approach section.
+为了实现纯函数式的树归并算法，我们先考虑这样一道关于数字的题目：
 
-In order to realize the purely functional consolidation algorithm,
-let's first consider a similar number puzzle.
+给定若干数字，例如$\{2, 1, 1, 4, 8, 1, 1, 2, 4\}$，我们希望不断将值相同的两个数字相加，直到没有任何相等的数。这个例子的最终结果为$\{8, 16\}$。
 
-Given a list of numbers, such as $\{2, 1, 1, 4, 8, 1, 1, 2, 4\}$, we want
-to add any two values if they are same. And repeat this procedure till
-all numbers are unique. The result of the example list should be
-$\{8, 16\}$ for instance.
-
-One solution to this problem will as the following.
+这个问题的解法为：
 
 \be
 consolidate(L) = fold(meld, \phi, L)
 \ee
 
-Where $fold()$ function is defined to iterate all elements from a list,
-applying a specified function to the intermediate result and each
-element. it is sometimes called as {\em reducing}. Please refer to the
-chapter of binary search tree for it.
+其中$fold()$遍历列表的所有元素，逐一针对每个元素和中间结果应用一个函数。它也称为\underline{reducing}操作。读者可以参考本书的附录A，以及二叉搜索树一章。
 
-$L=\{x_1, x_2, ..., x_n\}$, denotes a list of numbers; and we'll use
-$L'=\{x_2, x_3, ..., x_n\}$ to represent the rest of the list with the
-first element removed. Function $meld()$ is defined as below.
+$L=\{x_1, x_2, ..., x_n\}$代表要处理的数字；记$L'=\{x_2, x_3, ..., x_n\}$代表除第一个数字以外的剩余数字。函数$meld()$可定义如下：
 
 \be
 meld(L, x) = \left \{
@@ -997,24 +981,9 @@ meld(L, x) = \left \{
 \right .
 \ee
 
-The $consolidate()$ function works as the follows. It maintains an
-ordered result list $L$, contains only unique numbers, which is
-initialized from an empty list $\phi$. Each time it process an
-element $x$, it firstly check if the first element in $L$ is equal
-to $x$, if so, it will add them together (which yields $2x$),
-and repeatedly check if $2x$ is equal to the next element in $L$.
-This process won't stop until either the element to be melt is
-not equal to the head element in the rest of the list, or the
-list becomes empty. Table \ref{tb:num-consolidate} illustrates
-the process of consolidating number sequence $\{2, 1, 1, 4, 8, 1, 1, 2, 4\}$.
-Column one lists the number 'scanned' one by one; Column two
-shows the intermediate result, typically the new scanned number
-is compared with the first number in result list. If they
-are equal, they are enclosed in a pair of parentheses; The
-last column is the result of meld, and it will be used as the
-input to next step processing.
+$consolidate()$函数维护一个有序的结果列表$L$，列表中仅包含不同的数字。$L$初始化为空$\phi$。算法逐一处理每个元素$x$。它首先检查$L$中的第一个元素是否等于$x$，如果相等就加到一起（结果为$2x$），然后接着判断$2x$是否和$L$中的下一个元素相等。不断重复这一过程直到相加后的元素和表中第一个元素不等，或者表变为空。表\ref{tb:num-consolidate}描述了归并序列$\{2, 1, 1, 4, 8, 1, 1, 2, 4\}$的步骤。第一列表示每次“扫描”的数字；第二列是中间结果。被扫描的数字和结果列表中的第一个元素相比较。如果相等，就用两个括号围起来；最后一列是归并的结果，每个结果都用于下一步的处理。
 
-The Haskell program can be give accordingly.
+下面的Haskell例子程序首先了这一数字归并的过程。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -1025,15 +994,14 @@ consolidate = foldl meld [] where
                    | otherwise = x': meld xs x
 \end{lstlisting}
 
-We'll analyze the performance of consolidation as a part of
-pop operation in later section.
+我们稍后会分析归并过程的性能。
 
 \begin{table}
-\caption{Steps of consolidate numbers} \label{tb:num-consolidate}
+\caption{归并数字的步骤} \label{tb:num-consolidate}
 \centering
 \begin{tabular}{r | l | l }
   \hline
-  number & intermediate result & result \\
+  数字 & 中间结果 & 结果 \\
   \hline
   2 & 2 & 2 \\
   1 & 1, 2 & 1, 2 \\
@@ -1048,10 +1016,7 @@ pop operation in later section.
 \end{tabular}
 \end{table}
 
-The tree consolidation is very similar to this algorithm except
-it performs based on rank. The only thing we need to do is to
-modify $meld()$ function a bit, so that it compare on ranks and
-do linking instead of adding.
+树的归并过程非常类似，唯一的区别是使用rank。我们需要略微修改$meld()$函数，使得它对rank进行比较并将rank相同的树链接起来。
 
 \be
 meld(L, x) = \left \{
@@ -1065,7 +1030,7 @@ meld(L, x) = \left \{
 \right .
 \ee
 
-The final consolidate Haskell program changes to the below version.
+最终的树归并Haskell例子程序如下：
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -1077,35 +1042,28 @@ consolidate = foldl meld [] where
                    | otherwise = t' : meld ts t
 \end{lstlisting}
 
-Figure \ref{fig:fib-meld-a} and \ref{fig:fib-meld-b} show the steps of
-consolidation when processing a Fibonacci Heap contains different ranks
-of trees. Comparing with table \ref{tb:num-consolidate} reveals the similarity.
+图\ref{fig:fib-meld-a}和\ref{fig:fib-meld-b}给出了斐波那契堆中树归并过程的各个步骤。和表\ref{tb:num-consolidate}相比可以看出他们之间的相似性。
 
 \begin{figure}[htbp]
   \centering
-  \subfloat[Before consolidation]{\includegraphics[scale=0.5]{img/fib-meld-01.ps}} \\
-  \subfloat[Step 1, 2]{\includegraphics[scale=0.5]{img/fib-meld-02.ps}}
-  \subfloat[Step 3, 'd' is firstly linked to 'c', then repeatedly linked to 'a'.]{ \hspace{0.1\textwidth} \includegraphics[scale=0.5]{img/fib-meld-03.ps} \hspace{0.1\textwidth}}
-  \subfloat[Step 4]{\includegraphics[scale=0.5]{img/fib-meld-04.ps}}
-  \caption{Steps of consolidation} \label{fig:fib-meld-a}
+  \subfloat[归并前]{\includegraphics[scale=0.5]{img/fib-meld-01.ps}} \\
+  \subfloat[第1、2步]{\includegraphics[scale=0.5]{img/fib-meld-02.ps}}
+  \subfloat[第3步，‘d’先链接到‘c’，然后链接到‘a’。]{ \hspace{0.1\textwidth} \includegraphics[scale=0.5]{img/fib-meld-03.ps} \hspace{0.1\textwidth}}
+  \subfloat[第4步]{\includegraphics[scale=0.5]{img/fib-meld-04.ps}}
+  \caption{树归并的步骤} \label{fig:fib-meld-a}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
-  \subfloat[Step 5]{\includegraphics[scale=0.5]{img/fib-meld-05.ps}}
-  \subfloat[Step 6]{\includegraphics[scale=0.5]{img/fib-meld-06.ps}} \\
-  \subfloat[Step 7, 8, 'r' is firstly linked to 'q', then 's' is linked to 'q'.]{\includegraphics[scale=0.5]{img/fib-meld-07.ps}}
-  \caption{Steps of consolidation} \label{fig:fib-meld-b}
+  \subfloat[第5步]{\includegraphics[scale=0.5]{img/fib-meld-05.ps}}
+  \subfloat[第6步]{\includegraphics[scale=0.5]{img/fib-meld-06.ps}} \\
+  \subfloat[第7、8步，‘r’先链接到‘q’，然后‘s’链接到‘q’。]{\includegraphics[scale=0.5]{img/fib-meld-07.ps}}
+  \caption{树归并的步骤} \label{fig:fib-meld-b}
 \end{figure}
 
-After we merge all binomial trees, including the special tree
-record for the minimum element in root, in a Fibonacci heap, the heap
-becomes a Binomial heap. And we lost the special tree, which gives
-us the ability to return the top element in $O(1)$ time.
+将斐波那契堆中的所有二项式树，包括存有最小元素的特殊树归并后，结果变成了二项式堆。同时我们失去了记录有最小元素的特殊树。这样就没法在常数时间$O(1)$内获得堆顶元素了。
 
-It's necessary to perform a $O(\lg N)$ time search to resume the
-special tree. We can reuse the function $extractMin()$ defined for
-Binomial heap.
+为此，需要在执行一轮$O(\lg n)$的搜索，重新找到存有最小元素的树。我们可以复用前面定义的$extractMin()$函数。
 
 It's time to give the final pop function for Fibonacci heap as all
 the sub problems have been solved. Let $T_{min}$ denote the special
