@@ -1604,17 +1604,16 @@ merge h1@(Node x hs1) h2@(Node y hs2) =
 \EndFunction
 \end{algorithmic}
 
-Note that we also update the parent field accordingly. The ANSI C
-example program is given as the following.
+在这一过程中，我们也更新了指向父节点的field。相应的C语言例子代码如下：
 
 \lstset{language=C}
 \begin{lstlisting}
-struct node* merge(struct node* h1, struct node* h2){
-  if(h1 == NULL)
+struct node* merge(struct node* h1, struct node* h2) {
+  if (h1 == NULL)
     return h2;
-  if(h2 == NULL)
+  if (h2 == NULL)
     return h1;
-  if(h2->key < h1->key)
+  if (h2->key < h1->key)
     swap(&h1, &h2);
   h2->next = h1->children;
   h1->children = h2;
@@ -1624,45 +1623,32 @@ struct node* merge(struct node* h1, struct node* h2){
 }
 \end{lstlisting}
 
-Where function swap() is defined in a similar way as Fibonacci Heap.
+其中swap函数和斐波那契堆中的定义类似。
 
-With merge defined, insertion can be realized as same as Fibonacci Heap
-in Equation \ref{eq:fib-insert}. Definitely it's $O(1)$ time operation.
-As the minimum element is always stored in root, finding it is trivial.
+使用合并函数，可以像斐波那契堆的式(\ref{eq:fib-insert})一样实现插入操作。显然这一操作的性能为常数时间$O(1)$。因为最小的元素总是保存在根节点，所以通过根来获取顶部元素。
 
 \be
 top(H) = Root(H)
 \ee
 
-Same as the other two above operations, it's bound to $O(1)$ time.
+获取顶部元素的性能也是常数时间$O(1)$的。
 
-\begin{Exercise}
-Implement the insertion and top operation in your favorite programming
-language.
-\end{Exercise}
+\subsubsection{减小节点的值}
+\index{Pairing堆!decrease key}
 
-\subsubsection{Decrease key of a node}
-\index{pairing heap!decrease key}
-There is another trivial operation, to decrease key of a given node,
-which only makes sense in imperative settings as we explained in Fibonacci
-Heap section.
+同斐波那契堆一样，减小节点的值仅在命令式环境下有意义。这一问题的解比斐波那契堆要简单。节点的值减小后，我们将它为根的子树从父节点上切下，然后合并到堆中。唯一特殊的情况是，如果是根节点，我们可以直接改变值而无需做任何额外操作。
 
-The solution is simple, that we can cut the node with the new smaller
-key from it's parent along with all its children. Then merge it again
-to the heap. The only special case is that if the given node is the
-root, then we can directly set the new key without doing anything else.
-
-The following algorithm describes this procedure for a given node $x$, with
-new key $k$.
+下面的算法描述了将节点$x$的值减小到$k$的操作。
 
 \begin{algorithmic}[1]
 \Function{Decrease-Key}{$H, x, k$}
   \State \Call{Key}{$x$} $\gets k$
   \If{\Call{Parent}{$x$} $\neq$ NIL}
     \State Remove $x$ from \textproc{Children}(\Call{Parent}{$x$})
+    \Call{Parent}{$x$} $\gets$ NIL
+    \State \Return \Call{Merge}{$H, x$}
   \EndIf
-  \Call{Parent}{$x$} $\gets$ NIL
-  \State \Return \Call{Merge}{$H, x$}
+  \State \Return $H$
 \EndFunction
 \end{algorithmic}
 
@@ -1670,12 +1656,14 @@ The following ANSI C program translates this algorithm.
 
 \lstset{language=C}
 \begin{lstlisting}
-struct node* decrease_key(struct node* h, struct node* x, Key key){
+struct node* decrease_key(struct node* h, struct node* x, Key key) {
   x->key = key; /* Assume key <= x->key */
-  if(x->parent)
+  if(x->parent) {
     x->parent->children = remove_node(x->parent->children, x);
-  x->parent = NULL;
-  return merge(h, x);
+    x->parent = NULL;
+    return merge(h, x);
+  }
+  return h;
 }
 \end{lstlisting}
 
