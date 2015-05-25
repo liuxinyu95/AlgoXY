@@ -17,8 +17,8 @@
  */
 
 /*
- * Based on Michael L. Fredman, Robert Sedgewick, Daniel D. Sleator, 
- * and Robert E. Tarjan. ``The Pairing Heap: A New Form of Self-Adjusting 
+ * Based on Michael L. Fredman, Robert Sedgewick, Daniel D. Sleator,
+ * and Robert E. Tarjan. ``The Pairing Heap: A New Form of Self-Adjusting
  * Heap'' Algorithmica (1986) 1: 111-129
  */
 
@@ -26,14 +26,14 @@
 #include <stdlib.h>
 
 /* For verification purpose only. */
-#include <assert.h> 
+#include <assert.h>
 
-#define BIG_RAND()  (rand() % 10000) 
+#define BIG_RAND()  (rand() % 10000)
 /* End of verification purpose only part */
 
 typedef int Key;
 
-/* 
+/*
  * Definition of K-ary tree node
  * left child, right sibling approach.
  * parent pointer is only used for decrease-key operation.
@@ -51,8 +51,8 @@ struct node* singleton(Key x){
   return t;
 }
 
-/* 
- * Helper function to release a heap recursively 
+/*
+ * Helper function to release a heap recursively
  * Do nothing for empty heap.
  */
 void destroy_heap(struct node* h){
@@ -90,7 +90,7 @@ struct node* remove_node(struct node* lst, struct node* x){
   return lst;
 }
 
-/* 
+/*
  * Merge
  * O(1) time by inserting one heap as the first
  * child of the other.
@@ -109,7 +109,7 @@ struct node* merge(struct node* h1, struct node* h2){
   return h1;
 }
 
-/* Insertion, O(1) time*/ 
+/* Insertion, O(1) time*/
 struct node* insert(struct node* h, Key x){
   return merge(h, singleton(x));
 }
@@ -122,7 +122,7 @@ Key top(struct node* h){
 }
 
 
-/* 
+/*
  * Decrease-key, O(1) time if
  *   we can remove a child in constant time, this is true
  *   if the children are managed in doubly linked list.
@@ -130,16 +130,18 @@ Key top(struct node* h){
  *   traverse the children to perform removing. which
  *   degrades the running time.
  */
-struct node* decrease_key(struct node* h, struct node* x, Key key){
+struct node* decrease_key(struct node* h, struct node* x, Key key) {
   x->key = key; /* Assume key <= x->key */
-  if(x->parent)
+  if(x->parent) {
     x->parent->children = remove_node(x->parent->children, x);
-  x->parent = NULL;
-  return merge(h, x);
+    x->parent = NULL;
+    return merge(h, x);
+  }
+  return h;
 }
 
 
-/* 
+/*
  * Pop, delete the minimum element.
  * O(\lg N) amortized time in conjecture.
  */
