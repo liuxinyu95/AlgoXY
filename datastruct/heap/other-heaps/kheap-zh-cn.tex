@@ -1451,7 +1451,7 @@ n \geq |x| \geq F_k+2
 根据这一结果，我们可以定义函数$MaxDegree$如下：
 
 \be
-  MaxDegree(n) = 1 + \lfloor \log_{\Phi} n \rfloor
+  MaxDegree(n) = 1 + \lfloor \log_{\phi} n \rfloor
 \ee
 
 命令式的\textproc{Max-Degree}算法可以同样使用斐波那契数列来实现：
@@ -1492,51 +1492,31 @@ int max_degree(int n){
 
 \section{Pairing堆}
 \label{pairing-heap} \index{Pairing堆}
-Although Fibonacci Heaps provide excellent performance theoretically,
-it is complex to realize. People find that the constant behind the
-big-O is big. Actually, Fibonacci Heap is more significant in theory
-than in practice.
 
-In this section, we'll introduce another solution, Pairing heap,
-which is one of the best heaps ever known in terms of performance.
-Most operations including insertion, finding minimum element (top),
-merging are all bounds to $O(1)$ time, while deleting minimum element (pop)
-is conjectured to amortized $O(\lg N)$ time \cite{pairing-heap}
-\cite{okasaki-book}. Note that this is still
-a conjecture for 15 years by the time I write this chapter. Nobody has been
-proven it although there are much experimental data support the
-$O(\lg N)$ amortized result.
+虽然斐波那契堆在理论上有着优异的性能，但是它的实现复杂。人们发现斐波那契数列复杂度中big-O后面的常数较大。它的理论意义要大于实际意义。
 
-Besides that, pairing heap is simple. There exist both elegant
-imperative and functional implementations.
+本节中，我们介绍另外一种解―pairing堆，是已知性能最好的堆。大部份操作，包括插入、获取顶部元素、合并都是常数时间$O(1)$的，人们猜测它的弹出操作的分摊复杂度为$O(\lg n)$\cite{pairing-heap}\cite{okasaki-book}。到作者书写本章为止的15年内，这一猜想还没有得到证明。尽管有大量的试验数据支持它的分摊复杂度为$O(\lg n)$。
+
+除了性能优异，pairing堆还很简单。存在简洁的命令式和函数式实现。
 
 % ================================================================
 %                 Definition
 % ================================================================
-\subsection{Definition}
-\index{Pairing heap!definition}
+\subsection{定义}
+\index{Pairing堆!定义}
 
-Both Binomial Heaps and Fibonacci Heaps are realized with forest.
-While a pairing heaps is essentially a K-ary tree. The minimum element
-is stored at root. All other elements are stored in sub trees.
+二项式堆和斐波那契堆都由森林来实现。而pairing堆本质上是一棵$K$叉树。最小元素保存于树根，其余元素存储于子树中。
 
-The following Haskell program defines pairing heap.
+下面的Haskell程序定义了pairing堆。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
 data PHeap a = E | Node a [PHeap a]
 \end{lstlisting}
 
-This is a recursive definition, that a pairing heap is either empty
-or a K-ary tree, which is consist of a root node, and a list of sub trees.
+这是一个递归定义，一个pairing堆要么为空，要么是一棵$K$叉树，包含一个根节点和一组子树。
 
-Pairing heap can also be defined in procedural languages, for example
-ANSI C as below. For illustration purpose, all heaps we mentioned later
-are minimum-heap, and we assume the type of key is integer \footnote{We
-can parametrize the key type with C++ template, but this is beyond
-our scope, please refer to the example programs along with
-this book}. We use same linked-list based left-child, right-sibling
-approach (aka, binary tree representation\cite{CLRS}).
+下面的C语言例子程序，也给出了pairing堆的定义。简单起见，我们仅仅讨论最小堆，并且假设key的类型为整数\footnote{可以将key的类型抽象为C++的模板参数，读者可以参考本书附带的例子程序。}。我们使用单向链表表示的“左侧孩子，右侧兄弟”定义（二叉树表示法\cite{CLRS}）。
 
 \lstset{language=C}
 \begin{lstlisting}
@@ -1548,39 +1528,29 @@ struct node{
 };
 \end{lstlisting}
 
-Note that the parent field does only make sense for decreasing key
-operation, which will be explained later on. we can omit it for the
-time being.
+其中的父节点field仅在减小key值的操作中用到，其他情况下可以忽略。我们稍后会加以解释。
 
 
 % ================================================================
 %          Basic Heap operations
 % ================================================================
-\subsection{Basic heap operations}
-In this section, we first give the merging operation for pairing
-heap, which can be used to realize the insertion. Merging, insertion,
-and finding the minimum element are relative trivial compare to
-the extracting minimum element operation.
+\subsection{基本堆操作}
 
-\subsubsection{Merge, insert, and find the minimum element (top)}
-\index{Pairing heap!insert} \index{Pairing heap!top}
-\index{Pairing heap!find min}
-The idea of merging is similar to the linking algorithm we shown
-previously for Binomial heap. When we merge two pairing heaps, there
-are two cases.
+我们首先介绍堆的合并操作，合并操作可以用以实现插入。合并、插入、和获取顶部元素相对简单。而弹出操作则较为复杂。
+
+\subsubsection{合并、插入、和获取顶部元素}
+\index{Pairing堆!插入} \index{Pairing堆!top}
+\index{Pairing堆!find min}
+
+合并操作的思想和二项式堆的相似。当我们合并两个pairing堆时，存在两种情况：
 
 \begin{itemize}
-\item Trivial case, one heap is empty, we simply return the other
-heap as the result;
+\item 简单情况：其中一个堆为空，我们只要返回另一堆作为合并的结果；
 
-\item Otherwise, we compare the root element of the two heaps, make
-the heap with bigger root element as a new children of the other.
+\item 否则，我们比较两个堆的根节点元素，令根节点较大的一个作为另一个的新子树。
 \end{itemize}
 
-Let $H_1$, and $H_2$ denote the two heaps, $x$ and $y$ be the root
-element of $H_1$ and $H_2$ respectively. Function $Children()$
-returns the children of a K-ary tree. Function $Node()$ can
-construct a K-ary tree from a root element and a list of children.
+令$H_1$和$H_2$分别代表两个堆，$x$和$y$为各自的根节点元素。函数$Children()$返回一棵$K$叉树的子树，$Node()$从一个根节点元素和一组子树构造一棵$K$叉树。
 
 \be
 merge(H_1, H_2) = \left \{
@@ -1594,7 +1564,8 @@ merge(H_1, H_2) = \left \{
 \right .
 \ee
 
-Where
+其中
+
 \[
 \begin{array}{l}
 x = Root(H_1) \\
@@ -1602,11 +1573,9 @@ y = Root(H_2)
 \end{array}
 \]
 
-It's obviously that merging algorithm is bound to $O(1)$ time
-\footnote{Assume $\cup$ is constant time operation, this is true
-for linked-list settings, including 'cons' like operation in
-functional programming languages.}.
-The $merge$ equation can be translated to the following Haskell program.
+显然合并算法的性能为常数时间$O(1)$\footnote{假设$\cup$操作的性能为常数时间。对于单向链表的“cons”来说，这一点成立。}。
+
+下面的Haskell例子程序给出了$merge$操作。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -1616,10 +1585,7 @@ merge h1@(Node x hs1) h2@(Node y hs2) =
     if x < y then Node x (h2:hs1) else Node y (h1:hs2)
 \end{lstlisting}
 
-Merge can also be realized imperatively. With left-child, right
-sibling approach, we can just link the heap, which is in fact a
-K-ary tree, with larger key as the first new child of the other.
-This is constant time operation as described below.
+也可以用命令式的方式实现和并操作。使用“左侧孩子，右侧兄弟”方法，我们可以把根节点元素较大的堆，利用链表操作链接到另一个堆的子树前面变成第一棵子树。这一常数时间的操作可以描述如下：
 
 \begin{algorithmic}[1]
 \Function{Merge}{$H_1, H_2$}
