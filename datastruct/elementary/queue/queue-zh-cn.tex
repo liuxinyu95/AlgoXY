@@ -109,23 +109,19 @@ struct Queue{
   \Comment{检查一个队列$Q$是否为空}
 \EndFunction
 \Function{Enqueue}{$Q, x$}
-  \Comment{将新元素$x$加入队列$Q$}
+  \Comment{将新元素$x$加入队列$Q$（入队）}
 \EndFunction
 \Function{Dequeue}{$Q$}
-  \Comment{从队列$Q$删除一个元素}
+  \Comment{从队列$Q$删除一个元素（出队）}
 \EndFunction
 \Function{Head}{$Q$}
   \Comment{按照先进先出顺序获取队列$Q$中的下一个元素}
 \EndFunction
 \end{algorithmic}
 
-Note the difference between \textproc{Dequeue} and \textproc{Head}.
-\textproc{Head} only retrieve next element in FIFO order without removing
-it, while \textproc{Dequeue} performs removing.
+注意\textproc{Dequeue}和\textproc{Head}的区别。\textproc{Head}仅仅按照FIFO的顺序获取下一个元素而不会将元素删除，而\textproc{Dequeue}会执行删除操作。
 
-In some programming languages, such as Haskell, and most object-oriented
-languages, the above abstract queue interface can be ensured by some definition.
-For example, the following Haskell code specifies the abstract queue.
+某些编程语言，如Haskell和大多数面向对象的语言，可以通过某种形式保证上述接口。下面的Haskell例子代码定义了抽象队列。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -137,10 +133,7 @@ class Queue q where
     front :: q a -> a -- aka 'head'
 \end{lstlisting}
 
-To ensure the constant time \textproc{Enqueue} and \textproc{Dequeue},
-we add new element to head and remove element from tail.\footnote{It's possible
-to add new element to the tail, while remove element from head, but the
-operations are more complex than this approach.}
+为了保证\textproc{Enqueue}和\textproc{Dequeue}可以在常数时间内完成，我们在头部加入元素，从尾部删除元素\footnote{也可以在尾部加入，从头部删除，但是相应的操作会变复杂。}。
 
 \begin{algorithmic}
 \Function{Enqueue}{$Q, x$}
@@ -152,9 +145,7 @@ operations are more complex than this approach.}
 \EndFunction
 \end{algorithmic}
 
-Note that, as we use the sentinel node, there are at least one node, the
-sentinel in the queue. That's why we needn't check the validation of
-of the tail before we append the new created node $p$ to it.
+因为使用sentinel节点，所以至少存在一个节点（空队列中有一个sentinel节点）。因此上述算法在追加新节点$p$时，无需检查尾部是否有效。
 
 \begin{algorithmic}
 \Function{Dequeue}{$Q$}
@@ -167,24 +158,23 @@ of the tail before we append the new created node $p$ to it.
 \EndFunction
 \end{algorithmic}
 
-As we always put the sentinel node in front of all the other nodes,
-function \textproc{Head} actually returns the next node to the sentinel.
+因为我们总是保证sentinel节点在所有其他节点的前面，函数\textproc{Head}实际返回sentinel的下一个节点。
 
-Figure \ref{fig:list-queue} illustrates \textproc{Enqueue} and \textproc{Dequeue} process with sentinel node.
+图\ref{fig:list-queue}描述了\textproc{Enqueue}和\textproc{Dequeue}使用sentinel节点工作的情形。
 
 \begin{figure}[htbp]
  \centering
- \subfloat[Before \textproc{Enqueue} $x$ to queue]{\includegraphics[scale=0.8]{img/enq-list-before.ps}} \\
- \subfloat[After \textproc{Enqueue} $x$ to queue]{\includegraphics[scale=0.8]{img/enq-list-after.ps}} \\
- \subfloat[Before \textproc{Dequeue} $x$ to queue]{\includegraphics[scale=0.8]{img/deq-list-before.ps}} \\
- \subfloat[After \textproc{Dequeue} $x$ to queue]{\includegraphics[scale=0.8]{img/deq-list-after.ps}} \\
- \caption{\textproc{Enqueue} and \textproc{Dequeue} to linked-list queue.} \label{fig:list-queue}
+ \subfloat[元素$x$在\textproc{Enqueue}前]{\includegraphics[scale=0.8]{img/enq-list-before.ps}} \\
+ \subfloat[将元素$x$\textproc{Enqueue}后]{\includegraphics[scale=0.8]{img/enq-list-after.ps}} \\
+ \subfloat[执行\textproc{Dequeue}前]{\includegraphics[scale=0.8]{img/deq-list-before.ps}} \\
+ \subfloat[执行\textproc{Dequeue}后]{\includegraphics[scale=0.8]{img/deq-list-after.ps}} \\
+ \caption{单向链表实现队列的\textproc{Enqueue}和\textproc{Dequeue}操作。} \label{fig:list-queue}
 \end{figure}
 
-Translating the pseudo code to ANSI C program yields the below code.
+下面的C语言例子程序实现了入队和出队算法。
 
 \begin{lstlisting}
-struct Queue* enqueue(struct Queue* q, Key x){
+struct Queue* enqueue(struct Queue* q, Key x) {
   struct Node* p = (struct Node*)malloc(sizeof(struct Node));
   p->key = x;
   p->next = NULL;
@@ -193,7 +183,7 @@ struct Queue* enqueue(struct Queue* q, Key x){
   return q;
 }
 
-Key dequeue(struct Queue* q){
+Key dequeue(struct Queue* q) {
   struct Node* p = head(q); /*gets the node next to sentinel*/
   Key x = key(p);
   q->head->next = p->next;
@@ -204,24 +194,18 @@ Key dequeue(struct Queue* q){
 }
 \end{lstlisting}
 
-This solution is simple and robust. It's easy to extend this solution
-even to the concurrent environment (e.g. multicores). We can assign
-a lock to the head and use another lock to the tail. The sentinel
-helps us from being dead-locked due to the empty case \cite{PODC96} \cite{SutterDDJ}.
+这一方案简单、稳健。可以很容易地将它扩展到并发环境（例如多核）。我们可以在头部和尾部各使用一把锁。sentinel节点可以帮助我们在队列为空时避免死锁\cite{PODC96}、\cite{SutterDDJ}。
 
 \begin{Exercise}
 \begin{itemize}
-\item Realize the \textproc{Empty?} and \textproc{Head} algorithms
-for linked-list queue.
+\item 使用单向链表，实现\textproc{Empty?}和\textproc{Head}操作。
 
-\item Implement the singly linked-list queue in your favorite imperative
-programming language. Note that you need provide functions to initialize
-and destroy the queue.
+\item 选择一门命令式语言，用单向链表实现队列。注意提供初始化和释放队列的函数。
 \end{itemize}
 \end{Exercise}
 
-\subsection{Circular buffer solution}
-\index{Queue!Circular buffer}
+\subsection{循环buffer实现}
+\index{队列!循环buffer}
 
 Another typical solution to realize queue is to use plain array as
 a circular buffer (also known as ring buffer).
