@@ -8,7 +8,7 @@ TEX = latex
 all: pdf
 
 image:
-	make -C img
+	$(MAKE) -C img
 
 pdf: $(OBJECT).dvi
 	dvipdfmx $(OBJECT)
