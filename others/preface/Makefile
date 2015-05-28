@@ -9,19 +9,19 @@ all: pdf
 tex: pdf
 
 cpp:
-	make cpp -C src
+	$(MAKE) cpp -C src
 
 c:
-	make c -C src
+	$(MAKE) c -C src
 
 haskell:
-	make haskell -C src
+	$(MAKE) haskell -C src
 
 tool:
-	make tool -C src
+	$(MAKE) tool -C src
 
 image:
-	make -C img
+	$(MAKE) -C img
 
 pdf: image
 	$(TEX) $(OBJECT)

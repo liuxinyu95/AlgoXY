@@ -8,7 +8,7 @@ TEX = xelatex
 all: pdf
 
 image:
-	make -C img
+	$(MAKE) -C img
 
 pdf: image
 	$(TEX) $(OBJECT)

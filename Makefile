@@ -28,10 +28,10 @@ CHAPTER_OBJS = $(foreach file, $(CHAPTERS), $(file).dvi)
 all: $(BOOK).pdf
 
 %.dvi : %.tex
-	make -C $(@D) tex
+	$(MAKE) -C $(@D) tex
 
 image:
-	make -C img
+	$(MAKE) -C img
 
 index:
 	makeindex $(BOOK)
