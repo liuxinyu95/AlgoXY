@@ -587,36 +587,22 @@ balance f lenf r lenr
 \section{进一步改进：实时队列}
 \index{队列!实时队列}
 
-Although the extremely worst case can be avoided by improving the balancing
-as what has been presented in previous section, the performance
-of reversing rear list is still bound to $O(N)$, where $N = |R|$.
-So if the rear list is very long, the instant performance is still
-unacceptable poor even if the amortized time is $O(1)$. It is particularly
-important in some real-time system to ensure the worst case performance.
+改善平衡性后虽然可以避免最差情况，但是反转rear列表的的性能仍然是$O(n)$的，其中$n = |R|$。尽管分摊性能为常数时间，但如果rear列表很长，某次操作的性能仍然会很差。在某些实时系统中，我们必须保证在最坏情况下的性能也达到要求。
 
-As we have analyzed, the bottleneck is the computation of $ F \cup reverse(R)$.
-This happens when $|R| > |F|$. Considering that $|F|$ and $|R|$ are
-all integers, so this computation happens when
+根据前面的分析，计算的瓶颈在$ F \cup reverse(R)$，当$|R| > |F|$时会发生这一操作。考虑$|F|$和$|R|$都是整数，发生这一操作时，我们有：
 
 \be
   |R| = |F| + 1
 \ee
 
-Both $F$ and the result of $reverse(R)$ are singly linked-list,
-It takes $O(|F|)$ time to concatenate them together, and it takes extra
-$O(|R|)$ time to reverse the rear list, so the total computation
-is bound to $O(|N|)$, where $N = |F| + |R|$. Which is proportion to the
-total number of elements in the queue.
+$F$和$reverse(R)$的结果都是单向链表，链结它们耗时$O(|F|)$，此外还需要$O(|R|)$时间反转rear列表，因此总时间为$O(n)$，其中$n = |F| + |R|$。也就是说，和队列中的元素个数成正比。
 
-In order to realize a real-time queue, we can't computing $ F \cup reverse(R)$
-monolithic. Our strategy is to distribute this expensive computation to every
-pop and push operations. Thus although each pop and push get a bit slow,
-we may avoid the extremely slow worst pop or push case.
+为了实现实时队列，我们不能一次性计算$ F \cup reverse(R)$。解决策略是将这一耗时的计算分派到各次入队和出队操作中去。这样虽然单次的入队和出队需要做的事情多了，但是可以避免最坏情况下性能退化为线性时间。
 
-\subsubsection{Incremental reverse}
-\index{Queue!Incremental reverse}
+\subsubsection{逐步反转}
+\index{队列!逐步反转}
 
-Let's examine how functional reverse algorithm is implemented typically.
+我们首先分析一下典型的函数式反转算法。
 
 \be
   reverse(X) = \left \{
@@ -628,24 +614,19 @@ Let's examine how functional reverse algorithm is implemented typically.
 \right .
 \ee
 
-Where $X' = tail(X) = \{ x_2, x_3, ...\}$.
+其中$X' = tail(X) = \{ x_2, x_3, ...\}$。
 
-This is a typical recursive algorithm, that if the list to be reversed is
-empty, the result is just an empty list. This is the edge case; otherwise, we
-take the first element $x_1$ from the list, reverse the rest $\{x_2, x_3, ..., x_n \}$,
-to $\{x_n, x_{n-1}, .., x_3, x_2 \}$ and append $x_1$ after it.
+若列表为空，则反转结果也是一个空列表。否则，我们取出第一个元素$x_1$，将剩余元素$\{x_2, x_3, ..., x_n \}$反转为$\{x_n, x_{n-1}, .., x_3, x_2 \}$，然后在将$x_1$追加到末尾。
 
-However, this algorithm performs poor, as appending an element to the end of a list
-is proportion to the length of the list. So it's $O(N^2)$, but not a linear
-time reverse algorithm.
+但是，这一算法的性能不佳，追加元素到末尾用时和列表长度成正比。因此这一反转操作的性能为$O(n^2)$。
 
-There exists another implementation which utilizes an accumulator $A$, like below.
+另外一种实现方式是使用\underline{尾递归}：
 
 \be
   reverse(X) = reverse'(X, \phi)
 \ee
 
-Where
+其中
 
 \be
  reverse'(X, A) = \left \{
@@ -657,11 +638,7 @@ Where
 \right .
 \ee
 
-We call $A$ as {\em accumulator} because it accumulates intermediate reverse result
-at any time. Every time we call $reverse'(X, A)$, list $X$ contains the rest of
-elements wait to be reversed, and $A$ holds all the reversed elements so far. For instance
-when we call $reverse'()$ at $i$-th time, $X$ and $A$ contains the following
-elements:
+我们称$A$为\underline{accumulator}，它不断累积中间结果。任何时候，当调用$reverse'(X, A)$时，$X$包含尚未反转的元素，$A$包含迄今为止反转完的元素。当第$i$次调用$reverse'()$时，$X$和$A$分别包含如下内容：
 
 \[
   \begin{array}{r@{\quad}l}
@@ -669,19 +646,9 @@ elements:
   \end{array}
 \]
 
-In every non-trivial case, we takes the first element from $X$ in $O(1)$ time;
-then put it in front of the accumulator $A$, which is again $O(1)$ constant time.
-We repeat it $N$ times, so this is a linear time ($O(N)$) algorithm.
+每次递归，如果不是边界情况，我们用常数时间从$X$取出第一个元素；然后将其链结到$A$的前面，这一步同样仅耗时常数时间$O(1)$。同样的操作重复$n$次，因此这一反转算法时线性时间$O(n)$的。
 
-The latter version of reverse is obviously a {\em tail-recursion} algorithm,
-see \cite{tail-call} and \cite {recursion} for detail. Such characteristic
-is easy to change from monolithic algorithm to incremental manner.
-
-The solution is state transferring. We can use a state machine contains
-two types of stat: reversing state $S_r$ to indicate that the reverse
-is still on-going (not finished), and finish state $S_f$ to indicate
-the reverse has been done (finished). In Haskell programming
-language, it can be defined as a type.
+尾递归\cite{tail-call}\cite {recursion}算法可以很容易从一次性计算改为逐步计算。整体过程相当于一系列的状态转换。我们定义一个状态机，包含两种状态：反转状态$S_r$表示正在进行反转（未完成）；完成状态$S_f$表示反转已经结束（完成）。下面的Haskell例子程序将状态定义为类型。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -689,8 +656,7 @@ data State a = | Reverse [a] [a]
                | Done [a]
 \end{lstlisting}
 
-And we can schedule (slow-down) the above $reverse'(X, A)$ function with
-these two types of state.
+使用这两种状态，我们可以调度（slow-down）函数$reverse'(X, A)$的计算。
 
 \be
   step(S, X, A) = \left \{
@@ -702,18 +668,9 @@ these two types of state.
 \right .
 \ee
 
-Each step, we examine the state type first, if the current state is
-$S_r$ (on-going), and the rest elements to be reversed in $X$ is
-empty, we can turn the algorithm to finish state $S_f$; otherwise,
-we take the first element from $X$, put it in front of $A$ just
-as same as above, but we do NOT perform recursion, instead, we
-just finish this
-step. We can store the current state as well as the resulted $X$
-and $A$, the reverse can be continued at any time when we call 'next'
-$step$ function in the future with the stored state, $X$ and $A$
-passed in.
+每一步，我们先检查当前的状态，如果状态为$S_r$（反转中），但是$X$中已没有剩余元素需要反转，就将状态变换为完成$S_f$；否则，我们取出$X$中的第一个元素，将其链结到$A$的前面，接下来与之前不同，我们不再进行递归调用，这一步计算到此结束。当前的状态，以及反转的中间步骤结果$X$和$A$被保存下来，我们可以在以后的任何时候使用这些内容，再调用$step$函数继续反转。
 
-Here is an example of this step-by-step reverse algorithm.
+下面是逐步反转的一个例子：
 
 \[
 \begin{array}{lcl}
@@ -725,7 +682,7 @@ step(S_r, \phi, "olleh") & = & (S_f, "olleh")
 \end{array}
 \]
 
-And in Haskell code manner, the example is like the following.
+下面的Haskell代码描述了同样的例子：
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -736,15 +693,10 @@ step $ Reverse "o" "lleh" = Reverse [] "olleh"
 step $ Reverse [] "olleh" = Done "olleh"
 \end{lstlisting}
 
-Now we can distribute the reverse into steps in every pop and push
-operations. However, the problem is just half solved. We want to
-break down $ F \cup reverse(R)$, and we have broken $reverse(R)$
-into steps, we next need to schedule(slow-down) the list concatenation
-part $F \cup ...$, which is bound to $O(|F|)$, into incremental
-manner so that we can distribute it to pop and push operations.
+现在我们可以将反转计算逐步分散到入队和出队操作中。但是这仅解决了一半问题。我们需要逐步分解$ F \cup reverse(R)$计算。因此接下来需要调度（slow-down）列表的连接操作$F \cup ..$。连接操作的复杂度为$O(|F|)$。同样，我们的目标是将它分散到入队和出队操作中去。
 
-\subsubsection{Incremental concatenate}
-\index{Queue!Incremental concatenate}
+\subsubsection{逐步连接}
+\index{队列!逐步连接}
 
 It's a bit more challenge to implement incremental list concatenation
 than list reversing. However, it's possible to re-use the result
