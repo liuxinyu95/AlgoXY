@@ -783,56 +783,27 @@ next (Concat (x:f') acc) = Concat f' (x:acc)
 
 但是还有一个坏消息。在$2M+2$步计算完成前，出队操作可能随时发生。这会产生一个尴尬的情况：我们需要从front列表取出元素，但是新的front列表$F' = F \cup reverse(R)$尚未计算好。此时没有一个可用的front列表。
 
-One solution to solve this problem is to keep a copy of original front list $F$,
-during the time we are calculating $reverse(F)$ which is described in phase 1 of
-our incremental computing strategy. So that we are still safe even if user
-continuously performs first $M$ pop operations. So the queue looks like
-in table \ref{tab:pop-before-m} at some time after we start the incremental computation and before
-phase 1 (reverse $F$ and $R$ simultaneously) ending\footnote{One may wonder that copying
-a list takes linear time to the length of the list. If so the whole solution
-would make no sense. Actually, this linear time copying won't happen at all.
-This is because the purely functional nature, the front list won't be mutated
-either by popping or by reversing. However, if trying to realize a symmetric
-solution with paired-array and mutate the array in-place, this issue should be stated, and
-we can perform a `lazy' copying, that the real copying
-work won't execute immediately, instead, it copies one element every step we
-do incremental reversing. The detailed implementation is left as an exercise.}.
+一种解决方法是在第一阶段计算$reverse(F)$时，另外保存一份此前的front列表$F$。这样即使连续进行$M$次出队操作，我们仍然是安全的。表(\ref{tab:pop-before-m})给出了第一阶段逐步计算（同时反转$F$和$R$）的某个时刻队列的样子\footnote{有人会产生疑问，通常复制一个列表需要花费和列表长度成比例的线性时间。这样整个方案就有问题了。实际上，这一线性时间的列表复制根本不会发生。因为在纯函数式的环境下，出队或反转并不“修改”front列表。但是，如果尝试用paired数组实现一个对称解，并且in-place地修改数组，这一问题就会产生影响。为此，我们需要实现某种lazy复制，真正的复制操作并不立即发生，而是在每次反转的递进步骤中一步复制一个元素。具体的实现留给读者作为练习}。
 
 \begin{table}
 \centering
 \begin{tabular}{l l l}
-  front copy & on-going computation & new rear \\
+  保存的front列表 & 进行中的计算 & 新的rear列表 \\
   \hline
   $\{ f_i, f_{i+1}, ..., f_M \}$ & $(S_r, \tilde{F}, ..., \tilde{R}, ...)$ & $ \{ ... \}$ \\
-  first $i-1$ elements popped & intermediate result $\overleftarrow{F}$ and $\overleftarrow{R}$ & new elements pushed
+  前$i-1$个元素已出队 & $\overleftarrow{F}$和$\overleftarrow{R}$的中间结果 & 包含新入队的元素
 \end{tabular}
-\caption{Intermediate state of a queue before first $M$ steps finish.}
+\caption{前$M$步完成前的队列中间状态。}
 \label{tab:pop-before-m}
 \end{table}
 
-After these $M$ pop operations, the copy of $F$ is exhausted. And we just
-start incremental concatenation phase at that time. What if user goes
-on popping?
+经过$M$次出队操作，$F$的副本已经用光。我们此时刚刚开始进逐步连接的计算阶段。此时如果继续进行出队操作会怎样？
 
-The fact is that since $F$ is exhausted (becomes $\phi$), we needn't do concatenation
-at all. Since $F \cup \overleftarrow{R} = \phi \cup \overleftarrow{R} = \overleftarrow{R}$.
+事实上，由于$F$的副本被用光（变成了$phi$），我们无需再进行连接操作了。这是因为$F \cup \overleftarrow{R} = \phi \cup \overleftarrow{R} = \overleftarrow{R}$。
 
-It indicates us, when doing concatenation, we only need to concatenate those elements
-haven't been popped, which are still left in $F$. As user pops elements one by one
-continuously from the head of front list $F$, one method is to use a counter,
-record how many elements there are still in $F$. The counter is initialized as 0
-when we start computing $F \cup reverse(R)$, it's increased by one when we reverse
-one element in $F$, which means we need concatenate thie element in the future;
-and it's decreased by one every time when pop is
-performed, which means we can concatenate one element less; of course we need decrease
-this counter as well in every steps of concatenation. If and only if this counter
-becomes zero, we needn't do concatenations any more.
+这一点告诉我们，在进行连接操作时，我们只需要将$F$中尚未出队的元素连接起来。因为元素从$F$的头部逐一出队，我们可以使用一个计数器（counter）来记录$F$中剩余元素的个数。当开始计算$F \cup reverse(R)$时，计数器为0，每次反转$F$中的一个元素时，就将计数器加一，表示将来我们需要连接这个元素；每次出队操作，就将计数器减一，表示我们将来可以少连接一个元素。显然在连接操作的每步中，我们也需要递减计数器。当且仅当计数器为0的时候，我们无需继续进行连接操作。
 
-We can give the realization of purely functional real-time queue according to the above
-analysis.
-
-We first add an idle state $S_0$ to simplify some state transfering. Below Haskell program
-is an example of this modified state definition.
+根据以上的分析，我们可以给出纯函数式的实时队列的完整实现了。为了简化状态转换，我们可以增加一个idle状态$S_0$。下面的Haskell例子程序给出了这一修改过的状态定义。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -842,20 +813,16 @@ data State a = Empty
              | Done [a] -- result: f ++ reverse r
 \end{lstlisting}
 
-And the data structure is defined with three parts, the front list (augmented with length);
-the on-going state of computing $F \cup reverse(R)$; and the rear list (augmented with length).
+队列的数据结构分为三个部分：front列表（带有长度信息）；正在计算中的$F \cup reverse(R)$的中间状态；和rear列表（带有长度信息）。
 
-Here is the Haskell definition of real-time queue.
+下面的Haskell例子程序定义了实时队列的数据结构。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
 data RealtimeQueue a = RTQ [a] Int (State a) [a] Int
 \end{lstlisting}
 
-The empty queue is composed with empty front and rear list together with idle state $S_0$ as
-$Queue(\phi, 0, S_0, \phi, 0)$. And we can test if a queue is empty by checking if $|F| = 0$
-according
-to the balance invariant defined before. Push and pop are changed accordingly.
+空队列包含空的front和rear列表，以及一个idle状态$S_0$，记为$Queue(\phi, 0, S_0, \phi, 0)$。根据平衡invariant的定义，我们可以通过检查$|F|=0$与否来判断一个队列是否为空。入队和出队操作修改如下：
 
 \be
   push(Q, x) = balance(F, |F|, \mathcal{S}, \{ x \} \cup R, |R|+1)
@@ -865,11 +832,9 @@ to the balance invariant defined before. Push and pop are changed accordingly.
   pop(Q) = balance(F', |F|-1, abort(\mathcal{S}), R, |R|)
 \ee
 
-The major difference is $abort()$ function. Based on our above analysis, when there
-is popping, we need decrease the counter, so that we can concatenate one element less.
-We define this as aborting. The details will be given after $balance()$ function.
+最大的变化在于$abort()$函数。根据前面的分析，在出队时我们递减计数器，这样将来可以少连接一个元素。我们将其定义为aborting。我们稍后介绍它的具体实现。
 
-The relative Haskell code for push and pop are listed like this.
+相应的Haskell出队和入队操作可以由下面的例子程序给出。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -877,9 +842,7 @@ push (RTQ f lenf s r lenr) x = balance f lenf s (x:r) (lenr + 1)
 pop (RTQ (_:f) lenf s r lenr) = balance f (lenf - 1) (abort s) r lenr
 \end{lstlisting}
 
-The $balance()$ function first check the balance invariant, if it's violated, we need
-start re-balance it by starting compute $F \cup reverse(R)$ incrementally; otherwise
-we just execute one step of the unfinished incremental computation.
+函数$balance()$首先检查平衡invariant，如果违反了，我们需要启动$F \cup reverse(R)$的逐步计算来恢复平衡；否则，我们仅仅执行异步尚未完成的递进计算。
 
 \be
   balance(F, |F|, \mathcal{S}, R, |R|) = \left \{
@@ -891,7 +854,7 @@ we just execute one step of the unfinished incremental computation.
 \right .
 \ee
 
-The relative Haskell code is given like below.
+相应的Haskell例子程序如下：
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -900,8 +863,7 @@ balance f lenf s r lenr
     | otherwise = step f (lenf + lenr) (Reverse 0 f [] r []) [] 0
 \end{lstlisting}
 
-The $step()$ function typically transfer the state machine one state ahead, and
-it will turn the state to idle ($S_0$) when the incremental computation finishes.
+函数$step()$将状态机转换到下一个状态，全部递进计算结束后，状态转换到idle状态$S_0$。
 
 \be
   step(F, |F|, \mathcal{S}, R, |R|) = \left \{
