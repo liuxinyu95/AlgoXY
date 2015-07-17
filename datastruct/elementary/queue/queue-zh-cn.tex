@@ -732,14 +732,8 @@ data State a = Reverse [a] [a] [a] [a]
 
 由于我们同时反转$F$和$R$，因此反转状态变量带有一对列表和一对accumulator。
 
-The state transfering is defined according to the two phases strategy described
-previously.
-Denotes that $F = \{ f_1, f_2, ... \}$, $F' = tail(F) = \{f_2, f_3, ... \}$,
-$R = \{ r_1, r_2, ... \}$, $R' = tail(R) = \{ r_2, r_3, ... \}$. A state $\mathcal{S}$,
-contains it's type $S$, which has the value among $S_r$, $S_c$, and $S_f$.
-Note that $\mathcal{S}$ also contains necessary
-parameters such as $F$, $\overleftarrow{F}$, $X$, $A$ etc as intermediate results.
-These parameters vary according to the different states.
+状态转换按照两个阶段测策略进行定义。记$F = \{ f_1, f_2, ... \}$、$F' = tail(F) = \{f_2, f_3, ... \}$、
+$R = \{ r_1, r_2, ... \}$、$R' = tail(R) = \{ r_2, r_3, ... \}$。一个状态$\mathcal{S}$包含它的类型$S$，可以是$S_r$、$S_c$和$S_f$的一种。同时状态$\mathcal{S}$中还包含必要的参数，如$F$、$\overleftarrow{F}$、$X$、$A$等作为中间结果。状态不同，包含的参数也有所不同。
 
 \be
   next(\mathcal{S}) = \left \{
@@ -753,7 +747,7 @@ These parameters vary according to the different states.
 \right .
 \ee
 
-The relative Haskell program is list as below.
+相应的Haskell程序如下：
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -763,34 +757,19 @@ next (Concat 0 _ acc) = Done acc
 next (Concat (x:f') acc) = Concat f' (x:acc)
 \end{lstlisting}
 
-All left to us is to distribute these incremental steps into every pop and push
-operations to implement a real-time $O(1)$ purely functional queue.
+接下来我们需要将这些递进的步骤分配到每个出队和入队操作中以实现一个实时$O(1)$的纯函数式队列。
 
-\subsubsection{Sum up}
+\subsubsection{汇总}
 
-Before we dive into the final real-time queue implementation. Let's analyze how
-many incremental steps are taken to achieve the result of $F \cup reverse(R)$.
-According to the balance variant we used previously, $|R| = |F| + 1$, Let's
-denotes $M = |F|$.
+在给出最终的实时队列实现前，我们先来分析一下为了计算$F \cup reverse(R)$，总共需要多少递进步骤。根据平衡队列的条件，有$|R| = |F| + 1$。记$M = |F|$。
 
-Once the queue gets unbalanced due to some push or pop operation, we start this
-incremental  $F \cup reverse(R)$.
-It needs $M + 1$ steps to reverse $R$, and at the same time, we finish reversing
-the list $F$ within these steps. After that, we need extra $M+1$ steps to execute
-the concatenation. So there are $2M + 2$ steps.
+由于某次出队或入队操作造成队列不平衡时，我们开始逐步计算$F \cup reverse(R)$。总共需要$M+1$步来反转$R$，我们同时在这些步骤内完成了对$F$的反转。此后，我们需要再用$M+1$步来进行连接操作。因此总共花费了$2M+2$步。
 
-It seems that distribute one step inside one pop or push operation is the natural
-solution, However, there is a critical
-question must be answered: Is it possible that before we finish these $2M + 2$ steps,
-the queue gets unbalanced again due to a series push and pop?
+最直观的想法是在每一个出队和入队操作中分配一个递进步骤。但是我们需要回答一个关键问题：在我们完成$2M+2$步操作之前，队列有没有可能由于接下来的一系列入队和出队操作，再次变得不平衡？
 
-There are two facts about this question, one is good news and the other is bad news.
+关于这一问题有两个事实，一个是好消息，一个是坏消息。
 
-Let's first show the good news, that luckily, continuously pushing can't make the
-queue unbalanced again before we finish these $2M + 2$ steps to achieve $F \cup reverse(R)$.
-This is because once we start re-balancing, we can get a new front list
-$F' = F \cup reverse(R)$ after $2M + 2$ steps. While the next time unbalance
-is triggered when
+我们先看好消息。很幸运，在我们花费$2M+2$步操作计算$F \cup reverse(R)$完成之前，连续的入队操作不可能再次使得队列变得不平衡。因为一旦开始恢复平衡的处理，经过$2M+2$步后，我们就得到了一个新的front列表$F' = F \cup reverse(R)$。而下一次队列变得不平衡时，我们有：
 
 \be
   \begin{array}{rcl}
@@ -800,16 +779,9 @@ is triggered when
   \end{array}
 \ee
 
-That is to say, even we continuously pushing as mush elements as possible after
-the last unbalanced time, when the queue gets unbalanced again, the $2M+2$ steps
-exactly get finished at that time point. Which means the new front list $F'$ is
-calculated OK. We can safely go on to compute $F' \cup reverse(R')$. Thanks to the
-balance invariant which is designed in previous section.
+也就是说，从上次队列不平衡的时刻算起，即使我们不断持续将新元素入队，以最快的速度再次使得队列不平衡时，$2M+2$步计算恰好已经完成了。此时新的front列表被计算出来。我们可以安全地继续计算$F' \cup reverse(R')$。多亏了前面给出的平衡invariant，帮助我们保证了这一点。
 
-But, the bad news is that, pop operation can happen at anytime before these
-$2M+2$ steps finish. The situation is that once we want to extract element
-from front list, the new front list $F' = F \cup reverse(R)$ hasn't been
-ready yet. We don't have a valid front list at hand.
+但是还有一个坏消息。在$2M+2$步计算完成前，出队操作可能随时发生。这会产生一个尴尬的情况：我们需要从front列表取出元素，但是新的front列表$F' = F \cup reverse(R)$尚未计算好。此时没有一个可用的front列表。
 
 One solution to solve this problem is to keep a copy of original front list $F$,
 during the time we are calculating $reverse(F)$ which is described in phase 1 of
