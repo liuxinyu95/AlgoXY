@@ -875,12 +875,7 @@ balance f lenf s r lenr
   \right .
 \ee
 
-Where $\mathcal{S}' = next(\mathcal{S})$ is the next state transferred;
-$F' = F \cup reverse(R)$, is the final new front list result from the incremental
-computing. The real
-state transferring is implemented in $next()$ function as the following. It's different
-from previous version by adding the counter field $n$ to record how many elements left
-we need to concatenate.
+其中，$\mathcal{S}' = next(\mathcal{S})$，是下一个转换到的状态；$F' = F \cup reverse(R)$是递进计算出的新front列表。真正的状态转换函数$next()$的实现如下。和前面的定义不同，我们增加了一个计数器$n$来记录还剩余多少个元素需要连接。
 
 \be
   next(\mathcal{S}) = \left \{
@@ -897,7 +892,7 @@ we need to concatenate.
 \right .
 \ee
 
-And the corresponding Haskell code is like this.
+相应的Haskell例子程序如下：
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -908,8 +903,7 @@ next (Concat n (x:f') acc) = Concat (n-1) f' (x:acc)
 next s = s
 \end{lstlisting}
 
-Function $abort()$ is used to tell the state machine, we can concatenate one element
-less since it is popped.
+函数$abort()$用于指示状态机，由于出队操作，可以少连接一个元素。
 
 \be
   abort(\mathcal{S}) = \left \{
@@ -923,10 +917,9 @@ less since it is popped.
 \right .
 \ee
 
-Note that when $n = 0$ we actually rollback one concatenated element by
-return $A'$ as the result but not $A$. (Why? this is left as an exercise.)
+注意当$n = 0$的时候，我们实际上撤销了上一个连接元素的操作，因此返回$A'$而不是$A$作为结果（作为练习，我们请读者来回答这样做的原因）。
 
-The Haskell code for abort function is like the following.
+下面的Haskell例子程序实现了abort函数。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -936,18 +929,13 @@ abort (Reverse n f f' r r') = Reverse (n-1) f f' r r'
 abort s = s
 \end{lstlisting}
 
-It seems that we've done, however, there is still one tricky issue hidden
-behind us.
-If we push an element $x$ to an empty queue, the result queue will be:
+我们已经接近最终的结果了。但是仍有一个隐藏的问题必须解决：如果将一个元素$x$放入一个空队列，结果会是：
+
 \[
   Queue(\phi, 1, (S_c, 0, \phi, \{ x \}), \phi, 0)
 \]
 
-If we perform pop immediately, we'll get an error! We found that
-the front list is empty although the previous computation of $F \cup reverse(R)$
-has been finished. This is because it takes one more extra step to
-transfer from the state $(S_c, 0, \phi, A)$ to $(S_f, A)$. It's necessary
-to refine the $\mathcal{S}'$ in $step()$ function a bit.
+若此时立即进行出队操作，就会发生错误！虽然上一次$F \cup reverse(R)$的计算已经结束，但是front列表却为空。这是因为还需要额外一步才能从状态$(S_c, 0, \phi, A)$转换到$(S_f, A)$。因此需要进一步调整函数$step()$中的$\mathcal{S}'$如下：
 
 \be
   \mathcal{S}' = \left \{
@@ -959,7 +947,7 @@ to refine the $\mathcal{S}'$ in $step()$ function a bit.
 \right .
 \ee
 
-The modification reflects to the below Haskell code:
+下面的Haskell例子程序体现了这一修改：
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -970,22 +958,15 @@ step f lenf s r lenr =
     where s' = if null f then next $ next s else next s
 \end{lstlisting} %$
 
-Note that this algorithm differs from the one given by Chris Okasaki in \cite{okasaki-book}.
-Okasaki's algorithm executes two steps per pop and push, while the one presents in
-this chapter executes only one per pop and push, which leads to more distributed
-performance.
+注意这一算法和Chris Okasaki在\cite{okasaki-book}给出的有所不同。Okasaki的算法每次出队、入队执行两步递进计算，而本章中的算法每次只执行一次。因此计算性能的分布更加均匀。
 
 \begin{Exercise}
 \begin{itemize}
-\item Why need we rollback one element when $n=0$ in $abort()$ function?
+\item 在$abort()$函数中，当$n = 0$时，为什么需要rollback一个元素？
 
-\item Realize the real-time queue with symmetric paired-array queue solution in your favorite
-imperative programming language.
+\item 考虑实时队列的对称实现。选择一门命令式语言，用paired数组实现实时队列。
 
-\item In the footnote, we mentioned that when we start incremental reversing
-with in-place paired-array solution, copying the array can't be done monolithic
-or it will lead to linear time operation. Implement the lazy copying
-so that we copy one element per step along with the reversing.
+\item 在脚注中，我们提到，使用in-place的paired数组来实现实时队列时，当开始递进计算反转时，不能一次性复制数组，否则就会将性能降低到线性时间复杂度。请实现一个惰性复制（lazy copy），使得每步反转时我们仅复制一个元素。
 
 \end{itemize}
 \end{Exercise}
@@ -994,8 +975,8 @@ so that we copy one element per step along with the reversing.
 % ================================================================
 %                 Lazy Real-time queue
 % ================================================================
-\section{Lazy real-time queue}
-\index{Queue!Lazy real-time queue}
+\section{惰性实时队列}
+\index{队列!惰性实时队列}
 
 The key to realize a real-time queue is to break down the expensive
 $F \cup reverse(R)$ to avoid monolithic computation. Lazy evaluation
