@@ -44,22 +44,20 @@
 \section{简介}
 \label{introduction}
 
-队列是一种看起来比较简单的数据结构。它提供了FIFO（先进先出）处理数据的机制。有多种方法可以实现队列，包括使用单向或双向链表，使用循环buffer等。但是，在满足队列性质的条件下（尤其式性能限制条件），实现一个纯函数式队列却并不简单。
+队列是一种看起来比较简单的数据结构。它提供了FIFO（先进先出）处理数据的机制。有多种方法可以实现队列，包括使用单向或双向链表，使用循环buffer等。但是，在满足队列性质的条件下（尤其是性能限制条件），实现一个纯函数式队列却并不简单。
 
-本章中，我们介绍实现队列的多种策略。下一章中，我们会介绍如何实现序列。
-
-队列是一种先进先出的数据结构，并且满足如下的性能限制：
+本章中，我们介绍实现队列的多种策略。队列是一种先进先出的数据结构，并且满足如下的性能限制：
 
 \begin{itemize}
 \item 可以在常数时间$O(1)$内向末尾添加元素；
-\item 可以在常数时间$O(1)$内从头部取出或删除元素。
+\item 可以在常数时间$O(1)$内从头部获取或删除元素。
 \end{itemize}
 
 这两条性质必须被满足。有时还会增加一些目标，例如能够动态分配内存。
 
 显然，双向链表可以很容易地实现队列。但是还存在更加简单的方案，队列可以由单向链表或者普通数组实现。我们这里要提出的问题是：如何实现一个纯函数式的队列？
 
-我们将首先了解典型的单向链表和循环buffer实现的队列；然后我们给出一个简单直观的函数式实现，但是这一解法的性能只在分摊的意义下能达到常数时间。我们还将介绍实时（real-time或最坏情况下）性能达到常数时间的实现方法。最后，我们介绍一种依赖于惰性求值的实时队列。
+我们将首先解释典型的单向链表和循环buffer实现的队列；然后我们给出一个简单直观的函数式实现，但是这一解法的性能只在分摊的意义下能达到常数时间。我们还将介绍实时（real-time或最坏情况下）性能达到常数时间的实现方法。最后，我们介绍一种依赖于惰性求值的实时队列。
 
 大部份函数式实现来自Chris Okasaki的工作\cite{okasaki-book}，他给出了16种不同的纯函数式队列。
 
@@ -73,7 +71,7 @@
 
 使用单向链表，可以很容易地在链表的头部以常数时间$O(1)$插入或删除元素。但是为了保证先进先出，只能在链表头部执行一种操作，而在链表的尾部执行相反的另一种操作。
 
-对于单向链表，为了到达尾部执行操作，我们需要遍历整个链表。遍历需要$O(n)$时间，其中$n$是链表长度。这样就无法达到队列的性能要求。
+对于单向链表，为了在尾部执行操作，我们需要遍历整个链表以到达尾部。遍历需要$O(n)$时间，其中$n$是链表长度。这样就无法达到队列的性能要求。
 
 为了解决这个问题，我们需要一个额外的记录来快速访问链表的尾部。使用一个sentinel可以简化边界的处理。下面的C语言例子程序使用单向链表实现了队列\footnote{使用C++模板可以抽象元素的类型。简单起见，C语言例子程序种假设元素为整数。}。
 
@@ -86,7 +84,7 @@ struct Node {
   struct Node* next;
 };
 
-struct Queue{
+struct Queue {
   struct Node *head, *tail;
 };
 \end{lstlisting}
@@ -128,9 +126,9 @@ struct Queue{
 class Queue q where
     empty :: q a
     isEmpty :: q a -> Bool
-    push :: q a -> a -> q a -- aka 'snoc' or append, or push_back
-    pop :: q a -> q a -- aka 'tail' or pop_front
-    front :: q a -> a -- aka 'head'
+    push :: q a -> a -> q a     -- Or named as 'snoc', append, push_back
+    pop :: q a -> q a           -- Or named as 'tail', pop_front
+    front :: q a -> a           -- Or named as 'head'
 \end{lstlisting}
 
 为了保证\textproc{Enqueue}和\textproc{Dequeue}可以在常数时间内完成，我们在头部加入元素，从尾部删除元素\footnote{也可以在尾部加入，从头部删除，但是相应的操作会变复杂。}。
@@ -194,7 +192,7 @@ Key dequeue(struct Queue* q) {
 }
 \end{lstlisting}
 
-这一方案简单、稳健。可以很容易地将它扩展到并发环境（例如多核）。我们可以在头部和尾部各使用一把锁。sentinel节点可以帮助我们在队列为空时避免死锁\cite{PODC96}、\cite{SutterDDJ}。
+这一方案简单、稳健。可以很容易地扩展到并发环境（例如多核）。我们可以在头部和尾部各使用一把锁。sentinel节点可以帮助我们在队列为空时避免死锁\cite{PODC96}、\cite{SutterDDJ}。
 
 \begin{Exercise}
 \begin{itemize}
@@ -287,18 +285,18 @@ struct Queue* createQ(int max) {
 但取模运算在某些环境下很慢，可以通过一些调整避免取模运算，如下面的C语言例子程序所示：
 
 \begin{lstlisting}
-void enQ(struct Queue* q, Key x){
-  if(!fullQ(q)){
+void enQ(struct Queue* q, Key x) {
+  if(!fullQ(q)) {
     q->buf[q->tail++] = x;
     q->tail -= q->tail< q->size ? 0 : q->size;
   }
 }
 
-Key headQ(struct Queue* q){
+Key headQ(struct Queue* q) {
   return q->buf[q->head]; /* Assume queue isn't empty */
 }
 
-Key deQ(struct Queue* q){
+Key deQ(struct Queue* q) {
   Key x = headQ(q);
   q->head++;
   q->head -= q->head< q->size ? 0 : q->size;
@@ -307,7 +305,7 @@ Key deQ(struct Queue* q){
 \end{lstlisting}
 
 \begin{Exercise}
-循环队列在初始化时规定了最大的容量，请提供一个函数检测队列是否已满以避免溢出。注意存在两种情况：头部在尾部前面，和头部在尾部后面。
+循环buffer的队列在初始化时规定了最大的容量，请提供一个函数检测队列是否已满以避免溢出。注意存在两种情况：头部在尾部前面，和头部在尾部后面。
 \end{Exercise}
 
 % ================================================================
@@ -318,7 +316,7 @@ Key deQ(struct Queue* q){
 \subsection{Paired-list队列}
 \index{队列!Paired-list队列}
 
-仅仅使用一个列表无法满足队列的性能限制。大多数的函数式环境使用单向链表来实现列表，因此在列表的头部操作性能为常数时间，而在尾部需要线性时间$O(n)$，其中$n$为列表长度。因此入队或者出队中的一个操作的性能无法达到要求，如图\ref{fig:linked-list-queue}所示。
+仅仅使用一个列表无法满足队列的性能限制。大多数的函数式环境使用单向链表来实现列表，列表的头部操作性能为常数时间，而在尾部需要线性时间$O(n)$，其中$n$为列表长度。因此入队或者出队中必然有一个操作的性能无法达到要求，如图\ref{fig:linked-list-queue}所示。
 
 \begin{figure}[htbp]
   \centering
@@ -363,7 +361,7 @@ pop(Q) = Queue(tail(front(Q)), rear(Q))
 
 但是，我们必须解决一个关键问题，经过一系列出队操作后，front列表有可能变空，而rear列表中还有元素。这时如果再进行出队操作将如何处理？一种方案是将rear列表反转后替换front列表。
 
-为此，每次出队操作后，我们都执行一次平衡检查，即队列$Q$的front和rear列表分别为$F = front(Q)$和$R = fear(Q)$。
+为此，每次出队操作后，我们都执行一次平衡检查，记队列$Q$的front和rear列表分别为$F = front(Q)$和$R = fear(Q)$。
 
 \be
 balance(F, R) = \left \{
@@ -402,9 +400,7 @@ pop ([], _) = error "Empty"
 pop (_:f, r) =  balance (f, r)
 \end{lstlisting}
 
-虽然我们仅仅在front和rear列表的头部进行入队和出队操作，但是性能并不能总保证为常数时间。
-尽管如此，整体的分摊性能是可以达到常数时间的。将rear列表反转所需时间和列表长度成正比。
-这一步的复杂度为$O(n)$，其中$n=|R|$。我们将分担性能的证明作为习题留给读者。
+虽然我们仅仅在front和rear列表的头部进行入队和出队操作，但是性能并不能总保证为常数时间。尽管如此，整体的分摊性能是可以达到常数时间的。将rear列表反转所需时间和列表长度成正比。这一步的复杂度为$O(n)$，其中$n=|R|$。我们将分担性能的证明作为习题留给读者。
 
 \subsection{Paired-array队列－一种对称实现}
 \index{队列!Paired-array队列}
