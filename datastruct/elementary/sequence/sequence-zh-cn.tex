@@ -273,16 +273,14 @@ tail' = snd . extractTree
 
 森林中的树实际上将元素划分为大小不同的block进行管理，给定任意索引，可以很容易地定位到保存此元素的树。然后在树种进行一次查找就可以得到结果。因为所有的树都是二叉树（确切地说是完全二叉树），所以树中的查找实际上是二分查找，性能和树的大小为对数比例。进行随机访问时，相比在链表中进行线性查找要快得多。
 
-给定索引$i$和序列$S$，序列使用由树组成的森林来表示，随机访问算法可以描述如下\footnote{按照传统，在进行算法描述时，索引$i$从1开始；在大多数编程语言中个，索引从0开始。}：
+给定索引$i$和序列$S$，序列使用由树组成的森林来表示，随机访问算法可以描述如下\footnote{按照传统，在进行算法描述时，索引$i$从1开始；在大多数编程语言中，索引从0开始。}：
 
 \begin{enumerate}
-\item Compare $i$ with the size of the first tree $T_1$ in the forest, if $i$ is
-less than or equal to the size, the element exists in $T_1$, perform looking up in $T_1$;
-\item Otherwise, decrease $i$ by the size of $T_1$, and repeat the previous step
-in the rest of the trees in the forest.
+\item 比较$i$和森林中第一棵树$T_1$的size的大小，若$i$小于等于size，则元素在$T_1$中，接下来在$T_1$中查找；
+\item 否则，从$i$中减去$T_1$的size，然后在森林中剩余的树中重复前面的步骤。
 \end{enumerate}
 
-This algorithm can be represented as the below equation.
+这一算法可以形式化为下面的定义。
 
 \be
 get(S, i) = \left \{
@@ -294,14 +292,9 @@ get(S, i) = \left \{
 \right .
 \ee
 
-Where $|T| = size(T)$, and $S' = \{ T_2, T_3, ... \}$ is the rest of trees without the first one in the
-forest. Note that we don't handle out of bound error case, this is left as an exercise
-to the reader.
+其中$|T| = size(T)$，而$S' = \{ T_2, T_3, ... \}$为森林中除第一棵树以外的剩余部分。这里我们没有进行越界的检查和错误处理，这些可以留给读者作为练习。
 
-Function $lookupTree()$ is just a binary search algorithm, if the index $i$ is 1, we just return the root
-of the tree, otherwise, we halve the tree by unlinking, if $i$ is less than or equal to the size
-of the halved tree, we recursively look up the left tree, otherwise, we
-look up the right tree.
+函数$lookupTree()$是一个二分查找算法，如果$i$等于1，我们返回树的根节点，否则，我们将树对半拆分，如果$i$小于拆分后树的size，就递归地在左子树中查找，否则就递归地在右子树中查找。
 
 \be
 lookupTree(T, i) = \left \{
@@ -314,9 +307,9 @@ lookupTree(T, i) = \left \{
 \right .
 \ee
 
-Where function $left()$ returns the left tree $T_l$ of $T$, while $right()$ returns $T_r$.
+其中函数$left()$返回$T$的左子树$T_l$，而$right()$返回右子树$T_r$。
 
-The corresponding Haskell program is given as below.
+下面的Haskell例子程序实现了相应的算法。
 
 \begin{lstlisting}
 getAt (t:ts) i = if i < size t then lookupTree t i
@@ -327,23 +320,18 @@ lookupTree (Node sz t1 t2) i = if i < sz `div` 2 then lookupTree t1 i
                                else lookupTree t2 (i - sz `div` 2)
 \end{lstlisting}
 
-Figure \ref{fig:get-at-example} illustrates the steps of looking up the 4-th element
-in a sequence of size 6. It first examine the first tree, since the size is 2 which is
-smaller than 4, so it goes on looking up for the second tree with the updated index $i'=4-2$, which is the
-2nd element in the rest of the forest. As the size of the next tree is 4, which is
-greater than 2, so the element to be searched should be located in this tree.
-It then examines the left sub tree since the new index 2 is not greater than the half size 4/2=2;
-The process next visits the right grand-child, and the final result is returned.
+图\ref{fig:get-at-example}描述了在一个长度为6的序列中查找第4个元素的步骤。首先检查第一棵树，由于大小为2，小于4，所以继续检查第二棵树，同时将索引更新为$i'=4-2$。即查找森林中剩余部分的第2个元素。由于接下来的树大小为4，大于2，所以待查找的元素就在这棵树中。因为新索引为2，它不大于对半拆分的子树尺寸4/2=2，所以接下来需要检查左子树，然后检查右侧的孙子分支，最终得到要访问的元素。
 
 \begin{figure}[htbp]
   \centering
   \subfloat[$getAt(S, 4))$, $4 > size(t_1) = 2$]{\includegraphics[scale=0.5]{img/bralst-6.ps}}
   \subfloat[$getAt(S', 4-2) \Rightarrow lookupTree(t_2, 2)$]{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-4.ps}\hspace{0.2\textwidth}} \\
   \subfloat[$ 2 \leq \lfloor size(t_2)/2 \rfloor \Rightarrow lookupTree(left(t_2), 2)$]{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-4l.ps}\hspace{0.2\textwidth}}
-  \subfloat[$lookupTree(right(left(t_2)), 1)$, $x_3$ is returned.]{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-4lr.ps}\hspace{0.2\textwidth}}
-  \caption{Steps of locating the 4-th element in a sequence.} \label{fig:get-at-example}
+  \subfloat[$lookupTree(right(left(t_2)), 1)$, $x_3$被返回]{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-4lr.ps}\hspace{0.2\textwidth}}
+  \caption{在序列中访问第4个元素的步骤。} \label{fig:get-at-example}
 \end{figure}
 
+使用类似的思路，我们可以修改任意位置$i$的元素。
 By using the similar idea, we can update element at any arbitrary position $i$.
 We first compare the size of the first tree $T_1$ in the forest with $i$, if it is
 less than $i$, it means the element to be updated doesn't exist in the first
