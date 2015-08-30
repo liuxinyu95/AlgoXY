@@ -928,8 +928,7 @@ concat Empty y = y
 concat (CList x q) y = CList x (push q y)
 \end{lstlisting}
 
-Besides the good performance of concatenation, this design also brings
-satisfied features for adding element both on head and tail.
+这一设计即获得了良好的连接操作性能，还同时可以在头部尾部高效添加元素
 
 \be
 cons(x, s) = concat(clist(x, \Phi), s)
@@ -939,24 +938,15 @@ cons(x, s) = concat(clist(x, \Phi), s)
 append(s, x) = concat(s, clist(x, \Phi))
 \ee
 
-It's a bit complex to realize the algorithm that removes the first
-element from a concatenate-able list. This is because after the root,
-which is the first element in the sequence got removed, we have to
-re-construct the rest things, a queue of sub-lists, to a K-ary
-tree.
-
-Before diving into the re-construction, let's solve the trivial
-part first. Getting the first element is just returning the root
-of the K-ary tree.
+只要返回K叉树的根，就可以获得列表的第一个元素
 
 \be
 head(s) = root(s)
 \ee
 
-As we mentioned above, after root being removed, there left
-all children of the K-ary tree. Note that all of them are also
-concatenate-able list, so that one natural solution is to
-concatenate them all together to a big list.
+但是从可连接列表的头部删除元素有些复杂。这是因为第一个元素为根节点，删除后我们必须从剩余的子树中队列中重新构造一个K叉树。
+
+根节点被删除后，剩下的所有子树也都是K叉树。并且它们也都是可连接列表。一个自然的想法是把他们都连接到一起，形成一个大列表。
 
 \be
 concatAll(Q) =  \left \{
@@ -968,23 +958,17 @@ concatAll(Q) =  \left \{
 \right .
 \ee
 
-Where function $front()$ just returns the first element from a
-queue without removing it, while $pop()$ does the removing work.
+其中函数$front()$返回队列中的第一个元素而不将其删除，而$pop()$会执行出队的删除操作。
 
-If the queue is empty, it means that there is no children at all, so
-the result is also an empty list; Otherwise, we pop the first child,
-which is a concatenate-able list, from the queue, and recursively
-concatenate all the rest children to a list; finally, we concatenate this list
-behind the already popped first children.
+如果队列为空，说明不存在子树，因此结果为一个空列表；否则，我们将第一个子树出队，它是一个可连接列表，然后递归地将剩余的子树连接成一个列表；最后，再把它连接到第一子树的末尾。
 
-With $concatAll()$ defined, we can then implement the algorithm
-of removing the first element from a list as below.
+定义好$concatAll()$后，我们就可以实现从列表头部删除第一个元素的算法了。
 
 \be
 tail(s) = linkAll(queue(s))
 \ee
 
-The corresponding Haskell program is given like the following.
+下面的Haskell例子程序实现了这一算法。
 
 \begin{lstlisting}
 head (CList x _) = x
@@ -994,19 +978,9 @@ linkAll q | isEmptyQ q = Empty
           | otherwise = link (front q) (linkAll (pop q))
 \end{lstlisting}
 
-Function \verb|isEmptyQ| is used to test a queue is empty, it is trivial and
-we omit its definition. Readers can refer to the source code along with
-this book.
+函数\texttt{isEmptyQ}用来判断一个队列是否为空，我们这里略过它的简单实现。读者可以参考本书附带的例子代码。
 
-$linkAll()$ algorithm actually traverses the queue data structure,
-and reduces to a final result. This remind us of {\em folding} mentioned
-in the chapter of binary search tree. readers can refer to the
-appendix of this book for the detailed description of folding.
-It's quite possible to define a folding algorithm for queue instead
-of list\footnote{Some functional programming language, such as
-Haskell, defined type class, which is a concept of monoid so that
-it's easy to support folding on a customized data structure.}
-\cite{learn-haskell}.
+算法$linkAll()$实际上遍历了队列，逐步归并（reduce）到一个最终的结果。这和我们在二叉搜索树一章中介绍的\underline{folding}概念非常类似。读者可以参考本书的附录了解folding的详细定义和解释。我们可以为队列也定义folding操作\footnote{某些函数式编程语言，例如Haskell，定义了概念为monoid（幺半群）的type class，可以很方便地在自定义的数据结构上进行folding。}\cite{learn-haskell}。
 
 \be
 foldQ(f, e, Q) = \left \{
@@ -1018,11 +992,9 @@ foldQ(f, e, Q) = \left \{
 \right .
 \ee
 
-Function $foldQ()$ takes three parameters, a function $f$, which is used
-for reducing, an initial value $e$, and the queue $Q$ to be traversed.
+函数$foldQ()$接受三个参数，一个二元函数$f$，用以reduce，一个初始值$e$，和一个需要遍历的队列$Q$。
 
-Here are some examples to illustrate folding on queue. Suppose
-a queue $Q$ contains elements $\{ 1, 2, 3, 4, 5 \}$ from head to tail.
+我们给出一些在队列上进行folding的例子。假设队列$Q$从头到尾包含元素$\{ 1, 2, 3, 4, 5 \}$。
 
 \[
 \begin{array}{l}
@@ -1032,13 +1004,13 @@ foldQ(\times, 0, Q) = 1 \times (2 \times (3 \times (4 \times (5 \times 0)))) = 0
 \end{array}
 \]
 
-Function $linkAll$ can be changed by using $foldQ$ accordingly.
+仿照这些例子，函数$linkAll$可以用$foldQ$来定义。
 
 \be
 linkAll(Q) = foldQ(link, \Phi, Q)
 \ee
 
-The Haskell program can be modified as well.
+下面的Haskell例子程序使用folding的概念实现了子树的连接。
 
 \begin{lstlisting}
 linkAll = foldQ link Empty
@@ -1048,34 +1020,25 @@ foldQ f z q | isEmptyQ q = z
             | otherwise = (front q) `f` foldQ f z (pop q)
 \end{lstlisting}
 
-However, the performance of removing can't be ensured in all cases.
-The worst case is that, user keeps appending $n$ elements to a empty
-list, and then immediately performs removing. At this time, the K-ary
-tree has the first element stored in root. There are $n-1$ children,
-all are leaves. So $linkAll()$ algorithm downgrades to $O(n)$ which
-is linear time.
+但是删除算法的性能并非在所有的情况下都能得到保证。最坏情况发生在用户连续向一个空列表添加$n$个元素后，然后立即执行一次删除。此时K叉树中，第一个元素存储在根节点，而$n-1$个子树都只含有一个叶子节点。因此$linkAll()$算法退化到线性时间$O(n)$。
 
-The average case is amortized $O(1)$, if the add, append, concatenate
-and removing operations are randomly performed. The proof is left as
-en exercise to the reader.
+元素的插入、添加、列表的连接、以及元素的删除如果随机发生，平均下来，这一算法的复杂度是分摊时间$O(1)$的。具体证明我们留给读者作为练习。
 
 \begin{Exercise}
 \begin{enumerate}
-\item Can you figure out a solution to append an element to the end of a binary
-random access list?
+\item 如何将一个元素添加到二叉随机访问列表的末尾？
 
-\item Prove that the amortized performance of removal operation is
-$O(1)$. Hint: using the banker's method.
+\item 证明可连接列表的删除操作的分摊复杂度为常数时间$O(1)$，提示：使用banker方法。
 
-\item Implement the concatenate-able list in your favorite imperative language.
+\item 选择一门命令式语言，实现可连接列表。
 \end{enumerate}
 \end{Exercise}
 
 % =========================================
 %  Finger tree
 % =========================================
-\section{Finger tree}
-\index{Sequence!finger tree}
+\section{手指树（Finger Tree）}
+\index{序列!finger tree}
 We haven't been able to meet all the performance targets listed at the beginning
 of this chapter.
 
