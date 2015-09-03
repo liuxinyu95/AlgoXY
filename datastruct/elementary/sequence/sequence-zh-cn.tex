@@ -2333,13 +2333,8 @@ removeAt t i = let (l, x, r) = splitAt' i t in (unwrap x, concat' l r)
 
 \subsubsection{命令式随机访问}
 \index{Finger tree!Imperative random access}
-As we can directly mutate the tree in imperative settings, it's possible to
-realize \textproc{Get-At}($T, i$) and \textproc{Set-At}($T, i, x$) without
-using splitting. The idea is firstly implement a algorithm which can
-apply some operation to a given position. The following algorithm takes
-three arguments, a finger tree $T$, a position index at $i$ which ranges from
-zero to the number of elements stored in the tree, and a function $f$,
-which will be applied to the element at $i$.
+
+在命令式环境中，我们可以直接修改树中的值，因此可以不用分割而直接实现\textproc{Get-At}($T, i$)和\textproc{Set-At}($T, i, x$)算法。我们先实现一个通用算法，可以在给定位置执行指定的操作。下面的算法接受三个参数，一棵finger树$T$，一个从0开始的位置索引$i$，以及一个函数$f$，用以对位置$i$上的元素实施操作。
 
 \begin{algorithmic}
 \Function{Apply-At}{$T, i, f$}
@@ -2362,35 +2357,15 @@ which will be applied to the element at $i$.
 \EndFunction
 \end{algorithmic}
 
-This algorithm is essentially a divide and conquer tree search. It repeatedly
-examine the current tree till reach a tree with size of 1 (can it be determined
-as a leaf? please consider the ill-formed case and refer to the exercise later).
-Every time, it checks the position to be located with the size information of
-front finger and middle part inner tree.
+算法本质上是一个分而治之的树搜索。它不断检查当前的树直到树的size为1（可以通过是否是叶子来进行判断么？请考虑后面练习中的不规则树）。每次循环，我们都检查指定的位置、front finger和中间部分子树的size。
 
-If the index $i$ is less than the size of front finger, the location is at some
-node in it. The algorithm call a sub procedure to look-up among front finger;
-If the index is between the size of front finger and the total size till middle
-part inner tree, it means that the location is at some node inside the middle,
-the algorithm goes on traverse along the middle part inner tree with an updated
-index reduced by the size of front finger; Otherwise
-it means the location is at some node in rear finger, the similar looking up
-procedure is called accordingly.
+如果索引$i$小于front finger的size，则节点在front finger中。算法就调用一个子过程在front finger中查找；如果索引不比front finger的size小，但是比加上中间部分子树的size的结果小，则节点在中间部分，算法就从中$i$减去front finger的size，然后继续遍历中间部分的子树；否则，说明节点在rear finger中，算法调用子过程在其中查找。
 
-After this loop, we've got a node, (can be a compound node)
-with what we are looking for at the first leaf inside this node. We can extract
-the element out, and apply the function $f$ on it and store the new value back.
+循环结束后，我们得到一个节点（可能是一个复合节点），待查找的元素存储于这一节点的第一个叶子中。我们可以将它取出，然后对其执行函数$f$，并将结果存回树中。
 
-The algorithm returns the previous element before applying $f$ as the final result.
+算法返回执行$f$前的元素作为最终结果。
 
-What hasn't been factored is the algorithm \textproc{Lookup-Nodes}($L$, $i$, $f$).
-It takes a list of nodes, a position index, and a function to be applied. This
-algorithm can be implemented by checking every node in the list. If the node
-is a leaf, and the index is zero, we are at the right position to be looked up.
-The function can be applied on the element stored in this leaf, and the previous
-value is returned; Otherwise, we need compare the size of this node and
-the index to determine if the position is inside this node and search inside the
-children of the node if necessary.
+接下来我们需要实现算法\textproc{Lookup-Nodes}($L$, $i$, $f$)。它接受三个参数：一个节点列表，一个位置索引，和一个待执行的函数。我们可以逐一检查列表中的每个节点，如果节点为叶子，并且位置索引为0，我们恰巧到达了指定位置。我们在这个叶子的元素上执行函数，并将此前的元素值返回；否则，我们需要比较节点的size和位置索引，以决定是否仅需在这个节点中搜索。
 
 \begin{algorithmic}
 \Function{Lookup-Nodes}{$L, i, f$}
@@ -2411,7 +2386,7 @@ children of the node if necessary.
 \EndFunction
 \end{algorithmic}
 
-The following are the corresponding Python code implements the algorithms.
+下面的Python例子程序实现了这一算法。
 
 \lstset{language=Python}
 \begin{lstlisting}
@@ -2444,8 +2419,7 @@ def lookupNs(ns, i, f):
             i = i - n.size
 \end{lstlisting}
 
-With auxiliary algorithm that can apply function at a given position, it's trivial to implement
-the \textproc{Get-At}() and \textproc{Set-At}() by passing special function for applying.
+通过将某些特殊函数传入这一通用算法，我们就可以实现\textproc{Get-At}()和\textproc{Set-At}()操作。
 
 \begin{algorithmic}
 \Function{Get-At}{$T, i$}
@@ -2457,11 +2431,9 @@ the \textproc{Get-At}() and \textproc{Set-At}() by passing special function for 
 \EndFunction
 \end{algorithmic}
 
-That is we pass \verb|id| function to implement getting element at a position, which doesn't
-change anything at all; and pass constant function to implement setting, which set the element
-to new value by ignoring its previous value.
+我们传入$id$函数来获取指定位置的元素，它并不改变元素的值；通过传入常数函数，我们可以实现设置，它忽略元素以前的值，而将传入的值作为新结果。
 
-\subsubsection{Imperative splitting}
+\subsubsection{命令式分割}
 \index{Finger Tree!Imperative splitting}
 
 It's not enough to just realizing \textproc{Apply-At} algorithm in imperative settings, this
