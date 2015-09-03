@@ -1903,12 +1903,10 @@ def nodes(xs):
 \subsection{Finger树的随机访问}
 \index{Finger tree!随机访问}
 
-\subsubsection{size augmentation}
+\subsubsection{增加size记录}
 \index{Finger tree!Size augmentation}
-The strategy to provide fast random access, is to turn the looking up into tree-search.
-In order to avoid calculating the size of tree many times, we augment an extra field
-to tree and node. The definition should be modified accordingly, for example the
-following Haskell definition adds size field in its constructor.
+提供快速随机访问的策略是将其转换为树搜索。为了避免反复计算树的size，我们给树和节点增加要给size变量。为此相应的定义需要进行调整。
+下面的Haskell例子代码在定义中增加了size信息。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -1917,7 +1915,7 @@ data Tree a = Empty
             | Tr Int [a] (Tree (Node a)) [a]
 \end{lstlisting}
 
-And the previous ANSI C structure is augmented with size as well.
+下面的ANSI C结构定义中也增加了size信息。
 
 \lstset{language=C}
 \begin{lstlisting}
@@ -1930,10 +1928,7 @@ struct Tree {
 };
 \end{lstlisting}
 
-Suppose the function $tree(s, F, M, R)$ creates a finger tree from size $s$, front
-finger $F$, rear finger $R$, and middle part inner tree $M$.
-When the size of the tree is needed, we can call a $size(T)$ function. It will be
-something like this.
+设函数$tree(s, F, M, R)$从size信息$s$、front finger列表$F$、rear finger列表$R$、和中间部分的子树$M$构造一棵finger树。当我们需要获得size信息时，可以通过函数$size(T)$来获取：
 
 \[
 size(T) = \left \{
@@ -1946,13 +1941,9 @@ size(T) = \left \{
 \right .
 \]
 
-If the tree is empty, the size is definitely zero; and if it can be expressed as $tree(s, F, M, R)$,
-the size is $s$; however, what if the tree is a singleton leaf? is it 1? No, it
-can be 1 only if $T = leaf(a)$ and $a$ isn't a tree node, but a raw element stored in finger tree.
-In most cases, the size is not 1, because $a$ can be again a tree node. That's why we
-put a `?' in above equation.
+若树为空，则size为0；若树可以表示为$tree(s, F, M, R)$则size为$s$；但是当树只有一片叶子时他的size是什么？它是1么？答案是否定的。只有当$T = leaf(a)$并且$a$不是一个节点而是一个元素时size才等于1。其余情况下，size都不为1，因为$a$可以是一个节点类型。因此我们在上面的等式中暂时放置了一个“？”。
 
-The correct way is to call some size function on the tree node as the following.
+正确的方式是通过某种形式size函数调用来获取信息。
 
 \be
 size(T) = \left \{
@@ -1965,18 +1956,14 @@ size(T) = \left \{
 \right .
 \ee
 
-Note that this isn't a recursive definition since $size \neq size'$, the argument to $size'$
-is either a tree node, which is a 2-3 tree, or a plain element stored in the finger tree.
-To uniform these two cases, we can anyway wrap the single plain element to a tree node
-of only one element. So that we can express all the situation as a tree node augmented
-with a size field. The following Haskell program modifies the definition of tree node.
+注意，这不是一个递归调用。$size \neq size'$，函数$size'$的参数或者是一个2-3树，或者是一个普通的元素。为了统一这两种情况，我们可以将唯一的元素放入到一个节点中。这样就可以用一致的方式（节点和size）来表示所有情况。下面的Haskell例子程序修改了节点的定义：
 
 \lstset{language=Haskell}
 \begin{lstlisting}
 data Node a = Br Int [a]
 \end{lstlisting}
 
-The ANSI C node definition is modified accordingly.
+ANSI C例子程序的修改如下：
 
 \lstset{language=C}
 \begin{lstlisting}
@@ -1987,25 +1974,21 @@ struct Node {
 };
 \end{lstlisting}
 
-We change it from union to structure. Although there is a overhead field `key' if the node isn't a
-leaf.
+例子程序中，我们将unicon改为了structure。如果节点不是leaf，key将会带来一些额外的空间占用。
 
-Suppose function $tr(s, L)$, creates such a node (either one element being wrapped or a 2-3 tree)
-from a size information $s$, and a list $L$. Here are some example.
+设函数$tr(s, L)$从一个size参数$s$和一个列表$L$，创建一个节点（或者是一个元素的叶子，或者是一棵2-3树），下面列出了一些例子：
 
 \[
 \begin{array}{ll}
-tr(1, \{x\}) & \text{a tree contains only one element} \\
-tr(2, \{x, y\}) & \text{a 2-3 tree contains two elements} \\
-tr(3, \{x, y, z\}) & \text{a 2-3 tree contains three elements}
+tr(1, \{x\}) & \text{只有一个元素的树} \\
+tr(2, \{x, y\}) & \text{含有两个元素的2-3树} \\
+tr(3, \{x, y, z\}) & \text{含有3个元素的2-3树}
 \end{array}
 \]
 
-So the function $size'$ can be implemented as returning the size information of a tree node.
-We have $size'(tr(s, L)) = s$.
+这样，$size'$函数的实现就可以返回节点的size信息。我们有$size'(tr(s, L)) = s$。
 
-Wrapping an element $x$ is just calling $tr(1, \{x\})$. We can define auxiliary functions
-$wrap$ and $unwrap$, for instance.
+将元素$x$放入树中可以通过调用函数$tr(1, \{x\})$来实现，我们可以定义下面的辅助函数$wrap$和$unwrap$：
 
 \be
 \begin{array}{l}
@@ -2014,9 +1997,7 @@ unwrap(n) = x \quad:\quad n = tr(1, \{x\})
 \end{array}
 \ee
 
-As both front finger and rear finger are lists of tree nodes, in order to calculate the
-total size of finger, we can provide a $size''(L)$ function, which sums up size of all
-nodes stored in the list. Denote $L = \{ a_1, a_2, ... \}$ and $L' = \{ a_2, a_3, ... \}$.
+现在front finger和rear finger都变成了节点的列表。为了计算finger的size，我们可以提供一个$size''(L)$函数，它把列表中每个节点的size加起来。记$L = \{ a_1, a_2, ... \}$、$L' = \{ a_2, a_3, ... \}$。
 
 \be
 size''(L) = \left \{
@@ -2028,13 +2009,13 @@ size''(L) = \left \{
 \right .
 \ee
 
-It's quite OK to define $size''(L)$ by using some high order functions. For example.
+也可以用一些高阶函数来定义$size''(L)$。例如：
 
 \be
 size''(L) = sum(map(size', L))
 \ee
 
-And we can turn a list of tree nodes into one deeper 2-3 tree and vice-versa.
+我们也可以将若干节点组成的列表转换成更深一级的2-3树，或进行相反的转换：
 
 \be
 \begin{array}{l}
@@ -2043,7 +2024,7 @@ unwraps(n) = L \quad:\quad n = tr(s, L) \\
 \end{array}
 \ee
 
-These helper functions are translated to the following Haskell code.
+下面的Haskell例子程序实现了这些辅助函数。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -2056,7 +2037,7 @@ sizeT (Lf a) = size a
 sizeT (Tr s _ _ _) = s
 \end{lstlisting}
 
-Here are the wrap and unwrap auxiliary functions.
+下面是wrap和unwrap辅助函数。我们省略了它们的类型定义。
 
 \begin{lstlisting}
 wrap x = Br 1 [x]
@@ -2065,11 +2046,7 @@ wraps xs = Br (sizeL xs) xs
 unwraps (Br _ xs) = xs
 \end{lstlisting}
 
-We omitted their type definitions for illustration purpose.
-
-In imperative settings, the size information for node and tree can be accessed
-through the size field. And the size of a list of nodes can be summed up
-for this field as the below algorithm.
+在命令式环境中，我们可以通过结构中的变量获得节点和树的size信息。下面的算法将若干节点的size相加。
 
 \begin{algorithmic}
 \Function{Size-Nodes}{$L$}
@@ -2081,8 +2058,7 @@ for this field as the below algorithm.
 \EndFunction
 \end{algorithmic}
 
-The following Python code, for example, translates this algorithm by using
-standard \verb|sum()| and \verb|map()| functions provided in library.
+下面的Python例子程序使用了标准库中提供的\texttt{sum()}和\texttt{map()}实现了这一操作。
 
 \lstset{language=Python}
 \begin{lstlisting}
