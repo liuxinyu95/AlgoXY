@@ -2255,7 +2255,7 @@ splitAt(i, T) = \left \{
 \end{array}
 \]
 
-函数$splitAtL()$实际上进行了线性遍历，由于列表的长度有限，且不超过2-3树的分支数目限制。因此性能仍然是常数时间$O(1)$的。记$L = \{x_1, x_2, ... \}$、$L' = \{ x_2, x_3, ...\}$。
+函数$splitAtL$实际上进行了线性遍历，由于列表的长度有限，且不超过2-3树的分支数目限制。因此性能仍然是常数时间$O(1)$的。记$L = \{x_1, x_2, ... \}$、$L' = \{ x_2, x_3, ...\}$。
 
 \be
 splitAtL(i, L) = \left \{
@@ -2263,14 +2263,20 @@ splitAtL(i, L) = \left \{
   {r@{\quad:\quad}l}
   (\phi, x_1, \phi) & i = 0 \land L = \{x_1\} \\
   (\phi, x_1, L') & i < size'(x_1) \\
-  (\{x_1\} \cup A, x, B) & otherwise, (A, x, B) = splitAtL(i-size'(x_1), L')
+  (\{x_1\} \cup A, x, B) & otherwise
   \end{array}
 \right .
 \ee
 
-分割的解法是典型的分而治之策略。算法的性能取决于中间部分子树的递归搜索。其他情况下都是线性时间。递归的深度和树的高度$h$成比例，因此算法的性能为$O(h)$。由于树是平衡的（而用2-3树，切所有的插入、删除等操作都维持树的平衡），所以$h = O(\lg n)$，其中$n$是树种存储的元素数目。分割算法的整体性能为$O(\lg n)$。
+其中
 
-下面的Haskell例子程序给出了$splitAtL()$算法的实现。
+\[
+(A, x, B) = splitAtL(i-size'(x_1), L')
+\]
+
+分割的解法是典型的分而治之策略。算法的性能取决于中间部分子树的递归搜索，其他情况下都是线性时间。递归的深度和树的高度$h$成比例，因此算法的性能为$O(h)$。由于树是平衡的（使用2-3树，且所有的插入、删除等操作都维持树的平衡），所以$h = O(\lg n)$，其中$n$是树中存储的元素数目。分割算法的整体性能为$O(\lg n)$。
+
+下面的Haskell例子程序给出了$splitAtL$算法的实现。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -2280,7 +2286,7 @@ splitNodesAt i (x:xs) | i < size x = ([], x, xs)
                                     in (x:xs', y, ys)
 \end{lstlisting}
 
-由于Haskell的标准库prelude中已经定义了同样名字的\texttt{splitAt}函数，为了避免冲突，我们将名称改为\texttt{splitAt'}。
+由于Haskell的标准库中已经定义了同样名字的\texttt{splitAt}函数，为了避免冲突，我们将名称改为\texttt{splitAt'}。
 
 \begin{lstlisting}
 splitAt' _ (Lf x) = (Empty, x, Empty)
@@ -2300,13 +2306,13 @@ splitAt' i (Tr _ f m r)
 \subsubsection{随机访问}
 \index{Finger tree!Random access}
 
-使用在任一位置进行分割的算法，我们可以很容易地实现性能为$O(\lg n)$的随机访问。令函数$mid(x)$返回一个三元组的第2个部分，$left(x)$和$right(x)$分别返回第1和第3部分。
+使用分割算法，我们可以很容易地实现性能为$O(\lg n)$的随机访问。令函数$mid(x)$返回一个三元组的第2个部分，$left(x)$和$right(x)$分别返回第1和第3部分。
 
 \be
 getAt(S, i) = unwrap(mid(splitAt(i, S)))
 \ee
 
-我们首先在位置$i$将序列分成3部分，然后取出返回的节点，并得到其中的元素。如果希望修改用finger树表示的序列中的第$i$个元素，我们首先用$i$来分割，然后将中间部分替换成要修改的值，最后在使用连接操作将这三部分合并起来。
+我们首先在位置$i$将序列分成3部分，然后取出返回的节点，并得到其中的元素。如果希望修改序列中的第$i$个元素，我们首先用$i$来分割，然后将中间部分替换成要修改的值，最后再使用连接操作将这三部分合并起来。
 
 \be
 setAt(S, i, x) = concat(L, insertT(x, R))
@@ -2323,7 +2329,7 @@ setAt(S, i, x) = concat(L, insertT(x, R))
 removeAt(S, i) = (unwrap(y), concat(L, R))
 \ee
 
-下面的Haskell例子程序实现了这些序列操作。
+下面的Haskell例子程序实现了这些操作。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -2358,9 +2364,9 @@ removeAt t i = let (l, x, r) = splitAt' i t in (unwrap x, concat' l r)
 \EndFunction
 \end{algorithmic}
 
-算法本质上是一个分而治之的树搜索。它不断检查当前的树直到树的size为1（可以通过是否是叶子来进行判断么？请考虑后面练习中的不规则树）。每次循环，我们都检查指定的位置、front finger和中间部分子树的size。
+算法本质上是一个分而治之的树搜索。它不断检查当前的树直到树的size为1（可以通过是否是叶子来进行判断么？请考虑后面练习中的不规则树）。每次循环，我们都检查$i$、front finger的size，和中间部分子树的size之间的关系。
 
-如果索引$i$小于front finger的size，则节点在front finger中。算法就调用一个子过程在front finger中查找；如果索引不比front finger的size小，但是比加上中间部分子树的size的结果小，则节点在中间部分，算法就从中$i$减去front finger的size，然后继续遍历中间部分的子树；否则，说明节点在rear finger中，算法调用子过程在其中查找。
+如果索引$i$小于front finger的size，则节点在front finger中。算法就调用一个子过程在front finger中查找；如果索引不比front finger的size小，但是比加上中间部分子树的size的结果小，则节点在中间部分，算法就从$i$中减去front finger的size，然后继续遍历中间部分的子树；否则，说明节点在rear finger中，算法调用子过程在其中查找。
 
 循环结束后，我们得到一个节点（可能是一个复合节点），待查找的元素存储于这一节点的第一个叶子中。我们可以将它取出，然后对其执行函数$f$，并将结果存回树中。
 
@@ -2420,7 +2426,7 @@ def lookupNs(ns, i, f):
             i = i - n.size
 \end{lstlisting}
 
-通过将某些特殊函数传入这一通用算法，我们就可以实现\textproc{Get-At}()和\textproc{Set-At}()操作。
+通过将某些特殊函数传入这一通用算法，我们就可以实现\textproc{Get-At}和\textproc{Set-At}操作。
 
 \begin{algorithmic}
 \Function{Get-At}{$T, i$}
@@ -2437,7 +2443,7 @@ def lookupNs(ns, i, f):
 \subsubsection{命令式分割}
 \index{Finger Tree!Imperative splitting}
 
-在命令式环境下，仅仅实现\textproc{Apply-At}算法还不够，我们还要想办法实现删除指定位置的元素。
+在命令式环境下，仅仅实现\textproc{Apply-At}算法还不够，我们还需要能删除指定位置的元素。
 
 此前我们介绍的所有命令式finger树算法都只执行一轮自顶向下的操作。某些情况下，我们需要保存一份根节点的引用。父节点到目前为止还没有派上用场。
 
@@ -2492,7 +2498,7 @@ def lookupNs(ns, i, f):
 \EndFunction
 \end{algorithmic}
 
-算法首先创建两棵树$T_1$和$T_2$来保存分割的结果。它们在这里都扮演“ground”树的角色，实际上是结果树的父节点。第一轮遍历是自顶向下的。令$S_f$和$S_m$分别是front finger和中间部分子树的size。如果待分割额位置落在中间部分的子树中，我们就使用$T$的front finger作为新建的$T'_1$的front finger；并且复用$T$的rear finger作为$T'_2$的rear finger。此时，我们还不能设置$T'_1$和$T'_2$的其他部分，它们仍然为空，我们将在此后填入必要的信息。然后，我们将$T_1$和$T'_1$连接起来，使得后者成为前者的中间部分子树；同样我们把$T_2$和$T'_2$连接起来。最后，我们从分割位置中减去front finger的size，然后继续沿着中间部分的子树遍历。
+算法首先创建两棵树$T_1$和$T_2$来保存分割的结果。它们的含义都是“ground”树，为结果树的父节点。第一轮遍历是自顶向下的。令$S_f$和$S_m$分别是front finger和中间部分子树的size。如果待分割的位置落在中间部分的子树中，我们就使用$T$的front finger作为新建的$T'_1$的front finger；并且复用$T$的rear finger作为$T'_2$的rear finger。此时，我们还不能设置$T'_1$和$T'_2$的其他部分，它们仍然为空，我们将在此后填入必要的信息。然后，我们将$T_1$和$T'_1$连接起来，使得后者成为前者的中间部分子树；同样我们把$T_2$和$T'_2$连接起来。最后，我们从分割位置中减去front finger的size，然后继续沿着中间部分的子树遍历。
 
 第一轮遍历结束后，我们到达一个位置，分割要么发生在front finger，要么发生在rear finger。在finger中分割会产生一个三元组，第一部分和第三部分为分割位置前后的子列表，第二部分是包含指定位置元素的节点。两个finger本质上都是2-3树，它们都最多含有3个节点，节点分割算法可以通过线性查找来完成。
 
@@ -2519,7 +2525,7 @@ def lookupNs(ns, i, f):
 \EndFunction
 \end{algorithmic}
 
-接着，迭代继续沿着$T_1$和$T_2$的父节点进行。最后需要实现的算法是\textproc{From-Nodes}($L$)。它从一组节点创建一棵finger树。我们可以逐一将节点插入到一棵空树种实现它。我们把它作为练习留给读者。
+接着，迭代继续沿着$T_1$和$T_2$的父节点进行。最后需要实现的算法是\textproc{From-Nodes}($L$)。它从一组节点创建一棵finger树。我们可以逐一将节点插入到一棵空树中实现它。我们把它作为练习留给读者。
 
 下面的Python例子程序实现了分割算法。
 
@@ -2569,7 +2575,7 @@ def splitNs(ns, i):
         i = i - ns[j].size
 \end{lstlisting}
 
-使用分割算法，就可以容易地实现删除操作了。我们首先执行分割，然后将结果中的两棵树连接成一棵，并将指定位置的元素返回。
+使用分割算法，就可以方便地实现删除操作了。我们首先执行分割，然后将结果中的两棵树连接成一棵，并将指定位置的元素返回。
 
 \begin{algorithmic}
 \Function{Remove-At}{$T, i$}
@@ -2580,11 +2586,11 @@ def splitNs(ns, i):
 
 \begin{Exercise}
 \begin{enumerate}
-\item 另外一种实现$insertT'()$的方法是直接将size加1，这样我们就无需使用$tree'()$函数。请实现这一方法。
+\item 另外一种实现$insertT'$的方法是直接将size加1，这样我们就无需使用$tree'$函数。请实现这一方法。
 
-\item 参考$insertT'()$的实现，完成下面的算法（分别给出函数式和命令式实现）：$extractT'()$、$appendT'()$、$removeT'()$、和$concat'()$。而$head$、$tail$、$init$、和$last$保持不变。
+\item 参考$insertT'$的实现，完成下面的算法（分别给出函数式和命令式实现）：$extractT'$、$appendT'$、$removeT'$、和$concat'$。而$head$、$tail$、$init$、和$last$保持不变。
 
-\item 在命令式算法\textproc{Apply-At}()中，我们检查当前树的size是否比1大。为什么不能检查当前的节点是否为叶子？两种方法有何区别？
+\item 在命令式算法\textproc{Apply-At}中，我们检查当前树的size是否比1大。为什么不能检查当前的节点是否为叶子？两种方法有何区别？
 
 \item 选择一门命令式语言，实现\textproc{From-Nodes}($L$)算法。可以使用循环或者从右侧fold。
 \end{enumerate}
@@ -2595,7 +2601,7 @@ def splitNs(ns, i):
 % ================================================================
 \section{小结}
 
-虽然我们未能给出一个能在常数时间$O(1)$内完成随机访问的纯函数式列表，但是最终的finger树数据结构实现了一个总体表现良好的序列。在头部尾部的操作的性能为分摊时间$O(1)$，可以在对数时间内连接两个序列，或者在任何位置将序列分割。命令式环境中的纯数组和函数式环境中的列表都无法同时满足这些要求。某些函数式编程环境的标准库也提供了这样的序列实现\cite{hackage-ftr}。
+虽然我们未能给出一个在常数时间$O(1)$随机访问的纯函数式列表，但是最终的finger树数据结构实现了一个总体表现良好的序列。在头部和尾部的操作的性能为分摊时间$O(1)$，可以在对数时间内连接两个序列，或者在任何位置将序列分割。命令式环境中的纯数组和函数式环境中的列表都无法同时满足这些要求。某些函数式编程环境的标准库也提供了这样的序列实现\cite{hackage-ftr}。
 
 如本章的题目所说，我们介绍了函数式环境和命令式环境中的最后一个初等数据结构。我们可以使用它们来解决一些典型问题了。
 
@@ -2627,7 +2633,7 @@ Chris Okasaki. ``Purely Functional Data Structures''. Cambridge university press
 Chris Okasaki. ``Purely Functional Random-Access Lists''. Functional Programming Languages and Computer Architecture, June 1995, pages 86-95.
 
 \bibitem{CLRS}
-Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest and Clifford Stein. ``Introduction to Algorithms, Second Edition''. The MIT Press, 2001. ISBN: 0262032937.
+Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest and Clifford Stein. ``Introduction to Algorithms, Second Edition''. The MIT Press, 2001. ISBN: 0262032937.（《算法导论》中文版）
 
 \bibitem{learn-haskell}
 Miran Lipovaca. ``Learn You a Haskell for Great Good! A Beginner's Guide''. No Starch Press; 1 edition April 2011, 400 pp. ISBN: 978-1-59327-283-8
