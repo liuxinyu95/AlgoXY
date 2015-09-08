@@ -40,7 +40,7 @@ $(DOT_OBJECTS): % : %.ps
 png: $(PNG_OBJECTS)
 
 %.png : %.dot
-	dot -Tpng -o $@ $<
+	dot -Gsize="8,10.5" -Tpng -o $@ $<
 
 clean:
 	rm -f *.ps *.eps trie-en* *~
