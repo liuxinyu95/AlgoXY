@@ -279,11 +279,9 @@ int partition(Key* xs, int l, int u) {
 }
 \end{lstlisting}
 
-Where \verb|swap(a, b)| can either be defined as function or a macro. In ISO C++, \verb|swap(a, b)|
-is provided as a function template. the type of the elements can be defined somewhere or abstracted
-as a template parameter in ISO C++. We omit these language specific details here.
+其中\texttt{swap(a, b)}可以定义为函数或者宏。ISO C++中\texttt{swap(a, b)}在标准库中以函数模板的形式提供。被交换的元素类型通过模板进行推导。我们此后不再详细解释这些语言细节。
 
-With the in-place partition realized, the imperative in-place quick sort can be accomplished by using it.
+使用这一划分算法，命令式的in-place快速排序可以实现如下：
 
 \begin{algorithmic}[1]
 \Procedure{Quick-Sort}{$A, l, u$}
@@ -295,12 +293,9 @@ With the in-place partition realized, the imperative in-place quick sort can be 
 \EndProcedure
 \end{algorithmic}
 
-When sort an array, this procedure is called by passing the whole range as the lower and upper bounds.
-\textproc{Quick-Sort}($A, 1, |A|$). Note that when $l \geq u$ it means the array slice is either empty,
-or just contains only one element, both can be treated as ordered, so
-the algorithm does nothing in such cases.
+对数组进行排序时，我们传入数组的上下界，如：\textproc{Quick-Sort}($A, 1, |A|$)。其中$l \geq u$用以判断数组片段为空或者只含有一个元素，这两种情况下我们都认为数组是已序的，算法直接返回而无需做任何处理。
 
-Below ANSI C example program completes the basic in-place quick sort.
+下面的ANSI C例子程序给出了in-place快速排序的实现。
 
 \lstset{language=C}
 \begin{lstlisting}
@@ -314,20 +309,16 @@ void quicksort(Key* xs, int l, int u) {
 }
 \end{lstlisting}
 
-\subsection{Minor improvement in functional partition}
-\index{Quick Sort!One pass functional partition}
-Before exploring how to improve the partition for basic version quick sort, it's obviously that the
-one presented so far can be defined by using folding. Please refer to the appendix A of this book for
-definition of folding.
+\subsection{函数式划分算法的小改进}
+\index{快速排序!One pass functional partition}
+
+在深入分析快速排序的划分算法前，我们首先可以用fold来实现一个小改进：只需要遍历一遍就可以完成划分的算法。读者可以参考本书附录A来了解fold的详细内容。
 
 \be
 partition(p, L) = fold(f(p), (\Phi, \Phi), L)
 \ee
 
-Where function $f$ compares the element to the pivot with predicate $p$ (which is passed to $f$ as a parameter, so that
-$f$ is in curried form, see appendix A for detail. Alternatively, $f$ can be a lexical closure which is in
-the scope of $partition$, so that it can access the predicate in this scope.),
-and update the result pair accordingly.
+其中函数$f$使用断言$p$来对元素和pivot进行比较。断言作为一个参数传入函数$f$，我们称之为$f$的“curried”形式，参见附录A。另外，$f$可以是$partition$函数作用域内的一个lexical闭包（lexical closure），它可以访问这一作用域内的断言。函数$f$不断更新划分结果内的一对列表。
 
 \be
 f(p, x, (A, B)) =  \left \{
@@ -339,11 +330,9 @@ f(p, x, (A, B)) =  \left \{
 \right.
 \ee
 
-Note we actually use pattern-matching style definition. In environment without pattern-matching support,
-the pair $(A, B)$ should be represented by a variable, for example $P$, and use access functions
-to extract its first and second parts.
+我们这里使用了模式匹配（pattern-matching）形式的定义。在不支持模式匹配的环境中，需要使用一个变量，如$P$来代表列表对$(A, B)$，并使用函数来获取$P$中的两个值。
 
-The example Haskell program needs to be modified accordingly.
+下面的Haskell例子程序实现了这一改进的快速排序，每次划分只需要遍历一次。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -353,8 +342,8 @@ sort (x:xs) = sort small ++ [x] ++ sort big where
   f a (as, bs) = if a <= x then (a:as, bs) else (as, a:bs)
 \end{lstlisting}
 
-\subsubsection{Accumulated partition}
-\index{Quick Sort!Accmulated partition}
+\subsubsection{累积划分（Accumulated partition）}
+\index{快速排序!Accmulated partition}
 The partition algorithm by using folding actually accumulates to the result pair of lists $(A, B)$. That
 if the element is not greater than the pivot, it's accumulated to $A$, otherwise to $B$. We can explicitly
 express it which save spaces and is friendly for tail-recursive call optimization (refer to the appendix A
