@@ -942,63 +942,45 @@ void qsort(Key* xs, int l, int u) {
 \end{Exercise}
 
 \section{针对最差情况的工程实践}
-Although the ternary quick sort (3-way partition) solves the issue for duplicated elements, it can't handle
-some typical worst cases. For example if many of the elements in the sequence are ordered, no matter it's
-in ascending or descending order, the partition result will be two unbalanced sub sequences, one with few elements,
-the other contains all the rest.
 
-Consider the two extreme cases, $\{ x_1 < x_2 < ... < x_n\}$ and $\{ y_1 > y_2 > ... > y_n\}$. The partition
-results are shown in figure \ref{fig:worst-cases-1}.
+虽然三分快速排序（使用三路划分）能处理含有很多重复元素的序列，但是仍然无法有效解决典型的最差情况。例如，如果序列中的大部分元素已序时，无论是升序还是降序，划分的结果将会是两个长度不平衡的子序列，一个包含少量的元素，另一个包含剩余的部分。
+
+考虑两种极端情况：$\{ x_1 < x_2 < ... < x_n\}$和$\{ y_1 > y_2 > ... > y_n\}$。图\ref{fig:worst-cases-1}给出了划分结果。
 
 \begin{figure}[htbp]
    \centering
-   \subfloat[The partition tree for $\{x_1 < x_2 < ... < x_n\}$, There aren't any elements less than or equal to the pivot (the first element) in every partition.]{\hspace{.3\textwidth} \includegraphics[scale=0.5]{img/unbalanced.ps} \hspace{.3\textwidth}} \\
-   \subfloat[The partition tree for $\{y_1 > y_2 > ... > y_n\}$, There aren't any elements greater than or equal to the pivot (the first element) in every partition.]{\includegraphics[scale=0.5]{img/unbalanced-2.ps}} \\
-   \caption{The two worst cases.}
+   \subfloat[序列$\{x_1 < x_2 < ... < x_n\}$的划分树，每次划分时，选择第一个元素为pivot，小于等于pivot的部分总为空。]{\hspace{.3\textwidth} \includegraphics[scale=0.5]{img/unbalanced.ps} \hspace{.3\textwidth}} \\
+   \subfloat[序列$\{y_1 > y_2 > ... > y_n\}$的划分树，每次划分时，选择第一个元素为pivot，大于等于pivot的部分总为空。]{\includegraphics[scale=0.5]{img/unbalanced-2.ps}} \\
+   \caption{两种最差情况。}
    \label{fig:worst-cases-1}
 \end{figure}
 
-It's easy to give some more worst cases, for example, $\{ x_m, x_{m-1}, ..., x_2, x_1, x_{m+1}, x_{m+2}, ... x_n\}$
-where $\{ x_1 < x_2 < ... < x_n \}$;
-Another one is $\{x_n, x_1, x_{n-1}, x_2, ... \}$. Their partition result trees are shown
-in figure \ref{fig:worst-cases-2}.
+很容易给出更多的最差情况，例如$\{ x_m, x_{m-1}, ..., x_2, x_1, x_{m+1}, x_{m+2}, ... x_n\}$，其中$\{ x_1 < x_2 < ... < x_n \}$；另一个例子是$\{x_n, x_1, x_{n-1}, x_2, ... \}$。图\ref{fig:worst-cases-2}给出了它们的划分结果。
 
 \begin{figure}[htbp]
    \centering
-   \subfloat[Except for the first partition, all the others are unbalanced.]{\includegraphics[scale=0.4]{img/unbalanced-3.ps}} \\
-   \subfloat[A zig-zag partition tree.]{\includegraphics[scale=0.5]{img/unbalanced-zigzag.ps}} \\
-   \caption{Another two worst cases.}
+   \subfloat[除了第一次划分结果，其他都不平衡。]{\includegraphics[scale=0.4]{img/unbalanced-3.ps}} \\
+   \subfloat[一个zig-zag形状的划分树。]{\includegraphics[scale=0.5]{img/unbalanced-zigzag.ps}} \\
+   \caption{另两种最差情况。}
    \label{fig:worst-cases-2}
 \end{figure}
 
-Observing that the bad partition happens easily when blindly choose the first element as the pivot,
-there is a popular work around suggested by Robert Sedgwick in \cite{qsort-impl}. Instead of
-selecting the fixed position in the sequence, a small sampling helps to find a pivot which
-has lower possibility to cause a bad partition. One option is to examine the first element, the
-middle, and the last one, then choose the median of these three element. In the worst case,
-it can ensure that there is at least one element in the shorter partitioned sub list.
+观察可以发现，仅仅简单地选择第一个元素作为pivot，很容易使得划分的结果不平衡，Robert Sedgwick在\cite{qsort-impl}中给出了一种改进，在实际中得到了广泛的使用。这一改进不是每次在固定的位置上选择一个pivot，而是进行简单的抽样以减小引发不平衡划分的可能性。一种抽样方法是检查第一个元素，中间的元素，和末尾的元素，然后选择这三个元素的中数（median）作为pivot。在最差情况下，他保证划分后较短的序列至少含有一个元素。
 
-Note that there is one tricky in real-world implementation. Since the index is typically represented
-in limited length words. It may cause overflow when calculating the middle index by
-the naive expression \verb|(l + u) / 2|. In order to avoid this issue, it can be accessed
-as \verb|l + (u - l)/2|. There are two methods to find the median, one needs at most three
-comparisons \cite{3-way-part}; the other is to move the minimum value to the first location, the maximum value
-to the last location, and the median value to the meddle location by swapping. After that
-we can select the middle as the pivot.
-Below algorithm illustrated the second idea before calling the partition procedure.
+在实际实现中还有一个细节需要注意。由于数组的索引在实际中的字长通常是有限的，简单实用\texttt{|(l + u) / 2|}来计算中间元素的索引可能引发溢出错误。正确的做法是使用\texttt{l + (u - l) / 2}来索引中间位置的元素。有两种方法来寻找中数，一种最多需要三次比较操作\cite{3-way-part}；另外一种方法通过交换将三个元素中的最小值移动到第一个元素的位置，将最大值移动到最后一个元素的位置，将中数移动到中间位置。此后选在中间位置的元素作为pivot即可。下面的算法使用第二种方法确定划分的pivot。
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
   \If{$u - l > 1$}
-    \State $m \gets \lfloor \frac{l + u}{2} \rfloor$ \Comment{Need handle overflow error in practice}
-    \If{$A[m] < A[l]$} \Comment{Ensure $A[l] \leq A[m]$}
-      \State \textproc{Exchange} $A[l] \leftrightarrow A[r]$
+    \State $m \gets \lfloor \frac{l + u}{2} \rfloor$ \Comment{实际中要处理溢出的情况}
+    \If{$A[m] < A[l]$} \Comment{确保$A[l] \leq A[m]$}
+      \State \textproc{Exchange} $A[l] \leftrightarrow A[m]$
     \EndIf
-    \If{$A[u-1] < A[l]$} \Comment{Ensure $A[l] \leq A[u-1]$}
+    \If{$A[u-1] < A[l]$} \Comment{确保$A[l] \leq A[u-1]$}
       \State \textproc{Exchange} $A[l] \leftrightarrow A[u-1]$
     \EndIf
-    \If{$A[u-1] < A[m]$} \Comment{Ensure $A[m] \leq A[u-1]$}
-      \State \textproc{Exchange} $A[m] \leftrightarrow A[u]$
+    \If{$A[u-1] < A[m]$} \Comment{确保$A[m] \leq A[u-1]$}
+      \State \textproc{Exchange} $A[m] \leftrightarrow A[u-1]$
     \EndIf
     \State \textproc{Exchange} $A[l] \leftrightarrow A[m]$
     \State $(i, j) \gets $ \Call{Partition}{$A, l, u$}
