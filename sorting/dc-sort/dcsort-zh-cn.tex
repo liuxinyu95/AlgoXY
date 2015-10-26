@@ -1536,11 +1536,7 @@ void msort3(Key* xs, int l, int u) {
  \label{fig:merge-workarea}
 \end{figure}
 
-In our algorithm, both the two sorted sub arrays, and the working area for merging are parts of the
-original array to be sorted. we need supply the following arguments when merging: the start points and end
-points of the sorted sub arrays, which can be represented as ranges; and the start point of the working
-area. The following algorithm for example, uses $[a, b)$ to indicate the range include $a$,
-exclude $b$. It merges sorted range $[i, m)$ and range $[j, n)$ to the working area starts from $k$.
+在改进的算法中，两个已序的子数组，和用于归并的工作区都是最初的待排序数组中的一部分。归并时需要提供的参数包括：两个已序数组的起始和结束位置，可以用区间来表示它们；另外还需要提供工作区的起始位置。下面的算法使用$[a, b)$来表示左闭右开区间，它包括$a$，但不包括$b$。算法将已序区间$[i, m)$和$[j, n)$归并到从$k$开始的工作区。
 
 \begin{algorithmic}[1]
 \Procedure{Merge}{$A, [i, m), [j, n), k$}
@@ -1567,16 +1563,14 @@ exclude $b$. It merges sorted range $[i, m)$ and range $[j, n)$ to the working a
 \EndProcedure
 \end{algorithmic}
 
-Note that, the following two constraints must be satisfied when merging:
+注意，在归并时必须满足下面的两个限制条件：
 
 \begin{enumerate}
-\item The working area should be within the bounds of the array. In other words, it should be big
-enough to hold elements exchanged in without causing any out-of-bound error;
-\item The working area can be overlapped with either of the two sorted arrays, however, it should
-be ensured that there are not any unmerged elements being overwritten;
+\item 工作区必须在数组的边界内。也就是说，工作区必须足够大，以容纳交换进来的元素而不会引起越界错误；
+\item 工作区可以和任何一个已序的字数组存在重叠，但是必须保证尚未归并的元素不会被覆盖。
 \end{enumerate}
 
-This algorithm can be implemented in ANSI C as the following example.
+下面的C语言例子程序实现了这一算法。
 
 \lstset{language=C}
 \begin{lstlisting}
@@ -1590,88 +1584,62 @@ void wmerge(Key* xs, int i, int m, int j, int n, int w) {
 }
 \end{lstlisting}
 
-With this merging algorithm defined, it's easy to imagine a solution, which can sort
-half of the array; The next question is, how to deal with the rest of the unsorted part
-stored in the working area as shown in figure \ref{fig:merge-in-place-start}?
+使用这一算法，我们很容易想出一个解法，能够将数组的一半内容进行归并排序。接下来的问题是，如何处理剩下的一半尚未排序的元素？如图\ref{fig:merge-in-place-start}所示。
 
 \begin{figure}[htbp]
  \centering
  \includegraphics[scale=0.8]{img/merge-in-place-start.ps}
- \caption{Half of the array is sorted.}
+ \caption{数组中的一半被排序。}
  \label{fig:merge-in-place-start}
 \end{figure}
 
-One intuitive idea is to recursively sort another half of the working area, thus there are
-only $\frac{1}{4}$ elements haven't been sorted yet. Which is shown in figure \ref{fig:merge-in-place-quater}.
-The key point at this stage is that we must merge the sorted $\frac{1}{4}$ elements $B$
-with the sorted $\frac{1}{2}$ elements $A$ sooner or later.
+一个直观的想法是递归对工作区中的一半内容进行排序，这样就只剩下$\frac{1}{4}$的元素尚未排序了。结果如图\ref{fig:merge-in-place-quater}所示。这里关键的一点是，我们必须在某个时候将已序的$\frac{1}{4}$元素$B$和已序的$\frac{1}{2}$元素$A$归并。
 
 \begin{figure}[htbp]
  \centering
  \includegraphics[scale=0.8]{img/merge-in-place-quater.ps}
- \caption{$A$ and $B$ must be merged at sometime.}
+ \caption{$A$和$B$必须在某个时刻归并到一起。}
  \label{fig:merge-in-place-quater}
 \end{figure}
 
-Is the working area left, which only holds $\frac{1}{4}$ elements, big enough for merging
-$A$ and $B$? Unfortunately, it isn't in the settings shown in figure \ref{fig:merge-in-place-quater}.
+但是，剩余的工作区，其大小可以容纳$\frac{1}{4}$元素，足够容纳$A$和$B$的归并结果么？不幸的是，在如图\ref{fig:merge-in-place-quater}所示的布局中，这一空间是不够用的。
 
-However, the second constraint mentioned before gives us a hint, that we can exploit
-it by arranging the working area to overlap with either sub array if we can ensure
-the unmerged elements won't be overwritten under some well designed merging schema.
+但是，上述的第二条限制条件启发我们：能否通过某种归并的设计，保证未归并的元素不被覆盖，从而利用工作区和已序子数组的重叠部分来解决这个问题？
 
-Actually, instead of sorting the second half of the working area, we can sort the first
-half, and put the working area between the two sorted arrays as shown in figure \ref{fig:merge-in-place-setup} (a).
-This setup effects arranging the working area to overlap with the sub array $A$. This idea
-is proposed in \cite{msort-in-place}.
+实际上，我们可以先不让工作区的后二分之一元素已序，而让前二分之一部分已序，这样工作区就位于两端已序子数组的中间，如图\ref{fig:merge-in-place-setup} (a)所示。这样的安排就使得工作区和子数组$A$产生了重叠\cite{msort-in-place}。
 
 \begin{figure}[htbp]
  \centering
  \subfloat[]{\includegraphics[scale=0.8]{img/merge-in-place-setup.ps}} \\
  \subfloat[]{\includegraphics[scale=0.8]{img/merge-in-place-merged-quater.ps}}
- \caption{Merge $A$ and $B$ with the working area.}
+ \caption{利用工作区归并子数组$A$和$B$。}
  \label{fig:merge-in-place-setup}
 \end{figure}
 
-Let's consider two extreme cases:
+考虑两种极端情况：
 
 \begin{enumerate}
-\item All the elements in $B$ are less than any element in $A$. In this case, the merge algorithm
-finally moves the whole contents of $B$ to the working area; the cells of $B$ holds what previously
-stored in the working area; As the size of area is as same as $B$, it's OK to exchange their contents;
-\item All the elements in $A$ are less than any element in $B$. In this case, the merge algorithm
-continuously exchanges elements between $A$ and the working area. After all the previous $\frac{1}{4}$
-cells in the working area are filled with elements from $A$, the algorithm starts to overwrite the
-first half of $A$. Fortunately, the contents being overwritten are not those unmerged elements.
-The working area is in effect advances toward the end of the array, and finally moves to the right
-side; From this time point, the merge algorithm starts exchanging contents in $B$ with the working area.
-The result is that the working area moves to the left most side which is shown in figure \ref{fig:merge-in-place-setup} (b).
+\item 所有$B$中的元素都小于$A$中的任意元素。这种情况下，归并算法最终将$B$中的全部内容移动到工作区中；而$B$中将包括以前工作区中所保存的内容；由于工作区和$B$的大小相等，因此恰好可以交换它们的内容；
+\item 所有$A$中的元素都小于$B$中的任意元素。这种情况下，归并算法不断交换$A$和工作区中的元素。当工作区的前$\frac{1}{4}$区间被$A$中的元素填满后，算法开始覆盖$A$的前一半部分的内容。幸运的是，被覆盖的内容不是未归并的元素。工作区的边界不断向数组的末尾移动，并最终达到最右侧；此后，归并算法开始交换$B$和工作区的内容。最终工作区被移动到了数组的最左侧，如图\ref{fig:merge-in-place-setup} (b)所示。
 \end{enumerate}
 
-We can repeat this step, that always sort the second half of the unsorted part, and exchange
-the sorted sub array to the first half as working area. Thus we keep reducing the working area
-from $\frac{1}{2}$ of the array, $\frac{1}{4}$
-of the array, $\frac{1}{8}$ of the array, ... The scale of the merge problem keeps reducing.
-When there is only one element left in the working area, we needn't sort it any more since
-the singleton array is sorted by nature. Merging a singleton array to the other is equivalent
-to insert the element. In practice, the algorithm can finalize the last few
-elements by switching to insertion sort.
+我们可以重复这一步骤，总是对未排序部分的后二分之一排序，从而将已序结果交换到前一半，而使得新的工作区位于中间。这样就不断将工作区的大小减半，从$\frac{1}{2}$到$\frac{1}{4}$到$\frac{1}{8}$……归并的规模不断下降。当工作区中只剩下一个元素时，我们无须继续排序，因为只含有一个元素的数组自然是已序的。归并只含有一个元素的数组等价于插入元素。实际上，我们可以使用插入排序来处理最后的几个元素。
 
-The whole algorithm can be described as the following.
+完整的算法可以描述如下：
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
   \If{$u - l > 0$}
     \State $m \gets \lfloor \frac{l + u}{2} \rfloor$
     \State $w \gets l + u - m$
-    \State \Call{Sort'}{$A, l, m, w$} \Comment{The second half contains sorted elements}
+    \State \Call{Sort'}{$A, l, m, w$} \Comment{后半部分包含已序元素}
     \While{$w - l > 1$}
       \State $u' \gets w$
-      \State $w \gets \lceil \frac{l + u'}{2} \rceil$ \Comment{Ensure the working area is big enough}
-      \State \Call{Sort'}{$A, w, u', l$} \Comment{The first half holds the sorted elements}
+      \State $w \gets \lceil \frac{l + u'}{2} \rceil$ \Comment{保证工作区足够大}
+      \State \Call{Sort'}{$A, w, u', l$} \Comment{前半部分包含已序元素}
       \State \Call{Merge}{$A, [l, l + u' - w], [u', u], w$}
     \EndWhile
-    \For{$i \gets w$ down-to $l$} \Comment{Switch to insertion sort}
+    \For{$i \gets w$ down-to $l$} \Comment{改用插入排序}
       \State $j \gets i$
       \While{$j \leq u \land A[j] < A[j-1]$}
         \State \textproc{Exchange} $A[j] \leftrightarrow A[j-1]$
@@ -1682,12 +1650,9 @@ The whole algorithm can be described as the following.
 \EndProcedure
 \end{algorithmic}
 
-Note that in order to satisfy the first constraint, we must ensure the working area is big enough to hold
-all exchanged in elements, that's way we round it by ceiling when sort the second half of the working area.
-Note that we actually pass the ranges including the end points to the algorithm \textproc{Merge}.
+为了满足第一个限制条件，我们必须保证工作区足够大以容纳全部交换进来的元素，因此在对后一半排序时，我们总是使用上限取整。我们将包含结束位置的区间信息传入了\textproc{Merge}算法。
 
-Next, we develop a \text{Sort'} algorithm, which mutually recursive call \text{Sort} and exchange the result
-to the working area.
+接下来，我们需要定义\text{Sort'}算法，它反过来递归调用\text{Sort}来交换工作区和已序部分。
 
 \begin{algorithmic}[1]
 \Procedure{Sort'}{$A, l, u, w$}
@@ -1696,7 +1661,7 @@ to the working area.
     \State \Call{Sort}{$A, l, m$}
     \State \Call{Sort}{$A, m+1, u$}
     \State \Call{Merge}{$A, [l, m], [m+1, u], w$}
-  \Else \Comment{Exchange all elements to the working area}
+  \Else \Comment{将所有元素交换到工作区}
     \While{$l \leq u$}
       \State \textproc{Exchange} $A[l] \leftrightarrow A[w]$
       \State $l \gets l + 1$
