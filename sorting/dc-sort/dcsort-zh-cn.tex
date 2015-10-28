@@ -1851,76 +1851,60 @@ Knuth给出了另外一种方法来实现分而治之的归并排序。整个过
 
 唯一的问题是何时结束这一算法。当开始新一轮的扫描时，如果发现最长的非递减子列表一直伸展到数组的末尾，也就是说整个序列已序，此时排序过程结束。
 
-Because this kind of merge sort proceeds the target sequence in two ways, and uses the
-nature ordering of sub sequences, it's named {\em nature two-way merge sort}. In order
-to realize it, some carefulness must be paid. Figure \ref{fig:nature-msort-invariant}
-shows the invariant during the nature merge sort. At anytime, all elements before marker
-$a$ and after marker $d$ have been already scanned and merged. We are trying to
-span the non-decreasing sub sequence $[a, b)$ as long as possible, at the same time,
-we span the sub sequence from right to left to span $[c, d)$ as long as possible as well.
-The invariant for the working area is shown in the second row. All elements before
-$f$ and after $r$ have already been sorted. (Note that they may contain several
-ordered sub sequences), For the odd times (1, 3, 5, ...), we merge $[a, b)$ and $[c, d)$
-from $f$ toword right; while for the even times (2, 4, 6, ...), we merge the two
-sorted sub sequences after $r$ toward left.
+由于这样的归并方式，从头尾两路处理待排序数组，并且使用了子序列的自然元素顺序，它被称为\underline{两路自然归并排序}。实现这一算法时需要仔细处理。图\ref{fig:nature-msort-invariant}描述了自然归并排序时的不变性质（invariant）。任何时候，标记$a$之前的元素和标记$d$之后的元素都已被扫描和归并了。我们要将非递减子序列$[a, b)$向右扩展到最长，同时，要将子序列$[c, d)$向左扩展到最长。工作区的不变性质如图中的第二行所示。$f$之前的元素和$r$之后的元素都已经排好序（它们可能包含若干已序的子序列）。奇数轮时（第1、3、5……轮），我们将子序列$[a, b)$和$[c, d)$从$f$起向右归并；偶数轮时（第2、4、6……轮），我们将子序列从$r$起向左归并。
 
 \begin{figure}[htbp]
  \centering
  \includegraphics[scale=0.8]{img/nature-msort-invariant.ps}
- \caption{Invariant during nature merge sort}
+ \caption{自然归并排序时的不变性质。}
  \label{fig:nature-msort-invariant}
 \end{figure}
 
-For imperative realization, the sequence is represented by array. Before sorting starts,
-we duplicate the array to create a working area. The pointers $a, b$ are initialized to
-point the left most position, while $c, d$ point to the right most position. Pointer $f$
-starts by pointing to the front of the working area, and $r$ points to the rear
-position.
+在命令式环境中，序列用数组保存。在排序开始前，我们申请和数组同样大小的空间作为工作区。指针$a$和$b$一开始指向最左侧，指针$c$和$d$指向最右侧。指针$f$指向工作区的开头，$r$指向工作区的结尾。
 
 \begin{algorithmic}[1]
 \Function{Sort}{$A$}
   \If{$|A| > 1$}
     \State $n \gets |A|$
-    \State $B \gets$ \Call{Create-Array}{$n$}  \Comment{Create the working area}
+    \State $B \gets$ \Call{Create-Array}{$n$}  \Comment{创建工作区}
     \Loop
       \State $[a, b) \gets [1, 1)$
       \State $[c, d) \gets [n+1, n+1)$
-      \State $f \gets 1, r \gets n$ \Comment{front and rear pointers to the working area}
-      \State $t \gets $ False \Comment{merge to front or rear}
-      \While{$b < c$} \Comment{There are still elements for scan}
-        \Repeat \Comment{Span $[a, b)$}
+      \State $f \gets 1, r \gets n$ \Comment{指向工作区首尾的front和rear指针}
+      \State $t \gets $ False \Comment{从front归并还是从rear归并}
+      \While{$b < c$} \Comment{存在需要扫描的元素}
+        \Repeat \Comment{扩展$[a, b)$}
           \State $b \gets b + 1$
         \Until{$b \geq c \lor A[b] < A[b-1]$}
 
-        \Repeat \Comment{Span $[c, d)$}
+        \Repeat \Comment{扩展$[c, d)$}
           \State $c \gets c - 1$
         \Until{$c \leq b \lor A[c-1] < A[c]$}
 
-        \If{$c < b$} \Comment{Avoid overlap}
+        \If{$c < b$} \Comment{避免overlap}
           \State $c \gets b$
         \EndIf
 
-        \If{$b - a \geq n$} \Comment{Done if $[a, b)$ spans to the whole array}
+        \If{$b - a \geq n$} \Comment{若$[a, b)$扩展到整个数组则结束}
           \State \Return $A$
         \EndIf
 
-        \If{$t$} \Comment{merge to front}
+        \If{$t$} \Comment{从front归并}
           \State $f \gets$ \Call{Merge}{$A, [a, b), [c, d), B, f, 1$}
-        \Else \Comment{merge to rear}
+        \Else \Comment{从rear归并}
           \State $r \gets$ \Call{Merge}{$A, [a, b), [c, d), B, r, -1$}
         \EndIf
         \State $a \gets b, d \gets c$
-        \State $t \gets \lnot t$ \Comment{Switch the merge direction}
+        \State $t \gets \lnot t$ \Comment{切换归并的方向}
       \EndWhile
-      \State \textproc{Exchange} $A \leftrightarrow B$ \Comment{Switch working area}
+      \State \textproc{Exchange} $A \leftrightarrow B$ \Comment{切换工作区}
     \EndLoop
   \EndIf
   \State \Return $A$
 \EndFunction
 \end{algorithmic}
 
-The merge algorithm is almost as same as before except that we need pass a parameter
-to indicate the direction for merging.
+归并算法和此前给出的类似，主要区别在于我们需要将归并的方向作为参数传入。
 
 \begin{algorithmic}[1]
 \Function{Merge}{$A, [a, b), [c, d), B, w, \Delta$}
@@ -1948,8 +1932,7 @@ to indicate the direction for merging.
 \EndFunction
 \end{algorithmic}
 
-The following ANSI C program implements this two-way nature merge sort algorithm. Note that it
-doesn't release the allocated working area explictly.
+下面的C语言例子程序实现了两路自然归并排序算法。这里我们没有释放工作区所申请的内存。
 
 \lstset{language=C}
 \begin{lstlisting}
