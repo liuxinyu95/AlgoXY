@@ -2087,7 +2087,7 @@ mergesort' = foldl merge [] . groupBy' (<=)
 \section{自底向上归并排序}
 \index{归并排序!自底向上归并排序}
 
-从自然归并排序的最差情况分析可以引出一个有趣的内容，归并排序既可以自顶向下进行，也可以自底向上进行。自底向上带来的最大好处是可以很方便地用命令式的方式实现。
+从自然归并排序的最差情况分析可以引出一个有趣的内容，归并排序既可以自顶向下进行，也可以自底向上进行。自底向上带来的最大好处是可以很方便地用迭代的方式实现。
 
 为了实现自底向上归并排序，首先将待排序序列变成$n$个子列表，每个子列表只包含一个元素。然后我们将每两个相邻的子序列归并，这样就得到了$\frac{n}{2}$个长度为2的已序子序列；如果$n$是奇数，最会剩余一个长度为1的子序列。我们重复将相邻的子序列对归并，最后就会得到排序的结果。Knuth将这种算法称为“straight two-way merge sort”\cite{TAOCP}。图\ref{fig:bottom-up-msort}描述了自底向上的归并排序。
 
@@ -2098,9 +2098,7 @@ mergesort' = foldl merge [] . groupBy' (<=)
  \label{fig:bottom-up-msort}
 \end{figure}
 
-Different with the basic version and even-odd version, we needn't explicitly split the list to be sorted
-in every recursion. The whole list is split into $n$ singletons at the very beginning, and we merge these
-sub lists in the rest of the algorithm.
+和基本归并排序算法以及奇偶归并排序算法不同，我们无需在每次递归时分割列表。整个列表在一开始时被分为$n$个只有一个元素的子列表，然后接下来不断对它们进行归并。
 
 \be
 sort(L) = sort'(wraps(L))
@@ -2116,38 +2114,32 @@ wraps(L) = \left \{
 \right.
 \ee
 
-Of course $wraps$ can be implemented by using mapping as introduced in appendix A.
+当然$wraps$也可以使用map来实现，具体参见附录A。
 
 \be
 sort(L) = sort'(map(\lambda_x \cdot \{ x \}, L))
 \ee
 
-We reuse the function $sort'$ and $mergePairs$ which are defined in section of nature merge sort. They
-repeatedly merge pairs of sub lists until there is only one.
+我们可以复用自然归并排序中定义的$sort'$函数和$mergePairs$函数。不断成对归并子列表，直到最后只剩下一个列表。
 
-Implement this version in Haskell gives the following example code.
+下面的Haskell例子程序实现了这一算法。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
 sort = sort' . map (\x->[x])
 \end{lstlisting}
 
-This version is based on what Okasaki presented in \cite{okasaki-book}. It is quite similar to the nature merge sort
-only differs in the way of grouping. Actually, it can be deduced as a special case (the worst case) of
-nature merge sort by the following equation.
+这一算法基于Okasaki在\cite{okasaki-book}中给出结果。他和自然归并排序非常类似，仅仅是分组的方法不同。本质上，它可以由自然归并排序的一种特殊情况（最差情况）推导出来：
 
 \be
 sort(L)= sort'(groupBy(\lambda_{x, y} \cdot False, L))
 \ee
 
-That instead of spanning the non-decreasing sub list as long as possible, the predicate always evaluates to false,
-so the sub list spans only one element.
+自然归并排序总是将非递减子列表扩展到最长，与此不同，这里的判断条件永远是False，因此子列表的长度仅扩展到1个元素。
 
-Similar with nature merge sort, bottom-up merge sort can also be defined by folding. The detailed implementation
-is left as exercise to the reader.
+和自然归并排序类似，自底向上归并排序也可以用fold来定义。具体的实现留给读者作为练习。
 
-Observing the bottom-up sort, we can find it's in tail-recursion call manner, thus it's quite easy
-to translate into purely iterative algorithm without any recursion.
+观察自底向上归并排序，它已经是尾递归形式了，可以很容易地消除递归，转换成纯迭代算法。
 
 \begin{algorithmic}[1]
 \Function{Sort}{$A$}
@@ -2172,7 +2164,7 @@ to translate into purely iterative algorithm without any recursion.
 \EndFunction
 \end{algorithmic}
 
-The following example Python program implements the purely iterative bottom-up merge sort.
+下面的Python例子程序实现了纯迭代式的自底向上归并排序。
 
 \lstset{language=Python}
 \begin{lstlisting}
@@ -2189,22 +2181,19 @@ def merge(xs, ys):
     return zs + (xs if xs !=[] else ys)
 \end{lstlisting}
 
-The Python implementation exploit the fact that instead of starting next round of merging
-after all pairs have been merged, we can combine these rounds of merging by consuming
-the pair of lists on the head, and appending the merged result to the tail. This greatly simply
-the logic of handling odd sub lists case as shown in the above pseudo code.
+和上面的伪代码相比，这一Python的实现并没有等待所有的子序列对都归并好后才开始下一轮处理。它每次从头部取出一对子列表，归并好后追加到尾部。这样就极大地简化了奇数个子列表的处理。
 
 \begin{Exercise}
 \begin{itemize}
-\item Implement the functional bottom-up merge sort by using folding.
-\item Implement the iterative bottom-up merge sort only with array indexing. Don't use any library
-supported tools, such as list, vector etc.
+\item 使用fold实现函数式的自底向上归并排序。
+\item 只使用数组下标，实现迭代式的自底向上归并排序。不要使用标准库中提供的工具，如list或vector等。
 \end{itemize}
 \end{Exercise}
 
-\section{Parallelism}
-\index{Parallel merge sort}
-\index{Parallel quick sort}
+\section{并行处理}
+\index{并行归并排序}
+\index{并行快速排序}
+
 We mentioned in the basic version of quick sort, that the two sub sequences can be sorted in
 parallel after the divide phase finished. This strategy is also applicable for merge sort.
 Actually, the parallel version quick sort and morege sort, do not only distribute
@@ -2229,7 +2218,7 @@ Parallelism is a big and complex
 topic which is out of the scope of this elementary book. Readers can refer to
 \cite{para-msort} and \cite{para-qsort} for details.
 
-\section{Short summary}
+\section{小结}
 In this chapter, two popular divide and conquer sorting methods, quick sort and merge sort are introduced.
 Both of them meet the upper performance limit of the comparison based sorting algorithms $O(n \lg n)$.
 Sedgewick said that quick sort is the greatest algorithm invented in the 20th century. Almost
