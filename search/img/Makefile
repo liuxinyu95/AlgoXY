@@ -36,12 +36,12 @@ $(DOT_OBJECTS): % : %.ps
 
 # Makefile auto variable: $< first prerequisite, $@ target
 %.ps : %.dot
-	dot -Tps -o $@ $<
+	dot -Gsize="8,10.5" -Tps -o $@ $<
 
 png: $(PNG_OBJECTS)
 
 %.png : %.dot
-	dot -Tpng -o $@ $<
+	dot -Gsize="8,10.5" -Tpng -o $@ $<
 
 clean:
 	rm -f *.ps *~
