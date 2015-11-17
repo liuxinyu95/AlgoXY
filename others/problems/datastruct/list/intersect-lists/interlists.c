@@ -15,6 +15,14 @@ unsigned len(struct Node* xs) {
     return n;
 }
 
+/*
+ * Given 2 lists L1, and L2, returns the first intersection node.
+ * Returns NIL if L1 doesn't intersect to L2.
+ *
+ * Let len1 = |L1|, len2 = |L2|, suppose len1 >= len2 without loss of generality.
+ * Advance L1 for len1 - len2 steps, then advance both L1 and L2 in parallel until
+ * L1 meets L2 or both reach the ends.
+ */
 struct Node* intersect(struct Node* xs, struct Node* ys) {
     unsigned len1 = len(xs), len2 = len(ys);
     unsigned n = len1 < len2 ? len2 - len1 : len1 - len2;
@@ -29,12 +37,12 @@ struct Node* intersect(struct Node* xs, struct Node* ys) {
     return xs;
 }
 
+/* The following is for verification purpose. */
 struct Node* node(Key x) {
     struct Node* p = (struct Node*) malloc(sizeof(struct Node));
     p->key = x;
     p->next = NULL;
     return p;
-
 }
 
 struct Node* link(struct Node* x, struct Node* y) {
