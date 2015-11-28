@@ -21,7 +21,7 @@ prop_lca xs n m = lca ys zs == if suffix == [] then Nothing else Just (head suff
     where
       xs' = nub (0:xs)
       n' = (abs n) `mod` (length xs')
-      (asbs, suffix) = splitAt (max 1 n') xs'
+      (asbs, suffix) = splitAt (1 + n') xs'
       m' = (abs m) `mod` (length asbs)
       (as, bs) = splitAt m' asbs
       (ys, zs) = (as ++ suffix, bs ++ suffix)
