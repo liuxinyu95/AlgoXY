@@ -1298,34 +1298,24 @@ Knuth、Morris和Pratt根据这一思路给出了一个高效的字符串匹配�
 \begin{figure}[htbp]
  \centering
  \includegraphics[scale=0.5]{img/kmp-fallback.ps}
- \caption{$P_k$ is both prefix of $P_q$ and suffix of $P_q$.}
+ \caption{$P_k$既是$P_q$的前缀，也是$P_q$的后缀。}
  \label{fig:kmp-fallback}
 \end{figure}
 
-It's possible that there is no such a prefix that is the suffix at the same time. If we treat empty string as
-both the prefix and the suffix of any others, there must be at least one solution that $k=0$. It's also
-quite possible that there are multiple $k$ satisfy. To avoid missing any possible matching positions,
-we have to find the biggest $k$.
-We can define a {\em prefix function} $\pi(q)$ which tells us where we can fallback if the $(q+1)$-th character does
-not match \cite{CLRS}.
+当然也有可能不存在这样的前缀，同时也是后缀。如果我们认为空串同时是任何其他字符串的前缀和后缀，则总存在一个解$k=0$。如果存在多个$k$满足，为了避免漏掉任何可能的候选位置，我们需要找到同时既是前缀又是后缀的最大的$k$。我们定义一个\underline{前缀函数}$\pi(q)$，它告诉我们当第$q+1$个字符不匹配时应该回退的位置\cite{CLRS}。
 
 \be
 \pi(q) = max \{ k | k < q \land P_k \sqsupset P_q \}
 \label{eq:prefix-function}
 \ee
 
-Where $\sqsupset$ is read as `is suffix of'. For instance, $A \sqsupset B$ means $A$ is suffix
-of $B$.
-This function is used as the following. When we match pattern $P$ against text $T$ from offset $s$,
-If it fails after matching $q$ characters, we next look up $\pi(q)$ to get a fallback $q'$,
-and retry to compare $P[q']$ with the previous unmatched character. Based on this idea, the
-core algorithm of KMP can be described as the following.
+其中，$A \sqsupset B$表示“$A$是$B$的后缀”。这一函数的使用方法如下：当我们在文本$T$中，以offset为$s$尝试匹配$P$时，若前$q$个字符都相同，而接下来的字符不同，我们接下来通过$\pi(q)$找到一个回退的位置$q'$，然后重新尝试比较$P[q']$和文本中的字符。根据这一思路，KMP的核心算法可以描述如下：
 
 \begin{algorithmic}[1]
 \Function{KMP}{$T, P$}
   \State $n \gets |T|, m \gets |P|$
   \State build prefix function $\pi$ from $P$
-  \State $q \gets 0$ \Comment{How many characters have been matched so far.}
+  \State $q \gets 0$ \Comment{记录已经匹配的字符个数}
   \For{$i \gets 1$ to $n$}
     \While{$q > 0 \land P[q+1] \neq T[i]$}
       \State $q \gets \pi(q)$
@@ -1335,37 +1325,26 @@ core algorithm of KMP can be described as the following.
     \EndIf
     \If{$q = m$}
       \State found one solution at $i - m$
-      \State $q \gets \pi(q)$ \Comment{look for next solution}
+      \State $q \gets \pi(q)$ \Comment{继续寻找下一个可能的位置}
     \EndIf
   \EndFor
 \EndFunction
 \end{algorithmic}
 
-Although the definition of prefix function $\pi(q)$ is given in equation (\ref{eq:prefix-function}), realizing it
-blindly by finding the longest suffix isn't effective. Actually we can use the idea of information reusing again
-to build the prefix function.
+虽然式(\ref{eq:prefix-function})给出了前缀函数$\pi(q)$的定义，但是简单寻找最长后缀的效率很低。实际上，我们可以进一步复用信息，来快速构造前缀函数。
 
-The trivial edge case is that, the first character doesn't match. In this case the longest prefix, which is
-also the suffix is definitely empty, so $\pi(1) = k = 0$. We record the longest prefix as $P_k$.
-In this edge case $P_k = P_0$ is the empty string.
+最简单的情况是第一个字符就不相等。这种情况下，最长的前缀，同时也是后缀显然是空串，因此$\pi(1) = k = 0$。记最长的前缀为$P_k$。此时，$P_k = P_0$等于空串。
 
-After that, when we scan at the $q$-th character in the pattern string $P$, we hold the invariant that the
-prefix function values $\pi(i)$ for $i$ in $\{1, 2, ..., q-1 \}$ have already been recorded, and $P_k$ is
-the longest prefix which is also the suffix of $P_{q-1}$. As shown in figure \ref{fig:kmp-prefix-func},
-if $P[q] = P[k+1]$, A bigger $k$ than before is found, we can increase the maximum of $k$ by one;
-otherwise, if they are not same, we can use $\pi(k)$ to fallback to a shorter prefix $P_{k'}$ where
-$k' = \pi(k)$, and check if the next character after this new prefix is same as the $q$-th character.
-We need repeat this step until either $k$ becomes zero (which means only empty string satisfies),
-or the $q$-th character matches.
+此后，当我们扫描到$P$中的第$q$个字符时，我们总有，前缀函数的所有值$\pi(i)$，$i$在$\{1, 2, ..., q-1 \}$都已经算出并记录下来了，并且目前最长的前缀$P_k$同时也是$P_{q-1}$的后缀。如图\ref{fig:kmp-prefix-func}所示，若$P[q] = P[k+1]$，则我们找到了一个更大的$k$，我们将$k$的最大值加一；否则，若两个字符不等，我们使用$\pi(k)$回退到一个较短的$P_{k'}$，其中$k' = \pi(k)$，然后比较这个新前缀的下一个字符是否和第$q$个字符相等。我们需要重复这一步骤，直到$k$变成0（表示只有空串满足条件），或者和第$q$个字符相等。
 
 \begin{figure}[htbp]
  \centering
  \includegraphics[scale=0.5]{img/kmp-prefix-func.ps}
- \caption{$P_k$ is suffix of $P_{q-1}$, $P[q]$ and $P[k+1]$ are compared.}
+ \caption{$P_k$是$P_{q-1}$的后缀，比较$P[q]$和$P[k+1]$。}
  \label{fig:kmp-prefix-func}
 \end{figure}
 
-Realizing this idea gives the KMP prefix building algorithm.
+KMP算法中，构建前缀函数的过程可以描述如下：
 
 \begin{algorithmic}[1]
 \Function{Build-Prefix-Function}{$P$}
