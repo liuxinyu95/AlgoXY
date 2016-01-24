@@ -1490,32 +1490,23 @@ kmp(\pi, (\overleftarrow{P_p}, P_s), (\overleftarrow{T_p}, T_s)) =  \left \{
 \right.
 \ee
 
-The first clause states that, if the scan successfully ends to both the pattern and text strings, we get a solution, and the algorithm terminates.
-Note that we use the right position in the text string as the matching point. It's easy to use the left position by
-subtracting with the length of the pattern string. For sake of brevity, we switch to right position in functional
-solutions.
+第一行表示，若同时扫描完文本和待搜索字串，则获得一个解，同时算法结束。这里我们使用文本中的右侧位置作为搜索到的位置。如果要使用左侧位置，只需要用右侧位置减去待搜索串的长度即可。简单起见，在函数式的解法中，我们使用右侧位置。
 
-The second clause states that if the scan arrives at the end of text string, while there are still rest of characters
-in the pattern string haven't been matched, there is no solution. And the algorithm terminates.
+第二行表示，若文本已经扫描结束，但是待搜索的字串中仍然有尚未扫描的字符，则不存在解，并且算法结束。
 
-The third clause states that, if all the characters in the pattern string have been successfully matched, while there
-are still characters in the text haven't been examined, we get a solution, and we fallback by calling prefix function
-$\pi$ to go on searching other solutions.
+第三行表示，如果带搜索的字串已全部扫描匹配成功，但是文本中仍然存在未扫描的字符，我们得到一个解，但是需要继续搜索。此时我们调用前缀函数$\pi$，获得下一个继续搜索的起始位置。
 
-The fourth clause deals with the case, that the next character in pattern string and text are same. In such case, the
-algorithm advances one character ahead, and recursively performs searching.
+第四行处理待搜索字串中的下一个字符和文本中的下一个字符相同的情况。此时需要同时向前移动一个字符，然后递归进行搜索。
 
-If the the next characters are not same and this is the first character in the pattern string, we just need advance
-to next character in the text, and try again. Otherwise if this isn't the first character in the pattern,
-we call prefix function $\pi$ to fallback, and try again.
+如果下一个字符不同，并且恰好是待搜索字串的第一个字符，我们只需要移动到文本中的下一个字符，然后重新查找。否则，如果不是待搜索字串中的第一个字符，我们就调用前缀函数$\pi$，获取到回退的位置，以继续进行搜索。
 
-The brute-force way to build the prefix function is just to follow the definition equation (\ref{eq:prefix-function}).
+可以用暴力方法构造前缀函数，只要简单地按照式(\ref{eq:prefix-function})的定义即可。
 
 \be
 \pi(\overleftarrow{P_p}, P_s) = (\overleftarrow{P_p'}, P_s')
 \ee
 
-where
+其中
 
 \[
 \begin{array}{l}
@@ -1524,13 +1515,9 @@ P_s' = P - P_p'
 \end{array}
 \]
 
-Every time when calculate the fallback position, the algorithm naively enumerates all prefixes of $P_p$, checks
-if it is also the suffix of $P_p$, and then pick the longest one as result. Note that we reuse the subtraction
-symbol here for list differ operation.
+每次计算回退的位置时，暴力法都简单地穷举所有$P_p$的前缀，检查它是否同时也是$P_p$的后缀，然后选择最长的一个作为结果。这里我们使用了减号表示获取列表的不同部分。
 
-There is a tricky case which should be avoided. Because any string itself is both its prefix and suffix.
-Say $P_p \sqsubset P_p$  and $P_p \sqsupset P_p$. We shouldn't enumerate $P_p$ as a candidate prefix. One
-solution of such prefix enumeration can be realized as the following.
+这里需要避免一种特殊情况。由于任何字符串本身都同时是自己的前缀和后缀，即$P_p \sqsubset P_p$和$P_p \sqsupset P_p$总成立，因此不能将$P_p$作为一个候选的前缀。下面给出了穷举前缀算法的定义：
 
 \be
 prefixes(L) = \left \{
@@ -1542,7 +1529,7 @@ prefixes(L) = \left \{
 \right.
 \ee
 
-Below Haskell example program implements this version of string matching algorithm.
+下面的Haskell例子程序实现了对应的字符串查找算法。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -1568,18 +1555,13 @@ inits [_] = [[]]
 inits (x:xs) = [] : (map (x:) $ inits xs)
 \end{lstlisting} %$
 
-This version does not only perform poorly, but it is also complex. We can simplify it a bit. Observing
-the KMP matching is a scan process from left to the right of the text, it can be represented
-with folding (refer to Appendix A for detail). Firstly, we can augment each character with an index
-for folding like below.
+这一算法不仅性能差，而且也很复杂。我们可以对其略作简化。观察KMP搜索过程，它实际上是一个从左向右的对文本进行扫描的过程，因此可以使用fold来表示（参见附录A）。首先，在fold的过程中，我们可以让每一个字符对应一个index，如下：
 
 \be
 zip(T, \{1, 2, ... \})
 \ee
 
-Zipping the text string with infinity natural numbers gives list of pairs. For example,
-text string `The quick brown fox jumps over the lazy dog' turns into (T, 1), (h, 2), (e, 3), ...
-(o, 42), (g, 43).
+将文本和自然数zip起来，得到一个列表，每个元素都是一对值。例如文本“The quick brown fox jumps over the lazy dog”这样处理后的结果是：T, 1), (h, 2), (e, 3), ..., (o, 42), (g, 43)。
 
 The initial state for folding contains two parts, one is the pair of pattern $(P_p, P_s)$, with
 prefix starts from empty, and the suffix is the whole pattern string $(\Phi, P)$. For illustration
