@@ -1563,22 +1563,13 @@ zip(T, \{1, 2, ... \})
 
 将文本和自然数zip起来，得到一个列表，每个元素都是一对值。例如文本“The quick brown fox jumps over the lazy dog”这样处理后的结果是：T, 1), (h, 2), (e, 3), ..., (o, 42), (g, 43)。
 
-The initial state for folding contains two parts, one is the pair of pattern $(P_p, P_s)$, with
-prefix starts from empty, and the suffix is the whole pattern string $(\Phi, P)$. For illustration
-purpose only, we revert back to normal pairs but not $(\overleftarrow{P_p}, P_s)$ notation.
-It can be easily replaced with reversed form in the finalized version. This is left as exercise
-to the reader. The other part
-is a list of positions, where the successful matching are found. It starts from empty list.
-After the folding finishes, this list contains all solutions. What we need is to extract this
-list from the final state. The core KMP search algorithm is simplified like this.
+fold起始时的状态包含两部分，第一部分是待搜索字符串$(P_p, P_s)$，其中前缀起始时为空，后缀为完成的待搜索串，即$(\Phi, P)$。为了方便，我们暂时不用$(\overleftarrow{P_p}, P_s)$的表示法，在最终的定义中我们需要再次改回来。起始状态的另外一部分是已找到的解的列表，它初始为空。fold结束时，这一列表包含所有找到的解。我们需要将其取出，作为最终的结果。这样核心的KMP算法定义可简化如下：
 
 \be
 kmp(P, T) = snd(fold(search, ((\Phi, P), \Phi), zip(T, \{1, 2, ... \})))
 \ee
 
-The only `black box' is the $search$ function, which takes a state, and a pair of character and index,
-and it returns a new state as result. Denote the first character in $P_s$ as $p$ and the rest characters
-as $P_s'$ ($P_s = cons(p, P_s')$), we have the following definition.
+这里唯一的“黑盒子”是$search$函数，它接受一个状态，和一个字符——索引对，计算后返回一个新的状态作为结果。记$P_s$中的第一个字符为$p$，剩余的字符为$P_s'$（即$P_s = cons(p, P_s')$），我们有如下的定义：
 
 \be
 search(((P_p, P_s), L), (c, i)) = \left \{
@@ -1592,19 +1583,9 @@ search(((P_p, P_s), L), (c, i)) = \left \{
 \right.
 \ee
 
-If the first character in $P_s$ matches the current character $c$ during scan,
-we need further check
-if all the characters in the pattern have been examined, if so, we successfully find a solution,
-This position $i$ in list $L$ is recorded; Otherwise, we advance one character ahead and go on.
-If $p$ does not match $c$, we need fallback for further retry. However, there is an edge case
-that we can't fallback any more. $P_p$ is empty in this case, and we need do nothing but keep
-the current state.
+如果$P_s$中的第一个字符和当前扫描的字符$c$相等，我们需要检查是否待搜索串种的所有字符都已扫描完毕，如果已完毕，则找到了一个解，我们将这一位置$i$记录到列表$L$中；如果尚未完毕，我们向前移动一个字符，然后继续。如果$p$和$c$不同，我们需要回退到某个位置，然后重新搜索。但是有一个特殊情况，我们不能回退：当$P_p$为空时，我们需要保持当前的状态。
 
-The prefix-function $\pi$ developed so far can also be improved a bit. Since we want
-to find the longest prefix of $P_p$, which is also suffix of it, we can scan from right to left
-instead. For any non empty list $L$, denote the first element as $l_1$, and all the rest except
-for the first one as $L'$, define a function $init(L)$, which returns all the elements except for the last one
-as below.
+前缀函数$\pi$的定义也可以略微简化。我们要寻找的是一个最长子串，它即是$P_p$前缀，同时也是它后缀。我们可以从右向左扫描。对于任何非空列表$L$，记表中第一个元素为$l_1$，剩余的部分为$L'$，定义函数$init(L)$返回除最后一个元素外的所有其他元素。
 
 \be
 init(L) = \left \{
@@ -1616,10 +1597,7 @@ init(L) = \left \{
 \right.
 \ee
 
-Note that this function can not handle empty list. The idea of scan from right to left for $P_p$
-is first check if $init(P_p) \sqsupset P_p$, if yes, then we are done; otherwise, we examine if
-$init(init(P_p))$ is OK, and repeat this till the left most. Based on this idea, the
-prefix-function can be modified as the following.
+注意，这一定义不能处理列表为空的情况。从右向左扫描$P_p$，就是首先检查$init(P_p) \sqsupset P_p$是否成立，如果是，则成功；否则我们接下来检查$init(init(P_p))$是否可以，并且重复这一过程直到最左侧。这样前缀函数的定义就可以简化如下：
 
 \be
 \pi(P_p, P_s) = \left \{
@@ -1631,7 +1609,7 @@ prefix-function can be modified as the following.
 \right.
 \ee
 
-Where
+其中
 
 \be
 fallback(A, B) = \left \{
@@ -1643,11 +1621,7 @@ fallback(A, B) = \left \{
 \right.
 \ee
 
-Note that fallback always terminates because empty string is suffix of any string. The $last(L)$ function
-returns the last element of a list, it is also a linear time operation (refer to Appendix A for detail).
-However, it's constant operation if we use $\overleftarrow{P_p}$ approach. This improved prefix-function
-is bound to linear time. It is still quite slower than the imperative algorithm which can look up prefix-function
-in constant $O(1)$ time. The following Haskell example program implements this minor improvement.
+由于空串是任何字符串的后缀，因此函数fallback一定能结束。函数$last(L)$返回一个列表的最后一个元素，它同样是一个线性时间的操作（参见附录A）。但如果我们使用$\overleftarrow{P_p}$的表示法，则获取最后一个元素就是一个常数时间的操作。这一改进的前缀函数的复杂度为线性时间，但和命令式的算法相比，仍然很慢。因为命令式算法可以在常数时间进行前缀函数的检索。下面的Haskell例子程序实现了这一改进。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -1664,11 +1638,7 @@ kmpSearch ws txt = snd $ foldl f (([], ws), []) (zip txt [1..]) where
     f (p, ns) e = f (failure p, ns) e
 \end{lstlisting} %$
 
-The bottleneck is that we can not use native array to record prefix functions in purely functional settings.
-In fact the prefix function can be understood as a state transform function. It transfer from one state
-to the other according to the matching is success or fail. We can abstract such state changing as a tree.
-In environment supporting algebraic data type, Haskell for example, such state tree can be defined like
-below.
+瓶颈在于，在纯函数式的环境中，我们无法使用内置的array来记录前缀函数。实际上，前缀函数可以被看作是一个状态转移函数。它根据字符匹配成功与否将一个状态转移到另一个状态。我们可以将这样的状态转换抽象为一棵树。在支持代数数据类型（algebraic data type）的环境中，例如Haskell，这样的状态树可以定义如下：
 
 \lstset{language=Haskell}
 \begin{lstlisting}
