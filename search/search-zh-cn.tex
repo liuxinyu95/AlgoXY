@@ -1858,80 +1858,60 @@ Boyer-Moore字符串匹配算法是1977年发现的另一种高效的字符串�
 
 \paragraph{Bad字符启发条件}
 
-当匹配待搜索的字符串时，即使从左边开始有若干字符都匹配成功，如果最后一个字符不想等，最终结果仍然失败，如图\ref{fig:bad-char}所示。
-When attempt to match the pattern, even if there are several characters from the
-left are same, it fails if the last one does not match, as shown in figure \ref{fig:bad-char}. What's more,
-we wouldn't find a match even if we slide the pattern down by 1, or 2. Actually, the length of the
-pattern `ananym' is 5, the last character is `m', however, the corresponding character in the
-text is `h'. It does not appear in the pattern at all. We can directly slide the pattern down by 5.
+当匹配待搜索的字符串时，即使从左边开始有若干字符都匹配成功，如果最后一个字符不想等，最终结果仍然失败，如图\ref{fig:bad-char}所示。而且，即使我们将待搜索字符串向右侧平移1到2个单位，匹配仍然会失败。实际上，待查找的字符串“ananym”的长度为5，最后一个字符是‘m’，但是文本中对应的字符是‘h’。它根本没有出现在待搜索的字符串中。我们据此可以直接向右侧平移5个单位。
 
 \begin{figure}[htbp]
  \centering
  \includegraphics[scale=0.5]{img/strstr.ps}
- \caption{Since character `h' doesn't appear in the pattern, we wouldn't find a match even if we slide the pattern
-down less than the length of the pattern.}
+ \caption{因为字符‘h’没有出现在待搜索的字符串中，向右侧平移少于待搜索串长度的距离都会匹配失败。}
  \label{fig:bad-char}
 \end{figure}
 
-This leads to {\em the bad-character rule}. We can do a pre-processing for the pattern. If the character set
-of the text is already known, we can find all characters which don't appear in the pattern string. During the
-later scan process, as long as we find such a bad character, we can immediately slide the pattern down by
-its length. The question is what if the unmatched character does appear in the pattern? While, in order not to
-miss any potential matches, we have to slide down the pattern to check again. This is shown as in the figure \ref{fig:good-char}
+从这点可以得到\underline{bad字符规则}。我们可以对待搜索字符串进行预处理。如果文本中的字符集已知，我们可以找到所有不存在于待搜索串种的bad字符。在后继的扫描过程中，只要遇到bad字符，我们就可以立即向右侧移动一个待搜索串长度的距离。接下来的问题是，如果文本中不匹配的字符存在于待搜索串中要如何处理？为了不漏掉任何可能的解，我们只能向右少量移动，然后重新搜索，如图\ref{fig:good-char}所示。
 
 \begin{figure}[htbp]
  \centering
- \subfloat[The last character in the pattern `e' doesn't match `p'. However, `p' appears in the pattern.]{\includegraphics[scale=0.5]{img/good-char.ps}} \\
- \subfloat[We have to slide the pattern down by 2 to check again.]{\includegraphics[scale=0.5]{img/good-char-2.ps}}
- \caption{Slide the pattern if the unmatched character appears in the pattern.}
+ \subfloat[待搜索串的最后一个字符‘e’和‘p’不匹配。但是‘p’出现在待搜索串中。]{\includegraphics[scale=0.5]{img/good-char.ps}} \\
+ \subfloat[我们只能向右侧平移2个字符，然后重新检查。]{\includegraphics[scale=0.5]{img/good-char-2.ps}}
+ \caption{如果不匹配的字符出现在待搜索串中，需要向右侧平移。}
  \label{fig:good-char}
 \end{figure}
 
-It's quite possible that the unmatched character appears in the pattern more than one position. Denote the
-length of the pattern as $|P|$, the character appears in positions $p_1, p_2, ..., p_i$. In such case, we
-take the right most one to avoid missing any matches.
+不匹配的字符很可能多次出现在待搜索串中。记待搜索串的长度为$|P|$，该字符出现的位置依次为$p_1, p_2, ..., p_i$。此时，我们需要用最后一个位置来计算平移的距离，以避免漏掉任何可能的解。
 
 \be
 s = |P| - p_i
 \ee
 
-Note that the shifting length is 0 for the last position in the pattern according to the above
-equation. Thus we can skip it in realization.
-Another important point is that since the shifting length is calculated against the position aligned
-with the last character in the pattern string, (we deduce it from $|P|$), no matter where the
-mismatching happens when we scan from right to the left, we slide down the pattern string
-by looking up the bad character table with the one in the text aligned with the last
-character of the pattern. This is shown in figure \ref{fig:good-char-2}.
+根据这一公式，待搜索串种的最后一个字符对应的平移距离为0。在实现时，需要跳过这种情况。另外，由于平移的距离是根据待搜索串最后一个字符计算的（从$|P|$减去相应的值），当从右向左扫描时，无论在哪里发生了不匹配，我们都要检查待搜索串中最后一个字符正对的文本中的字符，是否出现在bad字符表中。如图\ref{fig:good-char-2}所示。
 
 \begin{figure}[htbp]
  \centering
  \subfloat[]{\includegraphics[scale=0.5]{img/good-char-3.ps}}
  \subfloat[]{\includegraphics[scale=0.5]{img/good-char-4.ps}}
- \caption{Even the mismatching happens in the middle, between char `i' and `a', we look up the shifting value with character `e', which is 6 (calculated from the first `e', the second `e' is skipped to avoid zero shifting).}
+ \caption{即使字符‘i’和‘a’在中间位置匹配失败，我们要使用字符‘e’来查找平移的距离。得到结果6（根据第一个‘e’出现的位置计算，需要跳过第二个‘e’出现的位置以避免平移距离为0）。}
  \label{fig:good-char-2}
 \end{figure}
 
-There is a good result in practice, that only using the bad-character rule leads to a simple
-and fast string matching algorithm, called Boyer-Moore-Horspool algorithm
-\cite{boyer-moore-horspool}.
+在实际中，即使只使用bad字符规则也能够得到简单、快速的字符串查找算法，被称为Boyer-Moore-Horspool算法\cite{boyer-moore-horspool}。
 
 \begin{algorithmic}[1]
 \Procedure{Boyer-Moore-Horspool}{$T, P$}
   \For{$\forall c \in \Sigma$}
     \State $\pi[c] \gets |P|$
   \EndFor
-  \For{$i \gets 1$ to $|P|-1$} \Comment{Skip the last position}
+  \For{$i \gets 1$ to $|P|-1$} \Comment{跳过最后一个位置}
     \State $\pi[P[i]] \gets |P| - i$
   \EndFor
   \State $s \gets 0$
   \While{$s + |P| \leq |T|$}
     \State $i \gets |P|$
-    \While{$i \geq 1 \land P[i] = T[s+i]$} \Comment{scan from right}
+    \While{$i \geq 1 \land P[i] = T[s+i]$} \Comment{从右侧开始扫描}
       \State $i \gets i - 1$
     \EndWhile
     \If{$i < 1$}
       \State found one solution at $s$
-      \State $s \gets s + 1$ \Comment{go on finding the next}
+      \State $s \gets s + 1$ \Comment{继续寻找下一个解}
     \Else
       \State $s \gets s + \pi[T[s + |P|]]$
     \EndIf
@@ -1939,15 +1919,9 @@ and fast string matching algorithm, called Boyer-Moore-Horspool algorithm
 \EndProcedure
 \end{algorithmic}
 
-The character set is denoted as $\Sigma$, we first initialize all the values of sliding table $\pi$ as the length
-of the pattern string $|P|$. After that we process the pattern from left to right, update the sliding value.
-If a character appears multiple times in the pattern, the latter value, which is on the right hand, will overwrite
-the previous value. We start the matching scan process by aligning the pattern and the text string from the very left.
-However, for every alignment $s$, we scan from the right to the left until either there is unmatched character or
-all the characters in the pattern have been examined. The latter case indicates that we've found a match; while for
-the former case, we look up $\pi$ to slide the pattern down to the right.
+记字符集为$\Sigma$，我们首先将平移表的所有值都初始化为待搜索串的长度$|P|$。然后，我们从左向右处理待搜索串，更新相应的平移距离。如果某个字符在待搜索串中多次出现，在右侧后出现的值将覆盖此前的值。开始查找时，我们将文本和待搜索串的左侧对齐。但是对于每个对齐的位置$s$，我们都从右向左扫描，直到发生匹配失败，或者检查完待搜索串种的所有字符。后者说明我们发现了一个解；而对于前者，我们查找$\pi$并向右侧平移相应的距离。
 
-The following example Python code implements this algorithm accordingly.
+下面的Python例子程序实现了这一算法。
 
 \lstset{language=Python}
 \begin{lstlisting}
@@ -1971,14 +1945,9 @@ def bmh_match(w, p):
     return res
 \end{lstlisting}
 
-The algorithm firstly takes about $O(|\Sigma| + |P|)$ time to build the sliding table. If the character set size is
-small, the performance is dominated by the pattern and the text. There is definitely the worst case
-that all the characters in the pattern and text are same, e.g. searching `aa...a' ($m$ of `a', denoted as $a^m$)
-in text `aa......a' ($n$ of `a', denoted as $a^n$). The performance in
-the worst case is $O(mn)$. This algorithm performs well if the pattern is long, and there are constant number of matching. The result is bound to linear time.
-This is as same as the best case of full Boyer-Moore algorithm which will be explained next.
+算法首先使用$O(|\Sigma| + |P|)$的时间构造平移表格。如果字符集很小，则性能主要由待搜索串的长度和文本的长度决定。显然，最坏的情况下，文本和待搜索串中的所有字符都相同，例如在文本“aa......a”($n$个字符‘a’，记为$a^n$)中搜索“aa...a”($m$个字符‘a’，记为$a^m$)。此时性能为$O(mn)$。当待搜索的字符较长，并且有常数个解的时候，算法的性能良好。为线性时间。这一结论和后面介绍的完整的Boyer-Moore算法在最好情况下的性能相同。
 
-\paragraph{The good suffix heuristics}
+\paragraph{Good后缀启发条件}
 
 Consider searching pattern `abbabab' in text `bbbababbabab...' like figure \ref{fig:bad-char-2}. By using the
 bad-character rule, the pattern will be slided by two.
