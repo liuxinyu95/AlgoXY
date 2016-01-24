@@ -1677,11 +1677,7 @@ R = build((P_s \cup \{p\}, P_s'), \Phi, \Phi))
  \label{fig:fallback-tree}
 \end{figure}
 
-Figure \ref{fig:fallback-tree} illustrates such an infinite state tree for pattern string `ananym'.
-Note that the right most edge represents the case that the matching continuously succeed for all
-characters. After that, since we can't match any more, so the right sub-tree is empty.
-Base on this fact, we can define a auxiliary function to test if a state indicates the whole
-pattern is successfully matched.
+图\ref{fig:fallback-tree}描述了从字符串“ananym”对应的无穷状态树。其中最右侧的边对应了字符匹配一直连续成功的特殊情况。此后，由于所有的字符都匹配完毕，所有后继的右侧子树为空。根据这一点，我们可以定义一个辅助函数来判断是否一个状态代表待搜索字符串已经完全匹配成功。
 
 \be
 match((P_p, P_s), L, R) =  \left \{
@@ -1693,16 +1689,13 @@ match((P_p, P_s), L, R) =  \left \{
 \right.
 \ee
 
-With the help of state transform tree, we can realize KMP algorithm in an automaton manner.
+通过使用状态转移树，我们可以用一个自动机来实现KMP算法。
 
 \be
 kmp(P, T) = snd(fold(search, (Tr, []), zip(T, \{1, 2, ... \})))
 \ee
 
-Where the tree $Tr = build((\Phi, P), \Phi, \Phi)$ is the infinite state transform tree.
-Function $search$ utilizes this tree to transform the state according to match or fail.
-Denote the first character in $P_s$ as $p$, the rest characters as $P_s'$, and the matched
-positions found so far as $A$.
+其中，$Tr = build((\Phi, P), \Phi, \Phi)$是无穷状态转移树。函数$search$根据匹配成功与否，使用这棵树进行状态转移。及$P_s$中的第一个字符为$p$，剩余部分为$P_s'$，$A$代表已找到的解的位置。
 
 \be
 search((((P_p, P_s), L, R), A), (c, i)) = \left \{
@@ -1716,7 +1709,7 @@ search((((P_p, P_s), L, R), A), (c, i)) = \left \{
 \right.
 \ee
 
-The following Haskell example program implements this algorithm.
+下面的Haskell例子程序实现了这一算法。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -1742,12 +1735,9 @@ kmpSearch3 ws txt = snd $ foldl f (auto, []) (zip txt [1..]) where
         | otherwise = f (l, ns) (x, n)
 \end{lstlisting} %$
 
-The bottle-neck is that the state tree building function calls $\pi$ to fallback. While current definition
-of $\pi$ isn't effective enough, because it enumerates all candidates from right to the left every time.
+目前的瓶颈在于构造状态转移树的时候，需要调用$\pi$函数计算回退的位置，而前缀函数$\pi$的定义效率很差。这是由于它每次都从右向左穷举所有可能前缀。
 
-Since the state tree is infinite, we can adopt some common treatment for infinite structures. One good example
-is the Fibonacci series. The first two Fibonacci numbers are defined as 0 and 1; the rest Fibonacci numbers
-can be obtained by adding the previous two numbers.
+由于状态树是无穷的，我们可以使用处理无穷数据结构的常见方法。典型的例子就是斐波那契数列。斐波那契数列的前两个值为0和1，其余的斐波那契数可以通过将前面的两个值相加得到：
 
 \be
 \begin{array}{l}
@@ -1757,7 +1747,7 @@ F_n = F_{n-1} + F_{n-2} \\
 \end{array}
 \ee
 
-Thus the Fibonacci numbers can be list one by one as the following
+这样，就可以依次列出所有的斐波那契数。
 
 \be
 \begin{array}{l}
@@ -1769,8 +1759,7 @@ F_3 = F_2 + F_1 \\
 \end{array}
 \ee
 
-We can collect all numbers in both sides, and define $F = \{ 0, 1, F_1, F_2, ... \}$, Thus we have the following
-equation.
+将上述等式左右两侧的所有数字汇集起来，定义无穷斐波那契数列为$F = \{ 0, 1, F_1, F_2, ... \}$，我们有下面的等式：
 
 \be
 \begin{array}{rl}
@@ -1780,17 +1769,14 @@ F = & \{ 0, 1, F_1 + F_0, F_2 + F_1, ... \}  \\
 \end{array}
 \ee
 
-Where $F' = tail(F)$ is all the Fibonacci numbers except for the first one. In environments support lazy evaluation,
-like Haskell for instance, this definition can be expressed like below.
+其中$F' = tail(F)$是除第一个元素外的所有斐波那契数。在支持惰性求值的环境中，如Haskell，这一定义可以实现如下。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
 fibs = 0 : 1 : zipWith (+) fibs (tail fibs)
 \end{lstlisting}
 
-The recursive definition for infinite Fibonacci series indicates an idea which can be used to get rid of the
-fallback function $\pi$. Denote the state transfer tree as $T$, we can define the transfer function
-when matching a character on this tree as the following.
+无穷斐波那契数列的递归定义可以启发我们找到避免使用函数$\pi$进行回退的方法。记状态转移树为$T$，我们可以定义一个用这棵树匹配字符时的状态转移函数。
 
 \be
 trans(T, c) = \left \{
@@ -1803,24 +1789,17 @@ trans(T, c) = \left \{
 \right.
 \ee
 
-If we match a character against empty node, we transfer to the root of the tree. We'll define the root later soon.
-Otherwise, we compare if the character $c$ is as same as the first character $p$ in $P_s$. If they match, then
-we transfer to the right sub tree for this success case; otherwise, we transfer to the left sub tree for fail case.
+如果匹配一个字符时节点为空，我们转移到树的根节点。稍后我们会定义根节点。否则，我们比较字符$c$和$P_s$的第一个字符$p$。如果相等，我们就转移到右侧子树表示成功；否则，我们转移到左侧子树表示失败。
 
-With transfer function defined, we can modify the previous tree building function accordingly. This is quite similar
-to the previous Fibonacci series definition.
+通过使用状态转移函数，我们可以定义一个新的状态树构造算法。原理和前面的斐波那契序列类似。
 
 \[
 build(T, (P_p, P_s)) = ((P_p, P_s), T, build(trans(T, p), (P_p \cup \{ p \}, P_s')))
 \]
 
-The right hand of this equation contains three parts. The first one is the state that we are matching $(P_p, P_s)$;
-If the match fails, Since $T$ itself can handle any fail case, we use it directly as the left sub tree; otherwise
-we recursive build the right sub tree for success case by advancing one character ahead, and calling transfer
-function we defined above.
+等式右侧包含三部分。第一部分是我们正在搜索的状态$(P_p, P_s)$；如果匹配失败，由于$T$本身可以处理任何失败的情况，我们直接使用它作为左侧子树；否则匹配成功，我们前进一个字符，递归构造右侧子树，并调用我们定义的状态转移函数。
 
-However, there is an edge case which has to be handled specially, that if $P_s$ is empty, which indicates a successful
-match. As defined above, there isn't right sub tree any more. Combining these cases gives the final building function.
+这里还必须处理一种特殊情况，如果$P_s$为空，表示匹配了所有的字符。根据上面的定义，将不存在后继的右侧子树。综合起来，我们可以得到下面的构造函数。
 
 \be
 build(T, (P_p, P_s)) =  \left \{
@@ -1832,19 +1811,19 @@ build(T, (P_p, P_s)) =  \left \{
 \right.
 \ee
 
-The last brick is to define the root of the infinite state transfer tree, which initializes the building.
+最后，我们还需要定义无穷状态转移树的根节点，用以初始化构造过程。
 
 \be
 root = build(\Phi, (\Phi, P))
 \ee
 
-And the new KMP matching algorithm is modified with this root.
+使用这一根节点定义，我们可以给出一个新的KMP搜索算法。
 
 \be
 kmp(P, T) = snd(fold(trans, (root, []), zip(T, \{1, 2, ... \})))
 \ee
 
-The following Haskell example program implements this final version.
+下面的Haskell例子程序实现了这一KMP算法。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
