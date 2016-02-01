@@ -3569,24 +3569,11 @@ M_2 = \left [
 mirror(L) = \{\{(i, n - j + 1) | \forall (i, j) \in l \} | \forall l \in L \}
 \ee
 
-We find that the matrix representation is useful in validating the moving, while the
-layout is handy to model the moving and avoid repeated attempt. We can use the similar
-approach to solve the Kloski puzzle. We need a queue, every element in the queue
-contains two parts: a series of moving and the latest layout led by the moving.
-Each moving is in form of $(k, (\Delta y, \Delta x))$, which means moving the $k$-th
-block, with $\Delta y$ in row, and $\Delta x$ in column in the board.
+我们发现矩阵对于验证移动是否可行很方便，而布局形式便于表达移动和避免重复。我们可以用类似的方法来解决华容道游戏。使用一个队列，队列中的每个元素包含两部分：一系列移动，和这些移动导致的布局。每次移动的形式为$(k, (\Delta y, \Delta x))$，表示在棋盘上移动第$k$个棋子，$\Delta y$行和$\Delta x$列。
 
-The queue contains the starting layout when initialized.
-Whenever this queue isn't empty, we pick the first one from the head,
-checking if the biggest block is on target, that $L[10] = \{(4, 2), (4, 3), (5, 2), (5, 3)\}$.
-If yes, then we are done; otherwise, we try to move every block with 4 options:
-left, right, up, and down, and store all the possible, unique new layout to the
-tail of the queue. During this searching, we need record all the normalized
-layouts we've ever found to avoid any duplication.
+最开始的时候，队列中包含起始布局。只要队列不为空，我们就从队列头部取出一个元素，检查最大的一块棋子是否已经到达目标位置，即$L[10] = \{(4, 2), (4, 3), (5, 2), (5, 3)\}$。如果到达，则结束；否则，我们对每块棋子尝试向上下左右4个方向移动，并把所有可行的、不重复的布局存入队列尾部。在整个搜索过程中，我们需要保存所有找到的归一化布局以避免重复。
 
-Denote the queue as $Q$, the historic layouts as $H$, the first layout on the
-head of the queue as $L$, its corresponding matrix as $M$. and the moving sequence
-to this layout as $S$. The algorithm can be defined as the following.
+记队列为$Q$，布局的历史记录为$H$，队列头部记录的第一个布局为$L$，它对应的矩阵为$M$。到这个布局为止的一系列移动为$S$。下面的算法定义了华容道游戏的解法。
 
 \be
 solve(Q, H) = \left \{
@@ -3599,15 +3586,9 @@ solve(Q, H) = \left \{
 \right.
 \ee
 
-The first clause says that if the queue is empty, we've tried all the possibilities
-and can't find a solution; The second clause finds a solution, it returns the moving
-sequence in reversed order; These are two edge cases. Otherwise, the algorithm
-expands the current layout, puts all the valid new layouts to the tail of the
-queue to yield $Q'$, and updates the normalized layouts to $H'$. Then it performs
-recursive searching.
+第一行表示，如果队列为空，我们已经尝试了所有可能的移动方案，但是未能找到可行的解；第二行表示我们找到了一个解，我们将移动序列逆序返回；这两种是边界情况。否则，算法从当前的布局扩展出所有可行的移动方案，并将新布局加入到队列的尾部。新队列记为$Q'$，更新后的布局历史记录为$H'$。然后程序进行递归搜索。
 
-In order to expand a layout to valid unique new layouts, we can define a function
-as below:
+为了将一个布局扩展为不重复的新布局，我们定义了如下的函数：
 
 \be
 \begin{array}{rl}
@@ -3617,18 +3598,13 @@ expand(L, H) = \{(k, (\Delta y, \Delta x) | & \forall k \in \{1, 2, ..., 10\}, \
 \end{array}
 \ee
 
-Where $L'$ is the the new layout by moving the $k$-th block with $(\Delta y, \Delta x)$
-from $L$, $M'$ is the corresponding matrix, and $M''$ is the matrix to the mirrored
-layout of $L'$. Function unique is defined like this:
+其中$L'$是将布局$L$中的第$k$块棋子移动$(\Delta y, \Delta x)$后得到的新布局，$M'$是新布局对应的矩阵，$M''$是$L'$的对称布局所对应的矩阵。函数$unique$定义如下：
 
 \be
 unique(L', H) = M' \notin H \land M'' \notin H
 \ee
 
-We'll next show some example Haskell Kloski programs. As array isn't mutable in
-the purely functional settings, tree based map is used to represent layout
-\footnote{Alternatively, finger tree based sequence shown in previous chapter
-can be used}. Some type synonyms are defined as below:
+由于纯函数环境中无法更改数组的内容，我们使用基于树的map来代表布局\footnote{也可以使用前面章节定义的finger树。}。下面的Haskell例子程序定义了一些类型名称。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -3643,7 +3619,7 @@ type Move = (Integer, Point)
 data Ops = Op Layout [Move]
 \end{lstlisting}
 
-The main program is almost as same as the $sort(Q, H)$ function defined above.
+主程序和上面定义的$solve(Q, H)$类似。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -3658,8 +3634,7 @@ solve (Op x seq : cs) visit
     q = cs ++ [Op (move x op) (op:seq) | op <- ops ]
 \end{lstlisting}
 
-Where function \texttt{layout} gives the normalized form by sorting. \texttt{move} returns
-the updated map by sliding the $i$-th block with $(\Delta y, \Delta x)$.
+其中函数\texttt{layout}通过排序给出归一化的布局。函数\texttt{move}通过滑动第$i$块棋子$(\Delta y, \Delta x)$距离得到新的map。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -3670,8 +3645,7 @@ move x (i, d) = M.update (Just . map (flip shift d)) i x
 shift (y, x) (dy, dx) = (y + dy, x + dx)
 \end{lstlisting}
 
-Function \texttt{expand} gives all the possible new options. It can be directly translated
-from $expand(L, H)$.
+函数\texttt{expand}返回所有可行的移动方案，如前面的$expand(L, H)$定义所示。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -3687,16 +3661,14 @@ expand x visit = [(i, d) | i <-[1..10],
                all (`notElem` visit) (map layout [mv, mirror mv])
 \end{lstlisting}
 
-Note that we also filter out the mirrored layouts. The \texttt{mirror} function is given
-as the following.
+我们需要去掉对称的布局，函数\texttt{mirror}的定义如下：
 
 \lstset{language=Haskell}
 \begin{lstlisting}
 mirror = M.map (map (\ (y, x) -> (y, 5 - x)))
 \end{lstlisting}
 
-This program takes several minutes to produce the best solution, which takes 116 steps.
-The final 3 steps are shown as below:
+这一程序需要数分钟产生华容道“横刀立马”布局的最优解，总共需要116步，最后3步如下：
 
 \begin{verbatim}
 ...
