@@ -16,9 +16,9 @@ def lev(s, t):
         d[i][0] = i
     for j in range(n): #target prefix can be reached from empty from empty by insering all chars
         d[0][j] = j
-    for j in range(n-1):
-        for i in range(m-1):
-            c = 0 if s[i] == t[j] else 1
+    for j in range(1, n):
+        for i in range(1, m):
+            c = 0 if s[i-1] == t[j-1] else 1
             d[i+1][j+1] = min([d[i][j+1], d[i+1][j], d[i][j]+c])
     print "s=", s, "t=", t
     print "d=", d
