@@ -19,10 +19,11 @@ def lev(s, t):
     for j in range(1, n):
         for i in range(1, m):
             c = 0 if s[i-1] == t[j-1] else 1
-            d[i+1][j+1] = min([d[i][j+1], d[i+1][j], d[i][j]+c])
-    print "s=", s, "t=", t
-    print "d=", d
+            d[i][j] = min([d[i-1][j] + 1, #deletion
+                           d[i][j-1] + 1, #insertion
+                           d[i-1][j-1]+c]) #substitution
+    #print "d=", d
     return d[m-1][n-1]
 
 if __name__ == "__main__":
-    print lev("kitten", "sitting")
+    print "lev(kitten, sitting)=", lev("kitten", "sitting")
