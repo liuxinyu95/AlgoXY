@@ -478,20 +478,13 @@ atR xs i = get xs (drop i xs) where
 
 \subsection{修改}
 \index{列表!修改}
-Strictly speaking, we can't mutate the list at all in purely functional settings. Unlike in imperative
-settings, mutate is actually realized by creating new list. Almost all functional environments support garbage
-collection, the original list may either be persisted for reusing, or released (dropped) at sometime (Chapter 2 in \cite{okasaki-book}).
 
-\subsubsection{Appending}
-\index{List!append}
-Function $cons$ can be viewed as building list by insertion element always on head. If we chains multiple
-$cons$ operations, it can repeatedly construct a list from right to the left. Appending on the other hand,
-is an operation adding element to the tail. Compare to $cons$ which is trivial constant time $O(1)$ operation,
-We must traverse the whole list to locate the appending position. It means that appending is bound to
-$O(n)$, where $n$ is the length of the list. In order to speed up the appending, imperative implementation
-typically uses a field (variable) to record the tail position of a list, so that the traversing can be
-avoided. However, in purely functional settings we can't use such `tail' pointer. The appending has to
-be realized in recursive manner.
+严格来说，我们无法在纯函数环境下对列表进行修改。和命令式环境不同，我们实际上通过创建新的列表来实现修改。几乎所有的函数式环境都支持垃圾回收机制，原始列表或者被保留（persisit）复用，或者在某一时刻被释放（参考\cite{okasaki-book}中的第2章）。
+
+\subsubsection{添加（Append）}
+\index{列表!append}
+
+函数$cons$可以被认为是通过在列表头部插入元素构建列表。如果将若干$cons$操作串联起来，就可以从右向左构建出一个列表。添加操作，是向列表的尾部加入元素。$cons$操作只需要常数时间$O(1)$，而添加时，我们必须遍历到列表的尾部以获取到插入的位置。这意味着添加操作的复杂度为$O(n)$，其中$n$是列表的长度。为了提高添加的效率，命令式实现通常使用一个尾指针变量，它总是记录列表尾部的位置，这样在添加时就无需遍历列表。但是，在纯函数环境中，我们无法使用这样的尾指针，只能通过递归来实现添加。
 
 \be
 append(L, x) = \left \{
@@ -503,14 +496,13 @@ append(L, x) = \left \{
 \right.
 \ee
 
-That the algorithm handles two different appending cases:
+这一算法分别处理两种不同的添加情况：
 \begin{itemize}
-\item If the list is empty, the result is a singleton list contains $x$, which is the element to be appended. The singleton list notion $\{ x \} = cons(x, \phi)$, is a simplified form of $cons$ the element with an empty list $\phi$;
-\item Otherwise, for the none-empty list, the result can be achieved by first appending the element $x$ to the rest sub-list, then construct the first element of $L$ with the recursive appending result.
+\item 若列表为空，结果列表只含有一个元素，就是待添加的$x$。我们通常用简记法$\{ x \} = cons(x, \phi)$表示对一个元素和一个空列表$\phi$进行$cons$操作；
+\item 否则，若列表不为空，则结果可以这样构造：我们将$L$中的第一个元素取出，递归地将待加入的元素$x$添加到剩余的子列表中，然后通过$cons$再将第一个元素和递归添加的结果链接起来。
 \end{itemize}
 
-For the none-trivial case, if we denote $L= \{l_1, l_2, ... \}$, and $L' = \{ l_2, l_3, ...\}$ the equation can be
-written as.
+对于非边界情况，我们记$L= \{l_1, l_2, ... \}$，除第一个元素的剩余部分记为$L' = \{ l_2, l_3, ...\}$。上述公式可以简记为：
 
 \be
 append(L, x) = \left \{
@@ -522,9 +514,9 @@ append(L, x) = \left \{
 \right.
 \ee
 
-We'll use both forms in the rest of this appendix.
+本附录中，这两种记法都会被用到。
 
-The following Scheme/Lisp program implements this algorithm.
+下面的Lisp方言Scheme例子程序实现了这一算法。
 
 \lstset{language=Lisp}
 \begin{lstlisting}
@@ -534,7 +526,7 @@ The following Scheme/Lisp program implements this algorithm.
       (cons (car lst) (append (cdr lst) x))))
 \end{lstlisting}
 
-Even without the tail pointer, it's possible to traverse the list imperatively and append the element at the end.
+不使用尾指针，在命令式环境下，我们需要遍历到列表的尾部然后将新元素加入。
 
 \begin{algorithmic}
 \Function{Append}{$L, x$}
@@ -550,8 +542,7 @@ Even without the tail pointer, it's possible to traverse the list imperatively a
 \EndFunction
 \end{algorithmic}
 
-The following ISO C++ programs implements this algorithm. How to utilize a tail field to speed up the appending
-is left as exercise to the reader for interesting.
+下面的C++例子程序实现了这一算法。我们将如何使用尾指针来提高添加的性能的实现作为练习留给读者。
 
 \lstset{language=C++}
 \begin{lstlisting}
@@ -568,12 +559,10 @@ List<T>* append(List<T>* xs, T x) {
 }
 \end{lstlisting}
 
-\subsubsection{Mutate element at a given position}
-\index{List!set at}
-Although we have defined random access algorithm $getAt(L, i)$, we can't just mutate the element returned
-by this function in a sense of purely functional settings. It is quite common to provide reference semantics
-in imperative programming languages and in some `almost' functional environment. Readers can refer to \cite{mittype}
-for detail. For example, the following ISO C++ example returns a reference instead of a value in indexing program.
+\subsubsection{修改指定位置上的元素}
+\index{列表!set at}
+
+虽然我们定义了随机访问算法$getAt(L, i)$，但是在纯函数环境下，我们无法直接修改这一函数返回的元素。大多数命令式环境和一些函数式环境提供了引用语义，读者可以参考\cite{mittype}了解详细的实现。下面的C++例子程序返回指定位置上元素的引用而不是值。
 
 \lstset{language=C++}
 \begin{lstlisting}
@@ -585,15 +574,14 @@ T& getAt(List<T>* xs, int n) {
 }
 \end{lstlisting}
 
-So that we can use this function to mutate the 2nd element as below.
+在下面的例子中，我们使用这一函数来修改列表中的第二个元素。
 
 \begin{lstlisting}
 List<int>* xs = cons(1, cons(2, cons<int>(3, NULL)));
 getAt(xs, 1) = 4;
 \end{lstlisting}
 
-In an impure functional environment, such as Scheme/Lisp, to set the $i$-th element to a given value can
-be implemented by mutate the referenced cell directly as well.
+在非纯函数环境中，例如Lisp方言Scheme，我们可以直接将新的值写入到第$i$个元素所引用的cell中。
 
 \lstset{language=Lisp}
 \begin{lstlisting}
@@ -603,10 +591,7 @@ be implemented by mutate the referenced cell directly as well.
       (set-at! (cdr lst) (- i 1) x)))
 \end{lstlisting}
 
-This program first checks if the index $i$ is zero, if so, it mutate the first element of the list to
-given value $x$; otherwise, it deduces the index $i$ by one, and tries to mutate the rest of the
-list at this new index with value $x$. This function doesn't return meaningful value. It is for use
-of side-effect. For instance, the following code mutates the 2nd element in a list.
+这一算法首先检查索引值$i$是否为0，如果是，它就直接修改列表中的第一个元素为指定的值$x$；否则，它将索引值$i$减一，然后递归再除第一个元素的剩余列表中，将新索引位置上的元素修改为$x$。这一函数并不返回一个有意义的值，它主要以副作用（side-effect）产生结果。下面的例子修改了列表中的第二个元素。
 
 \begin{lstlisting}
 (define lst '(1 2 3 4 5))
@@ -616,17 +601,14 @@ of side-effect. For instance, the following code mutates the 2nd element in a li
 (1 4 3 4 5)
 \end{lstlisting}
 
-In order to realize a purely functional $setAt(L, i, x)$ algorithm, we need avoid directly mutating the cell,
-but creating a new one:
+为了实现一个纯函数式的$setAt(L, i, x)$算法，我们要避免直接修改cell，而是创建一个新列表。
 
 \begin{itemize}
-\item Edge case: If we want to set the value of the first element ($i = 0$), we construct a new list, with the
-new value and the sub-list of the previous one;
-\item Otherwise, we construct a new list, with the previous first element, and a new sub-list, which has the ($i-1$)-th
-element set with the new value.
+\item 边界条件：如果要修改的是第一个元素（$i = 0$），我们创建一个新列表，第一个元素是修改到的新值，剩余部分是原列表中除第一个元素外的其余元素；
+\item 否则，我们创建一个新列表，第一个元素和以前的一样，剩余的部分中的第$i-1$个元素被修改为新值。
 \end{itemize}
 
-This recursive description can be formalized by the following equation.
+这一递归描述可以形式化为下面的定义。
 
 \be
 setAt(L, i, x) = \left \{
@@ -638,7 +620,7 @@ setAt(L, i, x) = \left \{
 \right.
 \ee
 
-Comparing the below Scheme/Lisp implementation to the previous one reveals the difference from imperative mutating.
+下面的Lisp方言Scheme例子程序实现了这一算法，和此前的例子对比可以发现它们之间的不同。
 
 \lstset{language=Lisp}
 \begin{lstlisting}
@@ -648,11 +630,10 @@ Comparing the below Scheme/Lisp implementation to the previous one reveals the d
       (cons (car lst) (set-at (cdr lst) (- i 1) x))))
 \end{lstlisting}
 
-Here we skip the error handling for out-of-bound error etc. Again, similar to the random access algorithm, the
-performance is bound to linear time, as traverse is need to locate the position to set the value.
+这里我们跳过了越界的错误处理。同样，和随机访问算法类似，由于需要遍历列表以定位到待插入的位置，它的性能为线性时间。
 
-\subsubsection{insertion}
-\index{List!insert}
+\subsubsection{插入}
+\index{列表!插入}
 \index{List!insert at}
 There are two semantics about list insertion. One is to insert an element at a given position, which can be denoted
 as $insert(L, i, x)$. The algorithm is close to $setAt(L, i, x)$; The other is to insert an element to a sorted list,
