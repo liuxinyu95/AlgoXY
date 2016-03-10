@@ -1293,7 +1293,7 @@ pow'(b, n, A) = \left \{
 
 这一算法本质上每次将$n$向右移动一个二进制位（通过将$n$除以2）。若LSB(Least Significant Bit，即最低位)为0，说明$n$为偶数。算法将底数平方，继续递归，无需改变累积结果。这对应上面例子的第3步；若LSB为1，说明$n$为基数。除了将底数平方，算法还要将$b$乘到累积结果上；边界条件是$n$为0时，此时我们已经处理完$n$中的所有位，最终结果就是累积的值$A$。在任何时候，最新的底数$b'$，移位后的指数$n'$，和累积结果$A$总满足不变条件$b^n = b'^{n'}A$。
 
-This algorithm can be implemented in Haskell like the following.
+下面的Haskell例子代码实现了这一算法。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -1303,12 +1303,10 @@ pow b n = pow' b n 1 where
                | otherwise = pow' (b*b) (n `div` 2) (acc*b)
 \end{lstlisting}
 
-Compare to previous algorithm, which minus $n$ by one to change it to even when $n$ is odd, this one halves $n$ every
-time. It exactly runs $m$ rounds, where $m$ is the number of bits of $n$. However, the performance is still bound to
-$O(\lg n)$. How to implement this algorithm imperatively is left as exercise to the reader.
+此前的算法当$n$为奇数时，仅仅将其减一转化为偶数进行处理；这一改进中，每次都将$n$减半。若$n$的二进制表示中有$m$位，这一算法只运行$m$轮。当然，它的复杂度仍然为$O(\lg n)$。我们将这一算法的命令式实现留给读者作为练习。
 
-\subsubsection{Imperative sum and product}
-The imperative sum and product are just applying plus and times while traversing the list.
+\subsubsection{命令式的求和与求积}
+命令式实现中，一边遍历列表，一边应用加法或乘法累积结果。
 
 \begin{algorithmic}[1]
 \Function{Sum}{$L$}
@@ -1330,7 +1328,7 @@ The imperative sum and product are just applying plus and times while traversing
 \EndFunction
 \end{algorithmic}
 
-The corresponding ISO C++ example programs are list as the following.
+下面的C++例子程序实现了相应的求和与求积算法。
 
 \lstset{language=C++}
 \begin{lstlisting}
@@ -1351,26 +1349,22 @@ T product(List<T>* xs) {
 }
 \end{lstlisting}
 
-One interesting usage of product algorithm is that we can calculate factorial of $n$ by calculating the
-product of $\{1, 2, ..., n\}$ that $n! = product([1..n])$.
+利用求积算法，我们可以将递归的阶乘实现转换为递推的方式。即通过计算$\{1, 2, ..., n\}$的积来得到$n! = product([1..n])$。
 
-\subsection{maximum and minimum}
-\index{List!maximum}
-\index{List!minimum}
+\subsection{最大值和最小值}
+\index{列表!最大值}
+\index{列表!最小值}
 
-Another very useful use case is to get the minimum or maximum element of a list. We'll see that their algorithm
-structures are quite similar again. We'll generalize this kind of feature and introduce about higher level abstraction
-in later section. For both maximum and minimum algorithms, we assume that the given list isn't empty.
+另一个重要的操作是获取列表中的最大值或最小值。他们的算法结构同样很类似。我们稍后会归纳出相同的部分，抽象出一般性的高阶结构。对于最大值与最小值问题，我们假设列表不为空。
 
-In order to find the minimum element in a list.
+为了获取列表中的最小值。
 
 \begin{itemize}
-\item If the list contains only one element, (a singleton list), the minimum element is this one;
-\item Otherwise, we can firstly find the minimum element of the rest list, then compare the first element with this
-intermediate result to determine the final minimum value.
+\item 若列表中只有一个元素（称为singleton列表），最小值就是这一唯一的元素；
+\item 否则，我们首先找到除第一元素外，剩余部分中的最小值，然后再和第一个元素比较，选取较小的最为最终的最小值。
 \end{itemize}
 
-This algorithm can be formalized by the following equation.
+这一算法可以被定义如下。
 
 \be
 min(L) = \left \{
@@ -1383,8 +1377,7 @@ min(L) = \left \{
 \right.
 \ee
 
-In order to get the maximum element instead of the minimum one, we can simply replace the $\leq$ comparison to $\geq$
-in the above equation.
+为了获取最大值，我们只需要将上述定义中的小于等于比较（$\leq$）换为大于等于（$\geq$）即可。
 
 \be
 max(L) = \left \{
@@ -1397,10 +1390,7 @@ max(L) = \left \{
 \right.
 \ee
 
-Note that both maximum and minimum actually process the list from right to left. It remind us about tail recursion.
-We can modify them so that the list is processed from left to right. What's more, the tail recursion version
-brings us `on-line' algorithm, that at any time, we hold the minimum or maximum result of the list we examined
-so far.
+注意上述两个算法都从右向左处理列表。在前面关于尾递归的部分我们讨论过类似的问题。我们可以将其变化为从左向右处理列表。另外，改成尾递归的形式后，算法具备了在线（on-line）处理能力，即任何时候，我们都知道已处理部分中的最大或者最小值。
 
 \be
 min'(L, a) = \left \{
@@ -1424,11 +1414,9 @@ max'(L, a) = \left \{
 \right.
 \ee
 
-Different from the tail recursion sum and product, we can't pass constant value to $min'$, or $max'$ in practice, this
-is because we have to pass infinity ($min(L, \infty)$) or negative infinity ($max(L, -\infty)$) in theory, but in a real machine
-neither of them can be represented since the length of word is limited.
+对比求和与求积问题的尾递归解法，在实际中，我们不能向$min'$或$max'$传入一个常数，这是因为，理论上必须传入无穷（$min(L, \infty)$）或者负无穷（$max(L, -\infty)$），但是由于字长问题，我们不能严格给出无穷。
 
-Actually, there is workaround, we can instead pass the first element of the list, so that the algorithms become applicable.
+为了解决这一问题，可以将列表中的第一个元素传入，实际中，我们这样应用最大值和最小值算法。
 
 \be
   \begin{array}{l}
@@ -1437,9 +1425,7 @@ Actually, there is workaround, we can instead pass the first element of the list
   \end{array}
 \ee
 
-The corresponding real programs are given as the following. We skip the none tail recursion programs, as they are
-intuitive enough. Reader can take them as exercises for interesting.
-
+下面的Haskell例子程序实现了获取最大值和最小值的定义。
 \lstset{language=Haskell}
 \begin{lstlisting}
 min (x:xs) = min' xs x where
@@ -1451,7 +1437,7 @@ max (x:xs) = max' xs x where
     max' (x:xs) a = if a < x then max' xs x else max' xs a
 \end{lstlisting}
 
-The tail call version can be easily translated to imperative min/max algorithms.
+尾递归的最大值和最小值算法可以转换为循环的方式。
 
 \begin{algorithmic}[1]
 \Function{Min}{$L$}
@@ -1479,7 +1465,7 @@ The tail call version can be easily translated to imperative min/max algorithms.
 \EndFunction
 \end{algorithmic}
 
-The corresponding ISO C++ programs are given as below.
+下面的C++例子程序实现了最大值和最小值算法。
 
 \lstset{language=C++}
 \begin{lstlisting}
@@ -1502,10 +1488,7 @@ T max(List<T>* xs) {
 }
 \end{lstlisting}
 
-Another method to achieve tail-call maximum( and minimum) algorithm is by discarding the smaller element each time.
-The edge case is as same as before; for recursion case, since there are at least two elements in the list, we
-can take the first two for comparing, then drop one and go on process the rest. For a list with more than
-two elements, denote $L''$ as $rest(rest(L)) = \{l_3, l_4, ...\}$, we have the following equation.
+另外一种尾递归的求最大值算法是每次丢弃掉较小的元素。边界情况和此前一样；对于递归情况，由于列表中至少有2个元素，我们每次拿出前两个比较，丢弃一个，然后继续处理剩余的元素。当列表中含有2个以上的元素时，记$L''$为$rest(rest(L)) = \{l_3, l_4, ...\}$，我们有如下的定义。
 
 \be
 max(L) =  \left \{
@@ -1529,7 +1512,7 @@ min(L) =  \left \{
 \right.
 \ee
 
-The relative example Haskell programs are given as below.
+下面的Haskell例子程序实现了这一种求最大值和最小值的算法。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -1542,10 +1525,8 @@ max (x:y:xs) = if x < y then max (y:ys) else max (x:xs)
 
 \begin{Exercise}
 \begin{itemize}
-\item Given two lists $L_1$ and $L_2$, design a algorithm $eq(L_1, L_2)$ to test if they are equal to each other.
-Here equality means the lengths are same, and at the same time, every elements in both lists are identical.
-\item Consider varies of options to handle the out-of-bound error case when randomly access the element in list. Realize
-them in both imperative and functional programming languages. Compare the solutions based on exception and error code.
+\item 已知两个列表$L_1$和$L_2$，设计一个算法$eq(L_1, L_2)$，可以判定两个列表是否相等。这里相等的含义是列表的长度相同，并且每个对应的元素都相等。
+\item 考虑处理列表随机访问时处理越界错误的各种方式，用函数式的方式和命令式的方式加以实现。比较使用异常和错误码的异同。
 \item Augment the list with a `tail' field, so that the appending algorithm can be realized in constant $O(1)$ time but
 not linear $O(n)$ time. Feel free to choose your favorite imperative programming language. Please don't refer to the
 example source code along with this book before you try it.
