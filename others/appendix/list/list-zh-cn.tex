@@ -1806,25 +1806,17 @@ for-each算法本质上是一种简化的映射，它们只有两点不同：
 
 问最终有几盏灯是亮的？
 
-在给出最佳答案前，我们先看如何得出暴力解法。
-Before we show the best answer to this puzzle, let's first work out a naive brute-force solution.
-Suppose there are $n$ lights, which can be represented as a list of 0, 1 numbers, where 0 means the light
-is off, and 1 means on. The initial state is a list of $n$ zeros: $\{0, 0, ..., 0\}$.
+在给出最佳答案前，我们先考虑暴力解法。把$n$盏灯表示为一列0、1数字，其中0表示灯灭，1表示灯亮。最初时，所有灯都是灭的，因此为$n$个零：$\{0, 0, ..., 0\}$。
 
-We can label the light from 1 to $n$. A mapping can help us to turn the above list into a labeled list\footnote{Readers
-who are familiar with functional programming, may use zipping to achieve this. We'll explain zipping in later
-section.}.
+我们将灯分别编号为1到$n$。我们首先通过映射将灯的状态转换为带有编号的列表\footnote{在函数式编程中，通常使用zip来实现。我们稍后会详细解释zip。}。
 
 \[
 map(\lambda_i \cdot (i, 0), \{1, 2, 3, ... n\})
 \]
 
-This mapping augments each natural number with zero, the result is a list of pairs: $L = \{(1, 0), (2, 0), ..., (n, 0)\}$.
+这一映射将每个自然数都绑定一个零状态，结果为一个列表，每个元素都是一对值：$L = \{(1, 0), (2, 0), ..., (n, 0)\}$。
 
-Next we operate this list of pairs $n$ times from 1 to $n$. For every time $i$, we switch the second value in this pair
-if the first label can be divided by $i$. Consider the fact that $1 - 0 = 1$, and $1 - 1 = 0$, we can realize switching
-of 0, 1 value $x$ by $1 - x$. At the $i$-th operation, for light $(j, x)$, if $i | j$, (or $j \mod i = 0$), we then
-perform switching, otherwise, we leave the light untouched.
+然后，我们操作这一列表$n$次。从1到$n$，对于第$i$次操作，我们逐一检查列表中的每对值，如果编号能被$i$整除，我们就将状态翻转。考虑$1 - 0 = 1$、且$1 - 1 = 0$，我们可以将电灯亮灭状态$x$的切换实现为$1 - x$。在第$i$轮操作中，对于灯$(j, x)$，若$i | j$（或$j \mod i = 0$），我们就翻转灯的亮灭状态，否则就跳过不做任何处理。
 
 \be
 switch(i, (j, x)) = \left \{
@@ -1836,21 +1828,19 @@ switch(i, (j, x)) = \left \{
 \right.
 \ee
 
-The $i$-th operation on all lights can be realized as mapping again:
+真对有所灯的第$i$轮操作也可以用映射实现。
 
 \be
 map(switch(i), L)
 \ee
 
-Note that, here we use Curried form of $switch()$ function, which is equivalent to
+这里，我们使用了$switch()$函数的Curry形式，它等价于：
 
 \[
 map(\lambda_{(j, x)} \cdot switch(i, (j, x)), L)
 \]
 
-Here we need define a function $proc()$, which can perform the above mapping on $L$ over and over by $n$ times.
-One option is to realize it in purely recursive way as the following, so that we can call it like
-$proc(\{1, 2, ..., n\}, L)$\footnote{This can also be realized by folding, which will be explained in later section.}.
+我们需要定义一个函数$proc()$，它可以重复执行上述对$L$的映射$n$次。一种方法是通过下面定义的递归，调用形式为：$proc(\{1, 2, ..., n\}, L)$\footnote{通常被实现为fold，我们稍后会详加解释。}。
 
 \be
 proc(I, L) = \left \{
@@ -1862,16 +1852,15 @@ proc(I, L) = \left \{
 \right.
 \ee
 
-Where $I = cons(i_1, I')$ if $I$ isn't empty.
+其中$I = cons(i_1, I')$，即$I$不为空时，其第一个元素为$i_1$，剩余部分为$I'$。
 
-At this stage, we can sum the second value of each pair in list $L$ to get the answer. The sum function has been
-defined in previous section, so the only thing left is mapping.
+最后，我们可以将列表$L$中每一对值的第二个元素累加起来得到最终的答案。累加的实现在前面定义过，我们需要定义映射的方法，并将结果传入累加函数。
 
 \be
 solve(n) = sum(map(snd, proc(\{1, 2, ..., n\}, L)))
 \ee
 
-Translating this naive brute-force solution to Haskell yields below program.
+下面的Haskell例子程序实现了这一暴力解法。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -1881,7 +1870,7 @@ solve' = sum . (map snd) . proc  where
     operate (i:is) xs = operate is (map (switch i) xs)
 \end{lstlisting} %$
 
-Let's see what's the answer for there are 1, 2, ..., 100 lights.
+我们列出灯的数目为1、2、……、100盏时，经过上述操作，组后仍然亮的数目：
 
 \begin{verbatim}
 [1,1,1,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,
@@ -1889,37 +1878,30 @@ Let's see what's the answer for there are 1, 2, ..., 100 lights.
 8,8,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,10]
 \end{verbatim}
 
-This result is interesting:
+这一结果很有趣。
 
 \begin{itemize}
-\item the first 3 answers are 1;
-\item the 4-th to the 8-th answers are 2;
-\item the 9-th to the 15-th answers are 3;
-\item ...
+\item 3盏灯以内时，最后仍然亮的灯位1盏；
+\item 4盏灯到8盏灯时，最后仍然有2盏灯是亮的；
+\item 9盏灯到15栈灯时，最后又3盏灯是亮的；
+\item ……
 \end{itemize}
 
-It seems that the $i^2$-th to the $((i+1)^2-1)$-th answers are $i$. Actually, we can prove this fact as the following.
+看起来，当灯的数目为$i^2$到$(i+1)^2-1$盏时，最后会有$i$盏灯是亮的。事实上，我们可以证明这一结论。
 
 \begin{proof}
-Given $n$ lights, labeled from 1 to $n$, consider which lights are on finally. Since the initial states for all lights
-are off, we can say that, the lights which are manipulated odd times are on. For every light $i$, it will be switched
-at the $j$ round if $i$ can be divided by $j$ (denote as $j | i$). So only the lights which have odd number of factors are on at the end.
+将$n$盏灯编号为1到$n$，考虑最后仍然亮的那些灯。由于初始时，所有灯都是灭的，我们可以确定，被扳动奇数次开关的灯最后是亮的。对于编号为$i$的灯，若$i$可以被$j$整除（表示为$j | i$），则在第$j$轮，它的开关被扳动一次。所以当灯的编号含有奇数个因子时，最后的状态是亮的。
 
-So the key point to solve this puzzle, is to find all numbers which have odd number of factors. For any positive integer
-$n$, denote $S$ the set of all factors of $n$. $S$ is initialized to $\phi$. if $p$ is a factor of $n$, there must
-exist a positive integer $q$ that $N = p q$, which means $q$ is also a factor of $n$. So we add 2 different factors to
-the set $S$ if and only if $p \neq q$, which keeps $|S|$ even all the time unless $p = q$. In such case, $n$ is a
-perfect square number, and we can only add 1 factor to the set $S$, which leads to an odd number of factors.
+因此，为了找出最后亮的灯，我们需要找出所有含有奇数个因子的数。对于任意自然数$n$，记$S$为$n$的所有因子的集合。$S$初始化为$\phi$，若$p$为$n$的一个因子，则必然存在一个正整数$q$，使得$n = p q$。也就是说$q$也是$n$的因子。因此当且仅当$p \neq q$时，我们向集合$S$中添加两个因子，这样$S$将总是偶数。除非$p = q$，此时，$n$必将是一个完全平方数，所以我们只能向集合$S$中增加一个因子。这样$n$就有技术个因子。
 \end{proof}
 
-
-At this stage, we can design a fast solution by finding the number of perfect square numbers under $n$.
+根据这一结论，我们可以通过寻找$n$以内的完全平方数来快速解决这一趣题。
 
 \be
-solve(n) = \lfloor \sqrt{N} \rfloor
+solve(n) = \lfloor \sqrt{n} \rfloor
 \ee
 
-The next Haskell command verifies that the answer for 1, 2, ..., 100 lights are as same as above.
+下面的Haskell命令输出灯的数目为1、2、……、100盏时最后有多少灯是亮的结果，这和暴力方法的结果一致。
 
 \begin{lstlisting}
 map (floor.sqrt) [1..100]
@@ -1928,14 +1910,10 @@ map (floor.sqrt) [1..100]
 8,8,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,10]
 \end{lstlisting}
 
-Mapping is generic concept that it doesn't only limit in linked-list, but also can be applied to many
-complex data structures. The chapter about binary search tree in this book explains how to map on trees.
-As long as we can traverse a data structure in some order, and the empty data structure can be identified,
-we can use the same mapping idea. We'll return to this kind of high-order concept in the section of folding
-later.
+映射是一个一般性的概念，它不仅局限于列表，也可以扩展到许多复杂的数据结构。本书中二叉搜索树一章解释了如何对树进行映射。只要我们能够以某种顺序遍历一个数据结构，并且能够标识出空数据结构，就可以使用映射的概念。我们在稍后fold一节，会再次看到这样的高阶概念。
 
-\subsection{reverse}
-\index{List!reverse}
+\subsection{反转}
+\index{列表!反转}
 How to reverse a singly linked-list with minimum space is a popular technical interview problem in some companies.
 The pointer manipulation must be arranged carefully in imperative programming languages such as ANSI C.
 However, we'll show that, there exists an easy way to write this program:
