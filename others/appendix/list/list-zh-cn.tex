@@ -2236,7 +2236,7 @@ group(L) = \{ \{15, 9, 0\}, \{12, 11, 7\}, \{10, 5\}, \{6\}, \{13, 1\}, \{4\}, \
 
 它们都是真实算法中的重要例子。字符串分组后，可用于构造Trie或Patricia数据结构，它是字符搜索和处理领域中的有力工具；将列表分组成有序子列表是自然归并排序中的步骤。本书中有专门的章节讲述这两个算法。
 
-显然，我们需要抽象出分组的条件用以将列表分割成较小的部分。我们可以将这一条件作为参数传入，如$group(p, L)$，其中$p$接受两个相邻的元素作为参数，并检查是否满足分组的条件。
+显然，我们需要抽象出分组的条件用以将列表分割成较小的部分。我们可以将这一条件作为参数传入，如$group(p, L)$，其中$p$是一“抽象相等”条件，它接受两个相邻的元素作为参数，并检查是否满足分组的条件。
 
 显然可以通过遍历来实现分组——每次取出两个元素，若分组条件满足，则将它们置于一个小组中；否则，仅将第一个元素放入组中，而把第二个元素放入一个新的小组中。记列表中的前两个元素（如果存在）为$l_1, l_2$，除去第一个元素后的剩余部分为$L'$。分组的结果为一个列表的列表$G = \{g_1, g_2, ...\}$，记为$G = group(p, L)$。
 
@@ -2327,10 +2327,7 @@ group(\geq,  \{15, 9, 0, 12, 11, 7, 10, 5, 6, 13, 1, 4, 8, 3, 14, 2\}) \\
 
 也可以使用此前定义的$span$函数来实现分组。我们向span传入一个条件，结果会将列表分割成两部分，其中那个第一部分是满足条件的最长子列表。我们对剩余部分不断执行span，直到处理完所有元素。
 
-However, the predicate function we passed to span is {\em an unary function}, that it takes an element as argument, and
-test if it satisfies the condition. While in grouping algorithm, the predicate function is {\em a binary function}.
-It takes two adjacent elements for testing. The solution is that, we can use currying and pass the first element
-to the binary predicate, and use it to test the rest of elements.
+但是我们传入span的条件判断函数是一个“一元函数”（unary function），它只接受一个元素作为参数，检查它是否满足条件。但是在分组时，我们需要的条件判断函数是一个“二元函数”（binary function）。它接受两个相邻的元素，检查它们是否满足条件。为了解决这一差异，我们使用Curry方法，首先将第一个元素传入二元条件判断函数，然后使用Curry后的函数判断剩余的元素。
 
 \be
 group(p, L) =  \left \{
@@ -2342,10 +2339,9 @@ group(p, L) =  \left \{
 \right.
 \ee
 
-Where $(A, B) = span(\lambda_x \cdot p(l_1, x), L')$ is the result of spanning on the rest sub-list of $L$.
+其中$(A, B) = span(\lambda_x \cdot p(l_1, x), L')$，是对列表$L$中除第一元素外的剩余部分进行span的结果。
 
-Although this new defined grouping function can generate correct result for the first case as in the following
-Haskell code snippet.
+虽然这一新定义的分组函数可以将单词中的相同字母分组，如下：
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -2353,30 +2349,24 @@ groupBy (==) "Mississippi"
 ["m","i","ss","i","ss","i","pp","i"]
 \end{lstlisting}
 
-However, it seems that this algorithm can't group the list of numbers into ordered sub lists.
+但是，它却不能正确地将一个列数字，按照降序分组：
 
 \begin{lstlisting}
 groupBy (>=) [15, 9, 0, 12, 11, 7, 10, 5, 6, 13, 1, 4, 8, 3, 14, 2]
 [[15,9,0,12,11,7,10,5,6,13,1,4,8,3,14,2]]
 \end{lstlisting}
 
-The reason is because that, as the first element 15 is used as the left parameter to $\geq$ operator for span,
-while 15 is the maximum value in this list, so the span function ends with putting all elements to $A$,
-and $B$ is left empty. This might seem a defect, but it is actually the correct behavior if the semantic
-is to group equal elements together.
+在这一例子中，第一个元素是15，它被span用来置于$\geq$的左侧进行比较。但15是整个列表中最大的元素，因此span的结果是，所有元素都在$A$中，而$B$为空。这看起来像是一个缺陷，但其实，如果认为分组的条件是一个\underline{抽象相等}判断的话，这是一个正确的行为。
 
-Strictly speaking, the equality predicate must satisfy three properties: reflexive, transitive, and symmetric.
-They are specified as the following.
+严格说来，相等条件必须满足三个性质：自反性（reflexive）、传递性（transitive）、和对称性（symmetric）。它们分别描述如下：
 
 \begin{itemize}
-\item Reflexive. $x = x$, which says that any element is equal to itself;
-\item Transitive. $x = y, y = z \Rightarrow x = z$, which says that if two elements are equal, and one of them is equal to another, then all the tree are equal;
-\item Symmetric. $x = y \Leftrightarrow y = x$, which says that the order of comparing two equal elements doesn't affect the result.
+\item 自反性。$x = x$，即任何元素和他自己相等；
+\item 传递性。$x = y, y = z \Rightarrow x = z$，如果两个元素相等，并且它们其中的一个和第三个元素相等，则这三个元素相等；
+\item 对称性。$x = y \Leftrightarrow y = x$，即比较的顺序不影响结果。
 \end{itemize}
 
-When we group character list ``Mississippi'', the equal ($=$) operator is used, which obviously conforms these
-three properties. So that it generates correct grouping result. However, when passing ($\geq$) as equality predicate,
-to group a list of numbers, it violets both reflexive and symmetric properties, that is reason why we get wrong grouping result.
+当我们对字符列表“Mississippi”分组时，我们使用等号（$=$）作为判断条件，上述三个条件都被满足。这自然产生了正确的结果。但是当我们将大于等于号（$\gep$）作为相等条件传入，以对列表中的数字分组，就违反了自反性和对称性。这就是我们得到错误分组结果的原因。
 
 This fact means that the second algorithm we designed by using span, limits the semantic to strictly equality, while the
 first one does not. It just tests the condition for every two adjacent elements, which is much weaker than equality.
