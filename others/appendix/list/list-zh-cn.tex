@@ -2778,7 +2778,7 @@ lookup(x, L) = \left \{
 \index{列表!find}
 \index{列表!filter}
 
-look-up进行线性查找，仅仅比较元素的key是否和待查找的值相等。更进一步，我们可以查找满足某一条件的元素。我们需要将匹配条件作为参数传入一个抽象的线性查找算法。
+look-up进行线性查找，仅仅比较元素的key是否和待查找的值相等。更进一步，我们可以查找满足某一条件的元素。我们需要将判定条件作为参数传入一个抽象的线性查找算法。
 
 \be
 find(p, L) =  \left \{
@@ -2791,7 +2791,7 @@ find(p, L) =  \left \{
 \right.
 \ee
 
-这一算法遍历列表，逐一检查元素是否满足条件$p$。边界条件下，如果列表为空，而仍未找到元素，则表示搜索失败。如果列表中的第一个元素满足条件，算法就返回这一元素（节点），用户可以进一步提取其中保存的数据；否则，算法递归对剩余部分进行递归查找。下面的Haskell例子程序实现了这一算法。
+这一算法遍历列表，逐一检查元素是否满足条件$p$。边界条件下，如果列表为空，而仍未找到元素，则表示搜索失败。如果列表中的第一个元素满足判定条件，算法就返回这一元素（节点），用户可以进一步提取其中保存的数据；否则，算法递归对剩余部分进行递归查找。下面的Haskell例子程序实现了这一算法。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -2858,7 +2858,7 @@ def filter(p, xs):
 
 注意，Python中内置的list并非单向链表。
 
-为了修改前面的find算法来实现filter，我们将找到的元素添加到一个结果列表的末尾。然后继续检查剩余列表，找到全部符合条件元素。
+为了修改前面的find算法来实现filter，我们将找到的元素添加到一个结果列表的末尾。然后继续检查剩余列表，找到全部符合判定条件的元素。
 
 \be
 filter(p, L) = \left \{
@@ -2881,28 +2881,21 @@ filter _ [] = []
 filter p (x:xs) = if p x then x : filter p xs else filter p xs
 \end{lstlisting}
 
-Although we mentioned that the next found element is `appended' to the result list, this algorithm
-actually constructs the result list from the right most to the left, so that appending
-is avoided, which ensure the linear $O(n)$ performance. Compare this algorithm with the following
-imperative quadratic realization reveals the difference.
+虽然我们提到，找到的元素是被“添加”到结果列表的，但这一算法实际上从右向左构造结果列表，这样就可以避免向尾部添加的线性时间$O(n)$的操作。和下面命令式的平方级别的实现对比，可以发现这一异同。
 
 \begin{algorithmic}[1]
 \Function{Filter}{$p, L$}
   \State $L' \gets \phi$
   \While{$L \neq \phi$}
     \If{$p$(\Call{First}{$L$})}
-      \State $L' \gets$ \textproc{Append}($L'$, \Call{First}{$L$}) \Comment{Linear operation}
+      \State $L' \gets$ \textproc{Append}($L'$, \Call{First}{$L$}) \Comment{线性操作}
     \EndIf
     \State $L \gets$ \Call{Rest}{$L$}
   \EndWhile
 \EndFunction
 \end{algorithmic}
 
-As the comment of appending statement, it's typically proportion to the length of the result list
-if the tail position isn't memorized. This fact indicates that directly transforming the recursive filter
-algorithm into tail-call form will downgrade the performance from $O(n)$ to $O(n^2)$. As shown
-in the below equation, that $filter(p, L) = filter'(p, L, \phi)$ performs as poorly as the
-imperative one.
+如注释中所标明的，如果不使用尾指针记录，向列表尾部追加元素的用时和列表的长度成正比。直接将递归形式的filter转换为尾递归，性能会从$O(n)$退化成$O(n^2)$。如下面的定义所示，$filter(p, L) = filter'(p, L, \phi)$的性能和上面的命令式的实现同样差。
 
 \be
 filter'(p, L, A) = \left \{
@@ -2915,16 +2908,9 @@ filter'(p, L, A) = \left \{
 \right.
 \ee
 
-One solution to achieve linear time performance imperatively is to construct the result list in
-reverse order, and perform the $O(n)$ reversion again (refer to the above section) to get the final result.
-This is left as exercise to the reader.
+为了得到线性时间的命令式算法，我们可以逆序构造结果列表，然后在执行一次$O(n)$时间的反转操作（参考前面的内容）获得最终的结果。我们将这一实现留给读者作为练习。
 
-The fact of construction the result list from right to left indicates the possibility of realizing
-filtering with folding-right concept. We need design some combinator function $f$, so that
-$filter(p, L) = foldr(f, \phi, L)$. It requires that function $f$ takes two arguments, one
-is the element iterated among the list; the other is the intermediate result constructed
-from right. $f(x, A)$ can be defined as that it tests the predicate against $x$, if succeed,
-the result is updated to $cons(x, A)$, otherwise, $A$ is kept same.
+从右向左构造结果列表的事实，提示我们可以通过右侧fold来实现filter。我们需要定义一个组合函数$f$，使得$filter(p, L) = foldr(f, \phi, L)$。函数$f$接受两个参数，一个是列表中的元素；另一个是从右侧开始构建的中间结果。我们可以这样定义$f(x, A)$，它检查$x$是否满足条件，如果满足就将结果更新为$cons(x, A)$，否则结果$A$保持不变。
 
 \be
 f(x, A) = \left \{
@@ -2936,21 +2922,19 @@ f(x, A) = \left \{
 \right.
 \ee
 
-However, the predicate must be passed to function $f$ as well. This can be achieved by using
-currying, so $f$ actually has the prototype $f(p, x, A)$, and filtering is defined as following.
+但是，我们需要将判定条件也传入函数$f$。可以通过Curry来实现这一点，函数$f$的实际类型为$f(p, x, A)$。这样filter就可以定义如下：
 
 \be
 filter(p, L) = foldr(\lambda_{x, A} \cdot f(p, x, A), \phi, L)
 \ee
 
-Which can be simplified by $\eta$-conversion. For detailed definition of $\eta$-conversion,
-readers can refer to \cite{slpj-book-1987}.
+这一定义可以进一步用$\eta$变换化简。读者可以参考\cite{slpj-book-1987}了解关于$\eta$变换更多的内容。
 
 \be
 filter(p, L) = foldr(f(p), \phi, L)
 \ee
 
-The following Haskell example program implements this equation.
+下面的Haskell例子程序实现了这一定义。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -2958,15 +2942,13 @@ filter p = foldr f [] where
     f x xs = if p x then x : xs else xs
 \end{lstlisting}
 
-Similar to mapping and folding, filtering is actually a generic concept, that we can apply
-a predicate on any traversable data structures to get what we are interesting. readers can
-refer to the topic about monoid in \cite{learn-haskell} for further reading.
+和映射与fold相同，filter也是一个通用的概念，我们可以对任何可遍历的数据结构应用一个判定条件，获得我们感兴趣的信息。读者可以参考\cite{learn-haskell}中关于幺半群的内容。
 
-\subsection{Matching}
-\index{List!matching}
-\index{List!prefix}
-\index{List!suffix}
-\index{List!infix}
+\subsection{匹配}
+\index{列表!matching}
+\index{列表!prefix}
+\index{列表!suffix}
+\index{列表!infix}
 
 Matching generally means to find a given pattern among some data structures. In this section,
 we limit the topic within list. Even this limitation will leads to a very wide and deep topic,
