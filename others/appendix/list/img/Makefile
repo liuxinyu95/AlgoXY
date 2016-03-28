@@ -1,5 +1,5 @@
 IMG_OBJECTS = fold-fan1 fold-fan2 fold-fan3
-FIG_OBJECTS = 
+FIG_OBJECTS =
 DOT_OBJECTS = list-example list-rindex list-rindex-2 filter
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
@@ -22,7 +22,7 @@ xfig: $(FIG_OBJECTS)
 
 $(FIG_OBJECTS): % : %.eps
 
-# for details, refer to: 
+# for details, refer to:
 #    http://www.gnu.org/software/autoconf/manual/make/
 # Makefile syntax, replace each '%' to 'eps
 $(IMG_OBJECTS): % : %.eps
@@ -38,7 +38,7 @@ $(DOT_OBJECTS): % : %.ps
 
 # Makefile auto variable: $< first prerequisite, $@ target
 %.ps : %.dot
-	dot -Tps -o $@ $<
+	dot -Gsize="8,10.5" -Tps -o $@ $<
 
 png: $(PNG_OBJECTS)
 
