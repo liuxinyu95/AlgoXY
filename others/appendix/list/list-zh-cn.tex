@@ -2597,8 +2597,8 @@ foldl(f, z, L) = ((...(z \oplus_f l_1) \oplus_f l_2) \oplus_f ...) \oplus l_n
 使用左侧fold，求和、求积、和插入排序可以通过调用$foldl$依次实现为$sum(L) = foldl(+, 0, L)$、$product(L) = foldl(+, 1, L)$、以及$sort(L) = foldl(insert, \phi, L)$。和右侧fold相比，它们看似一致，但是其内部实现却有所不同。
 
 \subsubsection{命令式fold和抽象fold概念}
-The tail-call nature of folding-left algorithm is quite friendly for imperative settings, that even the compiler
-isn't equipped with tail-call recursive optimization, we can anyway implement the folding in while-loop manually.
+
+由于左侧fold算法是尾递归的，它很适合imperative方式，即使编译器不支持尾递归优化，我们仍可以用while循环将其实现。
 
 \begin{algorithmic}[1]
 \Function{Fold}{$f, z, L$}
@@ -2610,7 +2610,7 @@ isn't equipped with tail-call recursive optimization, we can anyway implement th
 \EndFunction
 \end{algorithmic}
 
-Translating this algorithm to Python yields the following example program.
+下面的Python例子程序实现了这一fold算法。
 
 \lstset{language=Python}
 \begin{lstlisting}
@@ -2620,25 +2620,15 @@ def fold(f, z, xs):
     return z
 \end{lstlisting}
 
-Actually, Python provides built-in function `reduce' which does the very same thing. (in ISO C++, this is
-provided as reduce algorithm in STL.) Almost no imperative environment provides folding-right function because
-it will cause stack overflow problem if the list is too long. However, there still exist cases that the folding from right
-semantics is necessary. For example, one defines a container, which only provides insertion function to
-the head of the container, but there is no any appending method, so that we want such a $fromList$
-tool.
+实际上，Python提供了内置的\texttt{reduce}函数（C++的标准库STL中提供了reduce算法）。很少有命令式环境会提供右侧fold函数，这是因为当列表长度大时，会造成栈溢出。但从右fold的在某些情况下是必要的。例如，如果一个容器只支持从头部插入元素，但不支持从尾部添加，我们希望定义一个$fromList$工具，如下：
 
 \[
 fromList(L) = foldr(insertHead, empty, L)
 \]
 
-Calling $fromList$ with the insertion function as well as an empty initialized container, can turn a list
-into the special container. Actually the singly linked-list is such a container, which performs well
-on insertion to the head, but poor to linear time if appending on the tail. Folding from right is quite
-nature when duplicate a linked-list while keeps the elements ordering. While folding from left will generate
-a reversed list.
+从一个空容器开始，通过$fromList$，我们可以利用插入函数将一个列表转换为容器。实际上，单向链表就是这样的一个容器，在头部插入性能良好，但是在尾部添加却是线性时间。当复制链表时，从右fold是一个很自然的选项，它可以保持元素的顺序。但是从左fold的结果却是一个逆序的列表。
 
-In such cases, there exists an alternative way to implement imperative folding right by first reverse the list, and then
-folding the reversed one from left.
+在这种情况下，我们可以先将列表反转，然后再从左fold。
 
 \begin{algorithmic}[1]
 \Function{Fold-Right}{$f, z, L$}
@@ -2646,13 +2636,9 @@ folding the reversed one from left.
 \EndFunction
 \end{algorithmic}
 
-Note that, here we must use the tail-call version of reversing, or the stack overflow issue still exists.
+为了避免栈溢出，这里也必须使用尾递归的反转操作。
 
-One may think that folding-left should be chosen in most cases over folding-right because it's friendly for
-tail-recursion call optimization, suitable for both functional and imperative settings, and it's an online
-algorithm. However, folding-right plays a critical role when the input list is infinity and the binary function
-$f$ is lazy. For example, below Haskell program wraps every element in an infinity list to a singleton, and
-returns the first 10 result.
+考虑到尾递归优化，同时满足函数式和命令式场景，以及左侧fold还是一个online算法，似乎在大多数情况下，应该优先选择左侧fold。但当使用惰性的函数$f$处理无穷列表时，右侧fold却更有优势。例如，下面的Haskell程序将一个无穷列表中的每个元素都置于一个单独的列表中，并返回前10个结果。
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -2660,26 +2646,20 @@ take 10 $ foldr (\x xs ->[x]:xs) [] [1..]
 [[1], [2], [3], [4], [5], [6], [7], [8], [9], [10]]
 \end{lstlisting} %$
 
-This can't be achieved by using folding left because the outer most evaluation can't be finished until
-all the list being processed. The details is specific to lazy evaluation feature, which is out of the
-scope of this book. Readers can refer to \cite{Haskell-wiki} for details.
+使用左侧fold就无法达到这一目的。因为只有处理完全部列表，才能开始外层的计算。这涉及具体的惰性求值特性，超出了本书的范围。读者可以参考\cite{Haskell-wiki}了解更多信息。
 
-Although the main topic of this appendix is about singly linked-list related algorithms, the folding
-concept itself is generic which doesn't only limit to list, but also can be applied to other data structures.
-
-We can fold a tree, a queue, or even more complicated data structures as long as we have the following:
+虽然本附录的主要内容是关于单向链表算法的，但是fold本身是一个更一般性的概念。它并不限于列表，也可以应用到其他数据结构。我们可以对一棵树、一个队列、甚至一个更复杂的数据结构进行fold。只要它满足下面这两个条件：
 
 \begin{itemize}
-\item The empty data structure can be identified for trivial edge case; (e.g. empty tree)
-\item We can traverse the data structure (e.g. traverse the tree in pre-order).
+\item 作为边界情况，能定义一个空的数据结构（例如空树）；
+\item 我们可以遍历这一数据结构（例如前序遍历一棵树）。
 \end{itemize}
 
-Some languages provide this high-level concept support, for example, Haskell achieve this via
-{\em monoid}, readers can refer to \cite{learn-haskell} for detail.
+某些语言提供了这一高阶概念的支持，例如Haskell通过\underline{幺半群}（monoid）定义了抽象的fold，读者可以参考\cite{learn-haskell}了解详细内容。
 
-There are many chapters in this book use the widen concept of folding.
+本书中有许多章节，使用了这一推广的fold概念。
 
-\subsection{folding in practice}
+\subsection{fold的应用}
 
 We have seen that $max$, $min$, and insertion sort all can be realized in folding. The
 brute-force solution for `drunk jailer' puzzle shown in mapping section can also be
