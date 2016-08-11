@@ -23,11 +23,11 @@ datastruct/elementary/sequence/sequence-zh-cn \
 sorting/dc-sort/dcsort-zh-cn \
 search/search-zh-cn \
 others/appendix/list/list-zh-cn
-CHAPTER_OBJS = $(foreach file, $(CHAPTERS), $(file).dvi)
+CHAPTER_OBJS = $(foreach file, $(CHAPTERS), $(file).pdf)
 
 all: $(BOOK).pdf
 
-%.dvi : %.tex
+%.pdf : %.tex
 	$(MAKE) -C $(@D) tex
 
 image:
