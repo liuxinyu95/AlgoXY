@@ -24,6 +24,7 @@ sorting/dc-sort/dcsort-zh-cn \
 search/search-zh-cn \
 others/appendix/list/list-zh-cn
 CHAPTER_OBJS = $(foreach file, $(CHAPTERS), $(file).pdf)
+CHAPTER_SRCS = $(foreach file, $(CHAPTERS), $(file).tex)
 
 all: $(BOOK).pdf
 
@@ -36,7 +37,7 @@ image:
 index:
 	makeindex $(BOOK)
 
-$(BOOK).pdf: image $(SRC) $(CHAPTER_OBJS)
+$(BOOK).pdf: image $(SRC) $(CHAPTER_SRC)
 	$(LATEX) $(BOOK).tex
 	makeindex $(BOOK).idx
 	$(LATEX) $(BOOK).tex
