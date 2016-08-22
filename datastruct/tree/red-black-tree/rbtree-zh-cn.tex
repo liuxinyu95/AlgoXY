@@ -424,11 +424,11 @@ balance color l k r = Node color l k r
 \section{删除}
 \index{红黑树!删除}
 
-上一章曾指出，二叉搜索树的删除操作只在imperative的环境下才有意义。这一结论同样适用于红黑树。大多数情况下，通常一次性将树构建好，然后频繁地进行查找。Okasaki曾经解释过为什么他没有给出红黑树的删除算法\cite{okasaki-blog}。其中一个原因就是删除比插入要麻烦得多。
+上一章曾指出，二叉搜索树的删除操作只在命令式环境下才有意义。这一结论同样适用于红黑树。大多数情况下，通常一次性将树构建好，然后频繁地进行查找。Okasaki曾经解释过为什么他没有给出红黑树的删除算法\cite{okasaki-blog}。其中一个原因就是删除比插入要麻烦得多。
 
-我们希望通过本节的介绍，使读者了解到，在纯函数式的环境中，删除算法是可以实现的。纯函数式数据结构决定了树不会真的被改变，我们实际上是重建了一棵树\footnote{大多数函数式编程环境通过使用persistent，可以复用树中没有改变的部份，从而减小重建的开销。}。实际应用中，往往是由用户（也就是编程者）来决定使用那种具体的方案。例如，我们可以不做任何操作，而仅仅标记一下要删除的节点。当带有删除标记的节点超过50\%的时候，用所有未标记的节点重建一棵树。
+我们希望通过本节的介绍，使读者了解到，在纯函数式的环境中，删除算法是可以实现的。纯函数式数据结构决定了树不会真的被改变，我们实际上是重建了一棵树\footnote{大多数函数式编程环境通过使用一种名为persistent的技术，可以复用树中没有改变的部份，从而减小重建的开销。}。实际应用中，往往是由用户（也就是编程者）来决定使用那种具体的方案。例如，我们可以不做任何操作，而仅仅标记一下要删除的节点。当带有删除标记的节点超过50\%的时候，用所有未标记的节点重建一棵树。
 
-不仅是函数式环境，imperative的删除算法也比插入算法要复杂。这主要是因为在删除时，我们面临更多的情况需要修复平衡。删除也会破坏红黑树的性质，因此需要后继的处理以恢复平衡。
+不仅是函数式环境，命令式的删除算法也比插入算法要复杂。这主要是因为在删除时，我们面临更多的情况需要修复平衡。删除也会破坏红黑树的性质，因此需要后继的处理以恢复平衡。
 
 本节介绍的删除算法主要来自\cite{lyn}。只有在删除一个黑色的节点时才会引发问题。因为这样会破坏红黑树的第五条性质，使得某一路径上的黑色节点数目少于其他的路径。
 
@@ -436,10 +436,10 @@ balance color l k r = Node color l k r
 
 为了使用双重黑色概念，我们需要修改一下红黑树的定义，如下面的Haskell示例代码：
 
-\lstset{language=Haskell}
+\lstset{language=Haskell}[escapeinside=`']
 \begin{lstlisting}
-data Color = R | B | BB -- BB: doubly black for deletion
-data RBTree a = Empty | BBEmpty -- doubly black empty
+data Color = R | B | BB -- BB: `用于删除操作的双重黑色'
+data RBTree a = Empty | BBEmpty -- `双重黑色的空节点'
               | Node Color (RBTree a) a (RBTree a)
 \end{lstlisting}
 
@@ -477,7 +477,7 @@ del(T, k) = \left \{
 
 函数$del$定义了各种不同的情况。如果树为空，这种边界情况下的删除结果也为空$\phi$；否则，如果待删除的key比当前节点的key小，我们递归地在左侧分支进行删除；如果比当前节点的key大，则递归地在右侧分支删除。由于可能引入双重黑色，所以需要后继的修复处理。
 
-如果待删除的key恰好等于当前节点的key，我们需要将其“切下”。若当前节点有一个子分支为空，我们只要用另外一个分支替换当前节点，并且保持当前节点是否是黑色的属性就可以了。否则，如果两个分支都不为空，我们从右侧子分支中找到最小值$k''=min(T_r)$，将其“切下”并替换掉当前的节点的key。
+如果待删除的key恰好等于当前节点的key，我们需要将其“切下”。若当前节点有一个子分支为空，我们只要用另外一个分支替换当前节点，并且保持当前节点的颜色属性就可以了。否则，如果两个分支都不为空，我们从右侧子分支中找到最小值$k''=min(T_r)$，将其“切下”并替换掉当前的节点的key。
 
 最后，函数$delete$通过调用$blackenRoot$强制将根节点染成黑色。
 
@@ -493,13 +493,13 @@ blackenRoot(T) = \left \{
 
 和红黑树插入算法中的$makeBlack$函数相比，$blackenRoot$仅仅多了对为空树的处理。这一处理仅在删除时才需要考虑，因为插入操作不可能产生一棵空树，而删除操作是有可能的。
 
-函数$mkBlk$用于保持被“切下”节点的黑色属性。如果被“切下”的节点为黑色，它将红色的结果改为黑色，把黑色的结果改为双重黑色。如果结果为空，则将其标记为双重黑色的空，记为$\Phi$。
+函数$mkBlk$用于保持被“切下”节点的黑色属性。如果被“切下”的节点为黑色，它将红色的结果改为黑色，把黑色的结果改为双重黑色。如果结果为空，则将其标记为双重黑色的空，记为$\phi$。
 
 \be
 mkBlk(T) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
-  \Phi & T = \phi \\
+  \phi & T = \phi \\
   (\mathcal{B}, T_l, k, T_r) & \mathcal{C} = \mathcal{R} \\
   (\mathcal{B}^2, T_l, k, T_r) & \mathcal{C} = \mathcal{B} \\
   T & otherwise
@@ -511,20 +511,20 @@ mkBlk(T) = \left \{
 
 将目前的函数定义翻译为Haskell可以得到下面的例子程序。
 
-\begin{lstlisting}
+\begin{lstlisting}[escapeinside=`']
 delete t x = blackenRoot(del t x) where
     del Empty _ = Empty
     del (Node color l k r) x
         | x < k = fixDB color (del l x) k r
         | x > k = fixDB color l k (del r x)
-        -- x == k, delete this node
+        -- x == k, `删除此节点'
         | isEmpty l = if color==B then makeBlack r else r
         | isEmpty r = if color==B then makeBlack l else l
         | otherwise = fixDB color l k' (del r k') where k'= min r
     blackenRoot (Node _ l k r) = Node B l k r
     blackenRoot _ = Empty
 
-makeBlack (Node B l k r) = Node BB l k r -- doubly black
+makeBlack (Node B l k r) = Node BB l k r -- `双重黑色'
 makeBlack (Node _ l k r) = Node B l k r
 makeBlack Empty = BBEmpty
 makeBlack t = t
@@ -701,12 +701,13 @@ p 3.2 : \{ color(T) = \mathcal{B} \land color(T_l) = \mathcal{R} \land color(T_r
 
 综合公式（\ref{eq:db-nil}）、（\ref{eq:db-case-1}）、（\ref{eq:db-case-2}）和（\ref{eq:db-case-3}），我们可以得到最终的Haskell删除程序。
 
+\lstset{escapeinside=`'}
 \begin{lstlisting}
 fixDB color BBEmpty k Empty = Node BB Empty k Empty
 fixDB color BBEmpty k r = Node color Empty k r
 fixDB color Empty k BBEmpty = Node BB Empty k Empty
 fixDB color l k BBEmpty = Node color l k Empty
--- the sibling is black, and it has one red child
+-- `兄弟节点为黑色，并且有一个红色子节点'
 fixDB color a@(Node BB _ _ _) x (Node B (Node R b y c) z d) =
       Node color (Node B (makeBlack a) x b) y (Node B c z d)
 fixDB color a@(Node BB _ _ _) x (Node B b y (Node R c z d)) =
@@ -715,15 +716,15 @@ fixDB color (Node B a x (Node R b y c)) z d@(Node BB _ _ _) =
       Node color (Node B a x b) y (Node B c z (makeBlack d))
 fixDB color (Node B (Node R a x b) y c) z d@(Node BB _ _ _) =
       Node color (Node B a x b) y (Node B c z (makeBlack d))
--- the sibling and its 2 children are all black, propagate the blackness up
+-- `兄弟节点和它的两个子节点都是黑色，向上传递黑色'
 fixDB color a@(Node BB _ _ _) x (Node B b@(Node B _ _ _) y c@(Node B _ _ _))
     = makeBlack (Node color (makeBlack a) x (Node R b y c))
 fixDB color (Node B a@(Node B _ _ _) x b@(Node B _ _ _)) y c@(Node BB _ _ _)
     = makeBlack (Node color (Node R a x b) y (makeBlack c))
--- the sibling is red
+-- `兄弟节点是红色'
 fixDB B a@(Node BB _ _ _) x (Node R b y c) = fixDB B (fixDB R a x b) y c
 fixDB B (Node R a x b) y c@(Node BB _ _ _) = fixDB B a x (fixDB R b y c)
--- otherwise
+-- `其他情况'
 fixDB color l k r = Node color l k r
 \end{lstlisting}
 
