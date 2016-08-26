@@ -115,7 +115,7 @@ find(k, H) = \left \{
 \item 否则，递归在$B$中寻找第$(k - 1 - |A|)$小的元素；
 \end{enumerate}
 
-这一算法可以形式化为下面的等式。设$0 < k \leq |L|$，其中$L$是一个非空列表。记$l_1$为$L$中的第一个元素，它被选作pivot；$L'$包含除$l_11$外的剩余元素。$(A, B) = partition(\lambda_x \cdot x \leq l_1, L')$。它使用快速排序中介绍的算法将$L'$划分为两部分。
+这一算法可以形式化为下面的等式。设$0 < k \leq |L|$，其中$L$是一个非空列表。记$l_1$为$L$中的第一个元素，它被选作pivot；$L'$包含除$l_1$外的剩余元素。$(A, B) = partition(\lambda_x \cdot x \leq l_1, L')$。它使用快速排序中介绍的算法将$L'$划分为两部分。
 
 \be
 top(k, L) = \left \{
@@ -853,7 +853,7 @@ q = bsearch(\lambda_y \cdot f(p, y), z, (d, b))
 
 下面的Haskell例子程序实现了这一算法。
 
-\begin{haskell}
+\begin{lstlisting}[style=Haskell]
 search f z (a, b) (c, d)
        | c < a || b < d = []
        | c - a < b - d = let q = (b + d) `div` 2 in
@@ -861,8 +861,6 @@ search f z (a, b) (c, d)
        | otherwise = let p = (a + c) `div` 2 in
            rsearch (p, bsearch (f p) z (d, b))
   where
-\end{haskell}
-\begin{haskell}
     csearch (p, q)
         | z < f p q = search f z (p, q - 1) (c, d)
         | f p q == z = search f z (a, b) (p - 1, q + 1) ++
@@ -875,12 +873,11 @@ search f z (a, b) (c, d)
                  (p, q) : search f z (p + 1, q - 1) (c, d)
         | otherwise = search f z (a, b) (p - 1, q + 1) ++
                  search f z (p + 1, q) (c, d)
-\end{haskell}
+\end{lstlisting}
 
 主程序首先沿着$X$轴和$Y$轴进行二分查找，然后调用上述函数。
 
-\lstset{language=Haskell}
-\begin{lstlisting}
+\begin{lstlisting}[style=Haskell]
 solve f z = search f z (0, m) (n, 0) where
   m = bsearch (f 0) z (0, z)
   n = bsearch (\x -> f x 0) z (0, z)
@@ -1535,8 +1532,7 @@ prefixes(L) = \left \{
 
 下面的Haskell例子程序实现了对应的字符串查找算法。
 
-\lstset{language=Haskell}
-\begin{lstlisting}
+\begin{lstlisting}[style=Haskell]
 kmpSearch1 ptn text = kmpSearch' next ([], ptn) ([], text)
 
 kmpSearch' _ (sp, []) (sw, []) = [length sw]
@@ -1555,8 +1551,8 @@ next sp ps = (sp', ps') where
     longest = maximumBy (compare `on` length)
 
 inits [] = [[]]
-inits [\_] = [[]]
-inits (x:xs) = [] : (map (x:) \$ inits xs)
+inits [_] = [[]]
+inits (x:xs) = [] : (map (x:) $ inits xs)
 \end{lstlisting}
 
 这一算法不仅性能差，而且也很复杂。我们可以对其略作简化。观察KMP搜索过程，它实际上是一个从左向右的对文本进行扫描的过程，因此可以使用fold来表示（参见附录A）。首先，在fold的过程中，我们可以让每一个字符对应一个index，如下：
@@ -1627,14 +1623,13 @@ fallback(A, B) = \left \{
 
 由于空串是任何字符串的后缀，因此函数fallback一定能结束。函数$last(L)$返回一个列表的最后一个元素，它同样是一个线性时间的操作（参见附录A）。但如果我们使用$\overleftarrow{P_p}$的表示法，则获取最后一个元素就是一个常数时间的操作。这一改进的前缀函数的复杂度为线性时间，但和命令式的算法相比，仍然很慢。因为命令式算法可以在常数时间进行前缀函数的检索。下面的Haskell例子程序实现了这一改进。
 
-\lstset{language=Haskell}
-\begin{lstlisting}
+\begin{lstlisting}[style=Haskell]
 failure ([], ys) = ([], ys)
 failure (xs, ys) = fallback (init xs) (last xs:ys) where
     fallback as bs | as `isSuffixOf` xs = (as, bs)
                    | otherwise = fallback (init as) (last as:bs)
 
-kmpSearch ws txt = snd \$ foldl f (([], ws), []) (zip txt [1..]) where
+kmpSearch ws txt = snd $ foldl f (([], ws), []) (zip txt [1..]) where
     f (p@(xs, (y:ys)), ns) (x, n) | x == y = if ys==[] then ((xs++[y], ys), ns++[n])
                                              else ((xs++[y], ys), ns)
                                   | xs == [] = (p, ns)
@@ -1644,8 +1639,7 @@ kmpSearch ws txt = snd \$ foldl f (([], ws), []) (zip txt [1..]) where
 
 瓶颈在于，在纯函数式的环境中，我们无法使用内置的array来记录前缀函数。实际上，前缀函数可以被看作是一个状态转移函数。它根据字符匹配成功与否将一个状态转移到另一个状态。我们可以将这样的状态转换抽象为一棵树。在支持代数数据类型（algebraic data type）的环境中，例如Haskell，这样的状态树可以定义如下：
 
-\lstset{language=Haskell}
-\begin{lstlisting}
+\begin{lstlisting}[style=Haskell]
 data State a = E | S a (State a) (State a)
 \end{lstlisting}
 
@@ -2065,15 +2059,15 @@ def good_suffix(p):
             tab[m - 1 - slen] = m - 1 - i
     return tab
 
-\# test if p[i..m-1] `is prefix of` p
-def is\_prefix(p, i):
+# test if p[i..m-1] `is prefix of` p
+def is_prefix(p, i):
     for j in range(len(p) - i):
         if p[j] != p [i+j]:
             return False
     return True
 
-\# length of the longest suffix of p[..i], which is also a suffix of p
-def suffix\_len(p, i):
+# length of the longest suffix of p[..i], which is also a suffix of p
+def suffix_len(p, i):
     m = len(p)
     j = 0
     while p[m - 1 - j] == p[i - j] and j < i:
@@ -2924,22 +2918,21 @@ valid(m, M) = A'' \neq 3, A'' \neq 6, B'' \neq 3, B'' \neq 6, m \notin M
 
 下面的Haskell例子程序实现了狼、羊、白菜问题的解法。为了简单，这里我们使用了普通的列表来表示队列。严格来说应该使用前面章节介绍过的纯函数式队列。
 
-\lstset{language=Haskell}
-\begin{lstlisting}
+\begin{lstlisting}[style=Haskell]
 import Data.Bits
 
 solve = bfsSolve [[(15, 0)]] where
     bfsSolve :: [[(Int, Int)]] -> [(Int, Int)]
     bfsSolve [] = [] -- no solution
-    bfsSolve (c:cs) | (fst \$ head c) == 0 = reverse c
+    bfsSolve (c:cs) | (fst $ head c) == 0 = reverse c
                     | otherwise = bfsSolve (cs ++ map (:c)
-                                      (filter (`valid` c) \$ moves \$ head c))
-    valid (a, b) r = not \$ or [ a `elem` [3, 6], b `elem` [3, 6],
+                                      (filter (`valid` c) $ moves $ head c))
+    valid (a, b) r = not $ or [ a `elem` [3, 6], b `elem` [3, 6],
                                 (a, b) `elem` r]
 
 moves (a, b) = if b < 8 then trans a b else map swap (trans b a) where
     trans x y = [(x - 8 - i, y + 8 + i)
-                     | i <-[0, 1, 2, 4], i == 0 || (x .\&. i) /= 0]
+                     | i <-[0, 1, 2, 4], i == 0 || (x .&. i) /= 0]
     swap (x, y) = (y, x)
 \end{lstlisting}
 
@@ -3275,8 +3268,7 @@ pourB(p, q) = (min(x + y, a), max(0, x + y - a)) &
 
 下面的Haskell程序实现了这一解法。
 
-\lstset{language=Haskell}
-\begin{lstlisting}
+\begin{lstlisting}[style=Haskell]
 solve' a b g = bfs [[(0, 0)]] where
   bfs [] = []
   bfs (c:cs) | fst (head c) == g || snd (head c) == g = reverse c
