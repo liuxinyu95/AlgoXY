@@ -211,11 +211,11 @@ class STrie:
 
 如果我们逐一检查表\ref{tab:suffixes_s_i}中的每一项，当发现一个节点已经有$s_{i+1}$子节点时，我们可以立即停止。这是因为，如果$SuffixTrie(S_i)$中的节点$X$已经有$s_{i+1}$子节点，根据后缀链接的定义，$SuffixTrie(S_i)$中任何$X$的后缀节点$X'$一定也存在$s_{i+1}$子节点。也就是说，设$c=s_{i+1}$，若$wc$是$S_i$的子串，则$wc$的每个前缀也都是$S_i$的子串\cite{ukkonen95}。唯一的例外是根节点，因为根节点代表空串“”。
 
-根据上面的分析，我们可以将算法\ref{algo:strie1}改进如下：
+根据上面的分析，我们可以将算法\ref{algo:strie1}改进成\ref{algo:strie2}。
 
 \begin{algorithm}
   \begin{algorithmic}[1]
-  \For{each $T \in SuffixTrie(S_i)$ in descending order of suffix length}
+  \For{each $T \in SuffixTrie(S_i)$ 按照后缀长度递减顺序}
     \If{\Call{Children}{$T$}[$s_{i+1}$] = NIL}
       \State \Call{Children}{$T$}[$s_{i+1}$] $\gets$ \Call{Create-Empty-Node}{}
     \Else
@@ -229,13 +229,14 @@ class STrie:
 
 接下来的问题是如何按照后缀的长度，从长到短降序遍历所有的节点？我们定义一棵后缀Trie的\underline{top}为深度最大的叶子节点。这一定义保证了top指向最长的后缀。我们从top开始，沿着后缀链接每前进一步，后缀的长度就相应减一。沿着后缀链接我们可以一直从top遍历到root。这一遍历的顺序恰好符合我们的要求。最后，我们需要处理一棵特殊的Trie―$SuffixTrie(NIL)$，它对应空串。这种情况下，我们定义top和root相等。
 
+\begin{algorithm}
 \begin{algorithmic}
 \Function{Insert}{$top, c$}
-  \If{$top = $ NIL} \Comment{The Trie is empty}
+  \If{$top = $ NIL} \Comment{Trie为空}
     \State $top \gets$ \Call{Create-Empty-Node}{}
   \EndIf
   \State $T \gets top$
-  \State $T' \gets$ \Call{Create-Empty-Node}{} \Comment{dummy init value}
+  \State $T' \gets$ \Call{Create-Empty-Node}{} \Comment{用dummy值初始化}
   \While{$T \neq$ NIL $\land$ \Call{Children}{$T$}[$c$] = NIL}
     \State \Call{Children}{$T$}[$c$] $\gets$ \Call{Create-Empty-Node}{}
     \State \Call{Suffix-Link}{$T'$} $\gets$ \Call{Children}{$T$}[$c$]
@@ -245,11 +246,12 @@ class STrie:
   \If{$T \neq$ NIL}
     \State \Call{Suffix-Link}{$T'$} $\gets$ \Call{Children}{$T$}[$c$]
   \EndIf
-  \State \Return \Call{Children}{$top$}[$c$] \Comment{returns the new top}
+  \State \Return \Call{Children}{$top$}[$c$] \Comment{返回新的top节点}
 \EndFunction
 \end{algorithmic}
+\end{algorithm}
 
-函数\textproc{Insert}从$SuffixTrie(S_i)$构造$SuffixTrie(S_{i+1})$。它接受两个参数：一个是$SuffixTrie(S_i)$的top位置，另外一个是字符$s_{i+1}$。如果top为空（NIL），说明树也是空的，根节点root也就不存在。这种情况下我们需要创建一个root。我们使用一个空节点$T'$作为sentinel。它可以用来记录上一次创建的新节点。在主循环中，算法沿着后缀链接逐一检查每个节点。如果$s_{i+1}$子节点不存在，就创建一个新节点，并将其对应到字符$s_{i+1}$上。算法不断沿着后缀链接遍历直到根节点root，或者中途遇到一个已经有$s_{i+1}$子节点的位置。这时，最后一个后缀链接指向这一子节点。最后算法返回新的top位置用于将后继字符插入到后缀Trie中。
+函数\textproc{Insert}从$SuffixTrie(S_i)$构造$SuffixTrie(S_{i+1})$。它接受两个参数：一个是$SuffixTrie(S_i)$的top位置，另外一个是字符$s_{i+1}$。如果top为空（NIL），说明树也是空的，根节点root也就不存在。这种情况下我们需要创建一个root。我们使用一个空节点$T'$作为哨兵（sentinel）节点。它可以用来记录上一次创建的新节点。在主循环中，算法沿着后缀链接逐一检查每个节点。如果$s_{i+1}$子节点不存在，就创建一个新节点，并将其对应到字符$s_{i+1}$上。算法不断沿着后缀链接遍历直到根节点root，或者中途遇到一个已经有$s_{i+1}$子节点的位置。这时，最后一个后缀链接指向这一子节点。最后算法返回新的top位置用于将后继字符插入到后缀Trie中。
 
 给定字符串$S$，我们可以通过不断调用\textproc{Insert}函数来构造后缀Trie。
 
@@ -304,14 +306,14 @@ def insert(top, c):
     if top is None:
         top=STrie()
     node = top
-    new_node = STrie() #dummy init value
+    new_node = STrie() # 用dummy值初始化
     while (node is not None) and (c not in node.children):
         new_node.suffix = node.children[c] = STrie(node)
         new_node = node.children[c]
         node = node.suffix
     if node is not None:
         new_node.suffix = node.children[c]
-    return top.children[c] #update top
+    return top.children[c] # 更新top节点
 
 def root(node):
     while node.suffix is not None:
