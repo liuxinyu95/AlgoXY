@@ -28,7 +28,7 @@ $(IMG_OBJECTS): % : %.eps
 # pattern rule matching
 # Makefile auto variable: $< first prerequisite, $@ target
 %.eps : %.png
-	convert $< $@
+	convert $< eps3:$@
 
 dot: $(DOT_OBJECTS)
 

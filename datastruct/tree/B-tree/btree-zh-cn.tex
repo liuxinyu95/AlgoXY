@@ -47,9 +47,7 @@
 \index{B-树}
 \label{introduction}
 
-B树是一个重要的数据结构。现代文件系统有许多是由B树的扩展形式B+树实现的。B树还被广泛用于数据库的实现。
-
-B树常被用于解决磁盘或者外部存储器中整块数据的存取\cite{CLRS}。我们也可以把平衡二叉树的概念进行抽象、推广，从而引出B树\cite{wiki-b-tree}。
+B树是一个重要的数据结构。它常被用于解决磁盘或者外部存储器中整块数据的存取\cite{CLRS}，现代文件系统有许多是由B树的扩展形式B+树实现的。B树还被广泛用于数据库的实现。我们可以把平衡二叉树的概念进行抽象、推广，从而引出B树\cite{wiki-b-tree}。
 
 图\ref{fig:btree-example}展示了一棵B树，我们可以观察它和二叉搜索树之间的异同。
 
@@ -121,7 +119,7 @@ x_2 \leq k_2 \leq ... \leq x_n \leq k_n \leq x_{n+1}
     \end{itemize}
 \end{itemize}
 
-考虑一棵含有$n$个键值的B树，最小度数$t \geq 2$，树的高度为$h$。除根节点外的全部节点至少含有$t-1$个键值。因为根节点至少含有一个键值，所以至少有两个深度为1的子节点，至少有$2t$个深度为2的子节点，至少有$2t^2$个深度为3的子节点……最后，至少有$2t^{h-1}$个深度为$h$的叶子节点。除根节点外，将节点个树乘以$t-1$，一棵B树存储的全部元素个数必然满足下面的不等式。
+考虑一棵含有$n$个键值的B树，最小度数$t \geq 2$，树的高度为$h$。除根节点外的全部节点至少含有$t-1$个键值。因为根节点至少含有一个键值，所以至少有两个深度为1的子节点，至少有$2t$个深度为2的子节点，至少有$2t^2$个深度为3的子节点……最后，至少有$2t^{h-1}$个深度为$h$的叶子节点。除根节点外，将节点个数乘以$t-1$，就可以得到B树中存储的全部元素个数。它必然满足下面的不等式。
 
 \be
 \begin{array}{rl}
@@ -182,6 +180,8 @@ B树的节点通常还保存有额外的数据（卫星数据），为了简化�
 \subsection{分拆}
 \index{B树!分拆}
 \label{split}
+
+我们可以通过对节点分拆解决插入时的平衡问题。有两种分拆方法：一种是插入前预先将可能超限的节点进行分拆；另一种是先插入后再通过分拆节点修复平衡。
 
 \subsubsection{插入前预分拆}
 
@@ -252,7 +252,7 @@ def is_leaf(t):
 \begin{algorithmic}[1]
 \Function{Insert}{$T, k$}
   \State $r \gets T$
-  \If{$r$ is full} \Comment{root is full}
+  \If{$r$ is full} \Comment{根节点root已满}
     \State $s \gets$ \Call{CREATE-NODE}{}
     \State $C(s) \gets \{r\}$
     \State \Call{Split-Child}{$s, 1$}
@@ -481,7 +481,7 @@ full tr = (length $ keys tr) > 2*(degree tr)-1
     \caption{先插入再修复的结果。} \label{fig:btree-insert-fp}
 \end{figure}
 
-和图\ref{fig:btree-insert-fp}所示的命令式的插入结果相比较，我们可以看到它们的不同之处。它们都是满足B树性质的合法结果。
+和图\ref{fig:btree-insert}所示的命令式的插入结果相比较，我们可以看到它们的不同之处。它们都是满足B树性质的合法结果。
 
 
 % ================================================================
@@ -500,7 +500,7 @@ full tr = (length $ keys tr) > 2*(degree tr)-1
 % ================================================================
 \subsection{删除前预合并}
 
-我们先处理最简单的情况：如果待删除的key $k$所在的节点为一叶子节点$x$，我们可以直接将$k$从$x$中删除。如果$x$是根节点（树中的唯一节点），我们无需担心删除后含有的key过少。我们称之为\underline{情况1}。
+我们先处理最简单的情况：如果待删除的key $k$所在的节点为一叶子节点$x$，我们可以直接将$k$从$x$中删除。如果$x$是根节点（树中的唯一节点），我们无需担心删除后含有的key过少。以上两种，我们称之为\underline{情况1}。
 
 通常情况下，我们从根节点开始，自顶向下沿着一条路径定位到$k$所在的节点$x$。如果$x$是一分支节点，则有如下三种子情况：
 
@@ -581,7 +581,7 @@ full tr = (length $ keys tr) > 2*(degree tr)-1
 过程\textproc{Merge-Children}($T, i$)将子节点$c_i(T)$、key $k_i(T)$和子节点$c_{i+1}(T)$合并成一个新节点。
 
 \begin{algorithmic}[1]
-\Procedure{Merge-Children}{$T, i$} \Comment{Merge $c_i(T)$, $k_i(T)$, and $c_{i+1}(T)$}
+\Procedure{Merge-Children}{$T, i$} \Comment{将$c_i(T)$、$k_i(T)$和$c_{i+1}(T)$合并}
   \State $x \gets c_i(T)$
   \State $y \gets c_{i+1}(T)$
   \State $K(x) \gets K(x) \cup \{k_i(T)\} \cup K(y)$
@@ -600,20 +600,20 @@ full tr = (length $ keys tr) > 2*(degree tr)-1
   \State $i \gets 1$
   \While{$i \leq |K(T)|$}
     \If{$k = k_i(T)$}
-      \If{$T$ is leaf} \Comment{case 1}
+      \If{$T$ is leaf} \Comment{情况1}
         \State \Call{Remove}{$K(T), k$}
-      \Else \Comment{case 2}
-        \If{\Call{Can-Del}{$c_i(T)$}} \Comment{case 2a}
+      \Else \Comment{情况2}
+        \If{\Call{Can-Del}{$c_i(T)$}} \Comment{情况2a}
           \State $k_i(T) \gets$ \Call{Last-Key}{$c_i(T)$}
           \State \Call{Delete}{$c_i(T), k_i(T)$}
-        \ElsIf{\Call{Can-Del}{$c_{i+1}(T)$}} \Comment{case 2b}
+        \ElsIf{\Call{Can-Del}{$c_{i+1}(T)$}} \Comment{情况2b}
           \State $k_i(T) \gets$ \Call{First-Key}{$c_{i+1}(T)$}
           \State \Call{Delete}{$c_{i+1}(T), k_i(T)$}
-        \Else \Comment{case 2c}
+        \Else \Comment{情况2c}
           \State \Call{Merge-Children}{$T, i$}
           \State \Call{Delete}{$c_i(T), k$}
           \If{$K(T) = NIL$}
-            \State $T \gets c_i(T)$ \Comment{Shrinks height}
+            \State $T \gets c_i(T)$ \Comment{缩小高度}
           \EndIf
         \EndIf
       \EndIf
@@ -626,24 +626,24 @@ full tr = (length $ keys tr) > 2*(degree tr)-1
   \EndWhile
   \Statex
   \If{$T$ is leaf}
-    \State \Return $T$ \Comment{$k$ doesn't exist in $T$.}
+    \State \Return $T$ \Comment{$k$不在$T$中}
   \EndIf
-  \If{$\lnot$ \Call{Can-Del}{$c_i(T)$}}  \Comment{case 3}
-    \If{$i>1 \land$ \Call{Can-Del}{$c_{i-1}(T)$}} \Comment{case 3a: left sibling}
+  \If{$\lnot$ \Call{Can-Del}{$c_i(T)$}}  \Comment{情况3}
+    \If{$i>1 \land$ \Call{Can-Del}{$c_{i-1}(T)$}} \Comment{情况3a：左侧兄弟}
       \State \Call{Insert}{$K(c_i(T)), k_{i-1}(T)$}
       \State $k_{i-1}(T) \gets$ \Call{Pop-Back}{$K(c_{i-1}(T))$}
       \If{$c_i(T)$ isn't leaf}
         \State $c \gets$ \Call{Pop-Back}{$C(c_{i-1}(T))$}
         \State \Call{Insert}{$C(c_i(T)), c$}
       \EndIf
-    \ElsIf{$i \leq |C(T)| \land$ \Call{Can-Del}{$c_{i_1}(T)$}} \Comment{case 3a: right sibling}
+    \ElsIf{$i \leq |C(T)| \land$ \Call{Can-Del}{$c_{i_1}(T)$}} \Comment{情况3a：右侧兄弟}
       \State \Call{Append}{$K(c_i(T)), k_i(T)$}
       \State $k_i(T) \gets$ \Call{Pop-Front}{$K(c_{i+1}(T))$}
       \If{$c_i(T)$ isn't leaf}
         \State $c \gets$ \Call{Pop-Front}{$C(c_{i+1}(T))$}
         \State \Call{Append}{$C(c_i(T)), c$}
       \EndIf
-    \Else \Comment{case 3b}
+    \Else \Comment{情况3b}
       \If{$i>1$}
         \State \Call{Merge-Children}{$T, i-1$}
       \Else
@@ -651,8 +651,8 @@ full tr = (length $ keys tr) > 2*(degree tr)-1
       \EndIf
     \EndIf
   \EndIf
-  \State \Call{Delete}{$c_i(T), k$} \Comment {recursive delete}
-  \If{$K(T) = NIL$} \Comment {Shrinks height}
+  \State \Call{Delete}{$c_i(T), k$} \Comment {递归删除}
+  \If{$K(T) = NIL$} \Comment {缩小高度}
     \State $T \gets c_1(T)$
   \EndIf
   \State \Return $T$
@@ -704,46 +704,47 @@ def B_tree_delete(tr, key):
     i = len(tr.keys)
     while i>0:
         if key == tr.keys[i-1]:
-            if tr.leaf:  # case 1 in CLRS
+            if tr.leaf:  # 情况1
                 tr.keys.remove(key)
-            else: # case 2 in CLRS
-                if tr.children[i-1].can_remove(): # case 2a
+            else: # 情况2
+                if tr.children[i-1].can_remove(): # 情况2a
                     key = tr.replace_key(i-1, tr.children[i-1].keys[-1])
                     B_tree_delete(tr.children[i-1], key)
-                elif tr.children[i].can_remove(): # case 2b
+                elif tr.children[i].can_remove(): # 情况2b
                     key = tr.replace_key(i-1, tr.children[i].keys[0])
                     B_tree_delete(tr.children[i], key)
-                else: # case 2c
+                else: # 情况2c
                     tr.merge_children(i-1)
                     B_tree_delete(tr.children[i-1], key)
-                    if tr.keys==[]: # tree shrinks in height
+                    if tr.keys==[]: # 缩减树的高度
                         tr = tr.children[i-1]
             return tr
         elif key > tr.keys[i-1]:
             break
         else:
             i = i-1
-    # case 3
+    # 情况3
     if tr.leaf:
-        return tr #key doesn't exist at all
+        return tr # key不存在
     if not tr.children[i].can_remove():
-        if i>0 and tr.children[i-1].can_remove(): #left sibling
+        # 情况3a
+        if i>0 and tr.children[i-1].can_remove(): # 左侧兄弟
             tr.children[i].keys.insert(0, tr.keys[i-1])
             tr.keys[i-1] = tr.children[i-1].keys.pop()
             if not tr.children[i].leaf:
                 tr.children[i].children.insert(0, tr.children[i-1].children.pop())
-        elif i<len(tr.children) and tr.children[i+1].can_remove(): #right sibling
+        elif i<len(tr.children) and tr.children[i+1].can_remove(): # 右侧兄弟
             tr.children[i].keys.append(tr.keys[i])
             tr.keys[i]=tr.children[i+1].keys.pop(0)
             if not tr.children[i].leaf:
                 tr.children[i].children.append(tr.children[i+1].children.pop(0))
-        else: # case 3b
+        else: # 情况3b
             if i>0:
                 tr.merge_children(i-1)
             else:
                 tr.merge_children(i)
     B_tree_delete(tr.children[i], key)
-    if tr.keys==[]: # tree shrinks in height
+    if tr.keys==[]: # 缩减树的高度
         tr = tr.children[0]
     return tr
 \end{lstlisting}
@@ -830,7 +831,7 @@ C_2 = \{c_{i+1}, c_{i+2}, ..., c_{m+1}\}
 \end{array}
 \]
 
-递归合并函数被定义如下：当合并两棵树$T_1 = (K_1, C_1, t)$时$T_2 = (K_2, C_2, t)$，如果它们都是叶子节点，我们将两组key连接到一起形成一个新的叶子节点。否则，我们将$C_1$中的最后一棵子树和$C_2$中的第一棵子树递归合并。然后调用$make$函数构造一棵新树。若$C_1$和$C_2$不为空，记$C_1$中的最后一棵子树为$c_{1, m}$，其余子树为$C_1'$；记$C_2$中的第一棵子树为$C_{2, 1}$，其余子树为$C_2'$。下面的公式定义了合并函数：
+递归合并函数被定义如下：当合并两棵树$T_1 = (K_1, C_1, t)$和$T_2 = (K_2, C_2, t)$时，如果它们都是叶子节点，我们将两组key连接到一起形成一个新的叶子节点。否则，我们将$C_1$中的最后一棵子树和$C_2$中的第一棵子树递归合并。然后调用$make$函数构造一棵新树。若$C_1$和$C_2$不为空，记$C_1$中的最后一棵子树为$c_{1, m}$，其余子树为$C_1'$；记$C_2$中的第一棵子树为$C_{2, 1}$，其余子树为$C_2'$。下面的公式定义了合并函数：
 
 \be
 merge(T_1, T_2) = \left \{
@@ -855,7 +856,7 @@ make((K', C'), c, (K'', C'')) = \left \{
 \right.
 \ee
 
-其中$low(T)$检查节点含有的key是否少于$t-1$。函数$fixLow(P_l, c, P_r)$接受三个参数：左侧的key和子树对、一个子节点、以及右侧的key和子树对。如果左侧部份不为空，我们就从左侧“借”一对key和子树，然后进行逆分拆操作使得节点含有足够多的key，然后递归地调用$make$。否则，如果右侧不为空，我们就向右侧“借”一对key和子树。如果左右都为空，我们就将子节点直接返回作为结果。这种情况下，树的高度会减低。
+其中$low(T)$检查节点$T$含有的key是否少于$t-1$。函数$fixLow(P_l, c, P_r)$接受三个参数：左侧的key和子树对$P_l$、一个子节点$c$、以及右侧的key和子树对$P_r$。如果左侧部份不为空，我们就从左侧“借”一对key和子树，然后进行逆分拆操作使得节点含有足够多的key，然后递归地调用$make$。否则，如果右侧不为空，我们就向右侧“借”一对key和子树。如果左右都为空，我们就将子节点直接返回作为结果。这种情况下，树的高度会减低。
 
 令左侧部份为$P_l = (K_l, C_l)$，如果$K_l$不为空，记最后一对key和子树分别为$k_{l, m}$和$c_{l, m}$。剩余的key和子树记为$K_l'$ and $C_l'$。同样，令右侧部份为$P_r = (K_r, C_r)$，如果$K_r$不为空，记第一对key和子树分别为$k_{r, 1}$和$c_{r, 1}$。剩余的key和子树记为$K_r'$ and $C_r'$。函数$fixLow$定义如下：
 
@@ -919,7 +920,7 @@ unsplit c1 k c2 = Node ((keys c1)++[k]++(keys c2))
                        ((children c1)++(children c2)) (degree c1)
 \end{lstlisting}
 
-使用先删除再修复的方法从同样的B树中依次删除同样的key，得到的结果和删除前预合并的有所不同。但是它们都是满足平衡条件的合法的B树。
+使用先删除再修复的方法从同样的B树中依次删除同样的key，得到的结果和删除前预合并的有所不同，如图\ref{fig:result-del-fp1}、\ref{fig:result-del-fp2}和\ref{fig:result-del-fp3}。但是它们都是满足平衡条件的合法的B树。
 
 \begin{figure}[htbp]
   \centering
@@ -964,7 +965,7 @@ unsplit c1 k c2 = Node ((keys c1)++[k]++(keys c2))
       \State \Return $(T, i)$
     \EndIf
     \If{$T$ is leaf}
-      \State \Return $NIL$ \Comment{$k$ doesn't exist}
+      \State \Return $NIL$ \Comment{$k$不存在}
     \Else
       \State $T \gets c_i(T)$
     \EndIf
@@ -1046,6 +1047,7 @@ search tr@(Node ks cs _) k
 \end{itemize}
 \end{Exercise}
 
+\ifx\wholebook\relax \else
 \begin{thebibliography}{99}
 
 \bibitem{CLRS}
@@ -1059,6 +1061,5 @@ Chris Okasaki. ``FUNCTIONAL PEARLS Red-Black Trees in a Functional Setting''. J.
 
 \end{thebibliography}
 
-\ifx\wholebook\relax \else
 \end{document}
 \fi
