@@ -38,6 +38,8 @@
 \numberwithin{Exercise}{chapter}
 \fi
 
+\def\includetikz{}
+
 % ================================================================
 %                 Introduction
 % ================================================================
@@ -115,9 +117,9 @@ A' = A - \{ m \}
 
 到目前为止，我们将“吃葡萄”的过程转换成了算法，但是没有考虑任何时间和空间上的开销。我们将结果保存在一个列表$X$中，把从剩余部份选择出的元素取出并添加到$X$的末尾。实际上，我们可以复用$A$中的空间实现“in-place”的排序。
 
-具体方法是我们将最小的元素保存在$A$的第一个cell中（若$A$为数组，我们用cell来表示存储单位，若$A$为链表，我们用节点来表示存储单位），将第二小的元素保存在下一个cell中，接下来是第三个cell……
+具体方法是我们将最小的元素保存在$A$的第一个单元（cell）中（若$A$为数组，我们用单元来表示存储单位，若$A$为链表，我们用节点来表示存储单位），将第二小的元素保存在下一个单元中，接下来是第三个单元……
 
-可以用交换的方法来实现这一排序策略。当我们找到第$i$小的元素后，我们将它和第$i$个位置的cell交换。
+可以用交换的方法来实现这一排序策略。当我们找到第$i$小的元素后，我们将它和第$i$个位置的单元交换。
 
 \begin{algorithmic}
 \Function{Sort}{$A$}
@@ -271,7 +273,7 @@ min' ys m (x:xs) = if m < x then min' ys ++ [x] m xs
                             else min' ys ++ [m] x xs
 \end{lstlisting}
 
-否则函数会返回逆序的列表。但这里我们需要用“cons”而不是追加。因为追加操作的复杂度是线性的，和序列$A$的长度成正比，而“cons”是常数时间$O(1)$的。我们并不需要保持待排序元素的顺序，因为排序过程本身就是对顺序的一种改变。
+否则函数会返回逆序的列表。但这里我们需要用“cons”\footnote{cons来自Lisp语言，表示将一个元素附加到一个链表的头部。详见附录A。}而不是追加。因为追加操作的复杂度是线性的，和序列$A$的长度成正比，而“cons”是常数时间$O(1)$的。我们并不需要保持待排序元素的顺序，因为排序过程本身就是对顺序的一种改变。
 
 当然，既保持元素的相对顺序\footnote{称为稳定排序(stable sort)}，又能高效地查找最小元素，而不退化成平方复杂度是可以实现的。下面的定义满足了这一限制：
 
@@ -324,6 +326,8 @@ extractMin (x:xs) = if x < m then (x, xs) else (m, x:xs') where
 
 \section{细微改进}
 
+本节介绍针对选择排序的一些细微改进，首先我们通过参数化，将排序算法变得通用；然后对算法结构进行一些细微调整，使得它更为紧凑。最后我们介绍“鸡尾酒排序”将循环次数减半。
+
 \subsection{比较方法参数化}
 \index{选择排序!比较方法参数化}
 
@@ -338,7 +342,7 @@ sort(c, L) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   \phi & L = \phi \\
-  {m} \cup sort(c, L'') & otherwise, (m, L'') = extract(c, L')
+  {m} \cup sort(c, L'') & L \neq \phi, (m, L'') = extract(c, L')
   \end{array}
 \right.
 \ee
@@ -358,7 +362,7 @@ extract(c, L) = \left \{
 
 这里$c$是一个比较函数，它接受两个元素，将它们相比并决定哪个的顺序在前面。将“小于”操作$(<)$传入，就是我们此前给出的选择排序实现。
 
-有些环境需要传入total ordering的比较函数，也就是说比较结果为“小于”、“等于”或者“大于”中的一个。对于选择排序，并不需要这样强的限制，$c$只要检查“小于”是否满足即可。但是作为最低要求，比较函数必须满足strict weak ordering\cite{wiki-sweak-order}：
+有些环境需要传入全序（total ordering）的比较函数，也就是说比较结果为“小于”、“等于”或者“大于”中的一个。对于选择排序，并不需要这样强的限制，$c$只要检查“小于”是否满足即可。但是作为最低要求，比较函数必须满足严格弱序（strict weak ordering）\cite{wiki-sweak-order}：
 
 \begin{itemize}
 \item 非自反性（Irreflexivity），对于任何$x$，$x < x$不成立；
@@ -366,7 +370,7 @@ extract(c, L) = \left \{
 \item 传递性（Transitivity）, 对任何$x$、$y$和$z$，若$x < y$且$y < z$，则$x < z$成立。
 \end{itemize}
 
-下面的Scheme/Lisp例子程序实现了参数化的选择排序。Scheme/Lisp的lexical scope可以简化比较函数的传递。
+下面的Scheme/Lisp例子程序实现了参数化的选择排序。Scheme/Lisp的词法作用域（lexical scope）可以简化比较函数的传递。
 
 \lstset{language=Lisp}
 \begin{lstlisting}
@@ -494,10 +498,23 @@ Knuth给出过一个另一种选择排序的实现\cite{TAOCP}。每次不是查
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[scale=0.7]{img/cock-tail-sort.ps}
+  \begin{tikzpicture}[scale=0.8]
+    \draw (0,0) rectangle (3.5,1) node[pos=.5] {...已序较小元素...};
+    \draw (4, 0) rectangle (5, 1) node (x) [pos=.5] {$x$};
+    \draw (5, 0) rectangle (6, 1) node[pos=.5] {...};
+    \draw (6, 0) rectangle (7, 1) node (max) [pos=.5] {$max$};
+    \draw (7, 0) rectangle (8, 1) node[pos=.5] {...};
+    \draw (8, 0) rectangle (9, 1) node (min) [pos=.5] {$min$};
+    \draw (9, 0) rectangle (10, 1) node[pos=.5] {...};
+    \draw (10, 0) rectangle (11, 1) node (y) [pos=.5] {$y$};
+    \draw (12,0) rectangle (15.5,1) node[pos=.5] {...已序较大元素...};
+    \draw[thick, <->] (x) edge[bend right=45] node [below] {交换} (min);
+    \draw[thick, <->] (y) edge[bend right=45] node [above] {交换} (max);
+  \end{tikzpicture}
   \caption{一次扫描同时定位出最小和最大元素，然后将它们放到正确的位置。}
   \label{fig:cock-tail-sort}
 \end{figure}
+
 
 注意，在内重循环开始前，如果最右侧的元素小于最左侧的元素，需要将它们交换。这是因为我们的扫描范围不包括两端上的元素。另外一种方法是，在内重循环扫描前，我们将最小和最大元素同时初始化为第一个未排序元素。但是这会产生一个新问题：由于我们在内重循环扫描后要做两次交换操作，有可能第一次交换会改变我们刚刚找到的最大元素或最小元素的位置，这样第二次交换就会产生不正确的结果。我们把如何解决这一问题留给读者作为练习。
 
@@ -1058,7 +1075,7 @@ sort'(T) = \left \{
 \right.
 \ee
 
-这和我们在上一章堆排序给出的公式完全一样。堆总是在顶部保存最小（或最大）值，并且提供了快速的弹出操作。使用数组的binary堆实际上将树结构“编码”成数组的索引，因此除了$n$个cell外，无需任何额外的空间。函数式的堆，如左偏堆和splay堆也只需要$n$个节点。我们将在下一章介绍更多种类的堆，它们在许多情况下都有很好的性能。
+这和我们在上一章堆排序给出的公式完全一样。堆总是在顶部保存最小（或最大）值，并且提供了快速的弹出操作。使用数组的binary堆实际上将树结构“编码”成数组的索引，因此除了$n$个单元外，无需任何额外的空间。函数式的堆，如左偏堆和splay堆也只需要$n$个节点。我们将在下一章介绍更多种类的堆，它们在许多情况下都有很好的性能。
 
 \section{小结}
 
