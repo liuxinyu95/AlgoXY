@@ -942,7 +942,7 @@ append(s, x) = concat(s, clist(x, \phi))
 head(s) = root(s)
 \ee
 
-但是从可连接列表的头部删除元素有些复杂。这是因为第一个元素为根节点，删除后我们需要从剩余的子树中队列重新构造一棵K叉树。
+但是从可连接列表的头部删除元素有些复杂。这是因为第一个元素为根节点，删除后我们需要从剩余的子树队列中重新构造一棵K叉树。
 
 根节点被删除后，剩下的所有子树也都是由K叉树表示的可连接列表。我们可以把它们全部连接到一起，形成一个新列表。
 
@@ -958,27 +958,27 @@ concatAll(Q) =  \left \{
 
 其中函数$front$返回队列中的第一个元素而不将其删除，而$pop$会执行出队操作。
 
-如果队列为空，说明不存在子树，因此结果为一个空列表；否则，我们将第一棵子树出队，它是一个可连接列表，然后递归地将剩余的子树连接在一起；最后，再把它连接到第一棵子树的末尾。
+如果队列为空，说明不存在子树，因此结果为一个空列表；否则，我们将第一棵子树出队，它是一个可连接列表，然后递归地将剩余的子树连接在一起；最后，再把递归连接的结果置于第一棵子树的末尾。
 
 定义好$concatAll$后，我们就可以实现从列表头部删除元素的算法了。
 
 \be
-tail(s) = linkAll(queue(s))
+tail(s) = concatAll(queue(s))
 \ee
 
 下面的Haskell例子程序实现了这一算法。
 
 \begin{lstlisting}[style=Haskell]
 head (CList x _) = x
-tail (CList _ q) = linkAll q
+tail (CList _ q) = concatAll q
 
-linkAll q | isEmptyQ q = Empty
-          | otherwise = link (front q) (linkAll (pop q))
+concatAll q | isEmptyQ q = Empty
+            | otherwise = concat (front q) (concatAll (pop q))
 \end{lstlisting}
 
 函数\texttt{isEmptyQ}用来判断一个队列是否为空，它的实现很简单，这里不再赘述。读者可以参考本书附带的例子代码。
 
-算法$linkAll$实际上遍历了队列，逐步归并（reduce）到一个最终的结果。这和我们在二叉搜索树一章中介绍的\underline{fold}概念非常类似。读者可以参考本书的附录了解fold的详细定义和解释。我们可以为队列也定义fold操作\footnote{某些函数式编程语言，例如Haskell，定义了概念为monoid（幺半群）的type class，可以方便地在自定义的数据结构上进行fold。}\cite{learn-haskell}。
+算法$concatAll$实际上遍历了队列，逐步归并（reduce）到一个最终的结果。这和我们在二叉搜索树一章中介绍的\underline{fold}概念非常类似。读者可以参考本书的附录了解fold的详细定义和解释。我们可以为队列也定义fold操作\footnote{某些函数式编程语言，例如Haskell，定义了概念为monoid（幺半群）的type class，可以方便地在自定义的数据结构上进行fold。}\cite{learn-haskell}。
 
 \be
 foldQ(f, e, Q) = \left \{
@@ -1002,23 +1002,23 @@ foldQ(\times, 0, Q) = 1 \times (2 \times (3 \times (4 \times (5 \times 0)))) = 0
 \end{array}
 \]
 
-仿照这些例子，函数$linkAll$可以用$foldQ$来定义。
+仿照这些例子，函数$concatAll$可以用$foldQ$来定义。
 
 \be
-linkAll(Q) = foldQ(link, \phi, Q)
+concatAll(Q) = foldQ(concat, \phi, Q)
 \ee
 
 下面的Haskell例子程序使用fold的概念实现了子树的连接。
 
 \begin{lstlisting}[style=Haskell]
-linkAll = foldQ link Empty
+concatAll = foldQ concat Empty
 
 foldQ :: (a -> b -> b) -> b -> Queue a -> b
 foldQ f z q | isEmptyQ q = z
             | otherwise = (front q) `f` foldQ f z (pop q)
 \end{lstlisting}
 
-但是删除算法的性能并非在所有的情况下都能得到保证。最坏情况发生在用户连续向一个空列表添加$n$个元素后，然后立即执行一次删除时。此时K叉树中，第一个元素存储在根节点，而$n-1$棵子树都只含有一个叶子节点。因此$linkAll$算法退化到线性时间$O(n)$。
+但是删除算法的性能并非在所有的情况下都能得到保证。最坏情况发生在用户连续向一个空列表添加$n$个元素后，然后立即执行一次删除时。此时K叉树中，第一个元素存储在根节点，而$n-1$棵子树都只含有一个叶子节点。因此$concatAll$算法退化到线性时间$O(n)$。
 
 元素的插入、添加、删除、以及列表的连接操作如果随机发生，平均下来，这一算法的分摊复杂度是常数时间$O(1)$的。具体证明我们留给读者作为练习。
 
