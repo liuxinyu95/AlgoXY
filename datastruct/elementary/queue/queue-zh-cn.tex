@@ -708,7 +708,7 @@ $F$和$reverse(R)$的结果都是单向链表，连接它们耗时$O(|F|)$，此
 \right .
 \ee
 
-我们称$A$为\underline{accumulator}，它不断累积中间结果。任何时候，当调用$reverse'(X, A)$时，$X$包含尚未反转的元素，$A$包含迄今为止反转完的元素。当第$i$次调用$reverse'()$时，$X$和$A$分别包含如下内容：
+我们称$A$为\underline{累积器}（accumulator），它不断累积中间结果。任何时候，当调用$reverse'(X, A)$时，$X$包含尚未反转的元素，$A$包含迄今为止反转完的元素。当第$i$次调用$reverse'()$时，$X$和$A$分别包含如下内容：
 
 \[
   \begin{array}{r@{\quad}l}
@@ -726,7 +726,7 @@ data State a = | Reverse [a] [a]
                | Done [a]
 \end{lstlisting}
 
-使用这两种状态，我们可以调度（slow-down）函数$reverse'(X, A)$的计算。
+使用这两种状态，我们可以调度（slow-down）函数$reverse'(X, A)$的计算：
 
 \be
   step(S, X, A) = \left \{
@@ -763,7 +763,7 @@ step $ Reverse "o" "lleh" = Reverse [] "olleh"
 step $ Reverse [] "olleh" = Done "olleh"
 \end{lstlisting}
 
-现在我们可以将反转计算逐步分散到入队和出队操作中。但是这仅解决了一半问题。我们需要逐步分解$ F \cup reverse(R)$计算。因此接下来需要调度（slow-down）列表的连接操作$F \cup ..$。连接操作的复杂度为$O(|F|)$。同样，我们的目标是将它分散到入队和出队操作中去。
+现在我们可以将反转计算逐步分散到入队和出队操作中。但是这仅解决了一半问题。我们需要逐步分解$ F \cup reverse(R)$计算。因此接下来需要调度（slow-down）列表的连接操作$F \cup ...$。连接操作的复杂度为$O(|F|)$。同样，我们的目标是将它分散到入队和出队操作中去。
 
 \subsubsection{逐步连接}
 \index{队列!逐步连接}
@@ -799,7 +799,7 @@ data State a = Reverse [a] [a] [a] [a]
              | Done [a]
 \end{lstlisting}
 
-由于我们同时反转$F$和$R$，因此反转状态变量带有一对列表和一对accumulator。
+由于我们同时反转$F$和$R$，因此反转状态变量带有一对列表和一对累积器。
 
 状态转换按照两个阶段策略进行定义。记$F = \{ f_1, f_2, ... \}$、$F' = tail(F) = \{f_2, f_3, ... \}$、
 $R = \{ r_1, r_2, ... \}$、$R' = tail(R) = \{ r_2, r_3, ... \}$。一个状态$\mathcal{S}$包含它的类型$S$，可以是$S_r$、$S_c$和$S_f$的一种。同时状态$\mathcal{S}$中还包含必要的参数，如$F$、$\overleftarrow{F}$、$X$、$A$等作为中间结果。状态不同，包含的参数也有所不同。
@@ -848,7 +848,7 @@ next (Concat (x:f') acc) = Concat f' (x:acc)
   \end{array}
 \ee
 
-也就是说，从上次队列不平衡的时刻算起，即使我们不断持续将新元素入队，以最快的速度再次使得队列不平衡时，$2m+2$步计算恰好已经完成了。此时新的front列表被计算出来。我们可以安全地继续计算$F' \cup reverse(R')$。多亏了前面给出的平衡invariant，帮助我们保证了这一点。
+也就是说，从上次队列不平衡的时刻算起，即使我们不断持续将新元素入队，以最快的速度再次使得队列不平衡时，$2m+2$步计算恰好已经完成了。此时新的front列表被计算出来。我们可以安全地继续计算$F' \cup reverse(R')$。多亏了前面给出的平衡不变特性（invariant），帮助我们保证了这一点。
 
 但是还有一个坏消息。在$2m+2$步计算完成前，出队操作可能随时发生。这会产生一个尴尬的情况：我们需要从front列表取出元素，但是新的front列表$F' = F \cup reverse(R)$尚未计算好。此时没有一个可用的front列表。
 
@@ -872,7 +872,7 @@ next (Concat (x:f') acc) = Concat f' (x:acc)
 
 这一点告诉我们，在进行连接操作时，我们只需要将$F$中尚未出队的元素连接起来。因为元素从$F$的头部逐一出队，我们可以使用一个计数器（counter）来记录$F$中剩余元素的个数。当开始计算$F \cup reverse(R)$时，计数器为0，每次反转$F$中的一个元素时，就将计数器加一，表示将来我们需要连接这个元素；每次出队操作，就将计数器减一，表示我们将来可以少连接一个元素。显然在连接操作的每步中，我们也需要递减计数器。当且仅当计数器为0的时候，我们无需继续进行连接操作。
 
-根据以上的分析，我们可以给出纯函数式的实时队列的完整实现了。为了简化状态转换，我们可以增加一个idle状态$S_0$。下面的Haskell例子程序给出了这一修改过的状态定义。
+根据以上的分析，我们可以给出纯函数式的实时队列的完整实现了。为了简化状态转换，我们可以增加一个空闲状态$S_0$。下面的Haskell例子程序给出了这一修改过的状态定义。
 
 \lstset{language=Haskell}
 \begin{lstlisting}[style=Haskell]
@@ -891,7 +891,7 @@ data State a = Empty
 data RealtimeQueue a = RTQ [a] Int (State a) [a] Int
 \end{lstlisting}
 
-空队列包含空的front和rear列表，以及一个idle状态$S_0$，记为$Queue(\phi, 0, S_0, \phi, 0)$。根据平衡invariant的定义，我们可以通过检查$|F|=0$与否来判断一个队列是否为空。入队和出队操作修改如下：
+空队列包含空的front和rear列表，以及一个空闲状态$S_0$，记为$Queue(\phi, 0, S_0, \phi, 0)$。根据平衡invariant的定义，我们可以通过检查$|F|=0$与否来判断一个队列是否为空。入队和出队操作修改如下：
 
 \be
   push(Q, x) = balance(F, |F|, \mathcal{S}, \{ x \} \cup R, |R|+1)
@@ -901,7 +901,7 @@ data RealtimeQueue a = RTQ [a] Int (State a) [a] Int
   pop(Q) = balance(F', |F|-1, abort(\mathcal{S}), R, |R|)
 \ee
 
-最大的变化在于$abort()$函数。根据前面的分析，在出队时我们递减计数器，这样将来可以少连接一个元素。我们将其定义为aborting。我们稍后介绍它的具体实现。
+最大的变化在于$abort()$函数。根据前面的分析，在出队时我们递减计数器，这样将来可以少连接一个元素。我们将其定义为撤销操作。我们稍后介绍它的具体实现。
 
 相应的Haskell出队和入队操作可以由下面的例子程序给出。
 
@@ -932,7 +932,7 @@ balance f lenf s r lenr
     | otherwise = step f (lenf + lenr) (Reverse 0 f [] r []) [] 0
 \end{lstlisting}
 
-函数$step()$将状态机转换到下一个状态，全部递进计算结束后，状态转换到idle状态$S_0$。
+函数$step()$将状态机转换到下一个状态，全部递进计算结束后，状态转换到空闲状态$S_0$。
 
 \be
   step(F, |F|, \mathcal{S}, R, |R|) = \left \{
@@ -972,7 +972,7 @@ next (Concat n (x:f') acc) = Concat (n-1) f' (x:acc)
 next s = s
 \end{lstlisting}
 
-函数$abort()$用于指示状态机，由于出队操作，可以少连接一个元素。
+函数$abort()$用于指示状态机，由于发生了出队操作，可以少连接一个元素。
 
 \be
   abort(\mathcal{S}) = \left \{
@@ -992,7 +992,7 @@ next s = s
 
 \lstset{language=Haskell}
 \begin{lstlisting}[style=Haskell]
-abort (Concat 0 _ (_:acc)) = Done acc      -- Note! we rollback 1 elem
+abort (Concat 0 _ (_:acc)) = Done acc      -- 注意：我们回滚（rollback）了一个元素
 abort (Concat n f' acc) = Concat (n-1) f' acc
 abort (Reverse n f f' r r') = Reverse (n-1) f f' r r'
 abort s = s
@@ -1031,7 +1031,7 @@ step f lenf s r lenr =
 
 \begin{Exercise}
 \begin{itemize}
-\item 在$abort()$函数中，当$n = 0$时，为什么需要rollback一个元素？
+\item 在$abort()$函数中，当$n = 0$时，为什么需要回滚一个元素？
 
 \item 考虑实时队列的对称实现。选择一门命令式语言，用双数组实现实时队列。
 
@@ -1049,7 +1049,7 @@ step f lenf s r lenr =
 
 实现实时队列的关键在于将耗时的$F \cup reverse(R)$计算分解。惰性求值对于这类问题很有帮助。本节中，我们通过惰性求值来寻找更加简洁的方法。
 
-假设存在一个函数$rotate()$可以逐步计算$F \cup reverse(R)$。也就是说，使用一个accumulator $A$，下面的两个函数等价
+假设存在一个函数$rotate()$可以逐步计算$F \cup reverse(R)$。也就是说，使用一个累积器$A$，下面的两个函数等价
 
 \be
   rotate(X, Y, A) \equiv X \cup reverse(Y) \cup A
@@ -1058,9 +1058,9 @@ step f lenf s r lenr =
 
 其中，我们将$X$初始化为front列表$F$，$Y$初始化为rear列表$R$，$A$初始化为空$\phi$。
 
-开始进行rotation的条件和前面一样，即$|F| + 1 = |R|$。在rotation过程中，我们始终保持$|X| + 1 = |Y|$作为一个invariant成立。
+开始进行轮转（rotate）的条件和前面一样，即$|F| + 1 = |R|$。在轮转过程中，我们始终保持$|X| + 1 = |Y|$作为一个不变式成立。
 
-下面我们来推导rotate的实现，显然，最简单的情况如下：
+下面我们来推导轮转的实现，显然，最简单的情况如下：
 
 \be
   rotate(\phi, \{ y_1 \}, A) = \{ y_1 \} \cup A
@@ -1070,14 +1070,14 @@ step f lenf s r lenr =
 
 \be
   \begin{array}{rcll}
-  rotate( X, Y, A ) & \equiv & X \cup reverse(Y) \cup A & \mbox{Definition of (}\ref{eq:rot-def} \mbox{)} \\
-  & \equiv & \{ x_1 \} \cup (X' \cup reverse(Y) \cup A) & \mbox{Associative of } \cup \\
-  & \equiv & \{ x_1 \} \cup (X' \cup reverse(Y') \cup (\{ y_1 \} \cup A)) & \mbox{Nature of reverse and associative of }  \cup \\
-  & \equiv & \{ x_1 \} \cup rotate(X', Y', \{ y_1 \} \cup A) & \mbox{Definition of (} \ref{eq:rot-def} \mbox{)}
+  rotate( X, Y, A ) & \equiv & X \cup reverse(Y) \cup A & \mbox{根据定义(}\ref{eq:rot-def} \mbox{的定义} \\
+  & \equiv & \{ x_1 \} \cup (X' \cup reverse(Y) \cup A) & \cup \mbox{操作的结合性} \\
+  & \equiv & \{ x_1 \} \cup (X' \cup reverse(Y') \cup (\{ y_1 \} \cup A)) & \mbox{reverse的性质和}  \cup \mbox{的结合性} \\
+  & \equiv & \{ x_1 \} \cup rotate(X', Y', \{ y_1 \} \cup A) & \mbox{根据定义(} \ref{eq:rot-def} \mbox{)}
   \end{array}
 \ee
 
-归纳上面的两种情况，可以得到最终的rotate算法。
+归纳上面的两种情况，可以得到最终的轮转算法。
 
 \be
 rotate(X, Y, A) = \left \{
@@ -1091,11 +1091,11 @@ rotate(X, Y, A) = \left \{
 
 如果我们惰性执行$\cup$操作，而不是立即进行链接，也就是说，当出队和入队时才执行$\cup$，就可以将$rotate$计算自然分摊到出、入队中。
 
-根据这一思路，我们修改双列表队列的定义，将front列表变成一个惰性列表，然后将它放入一个stream中\cite{SICP}。当某个出、入队操作，造成队列的平衡被破坏，此时有$|F| + 1 = |R|$，为了恢复平衡，我们开始进行惰性rotation计算。这一惰性计算被作为新的front列表$F'$，而新的rear列表为空$\phi$。我们同时维护一个$F'$的副本作为stream。
+根据这一思路，我们修改双列表队列的定义，将front列表变成一个惰性列表，然后将它放入一个流（stream）中\cite{SICP}。当某个出、入队操作，造成队列的平衡被破坏，此时有$|F| + 1 = |R|$，为了恢复平衡，我们开始进行惰性轮转计算。这一惰性计算被作为新的front列表$F'$，而新的rear列表为空$\phi$。我们同时维护一个$F'$的副本作为流。
 
-此后，每当进行出、入队操作，我们就强制stream执行一个$\cup$操作。这样stream就向前执行一步$ \{ x \} \cup F''$，其中$F'' = tail(F')$。我们丢掉$x$，然后用$F''$替换$F'$作为新的stream。
+此后，每当进行出、入队操作，我们就强制流执行一个$\cup$操作。这样流就向前执行一步$ \{ x \} \cup F''$，其中$F'' = tail(F')$。我们丢掉$x$，然后用$F''$替换$F'$作为新的流。
 
-当全部stream被计算完毕，就可以开始计算另一个rotation。
+当全部流被计算完毕，就可以开始计算另一个轮转。
 
 为了更好地描述这一思路，我们使用Scheme/Lisp给出例子程序。这样可以明确地控制惰性计算。
 
@@ -1125,13 +1125,13 @@ rotate(X, Y, A) = \left \{
 (define (rots q) (caddr q))
 \end{lstlisting}
 
-一个队列包含三个部分：一个front列表，一个rear列表和一个代表计算$F \cup reverse(R)$的stream。对于空队列，这三个部分全部是null。
+一个队列包含三个部分：一个front列表，一个rear列表和一个代表计算$F \cup reverse(R)$的流。对于空队列，这三个部分全部是null。
 
 \begin{lstlisting}
 (define empty (make-queue '() '() '()))
 \end{lstlisting}
 
-注意，其中的front列表实际上是一个惰性stream，因此需要使用stream相关的操作。例如下面的函数通过检查front stream来判断队列是否为空。
+注意，其中的front列表实际上是一个惰性流，因此需要使用流相关的操作。例如下面的函数通过检查front流来判断队列是否为空。
 
 \begin{lstlisting}
 (define (empty? q) (stream-null? (front-lst q)))
@@ -1143,14 +1143,14 @@ rotate(X, Y, A) = \left \{
 push(Q, x) = balance(\mathcal{F}, \{ x \} \cup R, \mathcal{R}_s)
 \ee
 
-其中$\mathcal{F}$是表示front列表的惰性stream；$\mathcal{R}_s$是表示rotation计算的stream。相应的Scheme/Lisp例子程序如下：
+其中$\mathcal{F}$是表示front列表的惰性流；$\mathcal{R}_s$是表示轮转计算的流。相应的Scheme/Lisp例子程序如下：
 
 \begin{lstlisting}
 (define (push q x)
   (balance (front-lst q) (cons x (rear q)) (rots q)))
 \end{lstlisting}
 
-出队操作和此前相比有一些不同，由于front列表实际是一个惰性stream，我们需要进行强制求值，其余部分保持不变。
+出队操作和此前相比有一些不同，由于front列表实际是一个惰性流，我们需要进行强制求值，其余部分保持不变。
 
 \be
 pop(Q) = balance(\mathcal{F}', R, \mathcal{R}_s)
@@ -1165,13 +1165,13 @@ pop(Q) = balance(\mathcal{F}', R, \mathcal{R}_s)
 
 为了节省篇幅，我们省略了错误处理（例如对空队列进行出队操作的错误等）。
 
-通过从front stream中提取元素可以获得队列的头部元素。
+通过从front流中提取元素可以获得队列的头部元素。
 
 \begin{lstlisting}
 (define (front q) (stream-car (front-lst q)))
 \end{lstlisting}
 
-平衡函数首先检查代表rotation计算的stream，如果已经耗尽，就开始一次新的rotation计算；否则它强制对惰性stream进行一次求值，消耗掉其中的一个元素。
+平衡函数首先检查代表轮转计算的流，如果已经耗尽，就开始一次新的轮转计算；否则它强制对惰性流进行一次求值，消耗掉其中的一个元素。
 
 \be
 balance(Q) = \left \{
@@ -1183,7 +1183,7 @@ balance(Q) = \left \{
 \right .
 \ee
 
-这里$\mathcal{F}'$被定义来开始一次新的rotation：
+这里$\mathcal{F}'$被定义来开始一次新的轮转：
 
 \be
   \mathcal{F}' = rotate(F, R, \phi)
@@ -1199,7 +1199,7 @@ balance(Q) = \left \{
       (make-queue f r (stream-cdr s))))
 \end{lstlisting}
 
-分步递进的rotation函数可以根据我们上面的分析给出实现，如下面的Scheme/Lisp例子代码：
+分步递进的轮转函数可以根据我们上面的分析给出实现，如下面的Scheme/Lisp例子代码：
 
 \begin{lstlisting}
 (define (rotate xs ys acc)
