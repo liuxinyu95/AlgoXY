@@ -147,12 +147,12 @@ def sort(xs):
     return as + [pivot] + bs
 \end{lstlisting}
 
-\subsection{Strict weak ordering}
+\subsection{严格弱序}
 \index{快速排序!Strict weak ordering}
 
 我们假设元素按照单调非递减的顺序排序。我们也可以改变算法，按照其他条件排序。这样就可以适用更多场景，在实际中，待排序的元素可能是数字、字符串、或者其他更复杂的内容（例如对一组列表排序）。
 
-典型的方法，是把比较条件抽象成一个参数，如同此前在插入排序和选择排序的章节中所描述的。我们并不要求比较条件一定要遵从total ordering，但是至少要满足\underline{strict weak ordering}\cite{wiki-total-order}、\cite{wiki-sweak-order}。
+典型的方法，是把比较条件抽象成一个参数，如同此前在插入排序和选择排序的章节中所描述的。我们并不要求比较条件一定要遵从全序（total order），但是至少要满足\underline{严格弱序} （strict weak order）\cite{wiki-total-order}、\cite{wiki-sweak-order}。
 
 简单起见，我们仅仅考虑使用小于等于（不大于）作为比较条件来进行排序。
 
@@ -178,7 +178,7 @@ sort(L) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   \phi & L = \phi \\
-  sort(A) \cup \{l_1\} \cup sort(B) & otherwise, (A, B) = partition(\lambda_x x \leq l_1, L')
+  sort(A) \cup \{l_1\} \cup sort(B) & L \neq \phi, (A, B) = partition(\lambda_x x \leq l_1, L')
   \end{array}
 \right.
 \ee
@@ -198,10 +198,25 @@ partition p (x:xs) = let (as, bs) = partition p xs in
 
 划分（partition）的概念对于快速排序至关重要。划分在其很多其他排序排序算法中也很关键。本章的最后部分会解释它如何普遍地影响着排序的思想方法。在进一步改进快速排序的划分算法前，我们先来考虑如何用命令式的方法实现in-place的快速排序。
 
-在诸多的划分方法中，Nico Lomuto\cite{Bentley}、\cite{CLRS}给出的方法是最简单易懂的。我们稍后还会介绍其他划分方法，并展示不同的方法是如何影响性能的。
+在诸多的划分方法中，Lomuto\cite{Bentley}、\cite{CLRS}给出的方法是最简单易懂的。我们稍后还会介绍其他划分方法，并展示不同的方法是如何影响性能的。
 
 \begin{figure}[htbp]
    \centering
+   \subfloat[划分的不变性质]{
+    \begin{tikzpicture}[scale=0.8]
+    \draw (0, 0) rectangle (1, 1) node (xl) [pos=.5] {x[l]}
+          (1, 0) rectangle (5, 1) node [pos=.5] {...不大于pivot的...}
+          (5, 0) rectangle (9, 1) node [pos=.5] {...大于pivot的...}
+          (9, 0) rectangle (12, 1) node [pos=.5] (ai) {...?...x[u]}
+          (4, 0) rectangle (5, 1) node [pos=.5] {...}
+          (5, 0) rectangle (6, 1) node (an) [pos=.5] {};
+    \draw (0, 2) node (hd) {head}
+          (3.5, 2) node (tl) {tail}
+          (6, 2) node (bd) {边界};
+    \draw[thick, ->] (hd) edge (a0)
+                 (tl) edge (ai)
+                 (bd) edge (an);
+  \end{tikzpicture}} \\
    \subfloat[Partition invariant]{\includegraphics[scale=0.5]{img/partition-1-way.ps}} \\
    \subfloat[开始]{\includegraphics[scale=0.5]{img/partition-1-way-start.ps}} \\
    \subfloat[结束]{\includegraphics[scale=0.5]{img/partition-1-way-finish.ps}}
@@ -455,7 +470,7 @@ asort' (x:xs) acc = asort' as (x:asort' bs acc) where
 
 但是在最坏情况下，划分过程大部分时间都把序列分成两个很不平衡的部分。其中一部分的长度为$O(1)$，另一部分的长度为$O(n)$。因此递归的深度退化为$O(n)$。如果我们用同样的图来描述，最好情况下，快速排序过程形成一棵平衡二叉树；而最坏情况下，会形成一棵很不平衡的树，每个节点都只有一棵子树，而另外一棵子树为空。二叉树退化成了一个长度为$O(n)$的链表。而在每一层中，所有的元素都被处理，因此最坏情况下的性能为$O(n^2)$，这和插入排序、选择排序的性能相当。
 
-最坏情况在何时发生的？其中一个特殊情况是所有的元素（或大部分元素）都相同。Nico Lumuto的划分方法此时的表现很差。我们在下一节会介绍另外一种划分方法，可以有效解决这一问题。
+最坏情况在何时发生的？其中一个特殊情况是所有的元素（或大部分元素）都相同。Lomuto的划分方法此时的表现很差。我们在下一节会介绍另外一种划分方法，可以有效解决这一问题。
 
 另外有两种明显的序列类型可以导致最坏情况：即序列已序（升序或降序）。划分升序序列时pivot前的部分总是空的，而pivot后的部分包含所有剩余元素。划分降序序列的结果与此相反。
 
@@ -609,7 +624,7 @@ O(T(n)) = O(n \lg n)
 \subsection{处理重复元素的工程方法}
 \index{快速排序!处理重复元素}
 
-如上一节的练习中所示，N. Lomuto的划分算法不擅长处理含有很多重复元素的序列。考虑含有$n$个相等元素的特殊序列$\{x, x, ..., x\}$，我们有两种方案来进行排序。
+如上一节的练习中所示，Lomuto的划分算法不擅长处理含有很多重复元素的序列。考虑含有$n$个相等元素的特殊序列$\{x, x, ..., x\}$，我们有两种方案来进行排序。
 
 \begin{enumerate}
 \item 普通的基本快速排序法：我们任意选择一个元素作为pivot，其值为$x$，这样分割后得到两个子序列，一个是$\{x, x, ..., x \}$，包含$n-1$个元素，另外一个子序列为空。接下来递归地对第一个子序列排序；这明显是一个$O(n^2)$的解决方法。
@@ -787,7 +802,7 @@ void qsort(Key* xs, int l, int u) {
 }
 \end{lstlisting}
 
-和此前介绍的N. Lumoto的划分算法相比，可以发现这一算法的元素交换操作次数更少。这是因为它跳过了那些最终位置在pivot正确一侧的元素不进行交换。
+和此前介绍的Lomuto的划分算法相比，可以发现这一算法的元素交换操作次数更少。这是因为它跳过了那些最终位置在pivot正确一侧的元素不进行交换。
 
 \subsubsection{三路划分}
 \index{快速排序!三路划分}
@@ -878,17 +893,17 @@ void qsort2(Key* xs, int l, int u) {
 }
 \end{lstlisting}
 
-引入三路划分后，算法逐渐变得复杂了。各种边界条件都需要进行仔细的处理。回顾此前的N. Lumoto的划分方法，它的优势就是简单直观，我们可以考虑对它加以改进，得到一个简单的三路划分实现。
+引入三路划分后，算法逐渐变得复杂了。各种边界条件都需要进行仔细的处理。回顾此前的Lomuto的划分方法，它的优势就是简单直观，我们可以考虑对它加以改进，得到一个简单的三路划分实现。
 
-我们需要调整一下不变条件（invariant）。我们仍然选择第一个元素作为pivot，如图\ref{fig:partition-3-way-lumoto}所示，任何时刻，左侧的片段包含严格小于pivot的元素；接下来的片段包含等于pivot的元素；最右侧的片段包含严格大于pivot的元素。这三个片段的边界分别为$i$、$k$和$j$。剩余在$k$和$j$之间的部分是尚未扫描的元素。
+我们需要调整一下不变条件（invariant）。我们仍然选择第一个元素作为pivot，如图\ref{fig:partition-3-way-lomuto}所示，任何时刻，左侧的片段包含严格小于pivot的元素；接下来的片段包含等于pivot的元素；最右侧的片段包含严格大于pivot的元素。这三个片段的边界分别为$i$、$k$和$j$。剩余在$k$和$j$之间的部分是尚未扫描的元素。
 
 我们从左向右逐一扫描元素，一开始时，严格小于pivot的部分为空；等于pivot的部分只包含一个元素，就是pivot本身。$i$此时指向数组的下界，$k$指向$i$的下一个元素。严格大于pivot的部分也为空，$j$指向数组的上界。
 
 \begin{figure}[htbp]
    \centering
    \includegraphics[scale=0.5]{img/partition-3-way-lumoto.ps}
-   \caption{基于N. Lumoto方法的三路划分。}
-   \label{fig:partition-3-way-lumoto}
+   \caption{基于Lomuto方法的三路划分。}
+   \label{fig:partition-3-way-lomuto}
 \end{figure}
 
 划分过程开始后，我们逐一检查$k$指向的元素。如果它等于pivot，$k$就移动指向下一个元素；如果它大于pivot，我们将它和未处理区间的最后一个元素交换，这样严格大于的区间长度就增加一。它的边界$j$向左移动一步。由于我们不确定移动到$k$的元素是否仍然大于pivot，我们需要再次进行比较，重复上述过程。否则，如果元素小于pivot，我们将它和等于pivot区间的第一个元素交换。当$k$和$j$相遇时，划分过程结束。
@@ -2286,4 +2301,4 @@ Wikipedia. ``Harmonic series (mathematics)''. http://en.wikipedia.org/wiki/Harmo
 \end{document}
 \fi
 
-% LocalWords:  ZF Lumoto's Burstle Okasaki
+% LocalWords:  ZF Lomuto's Burstle Okasaki
