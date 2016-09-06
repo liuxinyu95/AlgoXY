@@ -1117,7 +1117,8 @@ void qsort(Key* xs, int l, int u) {
 qsort [] = []
 qsort [x] = [x]
 qsort [x, y] = [min x y, max x y]
-qsort (x:y:z:rest) = qsort (filter (< m) (s:rest)) ++ [m] ++ qsort (filter (>= m) (l:rest)) where
+qsort (x:y:z:rest) = qsort (filter (< m) (s:rest)) ++ [m] ++
+                     qsort (filter (>= m) (l:rest)) where
     xs = [x, y, z]
     [s, m, l] = [minimum xs, median xs, maximum xs]
 \end{lstlisting}
@@ -1171,7 +1172,7 @@ qsort (x:y:z:rest) = qsort (filter (< m) (s:rest)) ++ [m] ++ qsort (filter (>= m
 
 \section{其他}
 
-有人说只有应用了全部改进技术的实现才是“真正的快速排序”——当序列较短时转而使用插入排序，in-place交换元素，median-of-tree选择pivot，三路划分。最简短的纯函数式实现，虽然完美地诠释了快速排序的思路，却没有使用上述任何改进技术。有人认为纯函数式的快速排序本质上是树排序。
+有人说只有应用了全部改进技术的实现才是“真正的快速排序”——当序列较短时转而使用插入排序，并且in-place交换元素，同时用median-of-tree选择pivot，再加上三路划分。最简短的纯函数式实现，虽然完美地诠释了快速排序的思路，却没有使用上述任何改进技术。有人认为纯函数式的快速排序本质上是树排序。
 
 事实上，快速排序和树排序有紧密的关系。Richard Bird展示了通过deforestation，从二叉树排序推导出快速排序\cite{algo-fp}。
 
@@ -1249,7 +1250,7 @@ sort(L) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   \phi & L = \phi \\
-  merge(sort(L_1), sort(L_2)) & otherwise, (L_1, L_2) = splitAt(\lfloor \frac{|L|}{2} \rfloor, L)
+  merge(sort(L_1), sort(L_2)) & L \neq \phi, (L_1, L_2) = splitAt(\lfloor \frac{|L|}{2} \rfloor, L)
   \end{array}
 \right.
 \ee
@@ -1266,7 +1267,7 @@ splitAt(n, L) =  \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   (\phi, L) & n = 0 \\
-  (\{l_1\} \cup A, B) & otherwise, (A, B) = splitAt(n - 1, L')
+  (\{l_1\} \cup A, B) & n \neq 0, (A, B) = splitAt(n - 1, L')
   \end{array}
 \right.
 \ee
@@ -1411,7 +1412,7 @@ T(n) & = \displaystyle T(\frac{n}{2}) + T(\frac{n}{2}) + c n \\
 
 对于前面给出的最基本的归并排序实现，在每一次递归时，都需要和输入数组同样大小的空间，用以复制元素和进一步的递归排序，这一层的递归返回后，这些空间可以释放。因此最大的空间消耗出现在进入最深一层递归时，为$O(n \lg n)$。
 
-函数式归并排序消耗的空间远远小于这一结果，这是因为序列底层的数据结构为链表。我们无需额外的空间以进行归并\footnote{我们这里忽略惰性求值引入的更复杂的因素，可以参考\cite{algo-fp}了解详细的分析。}。最主要的空间消耗来自于递归调用栈。稍后介绍奇偶分割算法时，我们会再次解释这一点。
+函数式归并排序消耗的空间远远小于这一结果，这是因为序列底层的数据结构为链表。我们无需额外的空间以进行归并\footnote{我们这里忽略惰性求值引入的更复杂的因素，可以参考\cite{algo-fp}了解详细的分析。}。最主要的空间消耗来自于递归调用栈。稍后介绍奇偶分割算法时，我们会再次解释空间消耗的问题。
 
 \subsubsection{细微改进}
 \index{归并排序!Work area allocation}
@@ -1450,7 +1451,7 @@ void msort(Key* xs, int l, int u) {
     int i, j, m;
     Key *as, *bs;
     if (u - l > 1) {
-        m = l + (u - l) / 2;  /* avoid int overflow */
+        m = l + (u - l) / 2;  //防止int溢出
         msort(xs, l, m);
         msort(xs, m, u);
         as = (Key*) malloc(sizeof(Key) * (m - l + 1));
@@ -1473,23 +1474,23 @@ void msort(Key* xs, int l, int u) {
 \begin{algorithmic}[1]
 \Procedure{Sort}{A}
   \State $B \gets $ \Call{Create-Array}{$|A|$}
-  \State \Call{Sort'}{$A, B, 1, |A|$}
+  \State \Call{Sort$'$}{$A, B, 1, |A|$}
 \EndProcedure
 \Statex
-\Procedure{Sort'}{$A, B, l, u$}
+\Procedure{Sort$'$}{$A, B, l, u$}
   \If{$u - l > 0$}
     \State $m \gets \lfloor \frac{l + u}{2} \rfloor$
-    \State \Call{Sort'}{$A, B, l, m$}
-    \State \Call{Sort'}{$A, B, m + 1, u$}
-    \State \Call{Merge'}{$A, B, l, m, u$}
+    \State \Call{Sort$'$}{$A, B, l, m$}
+    \State \Call{Sort$'$}{$A, B, m + 1, u$}
+    \State \Call{Merge$'$}{$A, B, l, m, u$}
   \EndIf
 \EndProcedure
 \end{algorithmic}
 
-这一算法创建了另一个同样大小的数组，并将其作为一个参数和原待排序数组一同传入\textproc{Sort'}算法。在实际的实现中，这一工作区最终需要人工释放，或者使用自动工具如GC（垃圾回收）释放。修改后的归并算法\textproc{Merge'}也接受一个工作区参数。
+这一算法创建了另一个同样大小的数组，并将其作为一个参数和原待排序数组一同传入\textproc{Sort$'$}算法。在实际的实现中，这一工作区最终需要人工释放，或者使用自动工具如GC（垃圾回收）释放。修改后的归并算法\textproc{Merge$'$}也接受一个工作区参数。
 
 \begin{algorithmic}[1]
-\Procedure{Merge'}{$A, B, l, m, u$}
+\Procedure{Merge$'$}{$A, B, l, m, u$}
   \State $i \gets l, j \gets m + 1, k \gets l$
   \While{$i \leq m \land j \leq u$}
     \If{$A[i] < A[j]$}
@@ -1593,7 +1594,14 @@ split (x:y:xs) = (x:xs', y:ys') where (xs', ys') = split xs
 
 \begin{figure}[htbp]
  \centering
- \includegraphics[scale=0.8]{img/merge-in-place-naive.ps}
+      \begin{tikzpicture}[scale=0.8]
+      \draw (0, 0) rectangle (3, 1) node [pos=.5] {已归并部分}
+            (3, 0) rectangle (4, 1) node [pos=.5] {xs[i]}
+            (4, 0) rectangle (8, 1) node (subA) [pos=.5] {...已序子序列A...}
+            (8, 0) rectangle (9, 1) node (xsj) [pos=.5] {xs[j]}
+            (9, 0) rectangle (13, 1) node [pos=.5] {...已序子序列B...};
+      \draw[thick, ->] (subA) edge [bend right=45] node [below] {若xs[i] < xs[j]则shift子序列A} (xsj);
+      \end{tikzpicture}
  \caption{死板in-place归并}
  \label{fig:merge-in-place-naive}
 \end{figure}
