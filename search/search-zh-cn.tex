@@ -1443,17 +1443,17 @@ def fprefix(p):
 
 KMP算法相当于在搜索前将待搜索的字符串进行预处理。因此它可以最大程度地复用已知的匹配结果。
 
-构建前缀函数的分摊性能为$O(m)$，可以使用potential分析法证明\cite{CLRS}。使用同样的方法可以进一步证明搜索算法本身的性能也是线性时间的。因此总体时间性能为$O(m + n)$，同时需要额外的$O(m)$空间来记录前缀函数的表格。
+构建前缀函数的分摊性能为$O(m)$，可以使用势能分析法证明\cite{CLRS}。使用同样的方法可以进一步证明搜索算法本身的性能也是线性时间的。因此总体时间性能为$O(m + n)$，同时需要额外的$O(m)$空间来记录前缀函数的表格。
 
 如果不仔细分析，可能会认为不同形式的待搜索字符串会影响KMP的性能。考虑在一个长度为$n$个a的文本“aaa...a”中，搜索长度为$m$个a的字符串“aaa...a”。因为所有的字符都相同，当最后一个字符匹配完成后，我们只能回退一个字符，并且此后不断重复回退1个字符。即使在这种极端情况下，KMP算法依旧是线性时间的（为什么？）。请尝试考虑更多情况，例如$P = aaaa...b$，$T = aaaa...a$，并分析KMP的性能。
 
 \paragraph{纯函数式KMP算法}
 
-用纯函数式的方法实现KMP算法会比较困难。命令式的KMP算法大量使用数组来保存前缀函数的值。虽然可以使用纯函数式的序列数据结构来代替数组，但序列通常使用finger树来实现。与命令式环境中的数组相比，finger树随机访问元素的性能为对数时间\footnote{我们在这里不使用数组。虽然在某些函数式编程环境中，例如Haskell提供了可以在常数时间进行随机访问的数组。}。
+用纯函数式的方法实现KMP算法会比较困难。命令式的KMP算法大量使用数组来保存前缀函数的值。虽然可以使用纯函数式的序列数据结构来代替数组，但序列通常使用手指树来实现。与命令式环境中的数组相比，手指树随机访问元素的性能为对数时间\footnote{我们在这里不使用数组。虽然在某些函数式编程环境中，例如Haskell提供了可以在常数时间进行随机访问的数组。}。
 
 Richard Bird给出了一个使用fold fusion定理推导KMP算法的过程（\cite{fp-pearls}第17章）。本节中，我们首先给出一个暴力法的前缀函数构造方法，然后逐步改进得到KMP算法。
 
-在函数式环境中，文本和待搜索的字符串本质上都是单向链表。在扫描过程中，两个列表被分解，每个列表都被分成两部分。如图\ref{fig:fp-strstr}所示，待搜索的字符串的前$j$个字符都相附，接下来要比较$T[i+1]$和$P[j+1]$。如果相等，就将这一字符添加到已成功比较的部分。但是由于字符串由单向链表表示，向尾部添加的性能和其长度$j$成比例。
+在函数式环境中，文本和待搜索的字符串本质上都是用单向链表表示的列表。在扫描过程中，两个列表被分解，每个列表都被分成两部分。如图\ref{fig:fp-strstr}所示，待搜索的字符串的前$j$个字符都相附，接下来要比较$T[i+1]$和$P[j+1]$。如果相等，就将这一字符添加到已成功比较的部分。但是由于字符串由单向链表表示，向尾部添加的性能和其长度$j$成比例。
 
 \begin{figure}[htbp]
  \centering
@@ -1464,21 +1464,21 @@ Richard Bird给出了一个使用fold fusion定理推导KMP算法的过程（\ci
 
 记文本的前$i$个字符为$T_p$，表示$T$的前缀，剩余的字符为$T_s$，表示$T$的后缀；同样，记$P$的前$j$个字符为$P_p$，剩余字符为$P_s$；记$T_s$中的第一个字符为$t$，$P_s$中的第一个字符为$p$。我们可以得到如下的“cons”关系。
 
-\[
+\be
 \begin{array}{l}
 T_s = cons(t, T_s') \\
 P_s = cons(p, P_s')
 \end{array}
-\]
+\ee
 
 若$t = p$，则下面的更新过程需要线性时间：
 
-\[
+\be
 \begin{array}{l}
 T_p' = T_p \cup \{t\} \\
 P_p' = P_p \cup \{p\}
 \end{array}
-\]
+\ee
 
 我们在队列一章中曾经介绍过一种方法，可以解决这一问题。通过使用一对列表，一个front列表和一个rear列表，可以将线性时间的添加操作转换成常数时间的链接操作。为此，需要将前缀的部分用逆序表达。
 
@@ -1530,20 +1530,21 @@ kmp(\pi, (\overleftarrow{P_p}, P_s), (\overleftarrow{T_p}, T_s)) =  \left \{
 
 如果下一个字符不同，并且恰好是待搜索字串的第一个字符，我们只需要移动到文本中的下一个字符，然后重新查找。否则，如果不是待搜索字串中的第一个字符，我们就调用前缀函数$\pi$，获取到回退的位置，以继续进行搜索。
 
-可以用暴力方法构造前缀函数，只要简单地按照式(\ref{eq:prefix-function})的定义即可。
+可以用暴力方法构造前缀函数，只要简单地按照式(\ref{eq:prefix-function})的定义即可，如(\ref{eq:brute-force-prefix-func})所示。
 
 \be
 \pi(\overleftarrow{P_p}, P_s) = (\overleftarrow{P_p'}, P_s')
+\label{eq:brute-force-prefix-func}
 \ee
 
 其中
 
-\[
+\be
 \begin{array}{l}
 P_p' = longest(\{ s | s \in prefixes(P_p), s \sqsupset P_p \}) \\
 P_s' = P - P_p'
 \end{array}
-\]
+\ee
 
 每次计算回退的位置时，暴力法都简单地穷举所有$P_p$的前缀，检查它是否同时也是$P_p$的后缀，然后选择最长的一个作为结果。这里我们使用了减号表示获取列表的不同部分。
 
@@ -1584,7 +1585,7 @@ inits [_] = [[]]
 inits (x:xs) = [] : (map (x:) $ inits xs)
 \end{lstlisting}
 
-这一算法不仅性能差，而且也很复杂。我们可以对其略作简化。观察KMP搜索过程，它实际上是一个从左向右的对文本进行扫描的过程，因此可以使用fold来表示（参见附录A）。首先，在fold的过程中，我们可以让每一个字符对应一个index，如下：
+这一算法不仅性能差，而且也很复杂。我们可以对其略作简化。观察KMP搜索过程，它实际上是一个从左向右的对文本进行扫描的过程，因此可以使用fold来表示（参见附录A）。首先，在fold的过程中，我们可以让每一个字符对应一个索引，如下：
 
 \be
 zip(T, \{1, 2, ... \})
@@ -1695,7 +1696,7 @@ R = build((P_s \cup \{p\}, P_s'), \phi, \phi))
 \end{array}
 \]
 
-其中$p$和$P_s'$的含义和此前相同，$p$是$P_s$中的第一个字符，$P_s'$是剩余部分。最有趣的一点是，build函数永远不会结束。它无休无止地构造一棵无穷树。在strict的编程环境中，调用这样的函数会陷入麻烦。但在支持惰性求值的环境中，只有被使用的节点才会被构造。Lisp方言Scheme和Haskell都可以构造这样的无穷状态树。在命令式环境中，我们通常使用指向祖先节点的指针来实现无穷状态树。
+其中$p$和$P_s'$的含义和此前相同，$p$是$P_s$中的第一个字符，$P_s'$是剩余部分。最有趣的一点是，build函数永远不会结束。它无休无止地构造一棵无穷树。在严格的（strict）编程环境中，调用这样的函数会陷入麻烦。但在支持惰性求值的环境中，只有被使用的节点才会被构造。Lisp方言Scheme和Haskell都可以构造这样的无穷状态树。在命令式环境中，我们通常使用指向祖先节点的指针来实现无穷状态树。
 
 \begin{figure}[htbp]
  \centering
@@ -1820,13 +1821,13 @@ trans(T, c) = \left \{
 
 通过使用状态转移函数，我们可以定义一个新的状态树构造算法。原理和前面的斐波那契序列类似。
 
-\[
+\be
 build(T, (P_p, P_s)) = ((P_p, P_s), T, build(trans(T, p), (P_p \cup \{ p \}, P_s')))
-\]
+\ee
 
 等式右侧包含三部分。第一部分是我们正在搜索的状态$(P_p, P_s)$；如果匹配失败，由于$T$本身可以处理任何失败的情况，我们直接使用它作为左侧子树；否则匹配成功，我们前进一个字符，递归构造右侧子树，并调用我们定义的状态转移函数。
 
-这里还必须处理一种特殊情况，如果$P_s$为空，表示匹配了所有的字符。根据上面的定义，将不存在后继的右侧子树。综合起来，我们可以得到下面的构造函数。
+这里还必须处理一种特殊情况，如果$P_s$为空，表示匹配了所有的字符，根据上面的定义，将不存在后继的右侧子树。综合起来，我们可以得到下面的构造函数。
 
 \be
 build(T, (P_p, P_s)) =  \left \{
@@ -1865,7 +1866,7 @@ kmpSearch ws txt = snd $ foldl tr (root, []) (zip txt [1..]) where
         | otherwise = tr (fails, ns) (x, n)
 \end{lstlisting} %$
 
-图\ref{fig:lazy-fallback-tree}给出了在文本“anal”中搜索“anaym”的前4步。由于前三步的字符都匹配成功，所以这3个状态的左侧子树都没有被构造。它们被标记为“?”。在第4步，字符匹配失败，因此无需构造右侧的子树。同时，我们必须根据$trans(right(right(right(T))), n)$的结果构造左侧的子树，其中函数$right(T)$返回树$T$的右侧子树。根据构造过程和状态转移的定义，这一结果最终展开到一个具体的状态$((a, nanym), L, R)$。具体的推导过程留给读者作为练习。
+图\ref{fig:lazy-fallback-tree}给出了在文本“anal”中搜索“anaym”的前4步。由于前三步的字符都匹配成功，所以这3个状态的左侧子树都没有被构造。它们被标记为“?”。在第4步，字符匹配失败，因此无需构造右侧的子树。同时，我们必须根据 $trans(right(right(right(T))), n)$ 的结果构造左侧的子树，其中函数$right(T)$返回树$T$的右侧子树。根据构造过程和状态转移的定义，这一结果最终展开到一个具体的状态$((a, nanym), L, R)$。具体的推导过程留给读者作为练习。
 
 \begin{figure}[htbp]
  \centering
@@ -1878,7 +1879,7 @@ kmpSearch ws txt = snd $ foldl tr (root, []) (zip txt [1..]) where
 
 在我们此前介绍的很多形况中，函数式算法通常比较简洁。但是在KMP搜索中，命令式算法却更加简单、直观。这主要是由于我们通过无穷状态转移树来模拟内置数组造成的。
 
-\subsubsection{Boyer-Moore}
+\subsubsection{Boyer-Moore字符串匹配算法}
 \index{Boyer-Moore算法}
 
 Boyer-Moore字符串匹配算法是1977年发现的另一种高效的字符串查找方法\cite{boyer-moore}。它的思想来自于下面的一些事实。
@@ -1955,7 +1956,7 @@ s = |P| - p_i
 def bmh_match(w, p):
     n = len(w)
     m = len(p)
-    tab = [m for _ in range(256)]  # table to hold the bad character rule.
+    tab = [m for _ in range(256)]  #保存不良字符规则的表
     for i in range(m-1):
         tab[ord(p[i])] = m - 1 - i
     res = []
@@ -2076,26 +2077,26 @@ def good_suffix(p):
     m = len(p)
     tab = [0 for _ in range(m)]
     last = 0
-    # first loop for case 1
+    # 针对情况1的第一遍循环
     for i in range(m-1, 0, -1): # m-1, m-2, ..., 1
         if is_prefix(p, i):
             last = i
         tab[i - 1] = last
-    # second loop for case 2
+    # 针对情况2的第二遍循环
     for i in range(m):
         slen = suffix_len(p, i)
         if slen != 0 and p[i - slen] != p[m - 1 - slen]:
             tab[m - 1 - slen] = m - 1 - i
     return tab
 
-# test if p[i..m-1] `is prefix of` p
+# 检查p[i..m-1]是否是p的前缀
 def is_prefix(p, i):
     for j in range(len(p) - i):
         if p[j] != p [i+j]:
             return False
     return True
 
-# length of the longest suffix of p[..i], which is also a suffix of p
+# 返回最长后缀p[..i]的长度，它同时也是p的后缀
 def suffix_len(p, i):
     m = len(p)
     j = 0
@@ -2227,7 +2228,7 @@ def bm_match(w, p):
   \State \Return $m$
 \EndFunction
 \end{algorithmic}
-易知，这一方法的存在性能关系$T(n) = 2T(n/2) + O(n)$。选择一门编程语言，实现这一算法。
+易知，这一方法存在性能关系$T(n) = 2T(n/2) + O(n)$。选择一门编程语言，实现这一算法。
 \item 任给一个$m \times n$的二维矩阵，矩阵中元素为整数，寻找其中的一个子矩阵，使得各元素相加后的和最大。
 \item 给定$n$个非负整数，用以表示一个一维等高地图，每个高度条的宽度都为1，计算降雨后这一地形的积水数量。图\ref{fig:rain-fill}给出了一个例子。
 \begin{figure}[htbp]
@@ -2239,7 +2240,7 @@ def bm_match(w, p):
 例如，等高地图数据为$\{0,1,0,2,1,0,1,3,2,1,2,1\}$，则积水数量为6。
 \item 解释在看起来“最坏”的情况下，为何KMP算法的性能仍然为线性？
 \item 使用逆序的$P_p$以避免线性时间的添加操作，改进实现纯函数式的KMP算法。
-\item 在文本“anal”中搜索字符串“ananym”，试推导树$left(right(right(right(T))))$的状态。
+\item 在文本“anal”中搜索字符串“ananym”，试推导树 $left(right(right(right(T))))$ 的状态。
 \end{itemize}
 \end{Exercise}
 
@@ -2363,7 +2364,7 @@ solveMaze m from to = map reverse $ solve from [[]] where
     visited p paths = any (p `elem`) paths
 \end{lstlisting} %$
 
-对于下面例子中给出的迷宫，这一程序可以给出全部的解。
+对于下面由矩阵\texttt{mz}定义的迷宫，这一程序可以给出全部的解。
 
 \lstset{language=Haskell}
 \begin{lstlisting}[style=Haskell]
@@ -2405,7 +2406,7 @@ solve'(S) = \left \{
   \phi & S = \phi \\
   s_1 & s_1 = e \\
   solve'(S') & C = \{ c | c \in adj(p_1), c \not\in P' \} = \phi \\
-  solve'(\{ \{p\}\cup P | p \in C\} \cup S) & otherwise, C \neq \phi
+  solve'(\{ \{p\}\cup P | p \in C\} \cup S) & C \neq \phi
   \end{array}
 \right.
 \ee
@@ -2417,7 +2418,7 @@ solve'(S) = \left \{
 dfsSolve m from to = reverse $ solve [[from]] where
     solve [] = []
     solve (c@(p:path):cs)
-        | p == to = c -- stop at the first solution
+        | p == to = c -- 找到第一个解后结束
         | otherwise = let os = filter (`notElem` path) (adjacent p) in
                           if os == []
                           then solve cs
@@ -2518,7 +2519,7 @@ solve(mz, (0, 0), (5,5))
 solve(\{\phi\}, \phi)
 \ee
 
-和迷宫问题类似，我们使用一个栈$S$来记录可能的尝试。一开始栈中只有一个空元素。我们使用一个列表$L$来记录所有可行的解。记栈顶的元素为$s_1$。它是某种尚未完成的布局，也就是1到8中部分元素的排列。将栈顶元素$s_1$弹出后，剩下的部分记为$S'$。函数$solve$的具体定义如下。
+和迷宫问题类似，我们使用一个栈$S$来记录可能的尝试。一开始栈中只有一个空元素。我们使用一个列表$L$来记录所有可行的解。记栈顶的元素为$s_1$，它是某种尚未完成的布局，也就是1到8中部分元素的排列。将栈顶元素$s_1$弹出后，剩下的部分记为$S'$。函数$solve$的具体定义如下。
 
 \be
 solve(S, L) = \left \{
@@ -2539,7 +2540,7 @@ solve(S, L) = \left \{
 
 若栈为空，表明所有可能都已经尝试完毕，我们已无法继续回溯了。列表$L$已记录下了所有找到的解，我们将其作为结果返回；否则，若栈顶元素所代表的布局长度为8，表明我们找到了一种可行的解。我们将其记录到$L$中，然后继续寻找其它的解；如果这一布局的长度小于8，表明我们需要继续摆放剩余的皇后。我们从第1到第8列中，找出尚未被占的列（通过$i \notin s_1$条件），同时它不能被斜线上的其他皇后攻击（通过$safe$条件）。可行的布局被推入栈中用于此后的搜索。
 
-函数$safe(x, C)$检查在位置$x$上的皇后是否会被$C$中的任意皇后从斜线方向攻击。有两种可能的情况，分别是$45^{\circ}$度和$135^{\circ}$度方向。由于这一皇后所在的行为$y = 1 + |C|$，其中$|C|$是中间布局$C$的长度。函数$safe$可定义如下。
+函数$safe(x, C)$检查在位置$x$上的皇后是否会被$C$中的任意皇后从斜线方向攻击。有两种可能的情况，分别是$45^{\circ}$度和$135^{\circ}$度方向。由于这一皇后所在的行为$y = 1 + |C|$，其中$|C|$是中间布局$C$的长度，因此函数$safe$可定义如下。
 
 \be
 safe(x, C) = \forall (c, r) \in zip(reverse(C), \{1, 2, ...\}), |x - c| \neq |y - r|
@@ -2659,7 +2660,7 @@ def valid(x, a):
  \subfloat[单人跳棋（Solitaire）]{\includegraphics[scale=0.5]{img/solitaire.eps}} \hspace{0.02\textwidth}
  \subfloat[Hop over]{\includegraphics[scale=0.7]{img/hop-over.eps}} \hspace{0.02\textwidth}
  \subfloat[Draught board]{\includegraphics[scale=0.3]{img/draught-board.eps}}
- \caption{跳棋趣题的变化形式，来自http://home.comcast.net/~stegmann/jumping.htm}
+ \caption{跳棋趣题的变化形式，来自 http://www.robspuzzlepage.com/jumping.htm}
  \label{fig:pegpuzzles}
 \end{figure}
 
@@ -2700,9 +2701,9 @@ solve(S, M) = \left \{
 \ee
 
 其中$P$是在最后的状态$L$之上可能的移动方法：
-\[
+\be
 P = \{ L'  | L' \in \{leap_l(L), hop_l(L), leap_r(L), hop_r(L)\}, L \neq L'\}
-\]
+\ee
 
 起始状态被保存为最后一个元素，而最后的状态是第一个元素。因此我们需要将其反转，保存在解的列表中。
 
@@ -2960,7 +2961,7 @@ import Data.Bits
 
 solve = bfsSolve [[(15, 0)]] where
     bfsSolve :: [[(Int, Int)]] -> [(Int, Int)]
-    bfsSolve [] = [] -- no solution
+    bfsSolve [] = [] -- 无解
     bfsSolve (c:cs) | (fst $ head c) == 0 = reverse c
                     | otherwise = bfsSolve (cs ++ map (:c)
                                       (filter (`valid` c) $ moves $ head c))
@@ -2980,14 +2981,14 @@ moves (a, b) = if b < 8 then trans a b else map swap (trans b a) where
 \begin{tabular}{l|c|l}
 左岸 & 河 & 右岸 \\
 \hline
-wolf, goat, cabbage, farmer &   & \\
-wolf, cabbage &   & goat, farmer \\
-wolf, cabbage, farmer &   & goat \\
-cabbage &   & wolf, goat, farmer \\
-goat, cabbage, farmer &   & wolf \\
-goat &   & wolf, cabbage, farmer \\
-goat, farmer &   & wolf, cabbage \\
- &  & wolf, goat, cabbage, farmer
+狼、羊、白菜、农夫 &   & \\
+狼、白菜 &   & 羊、农夫 \\
+狼、白菜、农夫 &   & 羊 \\
+白菜 &   & 狼、羊、农夫 \\
+羊、百次、农夫 &   & 狼 \\
+羊 &   & 狼、白菜、农夫 \\
+羊、农夫 &   & 狼、白菜 \\
+ &  & 狼、羊、白菜、农夫
 \end{tabular}
 
 第二个解：
@@ -2995,17 +2996,17 @@ goat, farmer &   & wolf, cabbage \\
 \begin{tabular}{l|c|l}
 左岸 & 河 & 右岸 \\
 \hline
- wolf, goat, cabbage, farmer & & \\
- wolf, cabbage & & goat, farmer \\
- wolf, cabbage, farmer & & goat \\
- wolf & & goat, cabbage, farmer \\
- wolf, goat, farmer & & cabbage \\
- goat & & wolf, cabbage, farmer \\
- goat, farmer & & wolf, cabbage \\
- & & wolf, goat, cabbage, farmer
+狼、羊、白菜、农夫 & & \\
+狼、白菜 & & 羊、农夫 \\
+狼、白菜、农夫 & & 羊 \\
+狼 & & 羊、白菜、农夫 \\
+狼、羊、农夫 & & 白菜 \\
+羊 & & 狼、白菜、农夫 \\
+羊、农夫 & & 狼、白菜 \\
+ & & 狼、羊、白菜、农夫
 \end{tabular}
 
-这一问题也可以用命令式的方式解决。观察可以发现我们的解是尾递归的，我们可以将它直接转换为循环。我们使用列表$S$来记录所有找到的解。一开始把只含有一个元素的表$\{(15, 0)\}$放入队列。只要队列不为空，我们就调用过程\textproc{DeQ}从头部取出元素$C$。检查是否到达了最终的目标状态，如果没有，就展开所有可能的移动选项，并将它们加入回队列的尾部，以便后继的搜索。
+这一问题也可以用命令式的方式解决。观察可以发现我们的解是尾递归的，我们可以将它直接转换为循环。我们使用列表$S$来记录所有找到的解。一开始把只含有一个元素的列表$\{(15, 0)\}$放入队列。只要队列不为空，我们就调用过程\textproc{DeQ}从头部取出元素$C$。检查是否到达了最终的目标状态，如果没有，就展开所有可能的移动选项，并将它们加入回队列的尾部，以便后继的搜索。
 
 \begin{algorithmic}[1]
 \Function{Solve}{}
@@ -3140,7 +3141,7 @@ a & 2a - b & 倒满$A$ \\
 gcd(a, b) | g
 \ee
 
-其中$ m | n $表示整数$n$可以被$m$整除。进一步说，如果$a$和$b$互素，即$gcd(a, b) = 1$，则可以得到任意自然数$g$升水。
+其中`$|$'是整除符号，$ m | n $表示整数$n$可以被$m$整除。进一步说，如果$a$和$b$互素，即$gcd(a, b) = 1$，则可以得到任意自然数$g$升水。
 
 虽然通过检查$gcd(a, b)$是否整除$g$可以判断问题是否有解，但是我们并不知道解的具体倒水操作顺序。如果我们可以找到整数$x$和$y$，使得$g = xa + yb$。就可以得到一组操作（尽管可能不是最优解）来解决此题。具体思路是这样的：不失一般性，设$x > 0, y < 0$，我们需要倒满瓶子$A$总共$x$次，倒空瓶子$B$总共$y$次。
 
@@ -3241,7 +3242,7 @@ extGcd 0 b = (b, 0, 1)
 extGcd a b = let (d, x', y') = extGcd (b `mod` a) a in
                (d, y' - x' * (b `div` a), x')
 
-solve a b g | g `mod` d /= 0 = [] -- no solution
+solve a b g | g `mod` d /= 0 = [] -- 无解
             | otherwise = solve' (x * g `div` d)
     where
       (d, x, y) = extGcd a b
@@ -3337,7 +3338,7 @@ solve' a b g = bfs [[(0, 0)]] where
   \label{fig:water-jugs}
 \end{figure}
 
-如图\ref{fig:water-jugs}所示，初始状态为(0, 0)。只有`fill A'和`fill B'可行。它们被加入记录；接下来，我们在记录的结果(3, 0)的基础上尝试`fill B'，并将新结果(3, 5)记录下来。但是在(3, 0)的基础上尝试`empty A'将回到初始状态(0, 0)。由于我们已记录了这一状态，所以这一选项被跳过。图中，所有灰色的状态，都是重复状态。
+如图\ref{fig:water-jugs}所示，初始状态为(0, 0)。只有`fillA'和`fillB'可行。它们被加入记录；接下来，我们在记录的结果(3, 0)的基础上尝试`fillB'，并将新结果(3, 5)记录下来。但是在(3, 0)的基础上尝试`empty A'将回到初始状态(0, 0)。由于我们已记录了这一状态，所以这一选项被跳过。图中，所有灰色的状态，都是重复状态。
 
 通过这样的设计，我们无需在队列的每个元素中记录操作的序列。我们可以给图\ref{fig:water-jugs}中的每个节点增加一个父节点指针，并用它从任意状态回溯到初始状态。下面的C语言例子代码给出了这一设计的定义。
 
@@ -3446,12 +3447,12 @@ struct Step* solve(int a, int b, int g) {
 \begin{lstlisting}
 void expand(struct Step* s, int a, int b, struct Step** cs) {
     int p = s->p, q = s->q;
-    cs[0] = make_step(a, q, s); /*fill A*/
-    cs[1] = make_step(p, b, s); /*fill B*/
-    cs[2] = make_step(0, q, s); /*empty A*/
-    cs[3] = make_step(p, 0, s); /*empty B*/
-    cs[4] = make_step(max(0, p + q - b), min(p + q, b), s); /*pour A*/
-    cs[5] = make_step(min(p + q, a), max(0, p + q - a), s); /*pour B*/
+    cs[0] = make_step(a, q, s); /*fillA*/
+    cs[1] = make_step(p, b, s); /*fillB*/
+    cs[2] = make_step(0, q, s); /*emptyA*/
+    cs[3] = make_step(p, 0, s); /*emptyB*/
+    cs[4] = make_step(max(0, p + q - b), min(p + q, b), s); /*pourA*/
+    cs[5] = make_step(min(p + q, a), max(0, p + q - a), s); /*pourB*/
 }
 \end{lstlisting}
 
@@ -3611,7 +3612,7 @@ M_2 = \left [
 mirror(L) = \{\{(i, n - j + 1) | \forall (i, j) \in l \} | \forall l \in L \}
 \ee
 
-我们发现矩阵对于验证移动是否可行很方便，而布局形式便于表达移动和避免重复。我们可以用类似的方法来解决华容道游戏。使用一个队列，队列中的每个元素包含两部分：一系列移动，和这些移动导致的布局。每次移动的形式为$(k, (\Delta y, \Delta x))$，表示在棋盘上移动第$k$个棋子，$\Delta y$行和$\Delta x$列。
+我们发现矩阵对于验证移动是否可行很方便，而布局形式便于表达移动和避免重复。我们可以用类似的方法来解决华容道游戏。使用一个队列，队列中的每个元素包含两部分：一系列移动，和这些移动导致的布局。每次移动的形式为$(k, (\Delta y, \Delta x))$，表示在棋盘上移动第$k$个棋子，移动方向为$(\Delta x, \Delta y)$。
 
 最开始的时候，队列中包含起始布局。只要队列不为空，我们就从队列头部取出一个元素，检查最大的一块棋子是否已经到达目标位置，即$L[10] = \{(4, 2), (4, 3), (5, 2), (5, 3)\}$。如果到达，则结束；否则，我们对每块棋子尝试向上下左右4个方向移动，并把所有可行的、不重复的布局存入队列尾部。在整个搜索过程中，我们需要保存所有找到的归一化布局以避免重复。
 
@@ -3666,7 +3667,7 @@ data Ops = Op Layout [Move]
 \lstset{language=Haskell}
 \begin{lstlisting}[style=Haskell]
 solve :: [Ops] -> [[[Point]]]-> [Move]
-solve [] _ = [] -- no solution
+solve [] _ = [] -- 无解
 solve (Op x seq : cs) visit
     | M.lookup 10 x == Just [(4, 2), (4, 3), (5, 2), (5, 3)] = reverse seq
     | otherwise = solve q visit'
@@ -3843,7 +3844,7 @@ def dup(layout):
 
 上述三个问题：狼、羊、和白菜过河问题；倒水问题；和华容道游戏的解有着共同的结构。和深度优先搜索问题类似，它们也都有起始状态和终止状态。在“狼、羊、白菜过河”问题中，起始状态是农夫、狼、羊、和白菜都在河的一岸，而对岸为空；它的终止状态是所有这些都移动到了河对岸。倒水问题的起始状态，两个瓶子都为空，而终止状态是其中任何一个瓶子盛有指定容量的水。华容道问题的起始状态是某种布局（如“横刀立马”），终止状态是另外一个布局，其中最大的棋子移动到了指定的位置。
 
-每个问题都有一系列的规则，可以从一个状态转移到另外一个状态。和深度优先搜索不同，我们“并行“地尝试所有可能的选项。在同一步内所有选项未被尝试完之前，我们不会进一步深入搜索。这一方法保证了具有最小步骤的解可以在其他解之前找出。对比我们此前画的两幅图可以发现这两种不同的搜索策略之间的差异。由于我们总是向水平方向扩展搜索空间，这种搜索被称为广度优先搜索（BFS）。
+每个问题都有一系列的规则，可以从一个状态转移到另外一个状态。和深度优先搜索不同，我们“并行“地尝试所有可能的选项。在同一步内所有选项未被尝试完之前，我们不会进一步深入搜索。这一方法保证了具有最小步骤的解可以在其他解之前找出。对比图\ref{fig:dfs-bfs-tree}可以发现这两种不同的搜索策略之间的差异。由于我们总是向水平方向扩展搜索空间，这种搜索被称为广度优先搜索（BFS）。
 
 \begin{figure}[htbp]
  \centering
@@ -3872,6 +3873,8 @@ def dup(layout):
 
 \subsubsection{贪心算法}
 \index{Grady algorithm}
+
+本节介绍“贪心策略”，也称“贪心算法”。对于某些特定问题，贪心策略能够以较小的代价，相对容易地获得最优解。我们首先介绍信息论中著名的Huffman编码问题；然后介绍在特定的币值系统中的换零钱问题。它们都是贪心算法的典型问题。
 
 \paragraph{Huffman编码}
 \index{Huffman coding}
@@ -3956,18 +3959,20 @@ Huffman发现，可以使用一棵二叉树来产生前缀码。所有的字符�
 
 我们需要从一个字符及其权重的列表，构造一棵二进制树，使得最大权重的字符，距离根节点的最近。Huffman提出了一个自底向上的解法。开始的时候，所有的字符都放入一个叶子节点中。每次我们选出两个权重最小的节点，然后把它们合并成一个分支节点。分支的权重为两个子树的权重和。我们不断选择权重最小的两棵树合并，直到最后得到一棵树。图\ref{fig:huffman-build}描述了这一构造过程。
 
+\captionsetup[subfigure]{labelformat=empty, margin=10pt}
 \begin{figure}[htbp]
  \centering
- \subfloat[1. ]{ \includegraphics[scale=0.4]{img/huffman-tr1.ps}}
- \subfloat[2. ]{ \includegraphics[scale=0.4]{img/huffman-tr2.ps}}
- \subfloat[3. ]{ \includegraphics[scale=0.4]{img/huffman-tr3.ps}} \\
- \subfloat[4. ]{ \includegraphics[scale=0.4]{img/huffman-tr4.ps}}
- \subfloat[5. ]{ \includegraphics[scale=0.4]{img/huffman-tr5.ps}} \\
- \subfloat[6. ]{ \includegraphics[scale=0.3]{img/huffman-tr6.ps}} \\
- \subfloat[7. ]{ \includegraphics[scale=0.3]{img/huffman-tr.ps}}
- \caption{构造一棵Haffman树的步骤。}
+ \subfloat[第一步]{ \includegraphics[scale=0.4]{img/huffman-tr1.ps}}
+ \subfloat[第二步]{ \includegraphics[scale=0.4]{img/huffman-tr2.ps}}
+ \subfloat[第三步]{ \includegraphics[scale=0.4]{img/huffman-tr3.ps}} \\
+ \subfloat[第四步]{ \includegraphics[scale=0.4]{img/huffman-tr4.ps}}
+ \subfloat[第五步]{ \includegraphics[scale=0.4]{img/huffman-tr5.ps}} \\
+ \subfloat[第六步]{ \includegraphics[scale=0.3]{img/huffman-tr6.ps}} \\
+ \subfloat[第七步]{ \includegraphics[scale=0.3]{img/huffman-tr.ps}}
+ \caption{构造一棵Haffman树的步骤}
  \label{fig:huffman-build}
 \end{figure}
+\captionsetup[subfigure]{labelformat=parens}
 
 我们可以重用二叉树的定义用于实现Huffman编码。每个节点要增加一个权重信息，只有叶子节点保存有字符。下面的C语言例子代码定义了这样的节点。
 
@@ -4380,11 +4385,7 @@ change(X, C) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   \phi & X = 0 \\
-  \{ c_m \} \cup change(X-c_m, C) &
-      \begin{array}{l}
-        otherwise, \\
-        c_m = max(\{c \in C, c \leq X\})
-      \end{array}
+  \{ c_m \} \cup change(X-c_m, C) & c_m = max(\{c \in C, c \leq X\})
   \end{array}
 \right.
 \ee
@@ -4421,7 +4422,7 @@ solve 142 [100, 50, 25, 5, 1]
 \EndFunction
 \end{algorithmic}
 
-下面的Python例子程序实现了这一命令式算法，结果以一个dictionary输出。
+下面的Python例子程序实现了这一命令式算法，结果以一个字典输出。
 
 \lstset{language=Python}
 \begin{lstlisting}
@@ -4465,7 +4466,7 @@ def change(x, coins):
 
 假设我们找到了兑换价值为$X$的钱的最优方案。所需要的硬币保存在列表$C_m$中。我们可以将这些硬币分成两组，$C_1$和$C_2$。它们分别等于价值$X_1$和$X_2$。我们接下来要证明，$C_1$是兑换$X_1$的最优解，且$C_2$是兑换$X_2$的最优解。
 
-\begin{proof}
+\begin{proof}[证明]
 对$X_1$，假设存在一个另一个更好的兑换方法$C_1'$，它比$C_1$需要的硬币数量更少。则兑换方法$C_1' \cup C_2$使用的硬币数量要少于$C_m$。这和$C_m$是兑换价值为$X$的钱的最优解相矛盾。同样，我们也可以证明$C_2$是兑换$X_2$的最优解。
 \end{proof}
 
@@ -4554,7 +4555,7 @@ F_8 = & F_7 + F_6 \\
 \EndFunction
 \end{algorithmic}
 
-兑换价值为0的钱，显然不需要任何硬币，所以解为空$\phi$。否则，我们查找$T[X]$获得兑换$X$的解。如果表格中这项为空，则需要递归计算。我们逐一尝试所有币值$C$中不大于$X$的硬币。寻找子问题，即兑换价值为$X-c$的最优方法。用所需的硬币数最少的一个方法加上1枚价值为$c$的硬币保存在表格中$T[X]$这一项上作为结果。
+兑换价值为0的钱，显然不需要任何硬币，所以解为空$\phi$。否则，我们查找$T[X]$获得兑换$X$的解。如果表格中这项为空，则需要递归计算。我们在$C$中逐一尝试所有币值不大于$X$的硬币，寻找子问题，即兑换价值为$X-c$的最优方法。在子问题的最优解基础上，我们再加上1枚价值为$c$的硬币，就获得了兑换$X$的最优解。然后，我们将此最优解保存在表格中的$T[X]$一项内。
 
 下面的Python例子程序实现了这一算法，它仅使用8000毫秒就给出了兑换1.42美元的最优解。
 
@@ -4739,7 +4740,7 @@ make(X, T) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   \phi & X = 0 \\
-  \{c\} \cup make(X-c, T) & otherwise, (n, c) = T[X]
+  \{c\} \cup make(X-c, T) & (n, c) = T[X]
   \end{array}
 \right.
 \ee
@@ -4773,7 +4774,7 @@ changemk x cs = makeChange x $ foldl change (singleton (0, 0)) [1..x] where
 \paragraph{最长公共子序列问题}
 \index{LCS} \index{Longest common subsequence problem}
 
-最长公共子序列问题和最长公共子串问题不同。在后缀树一节中，我们给出了如何寻找最长公共子串的方法。最长公共子序列无需是原序列中的连续部分。
+最长公共子序列问题和最长公共子串问题不同。在后缀树一章中，我们给出了如何寻找最长公共子串的方法。最长公共子序列无需是原序列中的连续部分。
 
 例如，文本“Mississippi”和“Missunderstanding”的最长公共子串为“Miss”，而最长公共子序列为“Misssi”。如图\ref{fig:lcs}所示。
 
@@ -5077,7 +5078,7 @@ $x_1$ & F & F & ... & T & ... & F \\
 \caption{子集和问题的解表格第一行}
 \end{table}
 
-使用集合中的第二个元素$x_2$，可以得到3种可能的和。和第一行类似，子集$\{x_2\}$的和为$x_2$；对于前一行中所有可能值，如果不加上$x_2$，它们仍可以得到，所以第一行中$x_1$下面的一项也应该为真；通过将$x_2$加到所有可能的和之上，我们可以得到一些新值。因此代表$x_1 + x_2$的一项应为真。
+使用集合中的第二个元素$x_2$，可以得到3种可能的和。和第一行类似，子集$\{x_2\}$的和为$x_2$；对于前一行中所有可能值，如果不加上$x_2$，它们作为子集和仍然可以得到，所以第一行中$x_1$下面的一项也应该为真；通过将$x_2$加到所有可能的和之上，我们可以得到一些新值。因此代表$x_1 + x_2$的一项应为真。
 
 \begin{table}[htbp]
 \centering
@@ -5222,7 +5223,7 @@ def subsetsum(xs, s):
     return tab[s]
 \end{lstlisting}
 
-这一命令式算法含有一个清晰的结构，通过逐一处理每个元素，最终构造出保存解的表格。这可以通过fold以纯函数式的方式实现。我们仍然使用finger树作为向量，从$s_l$伸展到$s_u$。最开始时所有项均为空。
+这一命令式算法含有一个清晰的结构，通过逐一处理每个元素，最终构造出保存解的表格。这可以通过fold以纯函数式的方式实现。我们仍然使用手指树作为向量，从$s_l$伸展到$s_u$。最开始时所有项均为空。
 
 \be
 subsetsum(X, s) = fold(build, \{\phi, \phi, ..., \}, X)[s]
@@ -5298,9 +5299,9 @@ subsetsum xs s = foldl build (fromList [[] | _ <- [l..u]]) xs `idx` s where
 \end{figure}
 \item 实现命令式的Huffman码表生成算法。
 \item 对最长公共子序列问题，另一种自底向上的解法是子表格中记录“方向”，而不是序列的长度。有三个值：‘N’代表向北，‘W’代表向西，‘NW’代表向西北。这些方向指示我们如何构建最终的结果。我们从表格的右下角开始，如果值为‘NW’，我们就沿着对角线移动到左上方的格子；如果值为‘N’，就垂直移动到上方的格子；如果为‘W’，就水平移动到左侧的格子。选择一门编程语言，实现这一算法。
-\item Levenshtein编辑距离（Edit distance）是一种衡量两个字符串相似程度的量。它定义为从字符串$s$转换到字符串$t$所需花费的成本。它被广泛用于拼写检查，OCR纠错等场景中。Levenshtein编辑距离允许三种操作：增加一个字符、删除一个字符、替换一个字符。每种操作每次只改变一个字符，下面的例子中，给出了如何从字符串“kitten”转换到“sitting”的过程，从而得出其Levenshtein编辑距离为3。
+\item Levenshtein编辑距离是一种衡量两个字符串相似程度的量。它定义为从字符串$s$转换到字符串$t$所需花费的成本。它被广泛用于拼写检查，OCR纠错等场景中。Levenshtein编辑距离允许三种操作：增加一个字符、删除一个字符、替换一个字符。每种操作每次只改变一个字符，下面的例子中，给出了如何从字符串“kitten”转换到“sitting”的过程，从而得出其Levenshtein编辑距离为3。
   \begin{enumerate}
-  \item \underline{k}itten $\rightarrow$ \underline{s}itten （将s替换为k）；
+  \item \underline{k}itten $\rightarrow$ \underline{s}itten （将k替换为s）；
   \item sitt\underline{e}n $\rightarrow$ sitt\underline{i}n （将e替换为i）；
   \item sitten $\rightarrow$ sittin\underline{g} （在结尾处插入g）。
   \end{enumerate}
@@ -5310,7 +5311,7 @@ subsetsum xs s = foldl build (fromList [[] | _ <- [l..u]]) xs `idx` s where
 
 \section{小结}
 
-本章介绍了基本的搜索方法。有些方法通过扫描在数据中寻找感兴趣的信息。它们通常具有某些结构，可以在扫描中不断更新。这可以看作是信息重用的某种特殊情况。另一种常用的策略是分而治之，通过不断减小搜索域的规模，直到找出期望的结果。本章还介绍了一些搜索问题解的方法。这些解往往不是待搜索的元素，它们可以是一系列的决策，或者是某种有组织的操作。如果存在多个解，有时人们希望寻找最优解。对于某些特殊情况，可以使用简化的策略，例如贪心策略。动态规划方法可以广泛用来解决那些含有最优子结构的问题。
+本章介绍了基本的搜索方法。有些方法通过扫描在数据中寻找感兴趣的信息，它们通常具有某些结构，可以在扫描中不断更新已知的信息。这可以看作是信息重用的某种特殊情况。Boyer-Moore众数问题、最大子序列和问题、以及字符串匹配算法都是这一类方法的例子。另一种常用的搜索策略是分而治之，通过不断减小搜索域的规模，直到找出期望的结果。典型的k选择问题、二分查找、以及Saddleback搜索都应用了分而治之的策略。本章还介绍了一些搜索问题解的方法，这些解往往不是待搜索的特定元素，它们可以是一系列的决策，或者是某种有组织的操作。深度优先和广度优先搜索法是最简单的两类解搜索策略。如果一个问题存在多个解，有时人们希望寻找最优解，动态规划方法被广泛用来解决含有最优子结构的问题。对于某些特殊情况，我们还可以使用简化的策略，例如贪心策略，以较小的代价获得最优解。
 
 \ifx\wholebook\relax\else
 
