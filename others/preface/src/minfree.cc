@@ -29,7 +29,7 @@ int findMinFree(vector<int> nums) {
 int findMinFree1(vector<int> nums) {
     int i, n = nums.size();
     for (i = 0; i < n; ++i)
-        while (nums[i] <= n && nums[i] != nums[nums[i]-1])
+        while (nums[i] <= n && nums[i] != i + 1)
             swap(nums[i], nums[nums[i] - 1]);
     for (i = 0; i < n; ++i)
         if (i + 1 != nums[i])
@@ -65,7 +65,7 @@ int main() {
             k = rand() % n;
             for (j = 0; j < k; ++j) {
                 m = rand() % n;
-                nums[m] = n + rand() % 100;
+                nums[m] = n + rand() % 100 + 1;
             }
 
             for (j = 0; j < n; ++j)
