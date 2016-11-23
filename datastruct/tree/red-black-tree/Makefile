@@ -1,7 +1,7 @@
-HEADER = 
+HEADER =
 SOURCE = rbtree-en.tex
 OBJECT = rbtree-en
-TEX = latex
+TEX = xelatex
 
 .PHONY: all
 
@@ -19,14 +19,16 @@ image:
 pdf: $(OBJECT).dvi
 	dvipdfmx $(OBJECT)
 
-tex: image
-	latex $(OBJECT)
-	latex $(OBJECT)
+tex: pdf
+
+pdf: image
+	$(TEX) $(OBJECT)
+	$(TEX) $(OBJECT)
 
 html:
 	htlatex $(OBJECT) "html, imgdir:img/"
 	mv *.png img/
 
 clean:
-	rm -f *.4ct *.4tc *.aux *.css *.dvi *.html 
+	rm -f *.4ct *.4tc *.aux *.css *.dvi *.html
 	rm -f *.idv *.lg *.log *.out *.pdf *.tmp *.xref *.cache *.zip *~

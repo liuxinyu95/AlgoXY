@@ -1,7 +1,7 @@
-HEADER = 
+HEADER =
 SOURCE = sequence-en.tex
 OBJECT = sequence-en
-TEX = latex
+TEX = xelatex
 
 .PHONY: all
 
@@ -22,12 +22,11 @@ tool:
 image:
 	$(MAKE) -C img
 
-pdf: $(OBJECT).dvi
-	dvipdfmx $(OBJECT)
+pdf: image
+	$(TEX) $(OBJECT)
+	$(TEX) $(OBJECT)
 
-tex: image
-	latex $(OBJECT)
-	latex $(OBJECT)
+tex: pdf
 
 html: image
 	htlatex.bat $(OBJECT) "html, imgdir:img/"

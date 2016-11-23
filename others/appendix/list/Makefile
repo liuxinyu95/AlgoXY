@@ -1,8 +1,8 @@
-HEADER = 
+HEADER =
 SOURCE = list-en.tex
 OBJECT = list-en
 OBJECT2 = list-cpptp-en
-TEX = latex
+TEX = xelatex
 
 .PHONY: all
 
@@ -23,12 +23,11 @@ tool:
 image:
 	$(MAKE) -C img
 
-pdf: $(OBJECT).dvi
-	dvipdfmx $(OBJECT)
+pdf: image
+	$(TEX) $(OBJECT)
+	$(TEX) $(OBJECT)
 
-tex: image
-	latex $(OBJECT)
-	latex $(OBJECT)
+tex: pdf
 
 cpptp:
 	latex $(OBJECT2)

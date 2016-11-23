@@ -1,7 +1,7 @@
-HEADER = 
+HEADER =
 SOURCE = bheap-en.tex
 OBJECT = bheap-en
-TEX = latex
+TEX = xelatex
 
 .PHONY: all
 
@@ -19,16 +19,15 @@ haskell:
 image:
 	$(MAKE) -C img
 
-pdf: $(OBJECT).dvi
-	dvipdfmx $(OBJECT)
+pdf: image
+	$(TEX) $(OBJECT)
+	$(TEX) $(OBJECT)
 
-tex: image
-	latex $(OBJECT)
-	latex $(OBJECT)
+tex: pdf
 
 html: image
 	htlatex.bat $(OBJECT) "html, imgdir:img/"
 	mv *.png img/
 
 clean:
-	rm *.aux *.dvi *.log *.out *.pdf *~
+	rm -f *.aux *.dvi *.log *.out *.pdf *~

@@ -1,7 +1,7 @@
-HEADER = 
+HEADER =
 SOURCE = avltree-en.tex
 OBJECT = avltree-en
-TEX = latex
+TEX = xelatex
 
 .PHONY: all
 
@@ -16,17 +16,16 @@ haskell:
 image:
 	$(MAKE) -C img
 
-pdf: $(OBJECT).dvi
-	dvipdfmx $(OBJECT)
+tex: pdf
 
-tex: image
-	latex $(OBJECT)
-	latex $(OBJECT)
+pdf: image
+	$(TEX) $(OBJECT)
+	$(TEX) $(OBJECT)
 
 html:
 	htlatex $(OBJECT) "html, imgdir:img/"
 	mv *.png img/
 
 clean:
-	rm -f *.4ct *.4tc *.aux *.css *.dvi *.html 
+	rm -f *.4ct *.4tc *.aux *.css *.dvi *.html
 	rm -f *.idv *.lg *.log *.out *.pdf *.tmp *.xref *.cache *.zip *~

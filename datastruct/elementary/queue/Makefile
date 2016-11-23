@@ -33,4 +33,4 @@ html: image
 	mv *.png img/
 
 clean:
-	rm *.aux *.dvi *.log *.out *.pdf *~
+	rm -f *.aux *.dvi *.log *.out *.pdf *~
