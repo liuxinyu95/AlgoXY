@@ -37,7 +37,7 @@ image:
 index:
 	makeindex $(BOOK)
 
-$(BOOK).pdf: image $(SRC) $(CHAPTER_SRC)
+$(BOOK).pdf: image $(SRC) $(CHAPTER_OBJS)
 	$(LATEX) $(BOOK).tex
 	makeindex $(BOOK).idx
 	$(LATEX) $(BOOK).tex
