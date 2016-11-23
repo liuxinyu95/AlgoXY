@@ -1,11 +1,12 @@
-HEADER = 
+HEADER =
 SOURCE = preface-en.tex
 OBJECT = preface-en
-TEX = latex
+TEX = xelatex
 
 .PHONY: all
 
 all: pdf
+tex: pdf
 
 cpp:
 	$(MAKE) cpp -C src
@@ -22,12 +23,9 @@ tool:
 image:
 	$(MAKE) -C img
 
-pdf: $(OBJECT).dvi
-	dvipdfmx $(OBJECT)
-
-tex: image
-	latex $(OBJECT)
-	latex $(OBJECT)
+pdf: image
+	$(TEX) $(OBJECT)
+	$(TEX) $(OBJECT)
 
 html: image
 	htlatex.bat $(OBJECT) "html, imgdir:img/"
