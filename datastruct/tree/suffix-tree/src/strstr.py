@@ -153,6 +153,7 @@ class StrSTreeTest:
         self.__test_lpalindrome__("banana")
         self.__test_lpalindrome__("cacao")
         self.__test_lpalindrome__("Woolloomooloo")
+        self.__test_lpalindrome__("abacoxyocaba"); #false case so far.
 
     def __test_lpalindrome__(self, s):
         print "longest palindrome of", s, "=", self.util.find_lpalindrome(s)
