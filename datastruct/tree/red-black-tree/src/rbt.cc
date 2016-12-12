@@ -108,6 +108,8 @@ Node* rightRotate(Node* t, Node* y) {
 
 // insertion and deletion
 
+Node* insertFix(Node* t, Node* x);
+
 // returns the new root
 Node* insert(Node* t, Key key) {
     Node* root = t;
@@ -209,6 +211,8 @@ Node* makeBlack(Node* parent, Node* x) {
     }
 }
 
+Node* deleteFix(Node* t, Node* db);
+
 Node* del(Node* t, Node* x) {
     if (!x) return t;
     Node* parent = x->parent;
@@ -226,10 +230,10 @@ Node* del(Node* t, Node* x) {
         parent = y->parent;
         db = y->right;
         x->key = y->key;
-        y.replaceWith(y->right);
+        y->replaceWith(y->right);
         x = y;
     }
-    if (x.color == Color::BLACK)
+    if (x->color == Color::BLACK)
         t = deleteFix(t, makeBlack(parent, db));
     remove(x);
     return t;
@@ -237,7 +241,7 @@ Node* del(Node* t, Node* x) {
 
 Node* deleteFix(Node* t, Node* db) {
     if (!db) return nullptr;    // remove the root from a leaf tree;
-    while (db != t && db->Color == Color::DOUBLY_BLACK) {
+    while (db != t && db->color == Color::DOUBLY_BLACK) {
         if (db->sibling() != nullptr) {
             if (isRed(db->sibling())) {
                 // case 1: the sibling is red, (transform to make the sibling black)
@@ -253,7 +257,7 @@ Node* deleteFix(Node* t, Node* db) {
                     setColors(db, Color::BLACK,
                               db->parent, Color::BLACK,
                               db->sibling()->left, db->parent->color);
-                    t = rightRotate(t, db->sibling);
+                    t = rightRotate(t, db->sibling());
                     t = leftRotate(t, db->parent);
                 } else {
                     setColors(db, Color::BLACK,
@@ -263,7 +267,7 @@ Node* deleteFix(Node* t, Node* db) {
                     t = rightRotate(t, db->parent);
                 }
             } else if (isBlack(db->sibling()) && isRed(db->sibling()->right)) {
-                if (db == db->parent()->left) {
+                if (db == db->parent->left) {
                     setColors(db, Color::BLACK,
                               db->parent, Color::BLACK,
                               db->sibling(), db->parent->color,
@@ -284,15 +288,15 @@ Node* deleteFix(Node* t, Node* db) {
                 setColors(db, Color::BLACK,
                           db->sibling(), Color::RED);
                 blacken(db->parent);
-                db = db->parent
+                db = db->parent;
             }
         } else { // no sibling, we can move the blackness up
-            db->color = BLACK;
+            db->color = Color::BLACK;
             blacken(db->parent);
             db = db->parent;
         }
     }
-    t->Color = BLACK;
+    t->color = Color::BLACK;
     return t;
 }
 
@@ -311,7 +315,7 @@ string toStr(Node* t) {
     if (t == nullptr) return ".";
     ostringstream s;
     s << "(" << toStr(t->left) << " " << t->key << ":"
-      << t->color == Color::RED ? "R" : "B" << " " << toStr(t->right) << ")";
+      << (t->color == Color::RED ? "R" : "B") << " " << toStr(t->right) << ")";
     return s.str();
 }
 
@@ -329,11 +333,11 @@ struct Test {
         // t1 = ((1:B, 2:R, (4:B, 3:R, .)), 5:B, (6:B, 7:R, (8:R, 9:B, .)))
         t1 = new Node(5, Color::BLACK);
         t1->setChildren(new Node(2), new Node(7));
-        t1->left->seteChildren(new Node(1, Color::BLACK), new Node(4, Color::BLACK));
+        t1->left->setChildren(new Node(1, Color::BLACK), new Node(4, Color::BLACK));
         t1->right->setChildren(new Node(6, Color::BLACK), new Node(9, Color::BLACK));
         t1->left->right->setLeft(new Node(3));
         t1->right->right->setLeft(new Node(8));
-        printf("t1 1..9\n\s\n", toStr(t1).c_str());
+        printf("t1 1..9\n%s\n", toStr(t1).c_str());
         // t2 as figure 13.4 in CLRS
     }
 
