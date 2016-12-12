@@ -355,6 +355,7 @@ struct Test {
 
     void run() {
         testRotate();
+        testInsert();
     }
 
     void testRotate() {
@@ -371,6 +372,13 @@ struct Test {
         printf("left rotate at root:\n%s\n", toStr(t).c_str());
         t = rightRotate(t, t); // rotate back
         printf("right rotate back:\n%s\n", toStr(t).c_str());
+        delete t;
+    }
+
+    void testInsert() {
+        Node* t = clone(t2);
+        t = insert(t, 4);
+        printf("t2: after insert 4:\n%s\n", toStr(t).c_str());
         delete t;
     }
 };
