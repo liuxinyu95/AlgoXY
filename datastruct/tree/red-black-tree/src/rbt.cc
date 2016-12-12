@@ -88,7 +88,7 @@ Node* leftRotate(Node* t, Node* x) {
     x->replaceWith(y);
     x->setChildren(a, b);
     y->setChildren(x, c);
-    if (parent) t = y;
+    if (!parent) t = y;
     return t;
 }
 
@@ -102,7 +102,7 @@ Node* rightRotate(Node* t, Node* y) {
     y->replaceWith(x);
     y->setChildren(b, c);
     x->setChildren(a, y);
-    if (parent) t = x;
+    if (!parent) t = x;
     return t;
 }
 
