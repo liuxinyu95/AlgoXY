@@ -359,15 +359,16 @@ struct Test {
 
     void testRotate() {
         Node* t = clone(t1);
-        Node* x = t->right;    //7:R
+        Node* x = t->right;    // 7:R
         t = leftRotate(t, x);  // (6 7 (8 9 .)) ==> ((6 7 8) 9 .)
         printf("left rotate at 7:R\n%s\n", toStr(t).c_str());
+        t = rightRotate(t, t->right);  // rotate back
+        printf("right rotate back:\n%s\n", toStr(t).c_str());
         delete t;
     }
 };
 
 int main(int, char**) {
-    Test t;
-    t.run();
+    (new Test())->run();
     return 0;
 }
