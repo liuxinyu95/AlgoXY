@@ -2,17 +2,17 @@
 
 # rbtree.py
 # Copyright (C) 2010 Liu Xinyu (liuxinyu95@gmail.com)
-# 
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -43,7 +43,7 @@ class Node:
         self.set_right(y)
 
     #parent<->self ==> parent<->y
-    def replace_by(self, y):    
+    def replace_by(self, y):
         if self.parent is None:
             if y!= None: y.parent = None
         elif self.parent.left == self:
@@ -68,7 +68,7 @@ class Node:
 def set_color(nodes, colors):
     for (n, c) in zip(nodes, colors):
         n.color = c
-            
+
 # rotations
 
 # (a x (b y c)) ==> ((a x b) y c)
@@ -204,14 +204,14 @@ def rb_delete_fix(t, db):
     while(db!=t and db.color==DOUBLY_BLACK):
         if db.sibling() != None:
             # case 1:  the sibling is red, (transform to make the sibling black)
-            if is_red(db.sibling()): 
+            if is_red(db.sibling()):
                 set_color([db.parent, db.sibling()],[RED, BLACK])
                 if(db == db.parent.left):
                     t=left_rotate(t, db.parent)
                 else:
                     t=right_rotate(t, db.parent)
             # case 3, 4: the sibling is black, and one nephew is red
-            elif is_black(db.sibling()) and is_red(db.sibling().left): 
+            elif is_black(db.sibling()) and is_red(db.sibling().left):
                 if db == db.parent.left:
                     colors=[BLACK, BLACK, db.parent.color]
                     set_color([db, db.parent, db.sibling().left], colors)
@@ -296,7 +296,7 @@ class Test:
     def test_rotate(self):
         t = rbtree_clone(self.t1)
         x = t.right #7R
-        t = left_rotate(t, x) #(6 7 (8 9 .) ==> ((6 7 8) 9 .)
+        t = left_rotate(t, x) #(6 7 (8 9 .)) ==> ((6 7 8) 9 .)
         print "left rotate at 7:R\n", rbtree_to_str(t)
         t = right_rotate(t, t.right) #rotate back
         print "right rotate back:\n", rbtree_to_str(t)
@@ -335,7 +335,7 @@ class Test:
         t.right.left.set_left(Node(8, BLACK))
         t.right.right.set_left(Node(11, BLACK))
         print "test detailed case...\n", rbtree_to_str(t)
-        self.__test_del_n(t, 1) 
+        self.__test_del_n(t, 1)
         # test no sibling case
         t.left.set_right(None)
         print "test no sibling case...\n", rbtree_to_str(t)

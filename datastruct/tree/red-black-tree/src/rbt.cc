@@ -338,10 +338,31 @@ struct Test {
         t1->left->right->setLeft(new Node(3));
         t1->right->right->setLeft(new Node(8));
         printf("t1 1..9\n%s\n", toStr(t1).c_str());
+
         // t2 as figure 13.4 in CLRS
+        t2 = new Node(11, Color::BLACK);
+        t2->setChildren(new Node(2), new Node(14, Color::BLACK));
+        t2->left->setChildren(new Node(1, Color::BLACK), new Node(7, Color::BLACK));
+        t2->right->setRight(new Node(15));
+        t2->left->right->setChildren(new Node(5), new Node(8));
+        printf("t2, CLRS fig 13.4\n%s\n", toStr(t2).c_str());
+    }
+
+    ~Test() {
+        delete t1;
+        delete t2;
     }
 
     void run() {
+        testRotate();
+    }
+
+    void testRotate() {
+        Node* t = clone(t1);
+        Node* x = t->right;    //7:R
+        t = leftRotate(t, x);  // (6 7 (8 9 .)) ==> ((6 7 8) 9 .)
+        printf("left rotate at 7:R\n%s\n", toStr(t).c_str());
+        delete t;
     }
 };
 
