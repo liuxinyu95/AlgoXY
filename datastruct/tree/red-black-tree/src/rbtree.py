@@ -301,7 +301,7 @@ class Test:
         t = right_rotate(t, t.right) #rotate back
         print "right rotate back:\n", rbtree_to_str(t)
         t = rbtree_clone(self.t1)
-        t = left_rotate(t, t) #(2 5 (6 7 9) ==> ((2 5 6) 7 9)
+        t = left_rotate(t, t) #(2 5 (6 7 9)) ==> ((2 5 6) 7 9)
         print "left rotate at root:\n", rbtree_to_str(t)
         t = right_rotate(t, t) #rotate back
         print "right rotate back:\n", rbtree_to_str(t)

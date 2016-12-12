@@ -365,10 +365,17 @@ struct Test {
         t = rightRotate(t, t->right);  // rotate back
         printf("right rotate back:\n%s\n", toStr(t).c_str());
         delete t;
+
+        t = clone(t1);
+        t = leftRotate(t, t);  // (2 5 (6 7 9)) ==> ((2 5 6) 7 9)
+        printf("left rotate at root:\n%s\n", toStr(t).c_str());
+        t = rightRotate(t, t); // rotate back
+        printf("right rotate back:\n%s\n", toStr(t).c_str());
+        delete t;
     }
 };
 
 int main(int, char**) {
-    (new Test())->run();
+    Test().run();
     return 0;
 }
