@@ -1,7 +1,8 @@
 #include <cstdlib>
 #include <string>
-#include <sstream>
 #include <vector>
+#include <sstream>
+#include <iostream>
 
 using namespace std;
 
@@ -357,6 +358,7 @@ struct Test {
     void run() {
         testRotate();
         testInsert();
+        testDelete();
     }
 
     void testRotate() {
@@ -385,6 +387,29 @@ struct Test {
         t = fromList(vector<int>({5, 2, 7, 1, 4, 6, 9, 3, 8}));
         printf("list->tree, create t1 by insertion\n%s\n", toStr(t).c_str());
         delete t;
+    }
+
+    void testDelete(Node* tree, int n) {
+        Node* t = clone(tree);
+        t = del(t, search(t, n));
+        printf("del %d: %s\n", n, toStr(t).c_str());
+        assertEqual("search after del: ", search(t, n), (Node*)nullptr);
+        delete t;
+    }
+
+    void testDelete() {
+        int i;
+        for (i = 1; i < 10; ++i)
+            testDelete(t1, i);
+        testDelete(t1, 11);     // del a non-exist value
+    }
+
+    template<typename Str, typename T>
+    void assertEqual(Str msg, T x, T y) {
+        if (x == y)
+            printf("%s OK\n", msg);
+        else
+            cout << msg << x << "!=" << y << " Fail\n";
     }
 };
 
