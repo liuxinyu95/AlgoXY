@@ -22,8 +22,8 @@ struct Node {
                                         parent(nullptr) {}
 
     virtual ~Node() {
-        if (left) delete left;
-        if (right) delete right;
+        delete left;
+        delete right;
     }
 
     void setLeft(Node* x) {
@@ -402,6 +402,59 @@ struct Test {
         for (i = 1; i < 10; ++i)
             testDelete(t1, i);
         testDelete(t1, 11);     // del a non-exist value
+        Node* t = new Node(1, Color::BLACK);    // leaf case
+        testDelete(t, 1);
+        delete t;
+
+        // test case 2
+        t = new Node(7, Color::BLACK);
+        t->setChildren(new Node(3, Color::BLACK), new Node(10, Color::BLACK));
+        t->left->setChildren(new Node(2, Color::BLACK), new Node(5, Color::BLACK));
+        t->right->setChildren(new Node(9, Color::BLACK), new Node(12, Color::BLACK));
+        t->left->left->setLeft(new Node(1, Color::BLACK));
+        t->left->right->setChildren(new Node(4, Color::BLACK), new Node(6, Color::BLACK));
+        t->right->left->setLeft(new Node(8, Color::BLACK));
+        t->right->right->setLeft(new Node(11, Color::BLACK));
+        printf("test detailed case...\n%s\n", toStr(t).c_str());
+        testDelete(t, 1);
+
+        // test no sibling case
+        delete t->left->right;
+        t->left->setRight(nullptr);
+        printf("test no sibling case...\n%s\n", toStr(t).c_str());
+        testDelete(t, 1);
+        delete t;
+
+        // test case 1
+        t = new Node(3, Color::BLACK);
+        t->setChildren(new Node(2, Color::BLACK), new Node(6));
+        t->left->setLeft(new Node(1, Color::BLACK));
+        t->right->setChildren(new Node(5, Color::BLACK), new Node(7, Color::BLACK));
+        t->right->left->setLeft(new Node(4, Color::BLACK));
+        t->right->right->setRight(new Node(8, Color::BLACK));
+        printf("test case 1...\n%s\n", toStr(t).c_str());
+        testDelete(t, 1);
+        delete t;
+
+        // test case 3
+        t = new Node(2, Color::BLACK);
+        t->setChildren(new Node(1, Color::BLACK), new Node(6, Color::BLACK));
+        t->left->setLeft(new Node(0, Color::BLACK));
+        t->right->setChildren(new Node(4), new Node(7, Color::BLACK));
+        t->right->left->setChildren(new Node(3, Color::BLACK), new Node(5, Color::BLACK));
+        printf("test case 3\n%s\n", toStr(t).c_str());
+        testDelete(t, 0);
+        delete t;
+
+        // test case 4
+        t = new Node(6, Color::BLACK);
+        t->setChildren(new Node(4, Color::BLACK), new Node(7, Color::BLACK));
+        t->left->setChildren(new Node(2), new Node(5, Color::BLACK));
+        t->right->setRight(new Node(8, Color::BLACK));
+        t->left->left->setChildren(new Node(1, Color::BLACK), new Node(3, Color::BLACK));
+        printf("test case 4\n%s\n", toStr(t).c_str());
+        testDelete(t, 8);
+        delete t;
     }
 
     template<typename Str, typename T>
