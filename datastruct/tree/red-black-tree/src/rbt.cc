@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <string>
 #include <sstream>
+#include <vector>
 
 using namespace std;
 
@@ -379,6 +380,10 @@ struct Test {
         Node* t = clone(t2);
         t = insert(t, 4);
         printf("t2: after insert 4:\n%s\n", toStr(t).c_str());
+        delete t;
+
+        t = fromList(vector<int>({5, 2, 7, 1, 4, 6, 9, 3, 8}));
+        printf("list->tree, create t1 by insertion\n%s\n", toStr(t).c_str());
         delete t;
     }
 };
