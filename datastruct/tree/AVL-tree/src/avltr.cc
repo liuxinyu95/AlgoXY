@@ -46,18 +46,6 @@ struct Node {
         }
         parent = nullptr;
     }
-
-    Node* sibling() {
-        return parent->left == this ? parent->right : parent->left;
-    }
-
-    Node* uncle() {
-        return parent->sibling();
-    }
-
-    Node* grandparent() {
-        return parent->parent;
-    }
 };
 
 // Rotation. It doens't change the delta
@@ -140,11 +128,11 @@ Node* insertFix(Node* t, Node* x) {
         p = x->parent;
         l = x->parent->left;
         r = x->parent->right;
-        if (abs(d1) == 1 && abs(d2) == 0)
+        if (abs(d1) == 1 && abs(d2) == 0) {
             return t;
-        else if (abs(d1) == 0 && abs(d2) == 1)
+        } else if (abs(d1) == 0 && abs(d2) == 1) {
             x = x->parent;
-        else if (abs(d1) == 1 && abs(d2) == 2) {
+        } else if (abs(d1) == 1 && abs(d2) == 2) {
             if (d2 == 2) {
                 if (r->delta == 1) { // right-right case
                     p->delta = 0;
@@ -163,7 +151,7 @@ Node* insertFix(Node* t, Node* x) {
             if (d2 == -2) {
                 if (l->delta == -1) { // left-left case
                     p->delta = 0;
-                    r->delta = 0;
+                    l->delta = 0;
                     t = rightRotate(t, p);
                 }
                 if (l->delta == 1) { // left-right case
@@ -247,9 +235,7 @@ int main(int argc, char** argv) {
         for (i = 0; i < n; ++i)
             swap(xs[i], xs[rand() % 1000]);
         ys = vector<Key>(xs.begin(), xs.begin() + rand() % 1000);
-        printf("list prepared, len=%lu\n", ys.size());
         t = fromList(ys);
-        printf("t created, verify...\n");
         if (!isBST(t, ys)) {
             copy(ys.begin(), ys.end(), ostream_iterator<Key>(cout, ", "));
             printf("t=%s\n", toStr(t).c_str());
@@ -260,7 +246,6 @@ int main(int argc, char** argv) {
             assert(false);
         }
         delete t;
-        printf("t deleted\n");
     }
     printf("done\n");
     return 0;
