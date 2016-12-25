@@ -138,8 +138,7 @@ Node* insertFix(Node* t, Node* x) {
                     p->delta = 0;
                     r->delta = 0;
                     t = leftRotate(t, p);
-                }
-                if (r->delta == -1) { // right-left case
+                } else if (r->delta == -1) { // right-left case
                     dy = r->left->delta;
                     p->delta = dy == 1 ? -1 : 0;
                     r->left->delta = 0;
@@ -147,14 +146,12 @@ Node* insertFix(Node* t, Node* x) {
                     t = rightRotate(t, r);
                     t = leftRotate(t, p);
                 }
-            }
-            if (d2 == -2) {
+            } else if (d2 == -2) {
                 if (l->delta == -1) { // left-left case
                     p->delta = 0;
                     l->delta = 0;
                     t = rightRotate(t, p);
-                }
-                if (l->delta == 1) { // left-right case
+                } else if (l->delta == 1) { // left-right case
                     dy = l->right->delta;
                     l->delta = dy == 1 ? -1 : 0;
                     l->right->delta = 0;
