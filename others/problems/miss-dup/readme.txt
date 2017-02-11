@@ -1,4 +1,4 @@
-Problems:
+Given numbers from 1 to n, after some processing, there are some changes. 1) The order is shuffled; 2) One number x is mutated to y, here both x, y are from 1 to n. Develop a method to find the x and y in linear time with constant space.
 
-There is a list with N elements, all numbers are non-negative integters.
-All numbers are unique except for one n1, and there is one number n2 missed. Please give a solution to find the duplicated one and the missed one in linear time.
+Examples
+[3, 1, 3, 5, 4] ==> x = 2, y = 3
