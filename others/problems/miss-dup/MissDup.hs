@@ -1,5 +1,14 @@
 module MissDup where
 
+-- Given numbers from 1 to n, after some processing, there are some changes.
+--   1) The order is shuffled;
+--   2) One number x is mutated to y, here both x, y are from 1 to n.
+-- Develop a method to find the x and y in linear time with constant space.
+
+-- Examples
+-- [3, 1, 3, 5, 4] ==> x = 2, y = 3
+
+
 import Data.List (partition)
 import Test.QuickCheck
 
@@ -20,4 +29,16 @@ solve xs@(_:_:_) l u | k < m - l + 1 = (sl - sl', sr' - sr)
     (sl', sr') = (sum as, sum bs)
 
 -- Verification
-xs = [3, 1, 2, 2, 5]
+
+data Sample = Sample [Integer] Integer deriving (Show)
+
+instance Arbitrary Sample where
+  arbitrary = do
+    n <- choose (2, 100)
+    (x:xs) <- shuffle [1..n]
+    delta <- choose (1, n-1)
+    return $ let y = (x + delta) `mod` n in Sample (y:xs) x
+
+
+prop_solve :: Sample -> Bool
+prop_solve (Sample xs@(y:_) x) = let (x', y') = missDup xs in x == x' && y == y'
