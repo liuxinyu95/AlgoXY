@@ -14,19 +14,18 @@ import Test.QuickCheck
 
 -- Divide and Conquer
 
-missDup xs = solve xs 1 (toInteger $ length xs)
-
-solve xs@(_:_:_) l u | k < m - l + 1 = (sl - sl', sr' - sr)
-                     | k > m - l + 1 = (sr - sr', sl' - sl)
-                     | sl == sl' = solve bs (m + 1) u
-                     | otherwise = solve as l m
-  where
-    m = (l + u) `div` 2
-    (as, bs) = partition (<=m) xs
-    k = toInteger $ length as
-    sl = (l + m) * (m - l + 1) `div` 2
-    sr = (m + 1 + u) * (u - m) `div` 2
-    (sl', sr') = (sum as, sum bs)
+missDup xs = solve xs 1 (toInteger $ length xs) where
+  solve xs@(_:_:_) l u | k < m - l + 1 = (sl - sl', sr' - sr)
+                       | k > m - l + 1 = (sr - sr', sl' - sl)
+                       | sl == sl' = solve bs (m + 1) u
+                       | otherwise = solve as l m
+      where
+          m = (l + u) `div` 2
+          (as, bs) = partition (<=m) xs
+          k = toInteger $ length as
+          sl = (l + m) * (m - l + 1) `div` 2
+          sr = (m + 1 + u) * (u - m) `div` 2
+          (sl', sr') = (sum as, sum bs)
 
 -- Verification
 
@@ -36,8 +35,8 @@ instance Arbitrary Sample where
   arbitrary = do
     n <- choose (2, 100)
     (x:xs) <- shuffle [1..n]
-    delta <- choose (1, n-1)
-    return $ let y = (x + delta) `mod` n in Sample (y:xs) x
+    y <- elements xs
+    return $ Sample (y:xs) x
 
 
 prop_solve :: Sample -> Bool
