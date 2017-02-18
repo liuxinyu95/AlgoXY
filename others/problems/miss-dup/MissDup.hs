@@ -29,14 +29,14 @@ missDup xs = solve xs 1 (toInteger $ length xs) where
 
 -- Verification
 
-data Sample = Sample [Integer] Integer deriving (Show)
+data Sample = Sample [Integer] (Integer, Integer) deriving (Show)
 
 instance Arbitrary Sample where
   arbitrary = do
     n <- choose (2, 100)
-    (x:xs) <- shuffle [1..n]
-    y <- elements xs
-    return $ Sample (y:xs) x
+    (x:y:xs) <- shuffle [1..n]
+    xs' <- shuffle (y:y:xs)
+    return $ Sample xs' (x, y)
 
 prop_solve :: Sample -> Bool
-prop_solve (Sample xs@(y:_) x) = let (x', y') = missDup xs in x == x' && y == y'
+prop_solve (Sample xs (x, y)) = let (x', y') = missDup xs in x == x' && y == y'
