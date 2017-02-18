@@ -38,6 +38,5 @@ instance Arbitrary Sample where
     y <- elements xs
     return $ Sample (y:xs) x
 
-
 prop_solve :: Sample -> Bool
 prop_solve (Sample xs@(y:_) x) = let (x', y') = missDup xs in x == x' && y == y'
