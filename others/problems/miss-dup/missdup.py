@@ -99,6 +99,23 @@ def solve3(xs):
                 (xs[i], xs[j]) = (xs[j], xs[i])
     return (miss, dup)
 
+# method 4,
+#   sgn encode
+def solve4(xs):
+    miss, dup = -1, -1
+    n = len(xs)
+    for i in range(n):
+        xs[i] = xs[i] + 1 # change from 0 ~ n-1, to 1 ~ n
+    s = sum(xs)
+    for i in range(n):
+        j = abs(xs[i]) - 1
+        if xs[j] < 0:
+            dup = j
+            miss = dup + n * (n + 1) / 2 - s
+            break
+        xs[j] = - abs(xs[j])
+    return (miss, dup)
+
 def test_solve():
     for i in range(100):
         n = random.randint(0, 10000)
@@ -108,9 +125,10 @@ def test_solve():
         dup = random.choice(xs)
         xs.append(dup)
         random.shuffle(xs)
-        assert(solve(xs[0:n]) == (lost, dup))
-        assert(solve_inplace(xs[0:n]) == (lost, dup))
-        assert(solve3(xs[0:n]), (lost, dup))
+        __assert(solve(xs[0:n]), (lost, dup))
+        __assert(solve_inplace(xs[0:n]), (lost, dup))
+        __assert(solve3(xs[0:n]), (lost, dup))
+        __assert(solve4(xs[0:n]), (lost, dup))
 
 def __assert(x, y):
     if x != y:
