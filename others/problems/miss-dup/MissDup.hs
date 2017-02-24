@@ -28,7 +28,6 @@ missDup xs = solve xs 1 (toInteger $ length xs) where
           (sl', sr') = (sum as, sum bs)
 
 -- Equations
-missDup' :: [Integer] -> (Integer, Integer)
 missDup' xs = ((b `div` a - a) `div` 2, (b `div` a + a) `div` 2) where
   ys = zip xs [1..]
   a = sum [x - y | (x, y) <- ys]
