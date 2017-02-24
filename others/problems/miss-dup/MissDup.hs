@@ -27,6 +27,13 @@ missDup xs = solve xs 1 (toInteger $ length xs) where
           sr = (m + 1 + u) * (u - m) `div` 2
           (sl', sr') = (sum as, sum bs)
 
+-- Equations
+missDup' :: [Integer] -> (Integer, Integer)
+missDup' xs = ((b `div` a - a) `div` 2, (b `div` a + a) `div` 2) where
+  ys = zip xs [1..]
+  a = sum [x - y | (x, y) <- ys]
+  b = sum [x^2 - y^2 | (x, y) <- ys]
+
 -- Verification
 
 data Sample = Sample [Integer] (Integer, Integer) deriving (Show)
@@ -40,3 +47,6 @@ instance Arbitrary Sample where
 
 prop_solve :: Sample -> Bool
 prop_solve (Sample xs (x, y)) = let (x', y') = missDup xs in x == x' && y == y'
+
+prop_equation :: Sample -> Bool
+prop_equation (Sample xs (x, y)) = let (x', y') = missDup' xs in x == x' && y == y'
