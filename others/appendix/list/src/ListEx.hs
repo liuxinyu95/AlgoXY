@@ -37,11 +37,12 @@ perm _ 0 = [[]]
 perm xs r | length xs < r = [[]]
           | otherwise = [ x:ys | x <-xs, ys <- perm (delete x xs) (r-1)]
 
-comb _  0 = [[]]
+comb :: [a] -> Int -> [[a]]
+comb _  0 = []
 comb xs 1 = [[x] | x <- xs]
-comb xs r | length xs < r = [[]]
+comb xs r | length xs < r = []
           | otherwise = let (x:xs') = xs in
-              filter (/=[]) ([ x:ys | ys <- comb xs' (r-1)] ++ comb xs' r)
+              [x:ys | ys <- comb xs' (r-1)] ++ comb xs' r
 
 prop_rindex :: [Int] -> Bool
 prop_rindex xs = xs == (map (atR xs) $ reverse [0..length xs -1])
