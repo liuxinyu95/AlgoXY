@@ -37,7 +37,6 @@ perm _ 0 = [[]]
 perm xs r | length xs < r = [[]]
           | otherwise = [ x:ys | x <-xs, ys <- perm (delete x xs) (r-1)]
 
-comb :: [a] -> Int -> [[a]]
 comb _  0 = []
 comb xs 1 = [[x] | x <- xs]
 comb xs r | length xs < r = []
