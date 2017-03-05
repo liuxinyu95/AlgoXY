@@ -40,8 +40,7 @@ perm xs r | length xs < r = [[]]
 comb _  0 = []
 comb xs 1 = [[x] | x <- xs]
 comb xs r | length xs < r = []
-          | otherwise = let (x:xs') = xs in
-              [x:ys | ys <- comb xs' (r-1)] ++ comb xs' r
+          | otherwise = let (x:xs') = xs in [x:ys | ys <- comb xs' (r-1)] ++ comb xs' r
 
 prop_rindex :: [Int] -> Bool
 prop_rindex xs = xs == (map (atR xs) $ reverse [0..length xs -1])
