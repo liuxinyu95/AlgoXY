@@ -33,10 +33,12 @@ permutation xs n r=  if length xs  <=  n - r
         then [[]]
         else [x:ys | x  <-  xs, ys  <-  permutation (delete x xs) n r]
 
+-- Given a list of n elements, pick r from it to for permutation.
 perm _ 0 = [[]]
 perm xs r | length xs < r = [[]]
           | otherwise = [ x:ys | x <-xs, ys <- perm (delete x xs) (r-1)]
 
+-- Given a list of n elements, pick r from it to form combination.
 comb _  0 = []
 comb xs 1 = [[x] | x <- xs]
 comb xs r | length xs < r = []

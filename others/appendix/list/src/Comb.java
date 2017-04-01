@@ -13,7 +13,7 @@ public class Comb {
         }
     }
 
-    // DFS method to generate combinations
+    // DFS method (without recursion) to generate combinations
     public static <T> List<List<T>> comb(final List<T> xs, final int r) {
         List<List<T>> res = new ArrayList<>();
         if (xs.size() < r || r <= 0) { return res; }
@@ -34,11 +34,34 @@ public class Comb {
         return res;
     }
 
+    // DFS with recursion
+    public static <T> List<List<T>> combination(final List<T> xs, final int r) {
+        return comb(xs, r, 0, Collections.emptyList(), new ArrayList<>());
+    }
+
+    private static <T> List<List<T>> comb(final List<T> xs, final int r,
+                                          final int i, final List<T> ys,
+                                          List<List<T>> acc) {
+        if (ys.size() == r)
+            acc.add(ys);
+        else {
+            for (int j = i; j < xs.size(); ++j) {
+                List<T> zs = new ArrayList<>(ys);
+                zs.add(xs.get(j));
+                comb(xs, r, j + 1, zs, acc);
+            }
+        }
+        return acc;
+    }
+
     public static void main(String[] args) {
         List<String> xs = Arrays.asList("a", "b", "c", "d");
         for (int r = 0; r < 6; ++r) {
-            System.out.println(String.format("C_%d^%d:", xs.size(), r));
+            System.out.println(String.format("\nC_%d^%d:", xs.size(), r));
+            System.out.println("DFS without recursion:");
             comb(xs, r).forEach(ys -> System.out.println(String.join(", ", ys)));
+            System.out.println("DFS with recurion:");
+            combination(xs, r).forEach(ys -> System.out.println(String.join(", ", ys)));
         }
     }
 }
