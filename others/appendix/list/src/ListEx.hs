@@ -41,8 +41,8 @@ perm xs r | length xs < r = [[]]
 -- Given a list of n elements, pick r from it to form combination.
 comb _  0 = []
 comb xs 1 = [[x] | x <- xs]
-comb xs r | length xs < r = []
-          | otherwise = let (x:xs') = xs in [x:ys | ys <- comb xs' (r-1)] ++ comb xs' r
+comb xs(x:xs') r | length xs < r = []
+                 | otherwise = [x:ys | ys <- comb xs' (r-1)] ++ comb xs' r
 
 prop_rindex :: [Int] -> Bool
 prop_rindex xs = xs == (map (atR xs) $ reverse [0..length xs -1])
