@@ -21,33 +21,33 @@
 #include "randlist.h"
 
 #define N 1000000
-#define WORD_LENGTH sizeof(int)*8
+#define WORD_LENGTH (sizeof(int) * 8)
 
 void setbit(unsigned int* bits, unsigned int i){
-    bits[i / WORD_LENGTH] |= 1<<(i % WORD_LENGTH);
+    bits[i / WORD_LENGTH] |= 1 << (i % WORD_LENGTH);
 }
 
 int testbit(unsigned int* bits, unsigned int i){
-    return bits[i/WORD_LENGTH] & (1<<(i % WORD_LENGTH));
+    return bits[i/WORD_LENGTH] & (1 << (i % WORD_LENGTH));
 }
 
-unsigned int bits[N/WORD_LENGTH+1];
+unsigned int bits[N / WORD_LENGTH + 1];
 
 int ids[N];
 
-void init_ids(){
+void init_ids() {
     int i;
-    for(i=0; i<N; ++i)
+    for(i = 0; i < N; ++i)
         ids[i] = i;
 }
 
 // min-free, brute force version
 int brute_force(int* xs, int n){
     int i, j;
-    for(i=0; ; ++i){
+    for(i = 0; ; ++i) {
         int in = 0;
-        for(j=0; j<n; ++j)
-            if(xs[j] == i){
+        for(j = 0; j < n; ++j)
+            if(xs[j] == i) {
                 in = 1;
                 break;
             }
@@ -56,16 +56,16 @@ int brute_force(int* xs, int n){
 }
 
 // min-free, flags version
-int flag_map(int*xs, int n){
-    int* flags = (int*)malloc(sizeof(int)*(n+1));
+int flag_map(int*xs, int n) {
+    int* flags = (int*) malloc(sizeof(int) * (n + 1));
     int i;
-    for(i=0; i<=n; ++i)
+    for(i = 0; i <= n; ++i)
         flags[i] = 0;
-    for(i=0; i<n; ++i)
-        if(xs[i]<n)
-            flags[xs[i]]=1;
-    for(i=0; i<=n; ++i)
-        if(!flags[i]){
+    for(i = 0; i < n; ++i)
+        if(xs[i] < n)
+            flags[xs[i]] = 1;
+    for(i = 0; i <= n; ++i)
+        if(!flags[i]) {
             free(flags);
             return i;
         }
@@ -73,14 +73,14 @@ int flag_map(int*xs, int n){
 }
 
 // min-free, bitmap version
-int bitmap_min_free(int* xs, int n){
+int bitmap_min_free(int* xs, int n) {
     int i, len = N/WORD_LENGTH+1;
-    for(i=0; i<len; ++i)
+    for(i = 0; i < len; ++i)
         bits[i]=0;
-    for(i=0; i<n; ++i)
-        if(xs[i]<n)
+    for(i = 0; i < n; ++i)
+        if(xs[i] < n)
             setbit(bits, xs[i]);
-    for(i=0; i<=n; ++i)
+    for(i = 0; i <= n; ++i)
         if(!testbit(bits, i))
             return i;
     return n; //shouldn't be here
@@ -88,17 +88,17 @@ int bitmap_min_free(int* xs, int n){
 
 /* a small fine tuned version */
 int bitmap_min_free1(int* xs, int n){
-    int i, j, len = N/WORD_LENGTH+1;
-    for(i=0; i<len; ++i)
-        bits[i]=0;
-    for(i=0; i<n; ++i)
-        if(xs[i]<n)
+    int i, j, len = N / WORD_LENGTH + 1;
+    for(i = 0; i < len; ++i)
+        bits[i] = 0;
+    for(i = 0; i<n; ++i)
+        if(xs[i] < n)
             setbit(bits, xs[i]);
-    for(i=0; ; ++i)
+    for(i = 0; ; ++i)
         if(~bits[i] !=0 )
-            for(j=0; ; ++j)
-                if(!testbit(bits, i*WORD_LENGTH+j))
-                    return i*WORD_LENGTH+j;
+            for(j = 0; ; ++j)
+                if(!testbit(bits, i * WORD_LENGTH + j))
+                    return i * WORD_LENGTH+j;
     return n; //shouldn't be here
 }
 
