@@ -1,20 +1,20 @@
 /*
  * bstree.cpp
  * Copyright (C) 2010 Liu Xinyu (liuxinyu95@gmail.com)
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  */
 #include <iostream>
 #include <vector>
@@ -29,7 +29,7 @@ struct node{
     delete right;
   }
 
-  node* left; 
+  node* left;
   node* right;
   node* parent; //parent is optional, it's helpful for succ/pred
   T key;
@@ -151,11 +151,12 @@ node<T>* del(node<T>* tree, node<T>* x){
   else{
     node<T>* y=min(x->right);
     x->key = y->key;
-    if(y->parent != x)
+    if (y->parent != x)
       y->parent->left = y->right;
     else
       x->right = y->right;
-
+    if (y->right)
+        y->right->parent = y->parent;
     remove_node(y);
     return root;
   }
@@ -259,7 +260,7 @@ private:
     assert_("max(empty)=",max(empty), empty);
     assert_("max(tree)=", max(tree)->key, 20);
   }
-  
+
   void test_search(){
     node<int>* empty(0);
     assert_("search empty: ", search(empty, 3), empty);
