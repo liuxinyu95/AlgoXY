@@ -2,20 +2,20 @@
 
 # bstree.py
 # Copyright (C) 2010 Liu Xinyu (liuxinyu95@gmail.com)
-# 
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-# 
+#
 
 # I tested that python doesn't support tail recursion.
 # as below:
@@ -34,8 +34,8 @@
 #        if n == 0:
 #                return acc
 #        else:
-#                return fact(n-1, acc*n)  
-# 
+#                return fact(n-1, acc*n)
+#
 # if we call fsum(1000) or fact(1000), the error is:
 # RuntimeError: maximum recursion depth exceeded
 
@@ -119,7 +119,7 @@ def remove_node(x):
     x.parent = x.left = x.right = None
 
 def tree_delete(t, x):
-    if x is None: 
+    if x is None:
         return t
     [root, old_x, parent] = [t, x, x.parent]
     if x.left is None:
@@ -128,11 +128,14 @@ def tree_delete(t, x):
         x = x.left
     else:
         y = tree_min(x.right)
+        parent = y.parent
         x.key = y.key
         if y.parent != x:
             y.parent.left = y.right
         else:
             x.right = y.right
+        if y.right is not None:
+            y.right.parent = parent
         remove_node(y)
         return root
     if x is not None:
@@ -140,9 +143,9 @@ def tree_delete(t, x):
     if parent is None:
         root = x
     else:
-        if parent.left == old_x: 
+        if parent.left == old_x:
             parent.left = x
-        else: 
+        else:
             parent.right = x
     remove_node(old_x)
     return root
@@ -182,7 +185,7 @@ class Test:
         if(x == y): msg = msg + "OK."
         else: msg = msg + str(x) + "!=" + str(y) + "Fail."
         print msg
-    
+
     def run(self):
         self.test_in_order_walk()
         self.test_search()
