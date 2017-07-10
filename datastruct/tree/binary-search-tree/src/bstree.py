@@ -128,14 +128,13 @@ def tree_delete(t, x):
         x = x.left
     else:
         y = tree_min(x.right)
-        parent = y.parent
         x.key = y.key
         if y.parent != x:
             y.parent.left = y.right
         else:
             x.right = y.right
         if y.right is not None:
-            y.right.parent = parent
+            y.right.parent = y.parent
         remove_node(y)
         return root
     if x is not None:
