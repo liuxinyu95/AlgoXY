@@ -16,9 +16,6 @@ haskell:
 image:
 	$(MAKE) -C img
 
-pdf: $(OBJECT).dvi
-	dvipdfmx $(OBJECT)
-
 tex: pdf
 
 pdf: image
