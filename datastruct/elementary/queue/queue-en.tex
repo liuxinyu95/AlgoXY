@@ -289,41 +289,43 @@ memories, the queue can be defined with the below ANSI C code.
 
 \lstset{language=C}
 \begin{lstlisting}
-struct Queue {
-  Key* buf;
-  int head, tail, size;
+struct QueueBuf{
+    Key* buf;
+    int head, cnt, size;
 };
 \end{lstlisting}
 
 When initialize the queue, we are explicitly asked to provide the maximum
-size as argument.
+size as the parameter.
 
 \begin{lstlisting}
-struct Queue* createQ(int max) {
-  struct Queue* q = (struct Queue*)malloc(sizeof(struct Queue));
-  q->buf = (Key*)malloc(sizeof(Key)*max);
-  q->size = max;
-  q->head = q->tail = 0;
-  return q;
+struct QueueBuf* createQ(int max){
+    struct QueueBuf* q = (struct QueueBuf*)malloc(sizeof(struct QueueBuf));
+    q->buf = (Key*)malloc(sizeof(Key)*max);
+    q->size = max;
+    q->head = q->cnt = 0;
+    return q;
 }
 \end{lstlisting}
 
-To test if a queue is empty is trivial.
+With the counter variable, we can compare it with zero and the capacity to
+test if the queue is empty or full.
 
 \begin{algorithmic}
 \Function{Empty?}{$Q$}
-  \State \Return \Call{Head}{$Q$} = \Call{Tail}{$Q$}
+  \State \Return \Call{Count}{$Q$} = 0
 \EndFunction
 \end{algorithmic}
 
-One brute-force implementation for \textproc{Enqueue} and \textproc{Dequeue}
-is to calculate the modular of index blindly as the following.
+To realize \textproc{Enqueue} and \textproc{Dequeue}, an easy way
+is to calculate the modular of index as the following.
 
 \begin{algorithmic}
 \Function{Enqueue}{$Q, x$}
   \If{$\lnot$ \Call{Full?}{$Q$}}
-    \State \Call{Tail}{$Q$} $\gets $ (\Call{Tail}{$Q$} + 1) $\mod$ \Call{Size}{$Q$}
-    \State \Call{Buffer}{$Q$}[\Call{Tail}{$Q$}] $\gets x$
+    \State \Call{Count}{$Q$} $\gets$ \Call{Count}{$Q$} + 1
+    \State tail $\gets $ (\Call{Head}{$Q$} + \Call{Count}{$Q$}) $\mod$ \Call{Size}{$Q$}
+    \State \Call{Buffer}{$Q$}[tail] $\gets x$
   \EndIf
 \EndFunction
 \end{algorithmic}
@@ -340,6 +342,7 @@ is to calculate the modular of index blindly as the following.
 \Function{Dequeue}{$Q$}
   \If{$\lnot$ \Call{Empty?}{$Q$}}
     \State \Call{Head}{$Q$} $\gets $ (\Call{Head}{$Q$} + 1) $\mod$ \Call{Size}{$Q$}
+    \State \Call{Count}{$Q$} $\gets$ \Call{Count}{$Q$} - 1
   \EndIf
 \EndFunction
 \end{algorithmic}
@@ -349,30 +352,29 @@ may replace it by some adjustment. For example as in the below ANSI C
 program.
 
 \begin{lstlisting}
-void enQ(struct Queue* q, Key x) {
-  if(!fullQ(q)) {
-    q->buf[q->tail++] = x;
-    q->tail -= q->tail< q->size ? 0 : q->size;
-  }
+void enQ(struct QueueBuf* q, Key x){
+    if(!fullQ(q)){
+        q->buf[offset(q->head + q->cnt, q->size)] = x;
+        q->cnt++;
+    }
 }
 
 Key headQ(struct Queue* q) {
-  return q->buf[q->head]; /* Assume queue isn't empty */
+    return q->buf[q->head];  //假设队列不为空。
 }
 
-Key deQ(struct Queue* q) {
-  Key x = headQ(q);
-  q->head++;
-  q->head -= q->head< q->size ? 0 : q->size;
-  return x;
+Key deQ(struct QueueBuf* q){
+    Key x = headQ(q);
+    q->head = offset(++q->head, q->size);
+    q->cnt--;
+    return x;
 }
 \end{lstlisting}
 
 \begin{Exercise}
-As the circular buffer is allocated with a maximum size parameter, please
-write a function to test if a queue is full to avoid overflow. Note
-there are two cases, one is that the head is in front of the tail,
-the other is on the contrary.
+The circular buffer is allocated with a maximum size parameter. Can we
+test the queue is empty or full with only head and tail pointers?
+Note that the head can be either before or after the tail.
 \end{Exercise}
 
 % ================================================================
