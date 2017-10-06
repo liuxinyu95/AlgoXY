@@ -42,15 +42,8 @@ class Node:
         self.set_left(x)
         self.set_right(y)
 
-    #parent<->self ==> parent<->y
     def replace_by(self, y):
-        if self.parent is None:
-            if y!= None: y.parent = None
-        elif self.parent.left == self:
-            self.parent.set_left(y)
-        else:
-            self.parent.set_right(y)
-        self.parent = None
+        replace(self.parent, self, y)
 
     def sibling(self):
         if self.parent.left == self:
@@ -68,6 +61,19 @@ class Node:
 def set_color(nodes, colors):
     for (n, c) in zip(nodes, colors):
         n.color = c
+
+# change from: parent --> x to: parent --> y
+def replace(parent, x, y):
+    if parent is None:
+        if y is not None:
+            y.parent = None
+    elif parent.left == x:
+        parent.set_left(y)
+    else:
+        parent.set_right(y)
+    if x is not None:
+        x.parent = None
+    return y
 
 # rotations
 
@@ -163,31 +169,30 @@ def is_leaf(x):
     return (x.left is None) and (x.right is None)
 
 def make_black(parent, x):
+    if parent is None and x is None:
+        return None
     if x is None:
-        if is_leaf(parent):
-            parent.color = DOUBLY_BLACK
-        return parent
-    else:
-        x.color = x.color + 1
-        return x
+        return replace(parent, x, Node(0, DOUBLY_BLACK))
+    x.color = x.color + 1
+    return x
 
 def rb_delete(t, x):
     if x is None: return t
     (parent, db) = (x.parent, None)
     if x.left is None:
         x.replace_by(x.right)
-        db=x.right
+        db = x.right
     elif x.right is None:
         x.replace_by(x.left)
-        db=x.left
+        db = x.left
     else:
         y = tree_min(x.right)
         (parent, db)=(y.parent, y.right)
         x.key = y.key
         y.replace_by(y.right)
-        x=y
+        x = y
     if x.color == BLACK:
-        t=rb_delete_fix(t, make_black(parent, db))
+        t = rb_delete_fix(t, make_black(parent, db), db is None)
     remove_node(x)
     return t
 
@@ -196,10 +201,10 @@ def is_red(x):
     return x.color == RED
 
 def is_black(x):
-    if x is None: return False
-    return x.color == BLACK
+    return x is None or x.color == BLACK
 
-def rb_delete_fix(t, db):
+def rb_delete_fix(t, db, is_db_empty):
+    db_empty = db if is_db_empty else None
     if db is None: return None # remove the root from a leaf tree
     while(db!=t and db.color==DOUBLY_BLACK):
         if db.sibling() != None:
@@ -242,6 +247,8 @@ def rb_delete_fix(t, db):
             db.parent.color = db.parent.color+1
             db = db.parent
     t.color=BLACK
+    if db_empty is not None:
+        db_empty.replace_by(None)
     return t
 
 # Helper functions for test
@@ -266,22 +273,67 @@ def list_to_tree(l):
         tree = rb_insert(tree, x)
     return tree
 
+CLR = {'R':RED, 'B':BLACK}
+
+def node(x, c):
+    return Node(x, CLR[c] if c in CLR else DOUBLY_BLACK)
+
+def tr(l, x, c, r):
+    t = node(x, c)
+    t.set_children(l, r)
+    return t
+
+def is_rbt(t):
+    if t is None:
+        return True
+    if not is_black(t):
+        print "root is not black"
+        return False
+    if has_adjacent_red(t):
+        print "has adjacent red nodes"
+        return False
+    if num_of_blacks(t) < 0:
+        print "different number of black nodes"
+        return False
+    return True
+
+def has_adjacent_red(t):
+    if t is None:
+        return False
+    if is_red(t) and (is_red(t.left) or is_red(t.right)):
+        print "adjacent red at", t.key
+        return True
+    return has_adjacent_red(t.left) or has_adjacent_red(t.right)
+
+def num_of_blacks(t):
+    if t is None:
+        return 1
+    a, b = num_of_blacks(t.left), num_of_blacks(t.right)
+    if a != b:
+        print "Node", t.key, "has different black desendants: l=", a, ", r=", b
+        return -1000
+    return a + (1 if is_black(t) else 0)
+
+def assert_rbt(t):
+    if not is_rbt(t):
+        exit(-1)
+
 class Test:
     def __init__(self):
         #t1 = ((1B 2R (4B 3R .)) 5B (6B 7R (8R 9B .)))
-        self.t1=Node(5, BLACK)
-        self.t1.set_children(Node(2), Node(7))
-        self.t1.left.set_children(Node(1, BLACK), Node(4, BLACK))
-        self.t1.right.set_children(Node(6, BLACK), Node(9, BLACK))
-        self.t1.left.right.set_left(Node(3))
-        self.t1.right.right.set_left(Node(8))
+        self.t1 = tr(tr(node(1, 'B'), 2, 'R', tr(node(3, 'R'), 4, 'B', None)),
+                     5, 'B',
+                     tr(node(6, 'B'), 7, 'R', tr(node(8, 'R'), 9, 'B', None)));
         print "t1 1..9:\n", rbtree_to_str(self.t1)
-        self.t2=Node(11, BLACK) # as figure 13.4 in CLRS
-        self.t2.set_children(Node(2), Node(14, BLACK))
-        self.t2.left.set_children(Node(1, BLACK), Node(7, BLACK))
-        self.t2.right.set_right(Node(15))
-        self.t2.left.right.set_children(Node(5), Node(8))
+        self.t2 = tr(tr(node(1, 'B'), 2, 'R', tr(node(5, 'R'), 7, 'B', node(8, 'R'))),
+                     11, 'B',
+                     tr(None, 14, 'B', node(15, 'R')));
         print "t2, CLRS fig 13.4:\n", rbtree_to_str(self.t2)
+
+
+    def assert_eq(self, a, b):
+        s1, s2 = rbtree_to_str(a), rbtree_to_str(b)
+        self.__assert("different trees", s1, s2)
 
     def __assert(self, msg, x, y):
         if(x == y): msg = msg + "OK."
@@ -296,28 +348,35 @@ class Test:
     def test_rotate(self):
         t = rbtree_clone(self.t1)
         x = t.right #7R
-        t = left_rotate(t, x) #(6 7 (8 9 .)) ==> ((6 7 8) 9 .)
+        t = left_rotate(t, x) #(6 7 (8 9 .) ==> ((6 7 8) 9 .)
         print "left rotate at 7:R\n", rbtree_to_str(t)
         t = right_rotate(t, t.right) #rotate back
         print "right rotate back:\n", rbtree_to_str(t)
-        t = rbtree_clone(self.t1)
-        t = left_rotate(t, t) #(2 5 (6 7 9)) ==> ((2 5 6) 7 9)
+        self.assert_eq(t, self.t1)
+
+        t = left_rotate(t, t) #(2 5 (6 7 9) ==> ((2 5 6) 7 9)
         print "left rotate at root:\n", rbtree_to_str(t)
         t = right_rotate(t, t) #rotate back
         print "right rotate back:\n", rbtree_to_str(t)
+        self.assert_eq(t, self.t1)
 
     def test_insert(self):
         t = rbtree_clone(self.t2)
         t = rb_insert(t, 4)
         print "t2: after insert 4\n", rbtree_to_str(t)
+        assert_rbt(t)
+
         t = list_to_tree([5, 2, 7, 1, 4, 6, 9, 3, 8])
         print "list->tree, create t1 by insert\n", rbtree_to_str(t)
+        self.assert_eq(t, self.t1)
+        assert_rbt(t)
 
     def __test_del_n(self, tree, n):
         t = rbtree_clone(tree)
         t = rb_delete(t, tree_search(t, n))
         print "del ", n, ": ", rbtree_to_str(t)
         self.__assert("search after del: ", tree_search(t, n), None)
+        assert_rbt(t)
 
     def test_delete(self):
         for i in range(1, 10):
@@ -325,46 +384,6 @@ class Test:
         self.__test_del_n(self.t1, 11) #del a non-exist value
         t = Node(1, BLACK) #leaf case
         self.__test_del_n(t, 1)
-        # test case 2
-        t = Node(7, BLACK)
-        t.set_children(Node(3, BLACK), Node(10, BLACK))
-        t.left.set_children(Node(2, BLACK), Node(5, BLACK))
-        t.right.set_children(Node(9, BLACK), Node(12, BLACK))
-        t.left.left.set_left(Node(1, BLACK))
-        t.left.right.set_children(Node(4, BLACK), Node(6, BLACK))
-        t.right.left.set_left(Node(8, BLACK))
-        t.right.right.set_left(Node(11, BLACK))
-        print "test detailed case...\n", rbtree_to_str(t)
-        self.__test_del_n(t, 1)
-        # test no sibling case
-        t.left.set_right(None)
-        print "test no sibling case...\n", rbtree_to_str(t)
-        self.__test_del_n(t, 1)
-        # test case 1
-        t=Node(3, BLACK)
-        t.set_children(Node(2, BLACK), Node(6))
-        t.left.set_left(Node(1, BLACK))
-        t.right.set_children(Node(5, BLACK), Node(7, BLACK))
-        t.right.left.set_left(Node(4, BLACK))
-        t.right.right.set_right(Node(8, BLACK))
-        print "test case 1...\n", rbtree_to_str(t)
-        self.__test_del_n(t, 1)
-        # test case 3
-        t=Node(2, BLACK)
-        t.set_children(Node(1, BLACK), Node(6, BLACK))
-        t.left.set_left(Node(0, BLACK))
-        t.right.set_children(Node(4), Node(7, BLACK))
-        t.right.left.set_children(Node(3, BLACK), Node(5, BLACK))
-        print "test case 3", rbtree_to_str(t)
-        self.__test_del_n(t, 0)
-        # test case 4
-        t=Node(6, BLACK)
-        t.set_children(Node(4, BLACK), Node(7, BLACK))
-        t.left.set_children(Node(2), Node(5, BLACK))
-        t.right.set_right(Node(8, BLACK))
-        t.left.left.set_children(Node(1, BLACK), Node(3, BLACK))
-        print "test case 4", rbtree_to_str(t)
-        self.__test_del_n(t, 8)
 
 if __name__ == "__main__":
     Test().run()

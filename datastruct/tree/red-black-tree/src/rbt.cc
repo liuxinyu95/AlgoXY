@@ -1,26 +1,27 @@
 /*
  * rbt.cc
  * Copyright (C) 2016 Liu Xinyu (liuxinyu95@gmail.com)
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * 
+ *
  */
 #include <cstdlib>
 #include <string>
 #include <vector>
 #include <sstream>
 #include <iostream>
+#include <cassert>
 
 using namespace std;
 
@@ -59,16 +60,8 @@ struct Node {
         setRight(y);
     }
 
-    // parent <--> this  ==> parent <--> y
     void replaceWith(Node* y) {
-        if (!parent) {
-            if (y) y->parent = nullptr;
-        } else if (parent->left == this) {
-            parent->setLeft(y);
-        } else {
-            parent->setRight(y);
-        }
-        parent = nullptr;
+        replace(parent, this, y);
     }
 
     Node* sibling() {
@@ -82,6 +75,20 @@ struct Node {
     Node* grandparent() {
         return parent->parent;
     }
+
+    // change from: parent --> x to parent --> y
+    static Node* replace(Node* parent, Node* x, Node* y) {
+        if (parent == nullptr) {
+            if (y) y->parent = nullptr;
+        } else if (parent->left == x) {
+            parent->setLeft(y);
+        } else {
+            parent->setRight(y);
+        }
+        if (x) x->parent = nullptr;
+        return y;
+    }
+
 };
 
 // helpers
@@ -213,25 +220,23 @@ bool isRed(Node* x) {
 }
 
 bool isBlack(Node* x) {
-    return x != nullptr && x->color == Color::BLACK;
+    return x == nullptr || x->color == Color::BLACK;
 }
 
-void blacken(Node* x) {
+Node* blacken(Node* x) {
     x->color = isRed(x) ? Color::BLACK : Color::DOUBLY_BLACK;
+    return x;
 }
 
 Node* makeBlack(Node* parent, Node* x) {
-    if (!x) {
-        if (isLeaf(parent))
-            parent->color = Color::DOUBLY_BLACK;
-        return parent;
-    } else {
-        blacken(x);
-        return x;
-    }
+    if (!parent && ! x)
+        return nullptr;
+    if (!x)
+        return Node::replace(parent, x, new Node(0, Color::DOUBLY_BLACK));
+    return blacken(x);
 }
 
-Node* deleteFix(Node* t, Node* db);
+Node* deleteFix(Node* t, Node* db, bool isDBEmpty);
 
 Node* del(Node* t, Node* x) {
     if (!x) return t;
@@ -254,12 +259,13 @@ Node* del(Node* t, Node* x) {
         x = y;
     }
     if (x->color == Color::BLACK)
-        t = deleteFix(t, makeBlack(parent, db));
+        t = deleteFix(t, makeBlack(parent, db), db == nullptr);
     remove(x);
     return t;
 }
 
-Node* deleteFix(Node* t, Node* db) {
+Node* deleteFix(Node* t, Node* db, bool isDBEmpty) {
+    Node* dbEmpty = isDBEmpty ? db : nullptr;
     if (!db) return nullptr;    // remove the root from a leaf tree;
     while (db != t && db->color == Color::DOUBLY_BLACK) {
         if (db->sibling() != nullptr) {
@@ -317,6 +323,10 @@ Node* deleteFix(Node* t, Node* db) {
         }
     }
     t->color = Color::BLACK;
+    if (dbEmpty) {
+        dbEmpty->replaceWith(nullptr);
+        delete dbEmpty;
+    }
     return t;
 }
 
@@ -349,22 +359,95 @@ Node* fromList(XS xs) {
 
 struct Test {
     Node *t1, *t2;
+
+    static Color colorOf(char c) {
+        switch (c) {
+        case 'R':
+            return Color::RED;
+        case 'B':
+            return Color::BLACK;
+        default:
+            return Color::DOUBLY_BLACK;
+        }
+    }
+
+    static Node* nodeOf(Key x, char c) {
+        return new Node(x, colorOf(c));
+    }
+
+    static Node* tr(Node* l, Key x, char c, Node* r) {
+        Node* t = nodeOf(x, c);
+        t->setChildren(l, r);
+        return t;
+    }
+
+    static bool isRBTree(Node* t) {
+        if (t == nullptr) return true;
+        if (!isBlack(t)) {
+            printf("root is not black\n");
+            return false;
+        }
+        if (hasAdjacentRed(t)) {
+            printf("has adjacent red nodes\n");
+            return false;
+        }
+        if (numOfBlacks(t) < 0) {
+            printf("different number of black nodes\n");
+            return false;
+        }
+        return true;
+    }
+
+    static bool hasAdjacentRed(Node* t) {
+        if (t == nullptr) return false;
+        if (isRed(t) && (isRed(t->left) || isRed(t->right))) {
+            printf("adjacent red at %d\n", t->key);
+            return true;
+        }
+        return hasAdjacentRed(t->left) || hasAdjacentRed(t->right);
+    }
+
+    static int numOfBlacks(Node* t) {
+        if (t == nullptr) return 1;
+        int a = numOfBlacks(t->left), b = numOfBlacks(t->right);
+        if (a != b) {
+            printf("Node %d has different black desendants: l=%d, r=%d\n", t->key, a, b);
+            return -1000;
+        }
+        return a + (isBlack(t) ? 1 : 0);
+    }
+
+    template<typename Str, typename T>
+    static void assertEqual(Str msg, T x, T y) {
+        if (x == y)
+            printf("%s OK\n", msg);
+        else
+            cout << msg << x << "!=" << y << " Fail\n";
+    }
+
+    static void assertEq(Node* a, Node* b) {
+        string s1 = toStr(a), s2 = toStr(b);
+        assertEqual("Different trees", s1, s2);
+    }
+
+    static void assertRBTree(Node* t) {
+        assert(isRBTree(t));
+    }
+
     Test() {
         // t1 = ((1:B, 2:R, (4:B, 3:R, .)), 5:B, (6:B, 7:R, (8:R, 9:B, .)))
-        t1 = new Node(5, Color::BLACK);
-        t1->setChildren(new Node(2), new Node(7));
-        t1->left->setChildren(new Node(1, Color::BLACK), new Node(4, Color::BLACK));
-        t1->right->setChildren(new Node(6, Color::BLACK), new Node(9, Color::BLACK));
-        t1->left->right->setLeft(new Node(3));
-        t1->right->right->setLeft(new Node(8));
+        t1 = tr(tr(nodeOf(1, 'B'), 2, 'R', tr(nodeOf(3, 'R'), 4, 'B', nullptr)),
+                   5, 'B',
+                   tr(nodeOf(6, 'B'), 7, 'R', tr(nodeOf(8, 'R'), 9, 'B', nullptr)));
         printf("t1 1..9\n%s\n", toStr(t1).c_str());
 
-        // t2 as figure 13.4 in CLRS
-        t2 = new Node(11, Color::BLACK);
-        t2->setChildren(new Node(2), new Node(14, Color::BLACK));
-        t2->left->setChildren(new Node(1, Color::BLACK), new Node(7, Color::BLACK));
-        t2->right->setRight(new Node(15));
-        t2->left->right->setChildren(new Node(5), new Node(8));
+        /*
+         * t2 as figure 13.4 in CLRS
+         * (((. 1:B .) 2:R ((. 5:R .) 7:B (. 8:R .))) 11:B (. 14:B (. 15:R .)))
+         */
+        t2 = tr(tr(nodeOf(1, 'B'), 2, 'R', tr(nodeOf(5, 'R'), 7, 'B', nodeOf(8, 'R'))),
+                11, 'B',
+                tr(nullptr, 14, 'B', nodeOf(15, 'R')));
         printf("t2, CLRS fig 13.4\n%s\n", toStr(t2).c_str());
     }
 
@@ -386,13 +469,13 @@ struct Test {
         printf("left rotate at 7:R\n%s\n", toStr(t).c_str());
         t = rightRotate(t, t->right);  // rotate back
         printf("right rotate back:\n%s\n", toStr(t).c_str());
-        delete t;
+        assertEq(t, t1);
 
-        t = clone(t1);
         t = leftRotate(t, t);  // (2 5 (6 7 9)) ==> ((2 5 6) 7 9)
         printf("left rotate at root:\n%s\n", toStr(t).c_str());
         t = rightRotate(t, t); // rotate back
         printf("right rotate back:\n%s\n", toStr(t).c_str());
+        assertEq(t, t1);
         delete t;
     }
 
@@ -400,10 +483,13 @@ struct Test {
         Node* t = clone(t2);
         t = insert(t, 4);
         printf("t2: after insert 4:\n%s\n", toStr(t).c_str());
+        assertRBTree(t);
         delete t;
 
         t = fromList(vector<int>({5, 2, 7, 1, 4, 6, 9, 3, 8}));
         printf("list->tree, create t1 by insertion\n%s\n", toStr(t).c_str());
+        assertEq(t, t1);
+        assertRBTree(t);
         delete t;
     }
 
@@ -412,6 +498,7 @@ struct Test {
         t = del(t, search(t, n));
         printf("del %d: %s\n", n, toStr(t).c_str());
         assertEqual("search after del: ", search(t, n), (Node*)nullptr);
+        assertRBTree(t);
         delete t;
     }
 
@@ -423,64 +510,6 @@ struct Test {
         Node* t = new Node(1, Color::BLACK);    // leaf case
         testDelete(t, 1);
         delete t;
-
-        // test case 2
-        t = new Node(7, Color::BLACK);
-        t->setChildren(new Node(3, Color::BLACK), new Node(10, Color::BLACK));
-        t->left->setChildren(new Node(2, Color::BLACK), new Node(5, Color::BLACK));
-        t->right->setChildren(new Node(9, Color::BLACK), new Node(12, Color::BLACK));
-        t->left->left->setLeft(new Node(1, Color::BLACK));
-        t->left->right->setChildren(new Node(4, Color::BLACK), new Node(6, Color::BLACK));
-        t->right->left->setLeft(new Node(8, Color::BLACK));
-        t->right->right->setLeft(new Node(11, Color::BLACK));
-        printf("test detailed case...\n%s\n", toStr(t).c_str());
-        testDelete(t, 1);
-
-        // test no sibling case
-        delete t->left->right;
-        t->left->setRight(nullptr);
-        printf("test no sibling case...\n%s\n", toStr(t).c_str());
-        testDelete(t, 1);
-        delete t;
-
-        // test case 1
-        t = new Node(3, Color::BLACK);
-        t->setChildren(new Node(2, Color::BLACK), new Node(6));
-        t->left->setLeft(new Node(1, Color::BLACK));
-        t->right->setChildren(new Node(5, Color::BLACK), new Node(7, Color::BLACK));
-        t->right->left->setLeft(new Node(4, Color::BLACK));
-        t->right->right->setRight(new Node(8, Color::BLACK));
-        printf("test case 1...\n%s\n", toStr(t).c_str());
-        testDelete(t, 1);
-        delete t;
-
-        // test case 3
-        t = new Node(2, Color::BLACK);
-        t->setChildren(new Node(1, Color::BLACK), new Node(6, Color::BLACK));
-        t->left->setLeft(new Node(0, Color::BLACK));
-        t->right->setChildren(new Node(4), new Node(7, Color::BLACK));
-        t->right->left->setChildren(new Node(3, Color::BLACK), new Node(5, Color::BLACK));
-        printf("test case 3\n%s\n", toStr(t).c_str());
-        testDelete(t, 0);
-        delete t;
-
-        // test case 4
-        t = new Node(6, Color::BLACK);
-        t->setChildren(new Node(4, Color::BLACK), new Node(7, Color::BLACK));
-        t->left->setChildren(new Node(2), new Node(5, Color::BLACK));
-        t->right->setRight(new Node(8, Color::BLACK));
-        t->left->left->setChildren(new Node(1, Color::BLACK), new Node(3, Color::BLACK));
-        printf("test case 4\n%s\n", toStr(t).c_str());
-        testDelete(t, 8);
-        delete t;
-    }
-
-    template<typename Str, typename T>
-    void assertEqual(Str msg, T x, T y) {
-        if (x == y)
-            printf("%s OK\n", msg);
-        else
-            cout << msg << x << "!=" << y << " Fail\n";
     }
 };
 
