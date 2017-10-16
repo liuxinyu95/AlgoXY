@@ -245,17 +245,17 @@ Node* del(Node* t, Node* x) {
     Node* y;
 
     if (x->left == nullptr) {
-        x->replaceWith(x->right);
         db = x->right;
+        x->replaceWith(db);
     } else if (x->right == nullptr) {
-        x->replaceWith(x->left);
         db = x->left;
+        x->replaceWith(db);
     } else {
         y = min(x->right);
         parent = y->parent;
         db = y->right;
         x->key = y->key;
-        y->replaceWith(y->right);
+        y->replaceWith(db);
         x = y;
     }
     if (x->color == Color::BLACK)
@@ -307,8 +307,8 @@ Node* deleteFix(Node* t, Node* db, bool isDBEmpty) {
                     t = rightRotate(t, db->parent);
                 }
             } else if (isBlack(db->sibling()) &&
-                       !isRed(db->sibling()->left) &&
-                       !isRed(db->sibling()->right)) {
+                       isBlack(db->sibling()->left) &&
+                       isBlack(db->sibling()->right)) {
                 // case 2: the sibling and both nephews are black.
                 //         move the blackness up
                 setColors(db, Color::BLACK,
