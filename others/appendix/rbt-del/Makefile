@@ -1,11 +1,12 @@
-HEADER =
-OBJECT = rbt-del-en
-SOURCE = $(OBJECT).tex
+SOURCE = rbt-del
+OBJECT = $(SOURCE)-en.pdf
+OBJECT_CN = $(SOURCE)-zh-cn.pdf
 TEX = xelatex
 
 .PHONY: all
 
-all: pdf
+all: tex
+tex: $(OBJECT)
 
 cpp:
 	$(MAKE) cpp -C src
@@ -22,11 +23,9 @@ tool:
 image:
 	$(MAKE) -C ../../../datastruct/tree/red-black-tree/img
 
-pdf: image
-	$(TEX) $(OBJECT)
-	$(TEX) $(OBJECT)
-
-tex: pdf
+%.pdf: %.tex image
+	$(TEX) $<
+	$(TEX) $<
 
 clean:
 	rm -f *.aux *.dvi *.log *.out *.pdf *~
