@@ -20,7 +20,7 @@ tool:
 	$(MAKE) tool -C src
 
 image:
-	$(MAKE) -C img
+	$(MAKE) -C ../../../datastruct/tree/red-black-tree/img
 
 pdf: image
 	$(TEX) $(OBJECT)
