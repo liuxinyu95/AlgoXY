@@ -1,5 +1,5 @@
 IMG_OBJECTS =
-DOT_OBJECTS = Nh-lvr insert-ll insert-lr insert-rl insert-rr insert-fixed avl-example
+DOT_OBJECTS = Nh-lvr avl-insert-ll avl-insert-lr avl-insert-rl avl-insert-rr avl-insert-fixed avl-example
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
 #suffix replacement, replace .dot with .png
