@@ -518,66 +518,51 @@ balance(T, \Delta H) = \left \{
 \right.
 \ee
 
-Below is the example program in Scala
+Below is the example program in Haskell
 
-\lstset{language=Scala}
+\lstset{language=Haskell}
 \begin{lstlisting}
-def delete[A <% Ordered[A]] (tr: Tree[A], x: A): Tree[A] = del(tr, x)._1
-
-// returns (t, d), where t: tree, d: decrement in height
-def del[A <% Ordered[A]] (tr: Tree[A], x: A): (Tree[A], Int) = tr match {
-  case Empty => (Empty, 0)
-  case Br(l, k, r, d) => if (x < k) tree(del(l, x), k, (r, 0), d)
-    else if (x > k) tree((l, 0), k, del(r, x), d)
-    else if (isEmpty(l)) (r, -1)
-    else if (isEmpty(r)) (l, -1)
-    else {
-      val k1 = min(r)
-      tree((l, 0), k1, del(r, k1), d)
-    }
-}
+delete::(Ord a) => AVLTree a -> a -> AVLTree a
+delete t x = fst $ del t x where
+  -- result is a pair (t, d), t: tree, d: decrement in height
+  del Empty _ = (Empty, 0)
+  del (Br l k r d) x
+    | x < k = node (del l x) k (r, 0) d
+    | x > k = node (l, 0) k (del r x) d
+    -- x == k, delete this node
+    | isEmpty l = (r, -1)
+    | isEmpty r = (l, -1)
+    | otherwise = node (l, 0) k' (del r k') d where k' = min r
 \end{lstlisting}
 
 Where the auxiliary function \texttt{min} are implemented similiar to the binary
 search tree, it traverses along the left sub tree till the end. Function \texttt{isEmpty} test if a tree is empty.
 
 \begin{lstlisting}
-def isEmpty[A](tr: Tree[A]): Boolean = tr match {
-  case Empty => true
-  case _ => false
-}
+isEmpty Empty = True
+isEmpty _ = False
 
-def min[A](tr: Tree[A]): A = tr match {
-  case Br(Empty, x, _, _) => x
-  case Br(left, x, _, _) => min(left)
-}
+min :: AVLTree a -> a
+min (Br Empty x _ _) = x
+min (Br l _ _ _) = min l
 \end{lstlisting}
 
 After adding the extra two cases for fixing, there are total 7 cases in the \texttt{balance} function.
 
 \begin{lstlisting}
-def balance[A] (tr: Tree[A], delta: Int): (Tree[A], Int) = (tr, delta) match {
-  case (Br(Br(Br(a, x, b, dx), y, c, -1), z, d, -2), _) =>
-    (Br(Br(a, x, b, dx), y, Br(c, z, d,  0), 0), delta - 1)
-  case (Br(a, x, Br(b, y, Br(c, z, d, dz),  1),  2), _) =>
-    (Br(Br(a, x, b,  0), y, Br(c, z, d, dz), 0), delta - 1)
-  case (Br(Br(a, x, Br(b, y, c, dy),  1), z, d, -2), _) => {
-    val dx1 = if (dy == 1) -1 else 0
-    val dz1 = if (dy == -1) 1 else 0
-    (Br(Br(a, x, b, dx1), y, Br(c, z, d, dz1), 0), delta - 1)
-  }
-  case (Br(a, x, Br(Br(b, y, c, dy), z, d, -1),  2), _) => {
-    val dx1 = if (dy == 1) -1 else 0
-    val dz1 = if (dy == -1) 1 else 0
-    (Br(Br(a, x, b, dx1), y, Br(c, z, d, dz1), 0), delta - 1)
-  }
-  // delete specific fixing
-  case (Br(Br(a, x, b, dx), y, c, -2), _) =>
-    (Br(a, x, Br(b, y, c, -1), dx + 1), delta)
-  case (Br(a, x, Br(b, y, c, dy), 2), _) =>
-    (Br(Br(a, x, b, 1), y, c, dy - 1), delta)
-  case _ => (tr, delta)
-}
+balance :: (AVLTree a, Int) -> (AVLTree a, Int)
+balance (Br (Br (Br a x b dx) y c (-1)) z d (-2), dH) = (Br (Br a x b dx) y (Br c z d 0) 0, dH-1)
+balance (Br a x (Br b y (Br c z d dz)    1)    2, dH) = (Br (Br a x b 0) y (Br c z d dz) 0, dH-1)
+balance (Br (Br a x (Br b y c dy)    1) z d (-2), dH) = (Br (Br a x b dx') y (Br c z d dz') 0, dH-1) where
+    dx' = if dy ==  1 then -1 else 0
+    dz' = if dy == -1 then  1 else 0
+balance (Br a x (Br (Br b y c dy) z d (-1))    2, dH) = (Br (Br a x b dx') y (Br c z d dz') 0, dH-1) where
+    dx' = if dy ==  1 then -1 else 0
+    dz' = if dy == -1 then  1 else 0
+-- Delete specific fixing
+balance (Br (Br a x b dx) y c (-2), dH) = (Br a x (Br b y c (-1)) (dx+1), dH)
+balance (Br a x (Br b y c dy)    2, dH) = (Br (Br a x b    1) y c (dy-1), dH)
+balance (t, d) = (t, d)
 \end{lstlisting}
 
 \subsection{Imperative deletion}
