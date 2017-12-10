@@ -708,92 +708,140 @@ we need add two extra sub cases to cover the situations illustrated in figure
 \EndFunction
 \end{algorithmic}
 
-The follow Java example program implements this AVL tree delete algorithm.
+The follow C++ example program implements this AVL tree delete algorithm.
 
-\lstset{language=Java}
+\lstset{language=C++}
 \begin{lstlisting}
-Node del(Node t, Node x) {
-    if (x == null) return t;
-    Node y, parent = x.parent;
-    if (x.left == null) {
-        y = x.replaceWith(x.right);
-    } else if (x.right == null) {
-        y = x.replaceWith(x.left);
+Node* del(Node* t, Node* x) {
+    if (!x) return t;
+    Node *y, *parent = x->parent;
+    if (!x->left) {
+        y = x->replaceWith(x->right);
+    } else if (!x->right) {
+        y = x->replaceWith(x->left);
     } else {
-        y = min(x.right);
-        x.key = y.key;
-        parent = y.parent;
-        y = y.replaceWith(y.right);
+        y = min(x->right);
+        x->key = y->key;
+        parent = y->parent;
+        x = y;
+        y = y->replaceWith(y->right);
     }
-    return deleteFix(t, parent, y);
+    t = deleteFix(t, parent, y);
+    remove(x);
+    return t;
 }
 \end{lstlisting}
 
+Where method \texttt{replaceWith(tree)} replaces the current node with the parameter
+passed in, and returns the new node as the result.
+
 \begin{lstlisting}
-Node deleteFix(Node t, Node parent, Node x) {
-    while (parent != null) {
-        int d1 = parent.delta;
-        int d2 = d1 + (x == parent.left ? 1 : -1);
-        if (isLeaf(parent))
-            d2 = 0;
-        parent.delta = d2;
-        Node p = parent;
-        Node l = parent.left;
-        Node r = parent.right;
+Node* replaceWith(Node* y) {
+    return replace(parent, this, y);
+}
+\end{lstlisting}
+
+And the function \texttt{replace(parent, x, y)} replaces child \texttt{x} with \texttt{y} to its parent.
+
+\begin{lstlisting}
+// change from: parent --> x to parent --> y
+Node* replace(Node* parent, Node* x, Node* y) {
+    if (!parent) {
+        if (y) y->parent = nullptr;
+    } else if (parent->left == x) {
+        parent->setLeft(y);
+    } else {
+        parent->setRight(y);
+    }
+    if (x) x->parent = nullptr;
+    return y;
+}
+\end{lstlisting}
+
+Function \texttt{min(t)} recursively find the minimum node for a given tree. Function \texttt{remove(tree)} helps to release the memory for a given node.
+
+\begin{lstlisting}
+Node* min(Node* t) {
+    while (t && t->left) t = t->left;
+    return t;
+}
+
+void remove(Node* x) {
+    if (x) {
+        x->parent = x->left = x->right = nullptr;
+        delete x;
+    }
+}
+\end{lstlisting}
+
+The fixing method is implemented as below.
+
+\begin{lstlisting}
+Node* deleteFix(Node* t, Node* parent, Node* x) {
+    int d1, d2, dy;
+    Node *p, *l, *r;
+    while (parent) {
+        d2 = d1 = parent->delta;
+        d2 += (x == parent->left ? 1 : -1);
+        if (isLeaf(parent)) d2 = 0;
+        parent->delta = d2;
+        p = parent;
+        l = parent->left;
+        r = parent->right;
         if (abs(d1) == 1 && abs(d2) == 0) {
             x = parent;
-            parent = x.parent;
+            parent = x->parent;
         } else if (abs(d1) == 0 && abs(d2) == 1) {
             return t;
         } else if (abs(d1) == 1 && abs(d2) == 2) {
             if (d2 == 2) {
-                if (r.delta == 1) { // right-right case
-                    p.delta = 0;
-                    r.delta = 0;
+                if (r->delta == 1) {  // right-right case
+                    p->delta = r->delta = 0;
                     parent = r;
-                    t = rotateLeft(t, p);
-                } else if (r.delta == -1) { // right-left case
-                    int dy = r.left.delta;
-                    p.delta = dy == 1 ? -1 : 0;
-                    r.left.delta = 0;
-                    r.delta = dy == -1 ? 1 : 0;
-                    parent = r.left;
-                    t = rotateRight(t, r);
-                    t = rotateLeft(t, p);
-                } else { // del specific right-right case
-                    p.delta = 1;
-                    r.delta--;
-                    t = rotateLeft(t, p);
-                    break; // no furthur height change
+                    t = leftRotate(t, p);
+                } else if (r->delta == -1) { // right-left case
+                    dy = r->left->delta;
+                    p->delta = dy == 1 ? -1 : 0;
+                    r->left->delta = 0;
+                    r->delta = dy == -1 ? 1 : 0;
+                    parent = r->left;
+                    t = rightRotate(t, r);
+                    t = leftRotate(t, p);
+                } else { // delete specific right-right case
+                    p->delta = 1;
+                    r->delta--;
+                    t = leftRotate(t, p);
+                    break; // no further height change
                 }
             } else if (d2 == -2) {
-                if (l.delta == -1) { // left-left case
-                    p.delta = 0;
-                    l.delta = 0;
+                if (l->delta == -1) { // left-left case
+                    p->delta = l->delta = 0;
                     parent = l;
-                    t = rotateRight(t, p);
-                } else if (l.delta == 1) { // left-right case
-                    int dy = l.right.delta;
-                    l.delta = dy == 1 ? -1 : 0;
-                    l.right.delta = 0;
-                    p.delta = dy == -1 ? 1 : 0;
-                    parent = l.right;
-                    t = rotateLeft(t, l);
-                    t = rotateRight(t, p);
-                } else { // del specific left-left case
-                    p.delta = -1;
-                    l.delta++;
-                    t = rotateRight(t, p);
+                    t = rightRotate(t, p);
+                } else if (l->delta == 1) { // left-right case
+                    dy = l->right->delta;
+                    l->delta = dy == 1 ? -1 : 0;
+                    l->right->delta = 0;
+                    p->delta = dy == -1 ? 1 : 0;
+                    parent = l->right;
+                    t = leftRotate(t, l);
+                    t = rightRotate(t, p);
+                } else { // delete specific left-left case
+                    p->delta = -1;
+                    l->delta++;
+                    t = rightRotate(t, p);
                     break; // no further height change
                 }
             }
-            // the 4 rebalance cases cause height decrease, need bottom-up update
+            // the 4 rebalance cases cause height decrease, go on bottom-up update
             x = parent;
-            parent = x.parent;
+            parent = x->parent;
+        } else {
+            printf("shouldn't be here, d1 = %d, d2 = %d", d1, d2);
+            assert(false);
         }
     }
-    if (parent == null) // delete the root
-        return x;
+    if (!parent) return x; // delete the root
     return t;
 }
 \end{lstlisting}
