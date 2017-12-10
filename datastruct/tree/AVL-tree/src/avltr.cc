@@ -9,6 +9,9 @@ using namespace std;
 
 typedef int Key;
 
+struct Node;
+Node* replace(Node* parent, Node* x, Node* y);
+
 struct Node {
     Key key;
     int delta;
@@ -35,18 +38,45 @@ struct Node {
         setRight(y);
     }
 
-    // parent <--> this  ==> parent <--> y
-    void replaceWith(Node* y) {
-        if (!parent) {
-            if (y) y->parent = nullptr;
-        } else if (parent->left == this) {
-            parent->setLeft(y);
-        } else {
-            parent->setRight(y);
-        }
-        parent = nullptr;
+    Node* replaceWith(Node* y) {
+        return replace(parent, this, y);
     }
 };
+
+bool isLeaf(Node* x) {
+    return x && x->left == nullptr && x->right == nullptr;
+}
+
+// change from: parent --> x to parent --> y
+Node* replace(Node* parent, Node* x, Node* y) {
+    if (!parent) {
+        if (y) y->parent = nullptr;
+    } else if (parent->left == x) {
+        parent->setLeft(y);
+    } else {
+        parent->setRight(y);
+    }
+    if (x) x->parent = nullptr;
+    return y;
+}
+
+Node* min(Node* t) {
+    while (t && t->left) t = t->left;
+    return t;
+}
+
+Node* search(Node* t, Key x) {
+    while (t && t->key != x)
+        t = x < t->key ? t->left : t->right;
+    return t;
+}
+
+void remove(Node* x) {
+    if (x) {
+        x->parent = x->left = x->right = nullptr;
+        delete x;
+    }
+}
 
 // Rotation. It doens't change the delta
 
@@ -80,9 +110,9 @@ Node* rightRotate(Node* t, Node* y) {
 
 // Insertion
 
-Node* insertFix(Node* t, Node* x);
+Node* insertFix(Node* t, Node* parent, Node* x);
 
-// top-down insert
+// top-down insert, returns the new root
 Node* insert(Node* t, Key key) {
     Node* root = t;
     Node* x = new Node(key);
@@ -97,41 +127,41 @@ Node* insert(Node* t, Key key) {
         parent->setLeft(x);
     else
         parent->setRight(x);
-    return insertFix(root, x);
+    return insertFix(root, parent, x);
 }
 
 /*
- * bottom-up update delta and fix
+ * Bottom-up update delta and fix
  *   t: tree root;
- *   x: the sub-tree that the height increases.
+ *   x: the sub-tree that the height changes.
+ *
+ * Denote d = delta(x), d' = delta(x'),
+ *   where x' is the new sub tree after insertion.
+ *
+ * case 1: |d| == 0, |d'| == 1,
+ *    It means height increase, go on bottom-up updating.
+ *
+ * case 2: |d| == 1, |d'| == 0,
+ *    program terminate as height doesn't change.
+ *
+ * case 3: |d| == 1, |d'| == 2, AVL violation,
+ *    we need fixing by rotation.
  */
-Node* insertFix(Node* t, Node* x) {
-    /*
-     * denote d = delta(t), d' = delta(t'),
-     *   where t' is the new tree after insertion.
-     *
-     * case 1: |d| == 0, |d'| == 1, height increase,
-     *    we need go on bottom-up updating.
-     *
-     * case 2: |d| == 1, |d'| == 0, height doesn't change,
-     *    program terminate
-     *
-     * case 3: |d| == 1, |d'| == 2, AVL violation,
-     *    we need fixing by rotation.
-     */
+Node* insertFix(Node* t, Node* parent, Node* x) {
     int d1, d2, dy;
     Node *p, *l, *r;
-    while (x->parent) {
-        d2 = d1 = x->parent->delta;
-        d2 += x == x->parent->left ? -1 : 1;
-        x->parent->delta = d2;
-        p = x->parent;
-        l = x->parent->left;
-        r = x->parent->right;
+    while (parent) {
+        d2 = d1 = parent->delta;
+        d2 += (x == parent->left ? -1 : 1);
+        parent->delta = d2;
+        p = parent;
+        l = parent->left;
+        r = parent->right;
         if (abs(d1) == 1 && abs(d2) == 0) {
             return t;
         } else if (abs(d1) == 0 && abs(d2) == 1) {
-            x = x->parent;
+            x = parent;
+            parent = x->parent;
         } else if (abs(d1) == 1 && abs(d2) == 2) {
             if (d2 == 2) {
                 if (r->delta == 1) { // right-right case
@@ -169,7 +199,117 @@ Node* insertFix(Node* t, Node* x) {
     return t;
 }
 
+Node* deleteFix(Node* t, Node* parent, Node* x);
+
+Node* del(Node* t, Node* x) {
+    if (!x) return t;
+    Node *y, *parent = x->parent;
+    if (!x->left) {
+        y = x->replaceWith(x->right);
+    } else if (!x->right) {
+        y = x->replaceWith(x->left);
+    } else {
+        y = min(x->right);
+        x->key = y->key;
+        parent = y->parent;
+        x = y;
+        y = y->replaceWith(y->right);
+    }
+    t = deleteFix(t, parent, y);
+    remove(x);
+    return t;
+}
+
+/*
+ * Bottom-up update delta and fix
+ *   t: tree root;
+ *   x: the sub-tree that the height changes.
+ *
+ * Denote d = delta(x), d' = delta(x'),
+ *   where x' is the new sub tree after deletion.
+ *
+ * case 1: |d| == 0, |d'| == 1,
+ *    Program terminate as height doesn't change.
+ *
+ * case 2: |d| == 1, |d'| == 0,
+ *    For delete, it means height decrease, go on bottom-up updating.
+ *
+ * case 3: |d| == 1, |d'| == 2, AVL violation,
+ *    we need fixing by rotation.
+ */
+Node* deleteFix(Node* t, Node* parent, Node* x) {
+    int d1, d2, dy;
+    Node *p, *l, *r;
+    while (parent) {
+        d2 = d1 = parent->delta;
+        d2 += (x == parent->left ? 1 : -1);
+        if (isLeaf(parent)) d2 = 0;
+        parent->delta = d2;
+        p = parent;
+        l = parent->left;
+        r = parent->right;
+        if (abs(d1) == 1 && abs(d2) == 0) {
+            x = parent;
+            parent = x->parent;
+        } else if (abs(d1) == 0 && abs(d2) == 1) {
+            return t;
+        } else if (abs(d1) == 1 && abs(d2) == 2) {
+            if (d2 == 2) {
+                if (r->delta == 1) {  // right-right case
+                    p->delta = r->delta = 0;
+                    parent = r;
+                    t = leftRotate(t, p);
+                } else if (r->delta == -1) { // right-left case
+                    dy = r->left->delta;
+                    p->delta = dy == 1 ? -1 : 0;
+                    r->left->delta = 0;
+                    r->delta = dy == -1 ? 1 : 0;
+                    parent = r->left;
+                    t = rightRotate(t, r);
+                    t = leftRotate(t, p);
+                } else { // delete specific right-right case
+                    p->delta = 1;
+                    r->delta--;
+                    t = leftRotate(t, p);
+                    break; // no further height change
+                }
+            } else if (d2 == -2) {
+                if (l->delta == -1) { // left-left case
+                    p->delta = l->delta = 0;
+                    parent = l;
+                    t = rightRotate(t, p);
+                } else if (l->delta == 1) { // left-right case
+                    dy = l->right->delta;
+                    l->delta = dy == 1 ? -1 : 0;
+                    l->right->delta = 0;
+                    p->delta = dy == -1 ? 1 : 0;
+                    parent = l->right;
+                    t = leftRotate(t, l);
+                    t = rightRotate(t, p);
+                } else { // delete specific left-left case
+                    p->delta = -1;
+                    l->delta++;
+                    t = rightRotate(t, p);
+                    break; // no further height change
+                }
+            }
+            // the 4 rebalance cases cause height decrease, go on bottom-up update
+            x = parent;
+            parent = x->parent;
+        } else {
+            printf("shouldn't be here, d1 = %d, d2 = %d", d1, d2);
+            assert(false);
+        }
+    }
+    if (!parent) return x; // delete the root
+    return t;
+}
+
 // helpers
+
+int height(Node* t) {
+    return t == nullptr ? 0 : (1 + max(height(t->left), height(t->right)));
+}
 
 vector<Key> toList(Node* t) {
     vector<Key> xs, ys;
@@ -198,20 +338,10 @@ string toStr(Node* t) {
     return s.str();
 }
 
-int height(Node* t) {
-    if (t == nullptr)
-        return 0;
-    else
-        return 1 + max(height(t->left), height(t->right));
-}
-
 bool isAVL(Node* t) {
-    if (t == nullptr)
-        return true;
-    else {
-        int delta = height(t->right) - height(t->left);
-        return isAVL(t->left) && isAVL(t->right) && abs(delta) <= 1;
-    }
+    if (t == nullptr) return true;
+    int delta = height(t->right) - height(t->left);
+    return delta == t->delta && isAVL(t->left) && isAVL(t->right) && abs(delta) <= 1;
 }
 
 bool isBST(Node* t, vector<Key> xs) {
@@ -219,31 +349,54 @@ bool isBST(Node* t, vector<Key> xs) {
     return xs == toList(t);
 }
 
-int main(int argc, char** argv) {
-    int i, n, m = 1000;
-    vector<Key> xs(1000), ys;
-    Node* t;
+const static int N = 100;
+static vector<Key> num(N);
 
-    printf("test insert...\n");
-    while (m--) {
-        for (i = 0; i < 10; ++i)
-            xs[i] = i;
-        n = rand() % 1000;
-        for (i = 0; i < n; ++i)
-            swap(xs[i], xs[rand() % 1000]);
-        ys = vector<Key>(xs.begin(), xs.begin() + rand() % 1000);
-        t = fromList(ys);
-        if (!isBST(t, ys)) {
-            copy(ys.begin(), ys.end(), ostream_iterator<Key>(cout, ", "));
-            printf("t=%s\n", toStr(t).c_str());
-            assert(false);
-        }
-        if (!isAVL(t)) {
-            printf("not AVL!\nt=%s\n", toStr(t).c_str());
-            assert(false);
-        }
-        delete t;
+vector<Key> genList(int maxLen) {
+    for (int i = 0; i < N; ++i)
+        swap(num[i], num[rand() % N]);
+    return vector<Key>(num.begin(), num.begin() + maxLen);
+}
+
+void testInsert(vector<Key>& xs) {
+    Node* t = fromList(xs);
+    if (!isBST(t, xs)) {
+        copy(xs.begin(), xs.end(), ostream_iterator<Key>(cout, ", "));
+        printf("\nbuild violated AVL properties: t = %s\n", toStr(t).c_str());
+        assert(false);
     }
-    printf("done\n");
+    delete t;
+}
+
+Node* testDeleteKey(Node* t, Key k) {
+    t = del(t, search(t, k));
+    if (search(t, k)) {
+        printf("Found %d after delete.\n", k);
+        assert(false);
+    }
+    if (!isAVL(t)) {
+        printf("del violated AVL properties: t = %s\n", toStr(t).c_str());
+        assert(false);
+    }
+    return t;
+}
+
+void testDelete(vector<Key>& xs) {
+    Node* t = fromList(xs);
+    for (vector<Key>::iterator it = xs.begin(); it != xs.end(); ++it)
+        t = testDeleteKey(t, *it);
+    delete t;
+}
+
+int main(int argc, char** argv) {
+    int i;
+    for (i = 0; i < N; ++i)
+        num[i] = i;
+    for (i = 0; i < N; ++i) {
+        vector<Key> xs = genList(N);
+        testInsert(xs);
+        testDelete(xs);
+    }
+    printf("%d tests passed.\n", N);
     return 0;
 }
