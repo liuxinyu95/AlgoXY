@@ -350,94 +350,62 @@ def lookup(t, key):
     return None if t is None else t.value
 \end{lstlisting}
 
-Looking up can also be define in recursive manner. If the tree is
-empty, the looking up fails; If $k=0$, the satellite data is the result
-to be found; If the last bit is 0, we recursively look up the
-left child; otherwise, we look up the right child.
-
-\be
-lookup(T, k) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & T = \phi \\
-  d & k = 0 \\
-  lookup(T_l, k / 2) & even(k) \\
-  lookup(T_r, \lfloor k / 2 \rfloor) & otherwise
-  \end{array}
-\right.
-\ee
-
-The following Haskell example program implements the recursive
-look up algorithm.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-search Empty k = Nothing
-search t 0 = value t
-search t k = if even k then search (left t) (k `div` 2)
-             else search (right t) (k `div` 2)
-\end{lstlisting}
-
 The looking up algorithm is bound to $O(m)$ time, where $m$ is the
-number of bits for a given key.
+number of bits of the key.
 
 % ================================================================
-%               Int Patricia
+%               Int Tree (Patricia, int prefix tree)
 % ================================================================
-\section{Integer Patricia}
+\section{Integer prefix tree}
 \label{int-patricia}
 \index{Integer Patricia}
 \index{Integer prefix tree}
 
-Trie has some drawbacks. It wastes a lot of
-spaces. Note in figure \ref{int-trie}, only leafs store the real data.
+Trie has some drawbacks. It occupies a lot of
+spaces. As shown in figure \ref{fig:int-trie}, the real data is mostly stored in leafs.
 It's very common that an integer binary trie contains many nodes only have one child.
-One improvement idea is to compress the chained nodes together.
-Patricia is such a data structure invented by
-Donald R. Morrison in 1968. Patricia means practical algorithm to
-retrieve information coded in alphanumeric\cite{patricia-morrison}.
-It is another kind of prefix tree.
+One idea is to compress the chained nodes to one.
+Integer prefix tree is such a data structure invented by
+Donald R. Morrison in 1968, who named it as 'Patricia'. It stands for \textbf{P}ractical \textbf{A}lgorithm \textbf{T}o \textbf{R}etrieve \textbf{I}nformation \textbf{C}oded \textbf{I}n \textbf{A}lphanumeric\cite{patricia-morrison}. It is another kind of prefix tree. We call it integer tree in this book.
 
-Okasaki gives implementation of integer Patricia in \cite{okasaki-int-map}.
-If we merge the chained nodes which have only one child together in figure \ref{fig:int-trie},
-We can get a Patricia as shown in figure \ref{fig:little-endian-patricia}.
+Okasaki provided the implementation of integer tree in \cite{okasaki-int-map}.
+If merge the chained nodes which have only one child together in figure \ref{fig:int-trie}, we can get a integer tree as shown in figure \ref{fig:little-endian-patricia}.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.5]{img/little-endian-patricia.ps}
-  \caption{Little endian Patricia for the map
+  \caption{Little endian integer tree for the map
      \{$ 1 \rightarrow a, 4 \rightarrow b, 5 \rightarrow c, 9 \rightarrow d$\}.}
   \label{fig:little-endian-patricia}
 \end{figure}
 
-From this figure, we can find that the key for the branch node of siblings is the
-longest common prefix for them.
-They branches out at certain bit. Patricia saves a lot of spaces compare
+From this figure, we can find the key of the branch node is the
+longest common prefix for its descendant trees.
+They branches out at certain bit. Integer tree saves a lot of space compare
 to trie.
 
-Different from integer trie, using the big-endian integer in Patricia
-doesn't cause the padding zero problem mentioned
-in section \ref{int-trie}. All zero bits before MSB are omitted to save
-space. Okasaki lists some significant advantages
-of big-endian Patricia\cite{okasaki-int-map}.
+Different from integer trie, padding bits of zero don't cause issue
+with the big endian integer tree. All zero bits before MSB are omitted to
+save the space. Okasaki list some significant advantages of big endian
+integer tree in \cite{okasaki-int-map}.
 
 % ================================================================
-%                 Definition of int patricia tree
+%                 Definition of int tree
 % ================================================================
 \subsection{Definition}
 
-Integer Patricia tree is a special kind of binary tree. It is either
-empty or is a node. There are two different types of node.
+Integer prefix tree is a special binary tree. It is either
+empty or a node. There are two different types of node:
 
 \begin{itemize}
-\item It can be a leaf contains integer key and optional satellite data;
-\item or a branch node, contains the left and the right children. The
-two children shares the longest common prefix bits for their keys.
-For the left child, the next bit of the key is zero, while the next
-bit is one for the right child.
+\item A leaf contains integer key and optional satellite data;
+\item Or a branch node with the left and right sub-trees. The
+two children share the \textbf{longest common prefix} bits for their keys.
+For the left child, the next bit in the key is zero, while it's one
+for the right child.
 \end{itemize}
 
-The following Haskell example code defines Patricia accordingly.
+The following Haskell example code defines integer tree accordingly.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -450,43 +418,37 @@ data IntTree a = Empty
                | Branch Prefix Mask (IntTree a) (IntTree a)
 \end{lstlisting}
 
-In order to tell from which bit the left and right children differ, a
-mask is recorded in the branch node. Typically, a mask is power of 2,
-like $2^n$ for some non-negative integer $n$, all
-bits being lower than $n$ don't belong to the common prefix.
+In the branch node, we use a mask number to tell from which bit the sub-trees differ.
+The mask is power of 2, which is $2^n$ for some non-negative integer $n$, all
+bits that are lower than $n$ don't belong to the common prefix.
 
-The following Python example code defines Patricia as well as
-some auxiliary functions.
+The following example Python code defines integer tree with auxiliary functions.
 
 \lstset{language=Python}
 \begin{lstlisting}
 class IntTree:
-    def __init__(self, key = None, value = None):
+    def __init__(self, key = 0, value = None):
         self.key = key
         self.value = value
-        self.prefix = self.mask = None
+        self.prefix = key
+        self.mask = 1
         self.left = self.right = None
 
-    def set_children(self, l, r):
-        self.left = l
-        self.right = r
+    def isleaf(self):
+        return self.left is None and self.right is None
 
-    def replace_child(self, x, y):
+    def replace(self, x, y):
         if self.left == x:
             self.left = y
         else:
             self.right = y
 
-    def is_leaf(self):
-        return self.left is None and self.right is None
-
-    def get_prefix(self):
-        if self.prefix is None:
-            return self.key
-        else:
-            return self.prefix
+    def match(self, k):
+        return maskbit(k, self.mask) == self.prefix
 \end{lstlisting}
 
+Where match tests if the prefix stored in the node are same as the given key
+before the mask bit. It's explained in the next section.
 
 % ================================================================
 %                 Insertion of int patricia tree
