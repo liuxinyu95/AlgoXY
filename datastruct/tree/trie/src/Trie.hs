@@ -19,56 +19,58 @@
 -- Refer to http://en.wikipedia.org/wiki/Trie
 module Trie where
 
+import Data.List (sort, sortBy)
+import Data.Function (on)
+
 -- definition
-data Trie a = Trie { value :: Maybe a
-                   , children :: [(Char, Trie a)]}
+data Trie k v = Trie { value :: Maybe v
+                     , children :: [(k, Trie k v)]} deriving (Show)
 
 empty = Trie Nothing []
 
 -- insert
--- usage: insert t "zoo" "a place where animals are for public to see"
-insert :: Trie a -> String -> a -> Trie a
+insert :: Eq k => Trie k v -> [k] -> v -> Trie k v
 insert t []     x = Trie (Just x)  (children t)
 insert t (k:ks) x = Trie (value t) (ins (children t) k ks x) where
     ins [] k ks x = [(k, (insert empty ks x))]
-    ins (p:ps) k ks x = if fst p == k 
+    ins (p:ps) k ks x = if fst p == k
                         then (k, insert (snd p) ks x):ps
                         else p:(ins ps k ks x)
 
 -- lookup
-find :: Trie a -> String -> Maybe a
+find :: Eq k => Trie k v -> [k] -> Maybe v
 find t [] = value t
 find t (k:ks) = case lookup k (children t) of
                   Nothing -> Nothing
                   Just t' -> find t' ks
 
-fromList :: [(String, a)] -> Trie a
+fromList :: Eq k => [([k], v)] -> Trie k v
 fromList xs = foldl ins empty xs where
     ins t (k, v) = insert t k v
 
-sort :: (Ord a)=>[(a, b)] -> [(a, b)]
-sort [] = []
-sort (p:ps) = sort xs ++ [p] ++ sort ys where
-    xs = [x | x<-ps, fst x <= fst p ]
-    ys = [y | y<-ps, fst y > fst p ]
+fromString :: (Enum v, Num v) => String -> Trie Char v
+fromString = fromList . (flip zip [1..]) . words
 
-toString :: (Show a)=> Trie a -> String
-toString t = toStr t "" where
-    toStr t prefix = "(" ++ prefix ++ showMaybe (value t) ++ 
-                     (concat $ map (\(k, v)-> ", " ++ toStr v (prefix++[k])) 
-                                 (sort $ children t))
-                     ++ ")"
-    showMaybe Nothing = ""
-    showMaybe (Just x)  = ":" ++ show x
+-- Pre-order traverse to populate keys in lexicographical order
+keys :: Ord k => Trie k v -> [[k]]
+keys t = map reverse $ keys' t [] where
+  keys' t prefix = case (value t) of
+    Nothing -> ks
+    (Just _ ) -> prefix : ks
+    where
+      ks = concatMap (\(k, t') -> keys' t' (k : prefix)) ts
+      ts = sortBy (compare `on` fst) (children t)
 
--- test cases
+-- example
+example = insert (fromString "a place where animals are for public to see") "zoo" 0
 
-testTrie = "t=" ++ (toString t) ++ 
-           "\nt'=" ++ (toString t') ++
-           "\nsearch t an: " ++ (show $ find t "an") ++
-           "\nsearch t boy: " ++ (show $ find t "boy") ++
-           "\nsearch t the: " ++ (show $ find t "the")
-    where 
-      t = fromList [("a", 1), ("an", 2), ("another", 7), ("boy", 3), ("bool", 4), ("zoo", 3)]
-      t'= fromList [("zoo", 3), ("bool", 4), ("boy", 3), ("another", 7), ("an", 2), ("a", 1)]
+-- test data
+assocs = [[("a", 1), ("an", 2), ("another", 7), ("boy", 3), ("bool", 4), ("zoo", 3)],
+          [("zoo", 3), ("bool", 4), ("boy", 3), ("another", 7), ("an", 2), ("a", 1)]]
 
+verify = all (\as ->
+                 let t = fromList as in
+                   all (\(k, v) -> maybe False (==v) (find t k)) as) assocs
+
+verifyKeys = all (\as ->
+                   keys (fromList as) == (sort $ fst $ unzip as)) assocs

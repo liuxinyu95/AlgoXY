@@ -16,16 +16,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import string
-
-def trie_to_str(t, prefix=""):
-    str="("+prefix
+def trie_to_str(t, prefix = ""):
+    s = "(" + prefix
     if t.value is not None:
-        str += ":"+t.value
-    for k,v in sorted(t.children.items()):
-        str += ", "+trie_to_str(v, prefix+k)
-    str+=")"
-    return str
+        s += ":" + t.value
+    for k, v in sorted(t.children.items()):
+        s += ", " + trie_to_str(v, prefix + k)
+    return s + ")"
 
 def from_list(l, insert_func):
     t = None

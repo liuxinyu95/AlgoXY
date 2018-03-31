@@ -27,12 +27,16 @@
 -- A very simple int (binary) trie as CLRS 12-2 (Little-Edian)
 module IntTrie where
 
-data IntTrie a = Empty 
+import Test.QuickCheck
+import Data.Maybe (isNothing)
+
+data IntTrie a = Empty
                | Branch (IntTrie a) (Maybe a) (IntTrie a) -- left, value, right
+               deriving Show
 
 type Key = Int
 
--- helpers
+-- accessors
 left :: IntTrie a -> IntTrie a
 left (Branch l _ _) = l
 left Empty = Empty
@@ -46,7 +50,7 @@ value (Branch _ v _) = v
 value Empty = Nothing
 
 -- Insertion
--- if user insert a value already binding with existed key, just over write 
+-- if user insert a value already binding with existed key, just over write
 -- the previous value
 -- usage: insert trie key x
 insert :: IntTrie a -> Key -> a -> IntTrie a
@@ -62,24 +66,37 @@ search t 0 = value t
 search t k = if even k then search (left t) (k `div` 2)
              else search (right t) (k `div` 2)
 
--- Test helper
 fromList :: [(Key, a)] -> IntTrie a
 fromList xs = foldl ins Empty xs where
     ins t (k, v) = insert t k v
 
 -- k = ... a2, a1, a0 ==> k' = ai * m + k, where m=2^i
-toString :: (Show a)=>IntTrie a -> String
-toString t = toStr t 0 1 where
-    toStr Empty k m = "."
-    toStr tr k m = "(" ++ (toStr (left tr) k (2*m)) ++
-                      " " ++ (show k) ++ (valueStr (value tr)) ++
-                      " " ++ (toStr (right tr) (m+k) (2*m)) ++ ")"
-    valueStr (Just x) = ":" ++ (show x)
-    valueStr _ = ""
+toList :: IntTrie a -> [(Key, Maybe a)]
+toList = toList' 0 1 where
+  toList' _ _ Empty = []
+  toList' k m (Branch l v r) = (toList' k (2 * m) l) ++
+    ((k, v) : (toList' (m + k) (2 * m) r))
 
--- Test cases
-testIntTrie = "t=" ++ (toString t) ++ "\nsearch t 4: " ++ (show $ search t 4) ++
-              "\nsearch t 0: " ++ (show $ search t 0)
-    where
-      t = fromList [(1, 'a'), (4, 'b'), (5, 'c'), (9, 'd')]
+-- Verification
 
+data Sample = S [(Key, Int)] [Int] deriving Show
+
+instance Arbitrary Sample where
+  arbitrary = do
+    n <- choose (2, 100)
+    xs <- shuffle [0..100]
+    let (ks, ks') = splitAt n xs
+    return $ S (zip ks [1..]) ks'
+
+prop_build :: Sample -> Bool
+prop_build (S kvs ks') = let t = fromList kvs in
+  (all (\(k, v) -> Just v == search t k) kvs ) &&
+  (all (isNothing . search t) ks')
+
+example = do
+  let t = fromList [(1, 'a'), (4, 'b'), (5, 'c'), (9, 'd')]
+  putStrLn $ show $ toList t
+  putStrLn "search t 4"
+  putStrLn $ show $ search t 4
+  putStrLn "search t 0"
+  putStrLn $ show $ search t 0

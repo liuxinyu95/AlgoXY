@@ -1,5 +1,5 @@
 {-
-    IntPatricia.hs, Integer base Patricia Tree.
+    IntPatricia.hs, Integer base prefix tree.
     Copyright (C) 2010, Liu Xinyu (liuxinyu95@gmail.com)
 
     This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 
--- Int (as key) Patricia Tree
+-- Int (as key) Prefix Tree
 -- Referred from Haskell packages Data.IntMap
 -- Other reference includes:
 --  [1] CLRS, Problems 12-2: Radix trees
@@ -27,11 +27,13 @@
 module IntPatricia where
 
 import Data.Bits
+import Test.QuickCheck hiding ((.&.))
+import Data.Maybe (isNothing)
 
-{------------------------------------ 
-  1. Big Edian Patricia tree
+{------------------------------------
+  1. Big Edian integer tree
 -------------------------------------}
-data IntTree a = Empty 
+data IntTree a = Empty
                | Leaf Key a
                | Branch Prefix Mask (IntTree a) (IntTree a) -- prefix, mask, left, right
 
@@ -51,11 +53,11 @@ type Mask = Int
 --         prefix  = a(n),a(n-1),...a(i+1),a(i),00...0
 --  2. mask bit = 100...0b (=2^i)
 --         so mask is something like, 1,2,4,...,128,256,...
---  3. if      x=='0', y=='1' then (tree1=>left, tree2=>right), 
+--  3. if      x=='0', y=='1' then (tree1=>left, tree2=>right),
 --     else if x=='1', y=='0' then (tree2=>left, tree1=>right).
 join :: Prefix -> IntTree a -> Prefix -> IntTree a -> IntTree a
 join p1 t1 p2 t2 = if zero p1 m then Branch p m t1 t2
-                                else Branch p m t2 t1 
+                                else Branch p m t2 t1
     where
       (p, m) = lcp p1 p2
 
@@ -98,11 +100,11 @@ match k p m = (mask k m) == p
   3. Insertion
 --------------------------------------}
 
--- if user insert a value already binding with existed key, 
+-- if user insert a value already binding with existed key,
 -- just over write the previous value
 -- usage: insert tree key x
 insert :: IntTree a -> Key -> a -> IntTree a
-insert t k x 
+insert t k x
    = case t of
        Empty -> Leaf k x
        Leaf k' x' -> if k==k' then Leaf k x
@@ -119,11 +121,11 @@ insert t k x
 
 -- look up a key
 search :: IntTree a -> Key -> Maybe a
-search t k 
+search t k
   = case t of
       Empty -> Nothing
       Leaf k' x -> if k==k' then Just x else Nothing
-      Branch p m l r 
+      Branch p m l r
              | match k p m -> if zero k m then search l k
                               else search r k
              | otherwise -> Nothing
@@ -132,7 +134,7 @@ search t k
   5. Test helper
 ---------------------------------}
 
--- Generate a Int Patricia tree from a list
+-- Generate a Int tree from a list
 -- Usage: fromList [(k1, x1), (k2, x2),..., (kn, xn)]
 fromList :: [(Key, a)] -> IntTree a
 fromList xs = foldl ins Empty xs where
@@ -143,7 +145,7 @@ toString t =
     case t of
       Empty -> "."
       Leaf k x -> (show k) ++ ":" ++ (show x)
-      Branch p m l r -> "[" ++ (show p) ++ "@" ++ (show m) ++ "]" ++ 
+      Branch p m l r -> "[" ++ (show p) ++ "@" ++ (show m) ++ "]" ++
                         "(" ++ (toString l) ++ ", " ++ (toString r) ++ ")"
 
 {---------------------------------
@@ -154,3 +156,18 @@ testIntTree = "t=" ++ (toString t) ++ "\nsearch t 4: " ++ (show $ search t 4) ++
     where
       t = fromList [(1, 'x'), (4, 'y'), (5, 'z')]
 
+-- Verification
+
+data Sample = S [(Key, Int)] [Int] deriving Show
+
+instance Arbitrary Sample where
+  arbitrary = do
+    n <- choose (2, 100)
+    xs <- shuffle [0..100]
+    let (ks, ks') = splitAt n xs
+    return $ S (zip ks [1..]) ks'
+
+prop_build :: Sample -> Bool
+prop_build (S kvs ks') = let t = fromList kvs in
+  (all (\(k, v) -> Just v == search t k) kvs ) &&
+  (all (isNothing . search t) ks')
