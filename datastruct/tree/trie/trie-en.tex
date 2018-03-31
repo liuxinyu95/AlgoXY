@@ -1183,192 +1183,54 @@ Below Python example program reuses the trie definition to define prefix tree.
 
 \lstset{language=Python}
 \begin{lstlisting}
-class Patricia:
+class PrefixTree:
     def __init__(self, value = None):
         self.value = value
-        self.children = {}
+        self.subtrees = {}
 \end{lstlisting}
 
 % ================================================================
 %                 Insertion of Alphabetic Patrica Tree
 % ================================================================
 \subsection{Insertion}
-\index{Patricia!insert}
+\index{Prefix tree!insert}
 
-When insert a key, $s$, if the Patricia is empty, we
+When insert a key $s$, if the prefix tree is empty, we
 create a leaf node as shown in figure \ref{fig:patricia-insert} (a).
-Otherwise, we need check the children.
-If there is some sub tree $T_i$ bound to the string $s_i$,
-and there exists common prefix between $s_i$ and $s$, we
-need branch out a new leaf $T_j$. The method is to
+Otherwise, we examine the sub-trees to see if
+there's some tree $T_i$ bound to the string $s_i$,
+and there exists common prefix between $s_i$ and $s$. In such case, we
+need branch out a new leaf $T_j$. To do this, we firstly
 create a new internal branch node, bind it with the common
-prefix. Then set $T_i$ as one child of this branch, and
-$T_j$ as the other child. $T_i$ and $T_j$ share the common
+prefix; then set $T_i$ and $T_j$ as the two children sub-trees of this node.
+$T_i$ and $T_j$ share the common
 prefix. This is shown in figure \ref{fig:patricia-insert} (b).
-However, there are two special cases, because $s$ may be the prefix of $s_i$
-as shown in figure \ref{fig:patricia-insert} (c). And
-$s_i$ may be the prefix of $s$ as in figure \ref{fig:patricia-insert} (d).
+There are two special cases. $s$ can be the prefix of $s_i$
+as shown in figure \ref{fig:patricia-insert} (c). Similarly,
+$s_i$ can be the prefix of $s$ as shown in figure \ref{fig:patricia-insert} (d).
 
 \begin{figure}[htbp]
   \centering
-  \subfloat[Insert key `boy' into the empty Patricia, the result is a leaf.]{\hspace{.2\textwidth}\includegraphics[scale=0.45]{img/patricia-insert-a.ps}\hspace{.1\textwidth}}\hspace{.1\textwidth}
+  \subfloat[Insert key `boy' into the empty prefix tree, the result is a leaf.]{\hspace{.2\textwidth}\includegraphics[scale=0.45]{img/patricia-insert-a.ps}\hspace{.1\textwidth}}\hspace{.1\textwidth}
   \subfloat[Insert key `bool'. A new branch with common prefix `bo' is created.]{\hspace{.1\textwidth}\includegraphics[scale=0.45]{img/patricia-insert-b.ps}\hspace{.2\textwidth}} \\
   \subfloat[Insert key `an' with value $y$ into $x$ with prefix `another'.]{\hspace{.3\textwidth}\includegraphics[scale=0.45]{img/patricia-insert-c.ps}\hspace{.3\textwidth}} \\
   \subfloat[Insert `another', into the node with prefix `an'. We recursively insert key `other' to the child.]{\hspace{.3\textwidth}\includegraphics[scale=0.45]{img/patricia-insert-d.ps}\hspace{.3\textwidth}}
-  \caption{Patricia insertion}
+  \caption{Prefix tree insertion}
   \label{fig:patricia-insert}
 \end{figure}
 
-The insertion algorithm can be described as below.
-
-\begin{algorithmic}[1]
-\Function{Insert}{$T, k, v$}
-  \If{$T = $ NIL}
-   \State $T \gets$ \Call{Empty-Node}{}
-  \EndIf
-  \State $p \gets T$
-  \Loop
-    \State $match \gets$ FALSE
-    \For{each $(s_i, T_i) \in$ \Call{Children}{$p$}}
-      \If{$k = s_i$}
-        \State \Call{Value}{$p$} $\gets v$
-        \State \Return $T$
-      \EndIf
-      \State $c \gets$ \Call{LCP}{$k, s_i$}
-      \State $k_1 \gets k - c$
-      \State $k_2 \gets s_i - c$
-      \If{$c \neq $ NIL}
-        \State $match \gets$ TRUE
-        \If{$k_2 = $ NIL} \Comment{$s_i$ is prefix of $k$}
-          \State $p \gets T_i$
-          \State $k \gets k_1$
-          \State break
-        \Else \Comment{Branch out a new leaf}
-          \State \Call{Children}{$p$} $\gets$ \Call{Children}{$p$} $\cup \{$ ($c$, \Call{Branch}{$k_1, v, k_2, T_i$}) $\}$
-          \State \textproc{Delete}(\Call{Children}{$p$}, $(s_i, T_i)$)
-          \State \Return $T$
-        \EndIf
-      \EndIf
-    \EndFor
-    \If{$\lnot match$} \Comment{Add a new leaf}
-      \State \Call{Children}{$p$} $\gets$ \Call{Children}{$p$} $\cup \{$ ($k$, \Call{Create-Leaf}{$v$}) $\}$
-      \State \Return $T$
-    \EndIf
-  \EndLoop
-  \State \Return $T$
-\EndFunction
-\end{algorithmic}
-
-In the above algorithm, \textproc{LCP} function finds the longest
-common prefix of the two given strings, for example, string `bool' and `boy'
-have the longest common prefix `bo'. The subtraction symbol '-' for
-strings gives the different part of two strings. For example `bool' - `bo' = `ol'. \textproc{Branch} function creates a branch node
-and updates keys accordingly.
-
-The longest common prefix can be extracted by checking the characters in the two
-strings one by one till there are two characters don't match.
-
-\begin{algorithmic}[1]
-\Function{LCP}{$A, B$}
-  \State $i \gets 1 $
-  \While{$i \leq |A| \land i \leq |B| \land A[i] = B[i]$}
-    \State $i \gets i + 1$
-  \EndWhile
-  \State \Return $A[1...i-1]$
-\EndFunction
-\end{algorithmic}
-
-There are two cases when branch out a new leaf. \textproc{Branch}($s_1, T_1, s_2, T_2$)
-takes two different keys and two trees. If $s_1$ is empty, we are
-dealing the case such as insert key `an' into a child bound to
-string `another'. We set $T_2$ as the child of $T_1$. Otherwise,
-we create a new branch node and set $T_1$ and $T_2$ as the two children.
-
-\begin{algorithmic}[1]
-\Function{Branch}{$s_1, T_1, s_2, T_2$}
-  \If{$s_1 = \phi$}
-    \State \Call{Children}{$T_1$} $\gets$ \Call{Children}{$T_1$} $\cup \{(s_2, T_2)\}$
-    \State \Return $T_1$
-  \EndIf
-  \State $T \gets$ \Call{Empty-Node}{}
-  \State \Call{Children}{$T$} $\gets \{(s_1, T_1), (s_2, T_2)\}$
-  \State \Return $T$
-\EndFunction
-\end{algorithmic}
-
-The following example Python program implements the Patricia insertion algorithm.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def insert(t, key, value = None):
-    if t is None:
-        t = Patricia()
-    node = t
-    while True:
-        match = False
-        for k, tr in node.children.items():
-            if key == k: # just overwrite
-                node.value = value
-                return t
-            (prefix, k1, k2) = lcp(key, k)
-            if prefix != "":
-                match = True
-                if k2 == "":
-                    # example: insert "another" into "an", go on traversing
-                    node = tr
-                    key = k1
-                    break
-                else: #branch out a new leaf
-                    node.children[prefix] = branch(k1, Patricia(value), k2, tr)
-                    del node.children[k]
-                    return t
-        if not match: # add a new leaf
-            node.children[key] = Patricia(value)
-            return t
-    return t
-\end{lstlisting}
-
-Where the functions to find the longest common prefix, and branch out are
-implemented as below.
-
-\begin{lstlisting}
-# returns (p, s1', s2'), where p is lcp, s1'=s1-p, s2'=s2-p
-def lcp(s1, s2):
-    j = 0
-    while j < len(s1) and j < len(s2) and s1[j] == s2[j]:
-        j += 1
-    return (s1[0:j], s1[j:], s2[j:])
-
-def branch(key1, tree1, key2, tree2):
-    if key1 == "":
-        #example: insert "an" into "another"
-        tree1.children[key2] = tree2
-        return tree1
-    t = Patricia()
-    t.children[key1] = tree1
-    t.children[key2] = tree2
-    return t
-\end{lstlisting}
-
-The insertion can also be realized recursively. Start from the root,
-the program checks all the children to find if there is a node matches
-the key. Matching means they have the common
-prefix. For duplicated keys, the program overwrites previous value.
-There are also alternative solution to handle duplicated keys, such
-as using linked-list etc. If there is no child matches the
-key, the program creates a new leaf, and add it to the children.
-
-For Patricia $T = (v, C)$, function $insert(T, k, v')$ inserts
+For prefix tree $T = (v, C)$, function $insert(T, k, v')$ inserts
 key $k$, and value $v'$ to the tree.
 
 \be
 insert(T, k, v') = (v, ins(C, k, v'))
 \ee
 
-This function calls another internal function $ins(C, k, v')$.
-If the children $C$ is empty, a new leaf is created; Otherwise
-the children are examined one by one. Denote $C = \{(k_1, T_1), (k_2, T_2), ..., (k_n, T_n)\}$,
-$C'$ holds all the prefix-sub tree pairs except for the first one.
+This function calls another function $ins(C, k, v')$.
+If the children sub-trees $C$ is empty, a new leaf is created; Otherwise
+we examine the sub-trees one by one. Denote $C = \{(k_1, T_1), (k_2, T_2), ..., (k_n, T_n)\}$,
+$C'$ holds all the (prefix, sub-tree) pairs except for the first one. the
+$ins$ function can be defined as the following.
 
 \be
 ins(C, k, v') = \left \{
@@ -1383,13 +1245,13 @@ ins(C, k, v') = \left \{
 \ee
 
 The first clause deals with the edge case of empty children. A
-leaf node containing $v'$ which is bound to $k$ will be
-returned as the only child. The second clause overwrites
+leaf node bound to $k$, containing $v'$ is
+returned as the only sub-tree. The second clause overwrites
 the previous value with $v'$ if there is some child bound
-to the same key. Note the $C_{T_1}$ means the children of
-sub tree $T_1$. The third clause branches out a new leaf
+to the same key. $C_{T_1}$ represents the children of
+sub-tree $T_1$. The third clause branches out a new leaf
 if the first child matches the key $k$. The last clause
-goes on checking the rest children.
+goes on checking the rest sub-trees.
 
 We define two keys $A$ and $B$ matching if they
 have non-empty common prefix.
@@ -1401,16 +1263,16 @@ match(A, B) = A \neq \phi \land B \neq \phi \land a_1 = b_1
 Where $a_1$ and $b_1$ are the first characters in $A$ and $B$ if
 they are not empty.
 
-Function $branch(k_1, v, k_2, T_2)$ takes tow keys, a value
-and a tree. Extract the longest common prefix $k = lcp(k_1, k_2)$,
-Denote the different part as $k_1' = k_1 - k$, $k_2' = k_2 - k$.
+Function $branch(k_1, v, k_2, T_2)$ takes two keys, a value
+and a tree. It extracts the longest common prefix $k = lcp(k_1, k_2)$,
+and assigns the different part to $k_1' = k_1 - k$, $k_2' = k_2 - k$.
 The algorithm firstly handles the edge cases that either $k_1$ is the prefix
-of $k_2$ or $k_2$ is the prefix of $k_1$. For the former case,
-It creates a new node containing $v$, bind this node to $k$,
-and set $(k_2', T_2)$ as the only child; For the later case,
-It recursively insert $k_1'$ and $v$ to $T_2$. Otherwise,
+of $k_2$ or $k_2$ is the prefix of $k_1$. For the former one,
+it creates a new node containing $v$, binds this node to $k$,
+and set $(k_2', T_2)$ as the only child sub-tree; For the later one,
+it recursively inserts $k_1'$ and $v$ to $T_2$. Otherwise,
 the algorithm creates a branch node, binds it to the longest
-common prefix $k$, and set two children for it. One child
+common prefix $k$, and set the two children sub-trees for it. One sub-tree
 is $(k_2', T_2)$, the other is a leaf node containing $v$, and
 being bound to $k_1'$.
 
@@ -1435,10 +1297,10 @@ k_2' = k_1 - k
 \end{array}
 \]
 
-And function $lcp(A, B)$ keeps taking same characters from $A$ and $B$
+Function $lcp(A, B)$ keeps taking the same characters from $A$ and $B$
 one by one. Denote $a_1$ and $b_1$ as
 the first characters in $A$ and $B$ if they are not empty.
-$A'$ and $B'$ are the rest parts except for the first characters.
+$A'$ and $B'$ are the rest characters.
 
 \be
 lcp(A, B) = \left \{
@@ -1450,39 +1312,173 @@ lcp(A, B) = \left \{
 \right.
 \ee
 
-The following Haskell example program implements the Patricia insertion
+The following Haskell example program implements the prefix tree insertion
 algorithm.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-insert t k x = Patricia (value t) (ins (children t) k x) where
-    ins []     k x = [(k, Patricia (Just x) [])]
-    ins (p:ps) k x
-        | (fst p) == k
-            = (k, Patricia (Just x) (children (snd p))):ps --overwrite
-        | match (fst p) k
-            = (branch k x (fst p) (snd p)):ps
+import Data.List (isPrefixOf)
+
+insert :: Eq k => PrefixTree k v -> [k] -> v -> PrefixTree k v
+insert t ks x = PrefixTree (value t) (ins (children t) ks x) where
+    ins []     ks x = [(ks, leaf x)]
+    ins (p@(ks', t') : ps) ks x
+        | ks' == ks
+            = (ks, PrefixTree (Just x) (children t')) : ps  -- overwrite
+        | match ks' ks
+            = (branch ks x ks' t') : ps
         | otherwise
-            = p:(ins ps k x)
+            = p : (ins ps ks x)
 
 match x y = x /= [] && y /= [] && head x == head y
 
-branch k1 x k2 t2
-    | k1 == k
+branch :: Eq k => [k] -> v -> [k] -> PrefixTree k v -> ([k], PrefixTree k v)
+branch ks1 x ks2 t2
+    | ks1 == ks
         -- ex: insert "an" into "another"
-        = (k, Patricia (Just x) [(k2', t2)])
-    | k2 == k
+        = (ks, PrefixTree (Just x) [(ks2', t2)])
+    | ks2 == ks
         -- ex: insert "another" into "an"
-        = (k, insert t2 k1' x)
-    | otherwise = (k, Patricia Nothing [(k1', leaf x), (k2', t2)])
+        = (ks, insert t2 ks1' x)
+    | otherwise = (ks, PrefixTree Nothing [(ks1', leaf x), (ks2', t2)])
    where
-      k = lcp k1 k2
-      k1' = drop (length k) k1
-      k2' = drop (length k) k2
+      ks = lcp ks1 ks2
+      m = length ks
+      ks1' = drop m ks1
+      ks2' = drop m ks2
 
+-- longest common prefix
+lcp :: Eq k => [k] -> [k] -> [k]
 lcp [] _ = []
 lcp _ [] = []
-lcp (x:xs) (y:ys) = if x == y then x:(lcp xs ys) else []
+lcp (x:xs) (y:ys) = if x==y then x : (lcp xs ys) else []
+\end{lstlisting}
+
+The insertion algorithm can be realized imperative as below.
+
+\begin{algorithmic}[1]
+\Function{Insert}{$T, k, v$}
+  \If{$T = $ NIL}
+   \State $T \gets$ \Call{Empty-Node}{}
+  \EndIf
+  \State $p \gets T$
+  \Loop
+    \State $match \gets$ FALSE
+    \For{each $(s_i, T_i) \in$ \Call{Children}{$p$}}
+      \If{$k = s_i$}
+        \State \Call{Value}{$p$} $\gets v$
+        \State \Return $T$
+      \EndIf
+      \State $c \gets$ \Call{LCP}{$k, s_i$}
+      \State $k_1 \gets k - c$
+      \State $k_2 \gets s_i - c$
+      \If{$c \neq $ NIL}
+        \State $match \gets$ TRUE
+        \If{$k_2 = $ NIL} \Comment{$s_i$ is prefix of $k$}
+          \State $p \gets T_i$
+          \State $k \gets k_1$
+          \State break
+        \Else \Comment{Branch out a new leaf}
+          \State \textproc{Add}(\Call{Children}{$p$}, ($c$, \textproc{Branch}($k_1$, \Call{Leaf}{$v$}, $k_2$, $T_i$)))
+          \State \textproc{Delete}(\Call{Children}{$p$}, $(s_i, T_i)$)
+          \State \Return $T$
+        \EndIf
+      \EndIf
+    \EndFor
+    \If{$\lnot match$} \Comment{Add a new leaf}
+      \State \textproc{Add}(\Call{Children}{$p$}, ($k$, \Call{Leaf}{$v$}))
+      \State break
+    \EndIf
+  \EndLoop
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
+
+In this algorithm, function \textproc{LCP} finds the longest
+common prefix of the two strings. For example, string `bool' and `boy'
+have the longest common prefix `bo'. The subtraction symbol '-' for
+strings gives the different part of two strings. For example `bool' - `bo' = `ol'. Function \textproc{Branch} creates a branch node and updates keys.
+
+The longest common prefix can be extracted character by character from two strings till there is unmatch.
+
+\begin{algorithmic}[1]
+\Function{LCP}{$A, B$}
+  \State $i \gets 1 $
+  \While{$i \leq |A| \land i \leq |B| \land A[i] = B[i]$}
+    \State $i \gets i + 1$
+  \EndWhile
+  \State \Return $A[1...i-1]$
+\EndFunction
+\end{algorithmic}
+
+There are two cases when branch out a new leaf. \textproc{Branch}($s_1, T_1, s_2, T_2$)
+takes two different keys and trees. If $s_1$ is empty, we are
+dealing with the case such as insert key `an' into a child bound to
+string `another'. We set $T_2$ as the child sub-tree of $T_1$. Otherwise,
+we create a new branch node and set $T_1$ and $T_2$ as the two children.
+
+\begin{algorithmic}[1]
+\Function{Branch}{$s_1, T_1, s_2, T_2$}
+  \If{$s_1 = \phi$}
+    \State \textproc{Add}(\Call{Children}{$T_1$}, $(s_2, T_2)$)
+    \State \Return $T_1$
+  \EndIf
+  \State $T \gets$ \Call{Empty-Node}{}
+  \State \Call{Children}{$T$} $\gets \{(s_1, T_1), (s_2, T_2)\}$
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
+
+The following example Python program implements the prefix tree insertion algorithm.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def insert(t, key, value):
+    if t is None:
+        t = PrefixTree()
+    node = t
+    while True:
+        match = False
+        for k, tr in node.subtrees.items():
+            if key == k: # overwrite
+                node.value = value
+                return t
+            prefix, k1, k2 = lcp(key, k)
+            if prefix != "":
+                match = True
+                if k2 == "":
+                    # e.g.: insert "another" into "an", go on traversing
+                    node = tr
+                    key = k1
+                    break
+                else: #branch out a new leaf
+                    node.subtrees[prefix] = branch(k1, PrefixTree(value), k2, tr)
+                    del node.subtrees[k]
+                    return t
+        if not match: # add a new leaf
+            node.subtrees[key] = PrefixTree(value)
+            break
+    return t
+\end{lstlisting}
+
+Where the \texttt{lcp} and \texttt{branch} functions are implemented as below.
+
+\begin{lstlisting}
+def lcp(s1, s2):
+    j = 0
+    while j < len(s1) and j < len(s2) and s1[j] == s2[j]:
+        j += 1
+    return (s1[0:j], s1[j:], s2[j:])
+
+def branch(key1, tree1, key2, tree2):
+    if key1 == "":
+        #example: insert "an" into "another"
+        tree1.subtrees[key2] = tree2
+        return tree1
+    t = PrefixTree()
+    t.subtrees[key1] = tree1
+    t.subtrees[key2] = tree2
+    return t
 \end{lstlisting}
 
 
@@ -1490,14 +1486,54 @@ lcp (x:xs) (y:ys) = if x == y then x:(lcp xs ys) else []
 %                 Look up in Alphabetic Patrica Tree
 % ================================================================
 \subsection{Look up}
-\index{Patricia!look up}
+\index{Prefix tree!look up}
+
 When look up a key, we can't examine the characters one by one
-as in trie. Start from the root, we need search among the children
-to see if any one is bound to a prefix of the key.
-If there is such a child, we update the key by removing the prefix
-part, and recursively look up the updated key in this child.
-If there aren't any children bound to any prefix of the key,
-the looking up fails.
+as in trie any more. Start from the root, we need search among the
+children sub-trees to see if any one is bound to some prefix of the key.
+If there is such a sub-tree, we remove the prefix from the key,
+and recursively look up the updated key in this child sub-tree.
+The look up fails if there's no sub-tree bound to any prefix of the key.
+
+For prefix tree $T = (v, C)$, we search among its children sub-tree $C$.
+
+\be
+lookup(T, k) = find(C, k)
+\ee
+
+If $C$ is empty, the lookup fails; Otherwise, For $C = \{(k_1, T_1), (k_2, T_2), ..., (k_n, T_n)\}$, we firstly examine if $k$ is the prefix of $k_1$, then
+recursively check the rest pairs denoted as $C'$.
+
+\be
+find(C, k) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \phi & C = \phi \\
+  v_{T_1} & k = k_1 \\
+  lookup(T_1, k - k_1) & k_1 \sqsubset k \\
+  find(C', k) & otherwise
+  \end{array}
+\right.
+\ee
+
+Where $A \sqsubset B$ means string $A$ is prefix of $B$. $find$ mutually
+calls $lookup$ if a child is bound to some prefix of the key.
+
+Below Haskell example program implements the looking up algorithm.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+find :: Eq k => PrefixTree k v -> [k] -> Maybe v
+find t = find' (children t) where
+    find' [] _ = Nothing
+    find' (p@(ks', t') : ps) ks
+          | ks' == ks = value t'
+          | ks' `isPrefixOf` ks = find t' (diff ks ks')
+          | otherwise = find' ps ks
+    diff ks1 ks2 = drop (length (lcp ks1 ks2)) ks1
+\end{lstlisting}
+
+The look up algorithm can also be realized imperatively.
 
 \begin{algorithmic}[1]
 \Function{Look-Up}{$T, k$}
@@ -1533,92 +1569,52 @@ def lookup(t, key):
         return None
     while True:
         match = False
-        for k, tr in t.children.items():
+        for k, tr in t.subtrees.items():
             if k == key:
                 return tr.value
-            (prefix, k1, k2) = lcp(key, k)
+            prefix, k1, k2 = lcp(key, k)
             if prefix != "" and k2 == "":
                 match = True
                 key = k1
                 t = tr
                 break
         if not match:
-            return None
+            break
+    return None
 \end{lstlisting}
 
-This algorithm can also be realized recursively. For Patricia in form
-$T = (v, C)$, it calls another function to find among the children $C$.
-
-\be
-lookup(T, k) = find(C, k)
-\ee
-
-If $C$ is empty, the looking up fails; Otherwise, For $C = \{(k_1, T_1), (k_2, T_2), ..., (k_n, T_n)\}$, we firstly examine if $k$ is the prefix of $k_1$, if not the
-recursively check the rest pairs denoted as $C'$.
-
-\be
-find(C, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & C = \phi \\
-  v_{T_1} & k = k_1 \\
-  lookup(T_1, k - k_1) & k_1 \sqsubset k \\
-  find(C', k) & otherwise
-  \end{array}
-\right.
-\ee
-
-Where $A \sqsubset B$ means string $A$ is prefix of $B$. $find$ mutually
-calls $lookup$ if some child is bound to a string which is prefix of
-the key.
-
-Below Haskell example program implements the looking up algorithm.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-import Data.List
-
-find t k = find' (children t) k where
-    find' [] _ = Nothing
-    find' (p:ps) k
-          | (fst p) == k = value (snd p)
-          | (fst p) `isPrefixOf` k = find (snd p) (diff (fst p) k)
-          | otherwise = find' ps k
-    diff k1 k2 = drop (length (lcp k1 k2)) k2
-\end{lstlisting}
 
 
 % ================================================================
 %                 Trie and Patrica used in Industry
 % ================================================================
-\section{Trie and Patricia applications}
+\section{Applications of trie and prefix tree}
 
-Trie and Patricia can be used to solving some interesting problems.
+Trie and prefix tree can be used to solve many interesting problems.
 Integer based prefix tree is used in compiler implementation. Some daily
 used software applications have many interesting features which can be
-realized with trie or Patricia. In this section, some applications are
-given as examples, including, e-dictionary, word auto-completion, T9
-input method etc.
-The commercial implementations typically do not adopt trie or Patricia
-directly. The solutions we demonstrated here are for illustration purpose
+realized with trie or prefix tree. In this section, we give some examples,
+including, e-dictionary, word auto-completion, T9
+input method etc. Different from the commerial implementation, the
+solutions we demonstrated here are for illustration purpose
 only.
 
 \subsection{E-dictionary and word auto-completion}
 \index{Auto completion}
-Figure \ref{fig:e-dict} shows a screen shot of an English-Chinese E-dictionary.
-In order to provide good user experience,
-the dictionary searches its word library, and lists all candidate words and
-phrases similar to what user has entered.
+Figure \ref{fig:e-dict} shows a screen shot of an E-dictionary.
+When user enters characters,
+the dictionary searches its word library, then lists the candidate words and
+phrases starts from what the user input.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[scale=0.5]{img/ciba.eps}
+  \includegraphics[scale=0.4]{img/edict-en.eps}
   \caption{E-dictionary. All candidates starting with what the user input are listed.}
   \label{fig:e-dict}
 \end{figure}
 
 A E-dictionary typically contains hundreds of thousands words. It's very expensive
-to performs a whole word search. Commercial software adopts complex approaches, including
+to perform a complete search. Commercial software adopts complex approaches, including
 caching, indexing etc to speed up this process.
 
 Similar with e-dictionary, figure \ref{fig:word-completion} shows a popular
@@ -1635,122 +1631,35 @@ upper position it is in the list.
 \end{figure}
 
 In both cases, the software provides a kind of word auto-completion mechanism.
-In some modern IDEs, the editor can even help users to auto-complete program code.
+Some editors can also help programmers to auto-complete the code.
 
-Let's see how to implementation of the e-dictionary with trie or Patricia.
+Let's see how to implement the e-dictionary with prefix tree.
 To simplify the problem, we assume the dictionary only supports English - English
 information.
 
-A dictionary stores key-value pairs, the keys are English
-words or phrases, the values are the meaning described in English sentences.
+A dictionary stores key-value pairs, the key is English
+word or phrase, the value is the meaning described in text.
 
-We can store all the words and their meanings in a trie, but it isn't
-space effective especially when there are huge amount of items. We'll use
-Patricia to realize e-dictionary.
+We can store all the words and their meanings in a trie, but it consumes
+too large space especially when there are huge amount of items. We'll use
+prefix tree to realize the e-dictionary.
 
 When user wants to look up word 'a', the dictionary does not only
 return the meaning of 'a', but also provides a list of
-candidate words, which all start with 'a', including 'abandon', 'about',
-'accent', 'adam', ... Of course all these words are stored in the Patricia.
+candidates starting with 'a', including 'abandon', 'about',
+'accent', 'adam', ... Of course all these words are stored in the prefix tree.
 
-If there are too many candidates, one solution is only displaying the top 10
-words, and the user can browse for more.
+If there are too many candidates, we can limit only displaying the top 10
+candidates, and allow the user to browse more.
 
-The following algorithm reuses the looking up defined for Patricia. When it
-finds a node bound to a string which is the prefix of what we are looking for,
-it expands all its children until getting $n$ candidates.
-
-\begin{algorithmic}[1]
-\Function{Look-Up}{$T, k, n$}
-  \If{$T = $ NIL}
-     \State \Return $\phi$
-  \EndIf
-  \State $prefix \gets$ NIL
-  \Repeat
-    \State $match \gets$ FALSE
-    \For{$\forall (k_i, T_i) \in $ \Call{Children}{$T$}}
-      \If{$k$ is prefix of $k_i$}
-        \State \Return \Call{Expand}{$T_i, prefix, n$}
-      \EndIf
-      \If{$k_i$ is prefix of $k$}
-        \State $match \gets$ TRUE
-        \State $k \gets k - k_i$
-        \State $T \gets T_i$
-        \State $prefix \gets prefix + k_i$
-        \State break
-      \EndIf
-    \EndFor
-  \Until{$\lnot match$}
-  \State \Return $\phi$
-\EndFunction
-\end{algorithmic}
-
-Where function \textproc{Expand}($T, prefix, n$) picks $n$ sub trees, which
-share the same prefix in $T$. It is realized as BFS (Bread-First-Search) traverse. Chapter search
-explains BFS in detail.
-
-\begin{algorithmic}[1]
-\Function{Expand}{$T, prefix, n$}
-  \State $R \gets \phi$
-  \State $Q \gets \{(prefix, T)\}$
-  \While{$|R| < n \land |Q| > 0$}
-    \State $(k, T) \gets$ \Call{Pop}{$Q$}
-    \If{\Call{Data}{$T$} $\neq$ NIL}
-      \State $R \gets R \cup \{(k, $ \Call{Data}{$T$} $)\}$
-    \EndIf
-    \For{$\forall (k_i, T_i) \in$ \Call{Children}{$T$}}
-      \State \Call{Push}{$Q, (k + k_i, T_i)$}
-    \EndFor
-  \EndWhile
-\EndFunction
-\end{algorithmic}
-
-The following example Python program implements the e-dictionary application.
-When testing if a string is prefix of another one, it uses the \texttt{find}
-function provided in standard string library.
-
-\lstset{language=Python}
-\begin{lstlisting}
-import string
-
-def patricia_lookup(t, key, n):
-    if t is None:
-        return None
-    prefix = ""
-    while True:
-        match = False
-        for k, tr in t.children.items():
-            if string.find(k, key) == 0: #is prefix of
-                return expand(prefix+k, tr, n)
-            if string.find(key, k) ==0:
-                match = True
-                key = key[len(k):]
-                t = tr
-                prefix += k
-                break
-        if not match:
-            return None
-
-def expand(prefix, t, n):
-    res = []
-    q = [(prefix, t)]
-    while len(res)<n and len(q)>0:
-        (s, p) = q.pop(0)
-        if p.value is not None:
-            res.append((s, p.value))
-        for k, tr in p.children.items():
-            q.append((s+k, tr))
-    return res
-\end{lstlisting}
-
-This algorithm can also be implemented recursively, if the string we
-are looking for is empty, we expand all children until getting $n$
+To define this algorithm, if the string we
+are looking for is empty, we expand all children sub-trees until getting $n$
 candidates. Otherwise we recursively examine the children to
 find one which has prefix equal to this string.
 
 In programming environments supporting lazy evaluation. An intuitive
-solution is to expand all candidates, and take the first $n$ on
-demand. Denote the Patricia prefix tree in form $T = (v, C)$,
+solution is to lazily expand all candidates, and take the first $n$ on
+demand. Denote the prefix tree in form $T = (v, C)$,
 below function enumerates all items starts with key $k$.
 
 \be
@@ -1764,11 +1673,11 @@ findAll(T, k) = \left \{
 \right.
 \ee
 
-The first two clauses deal with the edge cases the the key is empty.
-All the children are enumerated except for those with empty values.
-The last clause finds child matches $k$.
+The first two clauses deal with the edge cases that the key is empty.
+All the children sub-trees are enumerated except for those with empty values.
+The last clause finds child sub-tree matches $k$.
 
-For non-empty children, $C = \{(k_1, T_1), (k_2, T_2), ..., (k_m, T_m)\}$,
+For non-empty children sub-trees, $C = \{(k_1, T_1), (k_2, T_2), ..., (k_m, T_m)\}$,
 denote the rest pairs except for the first one as $C'$.
 The enumeration algorithm can be defined as below.
 
@@ -1783,25 +1692,28 @@ enum(C) = \left \{
 \ee
 
 Where $mapAppend(k, L) = \{(k + k_i, v_i)| (k_i, v_i) \in L\}$. It concatenate
-the prefix $k$ in front of every key-value pair in list $L$.
+the prefix $k$ in front of every key-value pair in list $L$\footnote{The concept here is to map on the first thing. In some environment, like Haskell, $mapAppend$ can be expressed as $map(first(k+), L)$ by using the arrow in category theory.}.
+
+Function $enum$ can also be defined with concept of $concatMap$ (also called $flatMap$)\footnote{Literally, it results like first map on each element, then concatenate the result together. It's typically realized with 'build-foldr' to eliminate the intermediate list.}.
+
+\be
+enum(C) = concatMap(\lambda_{(k, T)} . mapAppend(k, findAll(T, \phi)))
+\ee
 
 Function $find(C, k)$ is defined as the following. For empty children, the
-result is empty as well; Otherwise, it examines the first child $T_1$ which
-is bound to string $k_1$. If $k_1$ is equal to $k$, it calls $mapAppend$ to
-add prefix to the keys of all the children under $T_1$; If $k_1$ is prefix
-of $k$, the algorithm recursively find all children start with $k - k_1$;
-On the other hand, if $k$ is prefix of $k_1$, all children under $T_1$
-are valid result. Otherwise, the algorithm by-pass the first child
-and goes on find the rest children.
+result is empty as well; Otherwise, it examines the first child sub-tree $T_1$ which
+is bound to string $k_1$. If $k$ equals to $k_1$ or is a prefix of $k_1$, it calls $mapAppend$ to concatenate the prefix $k_1$ in front of the key of every child sub-tree under $T_1$; If $k_1$ is prefix
+of $k$, the algorithm recursively find all children sub-trees start with $k - k_1$;
+otherwise, the algorithm by-passes the first child sub-tree
+and goes on finding the rest sub-trees.
 
 \be
 find(C, k) = \left \{
   \begin{array}
   {r@{\quad:\quad}l}
   \phi & C = \phi \\
-  mapAppend(k, findAll(T_1, \phi)) & k_1 = k \\
+  mapAppend(k_1, findAll(T_1, \phi)) & k \sqsubset k_1 \\
   mapAppend(k_1, findAll(T_1, k - k_1)) & k_1 \sqsubset k \\
-  findAll(T_1, \phi) & k \sqsubset k_1 \\
   find(C', k) & otherwise
   \end{array}
 \right.
@@ -1812,32 +1724,117 @@ according to the above equations.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-findAll :: Patricia a -> Key -> [(Key, a)]
-findAll t [] =
-    case value t of
-      Nothing -> enum $ children t
-      Just x  -> ("", x):(enum $ children t)
-    where
-      enum [] = []
-      enum (p:ps) = (mapAppend (fst p) (findAll (snd p) [])) ++ (enum ps)
-findAll t k = find' (children t) k where
-    find' [] _ = []
-    find' (p:ps) k
-          | (fst p) == k
-              = mapAppend k (findAll (snd p) [])
-          | (fst p) `Data.List.isPrefixOf` k
-              = mapAppend (fst p) (findAll (snd p) (k `diff` (fst p)))
-          | k `Data.List.isPrefixOf` (fst p)
-              = findAll (snd p) []
-          | otherwise = find' ps k
-    diff x y = drop (length y) x
+import Control.Arrow (first)
 
-mapAppend s lst = map (\p->(s++(fst p), snd p)) lst
+get n t k = take n $ findAll t k
+
+findAll :: Eq k => PrefixTree k v -> [k] -> [([k], v)]
+findAll (PrefixTree Nothing cs) [] = enum cs
+findAll (PrefixTree (Just x) cs) [] = ([], x) : enum cs
+findAll (PrefixTree _ cs) k = find' cs k
+  where
+    find' [] _ = []
+    find' ((k', t') : ps) k
+          | k `isPrefixOf` k'
+              = map (first (k' ++)) (findAll t' [])
+          | k' `isPrefixOf` k
+              = map (first (k' ++)) (findAll t' $ drop (length k') k)
+          | otherwise = find' ps k
+
+enum :: Eq k => [([k], PrefixTree k v)] -> [([k], v)]
+enum = concatMap (\(k, t) -> map (first (k ++)) (findAll t []))
 \end{lstlisting}
 
 In the lazy evaluation environment, the top $n$ candidates can be
 gotten like $take(n, findAll(T, k))$. Appendix A has detailed definition
 of $take$ function.
+
+We can also realize this algorithm impertiavely.
+The following algorithm reuses the looking up defined for prefix tree. When
+finds a node bound the prefix of what we are looking for,
+it expands all its children sub-trees till getting $n$ candidates.
+
+\begin{algorithmic}[1]
+\Function{Look-Up}{$T, k, n$}
+  \If{$T = $ NIL}
+     \State \Return $\phi$
+  \EndIf
+  \State $prefix \gets$ NIL
+  \Repeat
+    \State $match \gets$ FALSE
+    \For{$\forall (k_i, T_i) \in $ \Call{Children}{$T$}}
+      \If{$k$ is prefix of $k_i$}
+        \State \Return \Call{Expand}{$prefix + k _i, T_i, n$}
+      \EndIf
+      \If{$k_i$ is prefix of $k$}
+        \State $match \gets$ TRUE
+        \State $k \gets k - k_i$
+        \State $T \gets T_i$
+        \State $prefix \gets prefix + k_i$
+        \State break
+      \EndIf
+    \EndFor
+  \Until{$\lnot match$}
+  \State \Return $\phi$
+\EndFunction
+\end{algorithmic}
+
+Where function \textproc{Expand}($T, prefix, n$) picks $n$ sub-trees. They
+share the same prefix in $T$. It is realized as BFS (Bread-First-Search) traverse. 14.3.1 in the Chapter of search explains BFS in detail.
+
+\begin{algorithmic}[1]
+\Function{Expand}{$prefix, T, n$}
+  \State $R \gets \phi$
+  \State $Q \gets \{(prefix, T)\}$
+  \While{$|R| < n \land Q$ is not empty}
+    \State $(k, T) \gets$ \Call{Pop}{$Q$}
+    \If{\Call{Data}{$T$} $\neq$ NIL}
+      \State $R \gets R \cup \{(k, $ \Call{Data}{$T$} $)\}$
+    \EndIf
+    \For{$\forall (k_i, T_i) \in$ \Call{Children}{$T$} in sorted order}
+      \State \Call{Push}{$Q, (k + k_i, T_i)$}
+    \EndFor
+  \EndWhile
+\EndFunction
+\end{algorithmic}
+
+The following example Python program implements the e-dictionary application.
+When testing if a string is prefix of another one, it uses the \texttt{find}
+function provided in standard string library.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def lookup(t, key, n):
+    if t is None:
+        return []
+    prefix = ""
+    while True:
+        match = False
+        for k, tr in t.subtrees.items():
+            if string.find(k, key) == 0: # key is prefix of k
+                return expand(prefix + k, tr, n)
+            if string.find(key, k) ==0:
+                match = True
+                key = key[len(k):]
+                t = tr
+                prefix += k
+                break
+        if not match:
+            break
+    return []
+
+def expand(prefix, t, n):
+    res = []
+    q = [(prefix, t)]
+    while len(res)<n and q:
+        (s, p) = q.pop(0)
+        if p.value is not None:
+            res.append((s, p.value))
+        for k, tr in sorted(p.subtrees.items()):
+            q.append((s + k, tr))
+    return res
+\end{lstlisting}
+
 
 %=====================================
 % T9
@@ -1847,21 +1844,19 @@ of $take$ function.
 \index{T9}
 \index{Textonym input method}
 
-Most mobile phones around year 2000 are equipped with a key pad.
-Users have quite different experience from PC when editing a short message
-or email.
-This is because the mobile-phone key pad, or so called ITU-T key pad has much fewer
-keys than PC. Figure \ref{fig:itut-keypad} shows one example.
+When people edit text in the mobile phone, the experience is quite different.
+This is because the so called ITU-T key pad has much fewer
+keys than PC as shown in figure \ref{fig:itut-keypad}.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.4]{img/itu-t.eps}
-  \caption{an ITU-T keypad for mobile phone.}
+  \caption{The ITU-T keypad for mobile phone.}
   \label{fig:itut-keypad}
 \end{figure}
 
-There are typical two methods to input English word or phrases with ITU-T key pad.
-For instance, if user wants to enter a word `home', He can press the key
+There are typical two methods to input word or phrases with ITU-T key pad.
+If user wants to enter a word `home' for example, he can press the keys
 in below sequence.
 
 \begin{itemize}
@@ -1880,17 +1875,17 @@ Another much quicker way is to just press the following keys.
 \item ...
 \end{itemize}
 
-Compare these two methods, we can see the second one is much easier for the end user.
-The only overhead is to store a dictionary of candidate words.
+Compare the two methods, the second one is much easier for the user.
+The only overhead is the need to store a dictionary of candidate words.
 
-Method 2 is called as `T9' input method, or predictive input method
+The second method is known as `T9' input method, or predictive input method
 \cite{wiki-t9}, \cite {wiki-predictive-text}. The abbreviation 'T9' stands
 for 'textonym'. It start with 'T' with 9 characters. T9 input can also be
-realized with trie or Patricia.
+realized with prefix tree.
 
-In order to provide candidate words to user, a dictionary must be prepared
-in advance. Trie or Patricia can be used to store the dictionary. The
-commercial T9 implementations typically use complex indexing dictionary in
+In order to provide candidate words, a dictionary must be prepared
+in advance. Prefix tree can be used to store the dictionary. The
+commercial T9 implementations typically use multiple layers indexed dictionary in
 both file system and cache. The realization shown here is for illustration
 purpose only.
 
@@ -1905,25 +1900,107 @@ M_{T9} = \{ & 2 \rightarrow abc, 3 \rightarrow def, 4 \rightarrow ghi, \\
 \end{array}
 \ee
 
-With this mapping, $M_{T9}[i]$ returns the corresponding characters for digit $i$.
+With this mapping, $M_{T9}[i]$ returns the corresponding characters for digit $i$. We can also define the reversed mapping from a character back to digit.
 
-Suppose user input digits $D = d_1d_2...d_n$, If $D$ isn't empty, denote the
-rest digits except for $d_1$ as $D'$,
-below pseudo code shows how to realize T9 with trie.
+\be
+M^{-1}_{T9} = concat(\{\{c \rightarrow d | c \in S\} | (d \rightarrow S) \in M_{T9}\})
+\ee
+
+Given a sequence of characters, we can convert it to a sequence of digits by looking up $M^{-1}_{T9}$.
+
+\be
+digits(S) = \{ M^{-1}_{T9}[c]| c \in S \}
+\ee
+
+When input digits $D = d_1d_2...d_n$, we define the T9 lookup algorithm as below.
+
+\be
+findT9(T, D) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{ \phi \} & D = \phi \\
+  concatMap(find, prefixes(T)) & otherwise
+  \end{array}
+\right.
+\ee
+
+Where $T$ is the prefix tree built from a set of words and phrases. It's kind of a dictionary we'll look up. If the input
+$D$ is empty, the result is an empty string. Otherwise, it looks up the sub-trees that match the input, and concat the result together.
+
+To enumerate the matched sub-trees, we examine all the children sub-trees $C_T$,
+for every pair $(k_i, T_i)$. We first convert string $k_i$ to digit sequence $d_i$,
+then compare $d_i$ and $D$. If either one is the prefix of the other, then this pair
+is selected as a candidate for further search.
+
+\be
+prefixes(T) = \{(k_i, T_i) | (k_i, T_i) \in C_T, d_i = digits(k_i), d_i \sqsubset D \lor D \sqsubset d_i \}
+\ee
+
+
+Function $find$ takes a passed in prefix $S$, and a sub-tree $T'$ to look up further. As $S$ is prefix of $D$, it removes it from $D$ to get a new input to $D' = D - S$ to search, then later insert $S$ back in front of every recursive search result.
+
+\be
+find(S, T') = \{ take(n, S + s_i) | s_i \in findT9(T', D - S) \}
+\ee
+
+Where $n = |D|$ is the length of the input digits. Function $take(n, L)$ takes the first $n$ elements from the list $L$. If the length of the list is less then $n$, or the elements are taken.
+
+The following Haskell example program implements the T9 look up algorithm with prefix tree.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+import qualified Data.Map as Map
+
+mapT9 = Map.fromList [('1', ",."), ('2', "abc"), ('3', "def"), ('4', "ghi"),
+                      ('5', "jkl"), ('6', "mno"), ('7', "pqrs"), ('8', "tuv"),
+                      ('9', "wxyz")]
+
+rmapT9 = Map.fromList $ concatMap (\(d, s) -> [(c, d) | c <- s]) $ Map.toList mapT9
+
+digits = map (\c -> Map.findWithDefault '#' c rmapT9)
+
+findT9 :: PrefixTree Char v -> String -> [String]
+findT9 t [] = [""]
+findT9 t k = concatMap find prefixes
+  where
+    n = length k
+    find (s, t') = map (take n . (s++)) $ findT9 t' (k `diff` s)
+    diff x y = drop (length y) x
+    prefixes = [(s, t') | (s, t') <- children t, let ds = digits s in
+                          ds `isPrefixOf` k || k `isPrefixOf` ds]
+\end{lstlisting}
+
+To realize this algorithm imperatively, we can perform BFS search with a queue $Q$.
+The queue stores tuples $(prefix, D, T)$. Every tuple records the possible
+prefix string we've searched so far; the rest of the digits to be searched;
+and the sub-tree we are going to search. The queue is initialized with the
+empty prefix, the whole digit sequence, and the prefix tree root. The algorithm
+keeps picking the tuple from the queue until it's empty. For every tuple
+popped from the queue, we extract the tree from the tuple, then examine the
+children sub-trees of it. for each sub-tree $T_i$, we convert the corresponding
+prefix string $k_i$ to digits $D'$ by looking up the reversed T9 map. If the
+$D$ is prefix of $D'$, it's a valid candidate. We concatenate $k_i$ after
+the prefix in the tuple, and record this string in the result. If $D'$ is
+prefix of $D$, we need furthur search this sub-tree. To do this, we
+create a new tuple consist of the new prefix ends with $k_i$, the rest of
+the digits $D-D'$, and the sub-tree. Then push this tuple back to the queue.
 
 \begin{algorithmic}[1]
 \Function{Look-Up-T9}{$T, D$}
-  \State $Q \gets \{(\phi, D, T)\}$
   \State $R \gets \phi$
+  \If{$T =$ NIL or $D = \phi$}
+    \State \Return $R$
+  \EndIf
+  \State $n \gets |D|$
+  \State $Q \gets \{(\phi, D, T)\}$
   \While{$Q \neq \phi$}
     \State $(prefix, D, T) \gets$ \Call{Pop}{$Q$}
-    \For{each $c$ in $M_{T9}[d_1]$}
-      \If{$c \in $ \Call{Children}{$T$}}
-        \If{$D' = \phi$}
-          \State $R \gets R \cup \{prefix + c\}$
-        \Else
-          \State \textproc{Push}($Q, (prefix + c, D', $ \Call{Children}{$t$}$[c])$)
-        \EndIf
+    \For{$\forall (k_i, T_i) \in $ \Call{Children}{$T$}}
+      \State $D' \gets$ \Call{Digits}{$k_i$}
+      \If{$D' \sqsubset D$} \Comment{$D'$ is prefix of $D$}
+        \State $R \gets R \cup \{$ \textproc{Take} $(n, prefix + k_i) \}$ \Comment{limit the length to $n$}
+      \ElsIf{$D \sqsubset D'$}
+        \State \textproc{Push}($Q, (prefix + k_i, D - D', T_i)$)
       \EndIf
     \EndFor
   \EndWhile
@@ -1931,242 +2008,53 @@ below pseudo code shows how to realize T9 with trie.
 \EndFunction
 \end{algorithmic}
 
-Where $prefix + c$ means appending character $c$ to the end of string $prefix$.
-Again, this algorithm performs BFS search with a queue $Q$. The queue is
-initialized with a tuple $(prefix, D, T)$, containing empty prefix, the digit sequence to be
-searched, and the trie. It keeps picking the tuple from the queue as far as
-it isn't empty. Then get the candidate characters from the first digit to
-be processed via the T9 map. For each character $c$, if there is a sub-tree
-bound to it, we created a new tuple, update the prefix by appending $c$,
-using the rest of digits to update $D$, and use that sub-tree. This new tuple
-is pushed back to the queue for further searching. If all the digits are
-processed, it means a candidate word is found. We put this word to the
-result list $R$.
+Function \textproc{Digits}($S$) converts string $S$ to sequence of digits.
 
-The following example program in Python implements this T9 search with trie.
+\begin{algorithmic}[1]
+\Function{Digits}{$S$}
+  \State $D \gets \phi$
+  \For{each $c \in S$}
+    \State $D \gets D \cup \{M^{-1}_{T9}[c]\}$
+  \EndFor
+  \State \Return $D$
+\EndFunction
+\end{algorithmic}
+
+The following example Python program implements the T9 input method with prefix tree.
 
 \lstset{language=Python}
 \begin{lstlisting}
 T9MAP={'2':"abc", '3':"def", '4':"ghi", '5':"jkl", \
        '6':"mno", '7':"pqrs", '8':"tuv", '9':"wxyz"}
 
-def trie_lookup_t9(t, key):
+T9RMAP = dict([(c, d) for d, cs in T9MAP.items() for c in cs])
+
+def digits(w):
+    return ''.join([T9RMAP[c] for c in w])
+
+def lookup_t9(t, key):
     if t is None or key == "":
-        return None
-    q = [("", key, t)]
+        return []
     res = []
-    while len(q)>0:
-        (prefix, k, t) = q.pop(0)
-        i=k[0]
-        if not i in T9MAP:
-            return None #invalid input
-        for c in T9MAP[i]:
-            if c in t.children:
-                if k[1:]=="":
-                    res.append((prefix+c, t.children[c].value))
-                else:
-                    q.append((prefix+c, k[1:], t.children[c]))
+    n = len(key)
+    q = [("", key, t)]
+    while q:
+        prefix, key, t = q.pop(0)
+        for k, tr in t.subtrees.items():
+            ds = digits(k)
+            if string.find(ds, key) == 0: # key is prefix of ds
+                res.append((prefix + k)[:n])
+            elif string.find(key, ds) == 0: # ds is prefix of key
+                q.append((prefix + k, key[len(k):], tr))
     return res
 \end{lstlisting}
 
-Because trie is not space effective, we can modify the above algorithm with
-Patricia solution. As far as the queue isn't empty, the algorithm pops the
-tuple. This time, we examine all the prefix-sub tree pairs. For every pair
-$(k_i, T_i)$, we convert the alphabetic prefix $k_i$ back to digits sequence $D'$
-by looking up the T9 map. If $D'$ exactly matches the digits of what user input,
-we find a candidate word; otherwise if the digit sequence is prefix of what user inputs,
-the program creates a new tuple, updates the prefix, the digits to be processed,
-and the sub-tree. Then put the tuple back to the queue for further search.
-
-\begin{algorithmic}[1]
-\Function{Look-Up-T9}{$T, D$}
-  \State $Q \gets \{(\phi, D, T)\}$
-  \State $R \gets \phi$
-  \While{$Q \neq \phi$}
-    \State $(prefix, D, T) \gets$ \Call{Pop}{$Q$}
-    \For{each $(k_i, T_i) \in $ \Call{Children}{$T$}}
-      \State $D' \gets$ \Call{Convert-T9}{$k_i$}
-      \If{$D' \sqsubset D$} \Comment{$D'$ is prefix of $D$}
-        \If{$D' = D$}
-          \State $R \gets R \cup \{prefix + k_i\}$
-        \Else
-          \State \textproc{Push}($Q, (prefix + k_i, D - D', T_i)$)
-        \EndIf
-      \EndIf
-    \EndFor
-  \EndWhile
-  \State \Return $R$
-\EndFunction
-\end{algorithmic}
-
-Function \textproc{Convert-T9}($K$) converts each character in $K$ back to digit.
-
-\begin{algorithmic}[1]
-\Function{Convert-T9}{$K$}
-  \State $D \gets \phi$
-  \For{each $c \in K$}
-     \For{each $(d \rightarrow S) \in M_{T9}$}
-       \If{$c \in S$}
-         \State $D \gets D \cup \{d\}$
-         \State break
-       \EndIf
-     \EndFor
-  \EndFor
-  \State \Return $D$
-\EndFunction
-\end{algorithmic}
-
-The following example Python program implements the T9 input method with Patricia.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def patricia_lookup_t9(t, key):
-    if t is None or key == "":
-        return None
-    q = [("", key, t)]
-    res = []
-    while len(q)>0:
-        (prefix, key, t) = q.pop(0)
-        for k, tr in t.children.items():
-            digits = toT9(k)
-            if string.find(key, digits)==0: #is prefix of
-                if key == digits:
-                    res.append((prefix+k, tr.value))
-                else:
-                    q.append((prefix+k, key[len(k):], tr))
-    return res
-\end{lstlisting}
-
-T9 input method can also be realized recursively. Let's first define
-the trie solution. The algorithm takes two arguments, a trie storing
-all the candidate words, and a sequence of digits that is input by
-the user. If the sequence is empty, the result is empty as well;
-Otherwise, it looks up $C$ to find those children which are bound
-to the first digit $d_1$ according to T9 map.
-
-\be
-findT9(T, D) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ \phi \} & D = \phi \\
-  fold(f, \phi, lookupT9(d_1, C)) & otherwise
-  \end{array}
-\right.
-\ee
-
-Where folding is defined in Appendix A. Function $f$ takes two arguments,
-an intermediate list of candidates which is initialized empty, and
-a pair $(c, T')$, where $c$ is candidate character, to which sub tree $T'$
-is bound. It append character $c$ to all the candidate words, and concatenate
-this to the result list.
-
-\be
-f(L, (c, T')) = mapAppend(c, findT9(T', D')) \cup L
-\ee
-
-Note this $mapAppend$ function is a bit different from the previous one defined
-in e-dictionary application. The first argument is a character, but not a string.
-
-Function $lookupT9(k, C)$ checks all the possible characters mapped to digit $k$.
-If the character is bound to some child in $C$, it is record as one candidate.
-
-\be
-lookupT9(k, C) =  fold(g, \phi, M_{T9}[k])
-\ee
-
-Where
-
-\be
-g(L, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  L & find(C, k) = \phi \\
-  \{(k, T')\} \cup L & find(C, k) = T'
-  \end{array}
-\right.
-\ee
-
-Below Haskell example program implements the T9 look up algorithm with trie.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-mapT9 = [('2', "abc"), ('3', "def"), ('4', "ghi"), ('5', "jkl"),
-         ('6', "mno"), ('7', "pqrs"), ('8', "tuv"), ('9', "wxyz")]
-
-findT9 t [] = [("", value t)]
-findT9 t (k:ks) = foldl f [] (lookupT9 k (children t))
-    where
-      f lst (c, tr) = (mapAppend' c (findT9 tr ks)) ++ lst
-
-lookupT9 c children = case lookup c mapT9 of
-        Nothing -> []
-        Just s  -> foldl f [] s where
-             f lst x = case lookup x children of
-                 Nothing -> lst
-                 Just t  -> (x, t):lst
-
-mapAppend' x lst = map (\p->(x:(fst p), snd p)) lst
-\end{lstlisting}
-
-There are few modifications when change the realization from trie to Patricia.
-Firstly, the sub-tree is bound to prefix string, but not a single character.
-
-\be
-findT9(T, D) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ \phi \} & D = \phi \\
-  fold(f, \phi, findPrefixT9(D, C)) & otherwise
-  \end{array}
-\right.
-\ee
-
-The list for folding is given by calling function $findPrefixT9(D, C)$.
-And $f$ is also modified to reflect this change. It appends the
-candidate prefix $D'$ in front of every result output by the
-recursive search, and then accumulates the words.
-
-\be
-f(L, (D', T')) = mapAppend(D', findT9(T', D - D')) \cup L
-\ee
-
-Function $findPrefixT9(D, C)$ examines all the children. For
-every pair $(k_i, T_i)$, if converting $k_i$ back to digits
-yields a prefix of $D$, then this pair is selected as a
-candidate.
-
-\be
-findPrefixT9(D, C) = \{ (k_i, T_i) |(k_i, T_i) \in C, convertT9(k_i) \sqsubset D\}
-\ee
-
-Function $convertT9(k)$ converts every alphabetic character in $k$ back
-to digits according to T9 map.
-
-\be
-convertT9(K) = \{ d | \forall c \in k, \exists (d \rightarrow S) \in M_{T9} \Rightarrow c \in S\}
-\ee
-
-The following example Haskell program implements the T9 input algorithm
-with Patricia.
-
-\begin{lstlisting}
-findT9 t [] = [("", value t)]
-findT9 t k = foldl f [] (findPrefixT9 k (children t))
-    where
-      f lst (s, tr) = (mapAppend s (findT9 tr (k `diff` s))) ++ lst
-      diff x y = drop (length y) x
-
-findPrefixT9 s lst = filter f lst where
-    f (k, _) = (toT9 k) `Data.List.isPrefixOf` s
-
-toT9 = map (\c -> head $ [ d |(d, s) <- mapT9, c `elem` s])
-\end{lstlisting}
 
 \begin{Exercise}
 \begin{itemize}
-\item For the T9 input, compare the results of the algorithms realized with trie and Patricia,
-the sequences are different. Why does this happen? How to modify the algorithm so that they
-output the candidates with the same sequence?
+\item Realize the e-dictionary and T9 lookup with trie.
+\item For the alphabetic prefix tree look up algorithms that return multiple results, how to ensure the result is in lexicographic order? What is the performance?
+\item How to realize the e-dictionary and T9 look up without lazy evaluation?
 \end{itemize}
 \end{Exercise}
 
@@ -2175,16 +2063,15 @@ output the candidates with the same sequence?
 % ================================================================
 \section{Summary}
 
-In this chapter, we start from the integer base trie and Patricia. The
-map data structure based on integer Patricia plays an important role
-in Compiler implementation. Alphabetic trie and Patricia are
-natural extensions. They can be used to manipulate text information.
-As examples, predictive e-dictionary and T9 input method are
-realized with trie or Patricia. Although these examples
-are different from the real implementation in commercial software.
-They show simple approaches to solve some problems.
-Other important data structure, such as suffix tree, has close
-relationship with them. Suffix tree is introduced in the next chapter.
+In this chapter, we start from the integer based trie and prefix tree. The
+map data structure based on integer tree plays the important role
+in Compiler implementation. Alphabetic trie and prefix tree are
+natural extensions. They can manipulate text information.
+We demonstrate how to realize the predictive e-dictionary
+and T9 input method with prefix tree, although these examples
+are different from the commercial implementations.
+Other data structure, suffix tree, has close
+relationship with trie and prefix tree. We'll introduce it in the next chapter.
 
 \begin{thebibliography}{99}
 
@@ -2194,23 +2081,23 @@ Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest and Clifford Stein.
 
 \bibitem{okasaki-int-map}
 Chris Okasaki and Andrew Gill. ``Fast Mergeable Integer
-Maps''. Workshop on ML, September 1998, pages 77-86, http://www.cse.ogi.edu/~andy/pub/finite.htm
+Maps''. Workshop on ML, September 1998, pages 77-86, \url{http://www.cse.ogi.edu/~andy/pub/finite.htm}
 
 \bibitem{patricia-morrison}
 D.R. Morrison, ``PATRICIA -- Practical Algorithm To Retrieve  Information Coded In Alphanumeric", Journal of the ACM, 15(4), October 1968, pages 514-534.
 
 \bibitem{wiki-suffix-tree}
-Suffix Tree, Wikipedia. http://en.wikipedia.org/wiki/Suffix\_tree
+Suffix Tree, Wikipedia. \url{http://en.wikipedia.org/wiki/Suffix_tree}
 
 \bibitem{wiki-trie}
-Trie, Wikipedia. http://en.wikipedia.org/wiki/Trie
+Trie, Wikipedia. \url{http://en.wikipedia.org/wiki/Trie}
 
 \bibitem{wiki-t9}
-T9 (predictive text), Wikipedia. http://en.wikipedia.org/wiki/T9\_(predictive\_text)
+T9 (predictive text), Wikipedia. \url{http://en.wikipedia.org/wiki/T9_(predictive_text)}
 
 \bibitem{wiki-predictive-text}
 Predictive text,
-Wikipedia. http://en.wikipedia.org/wiki/Predictive\_text
+Wikipedia. \url{http://en.wikipedia.org/wiki/Predictive_text}
 
 \end{thebibliography}
 
