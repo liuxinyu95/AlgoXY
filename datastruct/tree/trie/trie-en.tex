@@ -451,13 +451,12 @@ Where match tests if the prefix stored in the node are same as the given key
 before the mask bit. It's explained in the next section.
 
 % ================================================================
-%                 Insertion of int patricia tree
+%                 Insertion of int tree
 % ================================================================
 \subsection{Insertion}
-\index{Integer Patricia!insert}
-When insert a key, if the tree is empty,
-we can just create a leaf node with the given key and satellite data,
-as shown in figure \ref{fig:int-patricia-insert-a}.
+\index{Integer tree!insert}
+When insert a key, if the tree is empty, we create a leaf node as shown in figure
+\ref{fig:int-patricia-insert-a}.
 
 \begin{figure}[htbp]
   \centering
@@ -471,10 +470,10 @@ as shown in figure \ref{fig:int-patricia-insert-a}.
   \label{fig:int-patricia-insert-a}
 \end{figure}
 
-If the tree is just a singleton leaf node $x$, we can create a new leaf $y$,
-put the key and data into it. After that, we need create a new branch
-node, and set $x$ and $y$ as the two children.
-In order to determine if the $y$ should be the left or right node, we need
+If the tree is a singleton leaf node $x$, we create a new leaf $y$,
+put the key and the value into it. After that, we need create a new branch
+node, set $x$ and $y$ as the two sub-trees.
+In order to determine if $y$ should be on the left or right, we need
 find the longest common prefix of $x$ and $y$. For example if $key(x)$
 is 12 ($(1100)_2$ in binary), $key(y)$ is 15 ($(1111)_2$ in binary), then the longest
 common prefix is $(11oo)_2$. Where $o$ denotes the bits we don't care about.
@@ -482,7 +481,7 @@ We can use another integer to mask those bits.
 In this case, the mask number is 4 (100 in binary).
 The next bit after the longest common prefix presents $2^1$. This bit is
 0 in $key(x)$, while it is 1 in $key(y)$. We should set $x$ as the left
-child and $y$ as the right child. Figure \ref{fig:int-patricia-insert-b}
+sub-tree and $y$ as the right sub-tree. Figure \ref{fig:int-patricia-insert-b}
 shows this example.
 
 \begin{figure}[htbp]
@@ -495,30 +494,29 @@ shows this example.
 In case the tree is neither empty, nor a singleton leaf, we need
 firstly check if the key to be inserted matches the longest common
 prefix recorded in the root.
-Then recursively insert the key to the left or the right child
-according to the next bit of the common prefix.
+Then recursively insert the key to the left or right
+according to the next bit of the longest common prefix.
 For example, if insert key 14 ($(1110)_2$ in binary) to the result tree
 in figure \ref{fig:int-patricia-insert-b}, since the common prefix is
 $(11oo)_2$, and the next bit (the bit of $2^1$) is 1, we need recursively
-insert to the right child.
+insert to the right sub-tree.
 
 If the key to be inserted doesn't match the longest
-common prefix stored in the root, we need branch a new leaf
+common prefix in the root, we need branch a new leaf
 out. Figure \ref{fig:int-patricia-insert-c} shows these two different cases.
 
 \begin{figure}[htbp]
   \centering
-  \subfloat[Insert key 14. It matches the longest common prefix $(1100)_2$; 14 is then recursively inserted to the right sub tree.]{\includegraphics[scale=0.5]{img/int-patricia-insert-c.ps}}\\
+  \subfloat[Insert key 14. It matches the longest common prefix $(1100)_2$; 14 is then recursively inserted to the right sub-tree.]{\includegraphics[scale=0.5]{img/int-patricia-insert-c.ps}}\\
   \subfloat[Insert key 5. It doesn't match the longest common prefix $(1100)_2$, a new leaf is branched out.]{\includegraphics[scale=0.5]{img/int-patricia-insert-d.ps}}
-  \caption{Insert key to branch node.}
+  \caption{Insert key to the branch node.}
   \label{fig:int-patricia-insert-c}
 \end{figure}
 
-For a given key $k$ and value $v$, denote $(k, v)$ is the leaf node. For branch
+For a given key $k$ and value $v$, denote $(k, v)$ as the leaf node. For branch
 node, denote it in form of $(p, m, T_l, T_r)$, where $p$ is the longest common
-prefix, $m$ is the mask, $T_l$ and $T_r$ are the left and right children.
-Summarize the above cases, the insertion algorithm can be defined as the
-following.
+prefix, $m$ is the mask, $T_l$ and $T_r$ are the left and right sub-trees.
+Summarize the above cases, the insertion algorithm can be defined as below.
 
 \be
 insert(T, k, v) = \left \{
@@ -533,27 +531,26 @@ insert(T, k, v) = \left \{
 \right.
 \ee
 
-The first clause deals with the edge cases, that either $T$ is empty or
-it is a leaf node with the same key. The algorithm overwrites the previous
-value for the later case.
+The first clause deals with the edge cases, if $T$ is empty, the result is a leaf
+node. If $T$ is a leaf node with the same key, we overwrite the previous
+value.
 
 The second clause handles the case that $T$ is a leaf node, but with different
-key. Here we need branch out another new leaf. We need extract the longest
-common prefix, and determine which leaf should be set as the left, and
-which should be set as the right child. Function $join(k_1, T_1, k_2, T_2)$
-does this work. We'll define it later.
+key. Here we branch out another leaf, then extract the longest
+common prefix, and determine which leaf should be set as the left sub-tree.
+Function $join(k_1, T_1, k_2, T_2)$ does this work. We'll define it later.
 
 The third clause deals with the case that $T$ is a branch node, the
 longest common prefix matches the key to be inserted, and the next
 bit to the common prefix is zero. Here we need recursively insert
-to the left child.
+to the left sub-tree.
 
-The fourth clause handles the similar case as the third clause, except
+The fourth clause handles the similar case as the third one, except
 that the next bit to the common prefix is one, but not zero. We need
-recursively insert to the right child.
+recursively insert to the right sub-tree.
 
 The last clause is for the case that the key to be inserted doesn't
-match the longest common prefix stored in the branch. We need branch
+match the longest common prefix in the branch. We need branch
 out a new leaf by calling the $join$ function.
 
 We need define function $match(k, p, m)$ to test if the key $k$, has
@@ -569,7 +566,7 @@ perform bitwise-and with $x$.
 
 Function $zero(k, m)$ test the next bit of the common prefix is zero.
 With the help of the mask $m$, we can shift $m$ one bit to the right,
-then perform bitwise and with the key.
+then perform bitwise-and with the key.
 
 \be
 zero(k, m) = x \& shift_r(m, 1)
@@ -581,7 +578,7 @@ if $k = (k_nk_{n-1}...k_i0...k_0)_2$, then the result is true.
 
 Function $join(p_1, T_1, p_2, T_2)$ takes two different prefixes and trees.
 It extracts the longest common prefix of $p_1$ and $p_2$, create a
-new branch node, and set $T_1$ and $T_2$ as the two children.
+new branch node, and set $T_1$ and $T_2$ as the two sub-trees.
 
 \be
 join(p_1, T_1, p_2, T_2) = \left \{
@@ -603,7 +600,7 @@ for either $p_1$ or $p_2$.
 p = mask(p_1, m)
 \ee
 
-The following Haskell example code implements the insertion algorithm.
+The following Haskell example program implements the insertion algorithm.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -676,8 +673,8 @@ The insertion algorithm can also be realized imperatively.
 \end{algorithmic}
 
 Function \textproc{Branch}($T_1, T_2$) does the similar job as what $join$ is defined.
-It creates a new branch node, extracts the longest common prefix, and sets $T_1$ and
-$T_2$ as the two children.
+It creates a new branch node, extracts the longest common prefix, sets $T_1$ and
+$T_2$ as the two sub-trees.
 
 \begin{algorithmic}[1]
 \Function{Branch}{$T_1, T_2$}
@@ -699,70 +696,61 @@ The following Python example program implements the insertion algorithm.
 
 \lstset{language=Python}
 \begin{lstlisting}
-def insert(t, key, value = None):
+def insert(t, key, value):
     if t is None:
-        t = IntTree(key, value)
-        return t
-
+        return IntTree(key, value)
     node = t
     parent = None
-    while(True):
-        if match(key, node):
-            parent = node
-            if zero(key, node.mask):
-                node = node.left
-            else:
-                node = node.right
+    while (not node.isleaf()) and node.match(key):
+        parent = node
+        if zero(key, node.mask):
+            node = node.left
         else:
-            if node.is_leaf() and key == node.key:
-                node.value = value
-            else:
-                new_node = branch(node, IntTree(key, value))
-                if parent is None:
-                    t = new_node
-                else:
-                    parent.replace_child(node, new_node)
-            break
+            node = node.right
+    if node.isleaf() and key == node.key:
+        node.value = value
+    else:
+        p = branch(node, IntTree(key, value))
+        if parent is None:
+            return p
+        parent.replace(node, p)
     return t
 \end{lstlisting}
 
-The auxiliary functions, \texttt{match}, \texttt{branch}, \texttt{lcp} etc. are given as below.
+The auxiliary functions, \texttt{branch}, \texttt{lcp} etc. are given as below.
 
 \begin{lstlisting}
 def maskbit(x, mask):
-    return x & (~(mask-1))
-
-def match(key, tree):
-    return maskbit(key, tree.mask) == tree.prefix
+    return x & (~(mask - 1))
 
 def zero(x, mask):
-    return x & (mask>>1) == 0
+    return x & (mask >> 1) == 0
 
 def lcp(p1, p2):
-    diff = (p1 ^ p2)
-    mask=1
-    while(diff!=0):
-        diff>>=1
-        mask<<=1
+    diff = p1 ^ p2
+    mask = 1
+    while diff != 0:
+        diff >>= 1
+        mask <<= 1
     return (maskbit(p1, mask), mask)
 
 def branch(t1, t2):
     t = IntTree()
-    (t.prefix, t.mask) = lcp(t1.get_prefix(), t2.get_prefix())
-    if zero(t1.get_prefix(), t.mask):
-        t.set_children(t1, t2)
+    (t.prefix, t.mask) = lcp(t1.prefix, t2.prefix)
+    if zero(t1.prefix, t.mask):
+        t.left, t.right = t1, t2
     else:
-        t.set_children(t2, t1)
+        t.left, t.right = t2, t1
     return t
 \end{lstlisting}
 
-Figure \ref{fig:int-patricia-haskell-insert} shows the example Patricia created
+Figure \ref{fig:int-patricia-haskell-insert} shows the example integer tree created
 with the insertion algorithm.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.6]{img/int-patricia-haskell-insert.ps}
-  \caption{Insert map $1 \rightarrow x, 4 \rightarrow y, 5 \rightarrow z$ into the big-endian integer Patricia tree.}
+  \caption{Insert map $1 \rightarrow x, 4 \rightarrow y, 5 \rightarrow z$ into the big-endian integer prefix tree.}
   \label{fig:int-patricia-haskell-insert}
 \end{figure}
 
@@ -771,16 +759,53 @@ with the insertion algorithm.
 %                 Lookup in int patricia tree
 % ================================================================
 \subsection{Look up}
-\index{Integer Patricia!look up}
-Consider the property of integer Patricia tree. When look up a
+\index{Integer tree!look up}
+
+If the integer tree $T$ is empty, or it's a singleton leaf with
+the key that is different from what we are looking up, the result is empty.
+else if the key in the leaf equals, we are done.
+If $T$ is a branch node, we need check if the common
+prefix matches the subject key, and recursively look up
+the sub-tree according to the next bit. If the common prefix doesn't
+match the key, then the lookup fails.
+
+\be
+lookup(T, k) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \phi & T = \phi \lor (T = (k', v), k' \neq k) \\
+  v & T = (k', v), k' = k \\
+  lookup(T_l, k) & T = (p, m, T_l, T_r), match(k, p, m), zero(k, m) \\
+  lookup(T_r, k) & T = (p, m, T_l, T_r), match(k, p, m), \lnot zero(k, m) \\
+  \phi & otherwise
+  \end{array}
+\right.
+\ee
+
+The following Haskell example program implements this recursive
+lookup up algorithm.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+search t k
+  = case t of
+      Empty -> Nothing
+      Leaf k' x -> if k == k' then Just x else Nothing
+      Branch p m l r
+             | match k p m -> if zero k m then search l k
+                              else search r k
+             | otherwise -> Nothing
+\end{lstlisting}
+
+The look up algorithm can also be realized imperatively.
+Consider the property of integer prefix tree. When look up a
 key, if it has common prefix with the root,
 then we check the next bit. If
-this bit is zero, we recursively look up the left child;
-otherwise if the bit is one, we next look up the right child.
+this bit is zero, we then recursively look up the left sub-tree;
+otherwise we look up the right sub-tree if the bit is one.
 
-When reach a leaf node, we can directly check if the key of the
-leaf is equal to what we are looking up. This algorithm can be
-described with the following pseudo code.
+When arrive at the leaf node, we check if the key of the
+leaf equals to the one we are looking up.
 
 \begin{algorithmic}[1]
 \Function{Look-Up}{$T, k$}
@@ -807,56 +832,14 @@ Below Python example program implements the looking up algorithm.
 \lstset{language=Python}
 \begin{lstlisting}
 def lookup(t, key):
-    if t is None:
-        return None
-    while (not t.is_leaf()) and match(key, t):
+    while t is not None and (not t.isleaf()) and t.match(key):
         if zero(key, t.mask):
             t = t.left
         else:
             t = t.right
-    if t.is_leaf() and t.key == key:
+    if t is not None and t.isleaf() and t.key == key:
         return t.value
-    else:
-        return None
-\end{lstlisting}
-
-The looking up algorithm can also be realized in recursive approach.
-If the Patricia tree $T$ is empty, or it's a singleton leaf with
-different key from what we are looking up, the result is empty to
-indicate not found error; If the tree is a singleton leaf, and the
-key of this leaf is equal to what we are looking up, we are done.
-Otherwise, $T$ is a branch node, we need check if the common
-prefix matches the key to be looked up, and recursively look up
-the child according to the next bit. If the common prefix doesn't
-match the key, it means the key doesn't exist in the tree. We
-can return empty result to indicate not found error.
-
-\be
-lookup(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & T = \phi \lor (T = (k', v), k' \neq k) \\
-  v & T = (k', v), k' = k \\
-  lookup(T_l, k) & T = (p, m, T_l, T_r), match(k, p, m), zero(k, m) \\
-  lookup(T_r, k) & T = (p, m, T_l, T_r), match(k, p, m), \lnot zero(k, m) \\
-  \phi & otherwise
-  \end{array}
-\right.
-\ee
-
-The following Haskell example program implements this recursive
-looking up algorithm.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-search t k
-  = case t of
-      Empty -> Nothing
-      Leaf k' x -> if k==k' then Just x else Nothing
-      Branch p m l r
-             | match k p m -> if zero k m then search l k
-                              else search r k
-             | otherwise -> Nothing
+    return None
 \end{lstlisting}
 
 
@@ -865,53 +848,50 @@ search t k
 % ================================================================
 \section{Alphabetic Trie}
 \index{Trie}
-Integer based Trie and Patricia Tree can be a good start point. Such
-technical plays important role in Compiler implementation. Okasaki
-pointed that the widely used Glasgow Haskell Compiler, GHC,
-utilized the similar implementation for several years before
-1998 \cite{okasaki-int-map}.
+Integer based trie and tree can be a good start point. The
+Glasgow Haskell Compiler (GHC) utilized the similar integer tree
+implementation for several years before 1998\cite{okasaki-int-map}.
 
 If we extend the key from integer to alphabetic
-value, Trie and Patricia tree can be very powerful in solving
+value, Trie and integer tree can be very powerful in solving
 textual manipulation problems.
 
 % ================================================================
 %                 Definition of Alphabetic trie
 % ================================================================
 \subsection{Definition}
-It's not enough to just use the left and right children to represent
-alphabetic keys. Using English for example, there are 26 letters
-and each can be lower or upper case. If we don't care about the case,
-one solution is to limit the number of branches (children) to 26.
-Some simplified ANSI C implementations of Trie are defined by using
-the array of 26 letters. This can be illustrated as in Figure \ref{fig:trie-of-26}.
+It's not enough to just use the left and right sub-trees to represent
+alphabetic keys. Taking English for example, there are 26 letters.
+If we don't care about the case, one solution is to limit the number
+of branches (children) to 26. Some simplified implementation defines
+the trie with the array of 26 letters.
+This can be illustrated as in Figure \ref{fig:trie-of-26}.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.5]{img/trie-of-26.ps}
-  \caption{A Trie with 26 branches, containing key 'a', 'an', 'another', 'bool',
+  \caption{A trie with 26 branches, containing key 'a', 'an', 'another', 'bool',
     'boy' and 'zoo'.}
   \label{fig:trie-of-26}
 \end{figure}
 
 Not all the 26 branches contain data. For instance, in Figure \ref{fig:trie-of-26},
 the root only has three non-empty branches representing letter 'a',
-'b', and 'z'. Other branches such as for letter c, are all
-empty. We don't show empty branches in the rest of this chapter.
+'b', and 'z'. Other branches such as for letter 'c', are all
+empty. We will not show empty branch in the future.
 
-If deal with case sensitive problems, or handle languages other than English,
-there can be more letters than 26. The problem of dynamic size of sub
-branches can be solved by using some collection data structures. Such
-as Hash table or map.
+When dealing with case sensitive problems, or handling languages other than English,
+there can be more letters. We can use the collection data structures, like Hash map
+to define the trie.
 
-A alphabetic trie is either empty or a node. There are two types of node.
+Alphabetic trie is either empty or a node. There are two types of node.
 
 \begin{itemize}
-\item A leaf node don't has any sub trees;
-\item A branch node contains multiple sub trees. Each sub tree is bound to a character.
+\item A leaf node does not have any sub-trees;
+\item A branch node contains multiple sub-trees. Each sub-tree is bound to a character.
 \end{itemize}
 
-Both leaf and branch may contain optional satellite data. The following Haskell
+Both leaf and branch can contain optional satellite data. The following Haskell
 code shows the example definition.
 
 \lstset{language=Haskell}
@@ -922,8 +902,8 @@ data Trie a = Trie { value :: Maybe a
 empty = Trie Nothing []
 \end{lstlisting}
 
-Below ANSI C code defines the alphabetic trie. For illustration purpose only,
-we limit the character set to lower case English letters, from 'a' to 'z'.
+Below ANSI C example code defines the alphabetic trie. For illustration purpose,
+it limits the character set to lower case English letters, from 'a' to 'z'.
 
 \lstset{language=C}
 \begin{lstlisting}
@@ -940,15 +920,68 @@ struct Trie {
 \subsection{Insertion}
 \index{Trie!insert}
 
-When insert string as key, starting from the root, we pick the character
-one by one from the string, examine which child represents the character.
-If the corresponding child is empty, a new empty node is created.
-After that, the next character is used to select the proper grand child.
+When insert to the trie, denote the
+key to be inserted as $K = k_1k_2...k_n$, where $k_i$ is the $i$-th
+character. $K'$ is the rest of characters except $k_1$, $v'$ is the
+data to be inserted.
+The trie is in form $T = (v, C)$, where $v$ is the
+data store in the trie, $C = \{(c_1, T_1), (c_2, T_2), ..., (c_m, T_m)\}$ is the
+collection of sub-trees. It associates a character $c_i$ and the corresponding
+sub-tree $T_i$. $C$ is empty for leaf node.
 
-We repeat this process for all the characters, and finally store the
-optional satellite data in the node we arrived at.
+\be
+insert(T, K, v') = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (v', C) & K = \phi \\
+  (v, ins(C, k_1, K', v')) & otherwise.
+  \end{array}
+\right.
+\ee
 
-Below pseudo code describes the insertion algorithm.
+If the key is empty, the previous value $v$ is overwritten with
+$v'$. Otherwise, we need check the children and perform
+recursive insertion. This is realized in function $ins(C, k_1, K', v')$.
+It examines the (character, sub-tree) pairs in $C$ one by one. Let $C'$ be
+the rest of pairs except for the first one. This function
+can be defined as below.
+
+\be
+ins(C, k_1, K', v') = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{(k_1, insert((\phi, \phi), K', v'))\} & C = \phi \\
+  \{k_1, insert(T_1, K', v')\} \cup C' & k_1 = c_1 \\
+  \{(c_1, T_1)\} \cup ins(C', k_1, K', v') & otherwise
+  \end{array}
+\right.
+\ee
+
+If $C$ is empty, we create a pair, mapping from character $k_1$ to
+a new empty tree (it is not $\phi$, but a node with empty value and empty sub-tree list), and recursively insert the rest characters.
+Otherwise, the algorithm locates the child which is mapped
+from $k_1$ for further insertion.
+
+The following Haskell example program implements the insertion
+algorithm.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+insert t []     x = Trie (Just x)  (children t)
+insert t (k:ks) x = Trie (value t) (ins (children t) k ks x) where
+    ins [] k ks x = [(k, (insert empty ks x))]
+    ins (p:ps) k ks x = if fst p == k
+                        then (k, insert (snd p) ks x):ps
+                        else p:(ins ps k ks x)
+\end{lstlisting}
+
+To realize the insertion imperatively, starting from the root, we pick the character
+one by one from the string. For each character, we examine which child sub-tree
+represents that character. If the corresponding child is empty, a new node is
+created. After that, we pick the next character and repeat this process.
+
+After consuming all the characters, we then store the
+value bound the key in the node we arrived.
 
 \begin{algorithmic}[1]
 \Function{Insert}{$T, k, v$}
@@ -1000,111 +1033,18 @@ struct Trie* create_node() {
 }
 \end{lstlisting}
 
-
-The insertion can also be realized in recursive way. Denote the
-key to be inserted as $K = k_1k_2...k_n$, where $k_i$ is the $i$-th
-character. $K'$ is the rest of characters except $k_1$. $v'$ is the
-satellite data to be inserted.
-The trie is in form $T = (v, C)$, where $v$ is the satellite
-data, $C = \{(c_1, T_1), (c_2, T_2), ..., (c_m, T_m)\}$ is the
-map of children. It maps from character $c_i$ to
-sub-tree $T_i$. if $T$ is empty, then $C$ is also empty.
-
-\be
-insert(T, K, v') = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (v', C) & K = \phi \\
-  (v, ins(C, k_1, K', v')) & otherwise.
-  \end{array}
-\right.
-\ee
-
-If the key is empty, the previous value $v$ is overwritten with
-$v'$. Otherwise, we need check the children and perform
-recursive insertion. This is realized in function $ins(C, k_1, K', v')$.
-It examines key-sub tree pairs in $C$ one by one. Let $C'$ be
-the rest of pairs except for the first one. This function
-can be defined as below.
-
-\be
-ins(C, k_1, K', v') = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{(k_1, insert(\phi, K', v'))\} & C = \phi \\
-  \{k_1, insert(T_1, K', v')\} \cup C' & k_1 = c_1 \\
-  \{(c_1, T_1)\} \cup ins(C', k_1, K', v') & otherwise
-  \end{array}
-\right.
-\ee
-
-If $C$ is empty, we create a pair, mapping from character $k_1$ to
-a new empty tree, and recursively insert the rest characters.
-Otherwise, the algorithm locates the child which is mapped
-from $k_1$ for further insertion.
-
-The following Haskell example program implements the insertion
-algorithm.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-insert t []     x = Trie (Just x)  (children t)
-insert t (k:ks) x = Trie (value t) (ins (children t) k ks x) where
-    ins [] k ks x = [(k, (insert empty ks x))]
-    ins (p:ps) k ks x = if fst p == k
-                        then (k, insert (snd p) ks x):ps
-                        else p:(ins ps k ks x)
-\end{lstlisting}
-
-
 % ================================================================
 %                 Look up in Alphabetic trie
 % ================================================================
 \subsection{Look up}
 \index{Trie!look up}
 
-To look up a key, we also extract the character from the
-key one by one. For each character, we search among the children
-to see if there is a branch match this character.
-If there is no such a child, the look up process terminates
-immediately to indicate the not found error.
-When we reach the last character of the key,
-The data stored in the current node is what we are looking up.
-
-\begin{algorithmic}[1]
-\Function{Look-Up}{$T, key$}
-  \If{$T = $ NIL}
-    \State \Return not found
-  \EndIf
-  \For{each $c$ in $key$}
-    \If{\Call{Children}{$T$}[$c$] = NIL}
-      \State \Return not found
-    \EndIf
-    \State $T \gets $ \Call{Children}{$T$}[$c$]
-  \EndFor
-  \State \Return \Call{Data}{$T$}
-\EndFunction
-\end{algorithmic}
-
-Below ANSI C program implements the look up algorithm. It returns NULL to indicate
-not found error.
-
-\lstset{language=C}
-\begin{lstlisting}
-void* lookup(struct Trie* t, const char* key) {
-    while (*key && t && t->children[*key - 'a'])
-        t = t->children[*key++ - 'a'];
-    return (*key || !t) ? NULL : t->data;
-}
-\end{lstlisting}
-
-The look up algorithm can also be realized in recursive manner. When
-look up a key, we start from the first character.
-If it is bound to some child, we then
-recursively search the rest characters in that child.
-Denote the trie as $T = (v, C)$, the key being searched as
+When looking up a key, we start from the first character,
+if it is bound to some sub-tree, we then
+recursively search the rest characters in that child sub-tree.
+Denote the trie as $T = (v, C)$, the key being looked up as
 $K = k_1k_2...k_n$ if it isn't empty. The first character in
-the key is $k_1$, and the rest characters are denoted as $K'$.
+the key is $k_1$, and the rest characters are represented as $K'$.
 
 \be
 lookup(T, K) = \left \{
@@ -1117,12 +1057,13 @@ lookup(T, K) = \left \{
 \right.
 \ee
 
-Where function $find(C, k)$ examine the pairs of key-child one by one to check
-if any child is bound to character $k$. If the list of pairs $C$ is empty,
-the result is empty to indicate non-existence of such a child. Otherwise,
-let $C = \{(k_1, T_1), (k_2, T_2), ..., (k_m, T_m)\}$, the first sub tree $T_1$
-is bound to $k_1$; the rest of pairs are represented as $C'$. Below
-equation defines the $find$ function.
+Where function $find(C, k)$ examines the character-tree pairs one by one to check
+if any child sub-tree is bound to character $k$. If the list of pairs $C$ is empty,
+then the subject key does not exist. Otherwise,
+let $C = \{(k_1, T_1), (k_2, T_2), ..., (k_m, T_m)\}$, the first sub-tree $T_1$
+is bound to $k_1$, the rest of pairs are represented as $C'$. We repeatedly
+consumes each pair to located the sub-tree for further search.
+Below equation defines the $find$ function.
 
 \be
 find(C, k) = \left \{
@@ -1146,65 +1087,99 @@ find t (k:ks) = case lookup k (children t) of
                   Just t' -> find t' ks
 \end{lstlisting}
 
+To realize the look up algorithm imperatively, we extract the character from the
+key one by one. For each character, we search among the sub-trees
+to see if there is a branch matches this character.
+If there is no such a child, the look up process terminates
+to indicate that the key does not exist.
+When we arrive at the last character of the key,
+the data stored in the current node is the result.
+
+\begin{algorithmic}[1]
+\Function{Look-Up}{$T, key$}
+  \If{$T = $ NIL}
+    \State \Return not found
+  \EndIf
+  \For{each $c$ in $key$}
+    \If{\Call{Children}{$T$}[$c$] = NIL}
+      \State \Return not found
+    \EndIf
+    \State $T \gets $ \Call{Children}{$T$}[$c$]
+  \EndFor
+  \State \Return \Call{Data}{$T$}
+\EndFunction
+\end{algorithmic}
+
+Below ANSI C example program implements the look up algorithm.
+It returns NULL if the key does not exist.
+
+\lstset{language=C}
+\begin{lstlisting}
+void* lookup(struct Trie* t, const char* key) {
+    while (*key && t && t->children[*key - 'a'])
+        t = t->children[*key++ - 'a'];
+    return (*key || !t) ? NULL : t->data;
+}
+\end{lstlisting}
+
 \begin{Exercise}
 \begin{itemize}
-\item Develop imperative trie by using collection data structure to manage multiple sub trees in
-alphabetic trie.
+\item Use a collection data structure to manage sub-trees in the imperative
+alphabetic trie. How does the collection impact the performance?
 \end{itemize}
 \end{Exercise}
 
 % ================================================================
-%                 Alphabetic Patricia Tree
+%                 Alphabetic Prefix Tree
 % ================================================================
-\section{Alphabetic Patricia}
+\section{Alphabetic prefix tree}
 \index{Patricia}
 \index{Prefix tree}
 
 Similar to integer trie, alphabetic trie is not memory
-efficient. We can use the same method to compress alphabetic trie to
-Patricia.
+efficient. We can use the same approach to compress alphabetic trie to
+prefix tree.
 
 % ================================================================
-%                 Definition of Alphabetic Patricia Tree
+%                 Definition of Alphabetic Prefix Tree
 % ================================================================
 \subsection{Definition}
 
-Alphabetic Patricia tree is a special prefix tree, each node contains
-multiple branches. All children of a node share the longest common
-prefix string. As the result, there is no node with only one child,
+Alphabetic prefix tree is a special prefix tree, each node contains
+multiple branches. All sub-trees share the longest common
+prefix string in a node. As the result, there is no node has only one child,
 because it conflicts with the longest common prefix property.
 
-If we turn the trie shown in figure \ref{fig:trie-of-26} into Patricia
+If we turn the trie shown in figure \ref{fig:trie-of-26} into prefix tree
 by compressing all nodes which have only one child. we can get
-a Patricia prefix tree as in figure \ref{fig:patricia-tree}.
+a prefix tree as in figure \ref{fig:patricia-tree}.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.5]{img/patricia-tree.ps}
-  \caption{A Patricia prefix tree, with keys: 'a', 'an', 'another', 'bool',
+  \caption{A prefix tree, with keys: 'a', 'an', 'another', 'bool',
     'boy' and 'zoo'.}
   \label{fig:patricia-tree}
 \end{figure}
 
-We can modify the definition of alphabetic trie a bit to adapt it
-to Patricia. The Patricia is either empty, or a node in form $T = (v, C)$.
-Where $v$ is the optional satellite data; $C = \{(s_1, T_1), (s_2, T_2), ..., (s_n, T_n)\}$
-is a list of pairs. Each pair contains a string $s_i$, which is bound
-to a sub tree $T_i$.
+We can modify the alphabetic trie and adapt it
+to prefix tree. The tree is either empty, or a node in form $T = (v, C)$.
+Where $v$ is the optional satellite data; $C = \{(s_1, T_1), (s_2, T_2), ..., (s_n, T_n)\}$ represents the sub-trees. It is a list of pairs. Each pair contains
+a string $s_i$, and a sub-tree $T_i$ the string is bound to.
 
-The following Haskell example code defines Patricia accordingly.
+The following Haskell example code defines prefix tree accordingly.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-type Key = String
+data PrefixTree k v = PrefixTree { value :: Maybe v
+                                 , children :: [([k], PrefixTree k v)]}
 
-data Patricia a = Patricia { value :: Maybe a
-                           , children :: [(Key, Patricia a)]}
+empty = PrefixTree Nothing []
 
-empty = Patricia Nothing []
+leaf x = PrefixTree (Just x) []
 \end{lstlisting}
 
-Below Python code reuses the definition for trie to define Patricia.
+Below Python example program reuses the trie definition to define prefix tree.
 
 \lstset{language=Python}
 \begin{lstlisting}
