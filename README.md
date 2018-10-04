@@ -1,4 +1,5 @@
 Elementary Algorithms
+====
 
 Edition: 0.6180339887498949
 
@@ -9,14 +10,12 @@ algorithms and data structures. This book doesn't only focus on
 imperative (or procedural) approach, but also includes purely functional
 algorithms and data structures.
 
-The PDF version in English can be downloaded from github:
-https://github.com/liuxinyu95/AlgoXY/releases/download/v0.6180333/elementary-algorithms.pdf
+The PDF version in English can be downloaded from [github](https://github.com/liuxinyu95/AlgoXY/releases/download/v0.6180333/elementary-algorithms.pdf).
 
 The book in Chinese was published.
 http://www.ituring.com.cn/book/1907
 
-Errata and Exercise:
-https://github.com/liuxinyu95/AlgoXY/wiki/Preface
+[Errata and Exercise](https://github.com/liuxinyu95/AlgoXY/wiki/Preface)
 
 Compared to the pdf, the published version contains many important corrections to the contents, equations, and figures.
 
