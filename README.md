@@ -15,12 +15,14 @@ The PDF version in English can be downloaded from [github](https://github.com/li
 The book in Chinese was published.
 http://www.ituring.com.cn/book/1907
 
-[Errata and Exercise](https://github.com/liuxinyu95/AlgoXY/wiki/Preface)
+[Errata and Exercise](https://github.com/liuxinyu95/AlgoXY/wiki/Preface) can be found in github WIKI.
 
 Compared to the pdf, the published version contains many important corrections to the contents, equations, and figures.
 
 The original version provides examples in Haskell, C/C++, Python, and Scheme. I started A new branch jvm to provide examples in Java and Scala.
 
 --
+
 Larry LIU Xinyu
+
 liuxinyu95@gmail.com
