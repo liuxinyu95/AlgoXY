@@ -11,12 +11,11 @@ INPUT1 = {"plan1" : ("AB", 100),
           "plan4" : ("CD", 135)}
 
 # Below are the optimal purchase with the minimum cost:
-#    print lowest("BAD")  # plan1, plan3  ==> 225
-#    print lowest("BAC")  # plan1, plan4  ==> 235
-#    print lowest("BCD")  # plan2 ==> 150
+#    lowest cost of "BAD"  # plan1, plan3  ==> 225
+#    lowest cost of "BAC"  # plan1, plan4  ==> 235
+#    lowest cost of "BCD"  # plan2 ==> 150
 
 # Here is another example. We use 0-9A-Z to enumerate products:
-# 0123...9ABCDEFG...XYZ
 
 INPUT2 = {"plan0" : ("816309", 11),
           "plan1" : ("7824", 28),
@@ -32,8 +31,7 @@ INPUT2 = {"plan0" : ("816309", 11),
 # the optimial purchase for prodcut list "704938521" is
 #   ==> (set(['plan5', 'plan1']), 92)
 
-fst = lambda (a, b) : a
-snd = lambda (a, b) : b
+# Dynamic Progrmming solution:
 
 def dp(plans):
     tab = { 0 : (set([]), set(""))}  # DP table { cost : ([plan], [products]) }
@@ -52,6 +50,11 @@ def lowest(prods, tab):
         if _prod_set.issubset(prod_set):
             return (plan_set, cost)
     return None
+
+# Brute force solution for verification purpose:
+
+fst = lambda (a, b) : a
+snd = lambda (a, b) : b
 
 def brute_force(prods, offers):
     def cost_of(plans):
@@ -74,6 +77,8 @@ def brute_force(prods, offers):
     # print costs
     return min(costs, key = snd)
 
+# Verifications:
+
 def verify(prods, dp_tab, offers):
     print "dp for", prods, "==>", lowest(prods, dp_tab)
     print "brute force for", prods, "==>", brute_force(prods, offers)
@@ -88,4 +93,5 @@ def test():
     tab = dp(INPUT2)
     verify("704938521", tab, offers)
 
-test()
+if __name__ == "__main__":
+    test()
