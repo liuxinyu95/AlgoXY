@@ -1,5 +1,5 @@
-# Problem: Given multple of product ordering plans,
-#   for e.g. Plan P sell prodcut A, B, C together at price X
+# Problem: Given multiple product ordering plans,
+#   for e.g. Plan P sell prodcuts A, B, C together at price X
 # For a product list [M, N, ...] find the optimal purchase plan list
 # at the minimum cost
 
@@ -36,34 +36,26 @@ fst = lambda (a, b) : a
 snd = lambda (a, b) : b
 
 def dp(plans):
-    def cost_of(plan_list):
-        return sum([snd(INPUT[p]) for p in set(plans)])
-    tab = {}  # { pkg : [plan] }
-    for p, (services, price) in plans.items():
-        for s in services:
-            if (s not in tab) or price < cost_of(tab[s]):
-                tab[s] = [p]
-            for pkg, (plan_set, cost) in tab.items():
-                if s not in pkg:
-                    new_pkg = "".join(set(pkg + s))
-                    new_price = cost if p in plan_set else cost + price
-                    if (new_pkg not in tab) or new_price < snd(tab[new_pkg]):
-                        tab[new_pkg] = (plan_set.union(set([p])), new_price)
-                else:
-                    # can lower the price
-            # print tab
+    tab = { 0 : (set([]), set(""))}  # DP table { cost : ([plan], [products]) }
+    for plan, (prods, price) in plans.items():
+        for cost, (plan_set, prod_set) in tab.items():
+            _cost = price + cost
+            _prod_set = prod_set.union(prods)
+            if _cost not in tab or not _prod_set.issubset(prod_set):
+                tab[_cost] = (plan_set.union([plan]), _prod_set)
     return tab
 
-TAB = dp(INPUT)
-#print TAB
+def lowest(prods, tab):
+    _prod_set = set(prods)
+    for cost in sorted(tab.keys()):
+        plan_set, prod_set = tab[cost]
+        if _prod_set.issubset(prod_set):
+            return (plan_set, cost)
+    return None
 
-def lowest(sevs):
-    sevs = "".join(set(sevs))
-    return TAB[sevs] if sevs in TAB else None
-
-def brute_force(sevs):
+def brute_force(prods, offers):
     def cost_of(plans):
-        return sum([snd(INPUT[p]) for p in plans])
+        return sum([snd(offers[p]) for p in plans])
     def to_set(plans):
         return set(plans.split(","))
     def from_set(plan_set):
@@ -74,21 +66,26 @@ def brute_force(sevs):
             lst = [from_set(p.union(plan_set)) for p in plans]
             res = res.union(set(lst))
         return map(to_set, res)
-    sevs = "".join(set(sevs))
+    prods = "".join(set(prods))
     ps = [set([])]
-    for s in sevs:
-        ps = expand(ps, [set([p]) for p, (ss, _) in INPUT.items() if s in ss])
+    for s in prods:
+        ps = expand(ps, [set([p]) for p, (ss, _) in offers.items() if s in ss])
     costs = [(plan_set, cost_of(plan_set)) for plan_set in ps]
     # print costs
     return min(costs, key = snd)
 
-def smoke():
-    print lowest("BAD")  # plan1, plan3  ==> 225
-    print lowest("BAC")  # plan1, plan4  ==> 235
-    print lowest("BCD")  # plan2 ==> 150
+def verify(prods, dp_tab, offers):
+    print "dp for", prods, "==>", lowest(prods, dp_tab)
+    print "brute force for", prods, "==>", brute_force(prods, offers)
 
-def verify(srvs):
-    print "dp for", srvs, "==>", lowest(srvs)
-    print "brute force for", srvs, "==>", brute_force(srvs)
+def test():
+    offers = INPUT1
+    tab = dp(INPUT1)
+    verify("BAD", tab, offers)   # plan1, plan3  ==> 225
+    verify("BAC", tab, offers)  # plan1, plan4  ==> 235
+    verify("BCD", tab, offers)  # plan2 ==> 150
+    offers = INPUT2
+    tab = dp(INPUT2)
+    verify("704938521", tab, offers)
 
-verify("704938521")
+test()
