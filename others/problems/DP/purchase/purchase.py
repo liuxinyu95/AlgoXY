@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Problem: Given multiple product ordering plans,
-#   for e.g. Plan P sell prodcuts A, B, C together at price X
+#   for e.g. Plan P sell products A, B, C together at price X
 # For a product list [M, N, ...] find the optimal purchase plan list
 # at the minimum cost
 
@@ -44,10 +44,10 @@ INPUT2 = {"plan0" : ("816309", 11),
           "plan8" : ("9648350", 111),
           "plan9" : ("8937514", 128)}
 
-# the optimial purchase for prodcut list "704938521" is
+# the optimal purchase for product list "704938521" is
 #   ==> (set(['plan5', 'plan1']), 92)
 
-# Dynamic Progrmming solution:
+# Dynamic Programming solution:
 
 def dp(plans):
     tab = { 0 : (set([]), set(""))}  # DP table { cost : ([plan], [products]) }
