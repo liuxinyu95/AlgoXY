@@ -93,7 +93,7 @@ def brute_force(prods, offers):
     # print costs
     return min(costs, key = snd)
 
-# Verifications:
+# Verification:
 
 def verify(prods, dp_tab, offers):
     print "dp for", prods, "==>", lowest(prods, dp_tab)
