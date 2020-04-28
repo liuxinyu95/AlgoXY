@@ -54,7 +54,7 @@ public class Purchase {
      * Dynamic Programming solution
      * accepts discount plan, returns the DP table {cost: [products]}
      */
-    private static Map<Integer, Set<String>> dp(Map<String, Integer> plans) {
+    public static Map<Integer, Set<String>> dp(Map<String, Integer> plans) {
         Map<Integer, Set<String>> tab = new HashMap<>() {{
                 put(0, EMPTY);
             }};
@@ -141,14 +141,62 @@ public class Purchase {
         return c;
     }
 
-    // None recursive Brute force solution
+    /*
+     * None recursive Brute force solution
+     */
+    public static Set<String> findMin(Map<String, Integer> plan,
+                                      Set<Character> wish) {
+        Set<Set<String>> res = new HashSet<>();
+        res.add(EMPTY);
+        for (Character p : wish) {
+            Set<String> pkgs = empty();
+            for (String pkg : plan.keySet()) {
+                if (pkg.indexOf(p) != -1) {
+                    pkgs.add(pkg);
+                }
+            }
+            res = product(res, pkgs);
+            if (res.isEmpty()) {
+                return EMPTY;
+            }
+        }
+        Set<String> best = EMPTY;
+        int lowest = Integer.MAX_VALUE;
+        for (Set<String> p : res) {
+            int cost = costOf(p, plan);
+            if (cost < lowest) {
+                best = p;
+                lowest = cost;
+            }
+        }
+        return best;
+    }
 
+    // Cartesian product
+    private static <T> Set<Set<T>> product(Set<Set<T>> sets, Set<T> set) {
+        Set<Set<T>> res = new HashSet<>();
+        for (Set<T> a : sets) {
+            for (T b : set) {
+                Set<T> c = new HashSet<>(a);
+                c.add(b);   // c = a `union` b
+                res.add(c);
+            }
+        }
+        return res;
+    }
+
+    /*
+     * Verification
+     */
     private static void verify(String wish, Map<Integer, Set<String>> tab,
                                Map<String, Integer> plan) {
+        Set<Character> wishSet = strToSet(wish);
         System.out.format("dfs for %s ==> %s\n", wish,
-                          findLowest(plan, strToSet(wish)).toString());
+                          findLowest(plan, wishSet).toString());
         System.out.format("dp  for %s ==> %s\n", wish,
-                          lowest(strToSet(wish), tab).toString());
+                          lowest(wishSet, tab).toString());
+        System.out.format("bfs for %s ==> %s\n", wish,
+                          findMin(plan, wishSet).toString());
     }
 
     public static void main(String[] args) {
