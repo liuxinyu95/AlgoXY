@@ -97,33 +97,40 @@ public class Purchase {
      * DFS based Brute force solution for verification purpose
      */
     public static Set<String> findLowest(Map<String, Integer> plan,
-                                         String wish) {
+                                         Set<Character> wish) {
         Set<String> best = empty();
         dfs(plan, wish, empty(), best, Integer.MAX_VALUE);
         return best;
     }
 
-    private static int dfs(Map<String, Integer> plan, String wish,
+    private static int dfs(Map<String, Integer> plan, Set<Character> wish,
                            Set<String> res,
                            Set<String> best, int minSofar) {
-        if (wish == null || wish.isEmpty()) {
+        if (wish.isEmpty()) {
             int cost = costOf(res, plan);
             if (cost < minSofar) {
+                //System.out.format("find a better %s at %d\n", res.toString(), cost);
                 best.clear();
                 best.addAll(res);
                 minSofar = cost;
             }
         } else {
-            char p = wish.charAt(0);
+            char p = wish.iterator().next();
             for (String pkg : plan.keySet()) {
-                if (pkg.indexOf(p) != -1 && !res.contains(pkg)) {
+                if (pkg.indexOf(p) != -1) {
                     res.add(pkg);
-                    minSofar = dfs(plan, wish.substring(1), res, best, minSofar);
+                    minSofar = dfs(plan, diff(wish, strToSet(pkg)), res, best, minSofar);
                     res.remove(pkg);
                 }
             }
         }
         return minSofar;
+    }
+
+    private static Set<Character> diff(Set<Character> a, Set<Character> b) {
+        Set<Character> c = new HashSet<>(a);
+        c.removeAll(b);
+        return c;
     }
 
     private static int costOf(Set<String> pkg, Map<String, Integer> plan) {
@@ -139,7 +146,9 @@ public class Purchase {
     private static void verify(String wish, Map<Integer, Set<String>> tab,
                                Map<String, Integer> plan) {
         System.out.format("dfs for %s ==> %s\n", wish,
-                          findLowest(plan, wish).toString());
+                          findLowest(plan, strToSet(wish)).toString());
+        System.out.format("dp  for %s ==> %s\n", wish,
+                          lowest(strToSet(wish), tab).toString());
     }
 
     public static void main(String[] args) {
