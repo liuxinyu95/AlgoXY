@@ -44,11 +44,11 @@ dpTable = Map.foldrWithKey build (Map.singleton 0 empty)
 
 build :: String -> Integer -> DpTab -> DpTab
 build pkg price tab = Map.foldrWithKey expand tab tab where
-  expand cost prods tab = let cost' = cost + price in
-    case Map.lookup cost' tab of
-      Nothing -> Map.insert cost' (insert pkg prods) tab
-      Just prods' -> if (fromList pkg) `isSubsetOf` (unionAll prods') then tab
-        else Map.insert cost' (insert pkg prods') tab
+  expand cost prods tab = if (fromList pkg) `isSubsetOf` (unionAll prods) then tab
+    else let cost' = cost + price in
+      case Map.lookup cost' tab of
+        Nothing     -> Map.insert cost' (insert pkg prods) tab
+        Just prods' -> Map.insert cost' (insert pkg prods') tab
 
 unionAll :: Set String -> Set Char
 unionAll = Data.Set.foldr (\str set -> (fromList str) `union` set) empty
@@ -70,4 +70,4 @@ test1 = Prelude.map (\s -> lowest (fromList s) tab1) ["BAD", "BAC", "BCD"]
 
 tab2 = dpTable plan2
 
-test2 = lowest (fromList "704938521") tab2 -- contains err here
+test2 = lowest (fromList "704938521") tab2
