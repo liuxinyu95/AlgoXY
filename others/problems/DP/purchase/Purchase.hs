@@ -1,7 +1,7 @@
 module Purchase where
 
-import qualified Data.Map as Map
-import Data.Set
+import Data.Map as Map
+import Data.Set as Set
 
 -- Problem: Given multiple product discount plans,
 --   for e.g. sell products A, B, C together at price X
@@ -35,39 +35,45 @@ plan2 = Map.fromList [("816309", 11)
 -- the optimal purchase for product list "704938521" is
 -- ["986750123", "7824"] ==> 28 + 64 = 92
 
-type DpTab = Map.Map Integer (Set String)  -- Map cost (Set product)
+type Plan = Map String Integer  -- Map package price
+type Packages = Set String
+
+-- Different Packages may cost same, hence we use Set Packages.
+
+type DpTab = Map Integer (Set Packages)  -- Map cost (Set Packages)
 
 -- Dynamic Programming solution
 --  Build the DP table
-dpTable :: Map.Map String Integer -> DpTab
-dpTable = Map.foldrWithKey build (Map.singleton 0 empty)
+dpTable :: Plan -> DpTab
+dpTable = foldrWithKey build (Map.singleton 0 Set.empty)
 
 build :: String -> Integer -> DpTab -> DpTab
-build pkg price tab = Map.foldrWithKey expand tab tab where
-  expand cost prods tab = if (fromList pkg) `isSubsetOf` (unionAll prods) then tab
-    else let cost' = cost + price in
-      case Map.lookup cost' tab of
-        Nothing     -> Map.insert cost' (insert pkg prods) tab
-        Just prods' -> Map.insert cost' (insert pkg prods') tab
+build pkg price tab = foldrWithKey expand tab tab where
+  expand cost pkgss tab = if Set.null pkgss' then tab
+                          else insertWith Set.union cost' pkgss' tab where
+    cost' = cost + price
+    pkgss' = pkg `exInsert` pkgss
 
-unionAll :: Set String -> Set Char
-unionAll = Data.Set.foldr (\str set -> (fromList str) `union` set) empty
+-- Exclusive Insert, for each set of packages combination, only insert the
+-- packages when it can't be covered
+exInsert :: String -> Set Packages -> Set Packages
+exInsert pkg pkgss
+  | Set.null pkgss = Set.singleton (Set.singleton pkg)
+  | otherwise = Set.map (Set.insert pkg) $ Set.filter (not . exists pkg) pkgss
 
-lowest :: Set Char -> DpTab -> Maybe (Integer, Set String)
-lowest wish tab = Map.lookupMin $ Map.filter ((wish `isSubsetOf`) . unionAll) tab
+-- if a package can be fully covered by a set of packages combination
+exists :: String -> Packages -> Bool
+exists pkg pkgs = (Set.fromList pkg) `isSubsetOf` (Set.unions $ Set.map Set.fromList pkgs)
+
+-- Lookup the DP table for the lowest cost purchase plans (multiple results)
+lowest :: String -> DpTab -> Maybe (Integer, Set Packages)
+lowest wish = filterPkg . Map.lookupMin . (Map.filter (any (exists wish))) where
+  filterPkg Nothing = Nothing
+  filterPkg (Just (cost, pkgss)) = Just (cost, Set.filter (exists wish) pkgss)
 
 -- examples
 tab1 = dpTable plan1
-
--- lowest (fromList "BAD") tab1
---       Just (225,fromList ["AB","AD"])
--- lowest (fromList "BAC") tab1
---       Just (235,fromList ["AB","CD"])
--- lowest (fromList "BCD") tab1
---       Just (150,fromList ["BCD"])
-
-test1 = Prelude.map (\s -> lowest (fromList s) tab1) ["BAD", "BAC", "BCD"]
+test1 = Prelude.map (\s -> lowest s tab1) ["BAD", "BAC", "BCD"]
 
 tab2 = dpTable plan2
-
-test2 = lowest (fromList "704938521") tab2
+test2 = lowest "704938521" tab2
