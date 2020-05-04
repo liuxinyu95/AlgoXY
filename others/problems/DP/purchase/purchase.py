@@ -48,6 +48,9 @@ INPUT2 = {"plan0" : ("816309", 11),
 #   ==> (set(['plan5', 'plan1']), 92)
 
 # Dynamic Programming solution:
+# TODO:
+#   (1) simplify DP table structure;
+#   (2) support multiple optimal solutions at the same cost, refer to the Haskell program.
 
 def dp(plans):
     tab = { 0 : (set([]), set(""))}  # DP table { cost : ([plan], [products]) }

@@ -53,6 +53,8 @@ public class Purchase {
     /*
      * Dynamic Programming solution
      * accepts discount plan, returns the DP table {cost: [products]}
+     *
+     * TODO: support multiple solution at the same cost, refer to the Haskell program
      */
     public static Map<Integer, Set<String>> dp(Map<String, Integer> plans) {
         Map<Integer, Set<String>> tab = new HashMap<>() {{
