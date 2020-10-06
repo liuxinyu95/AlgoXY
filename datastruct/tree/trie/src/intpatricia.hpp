@@ -183,7 +183,7 @@ private:
     void test_patricia_insert(){
         const int lst[] = {6, 7};
         ti = std::accumulate(lst, lst + sizeof(lst)/sizeof(int), ti,
-                             [] (auto t, int k) {return insert_key<int>(t, k);});
+                             [] (auto t, int k) {return insert_key(t, k);});
         std::copy(lst, lst+sizeof(lst)/sizeof(int), std::ostream_iterator<int>(std::cout, ", "));
         std::cout<<"==>"<<patricia_to_str(ti)<<"\n";
 

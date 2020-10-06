@@ -33,19 +33,11 @@ std::string trie_to_str(T* t, std::string prefix=""){
     return s.str();
 }
 
-// for C++ fold-left, std::accumulate
-template<class T, class Key>
-T* insert_key(T* t, Key key){
-    return insert(t, key);
-}
-
 // list_to_trie
 template<class Iterator, class T>
 T* list_to_trie(Iterator first, Iterator last, T* t){
     return std::accumulate(first, last, t,
-                           [] (auto tr, auto key) {
-                               return insert_key<T, typename T::KeyType>(tr, key);
-                           });
+                           [] (auto tr, auto key) { return insert(tr, key); });
 }
 
 #endif //_TRIE_UTILITY
