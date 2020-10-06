@@ -1,4 +1,4 @@
-//     patricia.hpp, Alphabetic Patricia Tree
+//     patricia.hpp, Alphabetic Prefix Tree, also known as Patricia
 //     Copyright (C) 2010, Liu Xinyu (liuxinyu95@gmail.com)
 
 //     This program is free software: you can redistribute it and/or modify
@@ -24,15 +24,15 @@
 #include "trieutil.hpp"
 
 template<class Key, class Value>
-struct Patricia {
-    typedef Patricia<Key, Value> Self;
+struct PrefixTree {
+    typedef PrefixTree<Key, Value> Self;
     typedef std::map<Key, Self*> Children;
     typedef Key   KeyType;
     typedef Value ValueType;
 
-    Patricia(Value v = Value()) : value(v) {}
+    PrefixTree(Value v = Value()) : value(v) {}
 
-    virtual ~Patricia() {
+    virtual ~PrefixTree() {
         for(typename Children::iterator it=children.begin();
             it!=children.end(); ++it)
             delete it->second;
@@ -69,20 +69,20 @@ T* branch(typename T::KeyType k1, T* t1,
 }
 
 template<class K, class V>
-Patricia<K, V>* insert(Patricia<K, V>* t,
-                       typename Patricia<K, V>::KeyType key,
-                       typename Patricia<K, V>::ValueType value=V()) {
+PrefixTree<K, V>* insert(PrefixTree<K, V>* t,
+                       typename PrefixTree<K, V>::KeyType key,
+                       typename PrefixTree<K, V>::ValueType value=V()) {
     if(!t)
-        t = new Patricia<K, V>();
+        t = new PrefixTree<K, V>();
 
-    Patricia<K, V>* p = t;
-    typedef typename Patricia<K, V>::Children::iterator Iterator;
+    PrefixTree<K, V>* p = t;
+    typedef typename PrefixTree<K, V>::Children::iterator Iterator;
     for(;;) {
         bool match(false);
         for(Iterator it = p->children.begin(); it!=p->children.end(); ++it) {
             K k=it->first;
             if(key == k) {
-                p->value = value; //overwrite
+                it->second->value = value; //overwrite
                 return t;
             }
             K prefix = lcp(key, k);
@@ -93,7 +93,7 @@ Patricia<K, V>* insert(Patricia<K, V>* t,
                     break;
                 }
                 else{
-                    p->children[prefix] = branch(key, new Patricia<K, V>(value),
+                    p->children[prefix] = branch(key, new PrefixTree<K, V>(value),
                                                  k, it->second);
                     p->children.erase(it);
                     return t;
@@ -101,7 +101,7 @@ Patricia<K, V>* insert(Patricia<K, V>* t,
             }
         }
         if(!match){
-            p->children[key] = new Patricia<K, V>(value);
+            p->children[key] = new PrefixTree<K, V>(value);
             break;
         }
     }
@@ -109,8 +109,8 @@ Patricia<K, V>* insert(Patricia<K, V>* t,
 }
 
 template<class K, class V>
-V lookup(Patricia<K, V>* t, typename Patricia<K, V>::KeyType key) {
-    typedef typename Patricia<K, V>::Children::iterator Iterator;
+V lookup(PrefixTree<K, V>* t, typename PrefixTree<K, V>::KeyType key) {
+    typedef typename PrefixTree<K, V>::Children::iterator Iterator;
     if(!t)
         return V(); //or throw exception
     for(;;){
@@ -131,7 +131,7 @@ V lookup(Patricia<K, V>* t, typename Patricia<K, V>::KeyType key) {
     }
 }
 
-class PatriciaTest {
+class PrefixTreeTest {
 public:
     void run(){
         std::cout<<"\ntest alphabetic patrica\n";
@@ -140,9 +140,9 @@ public:
     }
 private:
     template<class Iterator>
-    void test_list_to_patricia(Iterator first, Iterator last) {
-        typedef Patricia<std::string, std::string> PatriciaType;
-        PatriciaType* t(0);
+    void test_list_to_prefixtree(Iterator first, Iterator last) {
+        typedef PrefixTree<std::string, std::string> PrefixTreeType;
+        PrefixTreeType* t(0);
         t = list_to_trie(first, last, t);
         std::copy(first, last,
                   std::ostream_iterator<std::string>(std::cout, ", "));
@@ -152,16 +152,16 @@ private:
 
     void test_insert(){
         const char* lst1[] = {"a", "an", "another", "b", "bob", "bool", "home"};
-        test_list_to_patricia(lst1, lst1+sizeof(lst1)/sizeof(char*));
+        test_list_to_prefixtree(lst1, lst1 + sizeof(lst1)/sizeof(char*));
 
         const char* lst2[] = {"home", "bool", "bob", "b", "another", "an", "a"};
-        test_list_to_patricia(lst2, lst2+sizeof(lst2)/sizeof(char*));
+        test_list_to_prefixtree(lst2, lst2 + sizeof(lst2)/sizeof(char*));
 
         const char* lst3[] = {"romane", "romanus", "romulus"};
-        test_list_to_patricia(lst3, lst3+sizeof(lst3)/sizeof(char*));
+        test_list_to_prefixtree(lst3, lst3 + sizeof(lst3)/sizeof(char*));
 
-        typedef Patricia<std::string, std::string> PatriciaType;
-        PatriciaType* t(0);
+        typedef PrefixTree<std::string, std::string> PrefixTreeType;
+        PrefixTreeType* t(0);
         const char* keys[] = {"001", "100", "101"};
         const char* vals[] = {"y", "x", "z"};
         for(unsigned int i=0; i<sizeof(keys)/sizeof(char*); ++i)
@@ -173,16 +173,29 @@ private:
     }
 
     void test_lookup() {
-        Patricia<std::string, int>* t(0);
-        const char* keys[] = {"a", "an", "another", "boy", "bool", "home"};
-        const int vals[] = {1, 2, 7, 3, 4, 4};
-        for(unsigned int i=0; i<sizeof(keys)/sizeof(char*); ++i)
+        PrefixTree<std::string, int>* t(0);
+        const char* keys[] = {"a", "an", "another", "boy", "bool", "home", "an"};
+        const int vals[] = {1, 2, 7, 3, 4, 4, -2};
+        std::map<std::string, int> m;
+        for (unsigned int i = 0; i < sizeof(keys)/sizeof(char*); ++i) {
             t = insert(t, keys[i], vals[i]);
-        std::cout<<"\nlookup another: "<<lookup(t, "another")
-                 <<"\nlookup boo: "<<lookup(t, "boo")
-                 <<"\nlookup boy: "<<lookup(t, "boy")
-                 <<"\nlookup by: "<<lookup(t, "by")
-                 <<"\nlookup boolean: "<<lookup(t, "boolean")<<"\n";
+            m[keys[i]] = vals[i];
+        }
+        for (auto elem : m) {
+            std::string key = elem.first;
+            int val1 = elem.second;
+            int val2 = lookup(t, key);
+            std::cout<<"\nlook up("<<key<<")="<<val2<<", "<<(val1 == val2? "OK" : "FAIL\n");
+            if (val1 != val2) {
+                exit(-1);
+            }
+        }
+        std::cout<<"lookup tested\n";
+        // std::cout<<"\nlookup another: "<<lookup(t, "another")
+        //          <<"\nlookup boo: "<<lookup(t, "boo")
+        //          <<"\nlookup boy: "<<lookup(t, "boy")
+        //          <<"\nlookup by: "<<lookup(t, "by")
+        //          <<"\nlookup boolean: "<<lookup(t, "boolean")<<"\n";
         delete t;
     }
 };

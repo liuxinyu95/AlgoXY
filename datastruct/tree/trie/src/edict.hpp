@@ -1,4 +1,4 @@
-//     edict.hpp, example of e-dictionary and T9with Trie and Patricia
+//     edict.hpp, example of e-dictionary and T9with Trie and PrefixTree
 //     Copyright (C) 2010, Liu Xinyu (liuxinyu95@gmail.com)
 
 //     This program is free software: you can redistribute it and/or modify
@@ -78,12 +78,12 @@ bool is_prefix_of(T x, T y){
 }
 
 template<class K, class V>
-std::list<std::pair<K, V> > lookup(Patricia<K, V>* t,
-                                   typename Patricia<K, V>::KeyType key,
+std::list<std::pair<K, V> > lookup(PrefixTree<K, V>* t,
+                                   typename PrefixTree<K, V>::KeyType key,
                                    unsigned int n)
 {
     typedef typename std::list<std::pair<K, V> > Result;
-    typedef typename Patricia<K, V>::Children::iterator Iterator;
+    typedef typename PrefixTree<K, V>::Children::iterator Iterator;
     if(!t)
         return Result();
     K prefix;
@@ -177,20 +177,20 @@ std::list<std::pair<K, V> > lookup_t9(Trie<K, V>* t,
 }
 
 template<class K, class V>
-std::list<std::pair<K, V> > lookup_t9(Patricia<K, V>* t,
-                                      typename Patricia<K, V>::KeyType key)
+std::list<std::pair<K, V> > lookup_t9(PrefixTree<K, V>* t,
+                                      typename PrefixTree<K, V>::KeyType key)
 {
     typedef std::list<std::pair<K, V> > Result;
-    typedef typename Patricia<K, V>::KeyType Key;
+    typedef typename PrefixTree<K, V>::KeyType Key;
     typedef typename Key::value_type Char;
-    typedef typename Patricia<K, V>::Children::iterator Iterator;
+    typedef typename PrefixTree<K, V>::Children::iterator Iterator;
 
     if((!t) || key.empty())
         return Result();
 
     Key prefix;
     std::map<Char, Key> m = t9map::inst().map;
-    std::queue<std::tuple<Key, Key, Patricia<K, V>*> > q;
+    std::queue<std::tuple<Key, Key, PrefixTree<K, V>*> > q;
     q.push(std::make_tuple(prefix, key, t));
     Result res;
     while(!q.empty()){
@@ -272,7 +272,7 @@ private:
     }
 
     void test_patricia_lookup(){
-        std::cout<<"test lookup top 5 in Patricia\n"
+        std::cout<<"test lookup top 5 in PrefixTree\n"
                  <<"search a "<<lop_to_str(lookup(p, "a", 5))<<"\n"
                  <<"search ab "<<lop_to_str(lookup(p, "ab", 5))<<"\n\n";
     }
@@ -287,7 +287,7 @@ private:
     }
 
     void test_patricia_t9(){
-        std::cout<<"test t9 lookup in Patricia\n"
+        std::cout<<"test t9 lookup in PrefixTree\n"
                  <<"search 4 "<<lop_to_str(lookup_t9(t9patricia, "4"))<<"\n"
                  <<"serach 46 "<<lop_to_str(lookup_t9(t9patricia, "46"))<<"\n"
                  <<"serach 466 "<<lop_to_str(lookup_t9(t9patricia, "466"))<<"\n"
@@ -297,9 +297,9 @@ private:
     }
 
     Trie<std::string, std::string>* t;
-    Patricia<std::string, std::string>* p;
+    PrefixTree<std::string, std::string>* p;
     Trie<std::string, std::string>* t9trie;
-    Patricia<std::string, std::string>* t9patricia;
+    PrefixTree<std::string, std::string>* t9patricia;
 };
 
 #endif //_EDICT_

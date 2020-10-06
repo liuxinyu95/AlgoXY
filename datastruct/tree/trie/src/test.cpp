@@ -24,6 +24,6 @@ int main(int, char**){
   IntTrieTest().run();
   IntPatriciaTest().run();
   TrieTest().run();
-  PatriciaTest().run();
+  PrefixTreeTest().run();
   EDictTest().run();
 }
