@@ -1,0 +1,481 @@
+\ifx\wholebook\relax \else
+% ------------------------
+
+\documentclass[UTF8]{article}
+%------------------- Other types of document example ------------------------
+%
+%\documentclass[twocolumn]{IEEEtran-new}
+%\documentclass[12pt,twoside,draft]{IEEEtran}
+%\documentstyle[9pt,twocolumn,technote,twoside]{IEEEtran}
+%
+%-----------------------------------------------------------------------------
+%\input{../../../common.tex}
+\input{../../../common-zh-cn.tex}
+
+\setcounter{page}{1}
+
+\begin{document}
+
+%--------------------------
+
+% ================================================================
+%                 COVER PAGE
+% ================================================================
+
+\title{Haskell例子程序}
+
+\author{Larry~LIU~Xinyu
+\thanks{{\bfseries Larry LIU Xinyu } \newline
+  Email: liuxinyu95@gmail.com \newline}
+  }
+
+\maketitle
+\fi
+
+\markboth{Haskell例子程序}{Elementary Algorithms}
+
+\ifx\wholebook\relax
+\chapter{Haskell例子程序}
+\numberwithin{Exercise}{chapter}
+\fi
+
+本附录列出了各个章节中对应的Haskell例子程序。
+
+\subsection{最小可用数字问题}
+分而治之的最小可用数字问题解法。
+
+\lstset{language=Haskell, frame=single}
+\begin{lstlisting}
+import Data.List
+
+minFree xs = bsearch xs 0 (length xs - 1)
+
+bsearch xs l u | xs == [] = l
+               | length as == m - l + 1 = bsearch bs (m + 1) u
+               | otherwise = bsearch as l m
+    where
+      m = (l + u) `div` 2
+      (as, bs) = partition (<=m) xs
+\end{lstlisting}
+
+\subsection{正规数（哈明数）问题}
+寻找只包含2、3、或5为因子的第$k$个数。下面的方法使用了Haskell的惰性求值特性和无穷流。
+
+\begin{lstlisting}
+merge (x:xs) (y:ys) | x <y = x : merge xs (y:ys)
+                    | x == y = x : merge xs ys
+                    | otherwise = y : merge (x:xs) ys
+
+ns = 1:merge (map (*2) ns) (merge (map (*3) ns) (map (*5) ns))
+\end{lstlisting}
+
+下面的代码给出第1500个正规数。
+\begin{verbatim}
+last $ take 1500 ns
+\end{verbatim}
+
+我们也可以使用三个队列来产生正规数。
+
+\begin{lstlisting}
+ks 1 xs _ = xs
+ks n xs (q2, q3, q5) = ks (n-1) (xs++[x]) update
+    where
+      x = minimum $ map head [q2, q3, q5]
+      update | x == head q2 = ((tail q2)++[x*2], q3++[x*3], q5++[x*5])
+             | x == head q3 = (q2, (tail q3)++[x*3], q5++[x*5])
+             | otherwise = (q2, q3, (tail q5)++[x*5])
+
+takeN n = ks n [1] ([2], [3], [5])
+\end{lstlisting}
+
+执行\texttt{last \$ takeN 1500}即产生第1500个正规数859963392。
+
+\section{二叉搜索树}
+
+\subsection{二叉搜索树的定义}
+
+二叉搜索树的代数数据类型定义。
+
+\begin{lstlisting}
+data Tree a = Empty
+            | Node (Tree a) a (Tree a)
+\end{lstlisting}
+
+\subsection{插入}
+
+\begin{lstlisting}
+insert Empty k = Node Empty k Empty
+insert (Node l x r) k | k < x = Node (insert l k) x r
+                      | otherwise = Node l x (insert r k)
+\end{lstlisting}
+
+\subsection{将二叉搜索树转换为有序列表}
+
+\begin{lstlisting}
+toList Empty = []
+toList (Node l x r) = toList l ++ [x] ++ toList r
+\end{lstlisting}
+
+\subsection{二叉搜索树的查找}
+
+\begin{lstlisting}
+lookup Empty _ = Empty
+lookup t@(Node l k r) x | k == x = t
+                        | x < k = lookup l x
+                        | otherwise = lookup r x
+\end{lstlisting}
+
+\subsection{从二叉搜索树中删除元素}
+
+\begin{lstlisting}
+delete Empty _ = Empty
+delete (Node l k r) x | x < k = (Node (delete l x) k r)
+                      | x > k = (Node l k (delete r x))
+                      -- x == k
+                      | isEmpty l = r
+                      | isEmpty r = l
+                      | otherwise = (Node l k' (delete r k'))
+                          where k' = min r
+\end{lstlisting}
+
+\section{红黑树}
+
+\subsection{插入}
+
+使用模式匹配的红黑树插入算法。
+
+\begin{lstlisting}
+data Color = R | B
+data RBTree a = Empty
+              | Node Color (RBTree a) a (RBTree a)
+
+insert::(Ord a)=>RBTree a -> a -> RBTree a
+insert t x = makeBlack $ ins t where
+    ins Empty = Node R Empty x Empty
+    ins (Node color l k r)
+        | x < k     = balance color (ins l) k r
+        | otherwise = balance color l k (ins r)
+    makeBlack(Node _ l k r) = Node B l k r
+
+balance::Color -> RBTree a -> a -> RBTree a -> RBTree a
+balance B (Node R (Node R a x b) y c) z d =
+        Node R (Node B a x b) y (Node B c z d)
+balance B (Node R a x (Node R b y c)) z d =
+        Node R (Node B a x b) y (Node B c z d)
+balance B a x (Node R b y (Node R c z d)) =
+        Node R (Node B a x b) y (Node B c z d)
+balance B a x (Node R (Node R b y c) z d) =
+        Node R (Node B a x b) y (Node B c z d)
+balance color l k r = Node color l k r
+
+\end{lstlisting}
+
+\subsection{删除}
+
+使用“双重黑色”概念实现的红黑树删除算法。
+
+\begin{lstlisting}
+data Color = R | B | BB deriving (Show, Eq) -- BB为双重黑色
+data RBTree a = Empty
+              | Node Color (RBTree a) a (RBTree a)
+              | BBEmpty -- 双重黑色空节点
+
+min::RBTree a -> a
+min (Node _ Empty x _) = x
+min (Node _ l _ _) = min l
+
+isEmpty :: (RBTree a) -> Bool
+isEmpty Empty = True
+isEmpty _ = False
+
+delete::(Ord a)=>RBTree a -> a -> RBTree a
+delete t x = blackenRoot (del t x) where
+    del Empty _ = Empty
+    del (Node color l k r) x
+        | x < k = fixDB color (del l x) k r
+        | x > k = fixDB color l k (del r x)
+        -- x == k, 删除此节点
+        | isEmpty l = if color==B then makeBlack r else r
+        | isEmpty r = if color==B then makeBlack l else l
+        | otherwise = fixDB color l k' (del r k') where k'= min r
+    blackenRoot (Node _ l k r) = Node B l k r
+    blackenRoot _ = Empty
+
+makeBlack::RBTree a -> RBTree a
+makeBlack (Node B l k r) = Node BB l k r -- 双重黑色
+makeBlack (Node _ l k r) = Node B l k r
+makeBlack Empty = BBEmpty
+makeBlack t = t
+
+fixDB::Color -> RBTree a -> a -> RBTree a -> RBTree a
+-- 兄弟节点为黑色，有一个红色的侄子
+fixDB color a@(Node BB _ _ _) x (Node B (Node R b y c) z d) =
+      Node color (Node B (makeBlack a) x b) y (Node B c z d)
+fixDB color BBEmpty x (Node B (Node R b y c) z d) =
+      Node color (Node B Empty x b) y (Node B c z d)
+fixDB color a@(Node BB _ _ _) x (Node B b y (Node R c z d)) =
+      Node color (Node B (makeBlack a) x b) y (Node B c z d)
+fixDB color BBEmpty x (Node B b y (Node R c z d)) =
+      Node color (Node B Empty x b) y (Node B c z d)
+fixDB color (Node B a x (Node R b y c)) z d@(Node BB _ _ _) =
+      Node color (Node B a x b) y (Node B c z (makeBlack d))
+fixDB color (Node B a x (Node R b y c)) z BBEmpty =
+      Node color (Node B a x b) y (Node B c z Empty)
+fixDB color (Node B (Node R a x b) y c) z d@(Node BB _ _ _) =
+      Node color (Node B a x b) y (Node B c z (makeBlack d))
+fixDB color (Node B (Node R a x b) y c) z BBEmpty =
+      Node color (Node B a x b) y (Node B c z Empty)
+-- 兄弟为红色
+fixDB B a@(Node BB _ _ _) x (Node R b y c) = fixDB B (fixDB R a x b) y c
+fixDB B a@BBEmpty x (Node R b y c) = fixDB B (fixDB R a x b) y c
+fixDB B (Node R a x b) y c@(Node BB _ _ _) = fixDB B a x (fixDB R b y c)
+fixDB B (Node R a x b) y c@BBEmpty = fixDB B a x (fixDB R b y c)
+-- 兄弟和两个侄子都是黑色。
+fixDB color a@(Node BB _ _ _) x (Node B b y c) =
+      makeBlack (Node color (makeBlack a) x (Node R b y c))
+fixDB color BBEmpty x (Node B b y c) =
+      makeBlack (Node color Empty x (Node R b y c))
+fixDB color (Node B a x b) y c@(Node BB _ _ _) = m
+      akeBlack (Node color (Node R a x b) y (makeBlack c))
+fixDB color (Node B a x b) y BBEmpty =
+      makeBlack (Node color (Node R a x b) y Empty)
+-- 其他情况
+fixDB color l k r = Node color l k r
+\end{lstlisting}
+
+\section{基数树}
+
+\subsection{整数Trie}
+小端整数Trie.
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=整数Trie的代数数据类型定义]
+data IntTrie a = Empty
+               | Branch (IntTrie a) (Maybe a) (IntTrie a)
+\end{lstlisting}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=整数Trie的插入算法]
+insert t 0 x = Branch (left t) (Just x) (right t)
+insert t k x
+    | even k = Branch (insert (left t) (k `div` 2) x) (value t) (right t)
+    | otherwise = Branch (left t) (value t) (insert (right t) (k `div` 2) x)
+
+left (Branch l _ _) = l
+left Empty = Empty
+
+right (Branch _ _ r) = r
+right Empty = Empty
+
+value (Branch _ v _) = v
+value Empty = Nothing
+\end{lstlisting}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=整数Trie的查找算法]
+search Empty k = Nothing
+search t 0 = value t
+search t k = if even k then search (left t) (k `div` 2)
+             else search (right t) (k `div` 2)
+\end{lstlisting}
+
+\subsection{整数前缀树}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=整数前缀树的定义]
+type Key = Int
+type Prefix = Int
+type Mask = Int
+
+data IntTree a = Empty
+               | Leaf Key a
+               | Branch Prefix Mask (IntTree a) (IntTree a)
+\end{lstlisting}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=整数前缀树的插入]
+import Data.Bits
+
+insert t k x
+   = case t of
+       Empty -> Leaf k x
+       Leaf k' x' -> if k==k' then Leaf k x
+                     else join k (Leaf k x) k' t -- t@(Leaf k' x')
+       Branch p m l r
+          | match k p m -> if zero k m
+                           then Branch p m (insert l k x) r
+                           else Branch p m l (insert r k x)
+          | otherwise -> join k (Leaf k x) p t -- t@(Branch p m l r)
+
+join p1 t1 p2 t2 = if zero p1 m then Branch p m t1 t2
+                                else Branch p m t2 t1
+    where
+      (p, m) = lcp p1 p2
+
+lcp :: Prefix -> Prefix -> (Prefix, Mask)
+lcp p1 p2 = (p, m) where
+    m = bit (highestBit (p1 `xor` p2))
+    p = mask p1 m
+
+highestBit x = if x == 0 then 0 else 1 + highestBit (shiftR x 1)
+
+mask x m = (x .&. complement (m-1)) -- complement means bit-wise not.
+
+zero x m = x .&. (shiftR m 1) == 0
+
+match k p m = (mask k m) == p
+\end{lstlisting}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=整数前缀树的查找]
+search t k
+  = case t of
+      Empty -> Nothing
+      Leaf k' x -> if k == k' then Just x else Nothing
+      Branch p m l r
+             | match k p m -> if zero k m then search l k
+                              else search r k
+             | otherwise -> Nothing
+\end{lstlisting}
+
+\subsection{字符Trie}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=字符Trie的定义]
+data Trie a = Trie { value :: Maybe a
+                   , children :: [(Char, Trie a)]}
+
+empty = Trie Nothing []
+\end{lstlisting}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=字符Trie的插入]
+insert t []     x = Trie (Just x)  (children t)
+insert t (k:ks) x = Trie (value t) (ins (children t) k ks x) where
+    ins [] k ks x = [(k, (insert empty ks x))]
+    ins (p:ps) k ks x = if fst p == k
+                        then (k, insert (snd p) ks x):ps
+                        else p:(ins ps k ks x)
+\end{lstlisting}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=字符Trie的查找]
+find t [] = value t
+find t (k:ks) = case lookup k (children t) of
+                  Nothing -> Nothing
+                  Just t' -> find t' ks
+\end{lstlisting}
+
+\subsection{字符前缀树}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=字符前缀树的定义]
+data PrefixTree k v = PrefixTree { value :: Maybe v
+                                 , children :: [([k], PrefixTree k v)]}
+
+empty = PrefixTree Nothing []
+
+leaf x = PrefixTree (Just x) []
+\end{lstlisting}
+
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=前缀树的插入]
+import Data.List (isPrefixOf)
+
+insert :: Eq k => PrefixTree k v -> [k] -> v -> PrefixTree k v
+insert t ks x = PrefixTree (value t) (ins (children t) ks x) where
+    ins []     ks x = [(ks, leaf x)]
+    ins (p@(ks', t') : ps) ks x
+        | ks' == ks
+            = (ks, PrefixTree (Just x) (children t')) : ps  -- overwrite
+        | match ks' ks
+            = (branch ks x ks' t') : ps
+        | otherwise
+            = p : (ins ps ks x)
+
+match x y = x /= [] && y /= [] && head x == head y
+
+branch :: Eq k => [k] -> v -> [k] -> PrefixTree k v -> ([k], PrefixTree k v)
+branch ks1 x ks2 t2
+    | ks1 == ks
+        -- ex: insert "an" into "another"
+        = (ks, PrefixTree (Just x) [(ks2', t2)])
+    | ks2 == ks
+        -- ex: insert "another" into "an"
+        = (ks, insert t2 ks1' x)
+    | otherwise = (ks, PrefixTree Nothing [(ks1', leaf x), (ks2', t2)])
+   where
+      ks = lcp ks1 ks2
+      m = length ks
+      ks1' = drop m ks1
+      ks2' = drop m ks2
+
+-- longest common prefix
+lcp :: Eq k => [k] -> [k] -> [k]
+lcp [] _ = []
+lcp _ [] = []
+lcp (x:xs) (y:ys) = if x==y then x : (lcp xs ys) else []
+\end{lstlisting}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=字符前缀树的查找]
+find :: Eq k => PrefixTree k v -> [k] -> Maybe v
+find t = find' (children t) where
+    find' [] _ = Nothing
+    find' (p@(ks', t') : ps) ks
+          | ks' == ks = value t'
+          | ks' `isPrefixOf` ks = find t' (diff ks ks')
+          | otherwise = find' ps ks
+    diff ks1 ks2 = drop (length (lcp ks1 ks2)) ks1
+\end{lstlisting}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=在前缀树中查找最多$n$个结果]
+import Control.Arrow (first)
+
+get n t k = take n $ findAll t k
+
+findAll :: Eq k => PrefixTree k v -> [k] -> [([k], v)]
+findAll (PrefixTree Nothing cs) [] = enum cs
+findAll (PrefixTree (Just x) cs) [] = ([], x) : enum cs
+findAll (PrefixTree _ cs) k = find' cs k
+  where
+    find' [] _ = []
+    find' ((k', t') : ps) k
+          | k `isPrefixOf` k'
+              = map (first (k' ++)) (findAll t' [])
+          | k' `isPrefixOf` k
+              = map (first (k' ++)) (findAll t' $ drop (length k') k)
+          | otherwise = find' ps k
+
+enum :: Eq k => [([k], PrefixTree k v)] -> [([k], v)]
+enum = concatMap (\(k, t) -> map (first (k ++)) (findAll t []))
+\end{lstlisting}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=T9查找]
+import qualified Data.Map as Map
+
+mapT9 = Map.fromList [('1', ",."), ('2', "abc"), ('3', "def"), ('4', "ghi"),
+                      ('5', "jkl"), ('6', "mno"), ('7', "pqrs"), ('8', "tuv"),
+                      ('9', "wxyz")]
+
+rmapT9 = Map.fromList $ concatMap (\(d, s) -> [(c, d) | c <- s]) $ Map.toList mapT9
+
+digits = map (\c -> Map.findWithDefault '#' c rmapT9)
+
+findT9 :: PrefixTree Char v -> String -> [String]
+findT9 t [] = [""]
+findT9 t k = concatMap find prefixes
+  where
+    n = length k
+    find (s, t') = map (take n . (s++)) $ findT9 t' (k `diff` s)
+    diff x y = drop (length y) x
+    prefixes = [(s, t') | (s, t') <- children t, let ds = digits s in
+                          ds `isPrefixOf` k || k `isPrefixOf` ds]
+\end{lstlisting}
+
+\ifx\wholebook\relax \else
+\end{document}
+\fi

@@ -1,0 +1,596 @@
+\ifx\wholebook\relax \else
+% ------------------------
+
+\documentclass{article}
+
+\input{../../common-zh-cn.tex}
+
+\setcounter{page}{1}
+
+\begin{document}
+
+%--------------------------
+
+% ================================================================
+%                 COVER PAGE
+% ================================================================
+
+\title{前言}
+
+\author{刘新宇
+\thanks{{\bfseries 刘新宇} \newline
+  Email: liuxinyu95@gmail.com \newline}
+  }
+
+\maketitle
+\fi
+
+\markboth{前言}{初等算法}
+
+% ================================================================
+%                 Why
+% ================================================================
+\section{算法有用么？}
+\label{why}
+
+“算法有用么？”经常有人问我这个问题。很多人在工作中根本不用算法。偶尔碰到的时候，也不过是使用一些实现好的库。例如C++标准模版库STL中有现成的排序、查找函数；常用的数据结构如向量(vector)、队列(queue)、集合(set)也都实现好了。日常工作中了解如何使用这些库似乎就足够了。
+
+算法在解决一些“有趣”的问题时，会扮演关键角色。但是这些问题本身的价值，却是仁者见仁、智者见智。
+
+让我们用例子来说话吧。下面两道题目，即使是初学编程的新手，似乎也很容易解决。
+
+% ================================================================
+%      Mininum free ID problem. The power of algorithms
+% ================================================================
+\section{最小可用ID，算法的威力}
+\label{min-free} \index{最小可用数}
+
+这道题目来自Richard Bird书中的第一章\cite{fp-pearls}。现代社会中，有很多服务依赖一种被称为ID的概念。例如身份证就是一种ID，银行账户也是一种ID，电话号码本质上也是一种ID。假设我们使用非负整数作为某个系统的的ID，所有用户都由一个ID唯一确定。任何时间，这个系统中有些ID处在使用中的状态，有些ID则可以用于分配给新用户。现在的问题是，怎样才能找到最小的可分配ID呢？例如下面的列表记录了当前正在被使用的ID：
+
+\begin{verbatim}
+[18, 4, 8, 9, 16, 1, 14, 7, 19, 3, 0, 5, 2, 11, 6]
+\end{verbatim}
+
+最小可分配的ID，也就是不在这个列表中的最小整数是10。这个题目看上去是如此简单，我们可以立即写出下面解法：
+
+\begin{algorithmic}[1]
+\Function{Min-Free}{$A$}
+  \State $x \gets 0$
+  \Loop
+    \If{$x \notin A$}
+      \State \Return $x$
+    \Else
+      \State $x \gets x + 1$
+    \EndIf
+  \EndLoop
+\EndFunction
+\end{algorithmic}
+
+其中符号$\notin$的实现如下：
+
+\begin{algorithmic}[1]
+\Function{`$\notin$'}{$x, X$}
+  \For{$i \gets 1 $ to $|X|$}
+    \If{$x = X[i]$}
+      \State \Return False
+    \EndIf
+  \EndFor
+  \State \Return True
+\EndFunction
+\end{algorithmic}
+
+有些编程语言内置了这一线性查找的实现，例如Python。我们可以直接将这一解法翻译成下面的程序。
+
+\lstset{language=Python}
+\begin{lstlisting}
+def brute_force(lst):
+    i = 0
+    while True:
+        if i not in lst:
+            return i
+        i = i + 1
+\end{lstlisting}
+
+但是这道题目仅仅是看上去简单。在一个存储了几百万个ID的大型系统中，这个方法的的性能很差。对于一个长度为n的ID列表，它需要$O(n^2)$的时间才能找到最小可分配的ID。在我的计算机上（双核2.10GHz处理器，2G内存），使用这一方法的C语言程序平均要5.4秒才能在十万个ID中找到答案。当ID的数量上升到一百万时，平均用时则长达8分钟。
+
+\subsection{改进一}
+改进这一解法的关键基于这一事实：对于任何$n$个非负整数$x_1, x_2, ..., x_n$，如果存在小于$n$的可用整数，必然存在某个$x_i$不在$[0, n)$这个范围内。否则这些整数一定是$0, 1, ..., n-1$的某个排列，这种情况下，最小的可用整数是$n$。于是我们有如下结论：
+
+\be
+minfree(x_1, x_2, ..., x_n) \leq n
+\label{eq:min-free}
+\ee
+
+根据这一结论，我们可以用一个长度为$n+1$的数组，来标记区间$[0, n]$内的某个整数是否可用。
+
+\begin{algorithmic}[1]
+\Function{Min-Free}{$A$}
+  \State $F \gets [False, False, ..., False]$ where $|F| = n+1$
+  \For{$\forall x \in A$}
+    \If{$x < n$}
+      \State $F[x] \gets$ True
+    \EndIf
+  \EndFor
+  \For{$i \gets [0, n]$}
+    \If{$F[i] =$ False}
+      \State \Return $i$
+    \EndIf
+  \EndFor
+\EndFunction
+\end{algorithmic}
+
+其中第2行将标志数组中的所有值初始化为False，这一步骤需要$O(n)$的时间。接着我们遍历$A$中的所有元素，只要小于$n$，就将相应的标记置为True。这一过程也需要$O(n)$的时间。最后我们线性查找标志数组中第一个值为Fasle的位置。整个算法的性能是线性时间$O(n)$的。注意，我们使用了$n+1$个标志，而不是$n$个标志。这样无需额外处理，就可以应对$sorted(A) = [0, 1, 2, ..., n-1]$
+的特殊情况。
+
+虽然这个方法只需要线性时间，但是它需要$O(n)$的空间来存储标志。
+
+这一方法比之前的暴力解法快很多。在我的计算机上，相应的Python程序平均只用0.02秒，就可以在十万个整数中找到答案。
+
+我们还可以继续优化。每次查找，我们都要申请长度为$n+1$的数组；查找结束后，这个数组又被释放掉了。反复的申请和释放会占用不少时间。我们可以预先准备好足够长的数组，然后每次查找都复用它。另外，我们可以使用二进制的位来保存标志，这样能节约不少空间。下面的C语言程序实现了这两点小改进。
+
+\lstset{language=C}
+\begin{lstlisting}
+#define N 1000000 // 1 million
+#define WORD_LENGTH (sizeof(int) * 8)
+
+void setbit(unsigned int* bits, unsigned int i) {
+    bits[i / WORD_LENGTH] |= 1<<(i % WORD_LENGTH);
+}
+
+int testbit(unsigned int* bits, unsigned int i) {
+    return bits[i/WORD_LENGTH] & (1<<(i % WORD_LENGTH));
+}
+
+unsigned int bits[N/WORD_LENGTH+1];
+
+int min_free(int* xs, int n) {
+    int i, len = N/WORD_LENGTH+1;
+    for(i=0; i<len; ++i)
+        bits[i]=0;
+    for(i=0; i<n; ++i)
+        if(xs[i]<n)
+            setbit(bits, xs[i]);
+    for(i=0; i<=n; ++i)
+        if(!testbit(bits, i))
+            return i;
+}
+\end{lstlisting}
+
+在我的计算机上，这段C程序处理一百万个整数，平均用时仅仅0.023秒。最后一个for循环还能
+进一步改进如下，但这些都是一些微调了。
+
+\begin{lstlisting}
+for(i=0; ; ++i)
+    if(~bits[i] !=0)
+        for(j=0; ; ++j)
+	        if(!testbit(bits, i*WORD_LENGTH+j))
+	            return i*WORD_LENGTH+j;
+\end{lstlisting}
+
+\subsection{改进二、分而治之}
+我们在速度上的改进是以空间上的消耗为代价的。由于维护了一个长度为$n$的标志数组，当$n$很大时，空间上的性能就成了新的瓶颈。
+
+分而治之的典型策略是将问题分解为若干规模较小的子问题，然后逐步解决它们以得到最终的结果。
+
+我们可以将所有满足$x_i \leq \lfloor n/2 \rfloor$的整数放入一个子序列$A'$；将剩余的其他整数放入另外一个序列$A''$。根据公式\ref{eq:min-free}，如果序列$A'$的长度正好是$\lfloor n/2 \rfloor$，这说明前一半的整数已经“满了”，最小的可用整数一定可以在$A''$中递归地找到。否则，最小的可用整数可以在$A'$中找到。总之，通过这一划分，问题的规模减小了。
+
+需要注意的是，当我们在子序列$A''$中递归查找时，边界情况发生了一些变化，我们不再是从0开始寻找最小可用整数，查找的下界变成了$\lfloor n/2 \rfloor + 1$。因此我们的算法应定义为$minfree(A, l, u)$，其中$l$是下界，$u$是上界。
+
+递归结束的边界条件是当待查找的序列变为空的时候，此时我们只需要返回下界作为结果即可。
+
+根据上述思路，分而治之的解法可以形式化地定义为一个函数：
+
+\[
+minfree(A) = search(A, 0, |A|-1)
+\]
+
+\[
+search(A, l, u) = \left \{
+       \begin{array}
+       {r@{\quad:\quad}l}
+       l & A = \phi \\
+       search(A'', m+1, u) &  |A'| = m - l + 1 \\
+       search(A',  l, m) & otherwise
+       \end{array}
+\right.
+\]
+
+其中
+%TODO: Add reference to appendix for notation.
+
+\[ \begin{array}{l}
+m = \displaystyle \lfloor \frac{l+u}{2} \rfloor \\
+A'  = \{ \forall x \in A \wedge x \leq m \} \\
+A'' = \{ \forall x \in A \wedge x > m \} \\
+\end{array} \]
+
+这一方法并不需要额外的空间\footnote{有人认为需要$O(\lg n)$的栈空间来做递归调用的簿记（book-keeping）。我们稍后会看到，这一调用实际上是尾递归，有些编译器，例如gcc可以通过-O2选项消除递归。我们也可以手工将递归转换为迭代。}。每次调用需要进行$O(|A|)$次比较来划分出子序列$A'$和$A''$。之后，问题的规模减半，所以这个算法用时为$T(n) = T(n/2) + O(n)$，化简可知其结果为$O(n)$。我们也可以这样分析其复杂度：第一次需要$O(n)$次比较来划分子序列$A'$和$A''$，第二次仅需要比较$O(n/2)$次，第三次需要比较$O(n/4)$次……总时间为$O(n + n/2 + n/4 + ...) = O(2n) = O(n)$。
+
+在有些函数式编程语言，例如Haskell中，划分一个序列已经被作为库函数提供了。下面的例子代码实现了分而治之的算法。
+
+%\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+import Data.List
+
+minFree xs = bsearch xs 0 (length xs - 1)
+
+bsearch xs l u | xs == [] = l
+               | length as == m - l + 1 = bsearch bs (m+1) u
+               | otherwise = bsearch as l m
+    where
+      m = (l + u) `div` 2
+      (as, bs) = partition (<=m) xs
+\end{lstlisting}
+\lstset{}
+
+\subsection{简洁与性能――鱼和熊掌}
+使用命令式编程语言的读者可能会担心这种实现的性能。对于最小的可分配ID问题，递归的深度为$O(\lg n)$，于是调用栈的大小也是$O(\lg n)$。因此空间复杂度并不能被忽略。实际上，我们可以通过将递归转换为迭代来避免空间上的占用\footnote{由于我们的函数是尾递归形式，大多数函数式编程语言会自动转换优化尾递归函数。}，如下面的C语言例子程序。
+
+\lstset{language=C}
+\begin{lstlisting}
+int min_free(int* xs, int n) {
+    int l=0;
+    int u=n-1;
+    while(n) {
+        int m = (l + u) / 2;
+        int right, left = 0;
+        for(right = 0; right < n; ++ right)
+            if(xs[right] <= m) {
+                swap(xs[left], xs[right]);
+                ++left;
+            }
+        if(left == m - l + 1) {
+            xs = xs + left;
+            n  = n - left;
+            l  = m+1;
+        } else {
+            n = left;
+            u = m;
+        }
+    }
+    return l;
+}
+\end{lstlisting}
+
+这段程序使用了类似“快速排序”中的分割方法将数组中的元素分成两部份。所有\texttt{left}之前的元素都不大于\texttt{m}，而所有\texttt{left}和\texttt{right}之间的元素都大于\texttt{m}，如图\ref{fig:divide}所示。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=1]{img/divide-by-m.ps}
+  \caption{数组划分的过程。所有位于$0 \leq i < left$的元素满足$x[i] \leq m$，所有位于$left \leq i < right$的元素满足$x[i] > m$，剩余的元素尚未处理。} \label{fig:divide}
+\end{figure}
+
+这一程序运行快速并且不需要额外的栈空间。但是和前面的Haskell程序比起来，并不那么直观、简洁，需要仔细阅读。有时我们需要在简洁与性能之间进行平衡。
+
+\section{“丑数”――数据结构的威力}
+
+如果说最小可用ID问题还有一些应用价值，那么接下来这个问题就纯粹是为了“有趣”了。我们要寻找第1500个“丑数”。所谓丑数，就是只含有2、3或5这三个因子的自然数\footnote{又名正规数、哈明数，在数论中称为5-光滑数。}。前三个丑数按照定义分别是2、3和5。数字$60 = 2^23^15^1$是第25个丑数。数字$21 = 2^03^17^1$由于含有因子7，所以不是丑数。前10个丑数如下表：
+
+2,3,4,5,6,8,9,10,12,15
+
+如果我们认为$1=2^03^05^0$也是一个合法的丑数，则1就是第一个丑数。
+
+\subsection{暴力解法}
+
+这道题目看起来并不复杂，我们可以从1开始，逐一检查所有自然数，对于每个整数，我们用除法把所有的2、3和5的因子都去掉，如果结果是1，则找到了一个丑数，当遇到第$n=1500$个丑数时就找到答案了。
+
+\begin{algorithmic}[1]
+\Function{Get-Number}{$n$}
+  \State $x \gets 1$
+  \State $i \gets 0$
+  \Loop
+    \If{\Call{Valid?}{$x$}}
+      \State $i \gets i + 1$
+      \If{$i = n$}
+        \State \Return $x$
+      \EndIf
+    \EndIf
+    \State $x \gets x + 1$
+  \EndLoop
+\EndFunction
+\Statex
+\Function{Valid?}{$x$}
+  \While{$x \bmod 2 = 0$}
+    \State $x \gets x / 2$
+  \EndWhile
+  \While{$x \bmod 3 = 0$}
+    \State $x \gets x / 3$
+  \EndWhile
+  \While{$x \bmod 5 = 0$}
+    \State $x \gets x / 5$
+  \EndWhile
+  \If{$x = 1$}
+    \State \Return $True$
+  \Else
+    \State \Return $False$
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+这一暴力解法对于较小的$n$没有问题。但是根据这个方法编写的C语言程序，在我的计算机上耗时40.39秒才找到了第1500个丑数(859963392)。当试图求第15000个丑数时，程序运行了10分钟也没能找到答案，我只好把它强行停止。
+
+\subsection{改进一、构造性解法}
+在上面的暴力解法中，取模运算和除法运算很耗时\cite{Bentley}。并且这些运算被循环执行了很多次。我们可以转换一下思路，不再检查一个数是否仅含有是2、3或5的因子，而是从这三个因子中构造需要的整数。
+
+我们从1开始，分别乘以2或3或5来生成整数。这样问题就变成如何依次生成丑数。我们可以使用队列这种数据结构来解决这个问题。
+
+队列从一侧放入元素，然后从另一侧取出元素。所以先放入的元素会先被取出。这一特性被称为先进先出FIFO(First-In-First-Out)。
+
+我们的思路是先把1作为唯一的元素放入队列，然后我们不断从队列另一侧取出元素，分别乘以2、3和5，这样就得到了3个新的元素。然后把它们按照大小顺序放入队列。注意，这样产生的整数有可能已经在队列中存在了。这种情况下，我们需要丢弃重复产生的元素。另外新产生的整数还有可能小于队列尾部的某些元素，所以我们在插入时，需要保持它们在队列中的大小顺序。图\ref{fig:queues}描述了这一思路的步骤。
+
+根据这一思路的算法实现如下：
+
+%\begin{algorithm}
+\begin{algorithmic}[1]
+\Function{Get-Number}{$n$}
+  \State $Q \gets NIL$
+  \State \Call{Enqueue}{$Q, 1$}
+  \While{$n > 0$}
+    \State $x \gets$ \Call{Dequeue}{$Q$}
+    \State \Call{Unique-Enqueue}{$Q, 2x$}
+    \State \Call{Unique-Enqueue}{$Q, 3x$}
+    \State \Call{Unique-Enqueue}{$Q, 5x$}
+    \State $n \gets n-1$
+  \EndWhile
+  \State \Return $x$
+\EndFunction
+\Statex
+\Function{Unique-Enqueue}{$Q, x$}
+  \State $i \gets 0$
+  \While{$i < |Q| \wedge Q[i] < x$}
+    \State $i \gets i + 1$
+  \EndWhile
+  \If{$i < |Q| \wedge x = Q[i]$}
+    \State \Return
+  \EndIf
+  \State \Call{Insert}{$Q, i, x$}
+\EndFunction
+\end{algorithmic}
+%\end{algorithm}
+
+\begin{figure}[htbp]
+  \renewcommand*\thesubfigure{\arabic{subfigure}}
+  \centering
+  \subfloat[初始状态，队列仅含有唯一的元素1]{\includegraphics[scale=0.5]{img/q1.ps}} \hspace{.1\textwidth}
+  \subfloat[新产生的元素2、3和5加入队列]{\includegraphics[scale=0.5]{img/q2.ps}} \\
+  \subfloat[新产生的元素4、6和10按照顺序被插入队列]{\includegraphics[scale=0.5]{img/q3.ps}} \hspace{.1\textwidth}
+  \subfloat[新产生的元素9和15加入队列，重复元素6被丢弃]{\includegraphics[scale=0.5]{img/q4.ps}}
+  \caption{使用队列依次生成丑数的前4个步骤} \label{fig:queues}
+\end{figure}
+
+在将元素插入队列时，算法需要$O(|Q|)$时间找到合适位置。如果已经存在，则直接返回。
+
+粗略估计，队列的长度会随着$n$增加（每取出一个元素会插入最多三个新元素，增加的比率$\leq 2$），所以总运行时间为$O(1+2+3+...+n) = O(n^2)$。
+
+图\ref{fig:big-O-1q}的数据显示了队列的访问次数和$n$之间的关系，这些点连成了二次曲线，反映了算法的复杂度是$O(n^2)$。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.5]{img/big-O-1q.eps}
+  \caption{队列访问次数和$n$的关系} \label{fig:big-O-1q}
+\end{figure}
+
+依照此方法实现的C语言程序仅用时0.016秒就输出了正确答案859963392，比暴力解法快了2500倍。
+
+%% Functional 1Q solution
+这一解法也可以用递归的方式给出，令$X$为所有仅含有因子2、3或5的整数的无穷序列。下面的等式给出了一个有趣的关系。
+
+\be
+  X = \{1\} \cup \{2x: \forall x \in X\} \cup \{3x: \forall x \in X \} \cup \{5x: \forall x \in X \}
+\ee
+
+其中符号$\cup$表示去除重复并保持大小顺序。若$X=\{x_1, x_2, x_3...\}$，$Y=\{y_1, y_2, y_3, ...\}$，$X' = \{x_2, x_3, ...\}$，$Y'=\{y_2, y_3, ...\}$，我们可以定义$\cup$如下：
+
+\[
+X \cup Y = \left \{
+  \begin{array}{r@{\quad:\quad}l}
+  X & Y = \phi \\
+  Y & X = \phi \\
+  \{ x_1, X' \cup Y \} & x_1 < y_1 \\
+  \{ x_1, X' \cup Y' \} & x_1 = y_1 \\
+  \{ y_1, X \cup Y' \} & x_1 > y_1
+  \end{array}
+\right.
+\]
+
+在支持惰性求值的函数式编程语言，例如Haskell中，上述无穷序列及函数可以定义为如下代码：
+
+\begin{lstlisting}[style=Haskell]
+ns = 1:merge (map (*2) ns) (merge (map (*3) ns) (map (*5) ns))
+
+merge (x:xs) (y:ys) | x <y = x : merge xs (y:ys)
+                    | x ==y = x : merge xs ys
+                    | otherwise = y : merge (x:xs) ys
+\end{lstlisting}
+
+通过求\texttt{last \$ take 1500}，我们可以得到第1500个丑数：
+
+\begin{verbatim}
+>last $ take 1500 ns
+859963392
+\end{verbatim}
+
+\subsection{改进二、使用多个队列}
+上面的解法虽然比暴力法快了很多，但是仍然有一些不足。它会产生很多的重复的元素，并且最终都被丢弃了。其次，它需要扫描队列以保证队列中的元素有序。因此入队操作从常数时间$O(1)$退化为线性时间$O(|Q|)$。
+
+我们可以用三个队列来进行改进。这三个队列表示为$Q_2$，$Q_3$和$Q_5$。它们初始化为$Q_2=\{ 2 \}$，$Q_3 = \{ 3\}$和$Q_5 = \{ 5 \}$。我们每次从这三个队列的头部选择最小的一个元素$x$取出，然后进行下面的检查：
+
+\begin{itemize}
+\item 如果$x$是从$Q_2$取出的，我们将$2x$加入$Q_2$，$3x$加入$Q_3$，$5x$加入$Q_5$。
+\item 如果$x$是从$Q_3$取出的，我们只将$3x$加入$Q_3$，$5x$加入$Q_5$，而不需要将$2x$加入$Q_2$。这是因为$2x$已经在$Q_3$中了。
+\item 如果$x$是从$Q_5$取出的，我们只将$5x$加入$Q_5$，而不需要处理$2x$和$3x$了。
+\end{itemize}
+
+我们不断从这三个队列中取出最小的，直到取出第$n$个元素。图\ref{fig:q235}给出了构造丑数的前4步。
+
+\begin{figure}[htbp]
+  \renewcommand*\thesubfigure{\arabic{subfigure}}
+  \centering
+  \subfloat[初始状态，2、3和5作为三个队列的唯一元素。新元素4、6和10被分别加入三个队列。]{\includegraphics[scale=0.5]{img/q235-1.ps}}
+  \subfloat[新元素9和15被加入队列。]{\includegraphics[scale=0.5]{img/q235-2.ps}} \\
+  \subfloat[新元素8、12和20被加入队列。]{\includegraphics[scale=0.5]{img/q235-3.ps}} \\
+  \subfloat[新元素25被加入队列。]{\includegraphics[scale=0.5]{img/q235-4.ps}}
+  \caption{使用三个队列$Q_2$、$Q_3$和$Q_5$来构造丑数的前4步}
+  \label{fig:q235}
+\end{figure}
+
+按照这个思路，算法可以实现如下。
+
+\begin{algorithmic}[1]
+\Function{Get-Number}{$n$}
+  \If{$n = 1$}
+    \State \Return $1$
+  \Else
+    \State $Q_2 \gets \{ 2 \}$
+    \State $Q_3 \gets \{ 3 \}$
+    \State $Q_5 \gets \{ 5 \}$
+    \While{$n > 1$}
+      \State $x \gets min($\Call{Head}{$Q_2$}, \Call{Head}{$Q_3$}, \Call{Head}{$Q_5$}$)$
+      \If{$x = $ \Call{Head}{$Q_2$}}
+        \State \Call{Dequeue}{$Q_2$}
+        \State \Call{Enqueue}{$Q_2, 2x$}
+        \State \Call{Enqueue}{$Q_3, 3x$}
+        \State \Call{Enqueue}{$Q_5, 5x$}
+      \ElsIf{$x=$ \Call{Head}{$Q_3$}}
+        \State \Call{Dequeue}{$Q_3$}
+        \State \Call{Enqueue}{$Q_3, 3x$}
+        \State \Call{Enqueue}{$Q_5, 5x$}
+      \Else
+        \State \Call{Dequeue}{$Q_5$}
+        \State \Call{Enqueue}{$Q_5, 5x$}
+      \EndIf
+      \State $n \gets n - 1$
+    \EndWhile
+    \State \Return $x$
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+算法循环$n$次，每次循环，它从三个队列中取出最小的一个元素，这一步需要常数时间。接着它根据取出元素所在的队列，产生一到三个新元素放入队列，这一步也是常数时间。因此整个算法是$O(n)$的。按照此算法实现的C++程序如下，它仅用了不到1$\mu$秒就输出了第1500个丑数859963392。
+
+\lstset{language=C++}
+\begin{lstlisting}
+typedef unsigned long Integer;
+
+Integer get_number(int n) {
+    if(n==1)
+        return 1;
+    queue<Integer> Q2, Q3, Q5;
+    Q2.push(2);
+    Q3.push(3);
+    Q5.push(5);
+    Integer x;
+    while(n-- > 1) {
+        x = min(min(Q2.front(), Q3.front()), Q5.front());
+        if(x==Q2.front()) {
+            Q2.pop();
+            Q2.push(x*2);
+            Q3.push(x*3);
+            Q5.push(x*5);
+        } else if(x==Q3.front()) {
+            Q3.pop();
+            Q3.push(x*3);
+            Q5.push(x*5);
+        } else {
+            Q5.pop();
+            Q5.push(x*5);
+        }
+    }
+    return x;
+}
+\end{lstlisting}
+
+这一解法也可以用函数式的方式实现。我们定义函数$take(n)$，返回第$n$个仅由2、3或5为因子构成的整数。
+
+\[
+  take(n) = f(n, \{1\}, \{2\}, \{3\}, \{5\})
+\]
+其中
+\[
+ f(n, X, Q_2, Q_3, Q_5) = \left \{
+  \begin{array}{r@{\quad:\quad}l}
+  X & n = 1 \\
+  f(n-1, X \cup \{x\}, Q_2', Q_3', Q_5') & otherwise
+  \end{array}
+\right.
+\]
+
+\[
+ x = min(Q_{21}, Q_{31}, Q_{51})
+\]
+\[
+ Q_2', Q_3', Q_5' = \left \{
+ \begin{array}{r@{\quad:\quad}l}
+ \{Q_{22}, Q_{23}, ...\} \cup \{2x\}, Q_3 \cup \{3x\}, Q_5 \cup \{5x\} & x = Q_{21} \\
+ Q_2, \{Q_{32}, Q_{33}, ...\} \cup \{3x\}, Q5 \cup \{5x\} & x = Q_{31} \\
+ Q_2, Q_3, \{Q_{52}, Q_{53}, ...\} \cup \{5x\} & x = Q_{51}
+ \end{array}
+ \right.
+\]
+
+下面的Haskell程序实现了上面的定义。
+
+\begin{lstlisting}[style=Haskell]
+ks 1 xs _ = xs
+ks n xs (q2, q3, q5) = ks (n-1) (xs++[x]) update
+    where
+      x = minimum $ map head [q2, q3, q5]
+      update | x == head q2 = ((tail q2)++[x*2], q3++[x*3], q5++[x*5])
+             | x == head q3 = (q2, (tail q3)++[x*3], q5++[x*5])
+             | otherwise = (q2, q3, (tail q5)++[x*5])
+
+takeN n = ks n [1] ([2], [3], [5])
+\end{lstlisting} %$
+
+执行\texttt{last \$ takeN 1500}就可输出答案859963392。
+
+% ================================================================
+%                 Short summary
+% ================================================================
+\section{小结}
+回顾这两个有趣的例题，暴力解法都捉襟见肘。对于第一题，暴力解法尚能解决较短的列表，而对于第二题，暴力解法根本行不通。
+
+第一个例子展示了算法的力量，第二个例子展示了数据结构的重要性。有很多有趣的题目，在计算机发明之前很难解决。但是通过编程和使用计算机，我们可以用和传统方式完全不同的方法找到答案。和中小学数学课上所学的方法相比，这样的方法并没有被普遍教授。
+
+虽然优秀的算法、数据结构和数学书籍汗牛充栋，但是对过程式的解法和函数式的解法进行对比的却寥寥无几。从上面的例子中，可以看到有时函数式解法十分简洁，并且很接近我们在数学课上所熟悉的思考方式。
+
+本书力图同时介绍命令式和函数式的算法和数据结构。Okasaki的著作\cite{okasaki-book}中有很多函数式的数据结构可供进一步参考。关于命令式的内容可以参考一些经典的教科书\cite{CLRS}以及维基百科。本书的例子代码使用了多种编程语言，包括C、C++、Python、Haskell和Lisp方言Scheme，读者可以从 https://github.com/liuxinyu95/AlgoXY 上下载本书的全部例子代码。为了让具有不同背景的读者都容易阅读，所有算法都提供了伪代码和数学函数描述。
+
+由于时间仓促，书中难免存在错误，欢迎广大读者和专家批评指正，提供意见和反馈。本书作者电子邮箱：liuxinyu95@gmail.com。
+
+\section{内容组织}
+在接下来的章节中，我们将先介绍基本的数据结构，此后的一些算法都会用到它们。
+
+我们首先介绍数据结构中的“Hello world”――二叉搜索树，接下来讲解如何解决二叉树的平衡问题。然后介绍更多有趣的树，其中Trie和前缀树可以用于文字处理，而B树则广泛应用于文件系统和数据库。
+
+第二部份是关于堆的。我们给出一个抽象堆的定义，然后介绍使用数组和各种二叉树实现的二叉堆（Binary Heap）。接着扩展到其他的堆包括二项式堆、斐波那契堆和Pairing堆。
+
+数组和队列通常被认为是简单的数据结构，但我们将在第三部份看到，它们实现起来并不容易。
+
+作为基本的排序算法，我们将介绍命令式和函数式的插入排序，快速排序和归并排序等算法。
+
+最后的部份是关于查找和搜索的，除了基本算法，我们也会介绍诸如KMP这样的文字匹配算法。
+
+本书的附录介绍了关于链表的基本内容。
+
+\ifx\wholebook\relax \else
+\begin{thebibliography}{99}
+
+\bibitem{fp-pearls}
+Richard Bird. ``Pearls of functional algorithm design''. Cambridge University Press; 1 edition (November 1, 2010). ISBN-10: 0521513383. pp1 - pp6.
+
+\bibitem{Bentley}
+Jon Bentley. ``Programming Pearls(2nd Edition)''. Addison-Wesley Professional; 2 edition (October 7, 1999). ISBN-13: 978-0201657883 （中文版：《编程珠玑》）
+
+\bibitem{okasaki-book}
+Chris Okasaki. ``Purely Functional Data Structures''. Cambridge university press, (July 1, 1999), ISBN-13: 978-0521663502
+
+\bibitem{CLRS}
+Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest and Clifford Stein. ``Introduction to Algorithms, Second Edition''. The MIT Press, 2001. ISBN: 0262032937. （中文版：《算法导论》）
+
+\end{thebibliography}
+
+\expandafter\enddocument
+%\end{document}
+
+\fi

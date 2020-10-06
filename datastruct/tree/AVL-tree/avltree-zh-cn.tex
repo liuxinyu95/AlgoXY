@@ -1,0 +1,724 @@
+\ifx\wholebook\relax \else
+% ------------------------
+
+\documentclass[UTF8]{article}
+%------------------- Other types of document example ------------------------
+%
+%\documentclass[twocolumn]{IEEEtran-new}
+%\documentclass[12pt,twoside,draft]{IEEEtran}
+%\documentstyle[9pt,twocolumn,technote,twoside]{IEEEtran}
+%
+%-----------------------------------------------------------------------------
+\input{../../../common-zh-cn.tex}
+
+\setcounter{page}{1}
+
+\begin{document}
+
+%--------------------------
+
+% ================================================================
+%                 COVER PAGE
+% ================================================================
+
+\title{AVL树}
+
+\author{刘新宇
+\thanks{{\bfseries 刘新宇} \newline
+  Email: liuxinyu95@gmail.com \newline}
+  }
+
+\maketitle
+\fi
+
+\markboth{AVL树}{初等算法}
+
+\ifx\wholebook\relax
+\chapter{AVL树}
+\numberwithin{Exercise}{chapter}
+\fi
+
+% ================================================================
+%                 Introduction
+% ================================================================
+
+\label{introduction} \index{AVL树}
+
+本章介绍AVL树。同红黑树类似，AVL树也是为了解决二叉树的平衡问题而提出的。它采用了更为直观的平衡性定义，以及恢复平衡的策略。对比红黑树和AVL树的设计和实现，有助于我们进一步理解自平衡二叉树的特性。
+
+%\subsection{度量树的平衡性}
+
+除了红黑树，还有没有其他自平衡二叉树呢？为了度量一棵二叉树的平衡，我们可以比较左右分支的高度差，如果差很大，则说明树不平衡。定义一棵树的高度差如下：
+
+\be
+  \delta(T) = |T_r| - |T_l|
+\ee
+
+其中$|T|$代表树$T$的高度，$T_l$和$T_r$分别代表左右分支。
+
+若每棵子树都有$\delta(T) = 0$，说明树是平衡的。例如，一棵高度为$h$的完全二叉树有$n = 2^h-1$个节点。除了叶子节点外，所有节点都含有两个非空的分支。完全二叉树的所有分支都满足$\delta(T)=0$。另外一个特殊的例子是空树：$\delta(\phi) = 0$。通常$\delta(T)$的绝对值越小，说明树越平衡。
+
+我们定义$\delta(T)$为一棵二叉树的\underline{平衡因子}。
+
+% ================================================================
+% Definition
+% ================================================================
+\section{AVL树的定义}
+\index{AVL树!定义}
+
+如果一棵二叉搜索树的所有子树都满足如下条件，我们称之为AVL树。
+
+\be
+  |\delta(T)| \leq 1
+\ee
+
+AVL树中所有子树平衡因子的绝对值都不大于1，只可能是-1、0、1这三个值。图\ref{fig:avl-example}给出了一棵AVL树的例子。
+
+\begin{figure}[htbp]
+   \centering
+   \includegraphics[scale=0.5]{img/avl-example.ps}
+   \caption{AVL树的例子} \label{fig:avl-example}
+\end{figure}
+
+为什么AVL树能保证平衡性呢？或者说为什么这个定义能保证一棵有$n$个节点的树的高度为$O(\lg n)$？我们可以用下面的方法来证明这一事实。
+
+对于一棵高为$h$的AVL树，它的节点数目并不是一个固定的值。当它是一棵完全二叉树时，含有的节点数目最多，为$2^h-1$。那么它最少包含多少节点呢？定义函数$N(h)$代表高度为$h$的AVL树所含有的最少节点数目。对于简单的情况，我们可以立即得出$N(h)$的值：
+
+\begin{itemize}
+\item 空树，$h=0$，$N(0)=0$；
+\item 只有一个根节点的树，$h=1$，$N(1)=1$；
+\end{itemize}
+
+一般情况下$N(h)$是怎样的？图\ref{fig:N-h-relation}中给出了一个高度为$h$的AVL树$T$。它包含三部份：根节点和左右两个分支$T_l$、$T_r$。树的高度和子树高度之间满足下面的关系：
+
+\be
+  h = max(|T_l|, |T_r|) + 1
+\ee
+
+因此，必然存在一个子树的高度为$h-1$。根据AVL树的定义，我们有 $||T_l| -|T_r|| \leq 1$。所以另外一棵子树的高度不会小于$h-2$。而$T$所包含的节点数为两个子树的节点数再加1（1个根节点）。于是我们得到下面的递归关系：
+
+\be
+  N(h) = N(h-1) + N(h-2) + 1
+  \label{eq:Fibonacci-like}
+\ee
+
+\begin{figure}[htbp]
+   \centering
+   \includegraphics[scale=0.5]{img/Nh-lvr.ps}
+   \caption{高度为$h$的AVL树，其中一个分支高$h-1$，另外一个分支的高度不小于$h-2$} \label{fig:N-h-relation}
+\end{figure}
+
+这一递归形式让我们联想起著名的斐波那契（Fibonacci）数列。如果定义$N'(h) = N(h)+1$，我们就可以将(\ref{eq:Fibonacci-like})转换成斐波那契数列。
+
+\be
+  N'(h) = N'(h-1) + N'(h-2)
+\ee
+
+\begin{lemma}
+\label{lemma:N-phi}
+若$N(h)$表示高为$h$的AVL树的节点数目最小值，令$N'(h) = N(h) + 1$，则：
+
+\be
+  N'(h) \geq \phi^h
+\ee
+
+其中$\phi = \frac{\sqrt{5}+1}{2}$，通常被称为黄金分割比。
+\end{lemma}
+
+\begin{proof}[证明]
+使用数学归纳法。对于起始情况，我们有：
+\begin{itemize}
+\item $h=0$, $N'(0) = 1 \geq \phi^0 = 1$
+\item $h=1$, $N'(1) = 2 \geq \phi^1 = 1.618...$
+\end{itemize}
+
+对于递推情况，设$N'(h) \geq \phi^h$。
+\[
+  \begin{array}{lll}
+  N'(h+1) & = N'(h) + N'(h-1) & \{Fibonacci\} \\
+          & \geq \phi^h + \phi^{h-1} & \\
+          & = \phi^{h-1}(\phi + 1) & \{\phi + 1 = \phi^2 = \frac{\sqrt{5}+3}{2}\} \\
+          & = \phi^{h+1}
+ \end{array}
+\]
+\end{proof}
+
+由定理\ref{lemma:N-phi}，我们立即得到下面的结果：
+
+\be
+  h \leq log_{\phi}(n+1) = log_{\phi}2 \cdot \lg (n+1) \approx 1.44 \lg (n+1)
+  \label{eq:AVL-height}
+\ee
+
+这一不等式说明AVL树的高度为$O(\lg n)$，从而保证了平衡性。
+
+在树的基本操作中，插入和删除会改变树的结构。如果由此导致平衡因子的绝对值超过1，就需要通过修复使得$|\delta|$恢复到1以内。常见的修复方法是使用树旋转。受到Okasaki在红黑树\cite{okasaki}中的思路启发，本章中，我们介绍一种模式匹配（pattern matching）方法。这种“改变―恢复”的操作，使得AVL树成为了一种自平衡二叉树。作为比较，本章同样也给出命令式的AVL树算法。
+
+平衡因子$\delta$显然可以通过递归求出。另外一种方法是在每个节点中保存一分平衡因子的值，如果树结构发生改变，我们只要更新这个值就可以了。这一方法不需要每次都进行遍历计算。
+
+根据这一思路，我们在二叉搜索树的定义中增加一个$\delta$变量，如下面的C++代码所示\footnote{有些实现不保存$\delta$，取而代之保存树的高度，如\cite{py-avl}。}。
+
+\lstset{language=C++}
+\begin{lstlisting}
+template <class T>
+struct node {
+    int delta;
+    T key;
+    node* left;
+    node* right;
+    node* parent;
+};
+\end{lstlisting}
+
+某些纯函数式实现使用不同的构造函数（constructor）来保存平衡因子$\delta$。例如在\cite{hackage-avl}中，定义了4个constructor：\texttt{E}、\texttt{N}、\texttt{P}、\texttt{Z}。其中，\texttt{E}代表空树$\phi$；\texttt{N}代表平衡因子为-1；\texttt{P}代表平衡因子为1；\texttt{Z}代表平衡因子为0。
+
+本章中，我们直接在节点中保存平衡因子的值。
+
+\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+data AVLTree a = Empty
+               | Br (AVLTree a) a (AVLTree a) Int
+\end{lstlisting}
+
+我们将略过树的只读操作，包括查找、寻找最大、最小值等等，它们和二叉搜索树完全一样。我们仅关注哪些会改变树结构的操作。
+
+% ================================================================
+%                 Insertion
+% ================================================================
+\section{插入}
+\index{AVL树!插入}
+
+在AVL树中插入一个新元素可能会破坏平衡，使得平衡因子$\delta$的绝对值超过1。为了恢复平衡，可以根据不同的情形进行树的旋转操作。大多数命令式实现采用这种方法。
+
+另外一种方法很像Okasaki在红黑树实现中使用的模式匹配方法。它的特点是简单直观。
+
+向AVL树中插入一个新key，根节点的平衡因子的\underline{变化}会在$[-1, 1]$之间\footnote{注意：这里不是说平衡因子的值在$[-1, 1]$内，而是说它的变化在这个范围内。}，树的高度最多增加1。我们需要递归地使用这一信息来更新其他层级上的平衡因子。定义插入算法的结果为一对值$(T', \Delta H)$，其中$T'$为插入后的新树，$\Delta H$为树高度的增加值。令函数$first(pair)$取得一对值中的第一个元素，我们可以在二叉搜索树的插入算法上进行改动，定义AVL树的插入操作：
+
+\be
+insert(T, k) = first(ins(T, k))
+\ee
+
+其中
+
+\be
+ins(T, k) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  ((\phi, k, \phi, 0), 1) & T = \phi \\
+  tree(ins(T_l, k), k', (T_r, 0), \Delta) & k < k' \\
+  tree((T_l, 0), k', ins(T_r, k), \Delta) & otherwise
+  \end{array}
+\right.
+\label{eq:ins}
+\ee
+
+$T_l$、$T_r$、$k'$、$\Delta$的定义如下，它们分别表示左右子树，key和平衡因子。
+
+\[
+  \begin{array}{l}
+  T_l = left(T) \\
+  T_r = right(T) \\
+  k' = key(T) \\
+  \Delta = \delta(T)
+  \end{array}
+\]
+
+向AVL树$T$中插入一个新key $k$时，如果树为空，结果为一个叶子节点，节点的key为$k$，平衡因子为0。树的高度增加1。
+
+否则，如果$T$不为空，我们需要比较根节点的key $k'$和待插入key $k$的大小。如果$k$小于根节点的key，我们将其递归插入左子树，否则将其插入右子树。
+
+根据定义，递归插入的结果为一对值，例如$(T_l', \Delta H_l)$。我们需要对插入的结果调整平衡，并更新高度的增加值。为此定义函数$tree()$，它接受4个参数：$(T_l', \Delta H_l)$、$k'$、$(T_r', \Delta H_r)$和$\Delta$。这一函数的运算结果记为$(T', \Delta H)$。其中，$T'$为调整平衡后的树，$\Delta H$是树高度的增加值，定义如下：
+
+\be
+  \Delta H = |T'| - |T|
+\ee
+
+它可以进一步分解为4种情况。
+
+\be
+\begin{array}{rl}
+  \Delta H & = |T'| - |T| \\
+              & = 1 + max(|T_r'|, |T_l'|) - (1 + max(|T_r|, |T_l|)) \\
+              & = max(|T_r'|, |T_l'|) - max(|T_r|, |T_l|) \\
+              & = \left \{
+                  \begin{array}{r@{\quad:\quad}l}
+                  \Delta H_r & \Delta \geq 0 \land \Delta' \geq 0 \\
+                  \Delta + \Delta H_r & \Delta \leq 0 \land \Delta' \geq 0 \\
+                  \Delta H_l - \Delta & \Delta \geq 0 \land \Delta' \leq 0 \\
+                  \Delta H_l & otherwise
+                  \end{array} \right .
+\end{array}
+\ee
+
+这一结论的详细证明可以参考附录C。
+
+在进行平衡调整前，我们还需要确定新的平衡因子$\Delta'$。根据AVL树平衡因子的定义，我们有：
+
+\be
+\begin{array}{rl}
+\Delta' & = |T_r'| - |T_l'| \\
+        & = |T_r| + \Delta H_r - (|T_l| + \Delta H_l) \\
+        & = |T_r| - |T_l| + \Delta H_r - \Delta H_l \\
+        & = \Delta + \Delta H_r - \Delta H_l
+\end{array}
+\ee
+
+树高度的变化和平衡因子都准备好后，就可以定义(\ref{eq:ins})中的函数$tree()$了。
+
+\be
+tree((T_l', \Delta H_l), k', (T_r', \Delta H_r), \Delta) =
+  balance ((T_l', k', T_r', \Delta'), \Delta H)
+\ee
+
+在具体解释平衡调整的细节前，我们可以先给出上述函数的Haskell例子代码。首先是插入函数：
+
+\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+insert t x = fst $ ins t where
+    ins Empty = (Br Empty x Empty 0, 1)
+    ins (Br l k r d)
+        | x < k     = tree (ins l) k (r, 0) d
+        | x == k    = (Br l k r d, 0)
+        | otherwise = tree (l, 0) k (ins r) d
+\end{lstlisting} %$
+
+这段代码中，如果待插入的key已经存在，它仅仅使用新key覆盖原先的值。
+
+\begin{lstlisting}[style=Haskell]
+tree (l, dl) k (r, dr) d = balance (Br l k r d', delta) where
+    d' = d + dr - dl
+    delta = deltaH d d' dl dr
+\end{lstlisting}
+
+高度增加的计算函数定义如下：
+
+\begin{lstlisting}[style=Haskell]
+deltaH d d' dl dr
+       | d >=0 && d' >=0 = dr
+       | d <=0 && d' >=0 = d+dr
+       | d >=0 && d' <=0 = dl - d
+       | otherwise = dl
+\end{lstlisting}
+
+\subsection{平衡调整}
+\index{AVL树!平衡调整}
+我们准备使用模式匹配（pattern matching）来恢复平衡，首先需要考虑有哪些情况（pattern）会破坏AVL树的性质。
+
+图\ref{fig:avl-insert-fix}中展示了4种需要修复平衡的情况。这些情况中，平衡因子都是2或者-2，而不在范围$[-1, 1]$之内。通过调整，平衡因子变成0，左右分支变成同样的高度。
+
+\begin{figure}[htbp]
+   \begin{center}
+     \setlength{\unitlength}{1cm}
+     \begin{picture}(15, 15)
+        % graphics
+        \put(0, 7){\includegraphics[scale=0.5]{img/avl-insert-ll.ps}}
+        \put(0, 0){\includegraphics[scale=0.5]{img/avl-insert-lr.ps}}
+        \put(7, 7){\includegraphics[scale=0.5]{img/avl-insert-rr.ps}}
+        \put(8.5, 0){\includegraphics[scale=0.5]{img/avl-insert-rl.ps}}
+        \put(2, 5){\includegraphics[scale=0.5]{img/avl-insert-fixed.ps}}
+        % arrows
+        \put(4.5, 9.5){\vector(1, -1){1}}
+        \put(4.5, 5){\vector(1, 1){1}}
+        \put(10, 9.5){\vector(-1, -1){1}}
+        \put(10, 5){\vector(-1, 1){1}}
+        % delta values
+        \put(5, 13){$\delta(z) = -2$}
+        \put(2.5, 12){$\delta(y) = -1$}
+        \put(10, 13){$\delta(x) = 2$}
+        \put(11.5, 11.5){$\delta(y) = 1$}
+        \put(1.5, 5.5){$\delta(z) = -2$}
+        \put(3.8, 3.8){$\delta(x) = 1$}
+        \put(12, 5.5){$\delta(x) = 2$}
+        \put(10, 3.5){$\delta(z) = -1$}
+        \put(7, 9.5){$\delta'(y) = 0$}
+      \end{picture}
+     \caption{插入后需要调整平衡的4种情况} \label{fig:avl-insert-fix}
+  \end{center}
+\end{figure}
+
+我们从左上角开始，按照顺时针方向，依次称这4种情况为左－左偏（left-left lean）、右－右偏（right-right lean）、右－左偏（right-left lean）、左－右偏（left-right lean）。记调整前的平衡因子为$\delta(x)$、$\delta(y)$、$\delta(z)$；调整后的平衡因子为$\delta'(x)$、$\delta'(y)$、$\delta'(z)$。
+
+经过调整后，所有4种情况的平衡因子都变成$\delta(y)=0$。$\delta'(x)$和$\delta'(z)$的结果如下。具体证明可以参考附录C。
+
+\subsubsection*{左－左偏（Left-left lean）的情况}
+
+\be
+  \begin{array}{l}
+  \delta'(x) = \delta(x) \\
+  \delta'(y) = 0 \\
+  \delta'(z) = 0
+  \end{array}
+\ee
+
+\subsubsection*{右－右偏（Right-right lean）的情况}
+
+\be
+  \begin{array}{l}
+  \delta'(x) = 0 \\
+  \delta'(y) = 0 \\
+  \delta'(z) = \delta(z)
+  \end{array}
+  \label{eq:rr-result}
+\ee
+
+\subsubsection*{右－左偏（Right-left lean）和左－右偏（Left-right lean）的情况}
+
+\be
+  \begin{array}{l}
+  \delta'(x) = \left \{
+    \begin{array}
+    {r@{\quad:\quad}l}
+    -1 & \delta(y) = 1 \\
+    0 & otherwise
+    \end{array}
+    \right. \\
+  \delta'(y) = 0 \\
+  \delta'(z) = \left \{
+    \begin{array}
+    {r@{\quad:\quad}l}
+    1 & \delta(y) = -1 \\
+    0 & otherwise
+    \end{array}
+    \right.
+  \end{array}
+  \label{eq:rl-result}
+\ee
+
+\subsection{模式匹配}
+各种修复平衡的情况可以抽象成模式，下面的函数使用模式匹配定义了平衡修复算法。
+
+\be
+balance(T, \Delta H) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (((A, x, B, \delta(x)), y, (C, z, D, 0), 0), 0) & P_{ll}(T) \\
+  (((A, x, B, 0), y, (C, z, D, \delta(z)), 0), 0) & P_{rr}(T) \\
+  (((A, x, B, \delta'(x)), y, (C, z, D, \delta'(z)), 0), 0) & P_{rl}(T) \lor P_{lr}(T) \\
+  (T, \Delta H) & otherwise
+  \end{array}
+\right.
+\ee
+
+其中$P_{ll}(T)$表示树$T$满足左－左偏的情况。$\delta'(x)$和$delta'(z)$按照式(\ref{eq:rl-result})定义。
+
+\be
+\begin{array}{l}
+P_{ll}(T): T = (((A, x, B, \delta(x)), y, C, -1), z, D, -2) \\
+P_{rr}(T): T = (A, x, (B, y, (C, z, D, \delta(z)), 1), 2) \\
+P_{rl}(T): T = ((A, x, (B, y, C, \delta(y)), 1), z, D, -2) \\
+P_{lr}(T): T = (A, x, ((B, y, C, \delta(y)), z, D, -1), 2)
+\end{array}
+\ee
+
+下面的Haskell例子代码实现了这一平衡修复函数。
+
+\begin{lstlisting}[style=Haskell]
+balance (Br (Br (Br a x b dx) y c (-1)) z d (-2), _) =
+        (Br (Br a x b dx) y (Br c z d 0) 0, 0)
+balance (Br a x (Br b y (Br c z d dz)    1)    2, _) =
+        (Br (Br a x b 0) y (Br c z d dz) 0, 0)
+balance (Br (Br a x (Br b y c dy)    1) z d (-2), _) =
+        (Br (Br a x b dx') y (Br c z d dz') 0, 0) where
+    dx' = if dy ==  1 then -1 else 0
+    dz' = if dy == -1 then  1 else 0
+balance (Br a x (Br (Br b y c dy) z d (-1))    2, _) =
+        (Br (Br a x b dx') y (Br c z d dz') 0, 0) where
+    dx' = if dy ==  1 then -1 else 0
+    dz' = if dy == -1 then  1 else 0
+balance (t, d) = (t, d)
+\end{lstlisting}
+
+插入算法的性能和树的高度成正比，根据之前给出的证明，如果AVL树包含$n$个元素，插入算法的性能为$O(\lg n)$。
+
+\subsubsection{验证}
+\index{AVL树!验证}
+
+可以定义一个函数来检查一棵树是否是AVL树。我们需要验证两方面：首先它必须是一棵合法的二叉搜索树；其次它满足AVL树的性质。
+
+我们略过二叉搜索树的检验，把它留给读者作为练习。
+
+为了验证AVL树的性质是否满足，我们需要检查左右分支的高度差，然后再递归检查左右分支是否也满足AVL树的性质。直到最终到达叶子节点。
+
+\be
+  avl?(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  True & T = \phi \\
+  avl?(T_l) \land avl?(T_r) \land ||T_r|-|T_l|| \leq 1 & otherwise
+  \end{array}
+  \right .
+\ee
+
+树的高度可以根据定义递归进行计算：
+
+\be
+  |T| = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  0 & T = \phi \\
+  1 + max(|T_r|, |T_l|) & otherwise
+  \end{array}
+  \right .
+\ee
+
+相应的Haskell例子程序实现如下：
+
+\begin{lstlisting}[style=Haskell]
+isAVL Empty = True
+isAVL (Br l _ r d) = and [isAVL l, isAVL r, abs (height r - height l) <= 1]
+
+height Empty = 0
+height (Br l _ r _) = 1 + max (height l) (height r)
+\end{lstlisting}
+
+\begin{Exercise}
+编写程序检查一棵二叉树是否是二叉搜索树。如果使用命令式（imperative）语言，请考虑如何消除递归。
+\end{Exercise}
+
+
+
+% ================================================================
+%                 Deletion
+% ================================================================
+
+\section{删除}
+\index{AVL树!删除}
+
+我们在二叉搜索树的章节曾经解释过，在纯函数式的环境中删除操作意义不大。由于树是只读的，它通常是在一次性构建之后用于反复查询。
+
+我们曾经在红黑树一章中实现了删除，它本质上是重新构建一棵新树。AVL树的删除算法可以参考附录C。
+
+\section{AVL树的命令式算法$\star$}
+\index{AVL树!命令式插入}
+
+我们已经介绍了AVL树相关的主要内容。本节我们展示传统的AVL树“插入－旋转”算法，读者可以将其和模式匹配算法进行比较。
+
+和红黑树的命令式插入算法相似，我们先按照普通二叉搜索树将新元素插入，然后再通过旋转操作恢复平衡。
+
+\begin{algorithmic}[1]
+\Function{Insert}{$T, k$}
+  \State $root \gets T$
+  \State $x \gets$ \Call{Create-Leaf}{$k$}
+  \State \Call{$\delta$}{$x$} $\gets 0$
+  \State $parent \gets$ NIL
+  \While{$T \neq$ NIL}
+    \State $parent \gets T$
+    \If{$k <$ \Call{Key}{$T$}}
+      \State $T \gets $ \Call{Left}{$T$}
+    \Else
+      \State $T \gets $ \Call{Right}{$T$}
+    \EndIf
+  \EndWhile
+  \State \Call{Parent}{$x$} $\gets parent$
+  \If{$parent =$ NIL} \Comment{树$T$为空}
+    \State \Return $x$
+  \ElsIf{$k <$ \Call{Key}{$parent$}}
+    \State \Call{Left}{$parent$} $\gets x$
+  \Else
+    \State \Call{Right}{$parent$} $\gets x$
+  \EndIf
+  \State \Return \Call{AVL-Insert-Fix}{$root, x$}
+\EndFunction
+\end{algorithmic}
+
+插入新元素后，树的高度可能增加，因此平衡因子$\delta$也会变化。插入到右侧会使$\delta$增加1，插入左侧会使$\delta$减少1。在算法结束前，我们需要从$x$开始，自底向上修复平衡，直到根节点。
+
+下面的Python例子程序实现了插入算法的主要部份。
+\lstset{language=Python}
+\begin{lstlisting}
+def avl_insert(t, key):
+    root = t
+    x = Node(key)
+    parent = None
+    while(t):
+        parent = t
+        if(key < t.key):
+            t = t.left
+        else:
+            t = t.right
+    if parent is None: #tree is empty
+        root = x
+    elif key < parent.key:
+        parent.set_left(x)
+    else:
+        parent.set_right(x)
+    return avl_insert_fix(root, x)
+\end{lstlisting}
+
+算法首先自顶向下从根开始搜索插入位置，然后将新元素作为叶子节点插入。最后它调用修复程序，并传入根和新插入的节点。
+
+这里我们复用了红黑树一章中定义的\texttt{set\_left()}和\texttt{set\_right()}方法。
+
+为了修复平衡，我们需要检查新节点是插入到了左侧还是右侧。如果在左侧，平衡因子$\delta$减小，否则增加。记新的平衡因子为$\delta'$，我们有如下三种情况：
+
+\begin{itemize}
+\item 若$|\delta| = 1$而$|\delta'| = 0$，说明插入后树处于平衡状态。父节点的高度没有发生变化，算法结束。
+
+\item 若$|\delta| = 0$而$|\delta'| = 1$，说明左右分支之一的高度增加了，我们需要继续向上检查树的平衡性。
+
+\item 若$|\delta| = 1$ and $|\delta'| = 2$，说明AVL树不再平衡了，我们需要进行旋转操作进行修复。
+\end{itemize}
+
+\begin{algorithmic}[1]
+\Function{AVL-Insert-Fix}{$T, x$}
+  \While{\Call{Parent}{$x$} $\neq$ NIL}
+    \State $\delta \gets $ \textproc{$\delta$}(\Call{Parent}{$x$})
+    \If{$x = $ \textproc{Left}(\Call{Parent}{$x$})}
+      \State $\delta' \gets \delta - 1$
+    \Else
+      \State $\delta' \gets \delta + 1$
+    \EndIf
+    \State \textproc{$\delta$}(\Call{Parent}{$x$}) $\gets \delta'$
+    \State $P \gets $ \Call{Parent}{$x$}
+    \State $L \gets $ \Call{Left}{$x$}
+    \State $R \gets $ \Call{Right}{$x$}
+    \If{$|\delta| = 1$ and $|\delta'| = 0$} \Comment{高度没有变化，结束。}
+      \State \Return $T$
+    \ElsIf{$|\delta| = 0$ and $|\delta'| = 1$} \Comment{继续自底向上进行更新。}
+      \State $x \gets P$
+    \ElsIf{$|\delta| = 1$ and $|\delta'| = 2$}
+      \If{$\delta'=2$}
+        \If{$\delta(R) = 1$} \Comment{右-右情况}
+          \State $\delta(P) \gets 0$ \Comment{根据式(\ref{eq:rr-result})}
+          \State $\delta(R) \gets 0$
+          \State $T \gets $ \Call{Left-Rotate}{$T, P$}
+        \EndIf
+        \If{$\delta(R) = -1$} \Comment{右-左情况}
+          \State $\delta_y \gets $ \textproc{$\delta$}(\Call{Left}{$R$}) \Comment{根据式(\ref{eq:rl-result})}
+          \If{$\delta_y = 1$}
+            \State $\delta(P) \gets -1$
+          \Else
+            \State $\delta(P) \gets 0$
+          \EndIf
+          \State \textproc{$\delta$}(\Call{Left}{$R$}) $\gets 0$
+          \If{$\delta_y = -1$}
+            \State $\delta(R) \gets 1$
+          \Else
+            \State $\delta(R) \gets 0$
+          \EndIf
+          \State $T \gets $ \Call{Right-Rotate}{$T, R$}
+          \State $T \gets $ \Call{Left-Rotate}{$T, P$}
+        \EndIf
+      \EndIf
+      \If{$\delta' = -2$}
+        \If{$\delta(L) = -1$} \Comment{左-左情况}
+          \State $\delta(P) \gets 0$
+          \State $\delta(L) \gets 0$
+          \State \Call{Right-Rotate}{$T, P$}
+        \Else \Comment{左-右情况}
+          \State $\delta_y \gets $ \textproc{$\delta$}(\Call{Right}{$L$})
+          \If{$\delta_y = 1$}
+            \State $\delta(L) \gets -1$
+          \Else
+            \State $\delta(L) \gets 0$
+          \EndIf
+          \State \textproc{$\delta$}(\Call{Right}{$L$}) $\gets 0$
+          \If{$\delta_y = -1$}
+            \State $\delta(P) \gets 1$
+          \Else
+            \State $\delta(P) \gets 0$
+          \EndIf
+          \State \Call{Left-Rotate}{$T, L$}
+          \State \Call{Right-Rotate}{$T, P$}
+        \EndIf
+      \EndIf
+      \State break
+    \EndIf
+  \EndWhile
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
+
+这里我们复用了红黑树一章中定义的旋转操作。单纯旋转操作并不更新平衡因子$\delta$。由于旋转变换改变了树结构，增加了平衡性，因此我们需要重新计算平衡因子。这里直接使用了上面的结果。在4种情况中，右－右偏和左－左偏需要进行一次旋转；而右－左偏和左－右偏需要进行两次旋转。
+
+相关的Python例子程序如下：
+
+\begin{lstlisting}
+def avl_insert_fix(t, x):
+    while x.parent is not None:
+        d2 = d1 = x.parent.delta
+        if x == x.parent.left:
+            d2 = d2 - 1
+        else:
+            d2 = d2 + 1
+        x.parent.delta = d2
+        (p, l, r) = (x.parent, x.parent.left, x.parent.right)
+        if abs(d1) == 1 and abs(d2) == 0:
+            return t
+        elif abs(d1) == 0 and abs(d2) == 1:
+            x = x.parent
+        elif abs(d1)==1 and abs(d2) == 2:
+            if d2 == 2:
+                if r.delta == 1:  # 右-右情况
+                    p.delta = 0
+                    r.delta = 0
+                    t = left_rotate(t, p)
+                if r.delta == -1: # 右-左情况
+                    dy = r.left.delta
+                    if dy == 1:
+                        p.delta = -1
+                    else:
+                        p.delta = 0
+                    r.left.delta = 0
+                    if dy == -1:
+                        r.delta = 1
+                    else:
+                        r.delta = 0
+                    t = right_rotate(t, r)
+                    t = left_rotate(t, p)
+            if d2 == -2:
+                if l.delta == -1: # 左-左情况
+                    p.delta = 0
+                    l.delta = 0
+                    t = right_rotate(t, p)
+                if l.delta == 1: # 左-右情况
+                    dy = l.right.delta
+                    if dy == 1:
+                        l.delta = -1
+                    else:
+                        l.delta = 0
+                    l.right.delta = 0
+                    if dy == -1:
+                        p.delta = 1
+                    else:
+                        p.delta = 0
+                    t = left_rotate(t, l)
+                    t = right_rotate(t, p)
+            break
+    return t
+\end{lstlisting}
+
+命令式的AVL书删除算法可以参考附录C。
+
+\section{小结}
+AVL树是在1962年由Adelson-Velskii和Landis\cite{wiki-avl}、\cite{TFATP}发表的。AVL树的命名来自两位作者的名字。它的历史要比红黑树更早。
+
+人们很自然会比较AVL树和红黑树。它们都是自平衡二叉搜索树，对于主要的树操作，它们的性能都是$O(\lg n)$的。根据式(\ref{eq:AVL-height})的结果，AVL树的平衡性更为严格，因此在频繁查询的情况下，其表现要好于红黑树\cite{wiki-avl}。但红黑树在频繁插入和删除的情况下性能更佳。
+
+很多流行的程序库使用红黑树作为自平衡二叉搜索树的内部实现，例如STL，AVL树同样也可以直观、高效地解决平衡问题。
+
+在接下来的章节里，我们将介绍一些数据结构，它们使用边，而不是节点来存储信息，如Trie和Patricia等等。在保证平衡的情况下，如果允许含有两个以上的子分支，我们就得到了另一种有趣的数据结构－B树。
+
+\ifx\wholebook\relax \else
+\begin{thebibliography}{99}
+
+\bibitem{hackage-avl}
+Data.Tree.AVL \url{http://hackage.haskell.org/packages/archive/AvlTree/4.2/doc/html/Data-Tree-AVL.html}
+
+\bibitem{okasaki}
+Chris Okasaki. ``FUNCTIONAL PEARLS Red-Black Trees in a Functional Setting''. J. Functional Programming. 1998
+
+\bibitem{wiki-avl}
+Wikipedia. ``AVL tree''. \url{http://en.wikipedia.org/wiki/AVL_tree}
+
+\bibitem{TFATP}
+Guy Cousinear, Michel Mauny. ``The Functional Approach to Programming''. Cambridge University Press; English Ed edition (October 29, 1998). ISBN-13: 978-0521576819
+
+\bibitem{py-avl}
+Pavel Grafov. ``Implementation of an AVL tree in Python''. \url{http://github.com/pgrafov/python-avl-tree}
+\end{thebibliography}
+
+\end{document}
+\fi
+
+% LocalWords:  AVL Okasaki STL

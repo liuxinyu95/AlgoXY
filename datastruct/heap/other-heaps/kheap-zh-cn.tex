@@ -1,0 +1,1886 @@
+\ifx\wholebook\relax \else
+% ------------------------
+
+\documentclass[UTF8]{article}
+%------------------- Other types of document example ------------------------
+%
+%\documentclass[twocolumn]{IEEEtran-new}
+%\documentclass[12pt,twoside,draft]{IEEEtran}
+%\documentstyle[9pt,twocolumn,technote,twoside]{IEEEtran}
+%
+%-----------------------------------------------------------------------------
+\input{../../../common-zh-cn.tex}
+
+\setcounter{page}{1}
+
+\begin{document}
+
+%--------------------------
+
+% ================================================================
+%                 COVER PAGE
+% ================================================================
+
+\title{二项式堆，斐波那契堆和配对堆}
+
+\author{刘新宇
+\thanks{{\bfseries 刘新宇 } \newline
+  Email: liuxinyu95@gmail.com \newline}
+  }
+
+\maketitle
+\fi
+
+\markboth{二项式堆、斐波那契堆堆和配对堆}{初等算法}
+
+\ifx\wholebook\relax
+\chapter{二项式堆，斐波那契堆和配对堆}
+\numberwithin{Exercise}{chapter}
+\fi
+
+% ================================================================
+%                 Introduction
+% ================================================================
+\section{简介}
+\label{introduction}
+
+在此前的章节中，我们看到通用的堆可以由各种不同的数据结构来实现。我们介绍了用二叉树实现的各种堆。
+
+将二叉树进行扩展可以得到$K$叉树\cite{K-ary-tree}。本章中，我们首先介绍二项式堆，它由$K$叉树的森林组成，可以在常数时间获取堆顶元素，其他操作的性能都可以达到$O(\lg n)$。
+
+如果延迟某些二项式堆的操作，就可以得到斐波那契堆。我们此前介绍的binary堆都最少需要$O(\lg n)$时间来实现合并，而斐波那契堆可以将合并操作提高到常数时间$O(1)$。这对于图算法很重要。实际上，斐波那契堆的大部份操作的分摊性能都是常数时间$O(1)$的，只有弹出操作为$O(\lg n)$。
+
+最后，我们将介绍配对（pairing）堆。它在实际中拥有最好的性能。但是迄今为止，它的性能还是个猜想，没有得到最终的证明。
+
+
+% ================================================================
+%                 Binomial heap
+% ================================================================
+\section{二项式堆}
+\label{binomail-heap} \index{二项式堆}
+
+本节我们介绍二项式堆。二项式堆由一组$K$叉树的森林组成，它的名称来自于数学中的牛顿二项式展开。在二项式堆的森林中，树木的大小为二项式展开中的各项系数。
+
+% ================================================================
+%                 Definition
+% ================================================================
+\subsection{定义}
+
+二项式堆比大部份的binary堆都复杂，但是合并操作的性能很好，可以达到$O(\lg n)$。一个二项式堆包含一组二项式树。
+
+\subsubsection{二项式树}
+\label{Binomial tree} \index{二项式树}
+
+为了了解“二项式树”名字的由来，我们先看一下著名的帕斯卡三角形（中国称为“贾宪”三角形以纪念古代中国的数学家贾宪（1010-1070））\cite{wiki-pascal-triangle}。
+
+\begin{verbatim}
+    1
+   1 1
+  1 2 1
+ 1 3 3 1
+1 4 6 4 1
+...
+\end{verbatim}
+
+每行的数字都是二项式系数。有很多方法可以获得一系列二项式系数，其中一种是使用递归组合。同样，二项式树也可以用类似的方法定义：
+
+\begin{itemize}
+\item Rank为0的二项式树只有一个根节点；
+\item Rank为$n$的二项式树包含两棵Rank为$n-1$的二项式树，两棵树中，根节点元素较大的一棵被链接为另一棵最左侧的子树。
+\end{itemize}
+
+我们记Rank为0的二项式树为$B_0$，Rank为$n$的二项式树为$B_n$。
+
+图\ref{fig:link-bitree}描述了$B_0$，以及如何将两棵$B_{n-1}$树链接成$B_n$。
+
+\begin{figure}[htbp]
+  \centering
+  \subfloat[一棵$B_0$树]{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/b0tree.ps}\hspace{0.1\textwidth}} \\
+  \subfloat[将两棵$B_{n-1}$树链接成一棵$B_n$树]{\includegraphics[scale=0.5]{img/link-bitree.ps}}
+  \caption{二项式树的递归定义} \label{fig:link-bitree}
+\end{figure}
+
+使用这一递归定义，我们可以画出Rank分别为0、1、2……的各个二项式树形式，如图\ref{fig:bitree-forms}所示。
+
+\begin{figure}[htbp]
+  \centering
+  \subfloat[$B_0$树]{\hspace{0.05\textwidth}\includegraphics[scale=0.5]{img/b0tree.ps}\hspace{0.05\textwidth}}
+  \subfloat[$B_1$树]{\hspace{0.05\textwidth}\includegraphics[scale=0.5]{img/b1tree.ps}\hspace{0.05\textwidth}}
+  \subfloat[$B_2$树]{\includegraphics[scale=0.5]{img/b2tree.ps}}
+  \subfloat[$B_3$树]{\includegraphics[scale=0.5]{img/b3tree.ps}} \\
+  \subfloat[$B_4$树]{\includegraphics[scale=0.5]{img/b4tree.ps}……}
+  \caption{Rank为0、1、2、3、4……的二项式树} \label{fig:bitree-forms}
+\end{figure}
+
+观察这些二项式树可以发现一些有趣的性质。对于任意Rank为$n$的二项式树，每行的节点数目恰好是二项式系数。
+
+例如Rank为4的二项式树，第一层根有一个节点；第二层有4个节点；第三层有6个节点；第四层有4个节点；第五层有1个节点。它们恰好是帕斯卡三角形的第5行：1、4、6、4、1。这就是二项式树名字的由来。
+
+另外一个有趣的性质是，一棵Rank为$n$的二项式树中的总节点数为$2^n$。我们可以直接用二项式定理或者用递归定义来证明它。
+
+\subsubsection{二项式堆}
+\label{Binomial heap} \index{二项式堆!定义}
+
+利用二项式树，我们可以给出二项式堆的定义。一个二项式堆是一组二项式树（或称为一个二项式树森林），它满足如下性质：
+
+\begin{itemize}
+\item 堆中的每棵树都满足\underline{堆性质}，即任意节点的key都大于等于父节点。这里使用了最小堆。也可以使用最大堆，但需要将条件变为“小于等于”。简单起见，本章仅讨论最小堆。所有内容都可以通过改变比较条件，变为最大堆。
+\item 堆中最多有一棵二项式树的Rank为$r$。换言之，堆中任何两棵二项式树的Rank都不同。
+\end{itemize}
+
+这一定义直接导致了一个重要的结果。对于含有$n$个元素的二项式堆，如果将$n$转换为二进制数$a_0, a_1, a_2, ..., a_m$，其中$a_0$是最低位（LSB），$a_m$是最高位（MSB）。对于任意$0 \leq i \leq m$，若$a_i=0$，则堆中不存在Rank为$i$的二项式树；若$a_i = 1$，则堆中一定含有一棵Rank为$i$的二项式树。
+
+例如，某个二项式堆含有5个元素，因为5的二进制为“（LSB）101(MSB）”，因此这个堆中含有两棵二项式树，一棵的Rank为0,另外一棵的Rank为2。
+
+图\ref{fig:bheap2}所示的二项式堆含有19个节点，因为19的二进制为“（LSB）11001(MSB）”，因此含有一棵$B_0$树、一棵$B_1$树和一棵$B_4$树。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.5]{img/bheap2.ps}
+  \caption{含有19个元素的二项式堆} \label{fig:bheap2}
+\end{figure}
+
+\subsubsection{数据布局}
+\index{左侧孩子，右侧兄弟}
+
+在命令式环境中，有两种方法可以定义$K$叉树。一种是使用“左侧孩子，右侧兄弟”（left-child, right-sibling）的方法\cite{CLRS}。好处是这种定义和典型的二叉树结构一致。每个节点包含两个字段（field），左侧字段和右侧字段。我们使用左侧的字段指向节点的第一棵子树，用右侧字段指向此节点的兄弟节点。所有的兄弟节点被串联成一个单向链表。如图\ref{fig:lcrs}所示。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.5]{img/lcrs.ps}
+  \caption{“左侧孩子，右侧兄弟”的例子。$R$为根节点，它没有兄弟节点，因此它的右侧指向空$NIL$，$C_1, C_2, ..., C_n$为$R$的子节点。$R$的左侧链接到$C_1$，其他$C_1$的兄弟节点依次向右链接起来。$C_2', ..., C_m'$为$C_1$的子节点。} \label{fig:lcrs}
+\end{figure}
+
+另外一种方法是使用容器类数据结构，如使用数组或者链表来存储节点的所有子树。
+
+因为二项式树的Rank很重要，我们将其也定义为一个字段。
+
+下面的Python例子程序，使用“左侧孩子，右侧兄弟”方法，定义了二项式树：
+
+\lstset{language=Python}
+\begin{lstlisting}
+class BinomialTree:
+    def __init__(self, x = None):
+        self.rank = 0
+        self.key = x
+        self.parent = None
+        self.child = None
+        self.sibling = None
+\end{lstlisting}
+
+当使用一个元素key来构造树时，我们创建一个叶子节点，其Rank为0，其他字段都为空。
+
+下面的例子程序使用列表来存储子节点，相应的定义如下：
+
+\begin{lstlisting}
+class BinomialTree:
+    def __init__(self, x = None):
+        self.rank = 0
+        self.key = x
+        self.parent = None
+        self.children = []
+\end{lstlisting}
+
+在纯函数式环境中，例如Haskell，我们可以将二项式树定义如下：
+
+\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+data BiTree a = Node { rank :: Int
+                     , root :: a
+                     , children :: [BiTree a]}
+\end{lstlisting}
+
+而二项式堆被定义为二项式树的列表（森林），其中的树按照Rank单调递增排序。并且符合一个额外的限制：没有任何两棵树的Rank相等。
+
+\begin{lstlisting}[style=Haskell]
+type BiHeap a = [BiTree a]
+\end{lstlisting}
+
+% ================================================================
+%                 Basic heap operation
+% ================================================================
+\subsection{基本的堆操作}
+
+本节我们介绍二项式堆的基本的操作，包括树的链接，插入新元素，堆的合并，以及访问和弹出堆顶元素。
+
+\subsubsection{树的链接}
+\index{二项式堆!链接}
+
+为了实现基本的堆操作如弹出、插入，我们需要先实现将两棵Rank一样的树链接成一棵较大的树。根据二项式树的定义，以及根必须保存最小值的堆性质，需要先比较两棵树的根节点，选取较小的一个作为新的根，然后将另一棵树插入到其他子树的前面，如图\ref{fig:link-xy}所示。设函数$Key(T)$、$Children(T)$和$Rank(T)$分别访问树的key，子树和Rank。
+
+\be
+link(T_1, T_2) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  node(r+1, x, \{ T_2 \} \cup C_1) & x < y \\
+  node(r+1, y, \{ T_1 \} \cup C_2) & otherwise
+  \end{array}
+\right .
+\label{eq:link}
+\ee
+
+其中
+
+\[
+  \begin{array}{l}
+  x = Key(T_1) \\
+  y = Key(T_2) \\
+  r = Rank(T_1) = Rank(T_2) \\
+  C_1 = Children(T_1) \\
+  C_2 = Children(T_2)
+  \end{array}
+\]
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.5]{img/link-bitree-xy.ps}
+  \caption{如果$x < y$，将$y$作为$x$的第一个子树插入。} \label{fig:link-xy}
+\end{figure}
+
+如果$\cup$是一个常数时间操作，则链接操作的性能也为$O(1)$。下面的Haskell例子程序实现了链接。
+
+\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+link t1@(Node r x c1) t2@(Node _ y c2) =
+    if x<y then Node (r+1) x (t2:c1)
+    else Node (r+1) y (t1:c2)
+\end{lstlisting}
+
+链接操作也可以用命令式的方式实现。如果使用“左侧孩子，右侧兄弟”的布局，只需要将key较大的树链接到另一棵树的左侧字段，然后将子树链接到key较大的树的右侧字段。如图\ref{fig:link-lcrs}所示。
+
+\begin{algorithmic}[1]
+\Function{Link}{$T_1, T_2$}
+  \If{\Call{Key}{$T_2$} $<$ \Call{Key}{$T_1$}}
+    \State Exchange $T_1 \leftrightarrow T_2$
+  \EndIf
+  \State \Call{Sibling}{$T_2$} $\gets$ \Call{Child}{$T_1$}
+  \State \Call{Child}{$T_1$} $\gets T_2$
+  \State \Call{Parent}{$T_2$} $\gets T_1$
+  \State \Call{Rank}{$T_1$} $\gets$ \Call{Rank}{$T_1$} + 1
+  \State \Return $T_1$
+\EndFunction
+\end{algorithmic}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.5]{img/link-bitree-lcrs.ps}
+  \caption{若$x < y$，将$y$链接到$x$的左侧，将$x$的子树链接到$y$的右侧。} \label{fig:link-lcrs}
+\end{figure}
+
+如果使用容器来存储节点的子树，相应的算法如下：
+
+\begin{algorithmic}[1]
+\Function{Link'}{$T_1, T_2$}
+  \If{\Call{Key}{$T_2$} $<$ \Call{Key}{$T_1$}}
+    \State Exchange $T_1 \leftrightarrow T_2$
+  \EndIf
+  \State \Call{Parent}{$T_2$} $\gets T_1$
+  \State \textproc{Insert-Before}(\Call{Children}{$T_1$}, $T_2$)
+  \State \Call{Rank}{$T_1$} $\gets$ \Call{Rank}{$T_1$} + 1
+  \State \Return $T_1$
+\EndFunction
+\end{algorithmic}
+
+上述两个算法都易于实现。这里我们给出了\textproc{Link'}的Python例子程序。
+
+\lstset{language=Python}
+\begin{lstlisting}
+def link(t1, t2):
+    if t2.key < t1.key:
+        (t1, t2) = (t2, t1)
+    t2.parent = t1
+    t1.children.insert(0, t2)
+    t1.rank = t1.rank + 1
+    return t1
+\end{lstlisting}
+
+\begin{Exercise}
+选择一门语言，用“左侧孩子，右侧兄弟”的布局实现二项式树的链接程序。
+\end{Exercise}
+
+\subsubsection*{}
+
+如果使用“左侧孩子，右侧兄弟”的实现，链接可以在常数时间完成，但是如果使用容器来存储子树，则性能依赖于容器的具体实现。如果容器是基于数组的，链接操作的时间和子树的数目成正比；而如果使用链表，则为常数时间。本章中，我们认为这一时间是常数的。
+
+\subsubsection{插入新元素（push）}
+\index{二项式堆!插入}
+
+如果森林中的二项式树的Rank是单调增的，通过使用$link$函数，我们可以定义一个辅助函数用于向堆中插入一棵新树。
+这棵新树的Rank不大于森林中的任何树。
+
+记非空的堆为$H = \{T_1, T_2, ..., T_n\}$，我们定义：
+
+\be
+insertT(H, T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{ T \} & H = \phi \\
+  \{ T \} \cup H & Rank(T) < Rank(T_1) \\
+  insertT(H', link(T, T_1)) & otherwise
+  \end{array}
+\right .
+\ee
+
+其中
+
+\[
+  H' = \{ T_2, T_3, ..., T_n\}
+\]
+
+如果堆为空，则新树为森林中唯一的一棵；否则，我们比较新树和森林中第一棵树的Rank，如果相等，就将它们链接成一棵更大的树（Rank加1），然后递归地插入到森林中；如果不等，根据限制条件，新树的Rank必然是最小的，我们将它插入到森林中所有树的前面。
+
+根据此前给出的二项式堆的性质，如果元素总数为$n$，森林中最多有$O(\lg n)$棵二项式树。函数$insertT$最多执行$O(\lg n)$次常数时间的链接操作。因此$insertT$的性能为$O(\lg n)$\footnote{观察这一操作和两个二进制数的加法，它们有很多相似性。可以引出一个有趣的题目：“numeric representation”\cite{okasaki-book}。}。
+
+相应的Haskell例子程序如下：
+
+\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+insertTree [] t = [t]
+insertTree ts@(t':ts') t = if rank t < rank t' then t:ts
+                           else insertTree ts' (link t t')
+\end{lstlisting}
+
+使用这一辅助函数，我们可以实现堆的插入算法。先将待插入元素装入一个叶子节点，然后将它插入到二项式堆中。
+
+\be
+insert(H, x) = insertT(H, node(0, x, \phi))
+\ee
+
+我们可以连续将若干元素通过folding插入到堆中，下面的Haskell例子程序定义了一个辅助函数\texttt{fromList}。
+
+\begin{lstlisting}[style=Haskell]
+fromList = foldl insert []
+\end{lstlisting}
+
+因为将元素放入叶子节点只需要常数时间，主要的工作由$insertT$完成，所以二项式堆的插入操作性能为$O(\lg n)$。
+
+插入算法也可以用命令式的方式定义。
+
+\begin{algorithm}
+\caption{使用“左侧孩子，右侧兄弟”的实现插入一棵新树}
+\label{alg:insert-tree}
+\begin{algorithmic}[1]
+\Function{Insert-Tree}{$H, T$}
+  \While{$H \neq \phi \land $ \textproc{Rank}(\Call{Head}{$H$}) = \Call{Rank}{$T$}}
+    \State $(T_1, H) \gets$ \Call{Extract-Head}{$H$}
+    \State $T \gets $ \Call{Link}{$T, T_1$}
+  \EndWhile
+  \State \Call{Sibling}{$T$} $\gets H$
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+如果Rank相等，算法Algorithm \ref{alg:insert-tree}不断将堆中第一棵树和待插入的树链接到一起。此后，它将剩余的树作为兄弟链接到末尾，然后将新的链表返回。
+
+如果使用容器来存储子树，则算法定义为Algorithm \ref{alg:insert-tree1}。
+
+\begin{algorithm}
+\caption{插入一棵新树，使用容器来存储子树}
+\label{alg:insert-tree1}
+\begin{algorithmic}[1]
+\Function{Insert-Tree$'$}{$H, T$}
+  \While{$H \neq \phi \land $ \Call{Rank}{$H[0]$} = \Call{Rank}{$T$}}
+    \State $T_1 \gets$ \Call{Pop}{$H$}
+    \State $T \gets $ \Call{Link}{$T, T_1$}
+  \EndWhile
+  \State \Call{Head-Insert}{$H, T$}
+  \State \Return $H$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+其中函数\textproc{Pop}将森林中的第一棵树$T_1 = H[0]$取出。函数\textproc{Head-Insert}将新树添加到堆中所有树的前面。
+
+使用\textproc{Insert-Tree}或\textproc{Insert-Tree$'$}中的任何一个，都可以实现二项式堆的插入算法。
+
+\begin{algorithm}
+\caption{命令式插入算法}
+\label{alg:bheap-insert}
+\begin{algorithmic}[1]
+\Function{Insert}{$H, x$}
+  \State \Return \textproc{Insert-Tree}($H$, \Call{Node}{$0, x, \phi$})
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+下面的Python程序使用内置的列表实现了上述算法，使用“左侧孩子，右侧兄弟”的实现留给读者作为练习。
+
+\lstset{language=Python}
+\begin{lstlisting}
+def insert_tree(ts, t):
+    while ts !=[] and t.rank == ts[0].rank:
+        t = link(t, ts.pop(0))
+    ts.insert(0, t)
+    return ts
+
+def insert(h, x):
+    return insert_tree(h, BinomialTree(x))
+\end{lstlisting}
+
+\begin{Exercise}
+选择一门命令式编程语言，利用”左侧孩子，右侧兄弟“的布局实现二项式堆的插入算法。
+\end{Exercise}
+
+% =================================
+%     Binomial heap merge
+% =================================
+
+\subsubsection{堆合并}
+\index{二项式树!合并}
+
+合并两个二项式堆等价于合并两个二项式树的森林。根据定义，合并后的森林中没有Rank相同的树，并且树按照Rank单调递增的顺序排列。合并过程的思想和归并排序类似。在每次迭代中，我们从两个森林中各取出第一棵树，比较它们的Rank，将较小的一棵树放入结果堆中；如果Rank相等，我们将它们链接起来成为一棵新树，然后递归将它插入到剩余树的合并结果中。
+
+图\ref{fig:merge-bheaps}描述了这一算法。它和\cite{CLRS}中介绍的实现并不相同。
+
+\begin{figure}[htbp]
+  \centering
+  \subfloat[选择Rank较小的树放入结果中。]{
+  \begin{tikzpicture}[scale=0.8,
+    decision/.style={diamond, draw, aspect=3, text badly centered, inner sep=3pt}
+    ]
+    \draw (2, 5) rectangle (3, 6) node (t1) [pos=.5] {$t_1$}
+          (3, 5) rectangle (4, 6) node [pos=.5] {...};
+    \draw (5, 5) rectangle (6, 6) node (t2) [pos=.5] {$t_2$}
+          (6, 5) rectangle (7, 6) node [pos=.5] {...};
+    \node[decision] (compare) at (3.5, 3) {$Rank(t_1) < Rank(t_2) ?$};
+    \draw[thick, ->] (t1) edge [bend right] (compare)
+                     (t2) edge [bend left] (compare);
+    \draw (0, 0) rectangle (1, 1) node [pos=.5] {$T_1$}
+          (1, 0) rectangle (2, 1) node [pos=.5] {$T_2$}
+          (2, 0) rectangle (3, 1) node [pos=.5] {...}
+          (3, 0) rectangle (4, 1) node (Ti) [pos=.5] {$T_i$}
+          (4, 0) rectangle (5, 1) node [pos=.5] {...};
+    \draw[thick, ->] (compare) edge node [right] {选择较小的} (Ti);
+  \end{tikzpicture}} \\
+  \subfloat[若两棵树的Rank相同，将它们链接成一棵新树，然后递归地将它插入的剩余树的合并结果中。]{
+  \begin{tikzpicture}[scale=0.8,
+    decision/.style={diamond, draw, aspect=3, text badly centered, inner sep=3pt}
+    ]
+    \draw (4, 5) rectangle (5, 6) node (t1)  [pos=.5] {$t_1$}
+          (5, 5) rectangle (6, 6) node (ts1) [pos=.5] {...};
+    \draw (7, 5) rectangle (8, 6) node (t2)  [pos=.5] {$t_2$}
+          (8, 5) rectangle (9, 6) node (ts2) [pos=.5] {...};
+    \node[decision] (compare) at (5.5, 3) {$Rank(t_1) = Rank(t_2)$};
+    \draw[thick, ->] (t1) edge [bend right] (compare)
+                     (t2) edge [bend left] (compare);
+    \draw (0, 0) rectangle (1, 1) node [pos=.5] {$T_1$}
+          (1, 0) rectangle (2, 1) node [pos=.5] {$T_2$}
+          (2, 0) rectangle (3, 1) node [pos=.5] {...};
+    \draw (4, 0.5) node{$+$};
+    \draw (5, 0) rectangle (6, 1) node (Ti) [pos=.5] {$T_i$}
+          (8, 0) rectangle (12, 1) node (mergeTs) [pos=.5] {剩余树的合并结果};
+    \draw[thick, ->] (compare) edge node [left] {$link(t_1, t_2)$} (Ti)
+                 (Ti) edge node [above] {$insert$} (mergeTs)
+                 (ts1) edge [bend right] (mergeTs)
+                 (ts2) edge [bend left] (mergeTs);
+  \end{tikzpicture}} \\
+  \caption{堆合并} \label{fig:merge-bheaps}
+\end{figure}
+
+可以将合并算法形式化为一个函数。若两个堆不为空，分别记它们为：$H_1 = \{ T_1, T_2, ... \}$、$H_2 = \{ T'_1, T'_2, ...\}$。并且令$H'_1 = \{ T_2, T_3, ... \}$、$H'_2 = \{ T'_2, T'_3, ... \}$。
+
+\be
+merge(H_1, H_2) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  H_1 & H_2 = \phi \\
+  H_2 & H_1 = \phi \\
+  \{ T_1 \} \cup merge(H'_1, H_2) & Rank(T_1) < Rank(T'_1) \\
+  \{ T'_1 \} \cup merge(H_1, H'_2) & Rank(T_1) > Rank(T'_1) \\
+  insertT(merge(H'_1, H'_2), link(T_1, T'_1)) & otherwise
+  \end{array}
+\right .
+\ee
+
+为了分析合并操作的性能，设堆$H_1$中有$m_1$棵树，堆$H_2$中有$m_2$棵树。合并后的结果中最多有$m_1 + m_2$棵树。如果没有Rank相同的树，则合并操作的时间为$O(m_1 + m_2)$。如果存在Rank相同的树需要链接，最多需要调用$insertT$的次数为$O(m_1 + m_2)$。考虑$m_1 = 1 + \lfloor \lg n_1 \rfloor$，$m_2 = 1 + \lfloor \lg n_2 \rfloor$，其中$n_1$和$n_2$是两个堆各自的节点数目，且$\lfloor \lg n_1 \rfloor + \lfloor \lg n_2 \rfloor \leq 2 \lfloor \lg n \rfloor$，其中$n = n_1 + n_2$为总节点数。最终的合并性能为$O(\lg n)$。
+
+下面的Haskell例子程序实现了合并算法。
+
+\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+merge ts1 [] = ts1
+merge [] ts2 = ts2
+merge ts1@(t1:ts1') ts2@(t2:ts2')
+    | rank t1 < rank t2 = t1:(merge ts1' ts2)
+    | rank t1 > rank t2 = t2:(merge ts1 ts2')
+    | otherwise = insertTree (merge ts1' ts2') (link t1 t2)
+\end{lstlisting}
+
+合并算法也可以用命令式的方式实现，如Algorithm \ref{alg:bheap-merge}。
+
+\begin{algorithm}
+\caption{命令式合并两个堆}
+\label{alg:bheap-merge}
+\begin{algorithmic}[1]
+\Function{Merge}{$H_1, H_2$}
+  \If{$H_1 = \phi$}
+    \State \Return $H_2$
+  \EndIf
+  \If{$H_2 = \phi$}
+    \State \Return $H_1$
+  \EndIf
+  \State $H \gets \phi$
+  \While{$H_1 \neq \phi \land H_2 \neq \phi$}
+    \State $T \gets \phi$
+    \If{\Call{Rank}{$H_1$} $<$ \Call{Rank}{$H_2$}}
+      \State $(T, H_1) \gets $ \Call{Extract-Head}{$H_1$}
+    \ElsIf{\Call{Rank}{$H_2$} $<$ \Call{Rank}{$H_1$}}
+      \State $(T, H_2) \gets $ \Call{Extract-Head}{$H_2$}
+    \Else \Comment{Rank相等}
+      \State $(T_1, H_1) \gets $ \Call{Extract-Head}{$H_1$}
+      \State $(T_2, H_2) \gets $ \Call{Extract-Head}{$H_2$}
+      \State $T \gets $ \Call{Link}{$T_1, T_2$}
+    \EndIf
+    \State \Call{Append-Tree}{$H, T$}
+  \EndWhile
+  \If{$H_1 \neq \phi$}
+    \State \Call{Append-Trees}{$H, H_1$}
+  \EndIf
+  \If{$H_2 \neq \phi$}
+    \State \Call{Append-Trees}{$H, H_2$}
+  \EndIf
+  \State \Return $H$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+两个堆都含有Rank单调递增的二项式树。每次迭代，我们选出Rank最小的树并追加到结果堆中。如果两个堆中的第一棵树的Rank相等，我们先把它们链接成一棵新树。考虑\textproc{Append-Tree}过程。根据我们的合并策略，新树的Rank不能比结果堆中的任何一棵小，但是它有可能和结果树中的最后一棵相等。链接操作可能会引起这样的情况，因为它会将树的Rank增加1。此时我们需要把新树和结果堆中的最后一棵树链接起来。下面的算法中，函数\textproc{Last}($H$)给出堆中最后一棵树，函数\textproc{Append}($H, T$)仅仅将一棵新树追加到森林的末尾。
+
+\begin{algorithmic}[1]
+\Function{Append-Tree}{$H, T$}
+  \If{$H \neq \phi \land$ \Call{Rank}{$T$} $=$ \textproc{Rank}(\Call{Last}{$H$})}
+    \State \Call{Last}{$H$} $\gets$ \textproc{Link}($T$, \Call{Last}{$H$})
+  \Else
+    \State \Call{Append}{$H, T$}
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+\textproc{Append-Trees}不断调用上述函数，逐一将一个堆中的树追加到另一堆中。
+
+\begin{algorithmic}[1]
+\Function{Append-Trees}{$H_1, H_2$}
+  \For{each $T \in H_2$}
+    \State $H_1 \gets $ \Call{Append-Tree}{$H_1, T$}
+  \EndFor
+\EndFunction
+\end{algorithmic}
+
+下面的Python例子程序实现了合并算法。
+
+\lstset{language=Python}
+\begin{lstlisting}
+def append_tree(ts, t):
+    if ts != [] and ts[-1].rank == t.rank:
+        ts[-1] = link(ts[-1], t)
+    else:
+        ts.append(t)
+    return ts
+
+def append_trees(ts1, ts2):
+    return reduce(append_tree, ts2, ts1)
+
+def merge(ts1, ts2):
+    if ts1 == []:
+        return ts2
+    if ts2 == []:
+        return ts1
+    ts = []
+    while ts1 != [] and ts2 != []:
+        t = None
+        if ts1[0].rank < ts2[0].rank:
+            t = ts1.pop(0)
+        elif ts2[0].rank < ts1[0].rank:
+            t = ts2.pop(0)
+        else:
+            t = link(ts1.pop(0), ts2.pop(0))
+        ts = append_tree(ts, t)
+    ts = append_trees(ts, ts1)
+    ts = append_trees(ts, ts2)
+    return ts
+\end{lstlisting}
+
+\begin{Exercise}
+
+例子程序使用了容器来存储子树。选择一门语言，实现”左侧孩子，右侧兄弟“方式堆的合并。
+
+\end{Exercise}
+
+\subsubsection{弹出}
+\index{二项式堆!弹出}
+
+在二项式堆的森林中，每棵二项式树都符合堆性质，根节点保存了树中的最小元素。但是这些根节点元素间的大小关系是任意的。为了获取堆中的最小元素，我们需要从全部树根中找到最小元素。因为堆中有$\lg n$棵树，所以获取最小值的复杂度为$O(\lg n)$。
+
+但是弹出操作要求不仅仅找到最小元素（即top），还需要将其删除并保持堆性质。设构成堆的各个二项式树为$B_i, B_j, ..., B_p, ..., B_m$，其中$B_k$为Rank为$k$的二项式树。设堆中最小元素保存在树$B_p$的根节点。将其删除后，会产生$p$棵子树，它们都是二项式树，Rank分别为$p-1, p-2, ..., 0$。
+
+此前我们已经定义了性能为$O(\lg n)$的合并函数。一个思路是将$p$棵子树逆序，这样它们的Rank就变为单调递增的，形成一个二项式堆$H_p$。剩余的树也构成一个二项式堆，可以表示为$H' = H - B_p$。将$H_p$和$H'$合并就可以得到弹出操作的最终结果。图\ref{fig:bheap-del-min}描述了这一思路。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.5]{img/bheap-pop.eps}
+  \caption{二项式堆的弹出操作}
+  \label{fig:bheap-del-min}
+\end{figure}
+
+为了实现弹出算法，我们需要先定义一个函数，可以从森林中取出根节点最小的树。
+
+\be
+extractMin(H) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (T, \phi) & \text{H只含有一个元素，形如} \{ T \} \\
+  (T_1, H') & Root(T_1) < Root(T') \\
+  (T', \{T_1\} \cup H'') & otherwise
+  \end{array}
+\right .
+\ee
+
+其中
+
+\[
+  \begin{array}{lr}
+  H = \{ T_1, T_2, ...\} & \text{非空的森林；} \\
+  H' = \{ T_2, T_3, ...\} & \text{去除第一棵树的森林；} \\
+  (T', H'') = extractMin(H')
+  \end{array}
+\]
+
+此函数的结果为一对值，第一部份是根节点最小的树，第二部份是森林中剩余的其他树。
+函数逐一检查并比较森林中的每棵树，因此它的性能为$O(\lg n)$。
+
+相应的Haskell例子程序如下：
+
+\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+extractMin [t] = (t, [])
+extractMin (t:ts) = if root t < root t' then (t, ts)
+                    else (t', t:ts')
+    where
+      (t', ts') = extractMin ts
+\end{lstlisting}
+
+调用使用这一函数，就可以获得堆顶元素：
+
+\begin{lstlisting}[style=Haskell]
+findMin = root . fst . extractMin
+\end{lstlisting}
+
+当然，也可以仅遍历森林中的所有树，找出最小的根节点而不将树删除。下面的命令式算法使用“左侧孩子，右侧兄弟”的布局实现了最小值的查找。
+
+\begin{algorithmic}[1]
+\Function{Find-Minimum}{$H$}
+  \State $T \gets $ \Call{Head}{$H$}
+  \State $min \gets \infty$
+  \While{$T \ne \phi$}
+    \If{\Call{Key}{$T$}$ < min$}
+      \State $min \gets $ \Call{Key}{$T$}
+    \EndIf
+    \State $T \gets $ \Call{Sibling}{$T$}
+  \EndWhile
+  \State \Return $min$
+\EndFunction
+\end{algorithmic}
+
+如果使用容器来存储子树，就需要在二项式树的列表中寻找根节点最小的一棵。下面的Python例子程序给出了这种情况的实现。
+
+\lstset{language=Python}
+\begin{lstlisting}
+def find_min(ts):
+    min_t = min(ts, key=lambda t: t.key)
+    return min_t.key
+\end{lstlisting}
+
+接下来需要使用$extractMin$来定义从堆中删除最小元素的函数。
+
+\be
+delteMin(H) = merge(reverse(Children(T)), H')
+\ee
+
+其中
+
+\[
+  (T, H') = extractMin(H)
+\]
+
+我们在此略过了相应的Haskell例子代码。
+
+为了给出命令式的实现，我们需要额外实现列表反转等操作。我们将其留给读者作为练习。下面的伪代码描述了命令式的弹出算法。
+
+\begin{algorithmic}[1]
+\Function{Extract-Min}{$H$}
+  \State $(T_{min}, H) \gets$ \Call{Extract-Min-Tree}{$H$}
+  \State $H \gets$ \textproc{Merge}($H$, \textproc{Reverse}(\Call{Children}{$T_{min}$}))
+  \State \Return (\Call{Key}{$T_{min}$}, $H$)
+\EndFunction
+\end{algorithmic}
+
+使用弹出操作可以实现堆排序。首先从待排序元素构建一个二项式堆，然后不断从中弹出最小元素直到堆变为空。
+
+\be
+sort(xs) = heapSort(fromList(xs))
+\ee
+
+其中的$heapSort$实现如下：
+
+\be
+heapSort(H) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \phi & H = \phi \\
+  \{ findMin(H)  \} \cup heapSort(deleteMin(H)) & otherwise
+  \end{array}
+\right .
+\ee
+
+下面的Haskell例子程序实现了堆排序。
+
+\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+heapSort = hsort . fromList where
+    hsort [] = []
+    hsort h = (findMin h):(hsort $ deleteMin h)
+\end{lstlisting} %$
+
+其中$fromList$函数可以通过folding来定义。也可以用命令式的方法实现二项式堆排序，读者可以参考前面binary堆的相关章节。
+
+\begin{Exercise}
+\begin{itemize}
+\item 选择一门编程语言，用“左侧孩子，右侧兄弟”的方法实现从二项式堆中取得最小元素的操作。
+
+\item 实现命令式的\textproc{Extract-Min-Tree}()算法。
+
+\item 使用“左侧孩子，右侧兄弟”的方法，将一棵树的所有子树逆序相当于实现单向链表的反转。选择一门编程语言，实现单向链表的反转。
+\end{itemize}
+\end{Exercise}
+
+\subsubsection{其他}
+此前我们给出的二项式堆的插入、合并的性能都是$O(\lg n)$。这一结论是针对\underline{最坏}情况的。这些操作的分摊复杂度为$O(1)$。我们这里略去了分摊复杂度的证明。
+
+% ================================================================
+%                 Fibonacci heaps
+% ================================================================
+\section{斐波那契堆}
+\label{fib-heap} \index{斐波那契堆}
+
+“斐波那契堆”的命名很有趣，实际上斐波那契堆的结构和斐波那契数列无关。斐波那契堆的作者Michael L. Fredman和Robert E. Tarjan在证明这种堆的时间性能时使用了斐波那契数列的性质，于是他们决定给这种堆命名为“斐波那契堆”\cite{CLRS}。
+
+% ================================================================
+%                 Definition
+% ================================================================
+\subsection{定义}
+
+斐波那契堆本质上是一个惰性二项式堆。但是这并不意味着二项式堆在支持惰性求值的环境下（例如Haskell）自动就成为斐波那契堆。惰性环境仅仅对于实现提供了便利。例如\cite{hackage-fibq}中给出了一个简洁的实现。
+
+斐波那契堆在理论上具有良好的性能。除弹出之外所有的操作分摊性能都达到了常数时间$O(1)$。本节中，我们给出的实现和常见的实现\cite{CLRS}有所不同。主要思想来自于Okasaki的工作\cite{okasaki-fibh}。
+
+首先我们对比一下二项式堆和斐波那契堆的性能（确切的说，是我们希望斐波那契堆达到的性能目标）。
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{l | c | r}
+  \hline
+  操作 & 二项式堆 & 斐波那契堆 \\
+  \hline
+  插入 & $O(\lg n)$ & $O(1)$ \\
+  合并 & $O(\lg n)$ & $O(1)$ \\
+  top & $O(\lg n)$ & $O(1)$ \\
+  弹出 & $O(\lg n)$ & 分摊 $O(\lg n)$ \\
+  \hline
+\end{tabular}
+\caption{斐波那契堆的性能目标}
+\end{table}
+
+在二项式堆中，插入一个新元素时，哪里是瓶颈呢？新元素$x$被放入只有一个叶子节点的树中，然后这棵树被插入到森林中。
+
+在此期间，树按照Rank的单调递增顺序插入，如果Rank相等，则进行链接，然后再递归，因此性能为$O(\lg n)$。
+
+使用惰性策略，我们可以将按照Rank的顺序插入和链接等操作推迟进行。仅仅将只有一个叶子节点的树放入森林中。这样带来的问题是，当获取最小元素时，性能会变得很差。这是因为我们需要检查森林中的所有树，而树的总数不只是$O(\lg n)$。
+
+为了在常数时间获得堆顶元素，我们需要记录哪一棵树的根节点保存了最小元素。
+
+根据这一思路，我们可以在二项式堆的基础上给出斐波那契堆定义。如下面的Haskell例子程序所示，我们复用二项式树的定义：
+
+\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+data BiTree a = Node { rank :: Int
+                     , root :: a
+                     , children :: [BiTree a]}
+\end{lstlisting}
+
+斐波那契堆要么为空，要么是一个二项式树的森林，其中含有最小元素的树被单独保存。
+
+\begin{lstlisting}[style=Haskell]
+data FibHeap a = E | FH { size :: Int
+                        , minTree :: BiTree a
+                        , trees :: [BiTree a]}
+\end{lstlisting}
+
+方便起见，我们将堆中元素的个数也记录下来。
+
+斐波那契堆也可以用命令式的方式定义，如下面的C语言例子代码。
+
+\lstset{language=C}
+\begin{lstlisting}
+struct node {
+    Key key;
+    struct node *next, *prev, *parent, *children;
+    int degree; //即Rank
+
+    int mark;
+};
+
+struct FibHeap {
+    struct node *roots;
+    struct node *minTr;
+    int n; //节点的个数
+};
+\end{lstlisting}
+
+上面的代码中，Key可以是任何可比较大小的类型，简单起见我们假设类型为整数。
+
+\lstset{language=C}
+\begin{lstlisting}
+typedef int Key;
+\end{lstlisting}
+
+我们在命令式实现中，使用循环双向链表\cite{CLRS}。这样可以简化很多操作并提供快速的性能。我们增加了两个额外的字段。一个是\texttt{degree}（即Rank），定义为一个节点中子树的数目；标志$mark$仅用于减小元素值的操作。我们稍后会对$mark$的作用加以介绍。
+
+
+% ================================================================
+%          Basic Heap operations
+% ================================================================
+\subsection{基本堆操作}
+
+由于斐波那契堆本质上是惰性的二项式堆，我们将复用很多二项式堆的算法。
+
+\subsubsection{插入新元素}
+\index{斐波那契堆!插入}
+
+可以认为二项式堆的插入算法是一种特殊的合并操作，其中一个堆仅含有一棵一个叶节点的树。
+
+\be
+insert(H, x) = merge(H, singleton(x))
+\label{eq:fib-insert}
+\ee
+
+其中$singleton$是一个辅助函数，它构建出仅含有一个元素的树。
+
+\[
+singleton(x) = FibHeap(1, node(1, x, \phi), \phi)
+\]
+
+函数$FibHeap()$接受3个参数，一个是大小（size），因为只有一个元素，所以值为1，一棵特殊的树，树根存有堆中的最小元素，以及森林中剩余二项式树的列表。函数$node()$和以前的含意一样，它从一个Rank值，一个元素，和一组子树列表构建一棵二项式树。
+
+插入操作也可以实现为向森林中追加一个新节点，然后更新存有最小元素的树。
+
+\begin{algorithmic}[1]
+\Function{Insert}{$H, k$}
+  \State $x \gets$ \Call{Singleton}{$k$} \Comment{将$x$装入一节点}
+  \State append $x$ to root list of $H$
+  \If{$T_{min}(H) = NIL \lor k <$ \Call{Key}{$T_{min}(H)$} }
+    \State $T_{min}(H) \gets x$
+  \EndIf
+  \State \Call{n}{$H$} $\gets$ \Call{n}{$H$}+1
+\EndFunction
+\end{algorithmic}
+
+其中函数$T_{min}()$返回存有最小元素的树。
+
+下面的C语言例子代码实现了这一插入算法。
+
+\lstset{language=C}
+\begin{lstlisting}
+struct FibHeap* insert_node(struct FibHeap* h, struct node* x) {
+    h = add_tree(h, x);
+    if(h->minTr == NULL || x->key < h->minTr->key)
+        h->minTr = x;
+    h->n++;
+    return h;
+}
+\end{lstlisting}
+
+\begin{Exercise}
+选择一门命令式编程语言，实现完整的插入算法。这也是循环双向链表操作的一道习题。
+\end{Exercise}
+
+\subsubsection{堆合并}
+\index{斐波那契堆!合并}
+
+和二项式堆不同，我们在合并时并不立即进行链接操作，而是推迟到以后。这样仅仅将两个堆中的树放到一起，然后选出新的含有最小元素的树记录下来。
+
+\be
+merge(H_1, H_2) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  H_1 & H_2 = \phi \\
+  H_2 & H_1 = \phi \\
+  FibHeap(s_1 + s_2, {T_1}_{min}, \{ {T_2}_{min} \} \cup \mathbb{T}_1 \cup \mathbb{T}_2) & root({T_1}_{min}) < root({T_2}_{min}) \\
+  FibHeap(s_1 + s_2, {T_2}_{min}, \{ {T_1}_{min} \} \cup \mathbb{T}_1 \cup \mathbb{T}_2) & otherwise \\
+  \end{array}
+\right .
+\ee
+
+其中$s_1$和$s_2$分别时两个堆$H_1$和$H_2$的大小；${T_1}_{min}$和${T_2}_{min}$分别是两个堆中存有最小的元素的树。$\mathbb{T}_1 = \{{T_1}_1, {T_1}_2, ...\}$是堆$H_1$的森林中其余的树；而$\mathbb{T}_2$的含意类似，它包含堆$H_2$中森林里剩余的树。函数$root(T)$返回一棵二项式树的根节点元素。
+
+只要$\cup$操作的性能为常数时间，合并算法的性能就是常数时间。下面的Haskell例子程序实现了合并操作。
+
+\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+merge h E = h
+merge E h = h
+merge h1@(FH sz1 minTr1 ts1) h2@(FH sz2 minTr2 ts2)
+    | root minTr1 < root minTr2 = FH (sz1+sz2) minTr1 (minTr2:ts2++ts1)
+    | otherwise = FH (sz1+sz2) minTr2 (minTr1:ts1++ts2)
+\end{lstlisting}
+
+命令式的合并操作可以实现为将两个堆的树连接成一个更大的列表。
+
+\begin{algorithmic}[1]
+\Function{Merge}{$H_1, H_2$}
+  \State $H \gets \Phi$
+  \State \Call{Root}{$H$} $\gets$ \textproc{Concat}(\Call{Root}{$H_1$}, \Call{Root}{$H_2$})
+  \If{\Call{Key}{$T_{min}(H_1)$} $<$ \Call{Key}{$T_{min}(H_2)$}}
+    \State $T_{min}(H) \gets T_{min}(H_1)$
+  \Else
+    \State $T_{min}(H) \gets T_{min}(H_2)$
+  \EndIf
+  \Call{n}{$H$} = \Call{n}{$H_1$} + \Call{n}{$H_2$}
+  \State \Return $H$
+\EndFunction
+\end{algorithmic}
+
+这一函数假设$H_1$和$H_2$都不空。处理堆为空的情况也很容易加入，如下面的C例子代码所示：
+
+\lstset{language=C}
+\begin{lstlisting}
+struct FibHeap* merge(struct FibHeap* h1, struct FibHeap* h2) {
+    struct FibHeap* h;
+    if(is_empty(h1))
+        return h2;
+    if(is_empty(h2))
+        return h1;
+    h = empty();
+    h->roots = concat(h1->roots, h2->roots);
+    if(h1->minTr->key < h2->minTr->key)
+        h->minTr = h1->minTr;
+    else
+        h->minTr = h2->minTr;
+    h->n = h1->n + h2->n;
+    free(h1);
+    free(h2);
+    return h;
+}
+\end{lstlisting}
+
+使用$merge$函数，可以实现常数时间$O(1)$的插入算法。下面给出了常数时间$O(1)$的获取顶部元素的操作。
+
+\be
+top(H) = root(T_{min})
+\ee
+
+\begin{Exercise}
+选择一门命令式语言，实现循环双向链表的连接。
+\end{Exercise}
+
+\subsubsection{弹出（删除最小元素）}
+\index{斐波那契堆!弹出} \index{斐波那契堆!删除最小元素}
+
+弹出操作是斐波那契堆中最复杂的。由于在合并操作中推迟了树的链接，我们需要在其他地方将其“补偿”回来。插入，合并和top都已经定义好了，弹出操作是唯一剩下可以进行“补偿”的地方。
+
+通过使用辅助数组，存在一个特别简洁的树归并（tree consolidatitoin）算法\cite{CLRS}。我们稍后在命令式的实现中会介绍它。
+
+为了实现纯函数式的树归并算法，我们先考虑这样一道关于数字的题目：
+
+给定若干数字，例如$\{2, 1, 1, 4, 8, 1, 1, 2, 4\}$，我们希望不断将值相同的两个数字相加，直到没有任何相等的数。这个例子的最终结果为$\{8, 16\}$。
+
+这个问题的解法为：
+
+\be
+consolidate(L) = fold(meld, \phi, L)
+\ee
+
+其中$fold()$遍历列表的所有元素，逐一针对每个元素和中间结果应用一个函数。它也称为\underline{reducing}操作。读者可以参考本书的附录A，以及二叉搜索树一章。
+
+$L=\{x_1, x_2, ..., x_n\}$代表要处理的数字；记$L'=\{x_2, x_3, ..., x_n\}$代表除第一个数字以外的剩余数字。函数$meld()$可定义如下：
+
+\be
+meld(L, x) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{ x \} & L = \phi \\
+  meld(L', x+x_1) & x = x_1 \\
+  \{ x \} \cup L & x < x_1 \\
+  \{ x_1 \} \cup meld(L', x) & otherwise
+  \end{array}
+\right .
+\ee
+
+$consolidate()$函数维护一个有序的结果列表$L$，列表中仅包含不同的数字。$L$初始化为空$\phi$。算法逐一处理每个元素$x$。它首先检查$L$中的第一个元素是否等于$x$，如果相等就加到一起（结果为$2x$），然后接着判断$2x$是否和$L$中的下一个元素相等。不断重复这一过程直到相加后的元素和表中第一个元素不等，或者表变为空。表\ref{tb:num-consolidate}描述了归并序列$\{2, 1, 1, 4, 8, 1, 1, 2, 4\}$的步骤。第一列表示每次“扫描”的数字；第二列是中间结果。被扫描的数字和结果列表中的第一个元素相比较。如果相等，就用两个括号围起来；最后一列是归并的结果，每个结果都用于下一步的处理。
+
+下面的Haskell例子程序首先了这一数字归并的过程。
+
+\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+consolidate = foldl meld [] where
+    meld [] x = [x]
+    meld (x':xs) x | x == x' = meld xs (x+x')
+                   | x < x'  = x:x':xs
+                   | otherwise = x': meld xs x
+\end{lstlisting}
+
+我们稍后会分析归并过程的性能。
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{r | l | l }
+  \hline
+  数字 & 中间结果 & 结果 \\
+  \hline
+  2 & 2 & 2 \\
+  1 & 1, 2 & 1, 2 \\
+  1 & (1+1), 2 & 4 \\
+  4 & (4+4) & 8 \\
+  8 & (8+8) & 16 \\
+  1 & 1, 16 & 1, 16 \\
+  1 & (1+1), 16 & 2, 16 \\
+  2 & (2+2), 16 & 4, 16 \\
+  4 & (4+4), 16 & 8, 16 \\
+  \hline
+\end{tabular}
+\caption{归并数字的步骤} \label{tb:num-consolidate}
+\end{table}
+
+树的归并过程非常类似，唯一的区别是使用Rank。我们需要略微修改$meld()$函数，使得它对Rank进行比较并将Rank相同的树链接起来。
+
+\be
+meld(L, x) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \{ x \} & L = \phi \\
+  meld(L', link(x, x_1)) & rank(x) = rank(x_1) \\
+  \{ x \} \cup L & rank(x) < rank(x_1) \\
+  \{ x_1 \} \cup meld(L', x) & otherwise
+  \end{array}
+\right .
+\ee
+
+最终的树归并Haskell例子程序如下：
+
+\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+consolidate = foldl meld [] where
+    meld [] t = [t]
+    meld (t':ts) t | rank t == rank t' = meld ts (link t t')
+                   | rank t <  rank t' = t:t':ts
+                   | otherwise = t' : meld ts t
+\end{lstlisting}
+
+图\ref{fig:fib-meld-b}给出了斐波那契堆中树归并过程的各个步骤。和表\ref{tb:num-consolidate}相比可以看出他们之间的相似性。
+
+\captionsetup[subfigure]{labelformat=empty, margin=10pt}
+\begin{figure}[htbp]
+  \centering
+  \subfloat[归并前]{\includegraphics[scale=0.35]{img/fib-meld-01.ps}} \\
+  \subfloat[第1、2步]{\includegraphics[scale=0.35]{img/fib-meld-02.ps}\hspace{0.1\textwidth}}
+  \subfloat[第3步，‘d’先链接到‘c’，然后链接到‘a’。]{ \hspace{0.1\textwidth} \includegraphics[scale=0.35]{img/fib-meld-03.ps} \hspace{0.1\textwidth}}
+  \subfloat[第4步]{\includegraphics[scale=0.35]{img/fib-meld-04.ps}}\\
+  \subfloat[第5步]{\includegraphics[scale=0.35]{img/fib-meld-05.ps}}
+  \subfloat[第6步]{\includegraphics[scale=0.35]{img/fib-meld-06.ps}} \\
+  \subfloat[第7、8步，‘r’先链接到‘q’，然后‘s’链接到‘q’。]{\includegraphics[scale=0.35]{img/fib-meld-07.ps}}
+  \caption{树归并的步骤} \label{fig:fib-meld-b}
+\end{figure}
+\captionsetup[subfigure]{labelformat=parens}
+
+将斐波那契堆中的所有二项式树，包括存有最小元素的特殊树归并后，结果变成了二项式堆。同时我们失去了记录有最小元素的特殊树。这样就没法在常数时间$O(1)$内获得堆顶元素了。
+
+为此，需要再执行一轮$O(\lg n)$的搜索，重新找到存有最小元素的树。我们可以复用前面定义的$extractMin()$函数。
+
+使用上面定义好的各个辅助函数，可以给出弹出操作的最终实现。记$T_{min}$为存有堆中最小元素的特殊树；$\mathbb{T}$为森林中除特殊树以外的剩余树，$s$代表堆的大小，函数$children()$返回一棵二项式树中除根以外的所有子树。
+
+\be
+deleteMin(H) =  \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \phi & \mathbb{T} = \phi \land children(T_{min})=\phi \\
+  FibHeap(s-1, T'_{min}, \mathbb{T}') & otherwise
+  \end{array}
+\right .
+\ee
+
+其中
+
+\[
+  (T'_{min}, \mathbb{T}') = extractMin(consolidate(children(T_{min}) \cup \mathbb{T}))
+\]
+
+下面的Haskell例子程序实现了弹出操作。
+
+\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+deleteMin (FH _ (Node _ x []) []) = E
+deleteMin h@(FH sz minTr ts) = FH (sz-1) minTr' ts' where
+    (minTr', ts') = extractMin $ consolidate (children minTr ++ ts)
+\end{lstlisting} %$
+
+命令式实现的主要部份是类似的。我们将$T_{min}$的所有子树切下来，添加到森林中，然后执行树的归并操作将Rank相同的树链接到一起，直到所有树的Rank都不同。
+
+\begin{algorithmic}[1]
+\Function{Delete-Min}{$H$}
+  \State $x \gets T_{min}(H)$
+  \If{$x \neq NIL$}
+    \For{each $y \in $ \Call{Children}{$x$}}
+      \State append $y$ to root list of $H$
+      \State \Call{Parent}{$y$} $\gets NIL$
+    \EndFor
+    \State remove $x$ from root list of $H$
+    \State \Call{n}{$H$} $\gets$ \Call{n}{$H$} - 1
+    \State \Call{Consolidate}{$H$}
+  \EndIf
+  \State \Return $x$
+\EndFunction
+\end{algorithmic}
+
+算法\textproc{Consolidate}使用一个辅助数组$A$来进行归并。$A[i]$被定义为保存Rank（degree）为$i$的树。在遍历森林中的树时，如果发现另外一棵Rank为$i$的树，我们就将它们链接起来得到一棵Rank为$i+1$的树。然后将$A[i]$清除，并接着检查$A[i+1]$是否为空，若不为空，就进行后继的链接。当遍历完森林中的树后，数组$A$中就保存有最终归并后的结果。我们可以从$A$构造出斐波那契堆。
+
+\begin{algorithmic}[1]
+\Function{Consolidate}{$H$}
+  \State $D \gets $ \textproc{Max-Degree}(\Call{n}{$H$})
+  \For{$i \gets 0$ to $D$}
+    \State $A[i] \gets NIL$
+  \EndFor
+  \For{each $x \in$ root list of $H$}
+    \State remove $x$ from root list of $H$
+    \State $d \gets $ \Call{Degree}{$x$}
+    \While{$A[d] \neq NIL$}\
+      \State $y \gets A[d]$
+      \State $x \gets $ \Call{Link}{$x, y$}
+      \State $A[d] \gets NIL$
+      \State $d \gets d + 1$
+    \EndWhile
+    \State $A[d] \gets x$
+  \EndFor
+  \State $T_{min}(H) \gets NIL$ \Comment{此时root列表为空（NIL）}
+  \For{$i \gets 0$ to $D$}
+    \If{$A[i] \neq NIL$}
+      \State append $A[i]$ to root list of $H$.
+      \If{$T_{min} = NIL \lor$ \Call{Key}{$A[i]$} $<$ \Call{Key}{$T_{min}(H)$}}
+        \State $T_{min}(H) \gets A[i]$
+      \EndIf
+    \EndIf
+  \EndFor
+\EndFunction
+\end{algorithmic}
+
+这里唯一没有确定的算法是\textproc{Max-Degree}，它可以确定斐波那契堆中任何节点的degree上限。我们将在最后一节中给出它的实现。
+
+用上述算法处理图\ref{fig:fib-meld-a}中所示的斐波那契堆，各个步骤中的数组$A$如图\ref{fig:fib-cons-c}所示。
+
+\captionsetup[subfigure]{labelformat=empty, margin=10pt}
+\begin{figure}[htbp]
+  \centering
+  \subfloat[第1、2步]{\includegraphics[scale=0.35]{img/fib-cons-02.ps}}
+  \subfloat[第3步，因为$A_0 \neq NIL$，‘d’先被链接到‘c’，然后$A_0$被清除为NIL。接下来，由于$A_1 \neq NIL$，‘c’被链接到‘a’，新的树被存入$A_2$。]{\hspace{0.1\textwidth}\includegraphics[scale=0.35]{img/fib-cons-03.ps}\hspace{0.1\textwidth}}
+  \subfloat[第4步]{\includegraphics[scale=0.35]{img/fib-cons-04.ps}} \\
+  \subfloat[第5步]{\includegraphics[scale=0.35]{img/fib-cons-05.ps}}
+  \subfloat[第6步]{\includegraphics[scale=0.35]{img/fib-cons-06.ps}} \\
+  \subfloat[第7、8步，因为$A_0 \neq NIL$，‘r’被链接到‘q’，新树存入$A_1$（$A_0$清空）；接着‘s’链接到‘q’，并存入$A_2$（$A_1$清空）。]{\includegraphics[scale=0.35]{img/fib-cons-07.ps}}
+  \caption{树归并的步骤} \label{fig:fib-cons-c}
+\end{figure}
+\captionsetup[subfigure]{labelformat=parens}
+
+下面的C语言例子程序实现了上述算法。
+
+\lstset{language=C}
+\begin{lstlisting}
+void consolidate(struct FibHeap* h) {
+    if(!h->roots)
+        return;
+    int D = max_degree(h->n)+1;
+    struct node *x, *y;
+    struct node** a = (struct node**)malloc(sizeof(struct node*)*(D+1));
+    int i, d;
+    for(i=0; i<=D; ++i)
+        a[i] = NULL;
+    while(h->roots) {
+        x = h->roots;
+        h->roots = remove_node(h->roots, x);
+        d= x->degree;
+        while(a[d]) {
+            y = a[d];  //存在和x的degree相等的另一节点。
+            x = link(x, y);
+            a[d++] = NULL;
+        }
+        a[d] = x;
+    }
+    h->minTr = h->roots = NULL;
+    for(i=0; i<=D; ++i)
+        if(a[i]) {
+            h->roots = append(h->roots, a[i]);
+            if(h->minTr == NULL || a[i]->key < h->minTr->key)
+                h->minTr = a[i];
+        }
+    free(a);
+}
+\end{lstlisting}
+
+\begin{Exercise}
+选择一门命令式编程语言，实现循环双向链表的节点删除程序。
+\end{Exercise}
+
+\subsection{弹出操作的性能分析}
+
+为了分析弹出算法的分摊性能，需要使用“势方法（potential method）”。读者可以参考\cite{CLRS}了解这一方法的严格定义。这里我们仅仅给出一个直观的描述。
+
+回忆物理学中关于重力势能的定义：
+\[
+E = M \cdot g \cdot h
+\]
+
+假设一个复杂的操作过程，将质量为$M$的物体上下移动，最终物体静止在了高为$h'$的位置。如果这一过程中的摩擦阻力做功$W_f$，则做功的总和为：
+
+\[
+W = M \cdot g \cdot (h' - h) + W_f
+\]
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.5]{img/potential-energy.eps}
+  \caption{重力势能}
+  \label{fig:potential-energy}
+\end{figure}
+
+图\ref{fig:potential-energy}描述了这一概念。
+
+我们用同样的方法来考虑斐波那契堆的弹出操作，为了计算总消耗，我们首先定义删除最小元素前的势为$\Phi(H)$。这个势是由迄今为止的插入和合并操作累积的。经过树的归并操作，我们得到了新的堆$H'$，由此计算新的势$\Phi(H')$。两个势$\Phi(H')$和$\Phi(H)$的差再加上树归并算法消耗的部份就可以给出弹出操作的分摊复杂度。
+
+为了分析弹出操作，定义势为：
+
+\be
+\Phi(H) = t(H)
+\ee
+
+其中$t(H)$是斐波那契堆森林中树的棵数。对于任何非空的堆，我们有$t(H) = 1 + length(\mathbb{T})$。
+
+对于$n$个节点的斐波那契堆，设所有树的Rank上限为$D(n)$。经过归并，保证堆森林中树的棵数最多为$D(n)+1$。
+
+在归并前，我们还做了另外一个重要的操作，也对总运行时间有所贡献：我们将存有最小元素的树根删除，然后将其全部子树添加到森林中。因此树归并操作最多处理$D(n) + t(H) - 1$棵树。
+
+总结上述各个因素，我们可以推导出分摊性能如下：
+
+\be
+\begin{array}{lll}
+T & = & T_{consolidation} + \Phi(H') -\Phi(H) \\
+  & = & O(D(n)+t(H)-1) + (D(n) + 1) - t(H) \\
+  & = & O(D(n))
+\end{array}
+\ee
+
+如果只执行过插入、合并和弹出操作，可以确保斐波那契堆中的所有树都为二项式树。因此可以很容易地估计出$D(n)$的上限为$O(\lg n)$（考虑极端情况，所有的节点都在唯一的一棵二项式树中）。
+
+但是，接下来的一节中我们会介绍，存在一种操作会破坏树为二项式树的约定。
+
+\begin{Exercise}
+为何树归并操作的时间和它处理的树的数目成比例？
+\end{Exercise}
+
+\subsection{减小key}
+\index{斐波那契堆!减小key}
+
+还有一种特殊的堆操作，它只在命令式的环境下存在。这个操作就是将某个节点的值减小。减小节点的值对于某些图算法，例如最小生成树算法和Dijkstra算法非常重要\cite{CLRS}，而且我们需要这一操作的分摊性能达到常数时间$O(1)$。
+
+但是我们无法定义一个高效的函数$Decrease(H, k, k')$，使得它先定位到key等于$k$的节点，然后将$k$替换为$k'$，最后再恢复堆性质。这是由于如果没有指向目标节点的引用，定位一个节点的时间为$O(n)$。
+
+在命令式的环境中，我们可以定义算法\textproc{Decrease-Key}($H, x, k$)。其中$x$是堆$H$中一个节点的引用，我们希望将它的值减小到$k$。使用$x$，我们无需再执行查找操作，因此有可能给出分摊复杂度为常数时间$O(1)$的算法。
+
+\begin{figure}[htbp]
+  \centering
+  \setlength{\unitlength}{1cm}
+  \begin{picture}(12, 7)
+    \put(0, 0){\includegraphics[scale=0.7]{img/cut-fib-tree.ps}}
+    \put(6.7, 3){\line(1, 1){0.5}}
+    \put(6.7, 3.5){\line(1, -1){0.5}}
+  \end{picture}
+  \caption{$x<y$，将子树$x$从其父节点上切下，然后添加到森林中。} \label{fig:cut-fib-tree}
+\end{figure}
+
+图\ref{fig:cut-fib-tree}描述了这一情况。将节点$x$的值减小后，它小于$y$，我们将$x$从其父节点$y$切下，然后将根为$x$的树“粘贴”到森林中。
+
+虽然我们恢复了堆性质使得父节点的值小于所有的子树，但是由于切除了某些子树，它不再是一棵二项式树了。如果一棵树被切除了很多子树，就无法保证合并操作的性能了。为了避免这一问题，斐波那契堆增加了另外一个限制条件：
+
+“如果一个节点失去了它的第二个子节点，它被立即从父节点切下，然后添加到森林中。”
+
+最终的\textproc{Decrease-Key}算法实现如下：
+
+\begin{algorithmic}[1]
+\Function{Decrease-Key}{$H, x, k$}
+  \State \Call{Key}{$x$} $\gets k$
+  \State $p \gets $ \Call{Parent}{$x$}
+  \If{$p \neq NIL \land k < $ \Call{Key}{$p$}}
+    \State \Call{Cut}{$H, x$}
+    \State \Call{Cascading-Cut}{$H, p$}
+  \EndIf
+  \If{$k <$ \Call{Key}{$T_{min}(H)$}}
+    \State $T_{min}(H) \gets x$
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+其中函数\textproc{Cascading-Cut}使用一个标记来记录它是否失去第二个子节点。当节点失去第一个子节点时被加上这个标记。在函数\textproc{Cut}中清除这一标记。
+
+\begin{algorithmic}[1]
+\Function{Cut}{$H, x$}
+  \State $p \gets $ \Call{Parent}{$x$}
+  \State remove $x$ from $p$
+  \State \Call{Degree}{$p$} $\gets$ \Call{Degree}{$p$} - 1
+  \State add $x$ to root list of $H$
+  \State \Call{Parent}{$x$} $\gets NIL$
+  \State \Call{Mark}{$x$} $\gets FALSE$
+\EndFunction
+\end{algorithmic}
+
+在级联切除（cascading cut）过程中，若节点$x$被标记了，说明它已经失去了一个子节点。我们递归对其父节点执行切除和级联切除直到达到根节点。
+
+\begin{algorithmic}[1]
+\Function{Cascading-Cut}{$H, x$}
+  \State $p \gets $ \Call{Parent}{$x$}
+  \If{$p \neq NIL$}
+    \If{\Call{Mark}{$x$} $= FALSE$}
+      \State \Call{Mark}{$x$} $\gets TRUE$
+    \Else
+      \State \Call{Cut}{$H, x$}
+      \State \Call{Cascading-Cut}{$H, p$}
+    \EndIf
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+下面的C语言例子程序实现了减小key的算法。
+
+\lstset{language=C}
+\begin{lstlisting}
+void decrease_key(struct FibHeap* h, struct node* x, Key k) {
+    struct node* p = x->parent;
+    x->key = k;
+    if(p && k < p->key) {
+        cut(h, x);
+        cascading_cut(h, p);
+    }
+    if(k < h->minTr->key)
+        h->minTr = x;
+}
+
+void cut(struct FibHeap* h, struct node* x) {
+    struct node* p = x->parent;
+    p->children = remove_node(p->children, x);
+    p->degree--;
+    h->roots = append(h->roots, x);
+    x->parent = NULL;
+    x->mark = 0;
+}
+
+void cascading_cut(struct FibHeap* h, struct node* x) {
+    struct node* p = x->parent;
+    if(p) {
+        if(!x->mark)
+            x->mark = 1;
+        else {
+            cut(h, x);
+            cascading_cut(h, p);
+        }
+    }
+}
+\end{lstlisting}
+
+\begin{Exercise}
+证明\textproc{Decrease-Key}算法的分摊复杂度为常数时间$O(1)$。
+\end{Exercise}
+
+\subsection{斐波那契堆名字的由来}
+
+最后，我们来解释为什么这个数据结构的名字叫作“斐波那契堆”。
+
+我们还剩下一个算法没有给出实现―\textproc{Max-Degree}($n$)。它用来给出含有$n$个节点的斐波那契堆中任意节点degree的上限。我们将用斐波那契数列的性质来给出证明，并最终实现\textproc{Max-Degree}算法。
+
+\begin{lemma}
+\label{lemma:Fib-degree}
+堆斐波那契堆中的任何节点$x$，记$k = degree(x)$，$|x| = size(x)$，存在以下关系：
+
+\be
+  |x| \geq F_{k+2}
+\ee
+
+其中$F_k$为斐波那契数列：
+
+\[
+F_k = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  0 & k = 0 \\
+  1 & k = 1 \\
+  F_{k-1} + F_{k-2} & k \geq 2
+  \end{array}
+\right.
+\]
+\end{lemma}
+
+\begin{proof}[证明]
+考虑节点$x$的全部$k$棵子树，将它们记为：$y_1, y_2, ..., y_k$，顺序按照它们被链接到$x$时间的先后。其中$y_1$是最早被加入的，而$y_k$是最新加入的。
+
+显然有$|y_i| \geq 0$。当$y_i$链接到$x$的时候，子树$y_1, y_2, ..., y_{i-1}$已经存在了。因为算法只会把Rank相同的树链接起来，所以在这一时刻，我们有：
+
+\[
+  degree(y_i) = degree(x) = i - 1
+\]
+
+此后，节点$y_i$最多只能失去一个子节点（通过减小key操作），否则一旦失去第二个子节点，它会被立即切除并加入到森林中。因此我们可以推断，对任何$i = 2, 3, ..., k$，有：
+
+\[
+degree(y_i) \geq i-2
+\]
+
+令$s_k$为节点$x$含有子节点个数\underline{可能的最小值}，其中$degree(x) = k$。对于边界情况，有$s_0 = 1$, $s_1 = 2$，对于其他情况，可以推出：
+
+\bean
+|x| & \geq & s_k \\
+    & =   & 2 + \sum_{i=2}^{k} s_{degree(y_i)} \qquad \\
+    & \geq & 2 + \sum_{i=2}^{k} s_{i-2}
+\eean
+
+我们接下来要证明$s_k > F_{k+2}$。使用数学归纳法。对于边界情况，我们有$s_0 = 1 \geq F_2 = 1$，以及$s_1 = 2 \geq F_3 = 2$。对于$k \geq 2$的情况，我们有：
+
+\bean
+|x| & \geq & s_k \\
+    & \geq & 2 + \sum_{i=2}^{k} s_{i-2} \\
+    & \geq & 2 + \sum_{i=2}^{k} F_i \\
+    & =    & 1 +  \sum_{i=0}^{k} F_i \\
+\eean
+
+现在，我们需要证明
+
+\be
+F_{k+2} = 1 +  \sum_{i=0}^{k} F_i
+\ee
+
+再次使用数学归纳法：
+
+\begin{itemize}
+\item 边界情况：$F_2 = 1 + F_0 = 2$
+\item 递归情况：
+\bean
+  F_{k+2} & = & F_{k+1} + F_k \\
+         & = & 1 + \sum_{i=0}^{k-1}F_i + F_k \\
+         & = & 1 + \sum_{i=0}^{k} F_i
+\eean
+\end{itemize}
+
+综上，我们得到最终结论：
+\be
+n \geq |x| \geq F_k+2
+\ee
+\end{proof}
+
+回忆AVL树的结果：$F_k \geq \phi^k$，其中$\phi = \frac{1+\sqrt{5}}{2}$为黄金分割比。我们同时证明了弹出操作的分摊复杂度为$O(\lg n)$。
+
+根据这一结果，我们可以定义函数$MaxDegree$如下：
+
+\be
+  MaxDegree(n) = 1 + \lfloor \log_{\phi} n \rfloor
+\ee
+
+命令式的\textproc{Max-Degree}算法可以同样使用斐波那契数列来实现：
+
+\begin{algorithmic}[1]
+\Function{Max-Degree}{$n$}
+  \State $F_0 \gets 0$
+  \State $F_1 \gets 1$
+  \State $k \gets 2$
+  \Repeat
+    \State $F_k \gets F_{k_1} + F_{k_2}$
+    \State $k \gets k+1$
+  \Until{$F_k < n$}
+  \State \Return $k-2$
+\EndFunction
+\end{algorithmic}
+
+下面的C例子程序实现了这一算法：
+
+\lstset{language=C}
+\begin{lstlisting}
+int max_degree(int n) {
+    int k, F;
+    int F2 = 0;
+    int F1 = 1;
+    for(F = F1 + F2, k = 2; F < n; ++k) {
+        F2 = F1;
+        F1 = F;
+        F = F1 + F2;
+    }
+    return k-2;
+}
+\end{lstlisting}
+
+% ================================================================
+%                 Pairing Heaps
+% ================================================================
+
+\section{配对堆}
+\label{pairing-heap} \index{配对堆}
+
+虽然斐波那契堆在理论上有着优异的性能，但是它的实现复杂。人们发现斐波那契堆复杂度中big-O后面的常数较大，它的理论意义要大于实际意义。
+
+本节中，我们介绍另外一种堆―配对（pairing）堆。它是已知性能最好的堆。大部份操作，包括插入、获取顶部元素、合并都是常数时间$O(1)$的，人们猜测它的弹出操作的分摊复杂度为$O(\lg n)$\cite{pairing-heap}\cite{okasaki-book}。到作者书写本章为止的15年内，这一猜想还没有得到证明。尽管有大量的试验数据支持它的分摊复杂度为$O(\lg n)$。
+
+除了性能优异，配对堆还很简单。存在简洁的命令式和函数式实现。
+
+% ================================================================
+%                 Definition
+% ================================================================
+\subsection{定义}
+\index{配对堆!定义}
+
+二项式堆和斐波那契堆都由森林来实现。而配对堆本质上是一棵$K$叉树。最小元素保存于树根，其余元素存储于子树中。
+
+下面的Haskell程序定义了配对堆。
+
+\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+data PHeap a = E | Node a [PHeap a]
+\end{lstlisting}
+
+这是一个递归定义，一个配对堆要么为空，要么是一棵$K$叉树，包含一个根节点和一组子树。
+
+下面的C语言例子程序，也给出了配对堆的定义。简单起见，我们仅仅讨论最小堆，并且假设key的类型为整数\footnote{可以将key的类型抽象为C++的模板参数，读者可以参考本书附带的例子程序。}。我们使用单向链表表示的“左侧孩子，右侧兄弟”定义（二叉树表示法\cite{CLRS}）。
+
+\lstset{language=C}
+\begin{lstlisting}
+typedef int Key;
+
+struct node {
+    Key key;
+    struct node *next, *children, *parent;
+};
+\end{lstlisting}
+
+其中的父节点字段仅在减小key值的操作中用到，其他情况下可以忽略。我们稍后会加以解释。
+
+
+% ================================================================
+%          Basic Heap operations
+% ================================================================
+\subsection{基本堆操作}
+
+我们首先介绍堆的合并操作，合并操作可以用以实现插入。获取顶部元素相对简单。而弹出操作则较为复杂。
+
+\subsubsection{合并、插入、和获取顶部元素}
+\index{配对堆!插入} \index{配对堆!top}
+\index{配对堆!查找最小元素}
+
+合并操作的思想和二项式堆的链接相似。当我们合并两个配对堆时，存在两种情况：
+
+\begin{itemize}
+\item 简单情况：其中一个堆为空，我们只要返回另一堆作为合并的结果；
+
+\item 否则，我们比较两个堆的根节点元素，令根节点较大的一个作为另一个的新子树。
+\end{itemize}
+
+令$H_1$和$H_2$分别代表两个堆，$x$和$y$为各自的根节点元素。函数$Children()$返回一棵$K$叉树的子树，$Node()$从一个根节点元素和一组子树构造一棵$K$叉树。
+
+\be
+merge(H_1, H_2) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  H_1 & H_2 = \phi \\
+  H_2 & H_1 = \phi \\
+  Node(x, \{H_2\} \cup Children(H_1)) & x < y \\
+  Node(y, \{H_1\} \cup Children(H_2)) & otherwise
+  \end{array}
+\right .
+\ee
+
+其中
+
+\[
+\begin{array}{l}
+x = Root(H_1) \\
+y = Root(H_2)
+\end{array}
+\]
+
+显然合并算法的性能为常数时间$O(1)$\footnote{假设$\cup$操作的性能为常数时间。对于单向链表的“cons”来说，这一点成立。}。
+
+下面的Haskell例子程序给出了$merge$操作。
+
+\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+merge h E = h
+merge E h = h
+merge h1@(Node x hs1) h2@(Node y hs2) =
+    if x < y then Node x (h2:hs1) else Node y (h1:hs2)
+\end{lstlisting}
+
+也可以用命令式的方式实现合并操作。使用“左侧孩子，右侧兄弟”方法，我们可以把根节点元素较大的堆，利用链表操作链接到另一个堆的子树前面变成第一棵子树。这一常数时间的操作可以描述如下：
+
+\begin{algorithmic}[1]
+\Function{Merge}{$H_1, H_2$}
+  \If{$H_1 = $ NIL}
+    \State \Return $H_2$
+  \EndIf
+  \If{$H_2 = $ NIL}
+    \State \Return $H_1$
+  \EndIf
+  \If{\Call{Key}{$H_2$} $<$ \Call{Key}{$H_1$}}
+    \State \Call{Exchange}{$H_1 \leftrightarrow H_2$}
+  \EndIf
+  \State Insert $H_2$ in front of \Call{Children}{$H_1$}
+  \State \Call{Parent}{$H_2$} $\gets H_1$
+  \State \Return $H_1$
+\EndFunction
+\end{algorithmic}
+
+在这一过程中，我们也更新了指向父节点的字段。相应的C语言例子代码如下：
+
+\lstset{language=C}
+\begin{lstlisting}
+struct node* merge(struct node* h1, struct node* h2) {
+    if (h1 == NULL)
+        return h2;
+    if (h2 == NULL)
+        return h1;
+    if (h2->key < h1->key)
+        swap(&h1, &h2);
+    h2->next = h1->children;
+    h1->children = h2;
+    h2->parent = h1;
+    h1->next = NULL; /*Break previous link if any*/
+    return h1;
+}
+\end{lstlisting}
+
+其中swap函数和斐波那契堆中的定义类似。
+
+使用合并函数，可以像斐波那契堆的式(\ref{eq:fib-insert})一样实现插入操作。这一操作的性能为常数时间$O(1)$。因为最小的元素总是保存在根节点，所以可以通过根来获取顶部元素。
+
+\be
+top(H) = Root(H)
+\ee
+
+获取顶部元素的性能也是常数时间$O(1)$的。
+
+\subsubsection{减小节点的值}
+\index{配对堆!减小key}
+
+同斐波那契堆一样，减小节点的值仅在命令式环境下有意义。这一问题的解比斐波那契堆要简单。节点的值减小后，我们将它为根的子树从父节点上切下，然后合并到堆中。唯一特殊的情况是，如果是根节点，我们可以直接改变值而无需做任何额外操作。
+
+下面的算法描述了将节点$x$的值减小到$k$的操作。
+
+\begin{algorithmic}[1]
+\Function{Decrease-Key}{$H, x, k$}
+  \State \Call{Key}{$x$} $\gets k$
+  \If{\Call{Parent}{$x$} $\neq$ NIL}
+    \State Remove $x$ from \textproc{Children}(\Call{Parent}{$x$})
+    \Call{Parent}{$x$} $\gets$ NIL
+    \State \Return \Call{Merge}{$H, x$}
+  \EndIf
+  \State \Return $H$
+\EndFunction
+\end{algorithmic}
+
+下面的C语言例子程序实现了这一算法。
+
+\lstset{language=C}
+\begin{lstlisting}
+struct node* decrease_key(struct node* h, struct node* x, Key key) {
+    x->key = key; /* Assume key <= x->key */
+    if(x->parent) {
+        x->parent->children = remove_node(x->parent->children, x);
+        x->parent = NULL;
+        return merge(h, x);
+    }
+    return h;
+}
+\end{lstlisting}
+
+\begin{Exercise}
+选择一门语言，实现从父节点将子树切下的操作。考虑如何保证减小key操作的总体性能为常数时间$O(1)$？仅仅使用“左侧孩子，右侧兄弟”就够了么？
+\end{Exercise}
+
+\subsubsection{弹出}
+\index{配对堆!pop} \index{配对堆!弹出}
+\index{配对堆!删除最小元素}
+
+因为最小元素总是保存在根节点，弹出操作将其删除后，会剩下一系列子树。这些子树可以合并成一棵较大的树。
+
+\be
+  pop(H) = mergePairs(Children(H))
+\ee
+
+配对堆使用一种特殊的合并策略，它先从左向右，两两成对地将子树合并。然后从右向左将子树对合并的结果再次合并成一棵树。配对堆的名字就来自这一合并过程。
+
+图\ref{fig:merge-pairs}和\ref{fig:merge-right}描述了这一成对合并的过程。
+
+\begin{figure}[htbp]
+  \centering
+  \subfloat[弹出前的配对堆]{\includegraphics[scale=0.5]{img/pairing-hp.ps}} \\
+  \subfloat[根节点2被删除，剩余9棵子树]{\includegraphics[scale=0.5]{img/pairs.ps}} \\
+  \subfloat[每两棵树成对合并，因为有奇数棵树，所以最后一棵无需合并。]{\includegraphics[scale=0.5]{img/pairs-merge.ps}} \\
+  \caption{删除根节点，将子树成对合并} \label{fig:merge-pairs}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \subfloat[将根节点为9和6的两棵树合并]{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/right-merge-1.ps}\hspace{0.2\textwidth}}
+  \subfloat[将根节点为7的树合并到当前结果中]{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/right-merge-2.ps}\hspace{0.1\textwidth}} \\
+  \subfloat[将根节点为3的树合并到结果中]{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/right-merge-3.ps}\hspace{0.1\textwidth}}
+  \subfloat[将根节点为4的树合并到结果中]{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/right-merge-4.ps}\hspace{0.1\textwidth}}
+  \caption{从右向左合并的步骤} \label{fig:merge-right}
+\end{figure}
+
+递归地成对合并过程和自底向上的归并排序\cite{okasaki-book}类似。记配对堆的全部子树为$A$，它是一个子树的列表$\{ T_1, T_2, T_3, ..., T_m\}$。$mergePairs()$函数定义如下：
+
+\be
+mergePairs(A) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  \Phi & A = \Phi \\
+  T_1 & A = \{ T_1 \} \\
+  merge(merge(T_1, T_2), mergePairs(A')) & otherwise
+  \end{array}
+\right .
+\ee
+
+其中
+
+\[
+A' = \{ T_3, T_4, ..., T_m\}
+\]
+
+是除去前两棵树外剩余的子树。
+
+下面的Haskell例子程序实现了这一算法。
+
+\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+deleteMin (Node _ hs) = mergePairs hs where
+    mergePairs [] = E
+    mergePairs [h] = h
+    mergePairs (h1:h2:hs) = merge (merge h1 h2) (mergePairs hs)
+\end{lstlisting}
+
+弹出操作也可以按照过程描述如下：
+
+\begin{algorithmic}[1]
+\Function{Pop}{$H$}
+  \State $L \gets NIL$
+  \For{every 2 trees $T_x$, $T_y \in$ \Call{Children}{$H$} from left to right}
+    \State Extract $x$, and $y$ from \Call{Children}{$H$}
+    \State $T \gets $ \Call{Merge}{$T_x, T_y$}
+    \State Insert $T$ at the beginning of $L$
+  \EndFor
+  \State $H \gets $ \Call{Children}{$H$} \Comment{$H$ is either $NIL$ or one tree.}
+  \For{$\forall T \in L$ from left to right}
+    \State $H \gets $ \Call{Merge}{$H, T$}
+  \EndFor
+  \State \Return $H$
+\EndFunction
+\end{algorithmic}
+
+其中$L$被初始化为一个空的链表，然后算法从左向右每次成对迭代$K$叉树中的两棵子树，进行合并。结果被插入到$L$的头部。因为在链表的前方插入，所以再次遍历链表$L$时，实际是按照从右向左的顺序。堆$H$中可能含有奇数棵子树，这种情况下，成对合并后会剩余一棵。处理办法是从这一棵树开始进行从右向左的合并。
+
+下面的C语言例子程序实现了弹出算法。
+
+\lstset{language=C}
+\begin{lstlisting}
+struct node* pop(struct node* h) {
+    struct node *x, *y, *lst = NULL;
+    while ((x = h->children) != NULL) {
+        if ((h->children = y = x->next) != NULL)
+            h->children = h->children->next;
+        lst = push_front(lst, merge(x, y));
+    }
+    x = NULL;
+    while((y = lst) != NULL) {
+        lst = lst->next;
+        x = merge(x, y);
+    }
+    free(h);
+    return x;
+}
+\end{lstlisting}
+
+人们猜想配对堆的弹出操作的分摊性能为$O(\lg n)$\cite{pairing-heap}。
+
+\begin{Exercise}
+选择一门语言，实现在链表的头部插入一棵树。
+\end{Exercise}
+
+\subsubsection{删除节点}
+\index{配对堆!删除}
+
+我们没有在二项式堆和斐波那契堆提到删除操作。删除可以实现为先将节点的值减小为负无穷（$-\infty$），然后再执行一次弹出操作。这里我们介绍另外一种删除方法。
+
+我们需要定义函数$delete(H, x)$，其中$x$是配对堆$H$中的某一节点\footnote{具体来说，$x$是某一节点的引用}。
+
+若$x$为根节点，我们只需要执行一次弹出操作。否则，我们将$x$从$H$中切下，然后对$x$执行一次弹出操作，再将弹出结果合并回$H$。如下：
+
+\be
+delete(H, x) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  pop(H) & x \quad \text{is root of} \quad H \\
+  merge(cut(H, x), pop(x)) & otherwise
+  \end{array}
+\right .
+\ee
+
+因为删除算法调用弹出操作，因此人们猜想它的分摊性能也是对数时间$O(\lg n)$。
+
+\begin{Exercise}
+\begin{itemize}
+\item 选择一门语言，实现命令式的删除算法。
+
+\item 考虑如何完整实现纯函数式的删除算法。
+\end{itemize}
+\end{Exercise}
+
+% ================================================================
+%                 Short summary
+% ================================================================
+\section{小结}
+
+本章中，我们将堆的实现从二叉树扩展到了更加丰富的数据结构。二项式堆和斐波那契堆使用$K$叉树的森林作为底层数据结构，而配对堆使用一棵$K$叉树来存储数据。通过将某些费时的操作延迟进行，可以获得总体上优异的分摊性能。这一点很具有启发性。虽然斐波那契堆在理论上具有良好的性能，但是实现较为复杂，最近的一些教科书往往会跳过不讲。本章介绍的配对堆具备简单的实现，并且在实际应用中性能表现很好。
+
+到本章为止，我们介绍了一些最基本的基于树的数据结构。还有大量和树有关的内容有待我们去了解和探索。从下一章开始，我们将介绍通用的序列数据结构，包括数组和队列。
+
+% ================================================================
+%                 Appendix
+% ================================================================
+
+\ifx\wholebook\relax \else
+\begin{thebibliography}{99}
+
+\bibitem{K-ary-tree}
+K-ary tree, Wikipedia. http://en.wikipedia.org/wiki/K-ary\_tree
+
+\bibitem{CLRS}
+Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest and Clifford Stein. ``Introduction to Algorithms, Second Edition''. The MIT Press, 2001. ISBN: 0262032937. （《算法导论》中文版）
+
+\bibitem{okasaki-book}
+Chris Okasaki. ``Purely Functional Data Structures''. Cambridge university press, (July 1, 1999), ISBN-13: 978-0521663502
+
+\bibitem{wiki-pascal-triangle}
+Wikipedia, ``Pascal's triangle''. http://en.wikipedia.org/wiki/Pascal's\_triangle
+
+\bibitem{hackage-fibq}
+Hackage. ``An alternate implementation of a priority queue based on a Fibonacci heap.'', http://hackage.haskell.org/packages/archive/pqueue-mtl/1.0.7/doc/html/src/Data-Queue-FibQueue.html
+
+\bibitem{okasaki-fibh}
+Chris Okasaki. ``Fibonacci Heaps.'' http://darcs.haskell.org/nofib/gc/fibheaps/orig
+
+\bibitem{pairing-heap}
+Michael L. Fredman, Robert Sedgewick, Daniel D. Sleator, and Robert E. Tarjan. ``The Pairing Heap: A New Form of Self-Adjusting Heap'' Algorithmica (1986) 1: 111-129.
+
+\end{thebibliography}
+
+\end{document}
+\fi

@@ -1,0 +1,582 @@
+\ifx\wholebook\relax \else
+% ------------------------
+
+\documentclass{article}
+%------------------- Other types of document example ------------------------
+%
+%\documentclass[twocolumn]{IEEEtran-new}
+%\documentclass[12pt,twoside,draft]{IEEEtran}
+%\documentstyle[9pt,twocolumn,technote,twoside]{IEEEtran}
+%
+%-----------------------------------------------------------------------------
+%\input{../../../common.tex}
+\input{../../../common-en.tex}
+
+\setcounter{page}{1}
+
+\begin{document}
+
+%--------------------------
+
+% ================================================================
+%                 COVER PAGE
+% ================================================================
+
+\title{Haskell examples}
+
+\author{Larry~LIU~Xinyu
+\thanks{{\bfseries Larry LIU Xinyu } \newline
+  Email: liuxinyu95@gmail.com \newline}
+  }
+
+\maketitle
+\fi
+
+\markboth{Haskell Examples}{Elementary Algorithms}
+
+\ifx\wholebook\relax
+\chapter{Haskell examples}
+\numberwithin{Exercise}{chapter}
+\fi
+
+This appendix list the example Haskell code for reference.
+
+\section{Preface}
+
+\subsection{Minimum free number puzzle}
+
+\lstset{language=Haskell, frame=single}
+\begin{lstlisting}[caption=The divide and conquer solution to the mininum free number puzzle.]
+import Data.List
+
+minFree xs = bsearch xs 0 (length xs - 1)
+
+bsearch xs l u | xs == [] = l
+               | length as == m - l + 1 = bsearch bs (m + 1) u
+               | otherwise = bsearch as l m
+    where
+      m = (l + u) `div` 2
+      (as, bs) = partition (<=m) xs
+\end{lstlisting}
+
+\subsection{Regular number (Hamming number)}
+Find the k-th number that only contains factor 2, 3, or 5. Below Haskell
+example based on the idea of infinite stream and lazy evaluation.
+
+\begin{lstlisting}[caption=Recursive Hamming number definition]
+merge (x:xs) (y:ys) | x <y = x : merge xs (y:ys)
+                    | x == y = x : merge xs ys
+                    | otherwise = y : merge (x:xs) ys
+
+ns = 1:merge (map (*2) ns) (merge (map (*3) ns) (map (*5) ns))
+\end{lstlisting}
+
+Below line gives the 1500th Regular number.
+\begin{verbatim}
+last $ take 1500 ns
+\end{verbatim}
+
+Alternatively, we can use three queues to populate the regular numbers.
+
+\begin{lstlisting}[caption=Populate Hamming number with queues]
+ks 1 xs _ = xs
+ks n xs (q2, q3, q5) = ks (n-1) (xs++[x]) update
+    where
+      x = minimum $ map head [q2, q3, q5]
+      update | x == head q2 = ((tail q2)++[x*2], q3++[x*3], q5++[x*5])
+             | x == head q3 = (q2, (tail q3)++[x*3], q5++[x*5])
+             | otherwise = (q2, q3, (tail q5)++[x*5])
+
+takeN n = ks n [1] ([2], [3], [5])
+\end{lstlisting}
+
+Run \texttt{last \$ takeN 1500} will generate the 1500th number 859963392.
+
+\section{Binary Search Tree}
+
+\begin{lstlisting}[caption=Algebraic data type definition of BST]
+data Tree a = Empty
+            | Node (Tree a) a (Tree a)
+\end{lstlisting}
+
+\begin{lstlisting}[caption=BST insertion]
+insert Empty k = Node Empty k Empty
+insert (Node l x r) k | k < x = Node (insert l k) x r
+                      | otherwise = Node l x (insert r k)
+\end{lstlisting}
+
+\begin{lstlisting}[caption=Flattern BST to ordered list.]
+toList Empty = []
+toList (Node l x r) = toList l ++ [x] ++ toList r
+\end{lstlisting}
+
+\begin{lstlisting}[caption=look up]
+lookup Empty _ = Empty
+lookup t@(Node l k r) x | k == x = t
+                        | x < k = lookup l x
+                        | otherwise = lookup r x
+\end{lstlisting}
+
+\begin{lstlisting}[caption=BST deletion]
+delete Empty _ = Empty
+delete (Node l k r) x | x < k = (Node (delete l x) k r)
+                      | x > k = (Node l k (delete r x))
+                      -- x == k
+                      | isEmpty l = r
+                      | isEmpty r = l
+                      | otherwise = (Node l k' (delete r k'))
+                          where k' = min r
+\end{lstlisting}
+
+\section{Insertion Sort}
+
+\begin{lstlisting}[caption=ordered insertion]
+insert [] x = [x]
+insert (y:ys) x = if x < y then x:y:ys else y:insert ys x
+\end{lstlisting}
+
+\subsection{Insertion Sort}
+
+\begin{lstlisting}[caption=recursive insertion sort]
+isort [] = []
+isort (x:xs) = insert (isort xs) x
+\end{lstlisting}
+
+\begin{lstlisting}[caption=define insertion sort with fold]
+isort = foldl insert []
+\end{lstlisting}
+
+\section{Red-black tree}
+
+\begin{lstlisting}[caption=Red-black tree insertion with pattern matching]
+data Color = R | B
+data RBTree a = Empty
+              | Node Color (RBTree a) a (RBTree a)
+
+insert::(Ord a)=>RBTree a -> a -> RBTree a
+insert t x = makeBlack $ ins t where
+    ins Empty = Node R Empty x Empty
+    ins (Node color l k r)
+        | x < k     = balance color (ins l) k r
+        | otherwise = balance color l k (ins r)
+    makeBlack(Node _ l k r) = Node B l k r
+
+balance::Color -> RBTree a -> a -> RBTree a -> RBTree a
+balance B (Node R (Node R a x b) y c) z d =
+        Node R (Node B a x b) y (Node B c z d)
+balance B (Node R a x (Node R b y c)) z d =
+        Node R (Node B a x b) y (Node B c z d)
+balance B a x (Node R b y (Node R c z d)) =
+        Node R (Node B a x b) y (Node B c z d)
+balance B a x (Node R (Node R b y c) z d) =
+        Node R (Node B a x b) y (Node B c z d)
+balance color l k r = Node color l k r
+
+\end{lstlisting}
+
+\subsection{deletion}
+
+
+
+\begin{lstlisting}[caption=Red-black tree deletion algorithm with the concept of 'doubly black'.]
+data Color = R | B | BB deriving (Show, Eq) -- BB is doubly black, used for deletion
+data RBTree a = Empty
+              | Node Color (RBTree a) a (RBTree a)
+              | BBEmpty -- doubly black empty
+
+min::RBTree a -> a
+min (Node _ Empty x _) = x
+min (Node _ l _ _) = min l
+
+isEmpty :: (RBTree a) -> Bool
+isEmpty Empty = True
+isEmpty _ = False
+
+delete::(Ord a)=>RBTree a -> a -> RBTree a
+delete t x = blackenRoot (del t x) where
+    del Empty _ = Empty
+    del (Node color l k r) x
+        | x < k = fixDB color (del l x) k r
+        | x > k = fixDB color l k (del r x)
+        -- x == k, delete this node
+        | isEmpty l = if color==B then makeBlack r else r
+        | isEmpty r = if color==B then makeBlack l else l
+        | otherwise = fixDB color l k' (del r k') where k'= min r
+    blackenRoot (Node _ l k r) = Node B l k r
+    blackenRoot _ = Empty
+
+makeBlack::RBTree a -> RBTree a
+makeBlack (Node B l k r) = Node BB l k r -- doubly black
+makeBlack (Node _ l k r) = Node B l k r
+makeBlack Empty = BBEmpty
+makeBlack t = t
+
+fixDB::Color -> RBTree a -> a -> RBTree a -> RBTree a
+-- the sibling is black, and it has one red child
+fixDB color a@(Node BB _ _ _) x (Node B (Node R b y c) z d) =
+      Node color (Node B (makeBlack a) x b) y (Node B c z d)
+fixDB color BBEmpty x (Node B (Node R b y c) z d) =
+      Node color (Node B Empty x b) y (Node B c z d)
+fixDB color a@(Node BB _ _ _) x (Node B b y (Node R c z d)) =
+      Node color (Node B (makeBlack a) x b) y (Node B c z d)
+fixDB color BBEmpty x (Node B b y (Node R c z d)) =
+      Node color (Node B Empty x b) y (Node B c z d)
+fixDB color (Node B a x (Node R b y c)) z d@(Node BB _ _ _) =
+      Node color (Node B a x b) y (Node B c z (makeBlack d))
+fixDB color (Node B a x (Node R b y c)) z BBEmpty =
+      Node color (Node B a x b) y (Node B c z Empty)
+fixDB color (Node B (Node R a x b) y c) z d@(Node BB _ _ _) =
+      Node color (Node B a x b) y (Node B c z (makeBlack d))
+fixDB color (Node B (Node R a x b) y c) z BBEmpty =
+      Node color (Node B a x b) y (Node B c z Empty)
+-- the sibling is red
+fixDB B a@(Node BB _ _ _) x (Node R b y c) = fixDB B (fixDB R a x b) y c
+fixDB B a@BBEmpty x (Node R b y c) = fixDB B (fixDB R a x b) y c
+fixDB B (Node R a x b) y c@(Node BB _ _ _) = fixDB B a x (fixDB R b y c)
+fixDB B (Node R a x b) y c@BBEmpty = fixDB B a x (fixDB R b y c)
+-- the sibling and its 2 children are all black, propagate the blackness up
+fixDB color a@(Node BB _ _ _) x (Node B b y c) =
+      makeBlack (Node color (makeBlack a) x (Node R b y c))
+fixDB color BBEmpty x (Node B b y c) =
+      makeBlack (Node color Empty x (Node R b y c))
+fixDB color (Node B a x b) y c@(Node BB _ _ _) = m
+      akeBlack (Node color (Node R a x b) y (makeBlack c))
+fixDB color (Node B a x b) y BBEmpty =
+      makeBlack (Node color (Node R a x b) y Empty)
+-- otherwise
+fixDB color l k r = Node color l k r
+\end{lstlisting}
+
+\section{AVL tree}
+
+AVL tree is defined as Algebraic data type. It's either empty or contains four
+components: the left and right sub trees, the key, and the balance factor.
+
+\begin{lstlisting}[caption=Algebraic AVL tree definition]
+import Prelude hiding (min)
+
+data AVLTree a = Empty
+               | Br (AVLTree a) a (AVLTree a) Int
+
+isEmpty Empty = True
+isEmpty _ = False
+
+min :: AVLTree a -> a
+min (Br Empty x _ _) = x
+min (Br l _ _ _) = min l
+\end{lstlisting}
+
+\begin{lstlisting}[caption=AVL tree insertion algorithm with Pattern matching approach.]
+insert::(Ord a)=>AVLTree a -> a -> AVLTree a
+insert t x = fst $ ins t where
+    -- result of ins is a pair (t, d), t: tree, d: increment of height
+    ins Empty = (Br Empty x Empty 0, 1)
+    ins (Br l k r d)
+        | x < k     = node (ins l) k (r, 0) d
+        | x == k    = (Br l k r d, 0)
+        | otherwise = node (l, 0) k (ins r) d
+
+-- params: (left, increment on left) key (right, increment on right)
+node::(AVLTree a, Int) -> a -> (AVLTree a, Int) -> Int -> (AVLTree a, Int)
+node (l, dl) k (r, dr) d = balance (Br l k r d', delta) where
+    d' = d + dr - dl
+    delta = deltaH d d' dl dr
+
+-- delta(Height) = max(|R'|, |L'|) - max (|R|, |L|)
+deltaH :: Int -> Int -> Int -> Int -> Int
+deltaH d d' dl dr
+       | d >=0 && d' >=0 = dr
+       | d <=0 && d' >=0 = d+dr
+       | d >=0 && d' <=0 = dl - d
+       | otherwise = dl
+
+balance :: (AVLTree a, Int) -> (AVLTree a, Int)
+balance (Br (Br (Br a x b dx) y c (-1)) z d (-2), dH) =
+    (Br (Br a x b dx) y (Br c z d 0) 0, dH-1)
+balance (Br a x (Br b y (Br c z d dz)    1)    2, dH) =
+    (Br (Br a x b 0) y (Br c z d dz) 0, dH-1)
+balance (Br (Br a x (Br b y c dy)    1) z d (-2), dH) =
+    (Br (Br a x b dx') y (Br c z d dz') 0, dH-1) where
+        dx' = if dy ==  1 then -1 else 0
+        dz' = if dy == -1 then  1 else 0
+balance (Br a x (Br (Br b y c dy) z d (-1))    2, dH) =
+    (Br (Br a x b dx') y (Br c z d dz') 0, dH-1) where
+        dx' = if dy ==  1 then -1 else 0
+        dz' = if dy == -1 then  1 else 0
+balance (t, d) = (t, d)
+\end{lstlisting}
+
+If we extend the height increment to nagative value, most functions we developed
+in insertion are still applicable. We need add two special patterns when fixing
+the balance.
+
+\begin{lstlisting}[caption=AVL tree deletion]
+delete::(Ord a) => AVLTree a -> a -> AVLTree a
+delete t x = fst $ del t x where
+  -- result is a pair (t, d), t: tree, d: decrement in height
+  del Empty _ = (Empty, 0)
+  del (Br l k r d) x
+    | x < k = node (del l x) k (r, 0) d
+    | x > k = node (l, 0) k (del r x) d
+    -- x == k, delete this node
+    | isEmpty l = (r, -1)
+    | isEmpty r = (l, -1)
+    | otherwise = node (l, 0) k' (del r k') d where k' = min r
+
+balance :: (AVLTree a, Int) -> (AVLTree a, Int)
+balance (Br (Br (Br a x b dx) y c (-1)) z d (-2), dH) =
+    (Br (Br a x b dx) y (Br c z d 0) 0, dH-1)
+balance (Br a x (Br b y (Br c z d dz)    1)    2, dH) =
+    (Br (Br a x b 0) y (Br c z d dz) 0, dH-1)
+balance (Br (Br a x (Br b y c dy)    1) z d (-2), dH) =
+    (Br (Br a x b dx') y (Br c z d dz') 0, dH-1) where
+        dx' = if dy ==  1 then -1 else 0
+        dz' = if dy == -1 then  1 else 0
+balance (Br a x (Br (Br b y c dy) z d (-1))    2, dH) =
+    (Br (Br a x b dx') y (Br c z d dz') 0, dH-1) where
+        dx' = if dy ==  1 then -1 else 0
+        dz' = if dy == -1 then  1 else 0
+-- Delete specific fixing
+balance (Br (Br a x b dx) y c (-2), dH) =
+    (Br a x (Br b y c (-1)) (dx+1), dH)
+balance (Br a x (Br b y c dy)    2, dH) =
+    (Br (Br a x b    1) y c (dy-1), dH)
+balance (t, d) = (t, d)
+\end{lstlisting}
+
+\section{Radix Tree}
+
+\subsection{Integer Trie}
+Little endian integer trie.
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=Algebraic definition of integer trie]
+data IntTrie a = Empty
+               | Branch (IntTrie a) (Maybe a) (IntTrie a)
+\end{lstlisting}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=Integer trie insertion]
+insert t 0 x = Branch (left t) (Just x) (right t)
+insert t k x
+    | even k = Branch (insert (left t) (k `div` 2) x) (value t) (right t)
+    | otherwise = Branch (left t) (value t) (insert (right t) (k `div` 2) x)
+
+left (Branch l _ _) = l
+left Empty = Empty
+
+right (Branch _ _ r) = r
+right Empty = Empty
+
+value (Branch _ v _) = v
+value Empty = Nothing
+\end{lstlisting}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=Integer trie look up]
+search Empty k = Nothing
+search t 0 = value t
+search t k = if even k then search (left t) (k `div` 2)
+             else search (right t) (k `div` 2)
+\end{lstlisting}
+
+\subsection{Integer prefix tree}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=Integer prefix tree definition]
+type Key = Int
+type Prefix = Int
+type Mask = Int
+
+data IntTree a = Empty
+               | Leaf Key a
+               | Branch Prefix Mask (IntTree a) (IntTree a)
+\end{lstlisting}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=Integer prefix tree insertion.]
+import Data.Bits
+
+insert t k x
+   = case t of
+       Empty -> Leaf k x
+       Leaf k' x' -> if k==k' then Leaf k x
+                     else join k (Leaf k x) k' t -- t@(Leaf k' x')
+       Branch p m l r
+          | match k p m -> if zero k m
+                           then Branch p m (insert l k x) r
+                           else Branch p m l (insert r k x)
+          | otherwise -> join k (Leaf k x) p t -- t@(Branch p m l r)
+
+join p1 t1 p2 t2 = if zero p1 m then Branch p m t1 t2
+                                else Branch p m t2 t1
+    where
+      (p, m) = lcp p1 p2
+
+lcp :: Prefix -> Prefix -> (Prefix, Mask)
+lcp p1 p2 = (p, m) where
+    m = bit (highestBit (p1 `xor` p2))
+    p = mask p1 m
+
+highestBit x = if x == 0 then 0 else 1 + highestBit (shiftR x 1)
+
+mask x m = (x .&. complement (m-1)) -- complement means bit-wise not.
+
+zero x m = x .&. (shiftR m 1) == 0
+
+match k p m = (mask k m) == p
+\end{lstlisting}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=Lookup the integer prefix tree]
+search t k
+  = case t of
+      Empty -> Nothing
+      Leaf k' x -> if k == k' then Just x else Nothing
+      Branch p m l r
+             | match k p m -> if zero k m then search l k
+                              else search r k
+             | otherwise -> Nothing
+\end{lstlisting}
+
+\subsection{Alphabetic trie}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=Definition of alphabetic trie]
+data Trie a = Trie { value :: Maybe a
+                   , children :: [(Char, Trie a)]}
+
+empty = Trie Nothing []
+\end{lstlisting}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=Insertion to alphabetic trie]
+insert t []     x = Trie (Just x)  (children t)
+insert t (k:ks) x = Trie (value t) (ins (children t) k ks x) where
+    ins [] k ks x = [(k, (insert empty ks x))]
+    ins (p:ps) k ks x = if fst p == k
+                        then (k, insert (snd p) ks x):ps
+                        else p:(ins ps k ks x)
+\end{lstlisting}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=Look up the alphabetic trie]
+find t [] = value t
+find t (k:ks) = case lookup k (children t) of
+                  Nothing -> Nothing
+                  Just t' -> find t' ks
+\end{lstlisting}
+
+\subsection{Alphabetic prefix tree}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=Alphabetic prefix tree definition]
+data PrefixTree k v = PrefixTree { value :: Maybe v
+                                 , children :: [([k], PrefixTree k v)]}
+
+empty = PrefixTree Nothing []
+
+leaf x = PrefixTree (Just x) []
+\end{lstlisting}
+
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=Prefix tree insertion]
+import Data.List (isPrefixOf)
+
+insert :: Eq k => PrefixTree k v -> [k] -> v -> PrefixTree k v
+insert t ks x = PrefixTree (value t) (ins (children t) ks x) where
+    ins []     ks x = [(ks, leaf x)]
+    ins (p@(ks', t') : ps) ks x
+        | ks' == ks
+            = (ks, PrefixTree (Just x) (children t')) : ps  -- overwrite
+        | match ks' ks
+            = (branch ks x ks' t') : ps
+        | otherwise
+            = p : (ins ps ks x)
+
+match x y = x /= [] && y /= [] && head x == head y
+
+branch :: Eq k => [k] -> v -> [k] -> PrefixTree k v -> ([k], PrefixTree k v)
+branch ks1 x ks2 t2
+    | ks1 == ks
+        -- ex: insert "an" into "another"
+        = (ks, PrefixTree (Just x) [(ks2', t2)])
+    | ks2 == ks
+        -- ex: insert "another" into "an"
+        = (ks, insert t2 ks1' x)
+    | otherwise = (ks, PrefixTree Nothing [(ks1', leaf x), (ks2', t2)])
+   where
+      ks = lcp ks1 ks2
+      m = length ks
+      ks1' = drop m ks1
+      ks2' = drop m ks2
+
+-- longest common prefix
+lcp :: Eq k => [k] -> [k] -> [k]
+lcp [] _ = []
+lcp _ [] = []
+lcp (x:xs) (y:ys) = if x==y then x : (lcp xs ys) else []
+\end{lstlisting}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=Alphabetic prefix tree lookup]
+find :: Eq k => PrefixTree k v -> [k] -> Maybe v
+find t = find' (children t) where
+    find' [] _ = Nothing
+    find' (p@(ks', t') : ps) ks
+          | ks' == ks = value t'
+          | ks' `isPrefixOf` ks = find t' (diff ks ks')
+          | otherwise = find' ps ks
+    diff ks1 ks2 = drop (length (lcp ks1 ks2)) ks1
+\end{lstlisting}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=Look up the prefix tree up to $n$ candidates]
+import Control.Arrow (first)
+
+get n t k = take n $ findAll t k
+
+findAll :: Eq k => PrefixTree k v -> [k] -> [([k], v)]
+findAll (PrefixTree Nothing cs) [] = enum cs
+findAll (PrefixTree (Just x) cs) [] = ([], x) : enum cs
+findAll (PrefixTree _ cs) k = find' cs k
+  where
+    find' [] _ = []
+    find' ((k', t') : ps) k
+          | k `isPrefixOf` k'
+              = map (first (k' ++)) (findAll t' [])
+          | k' `isPrefixOf` k
+              = map (first (k' ++)) (findAll t' $ drop (length k') k)
+          | otherwise = find' ps k
+
+enum :: Eq k => [([k], PrefixTree k v)] -> [([k], v)]
+enum = concatMap (\(k, t) -> map (first (k ++)) (findAll t []))
+\end{lstlisting}
+
+\lstset{language=Haskell}
+\begin{lstlisting}[caption=T9 look up]
+import qualified Data.Map as Map
+
+mapT9 = Map.fromList [('1', ",."), ('2', "abc"), ('3', "def"), ('4', "ghi"),
+                      ('5', "jkl"), ('6', "mno"), ('7', "pqrs"), ('8', "tuv"),
+                      ('9', "wxyz")]
+
+rmapT9 = Map.fromList $ concatMap (\(d, s) -> [(c, d) | c <- s]) $ Map.toList mapT9
+
+digits = map (\c -> Map.findWithDefault '#' c rmapT9)
+
+findT9 :: PrefixTree Char v -> String -> [String]
+findT9 t [] = [""]
+findT9 t k = concatMap find prefixes
+  where
+    n = length k
+    find (s, t') = map (take n . (s++)) $ findT9 t' (k `diff` s)
+    diff x y = drop (length y) x
+    prefixes = [(s, t') | (s, t') <- children t, let ds = digits s in
+                          ds `isPrefixOf` k || k `isPrefixOf` ds]
+\end{lstlisting}
+
+\ifx\wholebook\relax \else
+\end{document}
+\fi

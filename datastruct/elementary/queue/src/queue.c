@@ -33,14 +33,14 @@ typedef int Key;
  * Using a satinel for simplification
  */
 struct Node{
-  Key key;
-  struct Node* next;
+    Key key;
+    struct Node* next;
 };
 
 Key key(struct Node* x){ return x->key; }
 
 struct Queue{
-  struct Node *head, *tail;
+    struct Node *head, *tail;
 };
 
 /*
@@ -49,130 +49,149 @@ struct Queue{
  */
 
 struct Queue* create(){
-  struct Queue* q = (struct Queue*)malloc(sizeof(struct Queue));
-  struct Node* s = (struct Node*)malloc(sizeof(struct Node));
-  s->next = NULL;
-  q->head = q->tail = s; /* sentinel */
-  return q;
+    struct Queue* q = (struct Queue*)malloc(sizeof(struct Queue));
+    struct Node* s = (struct Node*)malloc(sizeof(struct Node));
+    s->next = NULL;
+    q->head = q->tail = s; /* sentinel */
+    return q;
 }
 
 int empty(struct Queue* q){
-  return q->head == q->tail;
+    return q->head == q->tail;
 }
 
 void destroy(struct Queue* q){
-  struct Node* p;
-  while(q->head){
-    p = q->head;
-    q->head = q->head->next;
-    free(p);
-  }
-  free(q);
+    struct Node* p;
+    while(q->head){
+        p = q->head;
+        q->head = q->head->next;
+        free(p);
+    }
+    free(q);
 }
 
 /* O(1) by appending */
 struct Queue* enqueue(struct Queue* q, Key x){
-  struct Node* p = (struct Node*)malloc(sizeof(struct Node));
-  p->key = x;
-  p->next = NULL;
-  q->tail->next = p;
-  q->tail = p;
-  return q;
+    struct Node* p = (struct Node*)malloc(sizeof(struct Node));
+    p->key = x;
+    p->next = NULL;
+    q->tail->next = p;
+    q->tail = p;
+    return q;
 }
 
 struct Node* head(struct Queue* q){ return q->head->next; }
 
-/* 
- * O(1) by removing from front 
+/*
+ * O(1) by removing from front
  *   Assume queue isn't empty.
  */
 
 Key dequeue(struct Queue* q){
-  struct Node* p = head(q);
-  Key x = key(p);
-  q->head->next = p->next;
-  if(q->tail == p)
-    q->tail = q->head;
-  free(p);
-  return x;
+    struct Node* p = head(q);
+    Key x = key(p);
+    q->head->next = p->next;
+    if(q->tail == p)
+        q->tail = q->head;
+    free(p);
+    return x;
 }
 
 /* Queue realized by circular buffer */
 
 struct QueueBuf{
-  Key* buf;
-  int head, tail, size;
+    Key* buf;
+    int head, cnt, size;
 };
 
 struct QueueBuf* createQ(int max){
-  struct QueueBuf* q = (struct QueueBuf*)malloc(sizeof(struct QueueBuf));
-  q->buf = (Key*)malloc(sizeof(Key)*max);
-  q->size = max;
-  q->head = q->tail = 0;
-  return q;
+    struct QueueBuf* q = (struct QueueBuf*)malloc(sizeof(struct QueueBuf));
+    q->buf = (Key*)malloc(sizeof(Key)*max);
+    q->size = max;
+    q->head = q->cnt = 0;
+    return q;
 }
 
 void destroyQ(struct QueueBuf* q){
-  free(q->buf);
-  free(q);
+    free(q->buf);
+    free(q);
 }
 
 int fullQ(struct QueueBuf* q){
-  return q->tail + 1 == q->head || 
-         q->tail + 1 - q->size == q->head;
+    return q->cnt == q->size;
 }
 
 int emptyQ(struct QueueBuf* q){
-  return q->head == q->tail;
+    return q->cnt == 0;
+}
+
+int offset(int i, int size) {
+    return i < size ? i : i - size;
 }
 
 /* O(1) append to tail */
 void enQ(struct QueueBuf* q, Key x){
-  if(!fullQ(q)){
-    q->buf[q->tail++] = x;
-    q->tail -= q->tail< q->size ? 0 : q->size;
-  }
+    if(!fullQ(q)){
+        q->buf[offset(q->head + q->cnt, q->size)] = x;
+        q->cnt++;
+    }
 }
 
 /* Assume queue isn't empty */
 Key headQ(struct QueueBuf* q){
-  return q->buf[q->head];
+    return q->buf[q->head];
 }
 
 /* O(1) remove from head */
 Key deQ(struct QueueBuf* q){
-  Key x = headQ(q);
-  q->head++;
-  q->head -= q->head< q->size ? 0 : q->size;
-  return x;
+    Key x = headQ(q);
+    q->head = offset(++q->head, q->size);
+    q->cnt--;
+    return x;
 }
 
 /* Testing */
 
-void test_queue(){
-  int m = 100;
-  int i, n, x;
-  struct Queue* q1;
-  struct QueueBuf* q2;
-  while(m--){
-    n = BIG_RAND();
-    q1 = create();
-    q2 = createQ(n);
-    for(i=0; i<n; ++i){
-      x = BIG_RAND();
-      if(ODD(x)){
-	enqueue(q1, x);
-	enQ(q2, x);
-      }
-      else if(! (empty(q1) || emptyQ(q2)))
-	assert(dequeue(q1) == deQ(q2));
+void test_queue() {
+    int m = 100;
+    int i, n, x;
+    struct Queue* q1;
+    struct QueueBuf* q2;
+    while(m--) {
+        n = BIG_RAND();
+        q1 = create();
+        q2 = createQ(n);
+        for(i=0; i<n; ++i) {
+            x = BIG_RAND();
+            if(ODD(x)) {
+                enqueue(q1, x);
+                enQ(q2, x);
+            } else if (! (empty(q1) || emptyQ(q2)))
+                assert(dequeue(q1) == deQ(q2));
+        }
+        destroy(q1);
+        destroyQ(q2);
     }
-    destroy(q1);
-    destroyQ(q2);
-  }
+}
+
+void edgeCase() {
+    struct QueueBuf *q = createQ(1);
+    printf("empty?(q) = %s, full?(q) = %s\n", emptyQ(q) ? "true" : "false",
+           fullQ(q) ? "true" : "false");
+    enQ(q, 1);
+    printf("empty?(q) = %s, full?(q) = %s\n", emptyQ(q) ? "true" : "false",
+           fullQ(q) ? "true" : "false");
+    enQ(q, 2);
+    printf("empty?(q) = %s, full?(q) = %s\n", emptyQ(q) ? "true" : "false",
+           fullQ(q) ? "true" : "false");
+    printf("deQ(q) = %d\n", deQ(q));
+    printf("empty?(q) = %s, full?(q) = %s\n", emptyQ(q) ? "true" : "false",
+           fullQ(q) ? "true" : "false");
+    destroyQ(q);
 }
 
 int main(){
-  test_queue();
-  return 0;
+    edgeCase();
+    test_queue();
+    return 0;
 }
