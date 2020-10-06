@@ -185,17 +185,12 @@ private:
             std::string key = elem.first;
             int val1 = elem.second;
             int val2 = lookup(t, key);
-            std::cout<<"\nlook up("<<key<<")="<<val2<<", "<<(val1 == val2? "OK" : "FAIL\n");
+            std::cout<<"look up("<<key<<")="<<val2<<", "<<(val1 == val2? "OK" : "FAIL")<<"\n";
             if (val1 != val2) {
                 exit(-1);
             }
         }
         std::cout<<"lookup tested\n";
-        // std::cout<<"\nlookup another: "<<lookup(t, "another")
-        //          <<"\nlookup boo: "<<lookup(t, "boo")
-        //          <<"\nlookup boy: "<<lookup(t, "boy")
-        //          <<"\nlookup by: "<<lookup(t, "by")
-        //          <<"\nlookup boolean: "<<lookup(t, "boolean")<<"\n";
         delete t;
     }
 };
