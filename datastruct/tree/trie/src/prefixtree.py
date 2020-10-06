@@ -50,7 +50,7 @@ def insert(t, key, value):
         match = False
         for k, tr in node.subtrees.items():
             if key == k: # overwrite
-                node.value = value
+                tr.value = value   # or: node.subtrees[k].value = value
                 return t
             prefix, k1, k2 = lcp(key, k)
             if prefix != "":
@@ -111,16 +111,19 @@ def test():
     n = 100
     txts = ["a another an boy bool zoo",
             "zoo bool boy another an a",
-            "zoo is a place where animals are for public to see"]
+            "zoo is a place where animals are for public to see",
+            "an zoo example with duplicated zoo words"]
     for txt in txts:
-        m = dict(zip(txt.split(), count()))
-        t = from_map(m)
+        kvs = list(zip(txt.split(), count()))
+        m = dict(kvs)
+        print("kvs", kvs, "\nmap", m)
+        t = from_list(kvs)
         for k in m:
             v = lookup(t, k)
             assert(v is not None)
             assert(v == m[k])
         assert(sorted(keys(t)) == sorted(m.keys()))
-    print len(txts), "tests passed."
+    print(len(txts), "tests passed.")
 
 if __name__ == "__main__":
     test()
