@@ -11,9 +11,12 @@ cn: $(OBJ_CN)
 
 en: $(OBJ)
 
+image:
+	$(MAKE) -C img
+
 tex: $(OBJ) $(OBJ_CN)
 
-%.pdf: %.tex
+%.pdf: %.tex image
 	$(TEX) $<
 	$(TEX) $<
 

@@ -30,7 +30,7 @@ sorting/dc-sort/dcsort \
 search/search \
 others/appendix/list/list \
 others/appendix/rbt-del/rbt-del \
-others/appendix/avl-proof \
+others/appendix/avltree/avl-proof \
 others/appendix/bib
 CHAPTER_OBJ_EN = $(foreach file, $(CHAPTERS), $(file)-en.pdf)
 CHAPTER_OBJ_CN = $(foreach file, $(CHAPTERS), $(file)-zh-cn.pdf)
