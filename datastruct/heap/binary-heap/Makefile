@@ -1,33 +1,25 @@
-HEADER =
-SOURCE = bheap-en.tex
-OBJECT = bheap-en
+SRC = bheap
+OBJ = $(SRC)-en.pdf
+OBJ_CN = $(SRC)-zh-cn.pdf
 TEX = xelatex
 
 .PHONY: all
 
-all: pdf
+all: tex
 
-cpp:
-	$(MAKE) cpp -C src
+cn: $(OBJ_CN)
 
-c:
-	$(MAKE) c -C src
-
-haskell:
-	$(MAKE) haskell -C src
+en: $(OBJ)
 
 image:
 	$(MAKE) -C img
 
-pdf: image
-	$(TEX) $(OBJECT)
-	$(TEX) $(OBJECT)
+tex: $(OBJ) $(OBJ_CN)
 
-tex: pdf
-
-html: image
-	htlatex.bat $(OBJECT) "html, imgdir:img/"
-	mv *.png img/
+%.pdf: %.tex image
+	$(TEX) $<
+	$(TEX) $<
 
 clean:
-	rm -f *.aux *.dvi *.log *.out *.pdf *~
+	rm -f *.4ct *.4tc *.aux *.css *.dvi *.html
+	rm -f *.idv *.lg *.log *.out *.pdf *.tmp *.xref *.cache *.zip *~

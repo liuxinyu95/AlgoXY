@@ -1,30 +1,24 @@
-HEADER =
-SOURCE = rbtree-en.tex
-OBJECT = rbtree-en
+SRC = rbtree
+OBJ = $(SRC)-en.pdf
+OBJ_CN = $(SRC)-zh-cn.pdf
 TEX = xelatex
 
 .PHONY: all
 
-all: pdf
+all: tex
 
-cpp:
-	$(MAKE) cpp -C src
+cn: $(OBJ_CN)
 
-haskell:
-	$(MAKE) haskell -C src
+en: $(OBJ)
 
 image:
 	$(MAKE) -C img
 
-tex: pdf
+tex: $(OBJ) $(OBJ_CN)
 
-pdf: image
-	$(TEX) $(OBJECT)
-	$(TEX) $(OBJECT)
-
-html:
-	htlatex $(OBJECT) "html, imgdir:img/"
-	mv *.png img/
+%.pdf: %.tex image
+	$(TEX) $<
+	$(TEX) $<
 
 clean:
 	rm -f *.4ct *.4tc *.aux *.css *.dvi *.html

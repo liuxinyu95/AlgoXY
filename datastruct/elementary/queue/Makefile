@@ -6,26 +6,20 @@ TEX = xelatex
 .PHONY: all
 
 all: tex
-tex: $(OBJ)
 
-cpp:
-	$(MAKE) cpp -C src
+cn: $(OBJ_CN)
 
-c:
-	$(MAKE) c -C src
-
-haskell:
-	$(MAKE) haskell -C src
-
-tool:
-	$(MAKE) tool -C src
+en: $(OBJ)
 
 image:
 	$(MAKE) -C img
+
+tex: $(OBJ) $(OBJ_CN)
 
 %.pdf: %.tex image
 	$(TEX) $<
 	$(TEX) $<
 
 clean:
-	rm -f *.aux *.dvi *.log *.out *.pdf *~
+	rm -f *.4ct *.4tc *.aux *.css *.dvi *.html
+	rm -f *.idv *.lg *.log *.out *.pdf *.tmp *.xref *.cache *.zip *~

@@ -1,24 +1,15 @@
-SOURCE = avl-proof
-OBJECT = $(SOURCE)-en.pdf
-OBJECT_CN = $(SOURCE)-zh-cn.pdf
+SRC = avl-proof
+OBJ = $(SRC)-en.pdf
+OBJ_CN = $(SRC)-zh-cn.pdf
 TEX = xelatex
 
 .PHONY: all
 
 all: tex
-tex: $(OBJECT) $(OBJECT_CN)
 
-cpp:
-	$(MAKE) cpp -C src
+cn: $(OBJ_CN)
 
-c:
-	$(MAKE) c -C src
-
-haskell:
-	$(MAKE) haskell -C src
-
-tool:
-	$(MAKE) tool -C src
+en: $(OBJ)
 
 image:
 	$(MAKE) -C ../../../datastruct/tree/AVL-tree/img
@@ -28,4 +19,5 @@ image:
 	$(TEX) $<
 
 clean:
-	rm -f *.aux *.dvi *.log *.out *.pdf *~
+	rm -f *.4ct *.4tc *.aux *.css *.dvi *.html
+	rm -f *.idv *.lg *.log *.out *.pdf *.tmp *.xref *.cache *.zip *~
