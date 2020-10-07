@@ -87,7 +87,7 @@ This will generate algoxy-en.pdf and algoxy-zh-cn.pdf. If you only need the Chin
 
 ### Other branches
 
-The other two branches, `zh-cn' and `jvm' are deprecated. Please do NOT checkout/track them.
+The other two branches, `zh-cn` and `jvm` are deprecated. Please do NOT checkout/track them.
 
 --
 
