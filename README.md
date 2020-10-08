@@ -7,12 +7,12 @@ Edition: 0.6180339887498949
 
 This book introduces about elementary algorithms and data structure. It includes side-by-side comparison about purely functional realization and their imperative counterpart.
 
-<img src="https://file.ituring.com.cn/ScreenShow/01004d1e213e7f854b92" width="400">
+<img src="https://user-images.githubusercontent.com/332938/95418499-442e4b00-096a-11eb-81b9-496020aa5f10.jpg" width="400">
 
 Contents
 --------
 
-The book can be downloaded in English ([EN](https://github.com/liuxinyu95/AlgoXY/releases/download/v0.6180333/elementary-algorithms.pdf)). The book in Chinese ([中文](http://www.ituring.com.cn/book/1907)) was published. I recently switched my focus to the Mathematics of programming, the new book is also available in ([github](https://github.com/liuxinyu95/unplugged))
+The book can be downloaded in English ([EN](https://github.com/liuxinyu95/AlgoXY/releases/download/v0.6180334/algoxy-en.pdf)). The book in Chinese ([中文](http://www.ituring.com.cn/book/1907)) was published. I recently switched my focus to the Mathematics of programming, the new book is also available in ([github](https://github.com/liuxinyu95/unplugged))
 
 
 - Preface
