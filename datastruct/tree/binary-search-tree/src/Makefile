@@ -1,6 +1,6 @@
-HEADER = 
+HEADER =
 SOURCE = bstree.cpp
-#CXX_FLAGS = -I/usr/include/boost-1_33_1
+CXX_FLAGS = -std=c++17
 
 .PHONY: all
 
