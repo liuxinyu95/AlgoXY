@@ -14,7 +14,7 @@
 %                 COVER PAGE
 % ================================================================
 
-\title{Binary Search Trees: the `hello world' data structure}
+\title{Binary Search Tree: the `hello world' data structure}
 
 \author{Larry~LIU~Xinyu
 \thanks{{\bfseries Larry LIU Xinyu } \newline
@@ -27,7 +27,7 @@
 \markboth{Binary search tree}{Elementary Algorithms}
 
 \ifx\wholebook\relax
-\chapter{Binary search tree, the `hello world' data structure}
+\chapter{Binary Search Tree, the `hello world' data structure}
 \numberwithin{Exercise}{chapter}
 \fi
 
@@ -39,9 +39,9 @@
 
 Array or list are typically considered the `hello world' data structures. However, we'll see they are not necessarily easy to implement in chapter 11. Upon imperative settings, array is the most elementary data structures. It is possible to implement linked-list using arrays (section  10.3 in \cite{CLRS}). While in functional settings, linked-list acts as the building blocks to create array and other data structures.
 
-We start from Binary Search Trees (BST) as the `hello world' data structure. Let us see an interesting programming problem given by Bentley in {\em Programming Pearls}\cite{Bentley}. It is about to count the number of words in text. One example solution is:\index{word counter}
+We start from Binary Search Trees (BST) as the `hello world' data structure. Let us see an interesting programming problem given by Bentley in {\em Programming Pearls}\cite{Bentley}. It is about to count the number of words in text. Here is an example solution:\index{word counter}
 
-\lstset{language=C++}
+\lstset{language=C++, frame=single}
 \begin{lstlisting}
 int main(int, char**) {
     map<string, int> dict;
@@ -53,22 +53,19 @@ int main(int, char**) {
 }
 \end{lstlisting}
 
-We can run it to count the words like this:
-\footnote{This is not a UNIX unique command, in Windows OS, it can be achieved
-by: \texttt{type bbe.txt | wordcount.exe > wc.txt}}.
+We can run it to count the words in a text file:
 
 \begin{verbatim}
 $ cat bbe.txt | ./wordcount > wc.txt
 \end{verbatim}
 
-The map provided in library is a kind of balanced BST. Here we use the word as the key, and its occurrence number as the value. This program runs fast, which reflects the power of BST. Prior to BST, let us first see the more generic tree, the binary tree. A binary tree can be defined recursively:
+The map provided in library is a kind of balanced BST. Here we use the word as the key, and its occurrence number as the value. This program runs fast, which reflects the power of BST. Prior to BST, let us first see the more generic tree, the binary tree. A binary tree can be defined recursively. It is
 
 \index{binary tree}
 
-A binary tree is
 \begin{itemize}
 \item either empty;
-\item or contains 3 parts: the value, two sub-trees called left and right children.
+\item or contains 3 parts: the key, and two sub-trees called left and right children.
 \end{itemize}
 
 Figure \ref{fig:binary-tree-example} shows an example of binary tree.
@@ -81,23 +78,21 @@ Figure \ref{fig:binary-tree-example} shows an example of binary tree.
   \label{fig:binary-tree-example}
 \end{figure}
 
-A BST is a binary tree that satisfies the following:
+A BST is a special binary tree that the keys are comparable, and it satisfies the following constraints:
+
 \begin{itemize}
 \item For any node, all the keys in its left sub-tree are less than the key in this node;
 \item the key in this node is less than any key in its right sub-tree.
 \end{itemize}
 
-Figure \ref{fig:bst-example} shows an example of a BST. Comparing with
-Figure \ref{fig:binary-tree-example}, we can see the differences in how keys are
-ordered between them.
+Figure \ref{fig:bst-example} shows an example of a BST. Comparing with Figure \ref{fig:binary-tree-example}, we can see the differences in keys ordering.
 
 \begin{figure}[htbp]
        \begin{center}
         \includegraphics[scale=0.5]{img/bst-1.ps}
-        \caption{A BST} \label{fig:bst-example}
+        \caption{A Binary Search Tree} \label{fig:bst-example}
        \end{center}
 \end{figure}
-
 
 % ================================================================
 % Data layout
@@ -105,63 +100,16 @@ ordered between them.
 \section{Data Layout}
 \index{binary search tree!data layout}
 
-Based on the recursive definition of BSTs, we can draw the
-data layout in a procedural setting with pointers as in Figure
-\ref{fig:node-layout-parent}.
-
-%\begin{figure}[htbp]
-%       \begin{center}
-%        \includegraphics[scale=0.8]{img/node-layout.ps}
-%        \caption{Node layout.} \label{fig:node-layout}
-%       \end{center}
-%\end{figure}
-
-The node first contains a field for the key, which can be augmented with satellite
-data. The next two fields contain pointers to the left and right children, respectively. To make backtracking to ancestors easy, a parent field is sometimes provided as well.
-%Figure \ref{fig:node-layout-parent} shows the layout with parent field.
+Based on the recursive definition of BSTs, we can design the data layout as shown in figure \ref{fig:node-layout-parent}. A node stores the key as a field, it can also store augmented data (known as satellite data). The next two fields are pointers to the left and right sub-trees. To make it easy for backtracking, it can also store a parent field pointed to its ancestor node.
 
 \begin{figure}[htbp]
        \begin{center}
         \includegraphics[scale=0.8]{img/node-layout-parent.ps}
-        \caption{Layout of nodes with parent field.} \label{fig:node-layout-parent}
+        \caption{Node layout with parent field.} \label{fig:node-layout-parent}
        \end{center}
 \end{figure}
 
-In this section, we'll ignore the satellite data for the sake of simplifying the illustrations. Based on this layout, the node of BST can be defined in a procedural language, such as C++:
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<class T>
-struct node {
-    node(T x):key(x), left(nullptr), right(nullptr), parent(nullptr) {}
-
-    ~node() {
-        delete left;
-        delete right;
-    }
-
-    node* left;
-    node* right;
-    node* parent; //可选，方便succ和pred操作
-    T key;
-};
-\end{lstlisting}
-
-There is another setting, for instance in Scheme/Lisp languages, the elementary
-data structure is a linked list. Figure \ref{fig:lisp-layout} shows how a BST node can be built on top of linked list.
-
-\begin{figure}[htbp]
-       \begin{center}
-        \includegraphics[scale=0.8]{img/lisp-layout.ps}
-        \caption{Binary search tree node layout on top of linked list. Where `left...' and `right ...' are either empty or BST nodes composed in the same way.} \label{fig:lisp-layout}
-       \end{center}
-\end{figure}
-
-In more functional settings, it's hard to use pointers for backtracking (and typically, there is no need for backtracking, since there are usually top-down recursive solutions), and so the `parent' field has been omitted in that layout.
-
-To simplify things, we'll skip the detailed layouts in the future and only
-focus on the logic layouts of data structures. For example, below is the definition
-of a BST node in Haskell:
+For illustration purpose, we'll skip the augmented data. The appendix of this chapter includes an example definition. In functional settings, it is seldom to use pointers for backtracking. Typically, there is no such need at all, because the algorithm is usually top-down recursive. Below is the example functional definition:
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -175,19 +123,17 @@ data Tree a = Empty
 \section{Insertion}
 \index{binary search tree!insertion}
 
-To insert a key $k$ (sometimes along with a value in practice) to a BST $T$, we can use the following algorithm:
+When insert a key $k$ (or along with a value) to a BST $T$, we need ensure the key ordering property is always hold:
 
 \begin{itemize}
 \item If the tree is empty, construct a leaf node with key = $k$;
-\item If $k$ is less than the key of root node, insert it in the left child;
-\item If $k$ is greater than the key of root node, insert it in the right child.
+\item If $k$ is less than the key of root, insert it to the left sub-tree;
+\item Otherwise, insert it in the right sub-tree.
 \end{itemize}
 
-The exception to the above is when $k$ is equal to the key of the root node, meaning it already exists in the BST, and we can either overwrite the data, or just do nothing. To simplify things, this case has been skipped in this section.
+There is an exceptional case that $k$ is equal to the key of root. It means $k$ already exists in the tree. We can overwrite it, or append data, or do nothing. We'll skip such case handling.
 
-This algorithm is described recursively. It's simplicity is why we
-consider the BST structure the `hello world' data structure. Formally,
-the algorithm can be represented with a recursive mathematical function:
+This algorithm is simple and straightforward. We can define it as a recursive function:
 
 \be
 insert(T, k) = \left \{
@@ -200,13 +146,8 @@ insert(T, k) = \left \{
 \right.
 \ee
 
-Where $T_l$ is the left child, $T_r$ is the right child, and $k'$ is the key when $T$ isn't empty.
 
-The node function creates a new node given the left subtree,
-a key and a right subtree as parameters. $\phi$ means NIL or empty.
-
-Translating the above functions directly to Haskell yields the following
-program:
+For none empty node, $T_l$ denotes the left sub-tree, $T_r$ denotes the right sub-tree, and $k'$ is the key. The function $node(l, k, r)$ creates a node from two sub-trees and a key. $\phi$ means empty (also known as NIL, or null). Below is the corresponding example program in Haskell for insertion.
 
 \lstset{language=Haskell}
 \begin{lstlisting}
@@ -215,25 +156,7 @@ insert (Node l x r) k | k < x = Node (insert l k) x r
                       | otherwise = Node l x (insert r k)
 \end{lstlisting}
 
-This program utilized the pattern matching features provided by the
-language. However, even in functional settings without this feature
-(e.g. Scheme/Lisp) the program is still expressive:
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (insert tree x)
-  (cond ((null? tree) (list '() x '()))
-	((< x (key tree))
-	 (make-tree (insert (left tree) x)
-		    (key tree)
-		    (right tree)))
-	((> x (key tree))
-	 (make-tree (left tree)
-		    (key tree)
-		    (insert (right tree) x)))))
-\end{lstlisting}
-
-This algorithm can be expressed imperatively using iteration, completely free of recursion:
+This example program utilizes the {\em pattern matching} features. The appendix of this chapter provides another example without using this feature in Scheme/Lisp. Insertion can also be implemented without recursion. Here is a pure iterative algorithm:
 
 \begin{algorithmic}[1]
 \Function{Insert}{$T, k$}
@@ -269,14 +192,12 @@ This algorithm can be expressed imperatively using iteration, completely free of
 \EndFunction
 \end{algorithmic}
 
-While more complex than the functional algorithm, it is still fast, even when presented with very deep trees.
-Complete C++ and python programs are available along with this section for reference.
+While it is a bit more complex than the functional one, the iterative implementation runs faster, and is capable to process very deep tree.
 
-\section{Traversing}
+\section{Traverse}
 \index{binary search tree!traverse}
 
-Traversing means visiting every element one-by-one in a BST. There are 3 ways to traverse a binary tree: a
-pre-order tree walk, an in-order tree walk and a post-order tree walk. The names of these traversal methods
+Traverse is to visit every element one by one in a tree. There are 3 different ways to walk through a binary tree: (1) pre-order tree walk, (2) in-order tree walk, (3) and post-order tree walk. The names of these traversal methods
 highlight the order in which we visit the root of a BST.
 
 \begin{itemize}
@@ -939,6 +860,44 @@ process, to shuffle the elements.
 \end{itemize}
 
 \end{Exercise}
+
+\section{Appendix: Example programs}
+
+Definition of BST with parent field in C++.
+
+\lstset{language=C++, frame=single}
+\begin{lstlisting}
+template<class T>
+struct node {
+    node(T x):key(x), left(nullptr), right(nullptr), parent(nullptr) {}
+
+    ~node() {
+        delete left;
+        delete right;
+    }
+
+    node* left;
+    node* right;
+    node* parent; //可选，方便succ和pred操作
+    T key;
+};
+\end{lstlisting}
+
+Scheme/Lisp example program of insertion. It does not use pattern matching.
+
+\lstset{language=lisp}
+\begin{lstlisting}
+(define (insert tree x)
+  (cond ((null? tree) (list '() x '()))
+	((< x (key tree))
+	 (make-tree (insert (left tree) x)
+		    (key tree)
+		    (right tree)))
+	((> x (key tree))
+	 (make-tree (left tree)
+		    (key tree)
+		    (insert (right tree) x)))))
+\end{lstlisting}
 
 \begin{thebibliography}{99}
 
