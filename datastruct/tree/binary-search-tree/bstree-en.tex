@@ -90,7 +90,7 @@ Figure \ref{fig:bst-example} shows an example of binary search tree. Comparing w
 
 \begin{figure}[htbp]
        \begin{center}
-        \includegraphics[scale=0.5]{img/bst-1.ps}
+        \includegraphics[scale=0.4]{img/bst-1.ps}
         \caption{A Binary Search Tree} \label{fig:bst-example}
        \end{center}
 \end{figure}
@@ -105,7 +105,7 @@ Based on the recursive definition of binary search tree, we can design the data 
 
 \begin{figure}[htbp]
        \begin{center}
-        \includegraphics[scale=0.8]{img/node-layout-parent.ps}
+        \includegraphics[scale=0.7]{img/node-layout-parent.ps}
         \caption{Node layout with parent field.} \label{fig:node-layout-parent}
        \end{center}
 \end{figure}
@@ -309,65 +309,49 @@ We can also rewrite it in Curried form\cite{curry} (also known as partial applic
 \index{binary search tree!search}
 \index{binary search tree!looking up}
 
-There are three types of querying for binary search tree, searching
-a key in the tree, find the minimum or maximum element in the tree,
-and find the predecessor or successor of an element in the tree.
+Because the elements stored in binary search tree is well ordered and organized recursively. It supports varies of search effectively. This is one of the reasons people name it as binary search tree. There are mainly three types of querying: (1) look up a key; (2) find the minimum or maximum element; (3) given any node, find its predecessor or successor.
 
-\subsection{Looking up}
-According to the definition of binary search tree, search
-a key in a tree can be realized as the following.
+\subsection{Look up}
+Because binary search tree is recursive and all elements satisfy the ordering property, we can look up a key $k$ top-down from the root as the following:
 
 \begin{itemize}
-\item If the tree is empty, the searching fails;
-\item If the key of the root is equal to the value to be found, the
-search succeed. The root is returned as the result;
-\item If the value is less than the key of the root, search in the left
-child.
-\item Else, which means that the value is greater than the key of the
-root, search in the right child.
+\item If the tree is empty, terminate. The key does not exist;
+\item Compare $k$ with the key of root, if equal, we are done. The key is stored in the root;
+\item If $k$ is less than the key of root, then recursively look up the left sub-tree;
+\item Otherwise, look up the right sub-tree.
 \end{itemize}
 
-This algorithm can be described with a recursive function as below.
+We can define the recursive $lookup$ function for this algorithm as below.
 
 \be
-lookup(T, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \nil & T = \nil \\
-  T & k = x \\
-  lookup(T_l, x) & x < k \\
-  lookup(T_r, x) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+lookup(\nil, x) & = & \nil \\
+lookup(node(T_l, k, T_r), x) & = & \begin{cases}
+  k = x: & T \\
+  x < k: & lookup(T_l, x) \\
+  otherwise: & lookup(T_r, x) \\
+  \end{cases}
+\end{array}
 \ee
 
-Where $T_l$, $T_r$ and $k$ are the children and key when $T$ isn't empty.
-In the real application, we may return the satellite data instead of the
-node as the search result. This algorithm is simple and straightforward.
-Here is a translation of Haskell program.
+This function returns the tree node being located or empty if not found. One may instead return the value that bound to the key. However, in search implementation, we need consider using $Maybe$ type (also known as \texttt{Optional<T>}) to handle the not found case, for example:
 
 \lstset{language=Haskell}
 \begin{lstlisting}
-lookup Empty _ = Empty
-lookup t@(Node l k r) x | k == x = t
+lookup Empty _ = Nothing
+lookup t@(Node l k r) x | k == x = Just k
                         | x < k = lookup l x
                         | otherwise = lookup r x
 \end{lstlisting}
 
-If the BST is well balanced, which means that almost
-all nodes have both non-NIL left child and right child, for $n$ elements,
-the search algorithm takes $O(\lg n)$ time to perform. This is not
-formal definition of balance. We'll show it in later post about red-black-tree.
-If the tree is poor balanced, the worst case takes $O(n)$ time to
-search for a key. If we denote the height of the tree as $h$, we can
-uniform the performance of the algorithm as $O(h)$.
+If the binary search tree is well balanced, which means almost all branch nodes have both none empty sub-trees except for leaves. This is not the formal definition of balance. We'll define it in chapter 3. For a balanced tree of $n$ elements, the algorithm takes $O(\lg n)$ time to look up a key. If the tree is poor balanced, the worst case is bound to $O(n)$ time. If denote the height of the tree as $h$, we can
+represent the performance of look up as $O(h)$.
 
-The search algorithm can also be realized without using recursion in
-a procedural manner.
+We can also implement looking up purely iterative without recursion:
 
 \begin{algorithmic}[1]
 \Function{Search}{$T, x$}
-  \While{$T \neq NIL \wedge$ \Call{Key}{$T$} $ \neq x$}
+  \While{$T \neq NIL$ and \Call{Key}{$T$} $ \neq x$}
     \If{$x <$ \Call{Key}{$T$}}
       \State $T \gets $ \Call{Left}{$T$}
     \Else
@@ -377,20 +361,6 @@ a procedural manner.
   \State \Return $T$
 \EndFunction
 \end{algorithmic}
-
-Below is the C++ program based on this algorithm.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<class T>
-node<T>* lookup(node<T>* t, T x) {
-    while (t && t->key != x) {
-        if (x < t->key) t = t->left;
-        else t = t->right;
-    }
-    return t;
-}
-\end{lstlisting}
 
 \subsection{Minimum and maximum}
 \index{binary search tree!min/max}
@@ -801,7 +771,7 @@ process, to shuffle the elements.
 
 \section{Appendix: Example programs}
 
-Definition of BST with parent field in C++.
+Definition of binary search tree node with parent field in C++.
 
 \lstset{language=C++, frame=single}
 \begin{lstlisting}
@@ -835,6 +805,20 @@ Scheme/Lisp example program of insertion. It does not use pattern matching.
 	 (make-tree (left tree)
 		    (key tree)
 		    (insert (right tree) x)))))
+\end{lstlisting}
+
+C++ example program to look up a key. This is purely iterative without recursion.
+
+\lstset{language=C++}
+\begin{lstlisting}
+template<class T>
+node<T>* lookup(node<T>* t, T x) {
+    while (t && t->key != x) {
+        if (x < t->key) t = t->left;
+        else t = t->right;
+    }
+    return t;
+}
 \end{lstlisting}
 
 \begin{thebibliography}{99}
