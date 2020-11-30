@@ -395,26 +395,51 @@ void printTree (Node<T> t) {
 }
 \end{lstlisting}
 
-Such use cases demand us to design algorithm to find the successor or predecessor of any node.
+Such use cases demand us to design algorithm to find the successor or predecessor of any node. The successor of element $x$ is defined as the smallest element $y$ that satisfies $x < y$. If the node of $x$ has none empty right sub-tree, then minimum element of the right sub-tree is the successor. As shown in figure \ref{fig:bst-succ}, to find the successor of 8, we search the minimum element in its right sub-tree, which is 9. If the right sub-tree of node $x$ is empty, we need back-track along the parent field till the closest ancestor whose left sub-tree is also an ancestor of $x$. In figure \ref{fig:bst-succ}, since node 2 does not have right sub-tree, we go up to its parent of node 1. However, node 1 does not have left sub-tree, we need go up again, hence reach to node 3. As the left sub-tree of node 3 is also an ancestor of node 2, node 3 is the successor of node 2.
 
-The last kind of querying is to find the successor or predecessor of an element.
-It is useful when a tree is treated as a generic container and traversed with
-iterator. We need access the parent of a node to make the implementation
-simple.
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.45]{img/bst-1.ps}
+  \caption{The successor of 8, is the minimum one in its right sub-tree, 9; In order to find the successor of 2, we go up to its parent 1, then 3. } \label{fig:bst-succ}
+\end{figure}
 
-It seems hard to find the functional solution, because there
-is no pointer like field linking to the parent node\footnote{There is \texttt{ref} in ML and OCaml, but we only consider the purely functional settings.}. One solution is
-to left `breadcrumbs' when we visit the tree, and use these information
-to back-track or even re-construct the whole tree. Such data structure,
-that contains both the tree and `breadcrumbs' is called zipper.
-please refer to \cite{zipper-hbook} for details.
+If we finally reach to the root when back-track along the parent, but still can not find an ancestor on the right, then the node does not have a successor. Below algorithm finds the successor of a given node $x$:
 
-However, If we consider
-the original purpose of providing $succ$/$pred$ function, `to traverse all the
-BST elements one by one` as a generic container, we realize
-that they don't make significant sense in functional settings because
-we can traverse the tree in increase order by $map$ function we defined
-previously.
+\begin{algorithmic}[1]
+\Function{Succ}{$x$}
+  \If{\Call{Right}{$x$} $\neq NIL$}
+    \State \Return \textproc{Min}(\Call{Right}{$x$})
+  \Else
+    \State $p \gets $ \Call{Parent}{$x$}
+    \While{$p \neq $ NIL and $x =$ \Call{Right}{$p$}}
+      \State $x \gets p$
+      \State $p \gets $ \Call{Parent}{$p$}
+    \EndWhile
+    \State \Return $p$
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+This algorithm returns NIL when $x$ does not has successor. The predecessor finding algorithm is symmetric:
+
+\begin{algorithmic}[1]
+\Function{Pred}{$x$}
+  \If{\Call{Left}{$x$} $\neq NIL$}
+    \State \Return \textproc{Max}(\Call{Left}{$x$})
+  \Else
+    \State $p \gets $ \Call{Parent}{$x$}
+    \While{$p \neq $ NIL and $x =$ \Call{Left}{$p$}}
+      \State $x \gets p$
+      \State $p \gets $ \Call{Parent}{$p$}
+    \EndWhile
+    \State \Return $p$
+  \EndIf
+\EndFunction
+\end{algorithmic}
+
+It seems hard to find the purely functional solution, because there is no pointer like field linking to the parent node\footnote{There is \texttt{ref} in ML and OCaml, we limit to the purely functional settings.}. One solution is to left `breadcrumbs' when we visit the tree, and use these information to back-track or even re-construct the whole tree. Such data structure, that contains both the tree and `breadcrumbs' is called zipper\cite{zipper-hbook}.
+
+Our original purpose to develop $succ$ and $pred$ functions is `to traverse all the elements' as a generic container. we realize that they don't make significant sense in functional settings because we can traverse the tree in increase order by $map$ function we defined previously.
 
 We'll meet many problems in this series of post that they are only valid
 in imperative settings, and they are not meaningful problems in functional
@@ -424,82 +449,6 @@ red-black-tree\cite{okasaki-blog}.
 In this section, we'll only present the imperative algorithm for finding
 the successor and predecessor in a BST.
 
-When finding the successor of element $x$, which is the smallest one $y$
-that satisfies $y > x$, there are two cases. If the node with value $x$
-has non-NIL right child, the minimum element in right child is the answer;
-For example, in Figure \ref{fig:bst-succ}, in order to find the successor
-of 8, we search it's right sub tree for the minimum one, which yields 9
-as the result. While if node $x$ don't have right child, we need
-back-track to find the closest ancestor whose left child is also ancestor
-of $x$. In Figure \ref{fig:bst-succ}, since 2 don't have right sub tree,
-we go back to its parent 1. However, node 1 don't have left child, so we
-go back again and reach to node 3, the left child of 3, is also ancestor
-of 2, thus, 3 is the successor of node 2.
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.45]{img/bst-1.ps}
-  \caption{The successor of 8, is the minimum one in its right sub tree, 9; \\
-           In order to find the successor of 2, we go up to its parent 1, but 1 doesn't have left child, we go up again and find 3. Because its left child is also the ancestor of 2, 3 is the result.} \label{fig:bst-succ}
-\end{figure}
-
-Based on this description, the algorithm can be given as the following.
-
-\begin{algorithmic}[1]
-\Function{Succ}{$x$}
-  \If{\Call{Right}{$x$} $\neq NIL$}
-    \State \Return \textproc{Min}(\Call{Right}{$x$})
-  \Else
-    \State $p \gets $ \Call{Parent}{$x$}
-    \While{$p \neq NIL$ and $x =$ \Call{Right}{$p$}}
-      \State $x \gets p$
-      \State $p \gets $ \Call{Parent}{$p$}
-    \EndWhile
-    \State \Return $p$
-  \EndIf
-\EndFunction
-\end{algorithmic}
-
-If $x$ doesn't has successor, this algorithm returns NIL.
-The predecessor case is quite similar to the successor algorithm, they
-are symmetrical to each other.
-
-\begin{algorithmic}[1]
-\Function{Pred}{$x$}
-  \If{\Call{Left}{$x$} $\neq NIL$}
-    \State \Return \textproc{Max}(\Call{Left}{$x$})
-  \Else
-    \State $p \gets $ \Call{Parent}{$x$}
-    \While{$p \neq NIL$ and $x =$ \Call{Left}{$p$}}
-      \State $x \gets p$
-      \State $p \gets $ \Call{Parent}{$p$}
-    \EndWhile
-    \State \Return $p$
-  \EndIf
-\EndFunction
-\end{algorithmic}
-
-Below are the Python programs based on these algorithms. They are changed
-a bit in while loop conditions.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def succ(x):
-    if x.right is not None: return tree_min(x.right)
-    p = x.parent
-    while p is not None and p.left != x:
-        x = p
-        p = p.parent
-    return p
-
-def pred(x):
-    if x.left is not None: return tree_max(x.left)
-    p = x.parent
-    while p is not None and p.right != x:
-        x = p
-        p = p.parent
-    return p
-\end{lstlisting}
 
 \begin{Exercise}
 
@@ -778,28 +727,28 @@ data Node<T> {
     Node<T> parent
 
     Node(T x) { key = x }
+    Node(Node<T> l, T k, Node<T> r) {
+        left = l, key = k, right = r
+    }
 }
 \end{lstlisting}
 
-Scheme/Lisp example program of insertion. It does not use pattern matching.
+Example program of insertion. It does not use pattern matching.
 
-\lstset{language=Lisp}
 \begin{lstlisting}
-(define (insert tree x)
-    (cond ((null? tree) (list '() x '()))
-        ((< x (key tree))
-           (make-tree (insert (left tree) x)
-                  (key tree)
-                  (right tree)))
-        ((> x (key tree))
-           (make-tree (left tree)
-                  (key tree)
-                  (insert (right tree) x)))))
+Node<T> insert (Node<T> t, T x) {
+    if (t == null) {
+        return Node(null, x, null)
+    } else if (t.key < x) {
+        return Node(insert(t.left, x), t.key, t.right)
+    } else {
+        return Node(t.left, t.key, insert(t.right, x))
+    }
+}
 \end{lstlisting}
 
 Example program to look up a key. Purely iterative without recursion.
 
-\lstset{language=Bourbaki}
 \begin{lstlisting}
 Optional<Node<T>> lookup (Node<T> t, T x) {
     while (t != null and t.key != x) {
@@ -810,6 +759,35 @@ Optional<Node<T>> lookup (Node<T> t, T x) {
         }
     }
     return Optional(t);
+}
+\end{lstlisting}
+
+Example iterative program to find the minimum of a tree.
+
+\begin{lstlisting}
+Optional<Node<T>> min (Node<T> t) {
+    while (t != null and t.left != null) {
+        t = t.left
+    }
+    return Optional(t);
+}
+\end{lstlisting}
+
+Example program to find the successor of a node.
+\begin{lstlisting}
+Optional<Node<T>> succ (Node<T> x) {
+    if (x == null) {
+        return Optional.None
+    } else if (x.right != null) {
+        return min(x.right)
+    } else {
+        p = x.parent
+        while (p != null and x == p.right) {
+            x = p
+            p = p.parent
+        }
+        return Optional(p);
+    }
 }
 \end{lstlisting}
 
