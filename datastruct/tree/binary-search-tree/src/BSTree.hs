@@ -79,12 +79,13 @@ insert (Node l k r) x | x < k = Node (insert l x) k r
 --   if x has two children: use min(right) to replce x
 delete::(Ord a)=> Tree a -> a -> Tree a
 delete Empty _ = Empty
-delete (Node l k r) x | x < k = (Node (delete l x) k r)
-                      | x > k = (Node l k (delete r x))
-                      -- x == k
-                      | isEmpty l = r
-                      | isEmpty r = l
-                      | otherwise = (Node l k' (delete r k')) where k' = min r
+delete (Node l k r) x | x < k = Node (delete l x) k r
+                      | x > k = Node l k (delete r x)
+                      | otherwise = del l r
+  where
+    del Empty r = r
+    del l Empty = l
+    del l r = let k' = min r in Node l k' (delete r k')
 
 -- Traverse a part of tree inside a range [a, b]
 mapR :: (Ord a)=>(a->b) -> a -> a -> Tree a -> Tree b
