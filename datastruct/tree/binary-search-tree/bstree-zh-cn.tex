@@ -126,63 +126,42 @@ data Tree a = Empty
 \section{插入}
 \index{二叉搜索树!插入}
 
-我们可以使用下述算法向一个二叉搜索树中插入一个键$k$（在实际应用中，有时会同时插入一对键和值）：
+当向二叉搜索树插入一个键$k$（和相关的数据）时，我们需要确保树中的元素仍然是有序的。为此，我们可以设计如下的插入策略：
 
 \begin{itemize}
-\item 如果树为空，创建一个叶子节点，令该节点的key = $k$；
-\item 如果$k$小于根节点的key，将它插入到左子树中；
-\item 如果$k$大于根节点的key，将它插入到右子树中。
+\item 如果树为空，创建一个元素为$k$的叶子节点；
+\item 如果$k$小于根节点中的元素，将它插入到左子树中；
+\item 否则，将$k$插入到右子树中。
 \end{itemize}
 
-这里存在一个特殊情况，当$k$等于根节点的key时，说明它已经存在了。我们可以覆盖(overwrite)掉以前的数据，也可以选择跳过不做任何处理。简单起见，我们忽略这一情况。
-
-插入算法是递归的。它十分简单，因此我们说二叉搜索树是“hello world”数据结构。这一算法可以形式化地定义为如下的函数。
+这里存在一个特殊情况：当$k$等于根节点中的元素时，说明它已经存在了。我们可以覆盖掉以前的数据，或者把新数据添加在后面，也可以跳过不做任何处理。简单起见，我们忽略这一情况。插入算法是递归的，它十分简单。可以定义为如下的函数：
 
 \be
-insert(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  node(\phi, k, \phi) & T = \phi \\
-  node(insert(T_l, k), k', T_r) & k < k' \\
-  node(T_l, k', insert(T_r, k)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+insert(\nil, k) & = & Node(\nil, k, \nil) \\
+insert(Node(T_l, k, T_r), k) & = & \begin{cases}
+  k < k': & Node(insert(T_l, k), k', T_r) \\
+  otherwise: & Node(T_l, k', insert(T_r, k)) \\
+  \end{cases}
+\end{array}
 \ee
 
-其中，当$T$不为空时，$T_l$, $T_r$和$k'$分别是它的左右子树和key。函数$node$以给定的左子树、key和右子树为参数创建一个新节点。符号$\phi$表示NIL或空。
+当节点不为空时，$T_l$、$T_r$、$k'$分别是它的左右子树和键。函数$Node(l, k, r)$用左右子树和键来构造一个节点。符号$\nil$表示空或NIL。它是大数学家安德烈$\cdot$韦伊引入的挪威语字母，用来表示空集。下面是相应的例子程序：
 
-将上述函数直接翻译为Haskell代码可以得到下面的程序：
-
-\begin{lstlisting}[style=Haskell]
+\begin{Haskell}
 insert Empty k = Node Empty k Empty
 insert (Node l x r) k | k < x = Node (insert l k) x r
                       | otherwise = Node l x (insert r k)
-\end{lstlisting}
+\end{Haskell}
 
-这一程序使用了语言提供的模式匹配（pattern matching）特性。但即使不用这一特性（例如Lisp方言Scheme），函数式的插入程序仍然十分简洁。
-
-\lstset{language=lisp}
-\begin{lstlisting}
-(define (insert tree x)
-  (cond ((null? tree) (list '() x '()))
-	((< x (key tree))
-	 (make-tree (insert (left tree) x)
-		    (key tree)
-		    (right tree)))
-	((> x (key tree))
-	 (make-tree (left tree)
-		    (key tree)
-		    (insert (right tree) x)))))
-\end{lstlisting}
-
-这一算法也可以完全不用递归，而用循环的方式实现：
+这一例子程序使用了模式匹配（pattern matching）特性。本章附录给出了另一个不使用此特性的例子。插入算法也可以不使用递归，而纯用迭代实现：
 
 \begin{algorithmic}[1]
 \Function{Insert}{$T, k$}
   \State $root \gets T$
   \State $x \gets$ \Call{Create-Leaf}{$k$}
-  \State $parent \gets NIL$
-  \While{$T \neq NIL$}
+  \State $parent \gets$ NIL
+  \While{$T \neq$ NIL}
     \State $parent \gets T$
     \If{$k <$ \Call{Key}{$T$}}
       \State $T \gets $ \Call{Left}{$T$}
@@ -191,7 +170,7 @@ insert (Node l x r) k | k < x = Node (insert l k) x r
     \EndIf
   \EndWhile
   \State \Call{Parent}{$x$} $\gets parent$
-  \If{$parent = NIL$} \Comment{树$T$为空}
+  \If{$parent = $ NIL} \Comment{$T$为空}
     \State \Return $x$
   \ElsIf{$k <$ \Call{Key}{$parent$}}
     \State \Call{Left}{$parent$} $\gets x$
@@ -204,158 +183,121 @@ insert (Node l x r) k | k < x = Node (insert l k) x r
 \Function{Create-Leaf}{k}
   \State $x \gets $ \Call{Empty-Node}{}
   \State \Call{Key}{$x$} $ \gets k$
-  \State \Call{Left}{$x$} $ \gets NIL$
-  \State \Call{Right}{$x$} $ \gets NIL$
-  \State \Call{Parent}{$x$} $ \gets NIL$
+  \State \Call{Left}{$x$} $ \gets $ NIL
+  \State \Call{Right}{$x$} $ \gets $ NIL
+  \State \Call{Parent}{$x$} $ \gets $ NIL
   \State \Return $x$
 \EndFunction
 \end{algorithmic}
 
-虽然没有函数式算法那样简洁，但是它的速度很快，并且可以处理深度很大的树。限于篇幅，相应完整的C++和Python程序就不再列出了。读者可以从本书的网站下载参考。
+这一实现虽然没有函数式算法简洁，但执行速度更快，并且可以处理深度很大的树。
 
 \section{遍历}
 \index{二叉树!遍历}
 
-遍历是指依次访问二叉树中的每个元素。有三种遍历方法，分别是前序遍历、中序遍历和后序遍历。它们是按照访问根节点和子节点的先后顺序命名的。
+遍历是指依次访问二叉树中的每个元素。有三种遍历方法，分别是前序遍历、中序遍历、后序遍历。它们是按照访问根节点和子节点的先后顺序命名的。
 
 \begin{itemize}
-\item 前序遍历：先访问根节点，然后访问左子树，最后访问右子树；
-\item 中序遍历：先访问左子树，然后访问根节点，最后访问右子树；
-\item 后序遍历：先访问左子树，然后访问右子树，最后访问根节点。
+\item 前序遍历：先访问\textbf{根节点}，然后访问左子树，最后访问右子树；
+\item 中序遍历：先访问左子树，然后访问\textbf{根节点}，最后访问右子树；
+\item 后序遍历：先访问左子树，然后访问右子树，最后访问\textbf{根节点}。
 \end{itemize}
 
 \index{前序遍历} \index{中序遍历} \index{后序遍历}
 
-所有的“访问”操作都是递归的。\underline{先}访问根后访问子分支称为\underline{先序}，在访问左右分支的\underline{中间}访问根称为\underline{中序}，先访问子分支\underline{后}访问根称为\underline{后序}。
-
-对于图\ref{fig:bst-example}中的二叉树，下面分别列出了三种遍历的结果：
+所有的“访问”操作都是递归的。\textbf{先}访问根后访问子分支称为\textbf{先序}，在访问左右分支的\textbf{中间}访问根称为\textbf{中序}，先访问子分支\textbf{后}访问根称为\textbf{后序}。
+对于图\ref{fig:bst-example}中的二叉树，三种遍历的结果分别如下：
 
 \begin{itemize}
-\item 前序遍历：4, 3, 1, 2, 8, 7, 16, 10, 9, 14；
-\item 中序遍历：1, 2, 3, 4, 7, 8, 9, 10, 14, 16；
-\item 后序遍历：2, 1, 3, 7, 9, 14, 10, 16, 8, 4。
+\item 前序遍历：4, 3, 1, 2, 8, 7, 16, 10, 9, 14
+\item 中序遍历：1, 2, 3, 4, 7, 8, 9, 10, 14, 16
+\item 后序遍历：2, 1, 3, 7, 9, 14, 10, 16, 8, 4
 \end{itemize}
 
-对二叉搜索树进行中序遍历，元素就会按照从小到大的顺序输出。二叉搜索树的定义保证了这一有趣的性质，作为练习，请读者思考如何证明。
+特别地，中序遍历会按照从小到大的顺序输出元素。二叉搜索树的定义保证了这一性质。我们把相应的证明留作练习。中序遍历的算法可以描述为：
 
-中序遍历的算法可以描述为：
 \begin{itemize}
-\item 如果树为空，则返回；
+\item 如果树为空，返回；
 \item 否则先中序遍历左子树，然后访问根节点，最后再中序遍历右子树。
 \end{itemize}
 
-这一描述本身是递归的，如果二叉树非空，令$T_l$, $T_r$和$k$分别代表左右子树和key。我们可以定义下面的抽象map函数。
+这一描述本身是递归的。我们可以进一步定义一个$map$函数，按照中序遍历的顺序将函数$f$应用的每个元素上，从而映射成另一棵同构的树。
 
 \be
-map(f, T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & T = \phi \\
-  node(T_l', k', T_r') & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+map(f, \nil) & = & \nil \\
+map(f, Node(T_l, k, T_r)) & = & Node(map(f, T_l), f(k), map(f, T_r))
+\end{array}
 \ee
 
-其中
+如果只访问并操作节点上的值，而无需创建另外一棵树，我们可以将这一算法实现如下：
 
-\[
- \begin{array}{l}
- T_l' = map(f, T_l) \\
- T_r' = map(f, T_r) \\
- k' = f(k)
- \end{array}
-\]
+\begin{algorithmic}[1]
+\Function{In-Order-Traverse}{$T, f$}
+  \If{$T \neq$ NIL}
+    \State \textproc{In-Order-Traverse}(\Call{Left}{$T, f$})
+    \State $f$(\Call{Key}{$T$})
+    \State \textproc{In-Order-Traverse}(\Call{Right}{$T, f$})
+  \EndIf
+\EndFunction
+\end{algorithmic}
 
-这一函数可以将一棵树转换成形状完全一样的另一棵树，只不过所有节点上的值都按照某个映射进行了变换。我们也可以只访问并操作节点上的值，而不去创建另外一棵树，如下面的C++程序：
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<class T, class F>
-void in_order_walk(node<T>* t, F f) {
-    if (t) {
-        in_order_walk(t->left, f);
-        f(t->value);
-        in_order_walk(t->right, f);
-    }
-}
-\end{lstlisting}
-
-这一函数接受一个参数\texttt{f}，它可以是一个函数指针，或者是一个函数对象。然后程序按照中序遍历依次应用(apply)f到每个元素上。
-
-我们还可以进一步简化这一算法，通过中序遍历将一棵二叉搜索树转化为一个有序序列。
+我们也可以修改$map$函数，通过中序遍历将一棵二叉搜索树转化为一个有序序列：
 
 \be
-toList(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & T = \phi \\
-  toList(T_l) \cup \{ k \} \cup toList(T_r) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+toList(\nil) & = & [\ ] \\
+toList(Node(T_l, k, T_r)) & = & toList(T_l) \doubleplus [ k ] \doubleplus toList(T_r) \\
+\end{array}
 \ee
 
-下面的Haskell程序实现了这一转换函数。
-
-\begin{lstlisting}[style=Haskell]
-toList Empty = []
-toList (Node l x r) = toList l ++ [x] ++ toList r
-\end{lstlisting}
-
-我们因此得到了一个排序的方法：先把一个无序的列表转化为一个二叉搜索树，然后再用中序遍历把树转换回列表。这一排序方法被称为“树排序”。记待排序列表为$X = \{x_1, x_2, x_3, ..., x_n\}$。
+我们据此可以得到一个排序的方法：先把一个无序的列表转化为一个二叉搜索树，然后再用中序遍历把树转换回列表。该方法被称为“树排序”。记待排序列表为$X = [x_1, x_2, x_3, ..., x_n]$。
 
 \be
   sort(X) = toList(fromList(X))
 \ee
 
-我们也可以写成函数组合（function composition）的形式：
+我们也可以写成函数组合\cite{func-composition}的形式：
 
 \[
-  sort = toList . fromList
+  sort = toList \circ fromList
 \]
 
-其中函数$fromList$不断地将元素从列表中插入到一棵空的二叉搜索树中。
+其中函数$fromList$不断地将元素从列表中插入到一棵树中，它可以递归地定义如下：
+
+\[
+\begin{array}{rcl}
+fromList([\ ]) & = & \nil \\
+fromList(X) & = & insert(fromList(X'), x_1) \\
+\end{array}
+\]
+
+如果列表为空，则产生的树也是空；否则它把第一个元素$x_1$插入树中，然后递归地插入剩余元素$X' = [x_2, x_3, ..., x_n]$。通过使用列表叠加\cite{wiki-fold}（详见附录A.6），我们也可以将$fromList$定义为：
 
 \be
-  fromList(X)= foldL(insert, \phi, X)
+  fromList(X)= \fold_l(insert, \nil, X)
 \ee
 
-这一表达也可以写成部分应用（partial application）的形式\footnote{亦称为柯里化形式（Curried form），借此来纪念数学家和逻辑学家Haskell Curry。}。
+我们也可以进一步把它简写为柯里化的形式\cite{curry}（也称为部分应用）从而省略掉参数$X$：
 
 \[
-  fromList = foldL \quad insert \quad \phi
+  fromList = \fold_l\ insert\ \nil
 \]
-
-对于不熟悉从左侧进行fold的读者，这一函数也可以递归地定义如下：
-
-\[
-fromList(X) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & X = \phi \\
-  insert(fromList(\{x_2, x_3, ..., x_n\}), x_1) & otherwise
-  \end{array}
-\right .
-\]
-
-我们将会大量使用fold、函数组合和部分（parital）求值的概念。读者可以参考本书的附录A或其他参考资料，如\cite{wiki-fold}、\cite{func-composition}以及\cite{curry}。
 
 \begin{Exercise}
-
+\Question{给定如下前序遍历和中序遍历的结果，请重建出二叉树，并给出后序遍历的结果。
 \begin{itemize}
-\item 给定如下前序遍历和中序遍历的结果，请重建出二叉树，并给出后序遍历的结果。
-\begin{itemize}
-\item 前序遍历结果：1, 2, 4, 3, 5, 6；
-\item 中序遍历结果：4, 2, 1, 5, 3, 6；
+\item 前序遍历结果：1, 2, 4, 3, 5, 6
+\item 中序遍历结果：4, 2, 1, 5, 3, 6
 \item 后序遍历结果：？
-\end{itemize}
 \index{重建树}
+}
 
-\item 归纳前一题的规律，编程实现从前序遍历和中序遍历的结果重建二叉树。
+\Question{归纳前一题的规律，编程实现从前序遍历和中序遍历的结果重建二叉树。}
 
-\item 证明对二叉搜索树进行中序遍历可以将全部元素按照从小到大的顺序输出。
+\Questiohn{证明对二叉搜索树进行中序遍历可以将全部元素按照从小到大的顺序输出。}
 
-\item 使用Big-O分析树排序的算法复杂度。
-\end{itemize}
+\Question{对于$n$个元素，树排序的算法复杂度是什么？}
 \end{Exercise}
 
 % ================================================================
@@ -365,48 +307,48 @@ fromList(X) = \left \{
 \index{二叉搜索树!搜索}
 \index{二叉搜索树!查找}
 
-二叉搜索树有三种不同的搜索：在树中查找一个key（亦称lookup）；查找最大或最小的元素；以及查找给定元素的上一个（predecessor）或下一个（successor）元素。
+由于二叉搜索树中的元素是按序递归存储的，它可以方便地支持各种搜索。这也是人们将其命名为“搜索树”的原因。有三种不同类型的搜索：1）在树中查找一个键；2）寻找最大或最小元素；3）查找某一元素的前驱（上一个）或后继（下一个）元素。
 
-\subsection{lookup}
-二叉搜索树的定义使得它非常适合进行元素的查找。可以按照下面描述的方法在树中查找一个key：
+\subsection{查找}
+二叉搜索树的定义使得它非常适合自顶向下的查找。可以按照下面的方法在树中查找元素$k$：
 
 \begin{itemize}
-\item 如果树为空，查找失败；
-\item 如果根节点的key等于待查找的值，查找成功，返回根节点作为结果；
-\item 如果待查找的值小于根节点的key，继续在左子树中递归查找；
-\item 否则，待查找的值大于根节点的key，继续在右子树中递归查找。
+\item 如果树为空，结束查找，$k$不存在；
+\item 如果根节点元素等于$k$，结束查找。结果存储在根节点中；
+\item 如果$k$小于根节点元素，在左子树中递归查找；
+\item 否则，在右子树中递归查找。
 \end{itemize}
 
-这一算法可以定义为下面的递归函数，其中$T_l$，$T_r$和$k$分别为非空二叉树的左右子树和key。
+我们可以定义递归的$lookup$函数来实现这一算法：
 
 \be
-lookup(T, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & T = \phi \\
-  T & k = x \\
-  lookup(T_l, x) & x < k \\
-  lookup(T_r, x) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+lookup(\nil, x) & = & \nil \\
+lookup(Node(T_l, k, T_r), x) & = & \begin{cases}
+  k = x: & T \\
+  x < k: & lookup(T_l, x) \\
+  otherwise: & lookup(T_r, x) \\
+  \end{cases}
+\end{array}
 \ee
 
-在实际应用中，我们也可以返回这一key对应的数据（satellite data）而不是整个节点。这一算法简单直观，可以直接翻译为下面的Haskell例子程序。
+这一函数返回查找到的节点，如果没有找到就返回空。我们也可以返回节点内存储的值。这时可以使用$Maybe$类型（也叫作\texttt{Optional<T>}）来处理未找到的情况。例如：
 
-\begin{lstlisting}[style=Haskell]
-lookup Empty _ = Empty
-lookup t@(Node l k r) x | k == x = t
+\begin{Haskell}
+lookup Empty _ = Nothing
+lookup t@(Node l k r) x | k == x = Just k
                         | x < k = lookup l x
                         | otherwise = lookup r x
-\end{lstlisting}
+\end{Haskell}
 
-如果二叉树很平衡，绝大多数节点都有非空的左右分支，对于$n$个元素的二叉树，搜索算法的性能为$O(\lg n)$。我们将在红黑树一章给出平衡的正式定义。如果二叉树很不平衡，最坏情况下，查找的时间会退化到$O(n)$。如果记树的高度为$h$，则算法的性能可以统一成$O(h)$的形式。
 
-搜索算法也可以不使用递归来实现。
+如果二叉树很平衡，大多数中间节点都有非空的左右分支（我们将在第三章给出平衡的定义），对于$n$个元素的二叉树，搜索算法的性能为$O(\lg n)$。如果二叉树很不平衡，最坏情况下，查找的时间会退化到$O(n)$。如果记树的高度为$h$，则查找算法的性能可以表示成$O(h)$的形式。
+
+搜索算法也可以不使用递归来实现：
 
 \begin{algorithmic}[1]
-\Function{Lookup}{$T, x$}
-  \While{$T \neq NIL \wedge$ \Call{Key}{$T$} $ \neq x$}
+\Function{Search}{$T, x$}
+  \While{$T \neq $ NIL and \Call{Key}{$T$} $ \neq x$}
     \If{$x <$ \Call{Key}{$T$}}
       \State $T \gets $ \Call{Left}{$T$}
     \Else
@@ -417,82 +359,58 @@ lookup t@(Node l k r) x | k == x = t
 \EndFunction
 \end{algorithmic}
 
-下面的C++程序实现了这一消除递归的算法。
+\subsection{最小和最大元素}
+\index{二叉搜索树!最小元素/最大元素}
 
-\lstset{language=C++}
+在二叉搜索树中，较小的元素总是位于左侧分支，而较大的元素总是位于右侧分支。可以利用这一特性来定位最大和最小元素。为了找到最小元素，我们可以不断向左侧前进，直到左侧分支为空。对称地，我们可以通过不断向右侧前进找到最大元素。
+
+\be
+\begin{array}{rcl}
+min(Node(\nil, k, T_r)) & = & k \\
+min(Node(T_l, k, T_r)) & = & min(T_l) \\
+\end{array}
+\ee
+
+\be
+\begin{array}{rcl}
+max(Node(T_l, k, \nil)) & = & k \\
+max(Node(T_l, k, T_r)) & = & max(T_r) \\
+\end{array}
+\ee
+
+这两个函数的性能都是$O(h)$，其中$h$是树的高度。
+
+\subsection{前驱和后继}
+\index{二叉搜索树!前驱/后继}
+
+有时需要把二叉搜索树当作通用容器，使用迭代器进行遍历。例如从最小的元素开始，逐一向前移动到最大元素，或者按需先后移动。下面的例子程序升序输出树中的元素：
+
+\lstset{language=Bourbaki}
 \begin{lstlisting}
-template<class T>
-node<T>* lookup(node<T>* t, T x) {
-    while (t && t->key != x) {
-        if (x < t->key) t = t->left;
-        else t = t->right;
+void printTree (Node<T> t) {
+    for (var it = Iterator(t), it.hasNext(); it = it.next()) {
+        print(it.get(), ", ");
     }
-    return t;
 }
 \end{lstlisting}
 
-\subsection{最小元素和最大元素}
-\index{二叉搜索树!最小元素/最大元素}
-
-在二叉搜索树中，较小的元素总是位于左侧分支，而较大的元素总是位于右侧分支。可以利用这一特性来获取最大元素和最小元素。
-
-为了获取最小元素，我们可以不断向左侧前进，直到左侧分支为空。类似地，我们可以通过不断向右侧前进获取最大元素。
-
-\be
-min(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  k & T_l = \phi \\
-  min(T_l) & otherwise
-  \end{array}
-\right .
-\ee
-
-\be
-max(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  k & T_r = \phi \\
-  max(T_r) & otherwise
-  \end{array}
-\right .
-\ee
-
-这两个函数的性能都是$O(h)$，其中$h$是树的高度。当二叉树比较平衡时，$min$和$max$的性能为$O(\lg n)$，最坏情况下，性能退化为$O(n)$。
-
-为了节省篇幅，我们没有给出相应的例子程序。同样，它们也可以不使用递归而纯用循环来实现。
-
-\subsection{前驱（Successor）和后继（predecessor）}
-\index{二叉搜索树!前驱/后继}
-
-有些情况下，需要把二叉搜索树当作通用容器，使用迭代器（iterator）进行遍历。这就需要查找一个给定元素的前驱（上一个）或后继（下一个）元素。为了方便实现，我们需要每个节点都存储它的父节点。
-
-很难找到简单的函数式算法来寻找前驱和后继元素。这主要是因为在纯函数的环境下，没有办法使用像指针这样的概念来引用父节点\footnote{ML或OCaml语言中有\texttt{ref}（引用）概念，但是这里我们讨论纯函数式的情况。}。一种折衷的方案是在遍历树的时候，留下一些“面包屑”作为标记。它们将来可以用来回溯甚至重建整个树。这种同时包含树和“面包屑”信息的数据结构称为zipper。读者可以参考\cite{learn-haskell}的最后一章。
-
-但是，如果仔细考虑查找前驱和后继元素的初衷：“作为一个通用容器，遍历二叉搜索树中的全部元素”，我们就会意识到，在纯函数的环境中，根本不需要查找前驱和后继。因为我们可以用前面定义的$map$函数，按照升序遍历所有元素。
-
-在后继章节中，我们还会遇到很多仅在命令式环境中才有的问题。它们在纯函数环境中没有意义，或者根本就不是一个问题。如何在红黑树中删除一个元素就是一个典型例子\cite{okasaki-blog}。
-
-本节中，我们只介绍如何在二叉搜索树中查找前驱和后继元素的命令式算法。
+这就需要查找一个给定节点的前驱或后继元素。$x$的后继定义为全部满足$x < y$中的最小的一个$y$。如果$x$的右子树不为空，则右子树中的最小值就是后继。图\ref{fig:bst-succ}中8的后继元素为9，它是8的右子树中的最小值。如果$x$的右子树为空，我们需要向上回溯，找到最近的一个祖先，使得该祖先的左子树也是$x$的祖先。在图\ref{fig:bst-succ}中，元素2所在的节点没有右侧分支，我们向上回溯一步找到元素1，但是1没有左侧分支，因此需要继续向上查找，这次我们到达了元素3所在的节点。而3的左子树也是2的祖先。至此，我们找到了2的后继元素3。
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.45]{img/bst-1.ps}
-  \caption{查找后继元素：8的后继元素为其右侧分支中的最小值9；\\
-           为了获得2的后继元素，首先向上找到1，它没有左子树，所以继续向上找到3，3的左侧孩子同样是2的祖先，故而后继元素为3。} \label{fig:bst-succ}
+  \caption{8的后继为其右侧分支的最小值9；为了获得2的后继，首先向上找到1，它没有左子树，所以继续向上找到3，3的左子树也是2的祖先，故而后继为3。} \label{fig:bst-succ}
 \end{figure}
 
-给定元素$x$，它的后继元素$y$是满足$y>x$的最小值。有两种情况：如果$x$所在的节点有一个非空的右子树，则右子树中的最小值就是答案。如图\ref{fig:bst-succ}所示，8的后继元素为9，它是元素8的右子树中的最小值。另外一种情况是，如果$x$没有非空的右子树，我们需要向上回溯，找到最近的一个祖先，使得该祖先的左侧孩子，也为$x$的祖先。如图\ref{fig:bst-succ}所示，元素2所在的节点没有右侧分支，我们向上回溯一步找到元素1，但是1没有左侧分支，因此需要继续向上查找，这次我们到达了元素3所在的节点。而3的左侧孩子，同样也是2的祖先。至此，我们找到了2的后继元素3。
-
-我们可以给出查找后继元素的算法如下：
+如果沿着父节点引用一直回溯到了根节点，但是仍然没有找到位于右侧的祖先，这说明$x$没有后继（它是树中最后一个元素）。下面的算法实现了后继的查找：
 
 \begin{algorithmic}[1]
 \Function{Succ}{$x$}
-  \If{\Call{Right}{$x$} $\neq NIL$}
+  \If{\Call{Right}{$x$} $\neq $ NIL}
     \State \Return \textproc{Min}(\Call{Right}{$x$})
   \Else
     \State $p \gets $ \Call{Parent}{$x$}
-    \While{$p \neq NIL$ and $x =$ \Call{Right}{$p$}}
+    \While{$p \neq $ NIL and $x =$ \Call{Right}{$p$}}
       \State $x \gets p$
       \State $p \gets $ \Call{Parent}{$p$}
     \EndWhile
@@ -501,15 +419,15 @@ max(T) = \left \{
 \EndFunction
 \end{algorithmic}
 
-当元素$x$没有后继元素时，这一算法返回空指针NIL。寻找前驱元素的算法非常类似，它和寻找后继元素的算法是对称的。
+当$x$没有后继时，这一算法返回NIL。寻找前驱元素的算法与此对称：
 
 \begin{algorithmic}[1]
 \Function{Pred}{$x$}
-  \If{\Call{Left}{$x$} $\neq NIL$}
+  \If{\Call{Left}{$x$} $\neq $ NIL}
     \State \Return \textproc{Max}(\Call{Left}{$x$})
   \Else
     \State $p \gets $ \Call{Parent}{$x$}
-    \While{$p \neq NIL$ and $x =$ \Call{Left}{$p$}}
+    \While{$p \neq $ NIL and $x =$ \Call{Left}{$p$}}
       \State $x \gets p$
       \State $p \gets $ \Call{Parent}{$p$}
     \EndWhile
@@ -518,40 +436,21 @@ max(T) = \left \{
 \EndFunction
 \end{algorithmic}
 
-下面的Python例子程序实现了前驱与后继元素的查找算法。
+似乎很难找到纯函数式算法实现前驱和后继的查找。这主要是因为在缺少指向父节点的引用\footnote{ML或OCaml中有\texttt{ref}引用概念，这里我们限于纯函数式环境。}。一种折衷的方案是在遍历树的时候，留下一些“面包屑”作为标记。用以将来回溯甚至重建整棵树。这种同时包含树和“面包屑”信息的数据结构称为zipper(\cite{learn-haskell}最后一章)。
 
-\lstset{language=Python}
-\begin{lstlisting}
-def succ(x):
-    if x.right is not None: return tree_min(x.right)
-    p = x.parent
-    while p is not None and p.left != x:
-        x = p
-        p = p.parent
-    return p
-
-def pred(x):
-    if x.left is not None: return tree_max(x.left)
-    p = x.parent
-    while p is not None and p.right != x:
-        x = p
-        p = p.parent
-    return p
-\end{lstlisting}
+查找前驱和后继的初衷是“作为一个通用容器，遍历树中的全部元素”。而在纯函数式环境中，我们通常用$map$函数中序遍历所有元素。前驱和后续的查找，仅在命令式环境中才有意义。另外一个这样仅在命令式环境中才有引起关注的例子是红黑树中元素的删除\cite{okasaki-blog}。
 
 \begin{Exercise}
 
-\begin{itemize}
-\item 如果将树作为一个通用容器，请使用\textproc{Pred}和\textproc{Succ}，来实现这个容器的迭代遍历(traverse with iterator)。这一遍历过程的算法复杂度是什么？
+\Question{使用\textproc{Pred}和\textproc{Succ}实现一个二叉搜索树的迭代器。用它遍历一棵含有$n$个元素的树的复杂度是什么？}
 
-\item 为了遍历一个区间$[a, b]$内的元素，在C++中，这一算法可用如下代码实现：
+\Question{下面程序可以遍历一个区间$[a, b]$内的元素：
 
 \texttt{for\_each (m.lower\_bound(12), m.upper\_bound(26), f);}
 
-您能找到纯函数式的方法来解决这一问题么？
+试用纯函数式的方法解决这一问题
 \index{区间遍历}
-\end{itemize}
-
+}
 \end{Exercise}
 
 % ================================================================
