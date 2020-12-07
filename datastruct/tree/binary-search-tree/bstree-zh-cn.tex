@@ -94,7 +94,7 @@ $ cat bbe.txt | ./wordcount > wc.txt
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[scale=0.5]{img/bst-1.ps}
+  \includegraphics[scale=0.4]{img/bst-1.ps}
   \caption{二叉搜索树的例子} \label{fig:bst-example}
 \end{figure}
 
@@ -109,7 +109,7 @@ $ cat bbe.txt | ./wordcount > wc.txt
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[scale=0.8]{img/node-layout-parent.ps}
+  \includegraphics[scale=0.7]{img/node-layout-parent.ps}
   \caption{带有父节点引用的数据组织} \label{fig:node-layout-parent}
 \end{figure}
 
@@ -290,12 +290,13 @@ fromList(X) & = & insert(fromList(X'), x_1) \\
 \item 前序遍历结果：1, 2, 4, 3, 5, 6
 \item 中序遍历结果：4, 2, 1, 5, 3, 6
 \item 后序遍历结果：？
+\end{itemize}
 \index{重建树}
 }
 
 \Question{归纳前一题的规律，编程实现从前序遍历和中序遍历的结果重建二叉树。}
 
-\Questiohn{证明对二叉搜索树进行中序遍历可以将全部元素按照从小到大的顺序输出。}
+\Question{证明对二叉搜索树进行中序遍历可以将全部元素按照从小到大的顺序输出。}
 
 \Question{对于$n$个元素，树排序的算法复杂度是什么？}
 \end{Exercise}
@@ -458,28 +459,22 @@ void printTree (Node<T> t) {
 % ================================================================
 \section{删除}
 \index{二叉搜索树!删除}
-二叉搜索树中，删除也是一个仅在命令式环境下有意义的问题。这是因为删除操作会改变树的结构，而在纯函数的环境中，树一旦构建完成，其结构都不会再改变。
+在二叉搜索树中删除元素需要额外的处理。我们必须保证删除后树的有序性质不能被破坏：对于任何节点，所有左侧分支的元素仍然小于节点中的元素，并且所有右侧分支的元素仍然大于节点中的元素。而删除节点会破坏这一性质。
 
-本节展示的纯函数式的删除方法本质上并没有改变树，而是重建了一棵新的树。
-
-删除操作是二叉搜索树中最复杂的操作。这是因为，我们必须保证删除后二叉搜索树的属性不能被破坏。也就是说，对于任何节点，所有左侧分支的元素仍然小于节点的key，而所有右侧分支的元素仍然大于节点的key。不做任何额外处理的删除会破坏这一性质。
-
-本书采用的删除算法和一些教科书(\cite{CLRS}第262-264页)中的不同，我们采用了SGI STL中的一种简单实现\cite{sgi-stl}。
-
-从二叉搜索树中删除节点$x$的方法如下：
+从二叉搜索树中删除节点$x$的方法如下\cite{sgi-stl}：
 \begin{itemize}
-\item 如果$x$没有子节点，或者只有一个孩子，直接将$x$“切下”；
-\item 否则，$x$有两个孩子，我们用其右子树中的最小值替换掉$x$，然后将右子树中的这一最小值“切掉”。
+\item 如果$x$没有非空子树（叶子）或者只有一棵非空子树，直接将$x$“切下”；
+\item 否则，$x$有棵非空子树，我们用其右子树中的最小值$y$替换掉$x$，然后将原先的$y$“切掉”。
 \end{itemize}
 
-这一简洁的算法使用了这样一条特性：右子树中的最小值节点不可能有两个非空的孩子。所以上面的第二种情形简化为第一种情况，因而可以直接将最小值节点“切掉”。
+这一简洁的方法利用了这样一条特性：右子树中的最小值不可能有两个非空子树。所以上面的第二种情形转化为第一种情况，因而可以直接将原最小值节点“切掉”。
 
-图\ref{fig:del-leaf}、\ref{fig:del-1child}和\ref{fig:del-branch}描述了删除节点时的各种情况。
+图\ref{fig:del-leaf}、\ref{fig:del-1child}、\ref{fig:del-branch}描述了删除时的各种情况。
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.5]{img/del-leaf.ps}
-  \caption{对于叶子节点，可以直接将$x$“切下”} \label{fig:del-leaf}
+  \caption{叶子节点$x$可以直接“切下”} \label{fig:del-leaf}
 \end{figure}
 
 \begin{figure}[htbp]
@@ -500,83 +495,76 @@ void printTree (Node<T> t) {
   \label{fig:del-branch}
 \end{figure}
 
-根据这个思路，删除操作可以定义为下面的函数。
+根据这个思路，我们定义下面的$delete$函数:
 
 \be
-delete(T, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & T = \phi \\
-  node(delete(T_l, x), k, T_r) & x < k \\
-  node(T_l, k, delete(T_r, x)) & x > k \\
-  T_r & x = k \land T_l = \phi \\
-  T_l & x = k \land T_r = \phi \\
-  node(T_l, y, delete(T_r, y)) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+delete(\nil, x) & = & \nil\\
+delete(Node(T_l, k, T_r), x) & = & \begin{cases}
+  x < k: & Node(delete(T_l, x), k, T_r) \\
+  x > k: & Node(T_l, k, delete(T_r, x)) \\
+  x = k: & del(T_l, T_r) \\
+\end{cases}
+\end{array}
 \ee
 
-其中，$T_l$, $T_r$, $k$分别是当$T$非空时的左右子树和key：
-\[
-\begin{array}{l}
-T_l = left(T) \\
-T_r = right(T) \\
-k = key(T) \\
-y = min(T_r)
+算法先通过序关系找到待删除节点，然后调用$del$函数处理，$del$会根据情况递归调用$delete$以删除右子树中的最小值。
+
+\be
+\begin{array}{rcl}
+del(\nil, T_r) & = & T_r \\
+del(T_l, \nil) & = & T_l \\
+del(T_l, T_r) & = & Node(T_l, y, delete(T_r, y)) \\
 \end{array}
-\]
+\ee
 
-这一函数可以翻译为下面的Haskell例子程序。
+其中$y = min(T_r)$是右子树中的最小元素。下面是相应的例子程序：
 
-\begin{lstlisting}[style=Haskell]
+\begin{Haskell}
 delete Empty _ = Empty
-delete (Node l k r) x | x < k = (Node (delete l x) k r)
-                      | x > k = (Node l k (delete r x))
-                      -- x == k
-                      | isEmpty l = r
-                      | isEmpty r = l
-                      | otherwise = (Node l k' (delete r k'))
-                          where k' = min r
-\end{lstlisting}
+delete (Node l k r) x | x < k = Node (delete l x) k r
+                      | x > k = Node l k (delete r x)
+                      | otherwise = del l r
+  where
+    del Empty r = r
+    del l Empty = l
+    del l r = let k' = min r in Node l k' (delete r k')
+\end{Haskell}
 
-函数\texttt{isEmpty}用来判断一棵树是否为空（$\phi$）。这一算法首先进行查找以定位到要删除的节点，然后执行删除操作。如果树的高度为$h$，则算法的复杂度为$O(h)$。
-
-当然也可以直接传入待删除的节点，而不是key。这样就不需要先查找而可以直接进行删除。
-
-命令式的删除算法相对更复杂一些。这是因为我们需要在删除后，把父节点（指针或引用）设置正确。下面的算法返回删除后的树。
+如果树的高度为$h$，则删除算法的复杂度为$O(h)$。命令式算法需要在删除后，把父节点设置正确。下面的算法返回删除后树的根节点。
 
 \begin{algorithmic}[1]
 \Function{Delete}{$T, x$}
   \State $r \gets T$
-  \State $x' \gets x$ \Comment{保存$x$}
+  \State $x' \gets x$ \Comment{save $x$}
   \State $p \gets $ \Call{Parent}{$x$}
-  \If{\Call{Left}{$x$} $= NIL$}
+  \If{\Call{Left}{$x$} $= $ NIL}
     \State $x \gets $ \Call{Right}{$x$}
-  \ElsIf{\Call{Right}{$x$} $= NIL$}
+  \ElsIf{\Call{Right}{$x$} $= $ NIL}
     \State $x \gets $ \Call{Left}{$x$}
   \Else
-    \Comment{两棵子树都不为空}
+    \Comment{neither children is empty}
     \State  $y \gets $ \textproc{Min}(\Call{Right}{$x$})
     \State \Call{Key}{$x$} $\gets$ \Call{Key}{$y$}
     \State Copy other satellite data from $y$ to $x$
     \If{\Call{Parent}{$y$} $\neq x$}
-      \Comment{$y$没有左子树}
+      \Comment{$y$ does not have left sub-tree}
       \State \textproc{Left}(\Call{Parent}{$y$}) $\gets$ \Call{Right}{$y$}
     \Else
-      \Comment{$y$是$x$的右子树的根节点}
+      \Comment{$y$ is the root of the right sub-tree}
       \State \Call{Right}{$x$} $\gets$ \Call{Right}{$y$}
     \EndIf
-    \If{\Call{Right}{$y$} $\neq NIL$}
+    \If{\Call{Right}{$y$} $\neq $ NIL}
       \State \textproc{Parent}(\Call{Right}{$y$}) $\gets$ \Call{Parent}{$y$}
     \EndIf
     \State Remove $y$
     \State \Return $r$
   \EndIf
-  \If{$x \neq NIL$}
+  \If{$x \neq $ NIL}
     \State \Call{Parent}{$x$} $\gets p$
   \EndIf
-  \If{$p = NIL$}
-    \Comment{删除树的根节点}
+  \If{$p = $ NIL}
+    \Comment{remove the root}
     \State $r \gets x$
   \Else
     \If{\Call{Left}{$p$} $= x'$}
@@ -590,71 +578,24 @@ delete (Node l k r) x | x < k = (Node (delete l x) k r)
 \EndFunction
 \end{algorithmic}
 
-这里我们假定待删除的节点不为空（否则我们可以直接返回原先的树）。算法首先记录下树的根节点、待删除的节点和它的父节点。
+假定待删除的节点$x$不为空。算法首先记录下树的根节点、待删除的节点和它的父节点。如果$x$的任一分支为空，算法直接将$x$“切掉”。否则，如果两个子分支都不为空，我们需要先在右子树中找到最小值节点$y$。用$y$替换掉$x$中的值，同时将附加数据也替换过去。最后将原先的$y$“切掉”。我们还需要处理$y$是$x$右子树的根节点这一特殊情况。
 
-如果待删除节点的任一分支为空，算法直接将$x$“切掉”。否则，如果两个分支都不为空，我们需要先在右子树中找到最小值节点$y$。用这个最小值替换掉$x$中的值，同时将附加数据（satellite data）也替换过去。最后将$y$“切掉”。注意，这里有一个特殊的情况，就是$y$本身就是$x$右子树的根节点。
-
-我们还需要把之前保存的父节点重新设好。如果该父节点为空，则说明要删除的节点是根节点。这种情况下，我们需要返回新的根。最后，当父节点被设置好后，就可以把$x$从内存中删除了。
-
-下面的Python程序实现了删除算法，由于Python有垃圾回收（GC）的机制，因此无需显示地回收内存。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def tree_delete(t, x):
-    if x is None:
-        return t
-    [root, old_x, parent] = [t, x, x.parent]
-    if x.left is None:
-        x = x.right
-    elif x.right is None:
-        x = x.left
-    else:
-        y = tree_min(x.right)
-        x.key = y.key
-        if y.parent != x:
-            y.parent.left = y.right
-        else:
-            x.right = y.right
-        if y.right is not None:
-            y.right.parent = y.parent
-        return root
-    if x is not None:
-        x.parent = parent
-    if parent is None:
-        root = x
-    else:
-        if parent.left == old_x:
-            parent.left = x
-        else:
-            parent.right = x
-    return root
-\end{lstlisting}
-
-由于算法有可能搜索子树中的最小元素，因此对于高度为$h$的树，其复杂度为$O(h)$。
+此后还需要把之前保存的父节点重新设好。如果父节点为空，则说明要删除的节点是根节点。这种情况下，我们需要返回新的根。当父节点被设置好后，就可以安全把$x$删除了。对于高度为$h$的树，这一算法的复杂度也是$O(h)$。
 
 \begin{Exercise}
-
-\begin{itemize}
-\item 当节点的两个分支都不为空时，存在一种对称的删除算法：用左子树的最大值替换待删除的节点，然后将此最大值的节点“切下”。编程实现这一算法。
-\end{itemize}
-
+\Question{当节点的两个分支都不为空时，存在一种对称的删除算法：用左子树的最大值替换待删除的节点，然后将此最大值的节点“切下”。编程实现这一算法。}
 \end{Exercise}
 
-\section{随机构建二叉搜索树}
+\section{随机构建}
 \index{二叉搜索树!随机构建}
 
-本章给出的所有算法的复杂度都依赖于二叉树的高度$h$。如果树非常不平衡，$h$就会接近$O(n)$，因此$O(h)$退化为线性复杂度。反之，如果树很平衡，$h$接近$O(\lg n)$，我们给出的这些二叉树算法的性能就会很好。
+本章给出的所有算法的复杂度都依赖于树的高度$h$。如果树非常不平衡，$O(h)$就会接近$O(n)$，因而退化为线性复杂度。反之，如果树平衡，$O(h)$接近$O(\lg n)$，算法的性能就会很好。
 
-在接下来的章节中，我们会仔细讨论如何保证二叉搜索树的平衡性。但是这里可以给出一个简单的方法。如\cite{CLRS}（第265-268页）中所述，二叉搜索树可以通过随机构建来避免不平衡（严格地说是减小可能性）。也就是说，在我们构建二叉搜索树前，先通过随机函数打乱元素的次序，然后再依次把这些元素插入。
+第三、四章将介绍两种保证二叉搜索树的平衡的方法。这里我们先给出一个简单的方法（\cite{CLRS}第265-268页）：可以通过随机构建来减小不平衡性。也就是说，在构建二叉搜索树前，先通过随机函数打乱元素的次序，然后再依次插入。
 
 \begin{Exercise}
-
-\begin{itemize}
-\item 编程实现随机构建二叉搜索树。
-\item 请读者用自己实现的二叉搜索树来统计一篇文章中各个单词出现的次数。
-\item 如何在一棵二叉树中找到“距离最远”的两个节点？
-\end{itemize}
-
+\Question{编程实现随机构建二叉搜索树。}
+\Question{如何在一棵二叉树中找到“距离最远”的两个节点？}
 \end{Exercise}
 
 \section{附录：例子代码}
@@ -676,6 +617,104 @@ data Node<T> {
 }
 \end{lstlisting}
 
+不使用模式匹配的插入算法：
+
+\begin{lstlisting}
+Node<T> insert (Node<T> t, T x) {
+    if (t == null) {
+        return Node(null, x, null)
+    } else if (t.key < x) {
+        return Node(insert(t.left, x), t.key, t.right)
+    } else {
+        return Node(t.left, t.key, insert(t.right, x))
+    }
+}
+\end{lstlisting}
+
+消除递归的查找算法：
+
+\begin{lstlisting}
+Optional<Node<T>> lookup (Node<T> t, T x) {
+    while (t != null and t.key != x) {
+        if (x < t.key) {
+            t = t.left
+        } else {
+            t = t.right
+        }
+    }
+    return Optional(t);
+}
+\end{lstlisting}
+
+迭代寻找最小元素：
+
+\begin{lstlisting}
+Optional<Node<T>> min (Node<T> t) {
+    while (t != null and t.left != null) {
+        t = t.left
+    }
+    return Optional(t);
+}
+\end{lstlisting}
+
+寻找给定节点的后继：
+
+\begin{lstlisting}
+Optional<Node<T>> succ (Node<T> x) {
+    if (x == null) {
+        return Optional.None
+    } else if (x.right != null) {
+        return min(x.right)
+    } else {
+        p = x.parent
+        while (p != null and x == p.right) {
+            x = p
+            p = p.parent
+        }
+        return Optional(p);
+    }
+}
+\end{lstlisting}
+
+删除节点：
+
+\begin{lstlisting}
+Node<T> delete(Node<T> t, Node<T> x) {
+    if (x == null) {
+        return t
+    }
+    root, x0, parent = t, x, x.parent
+    if (x.left == null) {
+        x = x.right
+    } else if (x.right == null) {
+        x = x.left
+    } else {
+        y = min(x.right)
+        x.key = y.key
+        if (y.parent != x) {
+            y.parent.left = y.right
+        } else {
+            x.right = y.right
+        }
+        if (y.right != null) {
+            y.right.parent = y.parent
+        }
+        return root
+    if (x != null) {
+        x.parent = parent
+    }
+    if (parent == null) {
+        root = x
+    } else {
+        if (parent.left == x0) {
+            parent.left = x
+        } else {
+            parent.right = x
+        }
+    return root
+}
+\end{lstlisting}
+
 \ifx\wholebook\relax \else
 \begin{thebibliography}{99}
 
@@ -691,10 +730,6 @@ Chris Okasaki. ``Ten Years of Purely Functional Data Structures''. http://okasak
 
 \bibitem{sgi-stl}
 SGI. ``Standard Template Library Programmer's Guide''. http://www.sgi.com/tech/stl/
-
-% not available any more
-%\bibitem{literal-program}
-%http://en.literateprograms.org/Category:Binary\_search\_tree
 
 \bibitem{wiki-fold}
 http://en.wikipedia.org/wiki/Foldl
