@@ -66,7 +66,7 @@ Some environments have built-in implementation to test if an element is in a lis
 
 \lstset{language=Python, frame=single}
 \begin{lstlisting}
-def brute_force(lst):
+def minfree(lst):
     i = 0
     while True:
         if i not in lst:
@@ -74,13 +74,13 @@ def brute_force(lst):
         i = i + 1
 \end{lstlisting}
 
-However, when there are millions of numbers being used, this solution performs poor. The time spent is quadratic to the length of the list. In a computer with 2 cores of 2.10 GHz CPU, and 2G RAM, the C implementation takes 5.4 seconds to search the minimum free number among 100,000 numbers, and takes more than 8 minutes to handle a million numbers.
+However, when there are millions of numbers being used, this solution performs poor. The time spent is quadratic to the length of the list. In a computer with 2 cores of 2.10 GHz CPU, and 2G RAM, the C implementation takes 5.4s to search the minimum free number among 100,000 numbers, and takes more than 8 minutes to handle a million numbers.
 
 \subsection{Improvement}
-The key idea to improve the solution is based on the fact that, for $n$ numbers $x_1, x_2, ..., x_n$, if there exists free number, some $x_i$ must be outside the range $[0, n)$; otherwise the list is exactly some permutation of $0, 1, ..., n - 1$ hence $n$ should be returned as the minimum free number. Basically below relation holds:
+The key idea to improve the solution is based on the fact that, for $n$ numbers $x_1, x_2, ..., x_n$, if there exists free number, some $x_i$ must be outside the range $[0, n)$; otherwise the list is exactly some permutation of $0, 1, ..., n - 1$ hence $n$ should be returned as the minimum free number. In summary:
 
 \be
-minfree(x_1, x_2, ..., x_n) \leq n
+\textit{minfree}(x_1, x_2, ..., x_n) \leq n
 \label{min-free}
 \ee
 
@@ -88,7 +88,7 @@ A better solution is to use an array of $n + 1$ flags to mark whether a number i
 
 \begin{algorithmic}[1]
 \Function{Min-Free}{$A$}
-  \State $F \gets [False, False, ..., False]$ where $|F| = n+1$
+  \State $F \gets $[False, False, ..., False] where $|F| = n+1$
   \For{$\forall x \in A$}
     \If{$x < n$}
       \State $F[x] \gets$ True
@@ -102,144 +102,81 @@ A better solution is to use an array of $n + 1$ flags to mark whether a number i
 \EndFunction
 \end{algorithmic}
 
-Line 2 initializes a flag array all of False values. Then we scan all numbers in $A$ and mark the corresponding flag to True if the value is less than $n$. Finally, we iterate to find the first False flag. This program takes time proportion to $n$. It uses $n + 1$ flags to cover the special case that $sorted(A) = [0, 1, 2, ..., n-1]$.
+Line 2 initializes a flag array all of False values. Then we scan all numbers in $A$ and mark the corresponding flag to True if the value is less than $n$. Finally, we iterate to find the first False flag. This program takes time proportion to $n$. It uses $n + 1$ flags to cover the special case that $sorted(A) = [0, 1, 2, ..., n-1]$. This solution is much faster than the brute force one. In the same computer, the Python implementation takes 0.02s when dealing with 100,000 numbers.
 
-Although the algorithm only takes $O(n)$ time, it needs extra
-$O(n)$ spaces to store the flags.
+Although this solution only takes $O(n)$ time, it needs additional $O(n)$ space to store the flags. We haven't tuned it yet. Each time the program allocates memory to create an array of $n + 1$ flags, then releases it when finish. Such memory allocation and release is expensive and cost a lot of processing time.
 
-This solution is much faster than the brute force one. On my
-computer, the relevant Python program takes
-an average of 0.02 second when dealing with 100,000 numbers.
+To improve it, we can allocate the memory in advance for later reusing, and change to bit-wise flags instead of array. For example as the following C program:
 
-We haven't fine tuned this algorithm yet. Observe that each time
-we have to allocate memory to create a $n+1$ elements array of
-flags, and release the memory when finished.
-The memory allocation and release is very
-expensive thus they cost us a lot of processing time.
-
-There are two ways in which we can improve on
-this solution. One is to allocate the flags array in advance
-and reuse it for all the calls of our function to find the smallest free
-number. The other is to use bit-wise flags instead of a flag
-array. The following is the C program based on these two
-minor improvements.
-
-\lstset{language = C}
-\begin{lstlisting}
-#define N 1000000 // 1 million
+\begin{lstlisting}[language=C]
+#define N 1000000
 #define WORD_LENGTH (sizeof(int) * 8)
 
-void setbit(unsigned int* bits, unsigned int i){
-  bits[i / WORD_LENGTH] |= 1<<(i % WORD_LENGTH);
+void setbit(unsigned int* bits, unsigned int i) {
+    bits[i / WORD_LENGTH] |= 1 << (i % WORD_LENGTH);
 }
 
-int testbit(unsigned int* bits, unsigned int i){
-  return bits[i/WORD_LENGTH] & (1<<(i % WORD_LENGTH));
+int testbit(unsigned int* bits, unsigned int i) {
+    return bits[i / WORD_LENGTH] & (1 << (i % WORD_LENGTH));
 }
 
-unsigned int bits[N/WORD_LENGTH+1];
+unsigned int bits[N / WORD_LENGTH + 1];
 
-int min_free(int* xs, int n){
-  int i, len = N/WORD_LENGTH+1;
-  for(i=0; i<len; ++i)
-    bits[i]=0;
-  for(i=0; i<n; ++i)
-    if(xs[i]<n)
-      setbit(bits, xs[i]);
-  for(i=0; i<=n; ++i)
-    if(!testbit(bits, i))
-      return i;
+int minfree(int* xs, int n) {
+  int i, len = N/WORD_LENGTH + 1;
+  for (i = 0; i < len; ++i) {
+      bits[i]=0;
+  }
+  for (i=0; i < n; ++i) {
+      if(xs[i] < n) {
+          setbit(bits, xs[i]);
+      }
+  }
+  for (i=0; i <= n; ++i) {
+      if (!testbit(bits, i)) {
+          return i;
+      }
+  }
 }
 \end{lstlisting}
 
-This C program can handle 1,000,000 (1 million) IDs in just 0.023 second
-on my computer.
+This program can handle 1 million numbers in 0.023s in the same computer.
 
-The last for-loop can be further improved as seen below but this is just minor
-fine-tuning.
+\subsection{Divide and Conquer}
+The above improvement costs $O(n)$ additional space for flags, can we eliminate it? The divide and conquer strategy is to break the problem into smaller ones, then solve them separately to get the answer.
 
-\begin{lstlisting}
-  for(i=0; ; ++i)
-    if(~bits[i] !=0 )
-      for(j=0; ; ++j)
-	if(!testbit(bits, i*WORD_LENGTH+j))
-	  return i*WORD_LENGTH+j;
-\end{lstlisting}
+We can put numbers $x_i \leq \lfloor n/2 \rfloor$ into a sub-list $A'$ and put the rest into another sub-list $A''$. According to (\ref{min-free}), if the length of $A'$ equals to $\lfloor n/2 \rfloor$, it means $A'$ is `full'. The minimum free number must be in $A''$. We can recursively search in $A''$ which is shorter the original list. Otherwise, it means the minimum free number is in $A'$, which again leads to a smaller problem.
 
-\subsection{Improvement 2, Divide and Conquer}
-Although the above improvement is much faster, it costs $O(n)$ extra
-spaces to keep a check list. if $n$ is huge number this means
-a huge amount of space is wasted.
-
-The typical divide and conquer strategy is to break the problem
-into some smaller ones, and solve these to get the final answer.
-
-We can put all numbers $x_i \leq \lfloor n/2 \rfloor$ as a sub-list $A'$ and put all the others as
-a second sub-list $A''$. Based on formula \ref{min-free} if the length of $A'$ is exactly $\lfloor n/2 \rfloor$, this means
-the first half of numbers are `full', which indicates that the
-minimum free number must be in $A''$ and so we'll need to recursively seek
-in the shorter list $A''$. Otherwise, it means the minimum free
-number is located in $A'$, which again leads to a smaller problem.
-
-When we search the minimum free number in $A''$, the conditions changes
-a little bit, we are not searching the smallest free number starting from
-$0$, but actually from $\lfloor n/2 \rfloor + 1$ as the lower bound.
-So the algorithm is something like $minfree(A, l, u)$, where $l$ is
-the lower bound and $u$ is the upper bound index of the element.
-
-Note that there is a trivial case, that if the number list is
-empty, we merely return the lower bound as the result.
-
-This divide and conquer solution can be formally expressed
-as a function :
+When search in $A''$, the conditions change a bit. We do not start from $0$, but from $\lfloor n/2 \rfloor + 1$ as the new lower bound. We define the algorithm as $search(A, l, u)$, where $l$ is
+the lower bound and $u$ is the upper bound index. For the empty list as a special case, we return the $l$ as the result.
 
 \[
 minfree(A) = search(A, 0, |A|-1)
 \]
 
 \[
-search(A, l, u) = \left \{
-       \begin{array}
-       {r@{\quad:\quad}l}
-       l & A = \phi \\
-       search(A'', m+1, u) &  |A'| = m - l + 1 \\
-       search(A',  l, m) & otherwise
-       \end{array}
-\right.
+\begin{array}{rcl}
+search(\nil, l, u) & = & l \\
+search(A, l, u) & = & \begin{cases}
+       |A'| = m - l + 1 & search(A'', m+1, u) \\
+       otherwise & search(A',  l, m) \\
+\end{cases}
+\end{array}
 \]
 
 where
-%TODO: Add reference to appendix for notation.
 
-\[ \begin{array}{l}
-m = \displaystyle \lfloor \frac{l+u}{2} \rfloor \\
-A'  = \{ \forall x \in A \wedge x \leq m \} \\
-A'' = \{ \forall x \in A \wedge x > m \} \\
+\[ \begin{array}{rcl}
+m & = & \displaystyle \lfloor \frac{l+u}{2} \rfloor \\
+A' & = & \{ x | x \in A, x \leq m \} \\
+A''& = & \{ x | x \in A, x > m \} \\
 \end{array} \]
 
-It is obvious that this algorithm doesn't need any extra
-space\footnote{Procedural programmer may note that it
-actually takes $O(\lg n)$ stack spaces for book-keeping. As
-we'll see later, this can be eliminated either by tail
-recursion optimization, for instance gcc -O2. or by manually
-changing the recursion to iteration}. Each call
-performs $O(|A|)$ comparison to build $A'$ and $A''$.
-After that the problem scale halves.
-So the time needed for this algorithm is $T(n) = T(n/2) + O(n)$
-which reduce to $O(n)$. Another way to analyze the performance
-is by observing that the first call takes $O(n)$
-to build $A'$ and $A''$ and the second call takes
-$O(n/2)$, and $O(n/4)$ for the third... The total
-time is $O(n + n/2 + n/4 + ...) = O(2n) = O(n)$ .
+This algorithm doesn't need additional space\footnote{The recursion takes $O(\lg n)$ stack spaces, but it can be eliminated through tail recursion optimization}. Each recursive call performs $O(|A|)$ comparisons to build $A'$ and $A''$. After that the problem scale halves. Therefore, the time is bound to $T(n) = T(n/2) + O(n)$, which reduce to $O(n)$ according to master theorem. Alternatively, observe that the first call takes $O(n)$ to build $A'$ and $A''$ and the second call takes $O(n/2)$, and $O(n/4)$ for the third... The total time is $O(n + n/2 + n/4 + ...) = O(2n) = O(n)$.
 
-In functional programming languages such as Haskell,
-partitioning a list has already been provided in the basic library
-and this algorithm can be translated as the following.
+Below example Haskell program implements this algorithm.
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-import Data.List
-
+\begin{Haskell}
 minFree xs = bsearch xs 0 (length xs - 1)
 
 bsearch xs l u | xs == [] = l
@@ -248,55 +185,38 @@ bsearch xs l u | xs == [] = l
     where
       m = (l + u) `div` 2
       (as, bs) = partition (<=m) xs
-\end{lstlisting}
+\end{Haskell}
 
-\subsection{Expressiveness vs. Performance}
-Imperative language programmers may be concerned about the performance
-of this kind of implementation. For instance in this minimum
-free ID problem, the number of recursive calls is in $O(\lg n)$
-, which means the stack size consumed is in $O(\lg n)$.
-It's not free in terms of space. But if we want to avoid that
-, we can eliminate the recursion by replacing it by an iteration
-\footnote{This is done automatically in most functional languages
-since our function is in tail recursive form which lends itself
-perfectly to this transformation} which yields the following C program.
+\subsection{Expressiveness and performance}
+One may concern the performance of this divide and conquer algorithm. There are $O(\lg n)$ recursive calls, which need additional stack space. If wanted, we can eliminate the recursion:
 
-\lstset{language=C}
-\begin{lstlisting}
-int min_free(int* xs, int n){
-  int l=0;
-  int u=n-1;
-  while(n){
-    int m = (l + u) / 2;
-    int right, left = 0;
-    for(right = 0; right < n; ++ right)
-      if(xs[right] <= m){
-	swap(xs[left], xs[right]);
-	++left;
-      }
-    if(left == m - l + 1){
-      xs = xs + left;
-      n  = n - left;
-      l  = m+1;
-    }
-    else{
-      n = left;
-      u = m;
-    }
-  }
-  return l;
-}
-\end{lstlisting}
+\begin{algorithmic}[1]
+\Function{Min-Free}{$A$}
+  \State $l \gets 0, u \gets |A|$
+  \While{$u - l > 0$}
+    \State $m \gets l + \dfrac{u - l}{2}$
+    \State $left \gets l$
+    \For{$right \gets l$ to $u - 1$}
+      \If{$A[right] \leq m$}
+        \State $A[left] \leftrightarrow A[right]$
+        \State $left \gets left + 1$
+      \EndIf
+    \EndFor
+    \If{$left < m + 1$}
+      \State $u \gets left$
+    \Else
+      \State $l \gets left$
+    \EndIf
+  \EndWhile
+\EndFunction
+\end{algorithmic}
 
-This program uses a `quick-sort' like approach to re-arrange the
-array so that all the elements before $left$ are less than or equal
-to $m$; while those between $left$ and $right$ are greater
-than $m$. This is shown in figure \ref{fig:divide}.
+As shown in figure \ref{fig:divide}, this program re-arranges the array such that all elements before $left$ are less than or equal to $m$; while those between $left$ and $right$ are greater than $m$.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=1]{img/divide-by-m.ps}
-  \caption{Divide the array, all $x[i] \leq m$ where $0 \leq i < left$; while all $x[i] > m$ where $left \leq i < right$. The left elements are unknown.} \label{fig:divide}
+  \caption{Divide the array, all $A[i] \leq m$ where $0 \leq i < left$; while all $A[i] > m$ where $left \leq i < right$. The left elements are unknown.} \label{fig:divide}
 \end{figure}
 
 This program is fast and it doesn't need extra stack space. However,
