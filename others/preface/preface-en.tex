@@ -221,106 +221,65 @@ As shown in figure \ref{fig:divide}, this program re-arranges the array such tha
 
 This solution is fast and needn't extra stack space. However, compare to the previous recursive one, there is some expressiveness drops. Depends on individual taste, one may prefer one over the other.
 
-\section{The number puzzle, power of data structure}
+\section{Regular number}
 
-If the first problem, to find the minimum free number, is a some what
-useful in practice, this problem is a `pure' one for fun. The puzzle
-is to find the 1,500th number, which only contains factor 2, 3 or 5.
-The first 3 numbers are of course 2, 3, and 5. Number $60 = 2^23^15^1$,
-However it is the 25th number. Number $21 = 2^03^17^1$, isn't a valid
-number because it contains a factor 7. The first 10 such numbers are list
-as the following.
+The second puzzle is to find the 1,500-th number, which only contains factor 2, 3 or 5. Such numbers are called regular number, also known as 5-smooth indicating the greatest prime factor is at most 5, or Hamming numbers named after Richard Hamming in computer science. 2, 3, and 5 are of course regular numbers. $60 = 2^23^15^1$ is the 25-th number. $21 = 2^03^17^1$ is not valid because it has a factor 7. We consider $1=2^03^05^0$ be the 0-th regular number. The first 10 regular numbers are:
 
-2,3,4,5,6,8,9,10,12,15
-
-If we consider $1=2^03^05^0$, then 1 is also a valid number and it is
-the first one.
+1, 2, 3, 4, 5, 6, 8, 9, 10, 12, ...
 
 \subsection{The brute-force solution}
-It seems the solution is quite easy without need any serious algorithms.
-We can check all numbers from 1, then extract all factors of 2, 3 and 5
-to see if the left part is 1.
+The straightforward way is to check numbers one by one from 1, extract all factors of 2, 3 and 5 to see if the left part is 1:
 
 \begin{algorithmic}[1]
-\Function{Get-Number}{$n$}
+\Function{Regular-Number}{$n$}
   \State $x \gets 1$
-  \State $i \gets 0$
-  \Loop
-    \If{\Call{Valid?}{$x$}}
-      \State $i \gets i + 1$
-      \If{$i = n$}
-        \State \Return $x$
-      \EndIf
-    \EndIf
+  \While{$n > 0$}
     \State $x \gets x + 1$
-  \EndLoop
+    \If{\Call{Valid?}{$x$}}
+      \State $n \gets n - 1$
+    \EndIf
+  \EndWhile
+  \State \Return $x$
 \EndFunction
 \Statex
 \Function{Valid?}{$x$}
   \While{$x \bmod 2 = 0$}
-    \State $x \gets x / 2$
+    \State $x \gets \lfloor x / 2 \rfloor$
   \EndWhile
   \While{$x \bmod 3 = 0$}
-    \State $x \gets x / 3$
+    \State $x \gets \lfloor x / 3 \rfloor$
   \EndWhile
   \While{$x \bmod 5 = 0$}
-    \State $x \gets x / 5$
+    \State $x \gets \lfloor x / 5 \rfloor$
   \EndWhile
-  \If{$x = 1$}
-    \State \Return $True$
-  \Else
-    \State \Return $False$
-  \EndIf
+  \State \Return $x = 1$ ?
 \EndFunction
 \end{algorithmic}
 
-This `brute-force' algorithm works for most small $n$. However, to find
-the 1500th number (which is 859963392), the C program based on this
-algorithm takes 40.39 seconds in my computer. I have to kill the program
-after 10 minutes when I increased $n$ to 15,000.
+This `brute-force' algorithm works for small $n$. However, to find the 1500-th regular number (which is 859963392), its C implementation takes 40.39s in above computer. When $n$ increases to 15,000, it can't terminate after 10 minutes.
 
-\subsection{Improvement 1}
-Analysis of the above algorithm shows that modular and divide calculations
-are very expensive \cite{Bentley}. And they executed a lot in loops.
-Instead of checking a number contains only 2, 3, or 5 as factors, one
-alternative solution is to construct such number by these factors.
+\subsection{Improvement}
+Modular and divide calculations are very expensive \cite{Bentley}. And they are executed a lot in loops. Instead of checking if a number only contains 2, 3, or 5 as factors, we can construct regular number from these three factors. We can start from 1, multiply it with 2, 3, or 5 to generate the rest numbers. The problem turns to be how to generate regular numbers in order? One method is to utilize the queue data structure.
 
-We start from 1, and times it with 2, or 3, or 5 to generate rest numbers.
-The problem turns to be how to generate the candidate number in order?
-One handy way is to utilize the queue data structure.
-
-A queue data structure is used to push elements at one end, and pops
-them at the other end. So that the element be pushed first is also
-be popped out first. This property is called FIFO (First-In-First-Out).
-
-The idea is to push 1 as the only element to the queue, then we pop
-an element, times it with 2, 3, and 5, to get 3 new elements. We
-then push them back to the queue in order. Note that, the new elements may
-have already existed in the queue. In such case, we just drop the
-element. The new element may also smaller than the others in the queue,
-so we must put them to the correct position. Figure \ref{fig:queues}
-illustrates this idea.
+A queue allows to push in element at one end, and pop out at the other. The element pushed in first will be popped out first. This nature is called FIFO (First In First Out). The idea is to push 1 as the first number to the queue. We repeatedly pop a number, multiply it with 2, 3, and 5, to generate 3 new numbers; then push them back to the queue in order. A new generated number may already exist in the queue. In such case, we drop the duplicated number. Because the new number may be smaller than the others in the queue, we must put them at the correct position. Figure \ref{fig:queues} shows this idea.
 
 \begin{figure}[htbp]
-       \begin{center}
-       	  \includegraphics[scale=0.5]{img/q1.ps}
-       	  \includegraphics[scale=0.5]{img/q2.ps}
-       	  \includegraphics[scale=0.5]{img/q3.ps}
-       	  \includegraphics[scale=0.5]{img/q4.ps}
-        \caption{First 4 steps of constructing numbers with a queue. \newline
-        1. Queue is initialized with 1 as the only element;\newline
-        2. New elements 2, 3, and 5 are pushed back; \newline
-        3. New elements 4, 6, and 10, are pushed back in order; \newline
-        4. New elements 9 and 15 are pushed back, element 6 already exists.} \label{fig:queues}
-       \end{center}
+  \centering
+  \includegraphics[scale=0.5]{img/q1.ps}
+  \includegraphics[scale=0.5]{img/q2.ps}
+  \includegraphics[scale=0.5]{img/q3.ps}
+  \includegraphics[scale=0.5]{img/q4.ps}
+  \caption{First 4 steps to generate regular numbers. (1). Initialize with 1; (2). Push 2, 3, and 5 back; (3). Push 4, 6, and 10 back; (4). Push 9 and 15 back, 6 is dropped.}
+  \label{fig:queues}
 \end{figure}
 
-This algorithm is shown as the following.
+We can design the algorithm based on this idea:
 
 \begin{algorithmic}[1]
-\Function{Get-Number}{$n$}
-  \State $Q \gets NIL$
-  \State \Call{Enqueue}{$Q, 1$}
+\Function{Regular-Number}{$n$}
+  \State $Q \gets \nil$
+  \State $x \gets 1$
+  \State \Call{Enqueue}{$Q, x$}
   \While{$n > 0$}
     \State $x \gets$ \Call{Dequeue}{$Q$}
     \State \Call{Unique-Enqueue}{$Q, 2x$}
@@ -332,19 +291,17 @@ This algorithm is shown as the following.
 \EndFunction
 \Statex
 \Function{Unique-Enqueue}{$Q, x$}
-  \State $i \gets 0$
-  \While{$i < |Q| \wedge Q[i] < x$}
+  \State $i \gets 0, m \gets |Q|$
+  \While{$i < m$ and $Q[i] < x$}
     \State $i \gets i + 1$
   \EndWhile
-  \If{$i < |Q| \wedge x = Q[i]$}
-    \State \Return
+  \If{$i \geq m$ or $x \neq Q[i]$}
+    \State \Call{Insert}{$Q, i, x$}
   \EndIf
-  \State \Call{Insert}{$Q, i, x$}
 \EndFunction
 \end{algorithmic}
 
-The insert function takes $O(|Q|)$ time to find the proper position and insert
-it. If the element has already existed, it just returns.
+The \textproc{insert} function takes $O(m)$ time to insert a number at proper position, where $m = |Q|$ is the length of the queue. It skips insertion if the number already exists.
 
 A rough estimation tells that the length of the queue increase proportion to $n$,
 (Each time, we extract one element, and pushed 3 new, the increase ratio $\leq$ 2),
