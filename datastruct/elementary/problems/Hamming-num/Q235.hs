@@ -25,7 +25,7 @@ merge (x:xs) (y:ys) | x <y = x : merge xs (y:ys)
                     | x ==y = x : merge xs ys
                     | otherwise = y : merge (x:xs) ys
 
-ns = 1:merge (map (*2) ns) (merge (map (*3) ns) (map (*5) ns))
+ns = 1 : (map (*2) ns) `merge` (map (*3) ns) `merge` (map (*5) ns)
 
 -- test: last $ take 1500 ns
 
