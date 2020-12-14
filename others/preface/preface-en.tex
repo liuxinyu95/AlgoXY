@@ -158,8 +158,8 @@ minfree(A) = search(A, 0, |A|-1)
 \begin{array}{rcl}
 search(\nil, l, u) & = & l \\
 search(A, l, u) & = & \begin{cases}
-       |A'| = m - l + 1 & search(A'', m+1, u) \\
-       otherwise & search(A',  l, m) \\
+       |A'| = m - l + 1 : & search(A'', m+1, u) \\
+       otherwise : & search(A',  l, m) \\
 \end{cases}
 \end{array}
 \]
@@ -256,7 +256,7 @@ The straightforward way is to check numbers one by one from 1, extract all facto
 \EndFunction
 \end{algorithmic}
 
-This `brute-force' algorithm works for small $n$. However, to find the 1500-th regular number (which is 859963392), its C implementation takes 40.39s in above computer. When $n$ increases to 15,000, it can't terminate after 10 minutes.
+This `brute-force' algorithm works for small $n$. However, to find the 1500-th regular number (which is 860934420), its C implementation takes 40.39s in above computer. When $n$ increases to 15,000, it can't terminate after 10 minutes.
 
 \subsection{Improvement}
 Modular and divide calculations are very expensive \cite{Bentley}. And they are executed a lot in loops. Instead of checking if a number only contains 2, 3, or 5 as factors, we can construct regular number from these three factors. We can start from 1, multiply it with 2, 3, or 5 to generate the rest numbers. The problem turns to be how to generate regular numbers in order? One method is to utilize the queue data structure.
@@ -311,9 +311,9 @@ Figure\ref{fig:big-O-1q} shows the number of access to the queue against $n$. It
   \caption{Queue access count - $n$.} \label{fig:big-O-1q}
 \end{figure}
 
-The corresponding C implementation takes 0.016s to output 859963392. It is about 2500 times faster than the naive search solution.
+The corresponding C implementation takes 0.016s to output 860934420. It is about 2500 times faster than the naive search solution.
 
-We can also realize this improvement recursively. Suppose $X$ is an infinite list of all regular numbers $[x_1, x_2, x_3, ...]$. For every number, we multiply it by 2, the result is still a list of regular numbers: $[2x_1, 2x_2, 2x_3, ...]$. We can also multiply numbers in $X$ by 3 and 5, to generate two new infinite lists. If we merge them together, remove the duplicated numbers, and prepend 1 as the first, then we get $X$ again. In other words, the following equation holds:
+We can also realize this improvement recursively. Suppose $X$ is an infinite list of all regular numbers $\{x_1, x_2, x_3, ...\}$. For every number, we multiply it by 2, the result is still a list of regular numbers: $\{2x_1, 2x_2, 2x_3, ...\}$. We can also multiply numbers in $X$ by 3 and 5, to generate two new infinite lists. If we merge them together, remove the duplicated numbers, and prepend 1 as the first, then we get $X$ again. In other words, the following equation holds:
 
 \be
   X = 1 : \{2x | \forall x \in X\} \cup \{3x | \forall x \in X \} \cup \{5x | \forall x \in X \}
@@ -322,41 +322,26 @@ We can also realize this improvement recursively. Suppose $X$ is an infinite lis
 Where symbol $x : X$ means to link $x$ before list $X$, such that $x$ becomes the first element. It is called `cons' in Lisp. We link 1 before the rest, as it is the first regular number. To implement infinite lists merge, we define $\cup$ to recursively compare elements in two sorted lists. Let $X=\{x_1, x_2, x_3...\}$, $Y=\{y_1, y_2, y_3, ...\}$ be two such lists, $X' = \{x_2, x_3, ...\}$ and $Y'=\{y_2, y_3, ...\}$ contain the rest elements except without their heads $x_1$ and $y_1$. We define merge as below:
 
 \[
-\begin{array}{rcl}
-X \cup \varnothing & = & X \\
-\varnothing \cup Y & = & Y \\
-X \cup Y & = & \begin{cases}
+X \cup Y = \begin{cases}
   x_1 < y_1: & x_1 : X' \cup Y \\
   x_1 = y_1: & x_1 : X' \cup Y' \\
-  x_1 > y_1: & y_1 : X \cup Y' \\
+  y_1 < x_1: & y_1 : X \cup Y' \\
 \end{cases}
-\end{array}
 \]
 
-In a functional programming language such as Haskell, which supports
-lazy evaluation, The above infinity series functions can be translate
-into the following program.
+We need not concern about either $X$ or $Y$ is empty, because they are both infinite lists. In functional settings that support lazy evaluation, this algorithm can be implemented as the following example program:
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-ns = 1:merge (map (*2) ns) (merge (map (*3) ns) (map (*5) ns))
+\begin{Haskell}
+ns = 1 : (map (*2) ns) `merge` (map (*3) ns) `merge` (map (*5) ns)
 
-merge [] l = l
-merge l [] = l
-merge (x:xs) (y:ys) | x <y = x : merge xs (y:ys)
-                    | x ==y = x : merge xs ys
+merge (x:xs) (y:ys) | x < y = x : merge xs (y:ys)
+                    | x == y = x : merge xs ys
                     | otherwise = y : merge (x:xs) ys
-\end{lstlisting}
+\end{Haskell}
 
-By evaluate ns !! (n-1), we can get the 1500th number as
-below.
+The 1500th number 860934420 is given by \texttt{ns !! 1500}. In the same computer, it takes about 0.03s to output the answer.
 
-\begin{verbatim}
->ns !! (1500-1)
-859963392
-\end{verbatim}
-
-\subsection{Improvement 2}
+\subsection{Queues}
 Considering the above solution, although it is much faster than the brute-force one,
 It still has some drawbacks. It produces many duplicated numbers and they are
 finally dropped when examine the queue. Secondly, it does linear scan and insertion
