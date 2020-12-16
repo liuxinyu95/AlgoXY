@@ -27,19 +27,18 @@ merge (x:xs) (y:ys) | x <y = x : merge xs (y:ys)
 
 ns = 1 : (map (*2) ns) `merge` (map (*3) ns) `merge` (map (*5) ns)
 
--- test: last $ take 1500 ns
+-- ns !! 1500
 
--- meothod 2, use queues
-ks 1 xs _ = xs
-ks n xs (q2, q3, q5) = ks (n-1) (xs++[x]) update
+-- method 2, three queues
+rs 0 xs _ _ _ = reverse xs
+rs n xs q2 q3 q5 = rs (n - 1) (x : xs) q2' q3' q5'
     where
       x = minimum $ map head [q2, q3, q5]
-      update | x == head q2 = ((tail q2)++[x*2], q3++[x*3], q5++[x*5])
-             | x == head q3 = (q2, (tail q3)++[x*3], q5++[x*5])
-             | otherwise = (q2, q3, (tail q5)++[x*5])
+      (q2', q3', q5')
+        | x == head q2 = ((tail q2) ++ [2 * x], q3 ++ [3 * x], q5 ++ [5 * x])
+        | x == head q3 = (q2, (tail q3) ++ [3 * x], q5 ++ [5 * x])
+        | otherwise = (q2, q3, (tail q5) ++ [5 * x])
 
-takeN n = ks n [1] ([2], [3], [5])
+-- rs 1500 [1] ([2], [3], [5])
 
-getN = last . takeN
-
--- test: getN 1500
+test n = rs n [1] [2] [3] [5] == take (n + 1) ns
