@@ -35,16 +35,16 @@
 \section{Introduction}
 \label{introduction}
 
-List and array are the preliminary build blocks to create data structures. Both can hold multiple elements as containers. Array is trivially implemented as a range of consecutive cells indexed by a number. The number is called address or position. Array is typically bounded. Its size need to be determined before using. While list increases on-demand to hold additional elements. One can traverse a list one by one from the head to the tail. Particularly in functional settings, the basic list related algorithms play critical roles to control the computation and logic structure\footnote{In low level, lambda calculus plays the most critical role as one of the computation model equivalent to Turing machine\cite{mittype}, \cite{unplugged}.}. Readers already familiar with map, filter, fold algorithms are safe to skip this chapter, and directly start from chapter 2.
+List and array are the preliminary build blocks to create data structures. Both can hold multiple elements as a container. Array is trivially implemented as a range of consecutive cells indexed by a number. The number is called address or position. Array is typically bounded. Its size need to be determined before using. While list increases on-demand to hold additional elements. One can traverse a list one by one from the head to the tail. Particularly in functional settings, the basic list related algorithms play critical roles to control the computation and logic structure\footnote{In low level, lambda calculus plays the most critical role as one of the computation model equivalent to Turing machine\cite{mittype}, \cite{unplugged}.}. Readers already familiar with map, filter, fold algorithms are safe to skip this chapter, and directly start from chapter 2.
 
 \section{Definition}
 \index{List!definition}
 
-List, also known as, singly linked-list is a data structure that can be recursively defined as below:
+List, also known as singly linked-list is a data structure recursively defined as below:
 
 \begin{itemize}
 \item A {\em list} is either empty, denoted as $\nil$ or NIL;
-\item Or contains an element and a {\em list}.
+\item Or contains an element and liked with a {\em list}.
 \end{itemize}
 
 Figure \ref{fig:list-example} shows a list of nodes. Each node contains two part, an element called key, and a reference to the sub-list called next. The sub-list reference in the last node is empty, marked as `NIL'.
@@ -62,7 +62,7 @@ Figure \ref{fig:list-example} shows a list of nodes. Each node contains two part
   \label{fig:list-example}
 \end{figure}
 
-Every node links to the next one or NIL. Linked-list is often defined through compound data structure\footnote{In most cases, the data stored in list have the same type. However, there is also heterogeneous list, like the list in Lisp for example.}, for example:
+Every node links to the next one or NIL. Linked-list is often defined through compound structure\footnote{In most cases, the data stored in list have the same type. However, there is also heterogeneous list, like the list in Lisp for example.}, for example:
 
 \lstset{frame=single}
 \begin{lstlisting}[language=Bourbaki]
@@ -92,7 +92,7 @@ For a none empty list $X$, we will also use $x_1$ for the first element, and use
 \section{Basic operations}
 
 \index{List!length}
-As list is defined recursively, we can count the length of a given list in a recursive manner: for empty list, the length is zero, otherwise, it is the length of the sub-list plus one.
+From the list definition, we can count the length recursively: for empty list, the length is zero, otherwise, it is the length of the sub-list plus one.
 
 \be
 \begin{array}{rcl}
@@ -101,7 +101,7 @@ length\ L & = & 1 + length(L')
 \end{array}
 \ee
 
-In order to count the length, this algorithm traverses all the elements from the head to the end, hence it is bound to $O(n)$ time, where $n$ is the number of elements in the list. To avoid repeatedly counting, we can also persist the length as a variable, and update it when mutate (add or delete) the list. Below is the iterative way to count the length:
+In order to count the length, this algorithm traverses all the elements from the head to the end, hence it is bound to $O(n)$ time, where $n$ is the number of elements in the list. To avoid repeatedly counting, we can also persist the length in a variable, and update it when mutate (add or delete) the list. Below is the iterative way to count the length:
 
 \begin{algorithmic}[1]
 \Function{Length}{L}
@@ -116,84 +116,39 @@ In order to count the length, this algorithm traverses all the elements from the
 
 We will also use notion $|L|$ for the length of list $L$ when the context is clear.
 
-\begin{Exercise}
-\Question{For list of type $A$, suppose we can test if any two elements $x, y \in A$ are equal, define a algorithm to test if two lists are identical to each other.}
-\end{Exercise}
-
 \subsection{index}
 \index{List!index} \index{List!get at}
-One big difference between array and list (singly-linked list accurately) is that array supports
-random access. Many programming languages support using \texttt{x[i]} to access the $i$-th element
-stored in array in constant $O(1)$ time. The index typically starts from 0, but it's not the all case.
-Some programming languages using 1 as the first index. In this appendix, we treat index starting
-from 0. However, we must traverse the list with
-$i$ steps to reach the target element. The traversing is quite similar to the length calculation.
-Thus it's commonly expressed as below in imperative settings.
+Different from array, which supports random access an element at position $i$ in constant time, we need traverse the list $i$ steps to access the target element.
+
+\be
+getAt\ i\ (x:xs) = \begin{cases}
+  i = 0: & x \\
+  i \neq 0: & getAt\ (i - 1)\ xs \\
+\end{cases}
+\ee
+
+In order to get the $i$-th element from a none empty list:
+\begin{itemize}
+\item if $i$ is 0, then we are done, the result is the first element;
+\item Otherwise, the result is the $(i-1)$-th element in the sub-list.
+\end{itemize}
+
+We intend to leave the empty list not handled. The behavior when pass $\nil$ is undefined. As such the out of bound case also raises undefined error. If $i > |L|$ exceeds the length, we end up the edge case to access the $(i-|L|)$-th element of the empty list. On the other hand, if $i < 0$, minus it by one makes it even farther away from 0. We finally end up with the same undefined error that the index is negative, while the list is empty.
+
+This algorithm is bound to $O(i)$ time as it advances the list $i$ steps. Below is the corresponding imperative implementation:
 
 \begin{algorithmic}[1]
-\Function{Get-At}{$L, i$}
+\Function{Get-At}{$i, L$}
   \While{$i \neq 0$}
-    \State $L \gets $ \Call{Next}{$L$}
+    \State $L \gets $ \Call{Next}{$L$}  \Comment{Raise error when $L$ = NIL}
     \State $i \gets i - 1$
   \EndWhile
   \State \Return \Call{First}{$L$}
 \EndFunction
 \end{algorithmic}
 
-Note that this algorithm doesn't handle the error case such that the index isn't within the bound
-of the list. We assume that $0 \leq i < |L|$, where $|L| = length(L)$. The error handling is left
-as exercise to the reader. The following ISO C++ code is a line-by-line translation of this
-algorithm.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-T getAt(List<T>* lst, int n) {
-  while(n--)
-    lst = lst->next;
-  return lst->key;
-}
-\end{lstlisting}
-
-However, in purely functional settings, we turn to recursive traversing instead of while-loop.
-
-\be
-getAt(L, i) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  First(L) & i = 0 \\
-  getAt(Rest(L), i-1) & otherwise
-  \end{array}
-\right.
-\ee
-
-In order to {\em get the $i$-th element}, the algorithm does the following:
-\begin{itemize}
-\item if $i$ is 0, then we are done, the result is the first element in the list;
-\item Otherwise, the result is to {\em get the $(i-1)$-th element} from the sub-list.
-\end{itemize}
-
-This algorithm can be translated to the following Haskell code.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-getAt i (x:xs) = if i == 0 then x else getAt i-1 xs
-\end{lstlisting}
-
-Note that we are using pattern matching to ensure the list isn't empty, which actually handles
-all out-of-bound cases with un-matched pattern error. Thus if $i > |L|$, we finally arrive at
-a edge case that the index is $i-|L|$, while the list is empty; On the other hand, if $i < 0$,
-minus it by one makes it even farther away from 0. We finally end at the same error that the index
-is some negative, while the list is empty;
-
-The indexing algorithm takes time proportion to the value of index, which is bound to $O(i)$
-linear time.
-This section only address the read semantics. How to mutate the element at a given position is
-explained in later section.
-
-\subsection{Access the last element}
-\index{List!last}
-\index{List!init}
+\subsection{Last}
+\index{List!last} \index{List!init}
 Although accessing the first element and the rest list $L'$ is trivial, the opposite operations, that
 retrieving the last element and the initial sub list need linear time without using a tail pointer.
 If the list isn't empty, we need traverse it till the tail to get these two components. Below are
@@ -1581,6 +1536,11 @@ min (x:y:xs) = if x < y then min (x:xs) else min (y:xs)
 max [x] = x
 max (x:y:xs) = if x < y then max (y:ys) else max (x:xs)
 \end{lstlisting}
+
+\begin{Exercise}
+\Question{For list of type $A$, suppose we can test if any two elements $x, y \in A$ are equal, define an algorithm to test if two lists are identical to each other.}
+\Question{In the \textproc{Get-At}($i, L$) algorithm, what is the behavior when $L$ is empty? what is the behavior when $i$ is out of the bound or negative?}
+\end{Exercise}
 
 \begin{Exercise}
 \begin{itemize}
