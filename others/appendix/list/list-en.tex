@@ -149,10 +149,37 @@ This algorithm is bound to $O(i)$ time as it advances the list $i$ steps. Below 
 
 \subsection{Last}
 \index{List!last} \index{List!init}
-Although accessing the first element and the rest list $L'$ is trivial, the opposite operations, that
-retrieving the last element and the initial sub list need linear time without using a tail pointer.
-If the list isn't empty, we need traverse it till the tail to get these two components. Below are
-their imperative descriptions.
+There are a pair of symmetric operations to `first/rest'. They are called `last/init'. For a none empty list $X = [x_1, x_2, ..., x_n]$, function $last$ returns the last element $x_1$, while $init$ returns the sub-list of $[x_1, x_2, ..., x_{n-1}]$. Although they are symmetric pairs left to right, `last/init' need linear time, because we need traverse the whole list to tail.
+
+
+When access the last element of list $X$:
+\begin{itemize}
+\item If the $X$ contains only one element as $[x_1]$, then $x_1$ is the last one;
+\item Otherwise, the result is the last element of the rest sub-list $X'$.
+\end{itemize}
+
+\be
+\begin{array}{rcl}
+last\ [x] & = & x \\
+last\ (x:xs) & = & last\ xs \\
+\end{array}
+\ee
+
+Similarly, when extract the sub-list of $X$ contains all elements without the last one:
+
+\begin{itemize}
+\item If $X$ is a singleton $[x_1]$, the result is empty $[\ ]$;
+\item Otherwise, we recursively get the initial sub-list for $X'$, then prepend $x_1$ to it as the result.
+\end{itemize}
+
+\be
+\begin{array}{rcl}
+init\ [x] & = & [\ ] \\
+init\ (x:xs) & = & x : init\ xs \\
+\end{array}
+\ee
+
+We leave the empty list not handled for both operations. The behavior is undefined if pass $\nil$ in. Below are the iterative implementation:
 
 \begin{algorithmic}[1]
 \Function{Last}{$L$}
@@ -166,93 +193,15 @@ their imperative descriptions.
 \Statex
 \Function{Init}{$L$}
   \State $L' \gets $ NIL
-  \While{\Call{Rest}{$L$} $\neq$ NIL}
-    \State $L' \gets$ \textproc{Append}($L'$, \Call{First}{$L$})
+  \While{\Call{Rest}{$L$} $\neq$ NIL} \Comment{Raise error when $L$ is NIL}
+    \State $L' \gets$ \textproc{Cons}(\Call{First}{$L$}, $L'$)
     \State $L \gets $ \Call{Rest}{$L$}
   \EndWhile
-  \State \Return $L'$
+  \State \Return \Call{Reverse}{$L'$}
 \EndFunction
 \end{algorithmic}
 
-The algorithm assumes that the input list isn't empty, so the error handling is skipped. Note that
-the \textproc{Init}() algorithm uses the appending algorithm which will be defined later.
-
-Below are the corresponding ISO C++ implementation. The optimized version by utilizing tail pointer
-is left as exercise.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-T last(List<T>* xs) {
-  T x; /* Can be set to a special value to indicate empty list err. */
-  for (; xs; xs = xs->next)
-    x = xs->key;
-  return x;
-}
-
-template<typename T>
-List<T>* init(List<T>* xs) {
-  List<T>* ys = NULL;
-  for (; xs->next; xs = xs->next)
-    ys = append(ys, xs->key);
-  return ys;
-}
-\end{lstlisting}
-
-While these two algorithms can be implemented in purely recursive manner as well. When we want to access
-{\em the last element}.
-
-\begin{itemize}
-\item If the list contains only one element (the rest sub-list is empty), the result is this very element;
-\item Otherwise, the result is {\em the last element} of the rest sub-list.
-\end{itemize}
-
-\be
-last(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  First(L) & Rest(L) = \phi \\
-  last(Rest(L)) & otherwise
-  \end{array}
-\right.
-\ee
-
-The similar approach can be used to {\em get a list contains all elements except for the last one}.
-
-\begin{itemize}
-\item The edge case: If the list contains only one element, then the result is an empty list;
-\item Otherwise, we can first {\em get a list contains all elements except for the last one} from the rest sub-list, then
-construct the final result from the first element and this intermediate result.
-\end{itemize}
-
-\be
-init(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L' = \phi \\
-  cons(l_1, init(L')) & otherwise
-  \end{array}
-\right.
-\ee
-
-Here we denote $l_1$ as the first element of $L$, and $L'$ is the rest sub-list. This recursive algorithm needn't
-use appending, It actually construct the final result list from right to left. We'll introduce a high-level concept
-of such kind of computation later in this appendix.
-
-Below are Haskell programs implement $last()$ and $init()$ algorithms by using pattern matching.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-last [x] = x
-last (_:xs) = last xs
-
-init [x] = []
-init (x:xs) = x : init xs
-\end{lstlisting}
-
-Where \texttt{[x]} matches the singleton list contains only one element, while \texttt{(\_:xs)} matches any non-empty list,
-and the underscore (\texttt{\_}) is used to indicate that we don't care about the element. For the detail of pattern matching,
-readers can refer to any Haskell tutorial materials, such as \cite{learn-haskell}.
+As advancing towards the tail, this algorithm accumulates the `init' result through `cons'. However, such result is in the reversed order. We need apply reverse again to return the correct result. There is a question to ask if we can use `append' instead of `cons' in the exercise.
 
 \subsection{Reverse indexing}
 \index{List!Reverse index}
@@ -1540,14 +1489,11 @@ max (x:y:xs) = if x < y then max (y:ys) else max (x:xs)
 \begin{Exercise}
 \Question{For list of type $A$, suppose we can test if any two elements $x, y \in A$ are equal, define an algorithm to test if two lists are identical to each other.}
 \Question{In the \textproc{Get-At}($i, L$) algorithm, what is the behavior when $L$ is empty? what is the behavior when $i$ is out of the bound or negative?}
+\Question{In the \textproc{Init} algorithm, can we use \textproc{Append}($L'$, \textproc{First}($L$)) instead of `cons'?}
 \end{Exercise}
 
 \begin{Exercise}
 \begin{itemize}
-\item Given two lists $L_1$ and $L_2$, design a algorithm $eq(L_1, L_2)$ to test if they are equal to each other.
-Here equality means the lengths are same, and at the same time, every elements in both lists are identical.
-\item Consider varies of options to handle the out-of-bound error case when randomly access the element in list. Realize
-them in both imperative and functional programming languages. Compare the solutions based on exception and error code.
 \item Augment the list with a `tail' field, so that the appending algorithm can be realized in constant $O(1)$ time but
 not linear $O(n)$ time. Feel free to choose your favorite imperative programming language. Please don't refer to the
 example source code along with this book before you try it.
