@@ -208,7 +208,7 @@ As advancing towards the tail, this algorithm accumulates the `init' result thro
 Function $last$ is a special case of reverse index. The generic case is to find the last $i$-th element of a given list. The naive implementation takes two rounds of traverse: Determine the length $n$ through the first round; then access the $(n - i - 1)$-th element through the second round:
 
 \be
-  getAt_r(i, L) = getAt(|L| - i - 1, L)
+  lastAt(i, L) = getAt(|L| - i - 1, L)
 \ee
 
 There actually exists better solution. The idea is to keep two pointers $p_1, p_2$ with the distance $i$ between them. The equation $rest^i(p_2) = p_1$ holds, where $rest^i(p_2)$ means repleatedly apply $rest()$ function $i$ times. When succeed $p_2$ by $i$ steps gets $p_1$. We start by pointing $p_2$ to the list head, and advance both pointers in parallel till $p_1$ arrives at tail. At that time point, $p_2$ exactly points to the $i$-th element from right. Figure \ref{fig:list-rindex} shows this idea. As $p1, p2$ form a window, this method is also called `sliding window' solution.
@@ -243,7 +243,7 @@ The functional implementation need special consideration as we cannot update poi
 \end{itemize}
 
 \be
-getAt_R(i, X) = slide(X, drop(i, X))
+lastAt(i, X) = slide(X, drop(i, X))
 \ee
 
 where function $slide(X, Y)$ drops the heads element for both lists:
@@ -255,98 +255,44 @@ slide(x:xs,\ y:ys) & = & slide(xs, ys) \\
 \end{array}
 \ee
 
-We'll explain the detail of $drop()$ function in later section about list mutating operations. Here it can
-be implemented as repeatedly call $rest()$ with specified times.
-
-\[
-drop(n, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  L & n = 0 \\
-  drop(n - 1, rest(L)) & otherwise
-  \end{array}
-\right.
-\]
-
-Translating the equations to Haskell yields this example program.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-atR :: [a] -> Int -> a
-atR xs i = get xs (drop i xs) where
-  get (x:_) [_] = x
-  get (_:xs) (_:ys) = get xs ys
-  drop n as@(_:as') = if n == 0 then as else drop (n-1) as'
-\end{lstlisting}
-
-Here we use dummy variable \texttt{\_} as the placeholders for components we don't care.
-
-\subsection{Mutating}
-\index{List!mutate}
-Strictly speaking, we can't mutate the list at all in purely functional settings. Unlike in imperative
-settings, mutate is actually realized by creating new list. Almost all functional environments support garbage
-collection, the original list may either be persisted for reusing, or released (dropped) at sometime (Chapter 2 in \cite{okasaki-book}).
-
-\subsubsection{Appending}
-\index{List!append}
-Function $cons$ can be viewed as building list by insertion element always on head. If we chains multiple
-$cons$ operations, it can repeatedly construct a list from right to the left. Appending on the other hand,
-is an operation adding element to the tail. Compare to $cons$ which is trivial constant time $O(1)$ operation,
-We must traverse the whole list to locate the appending position. It means that appending is bound to
-$O(n)$, where $n$ is the length of the list. In order to speed up the appending, imperative implementation
-typically uses a field (variable) to record the tail position of a list, so that the traversing can be
-avoided. However, in purely functional settings we can't use such `tail' pointer. The appending has to
-be realized in recursive manner.
+Function $drop(m, X)$ discard the first $m$ elements from list $X$. It can be implemented by advancing $X$ by $m$ steps:
 
 \be
-append(L, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ x \} & L = \phi \\
-  cons(first(L), append(rest(L), x)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+drop(0,\ X) & = & X \\
+drop(m,\ \nil) & = & \nil \\
+drop(m,\ x:xs) & = & drop(m - 1, xs) \\
+\end{array}
 \ee
 
-That the algorithm handles two different appending cases:
+\subsection{Mutate}
+\index{List!mutate}
+Mutate operations include append, insert, update, delete elements in a list. Some functional environments actually implement mutate by creating a new list, while the original one is persisted for later reuse, or released at sometime (chapter 2 \cite{okasaki-book}).
+
+\subsubsection{Append}
+\index{List!append}
+Append is the symmetric operation of $cons$, it add an element on the tail instead of head. Because of this, it is also called `snoc'. For linked-list, it means we need traverse to the tail, hence it takes $O(n)$ time, where $n$ is the length. To avoid repeatedly traverse, we can record the tail reference as a variable, and keep updating it upon changes.
+
+\be
+\begin{array}{rcl}
+append(\nil, x) & = & [x] \\
+append(y:ys, x) & = & y : append(ys, x) \\
+\end{array}
+\ee
+
 \begin{itemize}
-\item If the list is empty, the result is a singleton list contains $x$, which is the element to be appended. The singleton list notion $\{ x \} = cons(x, \phi)$, is a simplified form of $cons$ the element with an empty list $\phi$;
-\item Otherwise, for the none-empty list, the result can be achieved by first appending the element $x$ to the rest sub-list, then construct the first element of $L$ with the recursive appending result.
+\item If append $x$ to the empty list, the result is $[x]$;
+\item Otherwise, we firstly recursive append $x$ to the rest sub-list, then prepend the original head to form the result.
 \end{itemize}
 
-For the none-trivial case, if we denote $L= \{l_1, l_2, ... \}$, and $L' = \{ l_2, l_3, ...\}$ the equation can be
-written as.
-
-\be
-append(L, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ x \} & L = \phi \\
-  cons(l_1, append(L', x)) & otherwise
-  \end{array}
-\right.
-\ee
-
-We'll use both forms in the rest of this appendix.
-
-The following Scheme/Lisp program implements this algorithm.
-
-\lstset{language=Lisp}
-\begin{lstlisting}
-(define (append lst x)
-  (if (null? lst)
-      (list x)
-      (cons (car lst) (append (cdr lst) x))))
-\end{lstlisting}
-
-Even without the tail pointer, it's possible to traverse the list imperatively and append the element at the end.
+The corresponding iterative implementation is as the following:
 
 \begin{algorithmic}[1]
 \Function{Append}{$L, x$}
   \If{$L = $ NIL}
     \State \Return \Call{Cons}{$x$, NIL}
   \EndIf
-  \State $H \gets L$
+  \State $H \gets L$ \Comment{save the head}
   \While{\Call{Rest}{$L$} $\neq$ NIL}
     \State $L \gets$ \Call{Rest}{$L$}
   \EndWhile
@@ -355,25 +301,23 @@ Even without the tail pointer, it's possible to traverse the list imperatively a
 \EndFunction
 \end{algorithmic}
 
-The following ISO C++ programs implements this algorithm. How to utilize a tail field to speed up the appending
-is left as exercise to the reader for interesting.
+Update the \textproc{Rest} is typically implemented by setting the \texttt{next} reference field as shown in below example program.
 
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-List<T>* append(List<T>* xs, T x) {
-  List<T> *tail, *head;
-  for (head = tail = xs; xs; xs = xs->next)
-    tail = xs;
-  if (!head)
-    head = cons<T>(x, NULL);
-  else
-    tail->next = cons<T>(x, NULL);
-  return head;
+\begin{lstlisting}[language=Bourbaki]
+List<A> append(List<A> xs, T x) {
+    if (xs == null) {
+        return cons(x, null)
+    }
+    List<A> head = xs
+    while (xs.next != null) {
+        xs = xs.next
+    }
+    xs.next = cons(x, null)
+    return head
 }
 \end{lstlisting}
 
-\subsubsection{Mutate element at a given position}
+\subsubsection{Set value}
 \index{List!set at}
 Although we have defined random access algorithm $getAt(L, i)$, we can't just mutate the element returned
 by this function in a sense of purely functional settings. It is quite common to provide reference semantics
