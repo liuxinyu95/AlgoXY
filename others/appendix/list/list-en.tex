@@ -319,143 +319,50 @@ List<A> append(List<A> xs, T x) {
 
 \subsubsection{Set value}
 \index{List!set at}
-Although we have defined random access algorithm $getAt(L, i)$, we can't just mutate the element returned
-by this function in a sense of purely functional settings. It is quite common to provide reference semantics
-in imperative programming languages and in some `almost' functional environment. Readers can refer to \cite{mittype}
-for detail. For example, the following ISO C++ example returns a reference instead of a value in indexing program.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-T& getAt(List<T>* xs, int n) {
-  while (n--)
-    xs = xs->next;
-  return xs->key;
-}
-\end{lstlisting}
-
-So that we can use this function to mutate the 2nd element as below.
-
-\begin{lstlisting}
-List<int>* xs = cons(1, cons(2, cons<int>(3, NULL)));
-getAt(xs, 1) = 4;
-\end{lstlisting}
-
-In an impure functional environment, such as Scheme/Lisp, to set the $i$-th element to a given value can
-be implemented by mutate the referenced cell directly as well.
-
-\lstset{language=Lisp}
-\begin{lstlisting}
-(define (set-at! lst i x)
-  (if (= i 0)
-      (set-car! lst x)
-      (set-at! (cdr lst) (- i 1) x)))
-\end{lstlisting}
-
-This program first checks if the index $i$ is zero, if so, it mutate the first element of the list to
-given value $x$; otherwise, it deduces the index $i$ by one, and tries to mutate the rest of the
-list at this new index with value $x$. This function doesn't return meaningful value. It is for use
-of side-effect. For instance, the following code mutates the 2nd element in a list.
-
-\begin{lstlisting}
-(define lst '(1 2 3 4 5))
-(set-at! lst 1 4)
-(display lst)
-
-(1 4 3 4 5)
-\end{lstlisting}
-
-In order to realize a purely functional $setAt(L, i, x)$ algorithm, we need avoid directly mutating the cell,
-but creating a new one:
+Similar to $getAt$, we need advance to the target position, then change the element there. To define function $setAt(i, x, L)$:
 
 \begin{itemize}
-\item Edge case: If we want to set the value of the first element ($i = 0$), we construct a new list, with the
-new value and the sub-list of the previous one;
-\item Otherwise, we construct a new list, with the previous first element, and a new sub-list, which has the ($i-1$)-th
-element set with the new value.
+\item If $i = 0$, it means we are changing the first element, the result is $x : L'$;
+\item Otherwise, we need recursively set the value at position $i-1$ for the sub-list $L'$.
 \end{itemize}
 
-This recursive description can be formalized by the following equation.
-
 \be
-setAt(L, i, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  cons(x, L') & i = 0 \\
-  cons(l_1, setAt(L', i-1, x)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+setAt(0, x,\ y:ys) & = & x : ys \\
+setAt(i, x,\ y:ys) & = & y : setAt(i - 1, x, ys) \\
+\end{array}
 \ee
 
-Comparing the below Scheme/Lisp implementation to the previous one reveals the difference from imperative mutating.
+This algorithm is bound to $O(i)$ time, where $i$ is the position to update the value.
 
-\lstset{language=Lisp}
-\begin{lstlisting}
-(define (set-at lst i x)
-  (if (= i 0)
-      (cons x (cdr lst))
-      (cons (car lst) (set-at (cdr lst) (- i 1) x))))
-\end{lstlisting}
+\subsubsection{insert}
+\index{List!insert} \index{List!insert at}
+There are two different cases about insertion. One is to insert an element at a given position: $insert(i, x, L)$. The algorithm is similar to $setAt$; The other is to insert an element to a sorted list, and result is still sorted.
 
-Here we skip the error handling for out-of-bound error etc. Again, similar to the random access algorithm, the
-performance is bound to linear time, as traverse is need to locate the position to set the value.
-
-\subsubsection{insertion}
-\index{List!insert}
-\index{List!insert at}
-There are two semantics about list insertion. One is to insert an element at a given position, which can be denoted
-as $insert(L, i, x)$. The algorithm is close to $setAt(L, i, x)$; The other is to insert an element to a sorted list,
-so that the the result list is still sorted.
-
-Let's first consider how to insert an element $x$ at a given position $i$. The obvious thing is that we need firstly traverse
-$i$ elements to get to the position, the rest of work is to construct a new sub-list with $x$ being the head of this
-sub-list. Finally, we construct the whole result by attaching this new sub-list to the end of the first $i$ elements.
-
-The algorithm can be described accordingly to this idea. If we want to insert an element $x$ to a list $L$ at $i$.
+To insert $x$ at position $i$, we need firstly advance $i$ steps, then construct a new sub-list with $x$ as the head, then concatenate it to the first $i$ elements.
 
 \begin{itemize}
-\item Edge case: If $i$ is zero, then the insertion turns to be a trivial `cons' operation -- $cons(x, L)$;
-\item Otherwise, we recursively {\em insert} $x$ to the sub-list $L'$ at position $i-1$; then construct the first
-element with this result.
+\item If $i = 0$, it then turns to be a `cons' operation: $cons(x, L)$;
+\item Otherwise, we recursively insert $x$ to $L'$ at position $i-1$; then prepend the original head.
 \end{itemize}
 
-Below equation formalizes the insertion algorithm.
-
 \be
-insert(L, i, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  cons(x, L) & i = 0 \\
-  cons(l_1, insert(L', i-1, x)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+insert(0, x,\ L) & = & x : L \\
+insert(i, x,\ y:ys) & = & x : insert(i - 1, x, ys) \\
+\end{array}
 \ee
 
-The following Haskell program implements this algorithm.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-insert xs 0 y = y:xs
-insert (x:xs) i y = x : insert xs (i-1) y
-\end{lstlisting}
-
-This algorithm doesn't handle the out-of-bound error. However, we can interpret the
-case, that the position $i$ exceeds the length of the list as appending. Readers can considering about
-it in the exercise of this section.
-
-The algorithm can also be designed imperatively: If the position is zero, just construct the new list with the
-element to be inserted as the first one; Otherwise, we record the head of the list, then start traversing the
-list $i$ steps. We also need an extra variable to memorize the previous position for the later list insertion
-operation. Below is the pseudo code.
+When $i$ exceeds the length of the list, we can interpret it as to append $x$. We leave this as an exercise. The following is the corresponding iterative implementation:
 
 \begin{algorithmic}[1]
-\Function{Insert}{$L, i, x$}
+\Function{Insert}{$i, x, L$}
   \If{$i = 0$}
     \State \Return \Call{Cons}{$x, L$}
   \EndIf
   \State $H \gets L$
   \State $p \gets L$
-  \While{$i \neq 0 $}
+  \While{$i \neq 0$ and $L \neq$ NIL}
     \State $p \gets L$
     \State $L \gets $ \Call{Rest}{$L$}
     \State $i \gets i - 1$
@@ -465,67 +372,32 @@ operation. Below is the pseudo code.
 \EndFunction
 \end{algorithmic}
 
-And the ISO C++ example program is given by translating this algorithm.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-List<T>* insert(List<T>* xs, int i , int x) {
-  List<T> *head, *prev;
-  if (i == 0)
-    return cons(x, xs);
-  for (head = xs; i; --i, xs = xs->next)
-    prev = xs;
-  prev->next = cons(x, xs);
-  return head;
-}
-\end{lstlisting}
-
-If the list $L$ is sorted, that is for any position $1 \leq i \leq j \leq n$, we have $l_i \leq l_j$.
-We can design an algorithm which inserts a new element $x$ to the list, so that the result list is still sorted.
-
-\be
-insert(x, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  cons(x, \phi) & L = \phi \\
-  cons(x, L) & x < l_1 \\
-  cons(l_1, insert(x, L')) & otherwise
-  \end{array}
-\right.
-\ee
-
-The idea is that, to insert an element $x$ to a sorted list $L$:
+If the list $L = [x_1, x_2, ..., x_n]$ is sorted, i.e. for any position $1 \leq i \leq j \leq n$, then $x_i \leq x_j$ holds. Here $\leq$ is abstract as long as the ordering is defined. It can actually means $\geq$ for descending order, or subset relationship etc. We can design the insert algorithm to maintain the sorted order. To insert element $x$ to a sorted list $L$:
 
 \begin{itemize}
-\item If either $L$ is empty or $x$ is less than the first element in $L$, we just put $x$ in front of $L$ to construct the result;
+\item If either $L$ is empty or $x$ is not greater than the first element in $L$, we prepend $x$ to $L$ and returns $x : L$;
 \item Otherwise, we recursively insert $x$ to the sub-list $L'$.
 \end{itemize}
 
-The following Haskell program implements this algorithm. Note that we use $\leq$, to determine the ordering. Actually this
-constraint can be loosened to the strict less ($<$), that if elements can be compared in terms of $<$, we can design a program
-to insert element so that the result list is still sorted. Readers can refer to the chapters of sorting in this book for details about
-ordering.
+\be
+\begin{array}{rcl}
+insert(x,\ \nil) & = & [x] \\
+insert(x,\ y : ys) & = & \begin{cases}
+  x \leq y : & x : y : ys \\
+  otherwise : & y : insert(x, ys) \\
+  \end{cases}
+\end{array}
+\ee
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-insert y [] = [y]
-insert y xs@(x:xs') = if y <= x then y : xs else x : insert y xs'
-\end{lstlisting}
-
-Since the algorithm need compare the elements one by one, it's also a linear time algorithm. Note that here we use the 'as'
-notion for pattern matching in Haskell. Readers can refer to \cite{learn-haskell} and \cite{algo-fp} for details.
-
-This ordered insertion algorithm can be designed in imperative manner, for example like the following pseudo code\footnote{Reader
-can refer to the chapter `The evolution of insertion sort' in this book for a minor different one}.
+Since the algorithm need compare elements one by one, it is bound to $O(n)$ time, where $n$ is the length. Below is the corresponding iterative implementation:
 
 \begin{algorithmic}[1]
 \Function{Insert}{$x, L$}
-  \If{$L = \phi \lor x <$ \Call{First}{$L$}}
+  \If{$L = $ NIL or $x <$ \Call{First}{$L$}}
     \State \Return \Call{Cons}{$x, L$}
   \EndIf
   \State $H \gets L$
-  \While{\Call{Rest}{$L$} $\neq \phi \land $ \textproc{First}(\Call{Rest}{$L$}) $< x$}
+  \While{\Call{Rest}{$L$} $\neq $ NIL and \textproc{First}(\Call{Rest}{$L$}) $< x$}
     \State $L \gets $ \Call{Rest}{$L$}
   \EndWhile
   \State \Call{Rest}{$L$} $\gets$ \textproc{Cons}($x$, \Call{Rest}{$L$})
@@ -533,37 +405,13 @@ can refer to the chapter `The evolution of insertion sort' in this book for a mi
 \EndFunction
 \end{algorithmic}
 
-If either the list is empty, or the new element to be inserted is less than the first element in the list, we
-can just put this element as the new first one; Otherwise, we record the head, then traverse the list till
-a position, where $x$ is less than the rest of the sub-list, and put $x$ in that position. Compare this one
-to the `insert at' algorithm shown previously, the variable $prev$ uses to point to the previous position during
-traversing is omitted by examine the sub-list instead of current list. The following ISO C++ program implements
-this algorithm.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-List<T>* insert(T x, List<T>* xs) {
-  List<T> *head;
-  if (!xs || x < xs->key)
-    return cons(x, xs);
-  for (head = xs; xs->next && xs->next->key < x; xs = xs->next);
-  xs->next = cons(x, xs->next);
-  return head;
-}
-\end{lstlisting}
-
-With this linear time ordered insertion defined, it's possible to implement quadratic time insertion-sort by repeatedly
-inserting elements to an empty list as formalized in this equation.
+With this linear time ordered insertion defined, we can further develop the insertion-sort algorithm. The idea is to repeatedly insert elements to the empty list. Since each insert takes liner time, the overall sort is bound to $O(n^2)$.
 
 \be
-sort(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  insert(l_1, sort(L')) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+sort(\nil) & = & \nil \\
+sort(x:xs) & = & insert(x, sort(xs)) \\
+\end{array}
 \ee
 
 This equation says that if the list to be sorted is empty, the result is also empty, otherwise, we can
@@ -1399,16 +1247,14 @@ max (x:y:xs) = if x < y then max (y:ys) else max (x:xs)
 \Question{For list of type $A$, suppose we can test if any two elements $x, y \in A$ are equal, define an algorithm to test if two lists are identical to each other.}
 \Question{In the \textproc{Get-At}($i, L$) algorithm, what is the behavior when $L$ is empty? what is the behavior when $i$ is out of the bound or negative?}
 \Question{In the \textproc{Init} algorithm, can we use \textproc{Append}($L'$, \textproc{First}($L$)) instead of `cons'?}
-\Question{How to handle empty list or out of bound index error in \textproc{Get-At-R} algorithm?}
+\Question{How to handle empty list or out of bound index error in \textproc{Last-At} algorithm?}
+\Question{Add a `tail' field in list definition, optimize the append algorithm to constant time.}
+\Question{With the additional `tail' field, when we need update the tail variable? How does it affect the performance?}
+\Question{Handle the empty list and out of bound error for $setAt$.}
 \end{Exercise}
 
 \begin{Exercise}
 \begin{itemize}
-\item Augment the list with a `tail' field, so that the appending algorithm can be realized in constant $O(1)$ time but
-not linear $O(n)$ time. Feel free to choose your favorite imperative programming language. Please don't refer to the
-example source code along with this book before you try it.
-\item With `tail' field augmented to list, for which list operations this field must be updated? How it affects the
-performance?
 \item Handle the out-of-bound case in insertion algorithm by treating it as appending.
 \item Write the insertion sort algorithm by only using less than ($<$).
 \item Design and implement the algorithm that find all the occurrence of a given value and delete them from the list.
