@@ -362,7 +362,7 @@ When $i$ exceeds the length of the list, we can interpret it as to append $x$. W
   \EndIf
   \State $H \gets L$
   \State $p \gets L$
-  \While{$i \neq 0$ and $L \neq$ NIL}
+  \While{$i > 0$ and $L \neq$ NIL}
     \State $p \gets L$
     \State $L \gets $ \Call{Rest}{$L$}
     \State $i \gets i - 1$
@@ -414,24 +414,12 @@ sort(x:xs) & = & insert(x, sort(xs)) \\
 \end{array}
 \ee
 
-This equation says that if the list to be sorted is empty, the result is also empty, otherwise, we can
-firstly recursively sort all elements except for the first one, then ordered insert the first element
-to this intermediate result. The corresponding Haskell program is given as below.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-isort [] = []
-isort (x:xs) = insert x (isort xs)
-\end{lstlisting}
-
-And the imperative linked-list base insertion sort is described in the following.
-That we initialize the result list as empty, then take the element one by one from
-the list to be sorted, and ordered insert them to the result list.
+This is a recursive algorithm. It firstly sorts the sub-list, then inserts the first element in it. We can eliminate the recursion to develop a iterative implementation. The idea is to scan the list, and one by one insert them:
 
 \begin{algorithmic}[1]
 \Function{Sort}{$L$}
-  \State $L' \gets \phi$
-  \While{$L \neq \phi$}
+  \State $L' \gets$ NIL
+  \While{$L \neq$ NIL}
     \State $L' \gets$ \textproc{Insert}(\Call{First}{$L$}, $L'$)
     \State $L \gets$ \Call{Rest}{$L$}
   \EndWhile
@@ -439,87 +427,40 @@ the list to be sorted, and ordered insert them to the result list.
 \EndFunction
 \end{algorithmic}
 
-Note that, at any time during the loop, the result list is kept sorted. There is
-a major difference between the recursive algorithm (formalized by the equation) and
-the procedural one (described by the pseudo code), that the former process the list
-from right, while the latter from left. We'll see in later section about `tail-recursion'
-how to eliminate this difference.
+At any time during the loop, the result is sorted. There is a major difference between the recursive and the iterative implementations. The recursive one processes the list from right, while the iterative one is from left. We'll introduce `tail-recursion' in later section to eliminate this difference. Chapter 3 introduces insertion sort in detail, including performance analysis and optimization.
 
-The ISO C++ version of linked-list insertion sort is list like this.
+\subsubsection{delete}
+\index{List!delete} \index{List!delete at}
+Symmetric to insert, delete also has two cases. One is to delete the element at a position; the other is to look up, then delete the element of a given value. The first case is defined as $delete(i, L)$, the second case is defined as $delete(x, L)$.
 
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-List<T>* isort(List<T>* xs) {
-  List<T>* ys = NULL;
-  for(; xs; xs = xs->next)
-    ys = insert(xs->key, ys);
-  return ys;
-}
-\end{lstlisting}
-
-There is also a dedicated chapter discusses insertion sort in this book. Please refer to that chapter for
-more details including performance analysis and fine-tuning.
-
-\subsubsection{deletion}
-\index{List!delete}
-\index{List!delete at}
-In purely functional settings, there is no deletion at all in terms of mutating, the data is persist, what
-the semantic deletion means is actually to create a 'new' list with all the elements in previous one except for
-the element being 'deleted'.
-
-Similar to the insertion, there are also two deletion semantics. One is to delete the element at a given position;
-the other is to find and delete elements of a given value. The first can be expressed as $delete(L, i)$, while
-the second is $delete(L, x)$.
-
-In order to design the algorithm $delete(L,i)$ (or `delete at'), we can use the idea which is quite similar to
-random access and insertion, that we first traverse the list to the specified position, then construct the
-result list with the elements we have traversed, and all the others except for the next one we haven't traversed yet.
-
-The strategy can be realized in a recursive manner that in order to {\em delete the $i$-th element from list $L$},
+To delete the element at position $i$, we need advance $i$ steps to the target place, then by pass the element, and link the rest sub-list.
 \begin{itemize}
-\item If $i$ is zero, that we are going to delete the first element of a list, the result is obviously the rest of the list;
-\item If the list to be removed element is empty, the result is anyway empty;
-\item Otherwise, we can recursively {\em delete the $(i-1)$-th element from the sub-list $L'$}, then construct the final
-result from the first element of $L$ and this intermediate result.
+\item If $L$ is empty, then the result is empty too;
+\item If $i = 0$, that we are deleting the head, the result is $L'$;
+\item Otherwise, recursively delete the $(i-1)$-th element from $L'$, then prepend the original head as the result.
 \end{itemize}
 
-Note there are two edge cases, and the second case is major used for error handling. This algorithm can be formalized
-with the following equation.
-
 \be
-delete(L, i) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  L' & i = 0 \\
-  \phi & L = \phi \\
-  cons(l_1, delete(L', i-1))
-  \end{array}
-\right.
+\begin{array}{rcl}
+delete(i,\ \nil) & = & \nil \\
+delete(0,\ x:xs) & = & xs \\
+delete(i,\ x:xs) & = & x : delete(i - 1, xs) \\
+\end{array}
 \ee
 
-Where $L' = rest(L), l_1 = first(L)$. The corresponding Haskell example program is given below.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-del (_:xs) 0 = xs
-del [] _ = []
-del (x:xs) i = x : del xs (i-1)
-\end{lstlisting}
-
-This is a linear time algorithm as well, and there are also alternatives for implementation, for example, we can
-first split the list at position $i-1$, to get 2 sub-lists $L_1$ and $L_2$, then we can concatenate $L_1$ and $L_2'$.
-
-The 'delete at' algorithm can also be realized imperatively, that we traverse to the position by looping:
+This algorithm is bound to $O(i)$ as we need advance $i$ steps to perform deleting. Below is the imperative implementation:
 
 \begin{algorithmic}[1]
-\Function{Delete}{$L, i$}
+\Function{Delete}{$i, L$}
+  \If{$L =$ NIL}
+    \State \Return NIL
+  \EndIf
   \If{$i = 0$}
     \State \Return \Call{Rest}{$L$}
   \EndIf
   \State $H \gets L$
   \State $p \gets L$
-  \While{$i \neq 0$}
+  \While{$i > 0$}
     \State $i \gets i - 1$
     \State $p \gets L$
     \State $L \gets $ \Call{Rest}{$L$}
@@ -528,31 +469,6 @@ The 'delete at' algorithm can also be realized imperatively, that we traverse to
   \State \Return $H$
 \EndFunction
 \end{algorithmic}
-
-Different from the recursive approach, The error handling for out-of-bound is skipped. Besides that the algorithm
-also skips the handling of resource releasing which is necessary in environments without GC (Garbage collection).
-Below ISO C++ code for example, explicitly releases the node to be deleted.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-List<T>* del(List<T>* xs, int i) {
-  List<T> *head, *prev;
-  if (i == 0)
-    head = xs->next;
-  else {
-    for (head = xs; i; --i, xs = xs->next)
-      prev = xs;
-    prev->next = xs->next;
-  }
-  xs->next = NULL;
-  delete xs;
-  return head;
-}
-\end{lstlisting}
-
-Note that the statement \texttt{xs->next = NULL} is necessary if the destructor is designed to release the whole
-linked-list recursively.
 
 The `find and delete' semantic can further be represented in two ways, one is just find the first occurrence of a
 given value, and delete this element from the list; The other is to find {\em ALL} occurrence of this value, and
