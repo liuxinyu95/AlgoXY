@@ -405,6 +405,7 @@ Since the algorithm need compare elements one by one, it is bound to $O(n)$ time
 \EndFunction
 \end{algorithmic}
 
+\label{sec:isort}
 With this linear time ordered insertion defined, we can further develop the insertion-sort algorithm. The idea is to repeatedly insert elements to the empty list. Since each insert takes liner time, the overall sort is bound to $O(n^2)$.
 
 \be
@@ -505,257 +506,141 @@ This algorithm is bound to $O(n)$ time, where $n$ is the length, as it need scan
 
 \subsubsection{concatenate}
 \label{concat} \index{List!concat}
-Concatenation can be considered as a general case for appending, that appending only adds one more extra element to the end of the list, while concatenation adds multiple elements.
-
-However, It will lead to quadratic algorithm if implement concatenation naively by appending, which performs poor. Consider the
-following equation.
-
-\[
-concat(L_1, L_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  L_1 & L_2 = \phi \\
-  concat(append(L_1, first(L_2)), rest(L_2)) & otherwise
-  \end{array}
-\right.
-\]
-
-Note that each appending algorithm need traverse to the end of the list, which is proportion to the length of $L_1$, and
-we need do this linear time appending work $|L_2|$ times, so the total performance is $O(|L_1| + (|L_1| + 1) + ... + (|L_1| + |L_2|)) = O(|L_1||L_2| + |L_2|^2)$.
-
-The key point is that the linking operation of linked-list is fast (constant $O(1)$ time), we can traverse to the end of
-$L_1$ only one time, and link the second list to the tail of $L_1$.
+Append is a special case for concatenation. Append only adds an element, while concatenation adds multiple ones. However, the performance would be quadratic if repeatedly appending as below:
 
 \be
-concat(L_1, L_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  L_2 & L_1 = \phi \\
-  cons(first(L_1), concat(rest(L_1), L_2)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+X \doubleplus \nil & = & X \\
+X \doubleplus (y:ys) & = & append(X, y) \doubleplus ys \\
+\end{array}
 \ee
 
-This algorithm only traverses the first list one time to get the tail of $L_1$, and then linking the second list
-with this tail. So the algorithm is bound to linear $O(|L_1|)$ time.
-
-This algorithm is described as the following.
+In this implementation when concatenate $X$ and $Y$, each append operation traverses to the tail, and we do this for $|Y|$ times. the total time is bound to $O(|X| + (|X| + 1) + ... + (|X| + |Y|)) = O(|X||Y| + |Y|^2)$. Consider the link (cons) operation is fast (constant time), we can traverse to the tail of $X$ only once, then link $Y$ to the tail.
 
 \begin{itemize}
-\item If the first list is empty, the concatenate result is the second list;
-\item Otherwise, we concatenate the second list to the sub-list of the first one, and construct the final result
-with the first element and this intermediate result.
+\item If $X$ is empty, the result is $Y$;
+\item Otherwise, we concatenate the sub-list $X'$ with $Y$, then prepend the head as the result.
 \end{itemize}
 
-Most functional languages provide built-in functions or operators for list concatenation, for example in ML families
-\texttt{++} is used for this purpose.
+We can further improve it a bit: when $Y$ is empty, we needn't traverse, but directly return $X$:
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-[] ++ ys = ys
-xs ++ [] = xs
-(x:xs) ++ ys = x : xs ++ ys
-\end{lstlisting}
+\be
+\begin{array}{rcl}
+\nil \doubleplus Y & = & Y \\
+X \doubleplus \nil & = & X \\
+(x:xs) \doubleplus Y & = & x : (xs \doubleplus Y) \\
+\end{array}
+\ee
 
-Note we add another edge case that if the second list is empty, we needn't traverse to the end of the first one
-and perform linking, the result is merely the first list.
-
-In imperative settings, concatenation can be realized in constant $O(1)$ time with the augmented tail record.
-We skip the detailed implementation for this method, reader can refer to the source code which can be download
-along with this appendix.
-
-The imperative algorithm without using augmented tail record can be described as below.
+The modified algorithm only traverse list $X$, then link its tail to $Y$, hence it is bound $O(|X|)$ time. In imperative settings, concatenation can be realized in constant time with the additional tail variable. We leave its implementation as exercise. Below is the iterative implementation without using the tail variable:
 
 \begin{algorithmic}[1]
-\Function{Concat}{$L_1, L_2$}
-  \If{$L_1 = \phi$}
-    \State \Return $L_2$
+\Function{Concat}{$X, Y$}
+  \If{$X = $ NIL}
+    \State \Return $Y$
   \EndIf
-  \If{$L_2 = \phi$}
-    \State \Return $L_1$
+  \If{$Y = $ NIL}
+    \State \Return $X$
   \EndIf
-  \State $H \gets L_1$
-  \While{\Call{Rest}{$L_1$} $\neq \phi$}
-    \State $L_1 \gets$ \Call{Rest}{$L_1$}
+  \State $H \gets X$
+  \While{\Call{Rest}{$X$} $\neq$ NIL}
+    \State $X \gets$ \Call{Rest}{$X$}
   \EndWhile
-  \State \Call{Rest}{$L_1$} $\gets L_2$
+  \State \Call{Rest}{$X$} $\gets Y$
   \State \Return $H$
 \EndFunction
 \end{algorithmic}
 
-And the corresponding ISO C++ example code is given like this.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-List<T>* concat(List<T>* xs, List<T>* ys) {
-  List<T>* head;
-  if (!xs)
-    return ys;
-  if (!ys)
-    return xs;
-  for (head = xs; xs->next; xs = xs->next);
-  xs->next = ys;
-  return head;
-}
-\end{lstlisting}
-
 \subsection{sum and product}
-\index{List!sum}
-\index{List!product}
+\index{List!sum} \index{List!product}
+It is common to calculate the sum or product of a list of numbers. They have almost same structure. We will introduce how to abstract them to higher order computation in later section.
 
 \subsubsection{Recursive sum and product}
-It is common to calculate the sum or product of a list of numbers. They are quite similar in terms of
-algorithm structure. We'll see how to abstract such structure in later section.
 
-In order to calculate the {\em sum of a list}:
+To calculate the sum of a list:
 
 \begin{itemize}
 \item If the list is empty, the result is zero;
-\item Otherwise, the result is the first element plus the {\em sum of the rest of the list}.
+\item Otherwise, the result is the first element plus the sum of the rest.
 \end{itemize}
 
-Formalize this description gives the following equation.
-
 \be
-sum(L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  0 & L = \phi \\
-  l_1 + sum(L') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+sum(\nil) & = & 0 \\
+sum(x:xs) & = & x + sum(xs) \\
+\end{array}
 \ee
 
-However, we can't merely replace plus to times in this equation to achieve product algorithm, because it always
-returns zero. We can define the product of empty list as 1 to solve this problem.
+We can't merely replace $+$ to $\times$ to obtain product algorithm, because it always returns zero. We need define the product of the empty list as 1.
 
 \be
-product(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  1 & L = \phi \\
-  l_1 \times product(L') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+product(\nil) & = & 1 \\
+product(x:xs) & = & x \cdot product(xs) \\
+\end{array}
 \ee
 
-The following Haskell program implements sum and product.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-sum [] = 0
-sum (x:xs) = x + sum xs
-
-product [] = 1
-product (x:xs) = x * product xs
-\end{lstlisting}
-
-Both algorithms traverse the whole list during calculation, so they are bound to $O(n)$ linear time.
+Both algorithms traverse the list, hence are bound to $O(n)$ time, where $n$ is the length.
 
 \subsubsection{Tail call recursion}
-\index{Tail call}
-\index{Tail recursion}
-\index{Tail recursive call}
-Note that both sum and product algorithms actually compute the result from right to left. We can change them
-to the normal way, that calculate the {\em accumulated} result from left to right. For example with sum,
-the result is actually accumulated from 0, and adds element one by one to this accumulated result till
-all the list is consumed. Such approach can be described as the following.
+\index{Tail call} \index{Tail recursion} \index{Tail recursive call}
+Both sum and product algorithms calculate from right to left. We can change them to calculate the {\em accumulated} result from left to right. For sum, it accumulates from 0, then adds element one by one; while for product, it starts from 1, then repeatedly multiplying elements. The accumulate process can be defined as:
 
-When accumulate result of a list by summing:
 \begin{itemize}
-\item If the list is empty, we are done and return the accumulated result;
-\item Otherwise, we take the first element from the list, accumulate it to the result by summing, and go on
-processing the rest of the list.
+\item If the list is empty, return the accumulated result;
+\item Otherwise, accumulate the first element to the result, then and go on accumulating.
 \end{itemize}
 
-Formalize this idea to equation yields another version of sum algorithm.
+Taking accumulated sum for example:
 
 \be
-sum'(A, L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  A & L = \phi \\
-  sum'(A + l_1, L') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+sum'(A,\ \nil) & = & A \\
+sum'(A,\ x:xs) & = & sum(A + x, xs) \\
+\end{array}
 \ee
 
-And sum can be implemented by calling this function by passing start value 0 and the list as arguments.
-\be
-sum(L) = sum'(0, L)
-\ee
-
-The interesting point of this approach is that, besides it calculates the result in a normal order from
-left to right; by observing the equation of $sum'(A, L)$, we found it needn't remember any intermediate
-results or states when perform recursion. All such states are either passed as arguments ($A$ for example)
-or can be dropped (previous elements of the list for example). So in a practical implementation,
-such kind of recursive function can be optimized by eliminating the recursion at all.
-
-We call such kind of function as `tail recursion' (or `tail call'), and the optimization of removing recursion in this case as
-'tail recursion optimization'\cite{wiki-tail-call} because the recursion happens as the final action
-in such function. The advantage of tail recursion optimization is that the performance can be greatly
-improved, so that we can avoid the issue of stack overflow in deep recursion algorithms such as sum and
-product.
-
-Changing the sum and product Haskell programs to tail-recursion manner gives the following modified
-programs.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-sum = sum' 0 where
-    sum' acc [] = acc
-    sum' acc (x:xs) = sum' (acc + x) xs
-
-product = product' 1 where
-    product' acc [] = acc
-    product' acc (x:xs) = product' (acc * x) xs
-\end{lstlisting}
-
-In previous section about insertion sort, we mentioned that the functional version sorts the elements
-form right, this can also be modified to tail recursive realization.
+Given a list, we can call $sum'$ with 0 as the start value:
 
 \be
-sort'(A, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  A & L = \phi \\
-  sort'(insert(l_1, A), L') & otherwise
-  \end{array}
-\right.
+sum(X) = sum'(0, X)
 \ee
 
-The the sorting algorithm is just calling this function by passing empty list as the accumulator argument.
+Or merely simplify it to Curried form: $sum = sum'(0)$.
+
+The accumulated sum does not only calculate the result from left to right, it needn't book keeping any context, state, or intermediate result for recursion. All such states are either passed as argument (i.e. $A$), or can be dropped (the previous element in the list). Such recursive calls are often optimized as pure loops in practice. We call this kind of function as {\em tail recursion} (or `tail call'), and the optimization to eliminate recursion is called 'tail recursion optimization'\cite{wiki-tail-call}, because the recursion happens at the tail place in the function. The performance of tail call can be greatly improved after optimization, and we can avoid the issue of stack overflow in deep recursions.
+
+In section \ref{sec:isort} about insertion sort, we mentioned the recursive algorithm sorts elements form right. We can also optimize it to tail call:
+
 \be
-sort(L) = sort'(\phi, L)
+\begin{array}{rcl}
+sort'(A,\ \nil) & = & A \\
+sort'(A,\ x:xs) & = & sort'(insert(x, A), xs) \\
+\end{array}
 \ee
 
-Implementing this tail recursive algorithm to real program is left as exercise to the reader.
+And the sort is defined Curried form with $\nil$ as the start value:
 
-As the end of this sub-section, let's consider an interesting problem, that how to design an algorithm
-to compute $b^n$ effectively? (refer to problem 1.16 in \cite{SICP}.)
+\be
+sort = sort'(\nil)
+\ee
 
-A naive brute-force solution is to repeatedly multiply $b$ for $n$ times from 1, which leads to a
-linear $O(n)$ algorithm.
+As a typical tail call problem, let's consider how to compute $b^n$ effectively? (refer to problem 1.16 in \cite{SICP}.) A brute-force solution is to repeatedly multiplying $b$ for $n$ times from 1. This algorithm is bound to $O(n)$:
 
 \begin{algorithmic}[1]
 \Function{Pow}{$b, n$}
   \State $x \gets 1$
-  \Loop{$n$ times}
-    \State $x \gets x \times b$
+  \Loop{ $n$ times}
+    \State $x \gets x b$
   \EndLoop
   \State \Return $x$
 \EndFunction
 \end{algorithmic}
 
-Actually, the solution can be greatly improved. Consider we are trying to calculate $b^8$.
-By the first 2 iterations in above naive algorithm, we got $x = b^2$. At this stage, we
-needn't multiply $x$ with $b$ to get $b^3$, we can directly calculate $x^2$, which leads
-to $b^4$. And if we do this again, we get $(b^4)^2 = b^8$. Thus we only need looping 3 times
-but not 8 times.
+Actually, the solution can be greatly improved. When compute $b^8$, after the first 2 loops, we get $x = b^2$. At this stage, we
+needn't multiply $x$ with $b$ to get $b^3$, but directly compute $x^2$, which gives $b^4$. If do this again, we get $(b^4)^2 = b^8$. Thus we only need loop 3 times, but not 8 times.
 
-An algorithm based on this idea to compute $b^n$ if $n = 2^m$ for some non-negative integer $m$ can be shown in
-the following equation.
+Based on this idea, if $n = 2^m$ for some none negative integer $m$, we can design an algorithm to compute $b^n$:
 
 \[
 pow(b, n) =  \left \{
