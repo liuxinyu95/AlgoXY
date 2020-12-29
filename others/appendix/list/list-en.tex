@@ -221,10 +221,10 @@ There actually exists better solution. The idea is to keep two pointers $p_1, p_
 \end{figure}
 
 \begin{algorithmic}[1]
-\Function{Last-At}{$L, i$}
+\Function{Last-At}{$i, L$}
   \State $p \gets L$
-  \While{$i \neq 0$}
-    \State $L \gets $ \Call{Rest}{$L$}
+  \While{$i > 0$}
+    \State $L \gets $ \Call{Rest}{$L$} \Comment{Raise error if out of bound}
     \State $i \gets i - 1$
   \EndWhile
   \While{\Call{Rest}{$L$} $\neq$ NIL}
@@ -431,7 +431,7 @@ At any time during the loop, the result is sorted. There is a major difference b
 
 \subsubsection{delete}
 \index{List!delete} \index{List!delete at}
-Symmetric to insert, delete also has two cases. One is to delete the element at a position; the other is to look up, then delete the element of a given value. The first case is defined as $delete(i, L)$, the second case is defined as $delete(x, L)$.
+Symmetric to insert, delete also has two cases. One is to delete the element at a position; the other is to look up, then delete the element of a given value. The first case is defined as $delAt(i, L)$, the second case is defined as $delete(x, L)$.
 
 To delete the element at position $i$, we need advance $i$ steps to the target place, then by pass the element, and link the rest sub-list.
 \begin{itemize}
@@ -442,126 +442,69 @@ To delete the element at position $i$, we need advance $i$ steps to the target p
 
 \be
 \begin{array}{rcl}
-delete(i,\ \nil) & = & \nil \\
-delete(0,\ x:xs) & = & xs \\
-delete(i,\ x:xs) & = & x : delete(i - 1, xs) \\
+delAt(i,\ \nil) & = & \nil \\
+delAt(0,\ x:xs) & = & xs \\
+delAt(i,\ x:xs) & = & x : delAt(i - 1, xs) \\
 \end{array}
 \ee
 
 This algorithm is bound to $O(i)$ as we need advance $i$ steps to perform deleting. Below is the imperative implementation:
 
 \begin{algorithmic}[1]
-\Function{Delete}{$i, L$}
-  \If{$L =$ NIL}
-    \State \Return NIL
-  \EndIf
-  \If{$i = 0$}
-    \State \Return \Call{Rest}{$L$}
-  \EndIf
-  \State $H \gets L$
-  \State $p \gets L$
-  \While{$i > 0$}
+\Function{Del-At}{$i, L$}
+  \State $S \gets$ \Call{Cons}{$\perp, L$} \Comment{A sentinel node}
+  \State $p \gets S$
+  \While{$i > 0$ and $L \neq$ NIL}
     \State $i \gets i - 1$
     \State $p \gets L$
     \State $L \gets $ \Call{Rest}{$L$}
   \EndWhile
-  \State \Call{Rest}{$p$} $\gets$ \Call{Rest}{$L$}
-  \State \Return $H$
+  \If{$L \neq$ NIL}
+    \State \Call{Rest}{$p$} $\gets$ \Call{Rest}{$L$}
+  \EndIf
+  \State \Return \Call{Rest}{$S$}
 \EndFunction
 \end{algorithmic}
 
-The `find and delete' semantic can further be represented in two ways, one is just find the first occurrence of a
-given value, and delete this element from the list; The other is to find {\em ALL} occurrence of this value, and
-delete these elements. The later is more general case, and it can be achieved by a minor modification of the
-former. We left the `find all and delete' algorithm as an exercise to the reader.
+To simplify the implementation, we introduce a sentinel node $S$, it contains a special value $\perp$, and its next reference points to $L$. With $S$, we are save to cut-off any node in $L$ even for the first one. Finally, we return the list after $S$ as the result, and $S$ itself can be discarded.
 
-The algorithm can be designed exactly as the term 'find and delete' but not 'find then delete', that the finding
-and deleting are processed in one pass traversing.
+For the `find and delete' case, there are two options. We can either find and delete the first occurrence of a value; or remove all the occurrences. The later is more generic, we leave it as an exercise. When delete $x$ from list $L$:
 
 \begin{itemize}
-\item If the list to be dealt with is empty, the result is obviously empty;
-\item If the list isn't empty, we examine the first element of the list, if it is identical to the given value, the result is the
-sub list;
-\item Otherwise, we keep the first element, and recursively find and delete the element in the sub list with the given value.
-The final result is a list constructed with the kept first element, and the recursive deleting result.
+\item If the list is empty, the result is $\nil$;
+\item Otherwise, we compare the head and $x$, if they are equal, then the result is $L'$;
+\item If the head does not equal to $x$, we keep the head, and recursively delete $x$ in $L'$.
 \end{itemize}
 
-This algorithm can be formalized by the following equation.
-
 \be
-delete(L, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  L' & l_1 = x \\
-  cons(l_1, delete(L', x)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+delete(x,\ \nil) & = & \nil \\
+delete(x,\ y:ys) & = & \begin{cases}
+  x = y : & delete(x, ys) \\
+  x \neq y : & y : delete(x, ys) \\
+  \end{cases} \\
+\end{array}
 \ee
 
-This algorithm is bound to linear time as it traverses the list to find and delete element.
-Translating this equation to Haskell program yields the below code, note that, the first edge case is handled
-by pattern-matching the empty list; while the other two cases are further processed by if-else expression.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-del [] _ = []
-del (x:xs) y = if x == y then xs else x : del xs y
-\end{lstlisting}
-
-Different from the above imperative algorithms, which skip the error handling in most cases, the imperative `find and delete' realization must deal with the
-problem that the given value doesn't exist.
+This algorithm is bound to $O(n)$ time, where $n$ is the length, as it need scan the list to find the target element. For the iterative implementation, we also introduce a sentinel node to simplify the logic:
 
 \begin{algorithmic}[1]
-\Function{Delete}{$L, x$}
-  \If{$L = \phi$} \Comment{Empty list}
-    \State \Return $\phi$
+\Function{Delete}{$x, L$}
+  \State $S \gets$ \Call{Cons}{$\perp, L$}
+  \State $p \gets$ L
+  \While{$L \neq$ NIL and \Call{First}{$L$} $\neq x$}
+    \State $p \gets L$
+    \State $L \gets$ \Call{Rest}{$L$}
+  \EndWhile
+  \If{$L \neq$ NIL}
+    \State \Call{Rest}{$p$} $\gets$ \Call{Rest}{$L$}
   \EndIf
-  \If{\Call{First}{$L$} $= x$}
-    \State $H \gets$ \Call{Rest}{$L$}
-  \Else
-    \State $H \gets L$
-    \While{$L \neq \phi \land$ \Call{First}{$L$} $\neq x$} \Comment{List isn't empty}
-      \State $p \gets L$
-      \State $L \gets$ \Call{Rest}{$L$}
-    \EndWhile
-    \If{$L \neq \phi$} \Comment{Found}
-      \State \Call{Rest}{$p$} $\gets$ \Call{Rest}{$L$}
-    \EndIf
-  \EndIf
-  \State \Return $H$
+  \State \Return \Call{Rest}{$S$}
 \EndFunction
 \end{algorithmic}
 
-If the list is empty, the result is anyway empty; otherwise, the algorithm traverses the list till either finds an element identical to the given value or to the
-end of the list. If the element is found, it is removed from the list. The following ISO C++ program implements the algorithm. Note that there are codes release the memory explicitly.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-List<T>* del(List<T>* xs, T x) {
-  List<T> *head, *prev;
-  if (!xs)
-    return xs;
-  if (xs->key == x)
-    head = xs->next;
-  else {
-    for (head = xs; xs && xs->key != x; xs = xs->next)
-      prev = xs;
-    if (xs)
-      prev->next = xs->next;
-  }
-  if (xs) {
-    xs->next = NULL;
-    delete xs;
-  }
-  return head;
-}
-\end{lstlisting}
-
 \subsubsection{concatenate}
-\label{concat}
-\index{List!concat}
+\label{concat} \index{List!concat}
 Concatenation can be considered as a general case for appending, that appending only adds one more extra element to the end of the list, while concatenation adds multiple elements.
 
 However, It will lead to quadratic algorithm if implement concatenation naively by appending, which performs poor. Consider the
