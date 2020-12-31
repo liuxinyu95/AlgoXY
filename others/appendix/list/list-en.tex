@@ -201,7 +201,7 @@ We leave the empty list not handled for both operations. The behavior is undefin
 \EndFunction
 \end{algorithmic}
 
-As advancing towards the tail, this algorithm accumulates the `init' result through `cons'. However, such result is in the reversed order. We need apply reverse (defined in later section) again to return the correct result. There is a question to ask if we can use `append' instead of `cons' in the exercise.
+As advancing towards the tail, this algorithm accumulates the `init' result through `cons'. However, such result is in the reversed order. We need apply reverse (defined in section \ref{sec:reverse}) again to return the correct result. There is a question to ask if we can use `append' instead of `cons' in the exercise.
 
 \subsection{Reverse index}
 \index{List!Reverse index} \index{List!rindex}
@@ -428,7 +428,7 @@ This is a recursive algorithm. It firstly sorts the sub-list, then inserts the f
 \EndFunction
 \end{algorithmic}
 
-At any time during the loop, the result is sorted. There is a major difference between the recursive and the iterative implementations. The recursive one processes the list from right, while the iterative one is from left. We'll introduce `tail-recursion' in later section to eliminate this difference. Chapter 3 introduces insertion sort in detail, including performance analysis and optimization.
+At any time during the loop, the result is sorted. There is a major difference between the recursive and the iterative implementations. The recursive one processes the list from right, while the iterative one is from left. We'll introduce `tail-recursion' in section \ref{sec:tail-call} to eliminate this difference. Chapter 3 introduces insertion sort in detail, including performance analysis and optimization.
 
 \subsubsection{delete}
 \index{List!delete} \index{List!delete at}
@@ -553,7 +553,7 @@ The modified algorithm only traverse list $X$, then link its tail to $Y$, hence 
 
 \subsection{sum and product}
 \index{List!sum} \index{List!product}
-It is common to calculate the sum or product of a list of numbers. They have almost same structure. We will introduce how to abstract them to higher order computation in later section.
+It is common to calculate the sum or product of a list of numbers. They have almost same structure. We will introduce how to abstract them to higher order computation in section \ref{sec:fold}.
 
 \subsubsection{Recursive sum and product}
 
@@ -584,6 +584,7 @@ Both algorithms traverse the list, hence are bound to $O(n)$ time, where $n$ is 
 
 \subsubsection{Tail call recursion}
 \index{Tail call} \index{Tail recursion} \index{Tail recursive call}
+\label{sec:tail-call}
 Both sum and product algorithms calculate from right to left. We can change them to calculate the {\em accumulated} result from left to right. For sum, it accumulates from 0, then adds element one by one; while for product, it starts from 1, then repeatedly multiplying elements. The accumulate process can be defined as:
 
 \begin{itemize}
@@ -640,127 +641,91 @@ As a typical tail call problem, let's consider how to compute $b^n$ effectively?
 Actually, the solution can be greatly improved. When compute $b^8$, after the first 2 loops, we get $x = b^2$. At this stage, we
 needn't multiply $x$ with $b$ to get $b^3$, but directly compute $x^2$, which gives $b^4$. If do this again, we get $(b^4)^2 = b^8$. Thus we only need loop 3 times, but not 8 times.
 
-Based on this idea, if $n = 2^m$ for some none negative integer $m$, we can design an algorithm to compute $b^n$:
+Based on this idea, if $n = 2^m$ for some none negative integer $m$, we can design below algorithm to compute $b^n$:
 
 \[
-pow(b, n) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  b & n = 1 \\
-  pow(b, \frac{n}{2})^2 & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+b^1 & = & b \\
+b^n & = & (b^{\frac{n}{2}})^2 \\
+\end{array}
 \]
 
-It is easy to extend this divide and conquer algorithm so that $n$ can be any non-negative integer.
+We next extend this divide and conquer method for any none negative integer $n$:
 
 \begin{itemize}
-\item For the trivial case, that $n$ is zero, the result is 1;
-\item If $n$ is even number, we can halve $n$, and compute $b^{\frac{n}{2}}$ first. Then calculate the square number of this result.
-\item Otherwise, $n$ is odd. Since $n-1$ is even, we can first recursively compute $b^{n-1}$, the multiply $b$ one more time to this result.
+\item If $n = 0$, define $b^0 = 1$;
+\item If $n$ is even, we halve $n$, to compute $b^{\frac{n}{2}}$. Then square it;
+\item Otherwise $n$ is odd. Since $n-1$ is even, we recursively compute $b^{n-1}$, the multiply $b$ atop it.
 \end{itemize}
 
-Below equation formalizes this description.
-
 \be
-pow(b, n) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  1 & n = 0 \\
-  pow(b, \frac{n}{2})^2 & 2 | n \\
-  b \times pow(b, n-1) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+b^0 & = & 1 \\
+b^n & = & \begin{cases}
+2 | n : & (b^{\frac{n}{2}})^2 \\
+otherwise : & b \cdot b^{n-1} \\
+\end{cases}
+\end{array}
 \ee
 
-However, it's hard to turn this algorithm to be tail-recursive mainly because of the 2nd clause. In fact, the 2nd clause can be alternatively
-realized by squaring the base number, and halve the exponent.
+However, the 2nd clause blocks us to turn it tail recursive.Alternatively, we can square the base number, and halve the exponent.
 
 \be
-pow(b, n) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  1 & n = 0 \\
-  pow(b^2, \frac{n}{2}) & 2 | n \\
-  b \times pow(b, n-1) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+b^0 & = & 1 \\
+b^n & = & \begin{cases}
+2 | n : & (b^2)^{\frac{n}{2}} \\
+otherwise : & b \cdot b^{n-1} \\
+\end{cases}
+\end{array}
 \ee
 
-With this change, it's easy to get a tail-recursive algorithm as the following, so that $b^n = pow'(b, n, 1)$.
+With this change, we can develop a tail recursive algorithm to compute $b^n = pow(b, n, 1)$.
 
 \be
-pow'(b, n, A) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  A & n = 0 \\
-  pow'(b^2, \frac{n}{2}, A) & 2 | n \\
-  pow'(b, n-1, A \times b) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+pow(b, 0, A) & = & A \\
+pow(b, n, A) & = & \begin{cases}
+  2 | n : & pow(b^2, \dfrac{n}{2}, A) \\
+  otherwise: & pow(b, n - 1, b \cdot A) \\
+\end{cases}
+\end{array}
 \ee
 
-Compare to the naive brute-force algorithm, we improved the performance to $O(\lg n)$.
-Actually, this algorithm can be improved even one more step.
+Compare to the brute-force implementation, this one improves to $O(\lg n)$ time. Actually, we can improve it further. If represent $n$ in binary format $n = (a_ma_{m-1}...a_1a_0)_2$, we clear know
+that the computation for $b^{2^i}$ is necessary if $a_i = 1$. This is quite similar to the idea of Binomial heap (section \autoref{sec:binomial-heap}). We can multiplying all of them for bits of 1.
 
-Observe that if we represent $n$ in binary format $n = (a_ma_{m-1}...a_1a_0)_2$, we clear know
-that the computation for $b^{2^i}$ is necessary if $a_i = 1$. This is quite similar to the
-idea of Binomial heap (reader can refer to the chapter of binomial heap in this book). Thus
-we can calculate the final result by multiplying all of them for bits with value 1.
-
-For instance, when we compute $b^{11}$, as $11 = (1011)_2 = 2^3 + 2 +1$, thus $b^{11} = b^{2^3} \times b^2 \times b$.
-We can get the result by the following steps.
+For example, when compute $b^{11}$, as $11 = (1011)_2 = 2^3 + 2 +1$, thus $b^{11} = b^{2^3} \times b^2 \times b$. We get the result by these steps:
 
 \begin{enumerate}
 \item calculate $b^1$, which is $b$;
-\item Get $b^2$ from previous result;
-\item Get $b^{2^2}$ from step 2;
-\item Get $b^{2^3}$ from step 3.
+\item Square to $b^2$ from the previous result;
+\item Square again to $b^{2^2}$ from step 2;
+\item Square to $b^{2^3}$ from step 3.
 \end{enumerate}
 
-Finally, we multiply the results of step 1, 2, and 4 which yields $b^{11}$.
-
-Summarize this idea, we can improve the algorithm as below.
+Finally, we multiply the result of step 1, 2, and 4 to get $b^{11}$. Summarize this idea, we improve the algorithm as below.
 
 \be
-pow'(b, n, A) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  A & n = 0 \\
-  pow'(b^2, \frac{n}{2}, A) & 2 | n \\
-  pow'(b^2, \lfloor \frac{n}{2} \rfloor, A \times b) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+pow(b, 0, A) & = & A \\
+pow(b, n, A) & = & \begin{cases}
+  2 | n : & pow(b^2, \dfrac{n}{2}, A) \\
+  otherwise: & pow(b^2, \lfloor \dfrac{n}{2} \rfloor, b \cdot A) \\
+  \end{cases}
+\end{array}
 \ee
 
-This algorithm essentially shift $n$ to right for 1 bit each time (by dividing $n$ by 2). If the LSB (Least Significant Bit,
-which is the lowest bit) is 0, it means $n$ is even. It goes on computing the square of the base, without accumulating the
-final product (Just like the 3rd step in above example); If the LSB is 1, it means $n$ is odd. It squares the base and
-accumulates it to the product $A$; The edge case is when $n$ is zero, which means we exhaust all the bits in $n$, thus
-the final result is the accumulator $A$. At any time, the updated base number $b'$, the shifted exponent number $n'$,
-and the accumulator $A$ satisfy the invariant that $b^n = b'^{n'}A$.
+This algorithm essentially shifts $n$ to right 1 bit each time (divide $n$ by 2). If the LSB (Least Significant Bit, the lowest) is 0, $n$ is even. It squares the base and keeps the accumulator $A$ unchanged; If the LSB is 1, $n$ is odd. It squares the base and accumulates it to $A$; When $n$ is zero, we exhaust all bits in $n$, $A$ is the final result. At any time, the updated base number $b'$, the shifted exponent number $n'$, and the accumulator $A$ satisfy the invariant $b^n = A \cdot (b')^{n'}$.
 
-This algorithm can be implemented in Haskell like the following.
+Compare to previous one, which minus by one for odd $n$, this algorithm halves $n$ every time. It exactly runs $m$ rounds, where $m$ is the number of bits. We leave the imperative implementation as exercise.
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-pow b n = pow' b n 1 where
-  pow' b n acc | n == 0 = acc
-               | even n = pow' (b*b) (n `div` 2) acc
-               | otherwise = pow' (b*b) (n `div` 2) (acc*b)
-\end{lstlisting}
-
-Compare to previous algorithm, which minus $n$ by one to change it to even when $n$ is odd, this one halves $n$ every
-time. It exactly runs $m$ rounds, where $m$ is the number of bits of $n$. However, the performance is still bound to
-$O(\lg n)$. How to implement this algorithm imperatively is left as exercise to the reader.
-
-\subsubsection{Imperative sum and product}
-The imperative sum and product are just applying plus and times while traversing the list.
+Back to the sum and product operations. The iterative implementation applies plus and multiplication while traverse the list:
 
 \begin{algorithmic}[1]
 \Function{Sum}{$L$}
   \State $s \gets 0$
-  \While{$L \neq \phi$}
+  \While{$L \neq$ NIL}
     \State $s \gets s +$ \Call{First}{$L$}
     \State $L \gets$ \Call{Rest}{$L$}
   \EndWhile
@@ -769,7 +734,7 @@ The imperative sum and product are just applying plus and times while traversing
 \Statex
 \Function{Product}{$L$}
   \State $p \gets 1$
-  \While{$L \neq \phi$}
+  \While{$L \neq$ NIL}
     \State $p \gets p \times $ \Call{First}{$L$}
     \State $L \gets$ \Call{Rest}{$L$}
   \EndWhile
@@ -777,29 +742,7 @@ The imperative sum and product are just applying plus and times while traversing
 \EndFunction
 \end{algorithmic}
 
-The corresponding ISO C++ example programs are list as the following.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-T sum(List<T>* xs) {
-  T s;
-  for (s = 0; xs; xs = xs->next)
-    s += xs->key;
-  return s;
-}
-
-template<typename T>
-T product(List<T>* xs) {
-  T p;
-  for (p = 1; xs; xs = xs->next)
-    p *= xs->key;
-  return p;
-}
-\end{lstlisting}
-
-One interesting usage of product algorithm is that we can calculate factorial of $n$ by calculating the
-product of $\{1, 2, ..., n\}$ that $n! = product([1..n])$.
+One interesting usage of product is to calculate factorial of $n$ as: $n! = product([1..n])$.
 
 \subsection{maximum and minimum}
 \index{List!maximum}
@@ -1473,7 +1416,7 @@ we can use the same mapping idea. We'll return to this kind of high-order concep
 later.
 
 \subsection{reverse}
-\index{List!reverse}
+\index{List!reverse} \label{sec:reverse}
 How to reverse a singly linked-list with minimum space is a popular technical interview problem in some companies.
 The pointer manipulation must be arranged carefully in imperative programming languages such as ANSI C.
 However, we'll show that, there exists an easy way to write this program:
@@ -2020,7 +1963,7 @@ What's the difference between this algorithm and the the one we've shown in this
 \end{Exercise}
 
 \section{Folding}
-\index{folding}
+\index{folding} \label{sec:fold}
 
 We are ready to introduce one of the most critical concept in high order programming, folding. It is so powerful tool
 that almost all the algorithms so far in this appendix can be realized by folding. Folding is sometimes be named as
