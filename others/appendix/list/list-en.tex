@@ -1037,104 +1037,83 @@ More generally, we can pass a procedure $P$, then traverse the list and apply $P
 
 \subsubsection{Examples}
 
-We'll show how to use mapping by an example, which is a problem of ACM/ICPC\cite{poj-drunk-jailer}.
-For sake of brevity, we modified the problem description a bit. Suppose there are $n$ lights in a room, all
-of them are off. We execute the following process $n$ times:
+As an example, let's see a puzzle named ``the drunk jailer''\cite{poj-drunk-jailer}. There are $n$ lights in a room, all of them are off. We execute the following $n$ rounds:
 
 \begin{enumerate}
-\item We switch all the lights in the room, so that they are all on;
-\item We switch the 2, 4, 6, ... lights, that every other light is switched, if the light is on, it will be off, and it will be
-on if the previous state is off;
-\item We switch every third lights, that the 3, 6, 9, ... are switched;
+\item Switch all the lights in the room (all on);
+\item Switch lights with number 2, 4, 6, ... , that every other light is switched, if the light is on, it will be off;
+\item Switch every third lights, number 3, 6, 9, ... ;
 \item ...
 \end{enumerate}
 
-And at the last round, only the last light (the $n$-th light) is switched.
+And at the last round, only the last light (the $n$-th light) is switched. The question is how many lights are on in the end?
 
-The question is how many lights are on finally?
-
-Before we show the best answer to this puzzle, let's first work out a naive brute-force solution.
-Suppose there are $n$ lights, which can be represented as a list of 0, 1 numbers, where 0 means the light
-is off, and 1 means on. The initial state is a list of $n$ zeros: $\{0, 0, ..., 0\}$.
-
-We can label the light from 1 to $n$. A mapping can help us to turn the above list into a labeled list\footnote{Readers
-who are familiar with functional programming, may use zipping to achieve this. We'll explain zipping in later
-section.}.
+Let's start with a brute-force solution, then improve it step by step. We represent the state of $n$ lights as a list of 0/1 numbers. 0 is off, 1 is on. The initial state are all zeros: [0, 0, ..., 0]. We label the light from 1 to $n$, then map them to (i, on/off) pairs:
 
 \[
-map(\lambda_i \cdot (i, 0), \{1, 2, 3, ... n\})
+lights = map(i \mapsto (i, 0), [1, 2, 3, ... n])
 \]
 
-This mapping augments each natural number with zero, the result is a list of pairs: $L = \{(1, 0), (2, 0), ..., (n, 0)\}$.
-
-Next we operate this list of pairs $n$ times from 1 to $n$. For every time $i$, we switch the second value in this pair
-if the first label can be divided by $i$. Consider the fact that $1 - 0 = 1$, and $1 - 1 = 0$, we can realize switching
-of 0, 1 value $x$ by $1 - x$. At the $i$-th operation, for light $(j, x)$, if $i | j$, (or $j \mod i = 0$), we then
-perform switching, otherwise, we leave the light untouched.
+It binds each number to zero, the result is a list of pairs: $L = [(1, 0), (2, 0), ..., (n, 0)]$. Next we operate this list of pairs $n$ rounds. In the $i$-th round, switch the second value in this pair if the its label is divided by $i$. Consider $1 - 0 = 1$, and $1 - 1 = 0$, we can switch 0/1 value of $x$ by $1 - x$. For light $(j, x)$, if $i | j$, (or $j \bmod i = 0$), then switch, otherwise leave the light untouched.
 
 \be
-switch(i, (j, x)) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (j, 1 - x) &  j \mod i = 0 \\
-  (j, x) & otherwise
-  \end{array}
-\right.
+switch(i, (j, x)) = \begin{cases}
+  j \bmod i = 0 : & (j, 1 - x) \\
+  otherwise: & (j, x) \\
+  \end{cases}
 \ee
 
-The $i$-th operation on all lights can be realized as mapping again:
+The $i$-th round for all lights can be realized as map again:
 
 \be
 map(switch(i), L)
 \ee
 
-Note that, here we use Curried form of $switch()$ function, which is equivalent to
+Here we use the Curried form of $switch$, which is equivalent to
 
 \[
-map(\lambda_{(j, x)} \cdot switch(i, (j, x)), L)
+map((j, x) \mapsto switch(i, (j, x)), L)
 \]
 
-Here we need define a function $proc()$, which can perform the above mapping on $L$ over and over by $n$ times.
-One option is to realize it in purely recursive way as the following, so that we can call it like
-$proc(\{1, 2, ..., n\}, L)$\footnote{This can also be realized by folding, which will be explained in later section.}.
+Next, we define a function $op()$, which performs above mapping on $L$ over and over by $n$ rounds. We call it as $op([1, 2, ..., n], L)$.
 
 \be
-proc(I, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  L & I = \phi \\
-  operate(I', map(switch(i_1), L)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+op(\nil,\ L) & = & L \\
+op(i:is,\ L) & = & op(is, map(switch(i), L)) \\
+\end{array}
 \ee
 
-Where $I = cons(i_1, I')$ if $I$ isn't empty.
-
-At this stage, we can sum the second value of each pair in list $L$ to get the answer. The sum function has been
-defined in previous section, so the only thing left is mapping.
+At this stage, we can sum the second value of each pair in list $L$ to get the answer.
 
 \be
-solve(n) = sum(map(snd, proc(\{1, 2, ..., n\}, L)))
+solve(n) = sum(map(snd, op([1, 2, ..., n], lights)))
 \ee
 
-Translating this naive brute-force solution to Haskell yields below program.
+Below is the example Haskell implementation of this brute-force solution:
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-solve' = sum . (map snd) . proc  where
-    proc n = operate [1..n] $ map (\i -> (i, 0)) [1..n]
+\begin{Haskell}
+solve = sum . (map snd) . proc  where
+    lights = map (\i -> (i, 0)) [1..n]
+    proc n = operate [1..n] lights
     operate [] xs = xs
     operate (i:is) xs = operate is (map (switch i) xs)
 
 switch i (j, x) = if j `mod` i == 0 then (j, 1 - x) else (j, x)
-\end{lstlisting} %$
+\end{Haskell} %$
 
-Let's see what's the answer for there are 1, 2, ..., 100 lights.
+Run this program from 1 light to 100 lights, let's see what the answers are (we added line breaks):
 
 \begin{verbatim}
-[1,1,1,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,
-6,6,6,6,6,6,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,
-8,8,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,10]
+[1,1,1,
+ 2,2,2,2,2,
+ 3,3,3,3,3,3,3,
+ 4,4,4,4,4,4,4,4,4,
+ 5,5,5,5,5,5,5,5,5,5,5,
+ 6,6,6,6,6,6,6,6,6,6,6,6,6,
+ 7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+ 8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,
+ 9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,10]
 \end{verbatim}
 
 This result is interesting:
@@ -1146,47 +1125,31 @@ This result is interesting:
 \item ...
 \end{itemize}
 
-It seems that the $i^2$-th to the $((i+1)^2-1)$-th answers are $i$. Actually, we can prove this fact as the following.
+It seems that the $i^2$-th to the $((i+1)^2-1)$-th answers are $i$. Actually, we can prove it:
 
 \begin{proof}
-Given $n$ lights, labeled from 1 to $n$, consider which lights are on finally. Since the initial states for all lights
-are off, we can say that, the lights which are manipulated odd times are on. For every light $i$, it will be switched
-at the $j$ round if $i$ can be divided by $j$ (denote as $j | i$). So only the lights which have odd number of factors are on at the end.
+Given $n$ lights labeled from 1 to $n$, consider which lights are on finally. Since the initial states for all lights are off, we can say that, the lights which are manipulated odd times are on. For every light $i$, it will be switched at the $j$ round if $i$ can be divided by $j$ (denote as $j | i$). Only the lights which have odd number of factors are on in the end.
 
-So the key point to solve this puzzle, is to find all numbers which have odd number of factors. For any positive integer
-$n$, denote $S$ the set of all factors of $n$. $S$ is initialized to $\phi$. if $p$ is a factor of $n$, there must
-exist a positive integer $q$ that $n = p q$, which means $q$ is also a factor of $n$. So we add 2 different factors to
-the set $S$ if and only if $p \neq q$, which keeps $|S|$ even all the time unless $p = q$. In such case, $n$ is a
-perfect square number, and we can only add 1 factor to the set $S$, which leads to an odd number of factors.
+The key point to solve this puzzle, is to find all numbers which have odd number of factors. For any positive integer $n$, let $S$ be the set of all factors of $n$. $S$ is initialized to $\varnothing$. If $p$ is a factor of $n$, there must exist a positive integer $q$ such that $n = p q$ holds. It means $q$ is also a factor of $n$. We add 2 different factors to set $S$ if and only if $p \neq q$, which keeps $|S|$ even all the time unless $p = q$. In such case, $n$ is a square number. We can only add 1 factor to set $S$, which leads to odd number of factors.
 \end{proof}
 
-
-At this stage, we can design a fast solution by finding the number of perfect square numbers under $n$.
+At this stage, we can design a fast solution by finding the number of square numbers under $n$.
 
 \be
 solve(n) = \lfloor \sqrt{n} \rfloor
 \ee
 
-The next Haskell command verifies that the answer for 1, 2, ..., 100 lights are as same as above.
+Below Haskell example program outputs the answer for 1, 2, ..., 100 lights:
 
-\begin{lstlisting}
-map (floor.sqrt) [1..100]
-[1,1,1,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,
-6,6,6,6,6,6,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,
-8,8,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,10]
-\end{lstlisting}
+\begin{Haskell}
+map (floor . sqrt) [1..100]
+\end{Haskell}
 
-Mapping is generic concept that it doesn't only limit in linked-list, but also can be applied to many
-complex data structures. The chapter about binary search tree in this book explains how to map on trees.
-As long as we can traverse a data structure in some order, and the empty data structure can be identified,
-we can use the same mapping idea. We'll return to this kind of high-order concept in the section of folding
-later.
+Map is a generic concept does not limit to list. It can be applied to many complex algebraic structures. The next chapter about binary search tree explains how to map on trees. As long as we can traverse the structure, and the empty is defined, we can use the same mapping idea.
 
 \subsection{reverse}
 \index{List!reverse} \label{sec:reverse}
-How to reverse a singly linked-list with minimum space is a popular technical interview problem in some companies.
-The pointer manipulation must be arranged carefully in imperative programming languages such as ANSI C.
-However, we'll show that, there exists an easy way to write this program:
+It's a classic exercise to reverse a singly linked-list with minimum space. One must carefully manipulate the node reference, however, there exists easy way to implement reverse:
 
 \begin{enumerate}
 \item Firstly, write a pure recursive straightforward solution;
