@@ -768,9 +768,9 @@ For a list of comparable elements (we can define order for any two elements), th
 \end{itemize}
 
 \be
-  \begin{array}{rl}
-  min([x]) = & x \\
-  min(x:xs) = & \begin{cases}
+  \begin{array}{rcl}
+  min([x]) & = & x \\
+  min(x:xs) & = & \begin{cases}
     x < min(xs) : & x \\
     otherwise: & min(xs) \\
   \end{cases}
@@ -778,89 +778,49 @@ For a list of comparable elements (we can define order for any two elements), th
 \ee
 and
 \be
-  \begin{array}{rl}
-  max([x]) = & x \\
-  max(x:xs) = & \begin{cases}
+  \begin{array}{rcl}
+  max([x]) & = & x \\
+  max(x:xs) & = & \begin{cases}
     x > max(xs) : & x \\
     otherwise: & max(xs) \\
   \end{cases}
   \end{array}
 \ee
 
-Note that both maximum and minimum actually process the list from right to left. It remind us about tail recursion.
-We can modify them so that the list is processed from left to right. What's more, the tail recursion version
-brings us `on-line' algorithm, that at any time, we hold the minimum or maximum result of the list we examined
-so far.
+Both process the list from right to left. We can modify them to tail recursive form. It also brings us the `on-line' feature, that at any time, the accumulator is the min/max so far processed. Use $min$ for example:
 
 \be
-min'(L, a) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  a & L = \phi \\
-  min(L', l_1) & l_1 < a \\
-  min(L', a) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+min'(a,\ \nil) & = & a \\
+min'(a,\ x:xs) & = & \begin{cases}
+  x < a : & min'(x, xs) \\
+  otherwise : & min'(a, xs) \\
+  \end{cases}
+\end{array}
 \ee
+
+Different from $sum'/prod'$, we can't pass a fixed starting value to the tail recursive $min'/max'$, unless we use $\pm \infty$ in below Curried form:
+
+\[
+  min = min'(\infty) \quad \quad \quad max = max'(- \infty)
+\]
+
+Alternatively, we can pass the first element as the accumulator give min/max only take none empty list:
 
 \be
-max'(L, a) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  a & L = \phi \\
-  max(L', l_1) & a < l_1 \\
-  max(L', a) & otherwise
-  \end{array}
-\right.
+  min(x:xs) = min'(x,\ xs)
+  \quad \quad \quad
+  max(x:xs) = max'(x,\ xs)
 \ee
 
-Different from the tail recursion sum and product, we can't pass constant value to $min'$, or $max'$ in practice, this
-is because we have to pass infinity ($min(L, \infty)$) or negative infinity ($max(L, -\infty)$) in theory, but in a real machine
-neither of them can be represented since the length of word is limited.
-
-Actually, there is workaround, we can instead pass the first element of the list, so that the algorithms become applicable.
-
-\be
-  \begin{array}{l}
-  min(L) = min(L', l_1) \\
-  max(L) = max(L', l_1)
-  \end{array}
-\ee
-
-The corresponding real programs are given as the following. We skip the none tail recursion programs, as they are
-intuitive enough. Reader can take them as exercises for interesting.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-min (x:xs) = min' xs x where
-    min' [] a = a
-    min' (x:xs) a = if x < a then min' xs x else min' xs a
-
-max (x:xs) = max' xs x where
-    max' [] a = a
-    max' (x:xs) a = if a < x then max' xs x else max' xs a
-\end{lstlisting}
-
-The tail call version can be easily translated to imperative min/max algorithms.
+The optimized tail recursive algorithm can be further changed to purely iterative implementation. We give \textproc{Min} example, and skip \textproc{Max}.
 
 \begin{algorithmic}[1]
 \Function{Min}{$L$}
   \State $m \gets$ \Call{First}{$L$}
   \State $L \gets$ \Call{Rest}{$L$}
-  \While{$L \neq \phi$}
+  \While{$L \neq$ NIL}
     \If{\Call{First}{$L$} $< m$ }
-      \State $m \gets$ \Call{First}{$L$}
-    \EndIf
-    \State $L \gets$ \Call{Rest}{$L$}
-  \EndWhile
-  \State \Return $m$
-\EndFunction
-\Statex
-\Function{Max}{$L$}
-  \State $m \gets$ \Call{First}{$L$}
-  \State $L \gets$ \Call{Rest}{$L$}
-  \While{$L \neq \phi$}
-    \If{$m < $ \Call{First}{$L$}}
       \State $m \gets$ \Call{First}{$L$}
     \EndIf
     \State $L \gets$ \Call{Rest}{$L$}
@@ -869,66 +829,19 @@ The tail call version can be easily translated to imperative min/max algorithms.
 \EndFunction
 \end{algorithmic}
 
-The corresponding ISO C++ programs are given as below.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-T min(List<T>* xs) {
-  T x;
-  for (x = xs->key; xs; xs = xs->next)
-    if (xs->key < x)
-      x = xs->key;
-  return x;
-}
-
-template<typename T>
-T max(List<T>* xs) {
-  T x;
-  for (x = xs->key; xs; xs = xs->next)
-    if (x < xs->key)
-      x = xs->key;
-  return x;
-}
-\end{lstlisting}
-
-Another method to achieve tail-call maximum( and minimum) algorithm is by discarding the smaller element each time.
-The edge case is as same as before; for recursion case, since there are at least two elements in the list, we
-can take the first two for comparing, then drop one and go on process the rest. For a list with more than
-two elements, denote $L''$ as $rest(rest(L)) = \{l_3, l_4, ...\}$, we have the following equation.
+There is a way to realize the tail recursive algorithm without using accumulator explicitly. The idea is to re-use the first element as the accumulator. Every time, we compare the head with the next one; then drop the greater for $min$, and drop the less for $max$.
 
 \be
-max(L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  l_1 & |L| = 1 \\
-  max(cons(l_1, L'')) & l_2 < l_1 \\
-  max(L') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+min([x]) & = & x \\
+min(x_1:x_2:xs) & = & \begin{cases}
+  x_1 < x_2 : & min(x_1:xs) \\
+  otherwise: & min(x_2:xs) \\
+  \end{cases}
+\end{array}
 \ee
 
-\be
-min(L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  l_1 & |L| = 1 \\
-  min(cons(l_1, L'')) & l_1 < l_2 \\
-  min(L') & otherwise
-  \end{array}
-\right.
-\ee
-
-The relative example Haskell programs are given as below.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-min [x] = x
-min (x:y:xs) = if x < y then min (x:xs) else min (y:xs)
-
-max [x] = x
-max (x:y:xs) = if x < y then max (y:ys) else max (x:xs)
-\end{lstlisting}
+We skip the definition for $max$ as it is symmetric.
 
 \begin{Exercise}
 \Question{For list of type $A$, suppose we can test if any two elements $x, y \in A$ are equal, define an algorithm to test if two lists are identical to each other.}
@@ -938,18 +851,12 @@ max (x:y:xs) = if x < y then max (y:ys) else max (x:xs)
 \Question{Add a `tail' field in list definition, optimize the append algorithm to constant time.}
 \Question{With the additional `tail' field, when we need update the tail variable? How does it affect the performance?}
 \Question{Handle the empty list and out of bound error for $setAt$.}
-\end{Exercise}
-
-\begin{Exercise}
-\begin{itemize}
-\item Handle the out-of-bound case in insertion algorithm by treating it as appending.
-\item Write the insertion sort algorithm by only using less than ($<$).
-\item Design and implement the algorithm that find all the occurrence of a given value and delete them from the list.
-\item Reimplenent the algorithm to calculate the length of a list in tail-call recursion manner.
-\item Implement the insertion sort in tail recursive manner.
-\item Implement the $O(\lg n)$ algorithm to calculate $b^n$ in your favorite imperative programming language. Note that
-we only need accumulate the intermediate result when the bit is not zero.
-\end{itemize}
+\Question{Handle the out-of-bound case in insertion, and treat it as append.}
+\Question{Implement the insertion sort only with less than ($<$) defined.}
+\Question{Develop the algorithm to find and delete all occurrences of a given value.}
+\Question{Change the $length$ to tail call.}
+\Question{Change the insertion sort to tail call.}
+\Question{Implement the $O(\lg n)$ algorithm to calculate $b^n$ by represent $n$ in binary.}
 \end{Exercise}
 
 \section{Transformation}
