@@ -34,8 +34,7 @@ permutation xs n r=  if length xs  <=  n - r
         else [x:ys | x  <-  xs, ys  <-  permutation (delete x xs) n r]
 
 -- Given a list of n elements, pick r from it to for permutation.
-perm _ 0 = [[]]
-perm xs r | length xs < r = [[]]
+perm xs r | r == 0 || length xs < r = [[]]
           | otherwise = [ x:ys | x <-xs, ys <- perm (delete x xs) (r-1)]
 
 -- Given a list of n elements, pick r from it to form combination.

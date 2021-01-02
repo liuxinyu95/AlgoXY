@@ -982,85 +982,33 @@ List comprehension is a powerful tool. As an example, let us see how to realize 
 \be
 perm(L, r) = \begin{cases}
   |L| < r\ \text{or}\ r = 0: & [[\ ]] \\
-  otherwise: & [x:ys | x \in L, ys \in perm(delete(x,L), r-1)] \\
+  otherwise: & [x:ys\ |\ x \in L, ys \in perm(delete(x,L), r-1)] \\
   \end{cases}
 \ee
 
-In this equation, $\{l\} \cup P$ means $cons(l, P)$, and $L-\{l\}$ denotes $delete(L, l)$, which
-is defined in previous section. If we take zero element for permutation, or there are too
-few elements (less than $r$), the result is a list contains a empty list; Otherwise for non-trivial
-case, the algorithm picks one element $l$ from the list, and recursively permutes the rest $n-1$
-elements by picking up $r-1$ ones; then it puts all the possible $l$ in front of all the possible
-$r-1$ permutations. Here is the Haskell implementation of this algorithm.
+If pick zero element for permutation, or there are too few (less than $r$), the result is a list of empty list; otherwise, we recursively pick $r-1$ out of the rest $n-1$ elements; then prepend $x$ before each. Below Haskell example program utilizes the list comprehension feature:
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-perm _ 0 = [[]]
-perm xs r | length xs < r = [[]]
-          | otherwise = [ x:ys | x <-xs, ys <- perm (delete x xs) (r-1)]
-\end{lstlisting}
+\begin{Haskell}
+perm xs r | r == 0 || length xs < r = [[]]
+          | otherwise = [ x:ys | x <-xs,
+                                 ys <- perm (delete x xs) (r-1)]
+\end{Haskell}
 
-We'll go back to the list comprehension later in section about filtering.
-
-Mapping can also be realized imperatively. We can apply the
-function while traversing the list, and construct the new list from left to right.
-Since that the new element is appended to the result list, we can track the tail
-position to achieve constant time appending, so the mapping algorithms is linear in
-terms of the passed in function.
+For the iterative implementation, below algorithm uses a sentinel node to simplify the logic to handle head reference.
 
 \begin{algorithmic}[1]
 \Function{Map}{$f, L$}
-  \State $L' \gets \phi$
-  \State $p \gets \phi$
-  \While{$L \neq \phi$}
-    \If{$p = \phi$}
-      \State $p \gets$ \textproc{Cons}($f($ \Call{First}{$L$} $), \phi$)
-      \State $L' \gets p$
-    \Else
-      \State \Call{Next}{$p$} $\gets$ \textproc{Cons}($f($ \Call{First}{$L$} $), \phi$)
-      \State $p \gets$ \Call{Next}{$p$}
-    \EndIf
-    \State $L \gets$ \Call{Next}{$L$}
+  \State $L' \gets$ \Call{Cons}{$\perp$, NIL} \Comment{Sentinel node}
+  \State $p \gets L'$
+  \While{$L \neq$ NIL}
+    \State $x \gets$ \Call{First}{$L$}
+    \State $L \gets$ \Call{Rest}{$L$}
+    \State \Call{Rest}{$p$} $\gets$ \Call{Cons}{$f(x)$, NIL}
+    \State $p \gets$ \Call{Rest}{$p$}
   \EndWhile
-  \State \Return $L'$
+  \State \Return \Call{Rest}{$L'$} \Comment{Drop the sentinel}
 \EndFunction
 \end{algorithmic}
-
-In some static typed programming luangaes without type inference feature, like C++\footnote{At least in ISO C++ 1998 standard.}, It is a bit complex to annotate the type of the passed-in function. See \cite{sgi-stl-transform} for detail.
-In fact some C++ environment provides the very same mapping concept as in \texttt{std::transform}. However,
-it needs the reader to know some language specific features, which are out of the scope of this book.
-
-For brevity purpose, we switch to Python programming language for example code. So that the type inference
-can be avoid in compile time. The definition of a simple singly linked-list in Python is give as the
-following.
-
-\lstset{language=Python}
-\begin{lstlisting}
-class List:
-    def __init__(self, x = None, xs = None):
-        self.key = x
-        self.next = xs
-
-def cons(x, xs):
-    return List(x, xs)
-\end{lstlisting}
-
-The mapping program, takes a function and a linked-list, and maps the functions to every element as described
-in above algorithm.
-
-\begin{lstlisting}
-def mapL(f, xs):
-    ys = prev = List()
-    while xs is not None:
-        prev.next = List(f(xs.key))
-        prev = prev.next
-        xs = xs.next
-    return ys.next
-\end{lstlisting}
-
-Different from the pseudo code, this program uses a dummy node as the head of the resulting list. So it needn't
-test if the variable stores the last appending position is NIL. This small trick makes the program compact.
-We only need drop the dummy node before returning the result.
 
 \subsubsection{For each}
 \index{List!for each}
