@@ -622,6 +622,9 @@ Or merely simplify it to Curried form:
 sum = sum'(0) \quad \quad \quad product = prod'(1)
 \]
 
+\index{Curried Form} \index{Currying}
+Curried form is introduced by Schönfinkel (1889 - 1942) in 1924, then widely used by Haskell Curry from 1958. It is known as {\em Currying}\cite{SPJ1987}. For a function taking 2 parameters $f(x, y)$, when pass one argument $x$, it ends up to another function of $y$: $g(y) = f(x, y)$ or $g = f\ x$. We can further extend it to multiple variables, that $f(x, y, ..., z)$ can be Curried to a series of functions: $f, f\ x, f\ x\ y\, ...$. No matter how many variables, we can treat them as a series of Curried function, each has only one parameter: $f(x, y, ..., z) = f(x)(y)...(z) = f\ x\ y\ ...\ z$.
+
 The accumulated sum does not only calculate the result from left to right, it needn't book keeping any context, state, or intermediate result for recursion. All such states are either passed as argument (i.e. $A$), or can be dropped (the previous element in the list). Such recursive calls are often optimized as pure loops in practice. We call this kind of function as {\em tail recursion} (or `tail call'), and the optimization to eliminate recursion is called 'tail recursion optimization'\cite{wiki-tail-call}, because the recursion happens at the tail place in the function. The performance of tail call can be greatly improved after optimization, and we can avoid the issue of stack overflow in deep recursions.
 
 In section \ref{sec:isort} about insertion sort, we mentioned the recursive algorithm sorts elements form right. We can also optimize it to tail call:
@@ -941,80 +944,42 @@ solve(x:xs) & = & fst(max''(x)) : solve(xs) \\
 \subsubsection{Map}
 \index{List!map}
 
-Compare the $solve()$ function in (\ref{eq:solve}) and $toStr()$ function in (\ref{eq:tostr}), it reveals very similar
-algorithm structure. although they targets on very different problems, and one is trivial while the other is a bit
-complex.
-
-The structure of $toStr()$ applies the function $str()$ which can turn a number into string on every element in the list;
-while $solve()$ first applies $max'()$ function to every element (which is actually a list of pairs), then applies $fst()$
-function, which essentially turns a list of pairs into a string. It is not hard to abstract such common structure like
-the following equation, which is called as {\em mapping}.
+The $solve()$ and $toStr()$ functions reveal the same structure, although they were developed for different problems. We can abstract this common structure as {\em map}:
 
 \be
-map(f, L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  cons(f(l_1)), map(f, L')) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+map(f,\ \nil) & = & \nil \\
+map(f,\ x:xs) & = & f(x) : map(f, xs) \\
+\end{array}
 \ee
 
-Because map takes a `converter' function $f$ as argument, it's called a kind of high-order function. In functional
-programming environment such as Haskell, mapping can be implemented just like the above equation.
+$map$ takes the function $f$ as argument, applies it to every element to form a new list. We call a function that compute with other functions as {\em high-order} function. If the type of $f$ is $A \to B$, which means it sends an element of $A$ to the result of $B$, then the type of map is:
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-map :: (a->b)->[a]->[b]
-map _ [] = []
-map f (x:xs) = f x : map f xs
-\end{lstlisting}
+\be
+map :: (A \to B) \to [A] \to [B]
+\ee
 
-The two concrete cases we discussed above can all be represented in high order mapping.
+We read it as: map takes a function of $A \to B$, then convert a list $[A]$ to another list $[B]$.
+
+The two examples in previous section can be defined with map as (in Curried form):
 
 \[
 \begin{array}{l}
-toStr  = map \quad str \\
-solve = map \quad (fst \cdot max')
+toStr  = map\ str \\
+solve = map \ (fst \circ max')
 \end{array}
 \]
 
-Where $f \cdot g$ means function composing, that we first apply $g$ then apply $f$. For instance
-function $h(x) = f(g(x))$ can be represented as $h = f \cdot g $, reading like function $h$ is
-composed by $f$ and $g$. Note that we use Curried form to omit the argument $L$ for brevity.
-Informally speaking, If we feed a function which needs 2 arguments, for instance $f(x, y) = z$
-with only 1 argument, the result turns to be a function which need 1 argument. For instance,
-if we feed $f$ with only argument $x$, it turns to be a new function take one argument $y$,
-defined as $g(y) = f(x, y)$, or $g = f x$. Note that $x$ isn't a free variable any more,
-as it is bound to a value. Reader can refer to any book about functional programming
-for details about function composing and Currying.
-
-Mapping can also be understood from the domain theory point of view. Consider function $y = f(x)$,
-it actually defines a mapping from domain of variable $x$ to the domain of value $y$. ($x$
-and $y$ can have different types). If the domains can be represented as set $X$, and $Y$, we have
-the following relation.
+Where $f \circ g$ means function composite, i.e. first apply $g$ then apply $f$. $f \circ g\ x = f(g(x))$, Read as $f$ after $g$. Map can also be defined from the domain theory point of view. Function $y = f(x)$ defines the map from $x$ in set $X$ to $y$ in set $Y$:
 
 \be
 Y = \{ f(x) | x \in X \}
 \ee
 
-This type of set definition is called Zermelo Frankel set abstraction (as known as ZF expression) \cite{algo-fp}. The different
-is that here the mapping is from a list to another list, so there can be duplicated elements.
-In languages support list comprehension, for example Haskell and Python etc (Note that the
-Python list is a built-in type, but not the linked-list we discussed in this appendix), mapping
-can be implemented as a special case of list comprehension.
+This type of set definition is called Zermelo-Frankel set abstraction (as known as ZF expression) \cite{algo-fp}. The different
+is that the mapping is from a list to another: $Y = [f(x) | x \in Y]$. There can be duplicated elements. For list, such ZF style expression is called {\em list comprehension}.
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-map f xs = [ f x | x <- xs]
-\end{lstlisting}
-
-List comprehension is a powerful tool. Here is another example that realizes the permutation
-algorithm in list comprehension. Many textbooks introduce how to implement all-permutation
-for a list, such as \cite{algo-fp}, and \cite{erlang}. It is possible to design a more general
-version $perm(L, r)$, that if the length of the list $L$ is $n$, this algorithm permutes
-$r$ elements from the total $n$ elements. We know that there are $P_n^r = \frac{n!}{(n-r)!}$
-solutions.
+List comprehension is a powerful tool. As an example, let us see how to realize the permutation algorithm. Extend from generating all-permutations as \cite{algo-fp} and \cite{erlang}, we define a generic $perm(L, r)$, that permutes $r$ out of the total $n$ elements in the list $L$. There are total $P_n^r = \dfrac{n!}{(n-r)!}$ solutions.
 
 \be
 perm(L, r) = \left \{
