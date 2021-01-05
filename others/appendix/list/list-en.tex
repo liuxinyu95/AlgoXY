@@ -1371,87 +1371,57 @@ This algorithm creates a new list to hold the longest prefix, another option is 
 
 \subsubsection{group}
 \index{List!group}
-Grouping is a commonly used operation to solve the problems that we need divide the list into some small groups.
-For example, Suppose we want to group the
-string `Mississippi', which is actual a list of char \{ 'M', 's', 's', 'i', 's', 's', 'i', 'p', 'p', 'i'\}.
-into several small lists in sequence, that each one contains consecutive identical characters. The grouping
-operation is expected to be:
+span breaks list into two part, group divides list into multiple sub-lists. For example, we can use group to change a long words into small units, each contains consecutive same characters:
 
-\begin{verbatim}
-group(`Mississippi') = { `M'', `i', `ss', `i', `ss', `i', `pp', `i'}
-\end{verbatim}
+\begin{Haskell}
+group ''Mississippi'' = [''M'', ''i'', ''ss'', ''i'',
+                         ''ss'', ''i'', ''pp'', ''i'']
+\end{Haskell}
 
-Another example, is that we have a list of numbers:
+For another example, given a list of numbers:
 
 \[
-L = \{15, 9, 0, 12, 11, 7, 10, 5, 6, 13, 1, 4, 8, 3, 14, 2\}
+L = [15, 9, 0, 12, 11, 7, 10, 5, 6, 13, 1, 4, 8, 3, 14, 2]
 \]
 
-We want to divide it into several small lists, that each sub-list is ordered descending.
-The grouping operation is expected to be :
+We can divide it into small lists, each one is in descending order:
 
 \[
-group(L) = \{ \{15, 9, 0\}, \{12, 11, 7\}, \{10, 5\}, \{6\}, \{13, 1\}, \{4\}, \{8, 3\}, \{14, 2\}\}
+group(L) = [[15, 9, 0], [12, 11, 7], [10, 5], [6], [13, 1], [4], [8, 3], [14, 2]]
 \]
 
-Both cases play very important role in real algorithms. The string grouping is used in creating Trie/Patricia
-data structure, which is a powerful tool in string searching area; The ordered sub-list grouping can be used in
-nature merge sort. There are dedicated chapters in this book explain the detail of these algorithms.
+These are useful operations. The string groups can be used to build Radix tree, a data structure support fast text search. The number groups can be used to implement nature merge sort algorithm. We'll introduce them in later chapters.
 
-It is obvious that we need abstract the grouping condition so that we know where to break the original list into
-small ones. This predicate can be passed to the algorithm as an argument like $group(p, L)$, where predicate
-$p$ accepts two consecutive elements and test if the condition matches.
-
-The first idea to solve the grouping problem is traversing -- takes two elements at each time, if the predicate test
-succeeds, put both elements into a small group; otherwise, only put the first one into the group, and use the second
-one to initialize another new group. Denote the first two elements (if there are) are $l_1, l_2$, and the
-sub-list without the first element as $L'$. The result is a list of list $G = \{g_1, g_2, ...\}$, denoted as $G = group(p, L)$.
+We can abstract the group condition as a relation $\sim$. It tests whether two consecutive elements $x$, $y$ are generic `equivalent': $x \sim y$. We scan and list and compare two element each time. If they match, we add both to a group; otherwise, only add $x$ to the group, and use $y$ to initialize another group.
 
 \be
-group(p, L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{\phi\} & L = \phi \\
-  \{\{l_1\}\} & |L| = 1 \\
-  \{\{l_1\} \cup g'_1, g'_2, ...\} & p(l_1, l_2), G' = group(p, L') = \{g'_1, g'_2, ...\} \\
-  \{\{l_1\}, g'_1, g'_2, ...\} & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+group(\sim,\ \nil) & = & [\nil] \\
+group(\sim,\ [x]) & = & [[x]] \\
+group(\sim,\ x:y:xs) & = & \begin{cases}
+  x \sim y : & (x:ys):yss \\
+  otherwise: & [x]:ys:yss \\
+\end{cases}
+\end{array}
 \ee
 
-Note that $\{l_1\} \cup g'_1$ actually means $cons(l_1, g'_1)$, which performs in constant time.
-This is a linear algorithm performs proportion to the length of the list, it traverses the list in one
-pass which is bound to $O(n)$. Translating this program to Haskell gives the below example code.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-group _ [] = [[]]
-group _ [x] = [[x]]
-group p (x:xs@(x':_)) | p x x' = (x:ys):yss
-                      | otherwise = [x]:r
-  where
-    r@(ys:yss) = group p xs
-\end{lstlisting}
-
-It is possible to implement this algorithm in imperative approach, that we initialize the result groups as
-$\{{l_1\}}$ if $L$ isn't empty, then we traverse the list from the second one, and append to the last group
-if the two consecutive elements satisfy the predicate; otherwise we start a new group.
+where $(ys:yss) = group(\sim, xs)$. This algorithm is bound to $O(n)$ time, where $n$ is the length. We can also implement the iterative group algorithm. For the none empty list $L$, we initialize the result groups as $[[x_1]]$, where $x_1$ is the first element. We scan the list from the second one, append it to the last group if the two consecutive elements are `equivalent'; otherwise we start a new group.
 
 \begin{algorithmic}[1]
-\Function{Group}{$p, L$}
-  \If{$L = \phi$}
-    \State \Return $\{ \phi \}$
+\Function{Group}{$\sim, L$}
+  \If{$L = $ NIL}
+    \State \Return [NIL]
   \EndIf
   \State $x \gets$ \Call{First}{$L$}
   \State $L \gets$ \Call{Rest}{$L$}
-  \State $g \gets \{ x \}$
-  \State $G \gets \{ g \}$
-  \While{$L \neq \phi$}
+  \State $g \gets [x]$
+  \State $G \gets [g]$
+  \While{$L \neq$ NIL}
     \State $y \gets$ \Call{First}{$L$}
-    \If{$p(x, y)$}
+    \If{$x \sim y$}
       \State $g \gets $ \Call{Append}{$g, y$}
     \Else
-      \State $g \gets \{y\}$
+      \State $g \gets [y]$
       \State $G \gets$ \Call{Append}{$G, g$}
     \EndIf
     \State $x \gets y$
@@ -1461,85 +1431,44 @@ if the two consecutive elements satisfy the predicate; otherwise we start a new 
 \EndFunction
 \end{algorithmic}
 
-However, different from the recursive algorithm, this program performs in quadratic time if the appending
-function isn't optimized by storing the tail position.
-The corresponding Python program is given as below.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def group(p, xs):
-    if xs is None:
-        return List(None)
-    (x, xs) = (xs.key, xs.next)
-    g = List(x)
-    G = List(g)
-    while xs is not None:
-        y = xs.key
-        if p(x, y):
-            g = append(g, y)
-        else:
-            g = List(y)
-            G = append(G, g)
-        x = y
-        xs = xs.next
-    return G
-\end{lstlisting}
-
-With the grouping function defined, the two example cases mentioned at the beginning of this section can be
-realized by passing different predictions.
+However, this program performs in quadratic time if the append isn't optimized with the tail reference variable. If don't care the order in the group, we can alternatively change append to cons. With the group algorithm defined, we can realize the above 2 cases as below:
 
 \[
-group(=, \{m,i,s,s,i,s,s,i,p,p,i\}) = \{ \{M\}, \{i\}, \{ss\}, \{i\}, \{ss\}, \{i\}, \{pp\}, \{i\} \}
+group(=, [m,i,s,s,i,s,s,i,p,p,i]) = [[M], [i], [ss], [i], [ss], [i], [pp], [i]]
 \]
 
+and
 \[
 \begin{array}{l}
-group(\geq,  \{15, 9, 0, 12, 11, 7, 10, 5, 6, 13, 1, 4, 8, 3, 14, 2\}) \\
-  = \{ \{15, 9, 0\}, \{12, 11, 7\}, \{10, 5\}, \{6\}, \{13, 1\}, \{4\}, \{8, 3\}, \{14, 2\}\}
+group(\geq,  [15, 9, 0, 12, 11, 7, 10, 5, 6, 13, 1, 4, 8, 3, 14, 2\]) \\
+  = [[15, 9, 0], [12, 11, 7], [10, 5], [6], [13, 1], [4], [8, 3], [14, 2]]
 \end{array}
 \]
 
-Another solution is to use the $span$ function we have defined to realize grouping. We pass a predicate to span,
-which will break the list into two parts: The first part is the longest sub-list satisfying the condition. We can
-repeatedly apply the span with the same predication to the second part, till it becomes empty.
-
-However, the predicate function we passed to span is {\em an unary function}, that it takes an element as argument, and
-test if it satisfies the condition. While in grouping algorithm, the predicate function is {\em a binary function}.
-It takes two adjacent elements for testing. The solution is that, we can use currying and pass the first element
-to the binary predicate, and use it to test the rest of elements.
+Another method to implement group is to use the $span$ function. Given a predication, span breaks the list into two parts: the longest sub-list satisfies the condition, and the rest. We can repeatedly apply span to the rest part till it becomes empty. However, the predication passed to span is an unary function. It takes an element and tests it. While in group, the predication is a binary function. It takes two elements and compares. We can use Currying: to pass and fix the first element in the binary predication, then use the Curried function to test the other:
 
 \be
-group(p, L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{\phi\} & L = \phi \\
-  \{ \{l_1\} \cup A \} \cup group(p, B) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+group(\sim,\ \nil) & = & [\nil] \\
+group(\sim,\ x:xs) & = & (x:A) : group(\sim, B) \\
+\end{array}
 \ee
 
-Where $(A, B) = span(\lambda_x \cdot p(l_1, x), L')$ is the result of spanning on the rest sub-list of $L$.
+Where $(A, B) = span(y \mapsto x \sim y, xs)$ is the span result applied to the rest sub-list. Although this new group function generates the correct result for string case:
 
-Although this new defined grouping function can generate correct result for the first case as in the following
-Haskell code snippet.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
+\begin{Haskell}
 groupBy (==) "Mississippi"
 ["m","i","ss","i","ss","i","pp","i"]
-\end{lstlisting}
+\end{Haskell}
 
-However, it seems that this algorithm can't group the list of numbers into ordered sub lists.
+However, it can't group the list of numbers correctly with $\leq$ relation:
 
-\begin{lstlisting}
+\begin{Haskell}
 groupBy (>=) [15, 9, 0, 12, 11, 7, 10, 5, 6, 13, 1, 4, 8, 3, 14, 2]
 [[15,9,0,12,11,7,10,5,6,13,1,4,8,3,14,2]]
-\end{lstlisting}
+\end{Haskell}
 
-The reason is because that, as the first element 15 is used as the left parameter to $\geq$ operator for span,
-while 15 is the maximum value in this list, so the span function ends with putting all elements to $A$,
-and $B$ is left empty. This might seem a defect, but it is actually the correct behavior if the semantic
-is to group equal elements together.
+When the first number 15 is used as the left hand of $\geq$, it is the maximum value, hence $span$ ends with putting all elements to $A$, and leaves $B$ empty. It is not a defect, but the correct behavior, because group is design to put equivalent elements together.
 
 Strictly speaking, the equality predicate must satisfy three properties: reflexive, transitive, and symmetric.
 They are specified as the following.
