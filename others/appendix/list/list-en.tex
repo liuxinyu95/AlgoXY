@@ -1498,114 +1498,56 @@ where $(A, B) = span(p, xs)$. What is the difference between this one and the al
 \section{Fold}
 \index{fold} \label{sec:fold}
 
-We are ready to introduce one of the most critical concept in high order programming, folding. It is so powerful tool
-that almost all the algorithms so far in this appendix can be realized by folding. Folding is sometimes be named as
-reducing (the abstracted concept is identical to the buzz term `map-reduce' in cloud computing in some sense). For example,
-both STL and Python provide reduce function which realizes partial form of folding.
+We've see most list algorithms share some common structure. This is not by chance. Such commonality is rooted from the recursive nature of list. We abstract the list algorithms to a higher level concept, fold\footnote{also known as reduce}, which is essentially the initial algebra of all list related computation\cite{unplugged}.
 
-\subsection{folding from right}
+\subsection{fold right}
 \index{List!foldr}
 \index{List!fold from right}
-Remind the sum and product definition in previous section, they are quite similar actually.
+Compare $sum$, $product$ and $sort$, we can find the common structure.
 
-\[
-sum(L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  0 & L = \phi \\
-  l_1 + sum(L') & otherwise
-  \end{array}
-\right.
-\]
+\be
+\begin{array}{rcl}
+h(\nil) & = & z \\
+h(x:xs) & = & x \oplus h(xs)
+\end{array}
+\ee
 
-\[
-product(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  1 & L = \phi \\
-  l_1 \times product(L') & otherwise
-  \end{array}
-\right.
-\]
-
-It is obvious that they have same structure. What's more, if we list the insertion sort definition, we can
-find that it also shares this structure.
-
-\[
-sort(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  insert(l_1, sort(L')) & otherwise
-  \end{array}
-\right.
-\]
-
-This hint us that we can abstract this essential common structure, so that we needn't repeat it again and again.
-Observing $sum$, $product$, and $sort$, there are two different points which we can parameterize.
+There are two things we can abstract as parameters:
 
 \begin{itemize}
-\item The result of the trivial edge case varies. It is zero for sum, 1 for product, and empty list for sorting.
-\item The function applied to the first element and the intermediate result varies. It is plus for sum, multiply for product,
-and ordered-insertion for sorting.
+\item The result for empty list. It is zero for sum, 1 for product, and empty list for sort.
+\item The binary operation applies to the head and the recursive result. It is plus for sum, multiply for product, and ordered-insertion for sort.
 \end{itemize}
 
-If we parameterize the result of trivial edge case as initial value $z$ (stands for abstract zero concept), the
-function applied in recursive case as $f$ (which takes two parameters, one is the first element in the list,
-the other is the recursive result for the rest of the list), this common structure can be defined as something
-like the following.
+We abstract the result for empty list as the {\em initial value}, denoted as $z$ to mimic the generic zero concept. The binary operation as $\oplus$. The above definition can be then parameterized as:
 
-\[
-proc(f, z, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  z & L = \phi \\
-  f(l_1, proc(f, z, L')) & otherwise
-  \end{array}
-\right.
-\]
+\be
+\begin{array}{rcl}
+h(\oplus, z,\ \nil) & = & z \\
+h(\oplus, z,\ x:xs) & = & x \oplus h(\oplus, z, xs) \\
+\end{array}
+\ee
 
-That's it, and we should name this common structure a better name instead of the meaningless `proc'. Let's
-see the characteristic of this common structure. For list $L = \{x_1, x_2, ..., x_n \}$, we can expand the
-computation like the following.
+Let's feed it a list $L = [x_1, x_2, ..., x_n]$, and expand to see how it behaves like:
 
 \[
 \begin{array}{rl}
-proc(f, z, L) & = f(x_1, proc(f, z, L') \\
-        & = f(x_1, f(x_2, proc(f, z, L'')) \\
-        & ... \\
-        & = f(x_1, f(x_2, f(..., f(x_n, f(f, z, \phi))...) \\
-        & = f(x_1, f(x_2, f(..., f(x_n, z))...)
+   & h(\oplus, z, [x_1, x_2, ..., x_n]) \\
+= & x_1 \oplus h(\oplus, z, [x_2, x_3, ..., x_n]) \\
+= & x_1 \oplus (x_2 \oplus h(\oplus, z, [x_3, ..., x_n])) \\
+  & ... \\
+= & x_1 \oplus (x_2 \oplus (... (x_n \oplus h(\oplus, z, \nil))...)) \\
+= & x_1 \oplus (x_2 \oplus (... (x_n \oplus z)...))
 \end{array}
 \]
 
-Since $f$ takes two parameters, it's a binary function, thus we can write it in infix form. The infix
-form is defined as below.
-
-\be
-x \oplus_f y = f(x, y)
-\ee
-
-The above expanded result is equivalent to the following by using infix notion.
-
-\[
-proc(f, z, L) = x_1 \oplus_f (x_2 \oplus_f (... (x_n \oplus_f z))...)
-\]
-
-Note that the parentheses are necessary, because the computation starts from the right-most ($x_n \oplus_f z$),
-and repeatedly fold to left towards $x_1$. This is quite similar to folding a Chinese hand-fan as illustrated
-in the following photos. A Chinese hand-fan is made of bamboo and paper. Multiple bamboo frames are stuck
-together with an axis at one end. The arc shape paper is fully expanded by these frames as shown in Figure
-\ref{fig:fold-fan} (a);
-The fan can be closed by folding the paper. Figure \ref{fig:fold-fan} (b) shows that some part of the fan
-is folded from right. After these folding finished, the fan results a stick, as shown in Figure \ref{fig:fold-fan} (c).
+We need add the parentheses, because the computation starts from the right-most ($x_n \oplus z$). It repeatedly folds to left towards $x_1$. This is quite similar to a fold-fan in figure \ref{fig:fold-fan}. Fold-fan(or hand-fan) is made of bamboo and paper. Multiple frames stacks together with an axis at one end. The arc shape paper is fully expanded by these frames; We can close the fan by folding the paper. It ends up as a stick.
 
 \begin{figure}[htbp]
-    \centering
-    \subcaptionbox{A folding fan fully opened.}{\includegraphics[scale=0.3]{img/fold-fan1.eps}} \\
-    \subcaptionbox{The fan is partly folded on right.}{\includegraphics[scale=0.3]{img/fold-fan2.eps}}
-    \subcaptionbox{The fan is fully folded, closed to a stick.}{\includegraphics[scale=0.3]{img/fold-fan3.eps}}
-    \caption{Folding a Chinese hand-fan} \label{fig:fold-fan}
+  \centering
+  \includegraphics[scale=0.4]{img/fold-fan.png}
+  \caption{Fold fan}
+  \label{fig:fold-fan}
 \end{figure}
 
 We can considered that each bamboo frame along with the paper on it as an element, so these frames forms a
