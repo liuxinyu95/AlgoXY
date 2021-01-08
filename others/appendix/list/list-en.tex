@@ -1641,18 +1641,12 @@ Or express as infix:
 foldl(\oplus, z, [x_1, x_2, ..., x_n]) = z \oplus x_1 \oplus x_2 \oplus ... \oplus x_n
 \ee
 
-With folding from left defined, sum, product, and insertion-sort can be transparently implemented by calling
-$foldl$ as $sum(L) = foldl(+, 0, L)$, $product(L) = foldl(+, 1, L)$, and $sort(L) = foldl(insert, \phi, L)$.
-Compare with the folding-right version, they are almost same at first glares, however, the internal implementation
-differs.
-
-\subsubsection{Imperative folding and generic folding concept}
-The tail-call nature of folding-left algorithm is quite friendly for imperative settings, that even the compiler
-isn't equipped with tail-call recursive optimization, we can anyway implement the folding in while-loop manually.
+\index{reduce}
+$foldr$ is tail recursive. We can implement it with loops. We initialize the result as $z$, then apply the binary operation on top of it with every element. It is typically called \textproc{Reduce} in most imperative environment.
 
 \begin{algorithmic}[1]
-\Function{Fold}{$f, z, L$}
-  \While{$L \neq \phi$}
+\Function{Reduce}{$f, z, L$}
+  \While{$L \neq$ NIL}
     \State $z \gets f(z, $ \Call{First}{$L$} $)$
     \State $L \gets$ \Call{Rest}{$L$}
   \EndWhile
@@ -1660,67 +1654,31 @@ isn't equipped with tail-call recursive optimization, we can anyway implement th
 \EndFunction
 \end{algorithmic}
 
-Translating this algorithm to Python yields the following example program.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def fold(f, z, xs):
-    for x in xs:
-        z = f(z, x)
-    return z
-\end{lstlisting}
-
-Actually, Python provides built-in function `reduce' which does the very same thing. (in ISO C++, this is
-provided as reduce algorithm in STL.) Almost no imperative environment provides folding-right function because
-it will cause stack overflow problem if the list is too long. However, there still exist cases that the folding from right
-semantics is necessary. For example, one defines a container, which only provides insertion function to
-the head of the container, but there is no any appending method, so that we want such a $fromList$
-tool.
+Both $foldr$ and $foldl$ have their own suitable use cases. They are not always exchangeable. For example, some container only allows to add element in one end (like stack). We can define a function $fromList$ to build such a container from a list (in Curried form):
 
 \[
-fromList(L) = foldr(insertHead, empty, L)
+fromList = foldr(add, empty)
 \]
 
-Calling $fromList$ with the insertion function as well as an empty initialized container, can turn a list
-into the special container. Actually the singly linked-list is such a container, which performs well
-on insertion to the head, but poor to linear time if appending on the tail. Folding from right is quite
-nature when duplicate a linked-list while keeps the elements ordering. While folding from left will generate
-a reversed list.
-
-In such cases, there exists an alternative way to implement imperative folding right by first reverse the list, and then
-folding the reversed one from left.
+Where $empty$ is the empty container. The singly linked-list is such a container. It performs well when add element to the head, but does poor when append to tail. $foldr$ is a natural choice when duplicate a list while keep the order. But $foldl$ will generate a reversed list. As a workaround, to implement the iterative reducing from right, we can first reverse the list, then reduce it:
 
 \begin{algorithmic}[1]
-\Function{Fold-Right}{$f, z, L$}
-  \State \Return \textproc{Fold}($f, z$, \Call{Reverse}{$L$})
+\Function{Reduce-Right}{$f, z, L$}
+  \State \Return \textproc{Reduce}($f, z$, \Call{Reverse}{$L$})
 \EndFunction
 \end{algorithmic}
 
-Note that, here we must use the tail-call version of reversing, or the stack overflow issue still exists.
+One may think $foldl$ should be the preferred one as it is optimized with tail call, hence fits for both functional and imperative settings. It is also the online algorithm that always hold the result so far. However, $foldr$ plays a critical role when handling infinite list (modeled as stream) with lazy evaluation. For example, below example program wraps every natural number to a singleton list, and returns the first 10:
 
-One may think that folding-left should be chosen in most cases over folding-right because it's friendly for
-tail-recursion call optimization, suitable for both functional and imperative settings, and it's an online
-algorithm. However, folding-right plays a critical role when the input list is infinity and the binary function
-$f$ is lazy. For example, below Haskell program wraps every element in an infinity list to a singleton, and
-returns the first 10 result.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
+\begin{Haskell}
 take 10 $ foldr (\x xs ->[x]:xs) [] [1..]
 [[1], [2], [3], [4], [5], [6], [7], [8], [9], [10]]
-\end{lstlisting} %$
+\end{Haskell} %$
 
-This can't be achieved by using folding left because the outer most evaluation can't be finished until
-all the list being processed. The details is specific to lazy evaluation feature, which is out of the
-scope of this book. Readers can refer to \cite{Haskell-wiki} for details.
-
-Although the main topic of this appendix is about singly linked-list related algorithms, the folding
-concept itself is generic which doesn't only limit to list, but also can be applied to other data structures.
-
-We can fold a tree, a queue, or even more complicated data structures as long as we have the following:
+It does not work with $foldl$ because the outer most evaluation never end. Although this chapter is about list, the fold concept is generic. It can be applied to other algebraic structures. We can fold a tree, a queue, and many other things as long as they satisfy the following 2 criteria:
 
 \begin{itemize}
-\item The empty data structure can be identified for trivial edge case; (e.g. empty tree)
+\item The empty is defined (for e.g. empty tree);
 \item We can traverse the data structure (e.g. traverse the tree in pre-order).
 \end{itemize}
 
