@@ -1605,61 +1605,40 @@ sort = foldr(insert, \nil)
 
 \subsection{fold left}
 \index{List!foldl} \index{List!fold from left}
-As mentioned in section of `tail recursive` call, both pure recursive sum and product compute from right
-to left and they must book keep all the intermediate results and contexts. As we abstract fold-right from
-the very same structure, folding from right does the book keeping as well. This will be expensive if
-the list is very long.
 
-Since we can change the realization of sum and product to tail-recursive call manner, it quite possible
-that we can provide another folding algorithm, which processes the list from left to right in normal order,
-and enable the tail-call optimization by reusing the same context.
-
-Instead of induction from sum, product and insertion sort, we can directly change the folding right to tail call.
-Observe that the initial value $z$, actually represents the intermediate result. We can use it
-as the accumulator.
+It's natural to convert $foldr$ to tail call. It generates the same result, but computes from left to right. For this reason, we define it as $foldl$:
 
 \be
-foldl(f, z, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  z & L = \phi \\
-  foldl(f, f(z, l_1), L') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+foldl(f, z,\ \nil) & = & z \\
+foldl(f, z,\ x:xs) & = & foldl(f, f(z, x), xs) \\
+\end{array}
 \ee
 
-Every time when the list isn't empty, we take the first element, apply function $f$ on the accumulator
-$z$ and it to get a new accumulator $z' = f(z, l_1)$. After that we can repeatedly folding with the very
-same function $f$, the updated accumulator $z'$, and list $L'$.
-
-Let's verify that this tail-call algorithm actually folding from left.
+Use $sum$ for example, we can see how the computation is expanded from left to right:
 
 \[
 \begin{array}{rl}
-\sum_{i=1}^{5}i & = foldl(+, 0, \{1, 2, 3, 4, 5\}) \\
-                & = foldl(+, 0 + 1, \{ 2, 3, 4, 5 \}) \\
-                & = foldl(+, (0 + 1) + 2, \{3, 4, 5 \} \\
-                & = foldl(+, ((0 + 1) + 2) + 3, \{4, 5\}) \\
-                & = foldl(+, (((0 + 1) + 2) + 3) + 4, \{5\}) \\
-                & = foldl(+, ((((0 + 1) + 2 + 3) + 4 + 5, \phi) \\
-                & = 0 + 1 + 2 + 3 + 4 + 5
+ & foldl(+, 0, [1, 2, 3, 4, 5]) \\
+= & foldl(+, 0 + 1, [2, 3, 4, 5 ]) \\
+= & foldl(+, (0 + 1) + 2, [3, 4, 5]) \\
+= & foldl(+, ((0 + 1) + 2) + 3, [4, 5]) \\
+= & foldl(+, (((0 + 1) + 2) + 3) + 4, [5]) \\
+= & foldl(+, ((((0 + 1) + 2 + 3) + 4 + 5, \nil) \\
+= & 0 + 1 + 2 + 3 + 4 + 5 \\
 \end{array}
 \]
 
-Note that, we actually delayed the evaluation of $f(z, l_1)$ in every step. (This is the exact behavior
-in system support lazy-evaluation, for instance, Haskell. However, in strict system such as standard ML, it's not the case.) Actually, they will be evaluated in sequence
-of $\{ 1, 3, 6, 10, 15\}$ in each call.
-
-Generally, folding-left can be expanded in form of
+Here we delay the evaluation of $f(z, x)$ in every step. This is the behavior for lazy-evaluation. Otherwise, they will be evaluated in sequence of $[1, 3, 6, 10, 15]$ in each call. Generally, we can expand $foldl$ as:
 
 \be
-foldl(f, z, L) = f(f(...(f(f(z, l_1), l_2), ..., l_n)
+foldl(f, z, [x_1, x_2, ..., x_n]) = f( f (...( f ( f(z, x_1), x_2), ..., x_n)
 \ee
 
-Or in infix manner as
+Or express as infix:
 
 \be
-foldl(f, z, L) = ((...(z \oplus_f l_1) \oplus_f l_2) \oplus_f ...) \oplus l_n
+foldl(\oplus, z, [x_1, x_2, ..., x_n]) = z \oplus x_1 \oplus x_2 \oplus ... \oplus x_n
 \ee
 
 With folding from left defined, sum, product, and insertion-sort can be transparently implemented by calling
