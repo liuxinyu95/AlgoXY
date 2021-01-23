@@ -1886,67 +1886,51 @@ Prefix testing takes linear time as it scans the lists. However, we can not do s
 A \supseteq B = reverse(A) \subseteq reverse(B)
 \ee
 
-With $\subseteq$ defined, it enables to test if a list is infix of another.
-The idea is to traverse the target list, and repeatedly applying the prefix testing
-till any success or arrives at the end.
+With $\subseteq$ defined, we can test if a list is the sub-list of another one. We call it infix testing. The idea is to scan the target list, and repeatedly applying the prefix testing:
+
+\be
+\begin{array}{rcl}
+infix?(a:as,\ \nil) & = & False \\
+infix?(A,\ B) & = & \begin{cases}
+  A \subseteq B: & True \\
+  otherwise: & infix?(A, B') \\
+  \end{cases}
+\end{array}
+\ee
+
+For the edge case that $A$ is empty, we define empty is infix of any list. Because $\nil \subseteq B$ is always true, it gives the right result. It also evaluates $infix?(\nil, \nil)$ correctly. Below is the corresponding iterative implementation:
 
 \begin{algorithmic}[1]
-\Function{Is-Infix}{$P, L$}
-  \While{$L \neq \phi$}
-    \If{$P \subseteq L$}
+\Function{Is-Infix}{$A, B$}
+  \If{$A = $ NIL}
+    \State \Return TRUE
+  \EndIf
+  \State $n \gets |A|$
+  \While{$B \neq$ NIL and $n \leq |B|$}
+    \If{$A \subseteq B$}
       \State \Return TRUE
     \EndIf
-    \State $L \gets$ \Call{Rest}{$L$}
+    \State $B \gets$ \Call{Rest}{$B$}
   \EndWhile
   \State \Return FALSE
 \EndFunction
 \end{algorithmic}
 
-Formalize this algorithm to recursive equation leads to the below definition.
+Because prefix testing runs in linear time, and it is called in the loop of scan. This algorithm is bound to $O(nm)$, where $m, n$ are the length of the two lists respectively. It is an interesting problem to improve this `position by position' scan algorithm to linear time. Even when we apply it to arrays. Chapter 13 introduces some smart method, like the Knuth-Morris-Pratt (KMP) algorithm and Boyer-Moore algorithm. Appendix C introduces another method called suffix-tree.
+
+In a symmetric way, we can enumerate all suffixes of $B$, and check if $A$ is prefix of any of them:
 
 \be
-infix?(P, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  True & P \subseteq L \\
-  False & L = \phi \\
-  infix?(P, L') & otherwise
-  \end{array}
-\right.
+infix?(A, B) = \exists S \in \textit{suffixes}(B) \land A \subseteq S
 \ee
 
-Note that there is a tricky implicit constraint in this equation. If the pattern $P$ is empty,
-it is definitely the infix of any target list. This case is actually covered by the first condition
-in the above equation because empty list is also the prefix of any list. In most programming languages
-support pattern matching, we can't arrange the second clause as the first edge case, or it will
-return false for $infix?(\phi, \phi)$. (One exception is Prolog, but this is a language specific
-feature, which we won't covered in this book.)
+This can be implemented with list comprehension as below example Haskell program:
 
-Since prefix testing is linear, and it is called while traversing the list, this algorithm
-is quadratic $O(nm)$. where $n$ and $m$ are the length of the pattern and target lists respectively.
-There is no trivial way to improve this `position by position' scanning algorithm to linear
-even if the data structure changes from linked-list to randomly accessible array.
+\begin{Haskell}
+isInfixOf a b = (not . null) [ s | s <- tails(b), a `isPrefixOf` s]
+\end{Haskell}
 
-There are chapters in this book introduce several approaches for fast matching, including
-suffix tree with Ukkonen algorithm, Knuth-Morris-Pratt algorithm and Boyer-Moore algorithm.
-
-Alternatively, we can enumerate all suffixes of the target list, and check if the pattern
-is prefix of any these suffixes. Which can be represented as the following.
-
-\be
-infix?(P, L) = \exists S \in suffixes(L) \land P \subseteq S
-\ee
-
-This can be represented as list comprehension, for example the below Haskell program.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-isInfixOf x y = (not . null) [ s | s <- tails(y), x `isPrefixOf`s]
-\end{lstlisting}
-
-Where function \texttt{isPrefixOf} is the prefixing testing function defined according to
-our previous design. function \texttt{tails} generate all suffixes of a list. The implementation
-of \texttt{tails} is left as an exercise to the reader.
+Where function \texttt{isPrefixOf} does the prefixing testing, \texttt{tails} generates all suffixes of a given list. We left its implementation as an exercise.
 
 \begin{Exercise}
 \begin{itemize}
