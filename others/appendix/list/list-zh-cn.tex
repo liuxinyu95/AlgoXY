@@ -74,73 +74,25 @@ struct List<A> {
 
 \index{列表!空} \index{列表!判空}
 
-这里需要对“空”列表的概念稍加说明。在支持nil概念的环境中，例如C或者Java类编程语言，空列表有两种不同的表示方法。一种是‘NIL’（根据语言不通可能为null或0等）；另外一种是非NIL的空列表$\{ \}$。后者通常分配有内存，但未填入内容。在Lisp的许多方言中，空通常表示为\texttt{'()}。在ML语言家族，空通常表示为\texttt{[]}。在本书中，我们在公式中使用符号$\phi$来表示空列表，而在伪代码中使用‘NIL’来表示空列表。
+这里需要对“空”列表的概念加以说明。很多传统的编程环境支持空引用null概念，因此存在两种不同的方法表示空列表。一种直接使用空引用null（或NIL）；另一种创建一个列表，但不填入任何元素，通常表示为\texttt{[]}。在实现上，空引用无需占用内存，但\texttt{[]}则需要分配内存。本书使用符号$\varnothing$表示抽象的空列表、空集、空容器。
 
-\subsection{获取元素和子列表}
-\index{列表!头}
-\index{列表!尾}
+\subsection{析趣}
+\index{列表!头} \index{列表!尾} \index{列表!构造} \index{列表!cons}
 
-给定一个列表$L$，我们定义两个函数来分别获取列表中的元素和子列表。它们通常被命名为$first(L)$和$rest(L)$，或者$head(L)$和$tail(L)$。在Lisp中，由于历史原因，它们被命名为\texttt{car}和\texttt{cdr}用以代表当时机器中的寄存器\cite{SICP}。在支持模式匹配（pattern matching）的语言中（例如ML语言家族、Prolog、Erlang等），一般使用模式匹配\texttt{cons}来获取这两部分，我们稍后会介绍模式匹配。例如下面的Haskell例子程序：
+给定一个非空列表$L$，我们定义两个函数来分别获取头一个元素和子列表。它们通常被命名为$first(L)$和$rest(L)$，或者$head(L)$和$tail(L)$\footnote{在Lisp中，由于历史原因，它们被命名为\texttt{car}和\texttt{cdr}用以代表当时机器中的寄存器\cite{SICP}}。反之，我们可以从一个元素$x$和列表$xs$（可为空）构造出另一个列表，记为$x : xs$。这一构造过程也叫作\texttt{cons}。我们有如下关系：
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-head (x:xs) = x
-tail (x:xs) = xs
-\end{lstlisting}
+\be
+\begin{cases}
+head(x:xs) & = x \\
+tail(x:xs) & = xs
+\end{cases}
+\ee
 
-如果使用上述的记录型语法，这两个函数可以通过访问记录中的项来实现\footnote{它们有时被命名为‘key’和‘next’，或者定义为对象的方法。}。
+对于非空列表$X$，我们也用$x_1$表示头一个元素，用$X'$表示剩余列表，即$X = [x_1, x_2, x_3, ...]$，$X' = [x_2, x_3, ...]$。
 
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-T first(List<T> *xs) { return xs->key; }
-
-template<typename T>
-List<T>* rest(List<T>* xs) { return xs->next; }
-\end{lstlisting}
-
-本书中，如果列表的内容为$L = \{ l_1, l_2, ..., l_n\}$，我们有时使用$L'$来表示$rest(L)$，用$l_1$来表示$first(L)$。
-
-更有趣的一点是，只要环境支持递归，我们就可以定义列表。下面的C++例子程序定义了一个在编译期的整数列表。
-
-\lstset{language=C++}
-\begin{lstlisting}
-struct Empty;
-
-template<int x, typename T> struct List {
-    static const int first = x;
-    typedef T rest;
-};
-\end{lstlisting}
-
-下面的代码在编译期构建了一个含有5个元素的列表$\{1, 2, 3, 4, 5\}$。
-
-\begin{lstlisting}
-typedef List<1, List<2, List<3, List<4 List<5, Empty> > > > > A;
-\end{lstlisting}
-
-\section{列表的基本操作}
-
-列表有两类基本操作，一类是“只读”操作，包括判空、长度计算、获取第一个以及最后一个元素、索引等；另一类是“修改”操作，包括列表的构建、添加、插入、删除、连接等等。对于某些特定的列表，如数字列表，还可以求最大、最小值、以及求和、求积等等。
-
-\subsection{构建}
-\index{列表!构建}
-\index{列表!cons}
-
-上面的C++模板元编程（tempalte meta programming）例子本质上是按字面构建列表的形式(literal initialization)。一个列表可以通过一个元素和一个子列表来构建。子列表可以为空。我们定义构造函数$cons(x, L)$。大量的Lisp方言都使用这一名称。在ML语言家族，‘cons’被定义为二元操作符\texttt{::}，在Haskell中，对应的操作符为\texttt{:}。
-
-使用上述的C++结构，我们也可以定义相应的\texttt{cons}函数以构建列表。如下面的例子所示\footnote{\texttt{cons}通常被定义为类模板的构造函数，这里，我们将其定义为独立的函数。}。
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-List<T>* cons(T x, List<T>* xs) {
-    List<T>* lst = new List<T>;
-    lst->key = x;
-    lst->next = xs;
-    return lst;
-}
-\end{lstlisting}
+\begin{Exercise}
+\Question{对于元素类型为$A$的列表，如果能够判断任何两个元素$x, y \in A$是否相等，定义一个算法来判断两个列表是否相等。}
+\end{Exercise}
 
 \subsection{判空和长度计算}
 \index{列表!判空}
