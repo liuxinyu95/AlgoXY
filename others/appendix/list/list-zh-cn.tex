@@ -121,60 +121,40 @@ length(L) & = & 1 + length(L')
 在上下文不和绝对值混淆的情况下，我们也使用$|L|$来表示列表$L$的长度。
 
 \subsection{索引}
-\index{列表!索引（get-at）}
+\index{列表!索引（get at）}
 
-数组和列表（由单向链表实现的列表）有很多不同之处，数组支持常数时间的随机访问。很多编程语言支持使用\texttt{x[i]}的形式在常数时间$O(1)$内获取数组中的第$i$个元素。索引通常从0开始，但是也有例外，某些编程语言中的索引从1开始。本附录中，我们使用从0开始的索引。与数组不同，我们必须向前遍历$i$步以到达目标元素。这一遍历过程和长度计算类似。在命令式环境中，它通常表达如下。
+数组支持在常数时间随机访问任意位置$i$的元素。但列表需要前进$i$步才能到达元素所在位置。
+
+\be
+getAt(i,\ x:xs) = \begin{cases}
+  i = 0: & x \\
+  i \neq 0: & getAt(i - 1, xs) \\
+\end{cases}
+\ee
+
+为了从一个非空列表中获取第$i$个元素：
+\begin{itemize}
+\item 若$i$为0，结果为列表中的头一个元素；
+\item 否则，结果为子列表中的第$i-1$个元素。
+\end{itemize}
+
+我们故意没有处理空列表的情况。如果传入$\nil$，此时的行为是未定义的。因此$i$越界时的行为也是未定义的。若$i > |L|$，通过递归，最终转化为访问空列表的第$i - |L|$的情况。另一方面，若$i < 0$，继续减一将使得它更偏离0，最终转化为访问空列表的某个负索引位置的情况。
+
+由于需要前进$i$步，索引算法的时间复杂度为$O(i)$。下面是对应的迭代实现：
 
 \begin{algorithmic}[1]
-\Function{Get-At}{$L, i$}
+\Function{Get-At}{$i, L$}
   \While{$i \neq 0$}
-    \State $L \gets $ \Call{Next}{$L$}
+    \State $L \gets $ \Call{Next}{$L$}  \Comment{$L$ = NIL时出错}
     \State $i \gets i - 1$
   \EndWhile
   \State \Return \Call{First}{$L$}
 \EndFunction
 \end{algorithmic}
 
-这一算法没有进行索引越界的错误处理。我们假设$0 \leq i < |L|$，其中$|L| = length(L)$。我们把错误处理作为练习留给读者。下面的C++例子代码实现了这一算法。
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-T getAt(List<T>* lst, int n) {
-    while(n--)
-        lst = lst->next;
-    return lst->key;
-}
-\end{lstlisting}
-
-在纯函数式环境中，我们使用递归而非循环来进行遍历。
-
-\be
-getAt(L, i) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  First(L) & i = 0 \\
-  getAt(Rest(L), i-1) & otherwise
-  \end{array}
-\right.
-\ee
-
-为了\underline{获取第$i$个元素}，这一算法进行如下处理：
-\begin{itemize}
-\item 若$i$为0，结果为列表中的第一个元素；
-\item 否则，结果为子列表中\underline{获取的第$i-1$个元素}。
-\end{itemize}
-
-下面的Haskell例子代码实现了这一算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-getAt i (x:xs) = if i == 0 then x else getAt i-1 xs
-\end{lstlisting}
-
-这一例子代码使用了模式匹配来确保列表不为空。这样就通过匹配失败处理了越界错误。也就是说，若$i > |L|$，我们最终会到达一个边界情况，此时索引为$i - |L|$，而列表为空；另一方面，如果$i < 0$，继续减一使得索引变得更小，最终我们会得到同样的错误，此时索引为某一负数，而列表为空。
-
-索引算法使用的时间和索引的大小成正比，为线性时间$O(i)$。本节只解释“读”语义，我们稍后会解释如果更改给定位置的元素。
+\begin{Exercise}
+\Question{在\textproc{Get-At}($i, L$)的迭代实现中，$L$为空会怎样？$i$越界时会怎样？}
+\end{Exercise}
 
 \subsection{获取最后的元素}
 \index{列表!最后的元素}
