@@ -156,11 +156,40 @@ getAt(i,\ x:xs) = \begin{cases}
 \Question{在\textproc{Get-At}($i, L$)的迭代实现中，$L$为空会怎样？$i$越界时会怎样？}
 \end{Exercise}
 
-\subsection{获取最后的元素}
-\index{列表!最后的元素}
-\index{列表!init}
+\subsection{末尾元素}
+\index{列表!末尾元素} \index{列表!init}
 
-虽然获取第一个元素和剩余的列表$L'$很简单，但是相反的操作——获取最后一个元素，以及除最后元素外的剩余列表却需要线性时间（如果不使用尾指针的话）。如果列表不为空，我们需要遍历到列表尾部以获取这两部分。下面是命令式的描述。
+存在一对和first/rest对称的操作，称为last/init。对于非空列表$X = [x_1, x_2, ..., x_n]$，函数$last$返回末尾元素$x_n$，而$init$返回子列表$[x_1, x_2, ..., x_{n-1}]$。虽然这两对操作左右对称，但last/init需要遍历列表，因而是线性时间的。
+
+当获取列表$X$的末尾元素时：
+
+\begin{itemize}
+\item 如果列表只含有一个元素$[x_1]$，则$x_1$就是末尾元素；
+\item 否则，结果为子列表$X'$的末尾元素。
+\end{itemize}
+
+\be
+\begin{array}{rcl}
+last([x]) & = & x \\
+last(x:xs) & = & last(xs) \\
+\end{array}
+\ee
+
+类似地，当获取除去末尾元素的子列表时：
+
+\begin{itemize}
+\item 如果列表只含有一个元素$[x_1]$，结果为空$[\ ]$；
+\item 否则，我们递归地从子列表$X'$中获取除去末尾元素的剩余部分，然后将$x_1$附加在前面。
+\end{itemize}
+
+\be
+\begin{array}{rcl}
+init([x]) & = & [\ ] \\
+init(x:xs) & = & x : init(xs) \\
+\end{array}
+\ee
+
+这两个算法中都没有处理空列表的情况，当传入$\nil$时，其行为是为定义的。下面是相应的迭代实现。
 
 \begin{algorithmic}[1]
 \Function{Last}{$L$}
@@ -174,85 +203,15 @@ getAt(i,\ x:xs) = \begin{cases}
 \Statex
 \Function{Init}{$L$}
   \State $L' \gets $ NIL
-  \While{\Call{Rest}{$L$} $\neq$ NIL}
-    \State $L' \gets$ \textproc{Append}($L'$, \Call{First}{$L$})
+  \While{\Call{Rest}{$L$} $\neq$ NIL} \Comment{$L$为NIL时出错}
+    \State $L' \gets$ \textproc{Cons}(\Call{First}{$L$}, $L'$)
     \State $L \gets $ \Call{Rest}{$L$}
   \EndWhile
-  \State \Return $L'$
+  \State \Return \Call{Reverse}{$L'$}
 \EndFunction
 \end{algorithmic}
 
-算法假设输入的列表不为空，略去了相应的错误处理。其中\textproc{Init()}使用了append算法，我们将在稍后加以介绍。
-
-下面的C++例子程序实现了这两个操作。为了优化性能，可以使用尾指针。我们将这一改进留给读者作为练习。
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-T last(List<T>* xs) {
-    T x; /* Can be set to a special value to indicate empty list err. */
-    for (; xs; xs = xs->next)
-        x = xs->key;
-    return x;
-}
-
-template<typename T>
-List<T>* init(List<T>* xs) {
-    List<T>* ys = NULL;
-    for (; xs->next; xs = xs->next)
-        ys = append(ys, xs->key);
-    return ys;
-}
-\end{lstlisting}
-
-这两个操作也可以用纯函数式的方式加以实现。当我们需要获取\underline{最后一个元素}时：
-
-\begin{itemize}
-\item 如果列表只含有一个元素（其子列表为空），结果就是列表中唯一的元素；
-\item 否则，结果为子列表的\underline{最后一个元素}。
-\end{itemize}
-
-\be
-last(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  First(L) & Rest(L) = \phi \\
-  last(Rest(L)) & otherwise
-  \end{array}
-\right.
-\ee
-
-我们可以用类似的策略\underline{获取除最后一个元素外的剩余部分}。
-
-\begin{itemize}
-\item 边界情况：如果列表只含有一个元素，则结果为空列表；
-\item 否则，我们首先从子列表中\underline{获取除最后一个元素外的剩余部分}，然后将当前列表的第一个元素附加在这一中间结果之前。
-\end{itemize}
-
-\be
-init(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L' = \phi \\
-  cons(l_1, init(L')) & otherwise
-  \end{array}
-\right.
-\ee
-
-这里，我们令$l_1$为$L$中的第一个元素，$L'$为剩余的部分。这一递归算法无需append操作，它本质上从右向左构造最终结果。我们稍后会介绍这类计算的高阶概念。
-
-下面的Haskell例子程序使用模式匹配实现了$last()$和$init()$。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-last [x] = x
-last (_:xs) = last xs
-
-init [x] = []
-init (x:xs) = x : init xs
-\end{lstlisting}
-
-其中\texttt{[x]}匹配了列表只含有一个元素的模式，而\texttt{(\_:xs)}匹配了任何非空列表。下划线（\texttt{\_}）表示我们并不关心这一元素的具体内容。读者可以参考Haskell的相关资料了解模式匹配的细节，例如\cite{learn-haskell}。
+这一算法一边向尾部前进么，一边通过cons累积init的结果。但是这样产生的列表是逆序的，因此最后需要将结果倒转过来（定义见第\ref{sec:reverse}节）。本章练习中有一道题目，提问是否可以用append代替cons。
 
 \subsection{反向索引}
 \index{列表!反向索引}
