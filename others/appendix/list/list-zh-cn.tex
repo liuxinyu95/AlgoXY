@@ -214,31 +214,29 @@ init(x:xs) & = & x : init(xs) \\
 这一算法一边向尾部前进么，一边通过cons累积init的结果。但是这样产生的列表是逆序的，因此最后需要将结果倒转过来（定义见第\ref{sec:reverse}节）。本章练习中有一道题目，提问是否可以用append代替cons。
 
 \subsection{反向索引}
-\index{列表!反向索引}
-\index{列表!rindex}
+\index{列表!反向索引} \index{列表!rindex}
 
-反向索引是$last()$操作的更一般形式，使用最小的内存空间，寻找单向链表中的倒数第$i$个元素是一道有趣的题目。有些公司使用它作为一道技术面试题目。最差的解法需要遍历链表两轮。第一轮计算链表的长度$n$，然后计算出从左方算起的索引$n - i - 1$。第二轮遍历使用这一计算出的索引向前前进。这一思路定义如下：
+$last()$是反向索引的一种特例。更一般的形式是获取列表中的倒数第$i$个元素。最直接的思路是遍历两次：第一次获取列表长度$n$，第二次获取第$n - i - 1$个元素：
 
-\[
-  getAtR(L, i) = getAt(L, length(L) - i -1)
-\]
+\be
+  lastAt(i, L) = getAt(|L| - i - 1, L)
+\ee
 
-存在更好的命令式解法。简单起见，我们忽略越界之类的错误处理。思路是使用两个指针$p_1$和$p_2$，它们相距$i$步，即$rest^i(p_2) = p_1$，其中$rest^i(p_2)$表示重复执行函数$rest()$总共$i$次。也就是说，从$p_2$前进$i$步就可到达$p_1$。我们可以让$p_2$一开始指向链表的头部，然后同时向前移动它们，直到其中之一（$p_1$）到达链表的尾部。此时指针$p_2$恰好指向倒数第$i$个元素。图\ref{fig:list-rindex}描述了这一思路。
+更好的解法是使用两个指针$p_1$和$p_2$，它们相距$i$步，即$rest^i(p_2) = p_1$，其中$rest^i(p_2)$表示重复执行函数$rest()$总共$i$次。也就是说，从$p_2$前进$i$步就可到达$p_1$。$p_2$一开始指向链表的头部，然后同时向前移动它们，直到$p_1$到达链表的尾部。此时指针$p_2$恰好指向倒数第$i$个元素。图\ref{fig:list-rindex}描述了这一方法。由于$p_1, p_2$框出一个窗口，这一方法也称作滑动窗口法。
 
 \begin{figure}[htbp]
     \centering
     \subcaptionbox{$p_2$开始时指向表头，它在指针$p_1$之后，距离$i$步。}{\includegraphics[scale=0.8]{img/list-rindex.ps}} \\
     \subcaptionbox{当$p_1$到达表尾时，$p_2$恰好指向从右数第$i$个元素。}{\includegraphics[scale=0.8]{img/list-rindex-2.ps}}
-    \caption{用双指针法解决反向索引问题} \label{fig:list-rindex}
+    \caption{双指针框出一个滑动窗口}
+    \label{fig:list-rindex}
 \end{figure}
 
-下面的算法描述了这一“双指针法”解法。
-
 \begin{algorithmic}[1]
-\Function{Get-At-R}{$L, i$}
+\Function{Last-At}{$i, L$}
   \State $p \gets L$
-  \While{$i \neq 0$}
-    \State $L \gets $ \Call{Rest}{$L$}
+  \While{$i > 0$}
+    \State $L \gets $ \Call{Rest}{$L$} \Comment{越界时出错}
     \State $i \gets i - 1$
   \EndWhile
   \While{\Call{Rest}{$L$} $\neq$ NIL}
@@ -249,69 +247,40 @@ init(x:xs) & = & x : init(xs) \\
 \EndFunction
 \end{algorithmic}
 
-下面的C++例子代码使用“双指针”法实现了从右侧的索引算法。
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-T getAtR(List<T>* xs, int i) {
-    List<T>* p = xs;
-    while(i--)
-        xs = xs->next;
-    for(; xs->next; xs = xs->next, p = p->next);
-    return p->key;
-}
-\end{lstlisting}
-
-也可以用递归的方式实现这一思路。如果要获取列表$L$的倒数第$i$个元素，我们可以同时检查$L$和$S=\{l_i, l_{i+1}, ..., l_n\}$这两个列表，其中$S$是$L$中除去前$i-1$个元素后的子列表。
+纯函数实现时不能直接更新指针，为此我们可以同时向前遍历$X = [x_1, x_2, ..., x_n]$和$Y = [x_i, x_{i+1}, ..., x_n]$，其中$Y$是除去前$i-1$个元素后的子列表。
 
 \begin{itemize}
-\item 边界条件：如果$S$中仅含有一个元素，则倒数第$i$个元素就是$L$中的第一个元素；
-\item 否则，我们同时从$L$和$S$中各丢弃一个元素，然后递归地检查列表$L'$和$S'$。
+\item 如果$Y$中仅含有一个元素，$[x_n]$，则倒数第$i$个元素就是表头$x_n$；
+\item 否则，我们同时从$X$和$Y$中各丢弃一个元素，然后递归地检查列表$X'$和$Y'$。
 \end{itemize}
 
-这一算法描述可以形式化为下面的公式。
-
 \be
-getAtR(L, i) = examine(L, drop(i, L))
+lastAt(i, X) = slide(X, drop(i, X))
 \ee
 
-其中数函$examine(L, S)$的定义如下。
+其中数函$slide(X, Y)$同时丢弃两个列表的头部：
 
 \be
-examine(L, S) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  first(L) & |S| = 1 \\
-  examine(rest(L), rest(S)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+slide(x:xs,\ [y]) & = & x \\
+slide(x:xs,\ y:ys) & = & slide(xs, ys) \\
+\end{array}
 \ee
 
-我们稍后在列表修改操作的部分会详细介绍$drop()$函数。这里暂时可以实现为重复调用$rest()$函数一定的次数。
+函数$drop(m, X)$丢弃列表$X$中的前$m$个元素，我们可以通过从表头前进$m$步实现：
 
-\[
-drop(n, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  L & n = 0 \\
-  drop(n - 1, rest(L)) & otherwise
-  \end{array}
-\right.
-\]
+\be
+\begin{array}{rcl}
+drop(0,\ X) & = & X \\
+drop(m,\ \nil) & = & \nil \\
+drop(m,\ x:xs) & = & drop(m - 1, xs) \\
+\end{array}
+\ee
 
-下面的Haskell例子程序实现了这一算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-atR :: [a] -> Int -> a
-atR xs i = get xs (drop i xs) where
-  get (x:_) [_] = x
-  get (_:xs) (_:ys) = get xs ys
-  drop n as@(_:as') = if n == 0 then as else drop (n-1) as'
-\end{lstlisting}
-
-这里我们使用特殊变量\texttt{\_}作为占位符（placeholder），来表示我们不关心的内容。
+\begin{Exercise}
+\Question{在\textproc{Init}算法中，我们可以用\textproc{Append}($L'$, \textproc{First}($L$))来替换cons么？}
+\Question{在\textproc{Last-At}算法中，如何处理空列表和越界的情况？}
+\end{Exercise}
 
 \subsection{修改}
 \index{列表!修改}
