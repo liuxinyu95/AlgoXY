@@ -341,81 +341,31 @@ List<A> append(List<A> xs, T x) {
 \Question{何时应该更新tail变量？对性能有何影响？}
 \end{Exercise}
 
-\subsubsection{修改指定位置上的元素}
-\index{列表!修改指定位置上的元素（set-at）}
+\subsubsection{修改}
+\index{列表!修改}
 
-虽然我们定义了随机访问算法$getAt(L, i)$，但是在纯函数环境下，我们无法直接修改这一函数返回的元素。大多数命令式环境和一些函数式环境提供了引用语义，读者可以参考\cite{mittype}了解详细的实现。下面的C++例子程序返回指定位置上元素的引用而不是值。
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-T& getAt(List<T>* xs, int n) {
-    while (n--)
-        xs = xs->next;
-    return xs->key;
-}
-\end{lstlisting}
-
-在下面的例子中，我们使用这一函数来修改列表中的第二个元素。
-
-\begin{lstlisting}
-List<int>* xs = cons(1, cons(2, cons<int>(3, NULL)));
-getAt(xs, 1) = 4;
-\end{lstlisting}
-
-在非纯函数环境中，例如Lisp方言Scheme，我们可以直接将新的值写入到第$i$个元素所引用的单元中。
-
-\lstset{language=Lisp}
-\begin{lstlisting}
-(define (set-at! lst i x)
-  (if (= i 0)
-      (set-car! lst x)
-      (set-at! (cdr lst) (- i 1) x)))
-\end{lstlisting}
-
-这一算法首先检查索引值$i$是否为0，如果是，它就直接修改列表中的第一个元素为指定的值$x$；否则，它递归地将剩余列表中第$i-1$个元素修改为$x$。这一函数并不返回一个有意义的值，它主要以副作用（side-effect）产生结果。下面的例子修改了列表中的第二个元素。
-
-\begin{lstlisting}
-(define lst '(1 2 3 4 5))
-(set-at! lst 1 4)
-(display lst)
-
-(1 4 3 4 5)
-\end{lstlisting}
-
-为了实现一个纯函数式的$setAt(L, i, x)$算法，我们要避免直接修改单元中的内容，而是创建一个新列表。
+和$getAt$类似，我们需要移动到列表中的指定位置以修改元素。定义函数$setAt(i, x, L)$为：
 
 \begin{itemize}
-\item 边界条件：如果要修改的是第一个元素（$i = 0$），我们创建一个新列表，第一个元素是修改到的新值，剩余部分是原列表中除第一个元素外的其余元素；
-\item 否则，我们创建一个新列表，第一个元素和以前的一样，剩余的部分中的第$i-1$个元素被修改为新值。
+\item 若$i = 0$，要修改的是头部元素，结果为$x : L'$；
+\item 否则，递归地修改子列表$L'$中的第$i - 1$个元素。
 \end{itemize}
 
-这一递归描述可以形式化为下面的定义。
-
 \be
-setAt(L, i, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  cons(x, L') & i = 0 \\
-  cons(l_1, setAt(L', i-1, x)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+setAt(0, x,\ y:ys) & = & x : ys \\
+setAt(i, x,\ y:ys) & = & y : setAt(i - 1, x, ys) \\
+\end{array}
 \ee
 
-下面的Lisp方言Scheme例子程序实现了这一算法，和此前的例子对比可以发现它们之间的不同。
+这一算法的时间复杂度为$O(i)$，其中$i$是要修改的位置。
 
-\lstset{language=Lisp}
-\begin{lstlisting}
-(define (set-at lst i x)
-  (if (= i 0)
-      (cons x (cdr lst))
-      (cons (car lst) (set-at (cdr lst) (- i 1) x))))
-\end{lstlisting}
-
-这里我们跳过了越界的错误处理。同样，和随机访问算法类似，由于需要遍历列表以定位到待插入的位置，它的性能为线性时间。
+\begin{Exercise}
+\Question{在$setAt$中，如何处理空列表和越界的情况？}
+\end{Exercise}
 
 \subsubsection{插入}
-\index{列表!插入（insert-at）}
+\index{列表!插入}
 
 列表插入有两个不同的含义。一个是在指定位置插入一个元素，可以表示为$insert(L, i, x)$，它的实现和$setAt(L, i, x)$类似；另外一个含义是在一个已序列表中插入一个元素，使得结果列表仍然是已序的。
 
