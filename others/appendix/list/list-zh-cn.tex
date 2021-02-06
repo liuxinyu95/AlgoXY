@@ -507,84 +507,47 @@ delAt(i,\ x:xs) & = & x : delAt(i - 1, xs) \\
 
 为了简化边界情况的处理，我们引入来一个辅助节点$S$，它包含一个特殊的值$\perp$，并接下来指向$L$。使用$S$，我们可以安全地切除$L$中的任何节点，包括头节点。最后，我们将$S$后继的部分作为结果返回，并丢弃$S$自身。
 
-“查找并删除”的语义可以进一步细分为两种情况，一种是仅仅找到第一个出现的元素，并将其从列表中删除；另外一种是找到\underline{所有}等于指定值的元素，并将它们全部删除。后者是更加通用的情况，可以对第一种情况略作修改加以实现。我们将其作为练习留给读者。
-
-我们按照“查找并删除”，而非“查找然后删除”来实现这一算法，通过一轮遍历完成查找和删除两个操作。
+“查找并删除”又可以进一步细分为两种情况：一种是仅找到第一个出现的元素，并将其删除；另外一种是找到所有等于指定值的元素，并全部删除。后者更加一般，见本节练习。当在列表$L$中删除$x$时：
 
 \begin{itemize}
-\item 如果列表为空，则结果显然也是空列表；
-\item 如果列表不为空，首先检查第一个元素，如果它恰好等于要删除的值，则结果等于列表的剩余部分；
-\item 否则，我们取出第一个元素，然后递归地在剩余部分删除指定的值，然后在将取出的第一个元素放在这一结果的前面。
+\item 如果列表为空，则结果为$\nil$；
+\item 否则，比较表头和$x$，若相等，则结果为$L'$；
+\item 若表头不等于$x$，则保留表头，并递归地在$L'$中删除$x$。
 \end{itemize}
 
 这一算法可以形式化为下面的定义。
 
 \be
-delete(L, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  L' & l_1 = x \\
-  cons(l_1, delete(L', x)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+delete(x,\ \nil) & = & \nil \\
+delete(x,\ y:ys) & = & \begin{cases}
+  x = y : & delete(x, ys) \\
+  x \neq y : & y : delete(x, ys) \\
+  \end{cases} \\
+\end{array}
 \ee
 
-由于需要遍历列表以查找待删除的元素，这一算法的复杂度为线性时间。下面的Haskell例子程序实现了这一算法。其中第一个边界条件使用模式匹配来处理，其余两种情况由if-else表达式处理。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-del [] _ = []
-del (x:xs) y = if x == y then xs else x : del xs y
-\end{lstlisting}
-
-此前的命令式算法中，大都跳过了错误处理。但是“查找并删除”时，必须要处理待查找的值不存在的情况。
+由于需要遍历列表以查找待删除的元素，这一算法的复杂度为$O(n)$，其中$n$为长度。在迭代实现中，我们依然可以使用辅助节点来简化逻辑：
 
 \begin{algorithmic}[1]
-\Function{Delete}{$L, x$}
-  \If{$L = \phi$} \Comment{空列表}
-    \State \Return $\phi$
+\Function{Delete}{$x, L$}
+  \State $S \gets$ \Call{Cons}{$\perp, L$}
+  \State $p \gets$ L
+  \While{$L \neq$ NIL and \Call{First}{$L$} $\neq x$}
+    \State $p \gets L$
+    \State $L \gets$ \Call{Rest}{$L$}
+  \EndWhile
+  \If{$L \neq$ NIL}
+    \State \Call{Rest}{$p$} $\gets$ \Call{Rest}{$L$}
   \EndIf
-  \If{\Call{First}{$L$} $= x$}
-    \State $H \gets$ \Call{Rest}{$L$}
-  \Else
-    \State $H \gets L$
-    \While{$L \neq \phi \land$ \Call{First}{$L$} $\neq x$} \Comment{列表不为空}
-      \State $p \gets L$
-      \State $L \gets$ \Call{Rest}{$L$}
-    \EndWhile
-    \If{$L \neq \phi$} \Comment{找到}
-      \State \Call{Rest}{$p$} $\gets$ \Call{Rest}{$L$}
-    \EndIf
-  \EndIf
-  \State \Return $H$
+  \State \Return \Call{Rest}{$S$}
 \EndFunction
 \end{algorithmic}
 
-如果列表为空，结果仍为空列表；否则，算法遍历列表直到发现一个元素等于待删除的值，或者到达列表末尾。如果找到了这样的元素，就将其从列表中去掉。下面的C++例子程序实现了这一算法。这里我们释放掉了被删除元素所占的存储空间。
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-List<T>* del(List<T>* xs, T x) {
-    List<T> *head, *prev;
-    if (!xs)
-        return xs;
-    if (xs->key == x)
-        head = xs->next;
-    else {
-        for (head = xs; xs && xs->key != x; xs = xs->next)
-            prev = xs;
-        if (xs)
-            prev->next = xs->next;
-    }
-    if (xs) {
-        xs->next = NULL;
-        delete xs;
-    }
-    return head;
-}
-\end{lstlisting}
+\begin{Exercise}
+\Question{设计算法将等于给定值的所有元素删除。}
+\Question{设计数组的删除算法，被删除位置后的所有元素需要向前移动一个位置。}
+\end{Exercise}
 
 \subsubsection{连接}
 \label{concat}
