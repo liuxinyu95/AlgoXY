@@ -367,49 +367,32 @@ setAt(i, x,\ y:ys) & = & y : setAt(i - 1, x, ys) \\
 \subsubsection{插入}
 \index{列表!插入}
 
-列表插入有两个不同的含义。一个是在指定位置插入一个元素，可以表示为$insert(L, i, x)$，它的实现和$setAt(L, i, x)$类似；另外一个含义是在一个已序列表中插入一个元素，使得结果列表仍然是已序的。
+列表插入有两个不同的含义：一个是在指定位置插入一个元素，记为$insert(i, x, L)$，其实现和$setAt$类似；另一含义是在一已序列表中插入一个元素，使得结果仍然是已序的。
 
-我们首先考虑如何在指定位置$i$插入一个元素$x$。很明显，我们需要先遍历$i$个元素以达到待插入的位置，接下来需要构造一个新的子列表，其中$x$是这一个子列表的第一个元素。最后，我们将这一新子列表附加到前$i$个元素的后面，从而构造出最终的结果列表。
-
-这一算法可以描述如下。如果要将元素$x$插入到列表$L$的第$i$个位置：
+为了插入元素$x$，需要先前进$i$步到达插入位置。然后用$x$和后续子列表构造一个新列表，再和前$i$个元素附链接起来。
 
 \begin{itemize}
-\item 边界情况：若$i$为0，插入就转变成了‘cons’操作：$cons(x, L)$；
-\item 否则，我们递归地将$x$\underline{插入}到子列表$L'$的第$i-1$个位置，然后将原列表的第一个元素和这一递归插入的结果构造为最终结果。
+\item 若$i = 0$，插入就转变成了cons，结果为$x : L$；
+\item 否则，递归地将$x$插入到子列表$L'$的第$i-1$个位置，并将原头部元素附加在前面。
 \end{itemize}
 
-这一算法可以形式化为下面的定义。
-
 \be
-insert(L, i, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  cons(x, L) & i = 0 \\
-  cons(l_1, insert(L', i-1, x)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+insert(0, x,\ L) & = & x : L \\
+insert(i, x,\ y:ys) & = & x : insert(i - 1, x, ys) \\
+\end{array}
 \ee
 
-下面的Haskell例子程序实现了这一算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-insert xs 0 y = y:xs
-insert (x:xs) i y = x : insert xs (i-1) y
-\end{lstlisting}
-
-这一算法并未处理越界错误，我们也可以认为，当$i$超过列表的长度时，实际含义为添加。读者可以在本节的练习中考虑这一问题。
-
-这一算法也可以用命令式的方式实现。如果待插入的位置为0，就用新元素作为第一个，并构造一个新列表；否则，我们记录下列表的头指针，然后连续遍历$i$步。我们还需要一个额外的变量以记录插入操作前的位置。
+当$i$超过列表的长度时，我们可以将其视作添加，见本节习题。下面是相应的迭实现：
 
 \begin{algorithmic}[1]
-\Function{Insert}{$L, i, x$}
+\Function{Insert}{$i, x, L$}
   \If{$i = 0$}
     \State \Return \Call{Cons}{$x, L$}
   \EndIf
   \State $H \gets L$
   \State $p \gets L$
-  \While{$i \neq 0 $}
+  \While{$i > 0$ and $L \neq$ NIL}
     \State $p \gets L$
     \State $L \gets $ \Call{Rest}{$L$}
     \State $i \gets i - 1$
@@ -419,61 +402,32 @@ insert (x:xs) i y = x : insert xs (i-1) y
 \EndFunction
 \end{algorithmic}
 
-下面的C++例子程序实现了这一算法。
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-List<T>* insert(List<T>* xs, int i , int x) {
-    List<T> *head, *prev;
-    if (i == 0)
-        return cons(x, xs);
-    for (head = xs; i; --i, xs = xs->next)
-        prev = xs;
-    prev->next = cons(x, xs);
-    return head;
-}
-\end{lstlisting}
-
-如果列表$L$已序，即对任何位置$1 \leq i \leq j \leq n$，我们有$l_i \leq l_j$。我们可以设计一个算法，使得新元素$x$插入后，结果列表仍然已序。
-
-\be
-insert(x, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  cons(x, \phi) & L = \phi \\
-  cons(x, L) & x < l_1 \\
-  cons(l_1, insert(x, L')) & otherwise
-  \end{array}
-\right.
-\ee
-
-当将元素$x$插入到已序列表$L$时：
+如果列表$L = [x_1, x_2, ..., x_n]$已序，即对任何位置$1 \leq i \leq j \leq n$，有$x_i \leq x_j$。这里的小于号$\leq$的含义是抽象的，它可以代表任何有序的比较，包括$\geq$（降序）、集合的包含关系等。我们可以设计一个算法，使得新元素$x$插入$L$后，结果列表仍然有序。
 
 \begin{itemize}
-\item 若$L$为空，或者$x$小于$L$中的第一个元素，我们将$x$置于$L$中所有元素之前构造一个新列表；
+\item 若$L$为空或者$x$小于$L$的头部元素，结果为$x : L$；
 \item 否则，我们递归地将元素$x$插入到子列表$L'$中。
 \end{itemize}
 
-下面的Haskell例子程序实现了这一算法。这里我们使用了小于等于（$\leq$）来决定元素间的顺序。实际上，这一条件可以放松为严格小于（$<$）。也就是说，只要可以用$<$来比较元素，就可以设计一个算法，使得插入新元素后列表仍然已序。读者可以参考本书关于排序的章节来了解“已序”概念的更多内容。
+\be
+\begin{array}{rcl}
+insert(x,\ \nil) & = & [x] \\
+insert(x,\ y : ys) & = & \begin{cases}
+  x \leq y : & x : y : ys \\
+  otherwise : & y : insert(x, ys) \\
+  \end{cases}
+\end{array}
+\ee
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-insert y [] = [y]
-insert y xs@(x:xs') = if y <= x then y : xs else x : insert y xs'
-\end{lstlisting}
-
-由于算法需要逐一比较元素，它的复杂度为线性时间。这里我们使用了模式匹配的‘as’记法。读者可以参考\cite{learn-haskell}和\cite{algo-fp}了解这一语言特性。
-
-按序插入算法也可以用命令式的方式实现如下\footnote{读者可以参考本书“插入排序的进化”一章中给出的另一个版本，它们略有不同。}。
+由于要逐一比较元素，插入的时间复杂度为$O(n)$，其中$n$是长度。对应的迭代实现如下：
 
 \begin{algorithmic}[1]
 \Function{Insert}{$x, L$}
-  \If{$L = \phi \lor x <$ \Call{First}{$L$}}
+  \If{$L = $ NIL or $x <$ \Call{First}{$L$}}
     \State \Return \Call{Cons}{$x, L$}
   \EndIf
   \State $H \gets L$
-  \While{\Call{Rest}{$L$} $\neq \phi \land $ \textproc{First}(\Call{Rest}{$L$}) $< x$}
+  \While{\Call{Rest}{$L$} $\neq $ NIL and \textproc{First}(\Call{Rest}{$L$}) $< x$}
     \State $L \gets $ \Call{Rest}{$L$}
   \EndWhile
   \State \Call{Rest}{$L$} $\gets$ \textproc{Cons}($x$, \Call{Rest}{$L$})
@@ -481,51 +435,22 @@ insert y xs@(x:xs') = if y <= x then y : xs else x : insert y xs'
 \EndFunction
 \end{algorithmic}
 
-若列表为空，或者新元素小于列表中的第一个元素，我们将新元素置于列表之前；否则，我们记录下表头，然后遍历列表，直到到达一个位置，使得新元素$x$小于剩余子列表中的元素，并将$x$放置于这一位置。和此前的“insert at”算法相比，我们并未使用变量$p$在遍历过程中记录前一个元素的位置。
-
-下面的C++例子程序实现了这一算法。
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-List<T>* insert(T x, List<T>* xs) {
-    List<T> *head;
-    if (!xs || x < xs->key)
-        return cons(x, xs);
-    for (head = xs; xs->next && xs->next->key < x; xs = xs->next);
-    xs->next = cons(x, xs->next);
-    return head;
-}
-\end{lstlisting}
-
-使用这一线性时间的按序插入算法，我们可以实现一个平方时间的插入排序，具体来说就是逐一将元素按序插入到一个空列表中。
+\label{sec:isort}
+利用这一线性时间的按序插入操作，我们可以实现插入排序：逐一将元素按序插入到一个空列表中。由于每次按序插入都是线性的，所以这一排序的复杂度为$O(n^2)$。
 
 \be
-sort(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  insert(l_1, sort(L')) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+sort(\nil) & = & \nil \\
+sort(x:xs) & = & insert(x, sort(xs)) \\
+\end{array}
 \ee
 
-若待排序列表为空，则结果仍为空列表；否则，我们首先递归地将除第一个元素外的剩余部分排好序，然后再将第一个元素按序插入到这一结果中。
-
-下面的Haskell例子程序实现这一插入排序算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-isort [] = []
-isort (x:xs) = insert x (isort xs)
-\end{lstlisting}
-
-命令式的链表排序可以描述如下。我们首先将结果链表初始化为空，然后逐一从链表中取出元素并按序插入到结果列表中。
+这是一个递归算法：先递归地将子列表排序，然后把第一个元素按序插入。我们可以消除递归，实现一个迭代算法：逐一从链表中取出元素并按序插入到结果中：
 
 \begin{algorithmic}[1]
 \Function{Sort}{$L$}
-  \State $L' \gets \phi$
-  \While{$L \neq \phi$}
+  \State $L' \gets$ NIL
+  \While{$L \neq$ NIL}
     \State $L' \gets$ \textproc{Insert}(\Call{First}{$L$}, $L'$)
     \State $L \gets$ \Call{Rest}{$L$}
   \EndWhile
@@ -533,25 +458,16 @@ isort (x:xs) = insert x (isort xs)
 \EndFunction
 \end{algorithmic}
 
-在循环中的任何时刻，结果列表都是已序的。和前面的递归算法相比，它们有一个本质不同，前者从右向左处理列表，而后者从左向右处理。我们稍后将在“尾递归”一节中讲述如何消除这一差异。
+在循环中的任何时刻，结果列表都是已序的。和递归实现相比，它们有一个本质不同：前者从右向左处理列表，而后者从左向右处理。我们稍后将在“尾递归”\ref{sec:tail-call}一节中讲述如何消除这一差异。第3章详细介绍插入排序，包括性能分析和优化。
 
-下面的C++例子程序实现了这一链表插入排序算法。
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-List<T>* isort(List<T>* xs) {
-    List<T>* ys = NULL;
-    for(; xs; xs = xs->next)
-        ys = insert(xs->key, ys);
-    return ys;
-}
-\end{lstlisting}
-
-本书专门安排了一章来详细讨论插入排序。包括性能分析和各种改进。
+\begin{Exercise}
+\Question{当插入位置越界时，将其按照添加来处理。}
+\Question{针对数组实现插入算法，插入位置$i$后的所有元素需要向后移动一个位置。}
+\Question{只使用小于$<$比较实现插入排序。}
+\end{Exercise}
 
 \subsubsection{删除}
-\index{列表!删除（delete-at）}
+\index{列表!删除}
 
 在纯函数式环境中，由于并不能真正修改列表，所以并没有删除的概念，由于数据被保留（persist），删除的语义实际是创建一个包含所有剩余元素的一个新列表。
 
