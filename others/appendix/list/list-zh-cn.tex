@@ -469,83 +469,43 @@ sort(x:xs) & = & insert(x, sort(xs)) \\
 \subsubsection{删除}
 \index{列表!删除}
 
-在纯函数式环境中，由于并不能真正修改列表，所以并没有删除的概念，由于数据被保留（persist），删除的语义实际是创建一个包含所有剩余元素的一个新列表。
+和插入类似，删除也有两种含义：一种是在指定位置删除元素；另一个是查找某个值的元素并删除。前者定义为$delAt(i, L)$，后者定义为$delete(x, L)$。
 
-和插入类似，删除也有两个不同的含义。一个是删除给定位置上的元素；另一个是查找指定值的元素并删除。前者可以表示为$delete(L, i)$，后者可以表示为$delete(L, x)$。
+为了删除位置$i$上的元素，我们首先前进$i$步到达目标位置，然后跳过一个元素，将剩余部分连接起来。
 
-为了实现$delete(L,i)$（或‘delete at’）算法，我们可以使用类似于随机访问和插入的思路。首先遍历列表到达指定的位置，然后构造一个新列表，包含所有已遍历的元素，跳过下一个尚未遍历的元素，最后将剩余元素也包含进来。
-
-删除过程可以递归进行实现，为了\underline{从列表$L$中删除第$i$个元素}，
 \begin{itemize}
-\item 若$i$为0，即删除列表中的第一个元素，结果为除第一元素外的剩余部分；
-\item 若列表为空，则结果仍为空列表；
-\item 否则，我们递归\underline{从子列表$L'$中删除第$i-1$个元素}，然后用$L$中的第一个元素和这一递归删除的结果构造最终的结果列表。
+\item 若列表$L$为空，则结果为空列表；
+\item 若$i = 0$，要删除的是头部元素，结果为$L'$；
+\item 否则，递归地从子列表$L'$中删除第$i-1$个元素，然后将原列表头部附加在前。
 \end{itemize}
 
-这里有两种边界情况，其中第二种主要用来进行错误处理。这一算法的形式化定义如下：
-
 \be
-delete(L, i) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  L' & i = 0 \\
-  \phi & L = \phi \\
-  cons(l_1, delete(L', i-1)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+delAt(i,\ \nil) & = & \nil \\
+delAt(0,\ x:xs) & = & xs \\
+delAt(i,\ x:xs) & = & x : delAt(i - 1, xs) \\
+\end{array}
 \ee
 
-其中$L' = rest(L)$、$l_1 = first(L)$。下面的Haskell例子程序实现了这一算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-del (_:xs) 0 = xs
-del [] _ = []
-del (x:xs) i = x : del xs (i-1)
-\end{lstlisting}
-
-这同样是一个线性时间的算法。还有其他一些实现方法，例如我们可以首先在$i-1$的位置，将列表分成两部分$L_1$和$L_2$，然后去掉第二部分中的第一个元素，将$L_1$和$L_2'$连接到一起。
-
-也可以用命令式的方式实现在指定位置删除元素的操作，我们需要通过循环遍历到这个位置：
+由于需要前进$i$步后执行删除，这一算法的时间复杂度为$O(i)$。下面是相应的迭代实现：
 
 \begin{algorithmic}[1]
-\Function{Delete}{$L, i$}
-  \If{$i = 0$}
-    \State \Return \Call{Rest}{$L$}
-  \EndIf
-  \State $H \gets L$
-  \State $p \gets L$
-  \While{$i \neq 0$}
+\Function{Del-At}{$i, L$}
+  \State $S \gets$ \Call{Cons}{$\perp, L$} \Comment{辅助节点}
+  \State $p \gets S$
+  \While{$i > 0$ and $L \neq$ NIL}
     \State $i \gets i - 1$
     \State $p \gets L$
     \State $L \gets $ \Call{Rest}{$L$}
   \EndWhile
-  \State \Call{Rest}{$p$} $\gets$ \Call{Rest}{$L$}
-  \State \Return $H$
+  \If{$L \neq$ NIL}
+    \State \Call{Rest}{$p$} $\gets$ \Call{Rest}{$L$}
+  \EndIf
+  \State \Return \Call{Rest}{$S$}
 \EndFunction
 \end{algorithmic}
 
-这里略过了越界错误处理。在不支持垃圾回收的环境中，还需要释放被删除元素所占用的空间。下面的C++例子程序在删除后释放了节点。
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-List<T>* del(List<T>* xs, int i) {
-    List<T> *head, *prev;
-    if (i == 0)
-        head = xs->next;
-    else {
-        for (head = xs; i; --i, xs = xs->next)
-            prev = xs;
-        prev->next = xs->next;
-    }
-    xs->next = NULL;
-    delete xs;
-    return head;
-}
-\end{lstlisting}
-
-这里使用了\texttt{xs->next = NULL}来避免在释放节点所占空间时递归释放掉链表剩余的部分。
+为了简化边界情况的处理，我们引入来一个辅助节点$S$，它包含一个特殊的值$\perp$，并接下来指向$L$。使用$S$，我们可以安全地切除$L$中的任何节点，包括头节点。最后，我们将$S$后继的部分作为结果返回，并丢弃$S$自身。
 
 “查找并删除”的语义可以进一步细分为两种情况，一种是仅仅找到第一个出现的元素，并将其从列表中删除；另外一种是找到\underline{所有}等于指定值的元素，并将它们全部删除。后者是更加通用的情况，可以对第一种情况略作修改加以实现。我们将其作为练习留给读者。
 
