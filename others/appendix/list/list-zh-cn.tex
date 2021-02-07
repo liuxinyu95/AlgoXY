@@ -553,95 +553,54 @@ delete(x,\ y:ys) & = & \begin{cases}
 \label{concat}
 \index{列表!连接}
 
-连接可以认为是添加操作的更一般形式，添加每次向列表尾部加入一个元素，而连接向列表尾部一次加入多个元素。
-
-但是，如果通过多次添加来实现连接，则整体操作的性能不佳，为平方级别。考虑下面的实现。
-
-\[
-concat(L_1, L_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  L_1 & L_2 = \phi \\
-  concat(append(L_1, first(L_2)), rest(L_2)) & otherwise
-  \end{array}
-\right.
-\]
-
-每次添加都需要遍历到列表的尾部，一共需要$|L_2|$次遍历。总体性能为$O(|L_1| + (|L_1| + 1) + ... + (|L_1| + |L_2|)) = O(|L_1||L_2| + |L_2|^2)$。
-
-与添加相比，链接操作的速度很快，为常数时间$O(1)$，我们可以只遍历$L_1$一次，然后将第二个列表链接到$L_1$的尾部。
+连接是添加操作的更一般形式，添加每次向列表尾部加入一个元素，而连接向列表尾部加入多个元素。但如果通过多次添加来实现，则整体操作的性能会下降为平方级别。
 
 \be
-concat(L_1, L_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  L_2 & L_1 = \phi \\
-  cons(first(L_1), concat(rest(L_1), L_2)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+X \doubleplus \nil & = & X \\
+X \doubleplus (y:ys) & = & append(X, y) \doubleplus ys \\
+\end{array}
 \ee
 
-这一算法只通过一次遍历到达$L_1$的尾部，然后将第二个列表链接起来。因此总体性能为线性时间$O(|L_1|)$。
-
-算法的描述如下。
+这个实现在连接$X$和$Y$时，每次添加都需要前进到尾部，并且需要添加$|Y|$次。总时间复杂度为$O(|X| + (|X| + 1) + ... + (|X| + |Y|)) = O(|X||Y| + |Y|^2)$。考虑链接操作cons的速度很快（常数时间），我们可以前进到$X$的尾部，然后链接到$Y$。
 
 \begin{itemize}
-\item 若第一个列表为空，则连接的结果就是第二个列表；
-\item 否则，我们将第二个列表连接到第一个列表中除去第一个元素外的剩余部分，然后再将第一个元素置于这一结果前。
+\item 若$X$为空，结果为$Y$；
+\item 否则，我们将子列表$X'$和$Y$连接起来，再把$x_1$附加到头部。
 \end{itemize}
 
-大多数函数式环境提供了内置的函数或操作符来实现列表的连接操作，例如在ML语言家族中，\texttt{++}被用来连接两个列表。
+另外，当$Y$为空时，我们无需遍历，可以直接返回$X$作为结果：
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-[] ++ ys = ys
-xs ++ [] = xs
-(x:xs) ++ ys = x : xs ++ ys
-\end{lstlisting}
+\be
+\begin{array}{rcl}
+\nil \doubleplus Y & = & Y \\
+X \doubleplus \nil & = & X \\
+(x:xs) \doubleplus Y & = & x : (xs \doubleplus Y) \\
+\end{array}
+\ee
 
-这里我们加入了另外一种边界情况，如果第二个列表为空，我们无需遍历到第一个列表的尾部。连接结果为第一个列表。
-
-在命令式环境中，通过在数据结构中增加一个尾指针，可以实现常数时间$O(1)$的连接操作。我们略过这种方法的实现。
-
-若不使用尾指针，我们仍需遍历到第一个列表的尾部。
+改进的算法只遍历一次$X$，然后将其尾部链接到$Y$，复杂度为$O(|X|)$。在命令式环境中，通过使用尾部引用，可以实现常数时间的连接操作。见本节习题。下面的迭代实现并未使用尾部引用。
 
 \begin{algorithmic}[1]
-\Function{Concat}{$L_1, L_2$}
-  \If{$L_1 = \phi$}
-    \State \Return $L_2$
+\Function{Concat}{$X, Y$}
+  \If{$X = $ NIL}
+    \State \Return $Y$
   \EndIf
-  \If{$L_2 = \phi$}
-    \State \Return $L_1$
+  \If{$Y = $ NIL}
+    \State \Return $X$
   \EndIf
-  \State $H \gets L_1$
-  \While{\Call{Rest}{$L_1$} $\neq \phi$}
-    \State $L_1 \gets$ \Call{Rest}{$L_1$}
+  \State $H \gets X$
+  \While{\Call{Rest}{$X$} $\neq$ NIL}
+    \State $X \gets$ \Call{Rest}{$X$}
   \EndWhile
-  \State \Call{Rest}{$L_1$} $\gets L_2$
+  \State \Call{Rest}{$X$} $\gets Y$
   \State \Return $H$
 \EndFunction
 \end{algorithmic}
 
-下面的C++例子程序实现了列表的连接。
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-List<T>* concat(List<T>* xs, List<T>* ys) {
-    List<T>* head;
-    if (!xs)
-        return ys;
-    if (!ys)
-        return xs;
-    for (head = xs; xs->next; xs = xs->next);
-    xs->next = ys;
-    return head;
-}
-\end{lstlisting}
-
 \subsection{和与积}
-\index{列表!和}
-\index{列表!积}
+\index{列表!和} \index{列表!积}
+我们常常需要计算列表中数字的和与积。它们有着共同的结构，在第\ref{sec:fold}节中，我们介绍如何将其抽象为高阶计算。
 
 \subsubsection{递归求和与求积}
 
