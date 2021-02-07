@@ -600,85 +600,77 @@ X \doubleplus \nil & = & X \\
 
 \subsection{和与积}
 \index{列表!和} \index{列表!积}
-我们常常需要计算列表中数字的和与积。它们有着共同的结构，在第\ref{sec:fold}节中，我们介绍如何将其抽象为高阶计算。
+我们常常需要计算列表中数字的和与积。它们有着共同的计算结构，在第\ref{sec:fold}节中，我们介绍如何将其抽象为高阶计算。
 
 \subsubsection{递归求和与求积}
 
-对于数字列表，我们常常要计算和与积。它们的计算结构很类似。我们稍后会介绍如何抽象这样的计算结构。
-
-为了计算\underline{列表中元素的和}：
+为了计算列表中元素的和：
 
 \begin{itemize}
 \item 若列表为空，则结果为0；
-\item 否则，结果为第一个元素加上\underline{剩余元素的和}。
+\item 否则，结果为第一个元素加上剩余元素的和。
 \end{itemize}
 
-求和的描述可以形式化为下面的定义。
-
 \be
-sum(L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  0 & L = \phi \\
-  l_1 + sum(L') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+sum(\nil) & = & 0 \\
+sum(x:xs) & = & x + sum(xs) \\
+\end{array}
 \ee
 
-但是，我们不能简单地将加法替换为乘法以获取列表中元素的积，否则结果总为0。我们需要定义空列表的积为1。
+我们不能简单地将加法替换为乘法以获取列表中元素的积，否则结果总为0。我们需要定义空列表的积为1。
 
 \be
-product(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  1 & L = \phi \\
-  l_1 \times product(L') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+product(\nil) & = & 1 \\
+product(x:xs) & = & x \cdot product(xs) \\
+\end{array}
 \ee
 
-下面的Haskell例子程序实现了和与积的计算。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-sum [] = 0
-sum (x:xs) = x + sum xs
-
-product [] = 1
-product (x:xs) = x * product xs
-\end{lstlisting}
-
-两个算法都需要遍历整个列表，因此它们的性能都为线性时间$O(n)$。
+两个算法都需要遍历整个列表，它们的性能为$O(n)$，其中$n$为长度。
 
 \subsubsection{尾递归}
-\index{尾递归}
-\index{尾调用}
-\index{尾递归调用}
+\index{尾递归} \index{尾调用} \index{尾递归调用}
+\label{sec:tail-call}
 
-注意到无论是求和还是求积的算法都从右向左计算。我们可以修改它们的实现，从左向右\underline{累积计算}结果。求和时，结果从0开始累积，逐一将每个元素加到结果上，直到处理完全部列表。具体描述如下：
+求和、求积算法都从右向左计算。我们可以将其改成从左向右\textbf{累积计算}结果。求和时，结果从0开始累积，逐一将元素加到结果上。求积时，从1开始累积，逐一将元素乘到结果上。累积过程定义如下：
 
-当通过求和累积结果时：
 \begin{itemize}
-\item 若列表为空，则累积结束，返回累积结果；
-\item 否则，取出列表中的第一个元素，将其加到累积结果上，然后继续处理剩余的列表。
+\item 若列表为空，返回当前累积结果；
+\item 否则，取出表头元素，将其累积到结果上，然后继续处理剩余列表。
 \end{itemize}
 
-将这一描述形式化为定义，就可以得到另一种累加的算法。
+下面是求和、求积的累积计算：
 
 \be
-sum'(A, L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  A & L = \phi \\
-  sum'(A + l_1, L') & otherwise
+\begin{array}{cc}
+  \begin{array}{rl}
+  sum'(A,\ \nil) = & A \\
+  sum'(A,\ x:xs) = & sum(x + A, xs) \\
   \end{array}
-\right.
+  &
+  \begin{array}{rl}
+  prod'(A,\ \nil) = & A \\
+  prod'(A,\ x:xs) = & prod'(x \cdot A, xs) \\
+  \end{array} \\
+\end{array}
 \ee
 
-最终求和可以通过调用这一函数实现。我们传入0作为累加的起始值，同时传入待累加的列表。
+给定数字列表，我们以0为起始累积值调用$sum'$，以1为起始累积值调用$prod'$：
+
 \be
-sum(L) = sum'(0, L)
+sum(X) = sum'(0, X)
+\quad \quad \quad
+product(X) = prod'(1, X)
 \ee
+
+或使用柯里化形式：
+
+\[
+sum = sum'(0) \quad \quad \quad product = prod'(1)
+\]
+
+\index{柯里化形式} \index{柯里化}
 
 这一改进除了将计算的顺序恢复为从左向右之外，还有一个重要的特点。观察函数$sum'(A, L)$的定义，我们发现它无需记录任何中间结果或者状态用于递归。所有的状态或者作为参数（例如$A$）传入接下来的递归调用，或者可以丢弃（例如列表中前面处理过的元素）。因此在实际的实现中，这样的递归函数可以进一步优化为循环，从而完全消除递归。
 
