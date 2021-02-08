@@ -672,51 +672,32 @@ sum = sum'(0) \quad \quad \quad product = prod'(1)
 
 \index{柯里化形式} \index{柯里化}
 
-这一改进除了将计算的顺序恢复为从左向右之外，还有一个重要的特点。观察函数$sum'(A, L)$的定义，我们发现它无需记录任何中间结果或者状态用于递归。所有的状态或者作为参数（例如$A$）传入接下来的递归调用，或者可以丢弃（例如列表中前面处理过的元素）。因此在实际的实现中，这样的递归函数可以进一步优化为循环，从而完全消除递归。
+柯里化是由肖芬格尔(Schönfinkel, 1889 - 1942)在1924年提出，后来经哈斯克尔 · 柯里在1958 年后被广泛使用的\cite{slpj-book-1987}。考虑二元函数$f(x, y)$，如果只传入一个参数$x$，它就转换为一个关于$y$的一元函数：$g(y) = f(x, y)$，记为$g = f\ x$。推广到多元函数$f(x, y, ..., z)$，通过逐次传入参数，可以被依次转换为一系列函数：$f, f\ x, f\ x\ y\, ...$。我们称这样的转换为柯里化。这样我们可以把多元函数转化为一系列一元函数，即：$f(x, y, ..., z) = f(x)(y)...(z) = f\ x\ y\ ...\ z$。
 
-我们称这样的函数为“尾递归”（或“尾调用”），对其消除递归的优化称为“尾递归优化”\cite{wiki-tail-call}。顾名思义，这类函数中，递归发生在最后一步。尾递归优化可以极大地提高性能，并避免由于过深递归造成的调用栈溢出。
+采用累积法后，不仅计算顺序变为从左向右，并且无需记录任何中间结果或者状态用于递归。所有的状态或作为参数（例如$A$）传入，或丢弃不用（例如已处理过的元素）。这样的递归可进一步优化为循环。我们称这样的函数为“尾递归”（或“尾调用”），称这种消除递归的优化为“尾递归优化”\cite{wiki-tail-call}。顾名思义，在这类函数中，递归发生在计算的尾部。尾递归优化可以极大地提高性能，并避免由于过深递归过深造成的调用栈溢出。
 
-下面的Haskell例子程序给出了尾递归形式的求和与求积实现。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-sum = sum' 0 where
-    sum' acc [] = acc
-    sum' acc (x:xs) = sum' (acc + x) xs
-
-product = product' 1 where
-    product' acc [] = acc
-    product' acc (x:xs) = product' (acc * x) xs
-\end{lstlisting}
-
-在前面关于插入排序的部分，我们提到了函数式的实现从右向左对元素排序，我们也可以将其改为尾递归的形式。
+在第\ref{sec:isort}节关于插入排序的部分，其递归实现从右向左对元素排序。我们也可以将其优化为尾递归：
 
 \be
-sort'(A, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  A & L = \phi \\
-  sort'(insert(l_1, A), L') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+sort'(A,\ \nil) & = & A \\
+sort'(A,\ x:xs) & = & sort'(insert(x, A), xs) \\
+\end{array}
 \ee
 
-排序时，我们可以调用这一函数，传入一个空列表作为累积结果的起始值。
+这样排序可以定义为传入$\nil$作为起始值的柯里化形式：
+
 \be
-sort(L) = sort'(\phi, L)
+sort = sort'(\nil)
 \ee
 
-我们将它的具体实现作为练习留给读者。
-
-作为本节的结尾，我们考虑一个有趣的题目，如何设计一个算法来高效地计算$b^n$？（参考\cite{SICP}中的1.16节。）
-
-最直接的方法是从1开始重复乘以$b$共$n$次，这是一个线性时间$O(n)$的算法。
+作为尾递归的典型例子，我们考虑如何高效地计算幂$b^n$？（\cite{SICP}，1.16节。）最直接的方法是从1开始重复乘以$b$共$n$次，这是一个$O(n)$时间的方法：
 
 \begin{algorithmic}[1]
 \Function{Pow}{$b, n$}
   \State $x \gets 1$
-  \Loop{$n$ times}
-    \State $x \gets x \times b$
+  \Loop{ $n$ times}
+    \State $x \gets x b$
   \EndLoop
   \State \Return $x$
 \EndFunction
