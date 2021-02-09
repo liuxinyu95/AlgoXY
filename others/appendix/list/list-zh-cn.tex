@@ -808,108 +808,67 @@ pow(b, n, A) & = & \begin{cases}
 \subsection{最大值和最小值}
 \index{列表!最大值} \index{列表!最小值}
 
-另一个重要的操作是获取列表中的最大值或最小值。他们的算法结构同样很类似。我们稍后会归纳出相同的部分，抽象出一般性的高阶结构。对于最大值与最小值问题，我们假设列表不为空。
-
-为了获取列表中的最小值。
+如果非空有限列表中的元素可进行比较，则存在最大、最小值。$max/min$的计算结构相同：
 
 \begin{itemize}
-\item 若列表中只有一个元素（称为singleton列表），最小值就是这个唯一的元素；
-\item 否则，我们首先找到除第一个元素外，剩余部分中的最小值，然后再和第一个元素比较，选取较小的为最终的最小值。
+\item 若列表中只有一个元素$[x_1]$，结果为$x_1$；
+\item 否则，递归地在子列表中寻找最大、最小值，并和表头元素比较得道最终结果。
 \end{itemize}
 
-这一算法可以被定义如下。
-
 \be
-min(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  l_1 & L = \{ l_1 \} \\
-  l_1 & l_1 \leq min(L') \\
-  min(L') & otherwise
+  \begin{array}{rcl}
+  min([x]) & = & x \\
+  min(x:xs) & = & \begin{cases}
+    x < min(xs) : & x \\
+    otherwise: & min(xs) \\
+  \end{cases}
   \end{array}
-\right.
 \ee
-
-为了获取最大值，我们只需要将上述定义中的小于等于比较（$\leq$）换为大于等于（$\geq$）即可。
-
+和
 \be
-max(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  l_1 & L = \{ l_1 \} \\
-  l_1 & l_1 \geq max(L') \\
-  max(L') & otherwise
-  \end{array}
-\right.
-\ee
-
-注意上述两个算法都从右向左处理列表。在前面关于尾递归的部分我们讨论过类似的问题。我们可以将其变化为从左向右处理列表。另外，改成尾递归的形式后，算法具备了在线（on-line）处理能力，即任何时候，我们都知道已处理部分中的最大或者最小值。
-
-\be
-min'(L, a) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  a & L = \phi \\
-  min(L', l_1) & l_1 < a \\
-  min(L', a) & otherwise
-  \end{array}
-\right.
-\ee
-
-\be
-max'(L, a) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  a & L = \phi \\
-  max(L', l_1) & a < l_1 \\
-  max(L', a) & otherwise
-  \end{array}
-\right.
-\ee
-
-对比求和与求积问题的尾递归解法，在实际中，我们不能向$min'$或$max'$传入一个常数，这是因为，理论上必须传入无穷（$min(L, \infty)$）或者负无穷（$max(L, -\infty)$），但是由于字长问题，我们不能严格给出无穷。
-
-为了解决这一问题，可以将列表中的第一个元素传入，实际中，我们这样应用最大值和最小值算法。
-
-\be
-  \begin{array}{l}
-  min(L) = min(L', l_1) \\
-  max(L) = max(L', l_1)
+  \begin{array}{rcl}
+  max([x]) & = & x \\
+  max(x:xs) & = & \begin{cases}
+    x > max(xs) : & x \\
+    otherwise: & max(xs) \\
+  \end{cases}
   \end{array}
 \ee
 
-下面的Haskell例子程序实现了获取最大值和最小值的定义。
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-min (x:xs) = min' xs x where
-    min' [] a = a
-    min' (x:xs) a = if x < a then min' xs x else min' xs a
+这两个实现都从右向左处理，我们可以将其变为尾递归。并且这样还具备了“在线”处理能力，即任何时候，累积结果都是已处理部分中的最大、最小值。以$min$为例：
 
-max (x:xs) = max' xs x where
-    max' [] a = a
-    max' (x:xs) a = if a < x then max' xs x else max' xs a
-\end{lstlisting}
+\be
+\begin{array}{rcl}
+min'(a,\ \nil) & = & a \\
+min'(a,\ x:xs) & = & \begin{cases}
+  x < a : & min'(x, xs) \\
+  otherwise : & min'(a, xs) \\
+  \end{cases}
+\end{array}
+\ee
 
-尾递归的最大值和最小值算法可以转换为循环的方式。
+与$sum'/prod'$不同，我们不能向$min'/max'$传入一个常数作为起始值，除非使用$\pm \infty$，如下柯里化形式：
+
+\[
+  min = min'(\infty) \quad \quad \quad max = max'(- \infty)
+\]
+
+为了解决这一问题，考虑到最大最小值仅对非空列表有定义，可以将表头元素传入作为累积起始值：
+
+\be
+  min(x:xs) = min'(x,\ xs)
+  \quad \quad \quad
+  max(x:xs) = max'(x,\ xs)
+\ee
+
+尾递归的最大、最小值算法可以进一步转化为迭代实现。我们略过\textproc{Max}以\textproc{Min}为例：
 
 \begin{algorithmic}[1]
 \Function{Min}{$L$}
   \State $m \gets$ \Call{First}{$L$}
   \State $L \gets$ \Call{Rest}{$L$}
-  \While{$L \neq \phi$}
+  \While{$L \neq$ NIL}
     \If{\Call{First}{$L$} $< m$ }
-      \State $m \gets$ \Call{First}{$L$}
-    \EndIf
-    \State $L \gets$ \Call{Rest}{$L$}
-  \EndWhile
-  \State \Return $m$
-\EndFunction
-\Statex
-\Function{Max}{$L$}
-  \State $m \gets$ \Call{First}{$L$}
-  \State $L \gets$ \Call{Rest}{$L$}
-  \While{$L \neq \phi$}
-    \If{$m < $ \Call{First}{$L$}}
       \State $m \gets$ \Call{First}{$L$}
     \EndIf
     \State $L \gets$ \Call{Rest}{$L$}
@@ -918,77 +877,24 @@ max (x:xs) = max' xs x where
 \EndFunction
 \end{algorithmic}
 
-下面的C++例子程序实现了最大值和最小值算法。
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-T min(List<T>* xs) {
-    T x;
-    for (x = xs->key; xs; xs = xs->next)
-        if (xs->key < x)
-            x = xs->key;
-    return x;
-}
-
-template<typename T>
-T max(List<T>* xs) {
-    T x;
-    for (x = xs->key; xs; xs = xs->next)
-        if (x < xs->key)
-            x = xs->key;
-    return x;
-}
-\end{lstlisting}
-
-另外一种尾递归的求最大值算法是每次丢弃掉较小的元素。边界情况和此前一样；对于递归情况，由于列表中至少有两个元素，我们每次拿出前两个比较，丢弃一个，然后继续处理剩余的元素。当列表中含有两个以上的元素时，记$L''$为$rest(rest(L)) = \{l_3, l_4, ...\}$，我们有如下的定义。
+还有一种尾递归实现，可以复用表头元素作为累积器。递归时，由于列表中至少有两个元素，我们每次拿出前两个比较，丢弃一个，然后继续处理剩余的元素。以$min$为例：
 
 \be
-max(L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  l_1 & |L| = 1 \\
-  max(cons(l_1, L'')) & l_2 < l_1 \\
-  max(L') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+min([x]) & = & x \\
+min(x_1:x_2:xs) & = & \begin{cases}
+  x_1 < x_2 : & min(x_1:xs) \\
+  otherwise: & min(x_2:xs) \\
+  \end{cases}
+\end{array}
 \ee
 
-\be
-min(L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  l_1 & |L| = 1 \\
-  min(cons(l_1, L'')) & l_1 < l_2 \\
-  min(L') & otherwise
-  \end{array}
-\right.
-\ee
-
-下面的Haskell例子程序实现了这种求最大值和最小值的算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-min [x] = x
-min (x:y:xs) = if x < y then min (x:xs) else min (y:xs)
-
-max [x] = x
-max (x:y:xs) = if x < y then max (y:ys) else max (x:xs)
-\end{lstlisting}
+$max$的实现与此对称。
 
 \begin{Exercise}
-\begin{itemize}
-\item 已知两个列表$L_1$和$L_2$，设计一个算法$eq(L_1, L_2)$，可以判定两个列表是否相等。这里相等的含义是列表的长度相同，并且每个对应的元素都相等。
-\item 考虑处理列表随机访问时越界错误的各种方式，用函数式的方式和命令式的方式加以实现。比较使用异常和错误码的异同。
-\item 给列表增加一个尾指针，使得向尾部添加可以在常数时间$O(1)$内完成，而无需线性时间$O(n)$。选择一门命令式语言实现这一改进。
-\item 使用尾指针后，哪些列表操作中必须更新这一变量？对于性能会有怎样的影响？
-\item 处理插入算法中的越界情况，将它作为添加元素处理。
-\item 只使用小于比较（$<$），实现插入排序算法。
-\item 设计并实现在列表中找到所有等于给定值的元素并删除的算法。
-\item 使用尾递归重新实现计算列表长度的算法。
-\item 使用尾递归实现插入排序。
-\item 选择一门命令式编程语言，实现在$O(\lg n)$时间内计算$b^n$的算法。只需要在对应的二进制位不等于0时累积中间结果。
-\end{itemize}
+\Question{使用尾递归实现$length$}
+\Question{使用尾递归实现插入排序。}
+\Question{使用$n$的二进制形式，实现幂$b^n$的快速计算，使得复杂度为$O(\lg n)$}
 \end{Exercise}
 
 \section{变换}
@@ -996,8 +902,8 @@ max (x:y:xs) = if x < y then max (y:ys) else max (x:xs)
 
 我们已经介绍了一些基本的列表操作。本节中，我们介绍列表的变换操作。某些抽象的变换操作是函数式编程的基石。我们同时会介绍如何使用变换操作解决一些趣题。
 
-\subsection{映射（map）和for-each}
-\index{列表!映射（map）}
+\subsection{逐一映射}
+\index{列表!逐一映射}
 
 在实际应用中，常常要输出一些可识别的字符串。如果有一个数字的列表，并且需要将这些数字在打印出来，例如“3 1 2 5 4”。我们可以首先将数字转换为字符串，这样就可以使用打印函数将其输出。下面是一个简单的转换程序。
 
