@@ -900,25 +900,30 @@ $max$的实现与此对称。
 \section{变换}
 \index{列表!变换}
 
-我们已经介绍了一些基本的列表操作。本节中，我们介绍列表的变换操作。某些抽象的变换操作是函数式编程的基石。我们同时会介绍如何使用变换操作解决一些趣题。
+从代数结构的角度看，有两种不同的变换：一种保持列表结构，仅仅改变元素；另一种改变列表结构，变换结果和原列表不再同构。特别地，我们称保持列表结构的变换为\textbf{映射}。
 
 \subsection{逐一映射}
 \index{列表!逐一映射}
-
-在实际应用中，常常要输出一些可识别的字符串。如果有一个数字的列表，并且需要将这些数字在打印出来，例如“3 1 2 5 4”。我们可以首先将数字转换为字符串，这样就可以使用打印函数将其输出。下面是一个简单的转换程序。
+我们通过一些例子来认识映射。第一个例子将一列数字映射为它们代表的字符串，如把[3, 1, 2, 4, 5]转换为[``three'', ``one'', ``two'', ``four'', ``five'']。
 
 \be
-toStr(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  cons(str(l_1), toStr(L')) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+toStr(\nil) & = & \nil \\
+toStr(x:xs) & = & str(x) : toStr(xs) \\
+\end{array}
 \label{eq:tostr}
 \ee
 
-另一个例子是一个字典（dictionary）数据，包含若干单词，并以它们的首字母分组，例如：\texttt{[[a, an, another, ... ], [bat, bath, bool, bus, ...], ..., [zero, zoo, ...]]}。我们希望统计它们在英语中出现的频率。我们可以处理一些英文文本，例如《哈姆莱特》或者《圣经》，然后将每个单词的出现次数统计出。处理后，我们希望得到这样一个列表：
+第二个例子是关于单词统计的。考虑一个字典，包含若干单词，并以它们的首字母分组，例如：
+
+\begin{verbatim}
+[[a, an, another, ... ],
+ [bat, bath, bool, bus, ...],
+ ...,
+ [zero, zoo, ...]]
+\end{verbatim}
+
+接下来我们处理一段文章，例如《哈姆莱特》（《王子复仇记》），统计各单词在其中的出现次数，例如：
 
 \begin{verbatim}
 [[(a, 1041), (an, 432), (another, 802), ... ],
@@ -927,74 +932,61 @@ toStr(L) = \left \{
  [(zero 12), (zoo, 0), ...]]
 \end{verbatim}
 
-如果我们希望找出，对应每个首字母，哪个单词被使用的次数最多。需要怎样实现呢？输出的结果是一个单词列表，表中每个单词都是在各自首字母组中出现最多的一个，形如：\texttt{[a, but, can, ...]}。我们需要实现一个程序，将一个分组的列表转换成一个单词列表。
+现在我们要找出，对应每个首字母，哪个单词被使用的次数最多？输出结果是一个单词列表，表中每个单词都是在各自首字母组中出现最多的一个，形如：\texttt{[a, but, can, ...]}。我们需要设计一个程序，将一组单词/次数对的列表转换成一个单词列表。
 
-我们接下来逐步实现这一程序。我们首先需要定义一个函数，接受一个列表，每个元素都包含一对值：“单词——出现次数”，并搜索出现次数最多的单词。我们无需排序，只需要实现某种特殊的$max'()$函数。注意这里不能直接使用此前定义的$max()$函数。对于一对值$p = (a, b)$，定义函数$fst(p) = a$和$snd(p) = b$，用以获取其中的值。函数$max'()$可以定义如下。
+我们首先定义一个函数，接受一个单词/次数对列表，并找出现次数最多的单词。我们无需排序，只需要实现某种特殊映射的$maxBy(cmp, L)$，其中$cmp$是抽象的比较函数。
 
 \be
-max'(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  l_1 & |L| = 1 \\
-  l_1 & snd(max'(L')) < snd(l_1) \\
-  max'(L') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+maxBy(cmp,\ [x]) & = & x \\
+maxBy(cmp,\ x_1 : x_2 : xs) & = & \begin{cases}
+  cmp(x_1, x_2) : & maxBy(cmp, x_2 : xs) \\
+  otherwise : & maxBy(cmp, x_1 : xs) \\
+  \end{cases}
+\end{array}
 \ee
 
-还有另外一种方法。我们可以定义一个函数，用以比较“单词——出现次数”，然后将这一比较函数传入一个抽象的$max()$函数。
+对于一对值$p = (a, b)$，我们定义如下辅助函数：
+
+\be
+\begin{cases}
+fst\ (a, b) = & a \\
+snd\ (a, b) = & b \\
+\end{cases}
+\ee
+
+为避免过多的括弧$fst((a, b)) = a$，我们使用了空格。在上下文清楚的情况下，我们等价使用这两种记法：$f\ x = f(x)$。接下来就可以定义单词/次数对的比较函数了：
 
 \be
 less(p_1, p_2) = snd(p_1) < snd(p_2)
 \ee
 
+将$less$传入$maxBy$就可选出出现次数最多的单词（柯里化形式）：
+
 \be
-maxBy(cmp, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  l_1 & |L| = 1 \\
-  l_1 & cmp(l_1, maxBy(cmp, L')) \\
-  maxBy(cmp, L') & otherwise
-  \end{array}
-\right.
+max'' = maxBy(less)
 \ee
 
-这样，$max'()$实际上就成了$maxBy()$的一种特定实现，专门用以获取出现次数最多的单词。
+最后，我们调用$max''()$处理单词统计列表：
 
 \be
-max'(L) = maxBy(\neg less, L)
-\ee
-
-这里，所有的函数都是以递归实现的。我们也可以将它们改为尾递归的形式。我们将这一修改作为练习留给读者。
-
-定义好$max'()$函数后，就可以处理输入列表，完成这一程序。
-
-\be
-solve(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  cons(fst(max'(l_1)), solve(L')) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+solve(\nil) & = & \nil \\
+solve(x:xs) & = & fst(max''(x)) : solve(xs) \\
+\end{array}
 \label{eq:solve}
 \ee
 
 \subsubsection{映射}
-\index{列表!映射（map）}
+\index{列表!映射}
 
-比较式(\ref{eq:solve})中定义的$solve()$函数，和式(\ref{eq:tostr})中定义的$toStr()$函数，可以发现它们的算法结构很类似。尽管它们解决的问题不同，一个较简单，另一个稍复杂。
-
-在$toStr()$中，对列表中的所有元素，我们应用$str()$函数，将每一个数字转换为字符串；在$solve()$中，我们针对列表中的所有元素（每个元素是包含若干“单词——出现次数”的列表），我们首先应用$max'()$函数，然后再应用$fst()$函数，将一个列表转换为一个字符串。如果将这样的公共结构抽象出来，就可以获得\underline{映射}（map）的定义。
+尽管解决的问题不同，$solve()$和$toStr()$反映出同样的计算结构。我们将这样的结构抽象为\textbf{映射}。
 
 \be
-map(f, L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  cons(f(l_1)), map(f, L')) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+map(f,\ \nil) & = & \nil \\
+map(f,\ x:xs) & = & f(x) : map(f, xs) \\
+\end{array}
 \ee
 
 由于映射接受一个转换函数$f$作为参数，它属于一种“高阶函数”（high-order function）。在很多函数式环境中，例如Haskell，映射就是通过上述定义实现的。
