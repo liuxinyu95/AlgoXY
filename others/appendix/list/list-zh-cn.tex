@@ -989,251 +989,170 @@ map(f,\ x:xs) & = & f(x) : map(f, xs) \\
 \end{array}
 \ee
 
-由于映射接受一个转换函数$f$作为参数，它属于一种“高阶函数”（high-order function）。在很多函数式环境中，例如Haskell，映射就是通过上述定义实现的。
+$map$接受一个函数$f$作为参数，然后将其应用到列表中的每个元素上。我们称将其它函数作为计算对象的函数为“高阶函数”。如果$f$的类型为$A \to B$，即把类型$A$的元素映射为类型$B$的元素，则$map$的类型为：
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-map :: (a->b)->[a]->[b]
-map _ [] = []
-map f (x:xs) = f x : map f xs
-\end{lstlisting}
+\be
+map :: (A \to B) \to [A] \to [B]
+\ee
 
-此前给出的两个具体问题，都可以通过高阶的映射来解决。
+读作：$map$接受一个类型为$A \to B$的函数，然后将一个类型为$[A]$的列表变换为另一个类型为$[B]$的列表。上面的两个例子可以使用映射定义如下（柯里化形式）：
 
 \[
 \begin{array}{l}
-toStr  = map \quad str \\
-solve = map \quad (fst \cdot max')
+toStr  = map\ str \\
+solve = map \ (fst \circ max'')
 \end{array}
 \]
 
-其中$f \cdot g$代表函数复合（compose），即首先应用函数$g$，然后再应用函数$f$。例如函数$h(x) = f(g(x))$可以表示为$h = f \cdot g$，读作函数$h$由$f$和$g$复合而成。这里我们使用了Curry形式，因而可以省略参数$L$，使得表达更加简洁。简单来说，对一个二元函数，如$f(x, y) = z$，如果我们仅提供了一个参数$x$，函数$f$就转变成为了一个新函数，它接受一个参数$y$，定义为$g(y) = f(x, y)$，或者$g = f x$。注意这里$x$不再是一个自由变量，而是一个绑定的值。读者可以参考关于函数式编程的材料来了解函数复合和Curry的更多内容。
-
-也可以从域的角度来理解映射。考虑函数$y = f(x)$，它实际定义了从自变量$x$的域到$y$的值域的映射（$x$和$y$的类型可以不同）。若这些域可以表示为集合$X$和$Y$，我们有如下关系。
+其中$f \cdot g$表示函数组合，它首先应用函数$g$，然后再应用函数$f$，即$(f \circ g)\ x = f(g(x))$。读作$f$作用于$g$之后。我们也可以从集合论的角度来定义映射。函数$y = f(x)$定义来一个从集合$X$中的元素$x$到集合$Y$中的元素$y$的映射：
 
 \be
 Y = \{ f(x) | x \in X \}
 \ee
 
-这种形式的集合定义称为Zermelo Frankel集合抽象（亦称ZF表达式）\cite{algo-fp}。不同之处在于，我们的映射定义为从一个列表到另一个列表，而不是集合。因此可以含有重复的元素。在支持list comprehension的语言中，例如Haskell和Python等（Python中的list是一种内置数据类型，而不是本附录中所指的由链表实现的列表），映射可以被实现为list comprehension的某种特殊形式。
+这种形式的定义出的集合称为“策梅罗——弗兰克尔”集合抽象（简称ZF表达式）\cite{algo-fp}。不同之处在于，我们定义的是从一个列表到另一个列表的映射$Y = [f(x) | x \in Y]$，而不是集合的映射。其中可以含有重复的元素。对于列表的ZF表达式被称作“列表解析”。
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-map f xs = [ f x | x <- xs]
-\end{lstlisting}
-
-List comprehension是一个强大的工具。例如，可以使用它来实现一个排列（permutation）算法。许多书籍介绍了全排列算法，如\cite{algo-fp}和\cite{erlang}。我们可以定义一个更加一般的排列函数$perm(L, r)$。给定一个含有$n$个元素的列表$L$，这一函数从$n$个元素中选择$r$个元素进行排列。我们知道一共有$P_n^r = \frac{n!}{(n-r)!}$种不同的排列。
+列表解析是一个强大的工具。作为例子，我们思考如何实现一个排列算法。我们从全排列（\cite{algo-fp}、\cite{erlang}）出发，定义更一般的排列函数$perm(L, r)$，列举从长度为$n$的列表$L$中选出$r$个元素的全部排列。一共有$P_n^r = \dfrac{n!}{(n-r)!}$种不同的排列。
 
 \be
-perm(L, r) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{\phi\} & r = 0 \lor |L| < r \\
-  \{ \{l\} \cup P | l \in L, P \in perm(L-\{l\}, r-1)\} & otherwise
-  \end{array}
-\right.
+perm(L, r) = \begin{cases}
+  |L| < r\ \text{or}\ r = 0: & [[\ ]] \\
+  otherwise: & [x:ys\ |\ x \in L, ys \in perm(delete(x,L), r-1)] \\
+  \end{cases}
 \ee
 
-其中，$\{l\} \cup P$的含义是$cons(l, P)$，而$L-\{l\}$表示$delete(L, l)$，它的定义此前已经介绍过。如果选出0个元素进行排列，或者列表中元素的个数小于$r$，排列结果为空列表；否则，我们逐一取出列表中每个元素$l$，递归地从剩余的$n-1$个元素中选择$r-1$个元素进行排列。然后再将$l$置于所有可能的$r-1$个元素排列的前面。下面的Haskell程序，实现了这一算法。
+如果选出0个元素排列，或者列表中元素的个数小于$r$，排列结果为空列表的列表[[]]；否则，我们逐一取出列表中每个元素$x$，递归地从剩余的$n-1$个元素中选择$r-1$个元素排列，然后再将$x$置于每个排列的前面。下面的Haskell例子程序，使用了ZF表达式实现排列算法：
 
+\begin{Haskell}
+perm xs r | r == 0 || length xs < r = [[]]
+          | otherwise = [ x:ys | x <-xs,
+                                 ys <- perm (delete x xs) (r-1)]
+\end{Haskell}
 \lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-perm _ 0 = [[]]
-perm xs r | length xs < r = [[]]
-          | otherwise = [ x:ys | x <-xs, ys <- perm (delete x xs) (r-1)]
-\end{lstlisting}
 
-我们稍后在列表过滤（filter）部分还会再次讨论list comprehension。
-
-映射也可以用命令式的方式实现。我们可以在遍历列表时应用传入的函数，从左向右构造新的列表。由于新元素被添加在结果列表的尾部，我们可以不断更新列表的尾指针，这样考虑传入的函数的调用次数时，整体的性能就是线性的。
+为了简化映射的迭代实现，下面的算法中使用了一个辅助节点。
 
 \begin{algorithmic}[1]
 \Function{Map}{$f, L$}
-  \State $L' \gets \phi$
-  \State $p \gets \phi$
-  \While{$L \neq \phi$}
-    \If{$p = \phi$}
-      \State $p \gets$ \textproc{Cons}($f($ \Call{First}{$L$} $), \phi$)
-      \State $L' \gets p$
-    \Else
-      \State \Call{Next}{$p$} $\gets$ \textproc{Cons}($f($ \Call{First}{$L$} $), \phi$)
-      \State $p \gets$ \Call{Next}{$p$}
-    \EndIf
-    \State $L \gets$ \Call{Next}{$L$}
+  \State $L' \gets$ \Call{Cons}{$\perp$, NIL} \Comment{辅助节点}
+  \State $p \gets L'$
+  \While{$L \neq$ NIL}
+    \State $x \gets$ \Call{First}{$L$}
+    \State $L \gets$ \Call{Rest}{$L$}
+    \State \Call{Rest}{$p$} $\gets$ \Call{Cons}{$f(x)$, NIL}
+    \State $p \gets$ \Call{Rest}{$p$}
   \EndWhile
-  \State \Return $L'$
+  \State \Return \Call{Rest}{$L'$} \Comment{丢弃辅助节点}
 \EndFunction
 \end{algorithmic}
 
-在一些静态类型的语言中，例如C++\footnote{例如ISO C++ 1998标准}，如果没有类型推断（type inference），标记（annotate）传入函数的类型会比较复杂\cite{sgi-stl-transform}。某一时期的C++标准库提供了\verb|std::transform|来实现映射的概念。由于涉及某些语言特性，我们略去了C++的例子程序。
-
-简单起见，我们使用Python来给出例子程序，这样就避免了编译期间进行类型推断的问题。下面的例子定义了单向链表的节点。
-
-\lstset{language=Python}
-\begin{lstlisting}
-class List:
-    def __init__(self, x = None, xs = None):
-        self.key = x
-        self.next = xs
-
-def cons(x, xs):
-    return List(x, xs)
-\end{lstlisting}
-
-映射的例子程序接受一个函数和一个列表，然后依照上述描述的算法，逐一对每个元素应用传入的函数。
-
-\begin{lstlisting}
-def mapL(f, xs):
-    ys = prev = List()
-    while xs is not None:
-        prev.next = List(f(xs.key))
-        prev = prev.next
-        xs = xs.next
-    return ys.next
-\end{lstlisting}
-
-和伪代码不同，这一程序使用了一个dummy节点作为结果列表的头部，这样可以简化实现，无需在尾部添加时检查是否为NIL。只要在最后返回接过前丢弃掉dummy节点即可。
-
-\subsubsection{For each}
+\subsubsection{逐一执行}
 \index{列表!for each}
 
-对于一些较简单的操作，如打印一个列表的内容，我们可以逐一打印每个元素而无需将整个列表转换为一个字符串列表。这样就可以简化程序如下：
+某些情况下我们只希望逐一处理表中的每个元素，而无需构造新的列表。例如打印一个列表中的每个元素：
 
 \begin{algorithmic}[1]
 \Function{Print}{$L$}
-  \While{$L \neq \phi$}
+  \While{$L \neq$ NIL}
     \State print \Call{First}{$L$}
     \State $L \gets$ \Call{Rest}{$L$}
   \EndWhile
 \EndFunction
 \end{algorithmic}
 
-通常，我们可以在遍历时传入一个过程，例如打印，然后逐一（for each）执行这一过程。
+通常，我们在遍历时传入一个过程$P$，然后遍历列表，将$P$应用到每个元素上。
 
 \begin{algorithmic}[1]
-\Function{For-Each}{$L, P$}
-  \While{$L \neq \phi$}
+\Function{For-Each}{$P, L$}
+  \While{$L \neq$ NIL}
     \State \textproc{P}(\Call{First}{$L$})
     \State $L \gets$ \Call{Rest}{$L$}
   \EndWhile
 \EndFunction
 \end{algorithmic}
 
-也可以用递归来定义for-each算法。
-
-\be
-foreach(L, p) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  u & L = \phi \\
-  do(p(l_1), foreach(L', p)) & otherwise
-  \end{array}
-\right.
-\ee
-
-这里符号$u$表示unit，它的含义是不做任何事。它的类型和C或Java中的void概念相似。函数$do()$对它的所有参数求值，丢弃除最后一个外的所有其他值，返回最后一个值作为$do()$的结果。它和Lisp中的\texttt{(begin ...)}，以及Haskell中的\texttt{do}区块类似。有关unit类型的更多信息，读者可以参考\cite{mittype}。
-
-for-each算法本质上是一种简化的映射，它和映射只有两点不同：
-
-\begin{itemize}
-\item for-each无需构造结果列表，在使用时，我们更关注它的“副作用”（side effect）而非返回的结果；
-\item for-each强调遍历，而映射强调应用函数，因此他们的参数顺序分别为$map(f, L)$和$foreach(L, p)$。
-\end{itemize}
-
-某些函数式环境同时提供了带和不带返回值列表的两种实现。例如Haskell的Monad库同时提供了\texttt{mapM}、\texttt{mapM\_}和\texttt{forM}、\texttt{forM\_}。读者可以参考相关语言的具体资料。
-
 \subsubsection{映射的例子}
 
-作为使用映射的例子，我们思考一道ACM/ICPC\cite{poj-drunk-jailer}中的趣题。简单起见，我们修改了题目的描述。假设屋子里有$n$个灯泡，所有灯泡都是暗的。我们执行下面的过程$n$次。
+作为例子，我们思考一下“n盏灯”的趣题\cite{poj-drunk-jailer}：屋子里有$n$盏灯，都是熄灭的。我们执行下面的过程$n$次。
 
 \begin{enumerate}
 \item 将所有的灯都打开；
-\item 扳动第2、4、6、……所有偶数位置灯的开关。如果灯是亮的，则变暗；如果是暗的，则变亮；
-\item 每三个灯，扳动一次开关。第3、6、9、……位置上的灯的明暗状态切换；
+\item 扳动第2、4、6……盏灯的开关。如果灯是亮的，则熄灭；如果是灭的，则点亮；
+\item 每三个灯，扳动一次开关。第3、6、9……位置上的灯的明暗状态切换；
 \item ……
 \end{enumerate}
 
-最后一轮的时候，只有最好一盏灯（第$n$盏）的开关被扳动。
+最后一轮的时候，只有最后一盏灯（第$n$盏）的开关被扳动。问最终有几盏灯是亮的？
 
-问最终有几盏灯是亮的？
-
-在给出最佳答案前，我们先考虑暴力解法。把$n$盏灯表示为一列0、1数字，其中0表示灯灭，1表示灯亮。最初时，所有灯都是灭的，因此为$n$个零：$\{0, 0, ..., 0\}$。
-
-我们将灯分别编号为1到$n$。我们首先通过映射将灯的状态转换为带有编号的列表\footnote{在函数式编程中，通常使用zip来实现。我们稍后会详细解释zip。}。
+先考虑最简单的穷举法。把$n$盏灯表示为一列0、1数字，其中0表示熄灭，1表示点亮。开始时，灯都是灭的[0, 0, ..., 0]。将灯编号为1到$n$，然后映射成一个关于($i$, 亮/灭)的列表：
 
 \[
-map(\lambda_i \cdot (i, 0), \{1, 2, 3, ..., n\})
+lights = map(i \mapsto (i, 0),\ [1, 2, 3, ... n])
 \]
 
-这一映射将每个自然数都绑定一个零状态，结果为一个列表，每个元素都是一对值：$L = \{(1, 0), (2, 0), ..., (n, 0)\}$。
-
-然后，我们从1到$n$操作这一列表$n$次。对于第$i$次操作，我们逐一检查列表中的每对值，如果编号能被$i$整除，我们就将状态翻转。考虑$1 - 0 = 1$、且$1 - 1 = 0$，我们可以将电灯亮灭状态$x$的切换实现为$1 - x$。在第$i$轮操作中，对于灯$(j, x)$，若$i | j$（或$j \mod i = 0$），我们就翻转灯的亮灭状态，否则就跳过不做任何处理。
+这一映射将每个编号都对应到0上，结果为一个列表，每个元素是一对值：$L = [(1, 0), (2, 0), ..., (n, 0)]$。然后我们操作这一列表$n$次。在第$i$次操作中，逐一检查每对值，如果灯的编号能被$i$整除，我们就将状态翻转。考虑$1 - 0 = 1$且$1 - 1 = 0$，我们可以将亮灭状态$x$的切换实现为$1 - x$。对于灯$(j, x)$，若$i | j$（即$j \bmod i = 0$），就翻转灯的状态，否则就跳过不做处理。
 
 \be
-switch(i, (j, x)) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (j, 1 - x) &  j \mod i = 0 \\
-  (j, x) & otherwise
-  \end{array}
-\right.
+switch(i, (j, x)) = \begin{cases}
+  j \bmod i = 0 : & (j, 1 - x) \\
+  otherwise: & (j, x) \\
+  \end{cases}
 \ee
 
-对所有灯的第$i$轮操作也可以用映射实现。
+对所有灯的第$i$轮操作用映射实现为：
 
 \be
 map(switch(i), L)
 \ee
 
-这里，我们使用了$switch()$函数的Curry形式，它等价于：
+这里，我们使用了$switch$的柯里化形式，它等价于：
 
 \[
-map(\lambda_{(j, x)} \cdot switch(i, (j, x)), L)
+map((j, x) \mapsto switch(i, (j, x)), L)
 \]
 
-我们需要定义一个函数$proc()$，它可以重复执行上述对$L$的映射$n$次。一种方法是通过下面定义的递归，调用形式为：$proc(\{1, 2, ..., n\}, L)$\footnote{通常被实现为fold，我们稍后会详加解释。}。
+接下来，我们定义一个函数$op()$，重复执行上述对$L$的映射$n$次。调用形式为：$op([1, 2, ..., n], L)$。
 
 \be
-proc(I, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  L & I = \phi \\
-  operate(I', map(switch(i_1), L)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+op(\nil,\ L) & = & L \\
+op(i:is,\ L) & = & op(is, map(switch(i), L)) \\
+\end{array}
 \ee
 
-其中$I = cons(i_1, I')$，即$I$不为空时，其第一个元素为$i_1$，剩余部分为$I'$。
-
-最后，我们可以将列表$L$中每一对值的第二个元素累加起来得到最终的答案。累加的实现在前面定义过，我们需要定义映射的方法，并将结果传入累加函数。
+最后，我们可以将每对值的第二个元素累加起来就得到最终的答案。
 
 \be
-solve(n) = sum(map(snd, proc(\{1, 2, ..., n\}, L)))
+solve(n) = sum(map(snd, op([1, 2, ..., n], lights)))
 \ee
 
-下面的Haskell例子程序实现了这一暴力解法。
+下面的Haskell例子程序实现了这一穷举解法。
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-solve' = sum . (map snd) . proc  where
-    proc n = operate [1..n] $ map (\i -> (i, 0)) [1..n]
+\begin{Haskell}
+solve = sum . (map snd) . proc  where
+    lights = map (\i -> (i, 0)) [1..n]
+    proc n = operate [1..n] lights
     operate [] xs = xs
     operate (i:is) xs = operate is (map (switch i) xs)
 
 switch i (j, x) = if j `mod` i == 0 then (j, 1 - x) else (j, x)
-\end{lstlisting} %$
+\end{Haskell} %$
 
-我们列出灯的数目为1、2、……、100盏时，经过上述操作，最后灯仍然亮的数目：
+我们列出灯的数目为1、2、……、100盏时的答案（人为添加了换行）：
 
-\begin{Verbatim}[fontsize=\footnotesize]
-[1,1,1,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,
- 5,5,5,5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,6,6,6,6,6,6,
- 7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,8,8,
- 8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,
- 9,9,9,10]
-\end{Verbatim}
+\begin{verbatim}
+[1,1,1,
+ 2,2,2,2,2,
+ 3,3,3,3,3,3,3,
+ 4,4,4,4,4,4,4,4,4,
+ 5,5,5,5,5,5,5,5,5,5,5,
+ 6,6,6,6,6,6,6,6,6,6,6,6,6,
+ 7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+ 8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,
+ 9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,10]
+\end{verbatim}
 
-这一结果很有趣。
+这一结果很有规律：
 
 \begin{itemize}
 \item 3盏灯以内时，最后仍然亮的灯为1盏；
@@ -1242,12 +1161,12 @@ switch i (j, x) = if j `mod` i == 0 then (j, 1 - x) else (j, x)
 \item ……
 \end{itemize}
 
-看起来，当灯的数目为$i^2$到$(i+1)^2-1$盏时，最后会有$i$盏灯是亮的。事实上，我们可以证明这一结论。
+看起来，当灯的数目为$i^2$到$(i+1)^2-1$盏时，最后会有$i$盏灯是亮的。事实上，我们可以证明这一结论：
 
-\begin{proof}[证明]
+\begin{proof}
 将$n$盏灯编号为1到$n$，考虑最后仍然亮的那些灯。由于初始时，所有灯都是灭的，我们可以确定，被扳动奇数次开关的灯最后是亮的。对于编号为$i$的灯，若$i$可以被$j$整除（表示为$j | i$），则在第$j$轮，它的开关被扳动一次。所以当灯的编号含有奇数个因子时，最后的状态是亮的。
 
-因此，为了找出最后亮的灯，我们需要找出所有含有奇数个因子的数。对于任意自然数$n$，记$S$为$n$的所有因子的集合。$S$初始化为$\phi$，若$p$为$n$的一个因子，则必然存在一个正整数$q$，使得$n = p q$。也就是说$q$也是$n$的因子。因此当且仅当$p \neq q$时，我们向集合$S$中添加两个因子，这样$|S|$将总是偶数。除非$p = q$，此时，$n$必将是一个完全平方数，所以我们只能向集合$S$中增加一个因子。这样$n$就有奇数个因子。
+为了找出最后亮的灯，我们需要找出所有含有奇数个因子的数。对于任意自然数$n$，记$S$为$n$的所有因子的集合。$S$初始化为$\varnothing$，若$p$为$n$的一个因子，则必然存在一个正整数$q$，使得$n = p q$。也就是说$q$也是$n$的因子。因此当且仅当$p \neq q$时，我们向集合$S$中添加两个不同的因子，这样$|S|$将总是偶数。除非$p = q$，此时$n$必定是完全平方数。这时只能向集合$S$中增加一个因子，从而导致奇数个因子。
 \end{proof}
 
 根据这一结论，我们可以通过寻找$n$以内的完全平方数来快速解决这一趣题。
@@ -1256,112 +1175,81 @@ switch i (j, x) = if j `mod` i == 0 then (j, 1 - x) else (j, x)
 solve(n) = \lfloor \sqrt{n} \rfloor
 \ee
 
-下面的Haskell命令输出灯的数目为1、2、……、100盏时最后有多少灯是亮的结果，这和暴力方法的结果一致。
+下面的Haskell例子程序输出1、2、……、100盏灯时的结果：
 
-\begin{lstlisting}[style=Haskell]
-map (floor.sqrt) [1..100]
-[1,1,1,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,
-6,6,6,6,6,6,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,8,8,8,8,8,8,8,
-8,8,8,8,8,8,8,8,8,8,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,10]
-\end{lstlisting}
+\begin{Haskell}
+map (floor . sqrt) [1..100]
+\end{Haskell}
 
-映射是一个一般性的概念，它不仅局限于列表，也可以扩展到许多复杂的数据结构。本书中二叉搜索树一章解释了如何对树进行映射。只要我们能够以某种顺序遍历一个数据结构，并且能够标识出空数据结构，就可以使用映射的概念。我们在稍后fold一节，会再次看到这样的高阶概念。
+映射是一个抽象概念，它不仅局限于列表，也可以扩展到许多复杂的代数结构。下一章我们会介绍如何对树结构进行映射。只要我们能够遍历一个结构，并且有空结构的定义，就可以使用映射的概念。
 
 \subsection{反转}
-\index{列表!反转}
+\index{列表!反转} \label{sec:reverse}
 
-如何用最小的空间反转一个单向链表曾经是一道流行的面试题。在支持指针的命令式环境中，例如C语言，反转单向链表需要仔细的指针操作。我们将展示一种简单的方式来得到答案。
+如何用最小的空间反转一个单向链表是一道经典题目。它需要仔细的操作节点的引用。其实存在一个简单的策略：
 
 \begin{enumerate}
-\item 首先，写出一个简单、直观的纯递归解；
-\item 然后，将纯递归解转换为尾递归形式；
-\item 最后，将尾递归解转换为纯命令式的指针操作。
+\item 先写出一个纯递归解；
+\item 转换为尾递归；
+\item 将尾递归转换为命令式操作。
 \end{enumerate}
 
-纯递归解非常简单，我们可以很容易地定义出。为了“反转列表$L$”。
+纯递归解很直观，为了反转列表$L$。
 
 \begin{itemize}
-\item 若列表$L$为空，反转结果也是空。这是边界情况；
-\item 否则，我们首先反转除第一元素外的子列表，然后将第一个元素添加到尾部。
+\item 若$L$为空，反转结果也为空；
+\item 否则，递归地反转子列表$L'$，然后将第一个元素添加到尾部。
 \end{itemize}
 
-这一思路可以形式化为下面的定义。
-
 \be
-reverse(L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  append(reverse(L'), l_1) & otherwise \\
-  \end{array}
-\right.
+\begin{array}{rcl}
+reverse(\nil) & = & \nil \\
+reverse(x:xs) & = & append(reverse(xs), x) \\
+\end{array}
 \ee
 
-下面的Haskell例子程序实现了这一解法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-reverse [] = []
-reverse (x:xs) = reverse xs ++ [x]
-\end{lstlisting}
-
-但是这一方法的性能不佳，为了向列表末尾添加元素，必须遍历列表。因此总体时间是平方级的。为了提高性能，可以将其转换为尾递归形式。我们使用一个累积器来记录中间的反转结果。传入一个空列表来启动反转$reverse(L) = reverse'(L, \phi)$。
+但是这一方法的性能不佳。每次需要遍历列表以在尾部添加元素。总体时间复杂度是平方级的。可以将其优化为尾递归形式。我们使用一个累积器来记录中间的反转结果，并传入空列表来启动反转$reverse(L) = reverse'(L, \nil)$。
 
 \be
-reverse'(L, A) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  A & L = \phi \\
-  reverse'(L', \{l_1\} \cup A) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+reverse'(\nil,\ A) & = & A \\
+reverse'(x:xs,\ A) & = & reverse'(xs,\ x:A) \\
+\end{array}
 \ee
 
-其中$\{l_1\} \cup A$表示$cons(l_1, A)$。和在尾部追加相比，这是一个常数时间$O(1)$的操作。我们不断从列表的头部逐一取出元素，将其置于累积结果的前面。这相当于将全部元素压入一个堆栈，然后再依次弹出。整体上是一个线性时间算法。
-
-下面的Haskell例子程序实现了这一尾递归的程序。
-
-\begin{lstlisting}[style=Haskell]
-reverse' [] acc = acc
-reverse' (x:xs) acc = reverse' xs (x:acc)
-\end{lstlisting}
-
-由于尾递归无需通过调用栈记录上下文，大多数现代编译器都能将其优化为纯命令式的循环。我们接下来要做的是手工进行这一优化，消除递归，从而得到一个命令式的算法。
+不同于在尾部添加，cons是常数时间操作。我们不断从列表的头部逐一取出元素，将其置于累积结果的前面。这相当于将全部元素压入一个堆栈，然后再依次弹出。整体上是线性时间的。由于尾递归无需记录上下文环境，我们可以将其优化为循环迭代：
 
 \begin{algorithmic}[1]
 \Function{Reverse}{$L$}
-  \State $A \gets \phi$
-  \While{$L \neq \phi$}
+  \State $A \gets$ NIL
+  \While{$L \neq$ NIL}
     \State $A \gets $ \textproc{Cons}(\Call{First}{$L$}, $A$)
     \State $L \gets$ \Call{Rest}{$L$}
   \EndWhile
+  \State \Return $A$
 \EndFunction
 \end{algorithmic}
 
-但是，这一算法生成了一个新的反转列表，而不是在原列表上直接修改。我们接下来要通过重用$L$将其改为就地修改的形式。下面的C++例子程序实现了这一就地修改的单向链表反转。它只需要常数空间，在线性时间$O(n)$内完成反转。
+但是，这一算法生成了一个新的反转列表，而不是在原列表上直接修改。我们接下来要通过重用$L$将其改为就地修改的形式。如下面的例子程序：
 
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-List<T>* reverse(List<T>* xs) {
-    List<T> *p, *ys = NULL;
-    while (xs) {
-        p = xs;
-        xs = xs->next;
-        p->next = ys;
-        ys = p;
-    }
-    return ys;
+\begin{lstlisting}[language=Bourbaki]
+List<T> reverse(List<T> xs) {
+  List<T> p, ys = null
+  while (xs != null) {
+    p = xs
+    xs = xs.next
+    p.next = ys
+    ys = p
+  }
+  return ys
 }
 \end{lstlisting}
 
 \begin{Exercise}
-\begin{itemize}
-\item 选择一门编程语言，实现尾递归形式的求最大值算法。
-\end{itemize}
+\Question{使用尾递归求$[(k, v)]$列表中$v$值最大的元素。}
 \end{Exercise}
 
-\section{提取子列表}
+\section{子列表}
 \index{列表!提取子列表}
 
 数组可以很方便、快速地分割为连续的子空间。而分割列表则需要更多的工作，大多数这类操作都是线性时间的。
