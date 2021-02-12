@@ -1524,100 +1524,58 @@ span(p,\ x:xs) & = & \begin{cases}
 \subsection{右侧叠加}
 \index{列表!foldr} \index{列表!右侧叠加}
 
-回顾此前给出的求和与求积定义，它们的结构非常相似：
+比较$sum$、$product$、$sort$，它们都有共同的结构。
 
-\[
-sum(L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  0 & L = \phi \\
-  l_1 + sum(L') & otherwise
-  \end{array}
-\right.
-\]
+\be
+\begin{array}{rcl}
+h(\nil) & = & z \\
+h(x:xs) & = & x \oplus h(xs)
+\end{array}
+\ee
 
-\[
-product(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  1 & L = \phi \\
-  l_1 \times product(L') & otherwise
-  \end{array}
-\right.
-\]
-
-不仅是求和与求积，如果我们列出插入排序的定义，会发现它的结构也是如此。
-
-\[
-sort(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  insert(l_1, sort(L')) & otherwise
-  \end{array}
-\right.
-\]
-
-这提示我们可以抽象出本质上通用的结构，以避免不断重复。观察$sum$、$product$、和$sort$，我们可以参数化其结构中的两部分：
+我们可以将两个部分抽象出来：
 
 \begin{itemize}
-\item 边界条件时的结果不同。求和时结果为0；求积时结果为1；排序时结果为空列表；
-\item 对第一个元素和中间计算结果的处理函数不同。求和时，这一函数是相加；求积时，这一函数是相乘；排序时，这一函数是按序插入。
+\item 列表为空时的结果。求和时为0；求积时为1；排序时为$\nil$；
+\item 对表头元素和递归结果进行计算的二元操作。求和时是相加；求积时是相乘；排序时是按序插入。
 \end{itemize}
 
-如果我们将边界条件时的结果参数化为$z$（代表抽象零的概念），在递归时使用的函数为$f$（它接受两个参数，一个是列表中的第一个元素，另一个是列表中剩余元素递归处理的结果），则这一通用结构可以定义如下。
+我们将空列表时的结果抽象\textbf{初始值}，记为$z$（代表抽象的零），二元运算抽象为$\oplus$。上述定义可以参数化为：
 
-\[
-proc(f, z, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  z & L = \phi \\
-  f(l_1, proc(f, z, L')) & otherwise
-  \end{array}
-\right.
-\]
+\be
+\begin{array}{rcl}
+h(\oplus, z,\ \nil) & = & z \\
+h(\oplus, z,\ x:xs) & = & x \oplus h(\oplus, z, xs) \\
+\end{array}
+\ee
 
-如何为这一通用结构命名呢？我们观察它的特征，对于列表$L = \{x_1, x_2, ..., x_n \}$，我们可以将计算过程展开如下。
+我们输入列表$L = [x_1, x_2, ..., x_n]$，将计算过程展开如下：
 
 \[
 \begin{array}{rl}
-proc(f, z, L) & = f(x_1, proc(f, z, L') \\
-        & = f(x_1, f(x_2, proc(f, z, L'')) \\
-        & ... \\
-        & = f(x_1, f(x_2, f(..., f(x_n, f(f, z, \phi))...) \\
-        & = f(x_1, f(x_2, f(..., f(x_n, z))...)
+   & h(\oplus, z, [x_1, x_2, ..., x_n]) \\
+= & x_1 \oplus h(\oplus, z, [x_2, x_3, ..., x_n]) \\
+= & x_1 \oplus (x_2 \oplus h(\oplus, z, [x_3, ..., x_n])) \\
+  & ... \\
+= & x_1 \oplus (x_2 \oplus (... (x_n \oplus h(\oplus, z, \nil))...)) \\
+= & x_1 \oplus (x_2 \oplus (... (x_n \oplus z)...))
 \end{array}
 \]
 
-由于$f$接受两个参数，它是一个二元函数，我们可以将它记为中缀形式。中缀形式的定义如下：
-
-\be
-x \oplus_f y = f(x, y)
-\ee
-
-上述展开的计算结果等价于下面的中缀记法。
-
-\[
-proc(f, z, L) = x_1 \oplus_f (x_2 \oplus_f (... (x_n \oplus_f z))...)
-\]
-
-注意其中的括号，它限制了计算的顺序，计算从最右侧开始（$x_n \oplus_f z$），不断向左侧进行直到$x_1$。这和下图描述的中国折扇的收起过程相似。中国折扇由竹子和纸制成。所有竹子的扇骨在末端被一个轴穿在一起。图\ref{fig:fold-fan} (a)给出的是扇形的纸被完全展开时的样子；扇子可以被折叠收起。图\ref{fig:fold-fan} (b)展示了扇子右侧被部分收起时的样子。当折叠过程完全结束后，扇子的形状变成了一根杆状，如图\ref{fig:fold-fan} (c)所示。
+这些括弧是必须的，它限制计算顺序从最右侧开始（$x_n \oplus z$），不断向左侧进行直到$x_1$。这和图\ref{fig:fold-fan}描述的折扇相似。折扇由竹子和纸制成。多根扇骨在末端被轴穿在一起。把展开的扇形逐渐折叠，最终收起成一根。
 
 \begin{figure}[htbp]
-    \centering
-    \subcaptionbox{折扇完全展开}{\includegraphics[scale=0.3]{img/fold-fan1.eps}} \\
-    \subcaptionbox{折扇的右侧部分收起}{\includegraphics[scale=0.3]{img/fold-fan2.eps}}
-    \subcaptionbox{折扇完全收起，变成杆状}{\includegraphics[scale=0.3]{img/fold-fan3.eps}}
-    \caption{中国折扇收起的过程} \label{fig:fold-fan}
+  \centering
+  \includegraphics[scale=0.4]{img/fold-fan.png}
+  \caption{折扇}
+  \label{fig:fold-fan}
 \end{figure}
 
-我们可以认为每根竹子扇骨和粘在之上的纸为一个元素，这些扇骨组成了一个列表。收起扇子的单位操作是将扇骨旋转一定角度，使得它叠在已收起部分之上。当我们开始收起扇子时，最初的收起部分为第一个竹子扇骨。收起的过程从一端开始，不断重复单位操作，直到所有的扇骨都旋转叠在一起，最终的折叠结果是一根杆。
-
-实际上，求和与求积的算法和收起扇子的过程完全相同。
+这些扇骨组成了一个列表。收起扇子的二元操作是将一根扇骨叠在已收起的部分之上。最初的收起部分为空。收起的过程从一端开始，不断应用二元操作，直到所有的扇骨都叠在一起。求和与求积算法和收起折扇的过程是相同的。
 
 \[
 \begin{array}{rl}
-sum(\{1, 2, 3, 4, 5 \}) & = 1 + (2 + (3 + (4 + 5))) \\
+sum([1, 2, 3, 4, 5 ]) & = 1 + (2 + (3 + (4 + 5))) \\
          & = 1 + (2 + (3 + 9)) \\
          & = 1 + (2 + 12) \\
          & = 1 + 14 \\
@@ -1627,7 +1585,7 @@ sum(\{1, 2, 3, 4, 5 \}) & = 1 + (2 + (3 + (4 + 5))) \\
 
 \[
 \begin{array}{rl}
-product(\{1, 2, 3, 4, 5 \}) & = 1 \times (2 \times (3 \times (4 \times 5))) \\
+product([1, 2, 3, 4, 5 ]) & = 1 \times (2 \times (3 \times (4 \times 5))) \\
          & = 1 \times (2 \times (3 \times 20)) \\
          & = 1 \times (2 \times 60) \\
          & = 1 \times 120 \\
@@ -1635,43 +1593,39 @@ product(\{1, 2, 3, 4, 5 \}) & = 1 \times (2 \times (3 \times (4 \times 5))) \\
 \end{array}
 \]
 
-在函数式编程中，我们称这一过程为\underline{fold}，特别地，由于我们从最内层的结构开始，它位于最右侧，这一类型的fold叫做\underline{右侧fold}（fold right）。
+我们称这一过程为\textbf{折叠}。特别地，由于计算从右侧一端开始，我们将其记为$foldr$：
 
 \be
-foldr(f, z, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  z & L = \phi \\
-  f(l_1, foldr(f, z, L')) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+foldr(f, z,\ \nil) & = & z \\
+foldr(f, z,\ x:xs) & = & f(x, foldr(f, z, xs)) \\
+\end{array}
 \ee
 
-使用右侧fold，求和与求积可以重新定义如下。
+使用$foldr$，求和与求积可以定义如下：
 
 \be
 \begin{array}{rl}
-\sum_{i=1}^{N} x_i & = x_1 + (x_2 + (x_3 + ... + (x_{N_1} + x_{N}))...) \\
-             & = foldr(+, 0, \{x_1, x_2, ..., x_n\})
+\sum_{i=1}^{n} x_i & = x_1 + (x_2 + (x_3 + ... + (x_{n-1} + x_{n}))...) \\
+             & = foldr(+, 0, [x_1, x_2, ..., x_n])
 \end{array}
 \ee
 
 \be
 \begin{array}{rl}
-\prod_{i=1}^{N} x_i & = x_1 \times (x_2 \times (x_3 \times ... + (x_{N_1} \times x_{N}))...) \\
-         & = foldr(\times, 1, \{x_1, x_2, ..., x_n\})
+\prod_{i=1}^{n} x_i & = x_1 \times (x_2 \times (x_3 \times ... + (x_{n-1} \times x_{n}))...) \\
+         & = foldr(\times, 1, [x_1, x_2, ..., x_n])
 \end{array}
 \ee
 
-插入排序算法也可以使用右侧fold定义。
+或者写成柯里化形式：$sum = foldr(+, 0)$和$product = foldr(\times, 1)$。插入排序算法也可用$foldr$定义为：
 
 \be
-sort(L) = foldr(insert, \phi, L)
+sort = foldr(insert, \nil)
 \ee
 
-\subsection{从左侧fold}
-\index{列表!foldl}
-\index{列表!从左侧fold}
+\subsection{左侧叠加}
+\index{列表!foldl} \index{列表!左侧叠加}
 
 在尾递归一节，我们提到递归形式的求积与求和都是从右向左进行，我们必须在递归时记录下所有的中间结果和上下文环境。由于右侧fold是从这一结构中抽象出的，因此从右侧fold时同样需要记录这些信息。当列表很长时，它的代价很大。
 
