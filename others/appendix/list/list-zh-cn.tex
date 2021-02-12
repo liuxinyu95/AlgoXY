@@ -1627,61 +1627,47 @@ sort = foldr(insert, \nil)
 \subsection{左侧叠加}
 \index{列表!foldl} \index{列表!左侧叠加}
 
-在尾递归一节，我们提到递归形式的求积与求和都是从右向左进行，我们必须在递归时记录下所有的中间结果和上下文环境。由于右侧fold是从这一结构中抽象出的，因此从右侧fold时同样需要记录这些信息。当列表很长时，它的代价很大。
-
-由于求和与求积可以变换成尾递归形式，我们也可以抽象出另一种fold算法，它从左向右处理列表，并且复用相同的环境，以支持尾递归优化。
-
-我们无需再次从求和、求积、插入排序中归纳抽象，可以直接将右侧fold变换为尾递归形式。观察到初始结果$z$，实际上表示的是中间结果。我们可以用它作为累积器。
+我们可以把$foldr$转换为尾递归。它产生同样的结果，但是计算是从左向右进行的。因此我们将其记为$foldl$：
 
 \be
-foldl(f, z, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  z & L = \phi \\
-  foldl(f, f(z, l_1), L') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+foldl(f, z,\ \nil) & = & z \\
+foldl(f, z,\ x:xs) & = & foldl(f, f(z, x), xs) \\
+\end{array}
 \ee
 
-只要列表不为空，我们取出第一个元素，然后使用函数$f$来处理累积器$z$和这一元素，从而得到一个新的累积结果$z' = f(z, l_1)$。此后，我们使用同样的函数$f$，更新的累积结果$z'$，和列表的剩余部分$L'$进行递归调用。
-
-展开这一尾递归调用算法，可以发现处理顺序是从最左侧开始的。
+以$sum$为例，可以看到计算是从何自左向右展开的：
 
 \[
 \begin{array}{rl}
-\sum_{i=1}^{5}i & = foldl(+, 0, \{1, 2, 3, 4, 5\}) \\
-                & = foldl(+, 0 + 1, \{ 2, 3, 4, 5 \}) \\
-                & = foldl(+, (0 + 1) + 2, \{3, 4, 5 \} \\
-                & = foldl(+, ((0 + 1) + 2) + 3, \{4, 5\}) \\
-                & = foldl(+, (((0 + 1) + 2) + 3) + 4, \{5\}) \\
-                & = foldl(+, ((((0 + 1) + 2 + 3) + 4 + 5, \phi) \\
-                & = 0 + 1 + 2 + 3 + 4 + 5
+ & foldl(+, 0, [1, 2, 3, 4, 5]) \\
+= & foldl(+, 0 + 1, [2, 3, 4, 5 ]) \\
+= & foldl(+, (0 + 1) + 2, [3, 4, 5]) \\
+= & foldl(+, ((0 + 1) + 2) + 3, [4, 5]) \\
+= & foldl(+, (((0 + 1) + 2) + 3) + 4, [5]) \\
+= & foldl(+, ((((0 + 1) + 2 + 3) + 4 + 5, \nil) \\
+= & 0 + 1 + 2 + 3 + 4 + 5 \\
 \end{array}
 \]
 
-注意这里实际上在每一步都推迟了$f(z, l_1)$的计算（在支持惰性求值的系统中，如Haskell，计算被推迟。但是在strict系统，如Standard ML中，情况并非如此）。实际上每次调用的计算顺序为$\{ 1, 3, 6, 10, 15\}$。
-
-一般来说，从左fold可以展开为下面的形式。
+每一步都推迟了$f(z, x)$的计算，这是惰性求值时的行为。否则每次调用的求值序列为$[1, 3, 6, 10, 15]$。一般来说，$foldl$可以展开为下面的形式：
 
 \be
-foldl(f, z, L) = f(f(...(f(f(z, l_1), l_2), ..., l_n)
+foldl(f, z, [x_1, x_2, ..., x_n]) = f( f (...( f ( f(z, x_1), x_2), ..., x_n)
 \ee
 
-也可以采用中缀记法：
+或采用中缀记法：
 
 \be
-foldl(f, z, L) = ((...(z \oplus_f l_1) \oplus_f l_2) \oplus_f ...) \oplus l_n
+foldl(\oplus, z, [x_1, x_2, ..., x_n]) = z \oplus x_1 \oplus x_2 \oplus ... \oplus x_n
 \ee
 
-使用左侧fold，求和、求积、以及插入排序可以通过调用$foldl$依次实现为$sum(L) = foldl(+, 0, L)$、$product(L) = foldl(+, 1, L)$、以及$sort(L) = foldl(insert, \phi, L)$。和右侧fold相比，它们看似一致，但是其内部实现却有所不同。
-
-\subsubsection{命令式fold和抽象fold概念}
-
-由于左侧fold算法是尾递归的，它很适合imperative方式，即使编译器不支持尾递归优化，我们仍可以用while循环将其实现。
+\index{reduce}
+$foldl$是尾递归的，可以将其实现为循环。我们将结果初始化为$z$，然后把二元运算应用于结果和每个元素上。命令式算法通常称作\textproc{Reduce}。
 
 \begin{algorithmic}[1]
-\Function{Fold}{$f, z, L$}
-  \While{$L \neq \phi$}
+\Function{Reduce}{$f, z, L$}
+  \While{$L \neq$ NIL}
     \State $z \gets f(z, $ \Call{First}{$L$} $)$
     \State $L \gets$ \Call{Rest}{$L$}
   \EndWhile
@@ -1689,56 +1675,47 @@ foldl(f, z, L) = ((...(z \oplus_f l_1) \oplus_f l_2) \oplus_f ...) \oplus l_n
 \EndFunction
 \end{algorithmic}
 
-下面的Python例子程序实现了这一fold算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def fold(f, z, xs):
-    for x in xs:
-        z = f(z, x)
-    return z
-\end{lstlisting}
-
-实际上，Python提供了内置的\texttt{reduce}函数（C++的标准库STL中提供了reduce算法）。很少有命令式环境会提供右侧fold函数，这是因为当列表长度大时，会造成栈溢出。但从右fold的在某些情况下是必要的。例如，如果一个容器只支持从头部插入元素，但不支持从尾部添加，我们希望定义一个$fromList$工具，如下：
+$foldr$和$foldl$各自有适合的应用场景，它们并不总能互换。例如，某些容器只支持从一端添加元素（如栈）。我们要定义一个$\textit{fromList}$函数，从一个列表构建出容器（柯里化形式）：
 
 \[
-fromList(L) = foldr(insertHead, empty, L)
+\textit{fromList} = foldr(add, empty)
 \]
 
-从一个空容器开始，通过$fromList$，我们可以利用插入函数将一个列表转换为容器。实际上，单向链表就是这样的一个容器，在头部插入性能良好，但是在尾部添加却是线性时间。当复制链表时，从右fold是一个很自然的选项，它可以保持元素的顺序。但是从左fold的结果却是一个逆序的列表。
-
-在这种情况下，我们可以先将列表反转，然后再从左fold。
+其中$empty$是空容器。单线链表本身就是这样一种容器。在头部添加元素的性能要远高于在尾部添加。如果希望复制列表并保持顺序，$foldr$就是一个自然的选择，而$foldl$则产生逆序的列表。在迭代实现时为了解决逆序问题，我们可以先反转列表，再执行reduce操作：
 
 \begin{algorithmic}[1]
-\Function{Fold-Right}{$f, z, L$}
-  \State \Return \textproc{Fold}($f, z$, \Call{Reverse}{$L$})
+\Function{Reduce-Right}{$f, z, L$}
+  \State \Return \textproc{Reduce}($f, z$, \Call{Reverse}{$L$})
 \EndFunction
 \end{algorithmic}
 
-为了避免栈溢出，这里也必须使用尾递归的反转操作。
+有人认为应优先使用$foldl$，因为它是尾递归的，同时满足函数式和命令式场景，并且还是在线算法。但在处理无穷列表（用流和惰性求值实现）时，就只能用$foldr$。例如，下面的例子程序将一个无穷列表中的每个元素都置于一个单独的列表中，并返回前10个：
 
-考虑到尾递归优化，同时满足函数式和命令式场景，以及左侧fold还是一个online算法，似乎在大多数情况下，应该优先选择左侧fold。但当使用惰性的函数$f$处理无穷列表时，右侧fold却更有优势。例如，下面的Haskell程序将一个无穷列表中的每个元素都置于一个单独的列表中，并返回前10个结果。
+\[
+\begin{array}{l}
+take(10, foldr((x, xs) \mapsto [x]:xs, \nil, [1, 2, ...]) \\
+\Rightarrow [[1], [2], [3], [4], [5], [6], [7], [8], [9], [10]]
+\end{array}
+\]
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-take 10 $ foldr (\x xs ->[x]:xs) [] [1..]
-[[1], [2], [3], [4], [5], [6], [7], [8], [9], [10]]
-\end{lstlisting} %$
-
-使用左侧fold就无法达到这一目的。因为只有处理完全部列表，才能开始外层的计算。这涉及具体的惰性求值特性，超出了本书的范围。读者可以参考\cite{Haskell-wiki}了解更多信息。
-
-虽然本附录的主要内容是关于列表算法的，但是fold本身是一个一般性的概念。它并不限于列表，也可以应用到其他数据结构。我们可以对一棵树、一个队列、甚至一个更复杂的数据结构进行fold。只要它满足下面这两个条件：
+这里不能使用$foldl$，因为外层计算永远不会完成。当左右没有区别是，我们用统一的符号$fold$。本书也使用符号$fold_l$和$fold_r$来强调叠加本身而非方向。尽管本章内容是关于列表的，但是叠加概念是抽象的。它可以应用到其它代数结构。我们可以对一棵树（\cite{unplugged}2.6节）、一个队列、和更复杂的结构进行叠加。只要它满足下面这两个条件：
 
 \begin{itemize}
-\item 作为边界情况，能定义一个空的数据结构（例如空树）；
-\item 我们可以遍历这一数据结构（例如前序遍历一棵树）。
+\item 定义来空（例如空树）；
+\item 可分解的递归结构（例如一棵树可分解为子树和元素）。
 \end{itemize}
 
-某些语言提供了这一高阶概念的支持，例如Haskell通过\underline{幺半群}（monoid）定义了抽象的fold，读者可以参考\cite{learn-haskell}了解详细内容。
+人们进一步将这些概念抽象为可叠加、幺半群、可遍历等等。
 
-本书中有许多章节，使用了这一推广的fold概念。
+\begin{Exercise}
+\Question{为了用$foldr$定义插入排序，我们将插入函数设计成$insert(x, L)$，这样排序可以表示为：$sort = foldr(insert,\nil)$。$foldr$的类型为：
+\[
+foldr :: (A \to B \to B) \to B \to [A] \to B
+\]
+其中第一个参数$f$的类型是：$A \to B \to B$，初始值$z$的类型为$B$。它对元素类型为$A$的列表进行叠加，最终结果的类型为$B$。如何用$foldl$定义插入排序？$foldl$的类型是什么？}
+\end{Exercise}
 
-\subsection{fold的应用}
+\subsection{例子}
 
 我们已经看到求和、求积、以及插入排序都可以用fold实现。在映射一节，我们给出了一道趣题和它的暴力解法。这一暴力解法也可以用fold和映射混合实现。
 
