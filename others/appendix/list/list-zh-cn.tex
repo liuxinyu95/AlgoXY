@@ -1252,279 +1252,195 @@ List<T> reverse(List<T> xs) {
 \section{子列表}
 \index{列表!提取子列表}
 
-数组可以很方便、快速地分割为连续的子空间。而分割列表则需要更多的工作，大多数这类操作都是线性时间的。
+数组可以快速地分割为连续的切片，而列表分割则需要遍历，因而这类操作都是线性时间的。
 
-\subsection{截取（take）、丢弃（drop）、和分割（split-at）}
-\index{列表!截取（take）}
-\index{列表!丢弃（drop）}
-\index{列表!分割（split-at）}
+\subsection{截取、丢弃、和分割}
+\index{列表!截取} \index{列表!丢弃} \index{列表!分割}
 
-从列表中取出前$n$个元素，在语义上和从最左侧获取子列表$sublist(L, 1, n)$相同。其中$sublist$的第2个参数是子列表的起始位置，第3个参数是子列表的结束位置。对于边界情况，或者$n$为0，或者列表为空，结果是一个空的子列表；否则，我们可以取出第一个元素，递归地在剩余部分取出$n-1$个元素，组后再将取出的元素置于最前。
+从列表中取出前$n$个元素，相当于获取从第1到第$n$个元素的的子列表：$sublist(1, n, L)$。如果$n$为0或$L = \nil$，则子列表为空；否则，递归地在$L'$中取出$n-1$个元素，再将原头部元素置于最前。
 
 \be
-take(n, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \lor n = 0 \\
-  cons(l_1, take(n-1, L')) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+take(0, L) & = & \nil \\
+take(n, \nil) & = & \nil \\
+take(n, x:xs) & = & x : take(n - 1, xs) \\
+\end{array}
 \ee
 
-边界情况同时也处理了越界的错误。下面的Haskell例子程序实现了这一算法。
+这一算法是这样处理越界情况的：如果$n > |L|$或$n$为负数，最终转化为$L$为空的边界情况，返回整个列表作为结果。
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-take _ [] = []
-take 0 _ = []
-take n (x:xs) = x : take (n-1) xs
-\end{lstlisting}
-
-另一个操作是从列表中丢弃前$n$个元素，并返回剩余的部分作为结果。它等价于从右侧获取子列表$sublist(L, n+1, |L|)$，其中$|L|$是列表的长度。我们可以通过递归地丢弃第一个元素的方式实现。
+从列表中丢弃前$n$个元素，等价于从右侧获取子列表$sublist(n+1, |L|, L)$，其中$|L|$是列表的长度。它的实现和$take$是对称的：
 
 \be
-drop(n, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  L & n = 0 \\
-  drop(n-1, L')) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+drop(0, L) & = & L \\
+drop(n, \nil) & = & \nil \\
+drop(n, x:xs) & = & drop(n - 1, xs) \\
+\end{array}
 \ee
 
-下面的Haskell例子程序实现了丢弃操作。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-drop _ [] = []
-drop 0 L = L
-drop n (x:xs) = drop (n-1) xs
-\end{lstlisting}
-
-命令式的取出和丢弃简单、直观，我们把它们的实现作为练习留给读者。
-
-使用取出和丢弃操作，可以在列表的任何位置获取任何长度的子列表。
+我们把对应的迭代实现留作本节的练习。使用取出和丢弃操作，可以在列表的任何位置获取指定长度的子列表。
 
 \be
-sublist(L, from, count) = take(count, drop(from - 1, L))
+sublist(from, cnt, L) = take(cnt, drop(from - 1, L))
 \ee
 
 另外一种形式，是传入左侧和右侧的边界：
 
 \be
-sublist(L, from, to) = drop(from - 1, take(to, L))
+slice(from, to, L) = drop(from - 1, take(to, L))
 \ee
 
-这一函数返回在闭区间$[from, to]$内的元素，包括边界上的元素。本节介绍的所有算法都是线性时间的。
-
-\subsubsection{take-while和drop-while}
-\index{列表!take-while}
-\index{列表!drop-while}
-
-和take与drop相比，还有另外一类操作，只要某种条件成立，我们就不断取出或者丢弃元素，称为take-while或者drop-while。take和drop可以看作是它们的一种特殊形式。
-
-take-while不断检查元素是否满足给定条件并取出，如果条件不满足，则停止检查剩余的元素，即使剩余元素中可能有满足条件的也不予处理。这和稍后介绍的filter有所不同。后者会遍历整个列表找出满足条件的所有元素。
-
-\be
-takeWhile(p, L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  \phi & \lnot p(l_1) \\
-  cons(l_1, takeWhile(p, L')) & otherwise
-  \end{array}
-\right.
-\ee
-
-take-while接受两个参数，一个是条件函数$p$，我们可以将其应用到元素上，得到一个布尔值作为结果；另一个参数是待处理的列表。drop-while也可以用对称的方式加以定义。
-
-\be
-dropWhile(p, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  L & \lnot p(l_1) \\
-  dropWhile(p, L') & otherwise
-  \end{array}
-\right.
-\ee
-
-相应的Haskell例子程序实现如下。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-takeWhile _ [] = []
-takeWhile p (x:xs) = if p x then x : takeWhile p xs else []
-
-dropWhile _ [] = []
-dropWhile p xs@(x:xs') = if p x then dropWhile p xs' else xs
-\end{lstlisting}
-
-\subsubsection{split-at}
-\index{列表!分割（split-at）}
-
-使用take和drop，我们可以进一步定义出split-at。
+\index{List!split at}
+边界的定义为闭区间$[from, to]$，包括两端。我们也可以在指定位置把列表分割开：
 
 \be
 splitAt(i, L) = (take(i, L), drop(i, L))
 \ee
 
+\begin{Exercise}
+\Question{将$sublist$和$slice$改写为柯里化形式，从而无需$L$作为参数。}
+\end{Exercise}
+
+\subsubsection{条件截取和丢弃}
+\index{列表!条件截取} \index{列表!条件丢弃}
+
+take与drop指定截取或丢弃的个数。我们可以对其扩展，只要某种条件成立，就不断取出或者丢弃元素，称为$takeWhile/dropWhile$。它们逐一检查元素是否满足给定条件，如果不满足，则停止检查剩余的部分，这和后面介绍的过滤算法有所不同。
+
+\be
+\begin{array}{rcl}
+takeWhile(p,\ \nil) & = & \nil \\
+takeWhile(p,\ x:xs) & = & \begin{cases}
+  p(x) : & x : takeWhile(p, xs) \\
+  otherwise: & \nil \\
+  \end{cases}
+\end{array}
+\ee
+
+其中$p$是判断条件。将$p$其应用到一个元素上，结果是真或假表示条件是否满足。$dropWhile$的实现是对称的：
+
+\be
+\begin{array}{rcl}
+dropWhile(p,\ \nil) & = & \nil \\
+dropWhile(p,\ x:xs) & = & \begin{cases}
+  p(x) : & dropWhile(p, xs) \\
+  otherwise: & x:xs \\
+  \end{cases}
+\end{array}
+\ee
+
 \subsection{切分和分组}
+切分和分组操作将列表中的元素重新安排成若干子列表。通常一边遍历一边进行这种分类安排，这样使得时间复杂度为线性。
 
 \subsubsection{切分}
-\index{列表!切分}
-\index{列表!break}
-\index{列表!span}
+\index{列表!切分} \index{列表!break} \index{列表!span}
 
-切分可以被认为是一种特殊的split，我们不是在指定的位置将列表分成两部分，而是检查每个元素是否满足某一条件，找到列表中满足条件的最长前缀。切分结果是一对子列表，一个是最长前缀，另一个包含剩余的部分。
+切分可以被认为是一种特殊的split，我们不是在指定的位置将列表分开，而是检查每个元素是否满足某一条件，根据条件找出最长前缀。切分结果是一对子列表，一个是最长前缀，另一个包含剩余的部分。
 
-有两种切分的语义，一种是选择满足条件的最长子列表；另一种是选择不满足条件的最长子列表。前者通常称为$span$，后者称为$break$。
-
-span可以用递归描述如下：为了寻找列表$L$中满足条件$p$的最长span：
-
-\begin{itemize}
-\item 若列表为空；结果为一对空列表$(\phi, \phi)$;
-\item 否则，我们检查第一个元素$l_1$是否满足条件，若满足，我们记递归寻找剩余列表span的结果为$(A, B) = span(p, L')$，然后，我们将$l_1$置于$A$的前面，从而得到最终结果$(\{ l_1 \} \cup A, B)$；否则，我们返回$(\phi, L)$作为结果。
-\end{itemize}
-
-对于break，我们只需要检查条件没有被满足，其余部分和span相同。另一种方法是使用span来定义break，如后面的Haskell例子程序所示。
+切分有两种类型：一种是满足条件的最长子列表；另一种是\textbf{不}满足条件的最长子列表。前者称为$span$，后者称为$break$。
 
 \be
-span(p, L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, \phi) & L = \phi \\
-  (\{ l_1 \} \cup A, B) & p(l_1) = True, (A, B) = span(p, L') \\
-  (\phi, L) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+span(p,\ \nil) & = & (\nil, \nil) \\
+span(p,\ x:xs) & = & \begin{cases}
+  p(x) : & (x : A,\ B)\ \text{where}\ (A, B) = span(p, xs) \\
+  otherwise : & (\nil,\ x:xs) \\
+  \end{cases}
+\end{array}
+\label{eq:span}
 \ee
+
+只需要把条件去逻辑非，就可以实现$break$：
 
 \be
-break(p, L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, \phi) & L = \phi \\
-  (\{ l_1 \} \cup A, B) & \lnot p(l_1), (A, B) = break(p, L') \\
-  (\phi, L) & otherwise
-  \end{array}
-\right.
+break(p) = span(\lnot p)
 \ee
 
-这两个函数都只找到最长“前缀”，就立即停止，即使后面仍有元素满足（或不满足）传入的条件。下面的Haskell例子程序实现了span和break。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-span _ [] = ([], [])
-span p xs@(x:xs') = if p x then let (as, bs) = span p xs' in (x:as, bs) else ([], xs)
-
-break p = span (not . p)
-\end{lstlisting}
-
-也可以用命令式的方式实现break和span。
+$span$和$break$都寻找最长\textbf{前缀}。一旦条件打破就立即停下，忽略剩余部分。下面是\textproc{Span}的迭代实现：
 
 \begin{algorithmic}[1]
 \Function{Span}{$p, L$}
-  \State $A \gets \phi$
-  \While{$L \neq \phi \land p(l_1)$}
-    \State $A \gets $ \Call{Cons}{$l_1, A$}
+  \State $A \gets $ NIL
+  \While{$L \neq$ NIL and $p$(\Call{First}{$L$})}
+    \State $A \gets $ \textproc{Cons}(\Call{First}{$L$}, $A$)
     \State $L \gets $ \Call{Rest}{$L$}
   \EndWhile
   \State \Return $(A, L)$
 \EndFunction
-\Statex
-\Function{Break}{$p, L$}
-  \State \Return \Call{Span}{$\lnot p, L$}
-\EndFunction
 \end{algorithmic}
 
-这一算法创建了一个新的列表用以存放最长前缀，我们也可以将其转换为就地修改的算法，复用原列表的空间，如下面的Python例子程序所示。
+这一算法创建了一个新的列表用以存放最长前缀，我们也可以复用原列表的空间，将其转换为就地修改的实现。
 
-\lstset{language=Python}
-\begin{lstlisting}
-def span(p, xs):
-    ys = xs
-    last = None
-    while xs is not None and p(xs.key):
-        last = xs
-        xs = xs.next
-    if last is None:
-        return (None, xs)
-    last.next = None
-    return (ys, xs)
-\end{lstlisting}
-
-由于span和break都需要遍历列表检查条件是否满足，所以它们是线性时间$O(n)$的算法。
+\begin{algorithmic}[1]
+\Function{Span}{$p, L$}
+  \State $A \gets L$
+  \State $tail \gets$ NIL
+  \While{$L \neq$ NIL and $p$(\Call{First}{$L$})}
+    \State $tail \gets L$
+    \State $L \gets $ \Call{Rest}{$L$}
+  \EndWhile
+  \If{$tail =$ NIL}
+    \State \Return (NIL, $L$)
+  \EndIf
+  \State \Call{Rest}{$tail$} $\gets$ NIL
+  \State \Return $(A, L)$
+\EndFunction
+\end{algorithmic}
 
 \subsubsection{分组}
 \index{列表!分组}
 
-我们有时需要将列表中的元素分成若干组。例如要把字符串“Mississippi”，实际上是字符的列表\{ `M', `i', `s', `s', `i', `s', `s', `i', `p', `p', `i'\}分成若干组，每组包含连续相同的字符。分组结果希望如下：
+$span$和$break$将列表切分为两部分，分组将列表中的元素分成若干子列表。例如将一个字符串分割为若干单位，每个包含连续相同的字符：
 
-\begin{Verbatim}[fontsize=\footnotesize]
-group('Mississippi') = { 'M', 'i', 'ss', 'i', 'ss', 'i', 'pp', 'i'}
-\end{Verbatim}
+\begin{Haskell}
+group ``Mississippi'' = [``M'', ``i'', ``ss'', ``i'',
+                         ``ss'',``i'', ``pp'', ``i'']
+\end{Haskell}
 
-我们再给一个例子，下面是一个数字的列表：
-
-\[
-L = \{15, 9, 0, 12, 11, 7, 10, 5, 6, 13, 1, 4, 8, 3, 14, 2\}
-\]
-
-我们希望把它分成若干小组，每组中的元素都按照降序排列。分组的结果希望如下：
+再例如，给出一列数字：
 
 \[
-group(L) = \{ \{15, 9, 0\}, \{12, 11, 7\}, \{10, 5\}, \{6\}, \{13, 1\}, \{4\}, \{8, 3\}, \{14, 2\}\}
+L = [15, 9, 0, 12, 11, 7, 10, 5, 6, 13, 1, 4, 8, 3, 14, 2]
 \]
 
-它们都是真实算法中的重要例子。字符串分组后，可用于构造Trie或Patricia等数据结构。这些数据结构是字符搜索和处理领域中的有力工具；将列表分组成有序子列表是自然归并排序中的步骤。本书中有专门的章节（第5章、第13.10节）讲述这两个算法。
+把它分成若干组，每组中的元素都按降序排列：
 
-显然，我们需要抽象出分组的条件用以将列表分割成较小的部分。我们可以将这一条件作为参数传入，如$group(p, L)$，其中$p$接受两个相邻的元素作为参数，并检查是否满足分组的条件。
+\[
+group(L) = [[15, 9, 0], [12, 11, 7], [10, 5], [6], [13, 1], [4], [8, 3], [14, 2]]
+\]
 
-显然可以通过遍历来实现分组——每次取出两个元素，若分组条件满足，则将它们置于一个小组中；否则，仅将第一个元素放入组中，而把第二个元素放入一个新的小组中。记列表中的前两个元素（如果存在）为$l_1, l_2$，除去第一个元素后的剩余部分为$L'$。分组的结果为一个列表的列表$G = \{g_1, g_2, ...\}$，记为$G = group(p, L)$。
+这两个例子都具有实用价值。字符串分组后，可用于构造基数树这种数据结构，用于快速的文本搜索。有序子列表可用于实现自然归并排序。我们将在后继章节介绍它们。
+
+我们把分组条件抽象成某种关系$\sim$。它用于判断两个相邻元素$x$、$y$是否“等价”：$x \sim y$。我们遍历列表，每次比较两个元素。如果等价，就把它们置于一组；否则仅把$x$置于组内，而把$y$置于一个新组中。
 
 \be
-group(p, L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{\phi\} & L = \phi \\
-  \{\{l_1\}\} & |L| = 1 \\
-  \{\{l_1\} \cup g'_1, g'_2, ...\} & p(l_1, l_2), G' = group(p, L') = \{g'_1, g'_2, ...\} \\
-  \{\{l_1\}, g'_1, g'_2, ...\} & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+group(\sim,\ \nil) & = & [\nil] \\
+group(\sim,\ [x]) & = & [[x]] \\
+group(\sim,\ x:y:xs) & = & \begin{cases}
+  x \sim y : & (x:ys):yss \\
+  otherwise: & [x]:ys:yss \\
+\end{cases}
+\end{array}
 \ee
 
-这里$\{l_1\} \cup g'_1$的含义是$cons(l_1, g'_1)$，是一个常数时间的操作。整个算法需要遍历列表一遍，用时为线性时间$O(n)$。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-group _ [] = [[]]
-group _ [x] = [[x]]
-group p (x:xs@(x':_)) | p x x' = (x:ys):yss
-                      | otherwise = [x]:r
-  where
-    r@(ys:yss) = group p xs
-\end{lstlisting}
-
-也可以用命令式的方式实现这一算法，若$L$不为空，我们将分组结果初始化为$\{{l_1\}}$。然后从第二个元素开始遍历列表，若相邻的两个元素满足条件，我们就将遍历到的元素放入最后一组，否则就新创建一个组。
+其中$(ys:yss) = group(\sim, xs)$。这一算法的时间复杂度为$O(n)$，其中$n$是长度。也可以用迭代的方式实现这一算法。若$L$不为空，我们将分组结果初始化为$[[x_1]]$，其中$x_1$是表头元素。然后从第二个元素开始遍历列表，若相邻的两个元素“等价”，我们就将遍历到的元素放入最后一组，否则就新创建一个组。
 
 \begin{algorithmic}[1]
-\Function{Group}{$p, L$}
-  \If{$L = \phi$}
-    \State \Return $\{ \phi \}$
+\Function{Group}{$\sim, L$}
+  \If{$L = $ NIL}
+    \State \Return [NIL]
   \EndIf
   \State $x \gets$ \Call{First}{$L$}
   \State $L \gets$ \Call{Rest}{$L$}
-  \State $g \gets \{ x \}$
-  \State $G \gets \{ g \}$
-  \While{$L \neq \phi$}
+  \State $g \gets [x]$
+  \State $G \gets [g]$
+  \While{$L \neq$ NIL}
     \State $y \gets$ \Call{First}{$L$}
-    \If{$p(x, y)$}
+    \If{$x \sim y$}
       \State $g \gets $ \Call{Append}{$g, y$}
     \Else
-      \State $g \gets \{y\}$
+      \State $g \gets [y]$
       \State $G \gets$ \Call{Append}{$G, g$}
     \EndIf
     \State $x \gets y$
@@ -1534,114 +1450,79 @@ group p (x:xs@(x':_)) | p x x' = (x:ys):yss
 \EndFunction
 \end{algorithmic}
 
-如果上述算法中的$L$是链表，并且append函数没有使用尾指针优化，这一方法的性能会退化为平方级别。下面的Python例子程序实现了这一算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def group(p, xs):
-    if xs is None:
-        return List(None)
-    (x, xs) = (xs.key, xs.next)
-    g = List(x)
-    G = List(g)
-    while xs is not None:
-        y = xs.key
-        if p(x, y):
-            g = append(g, y)
-        else:
-            g = List(y)
-            G = append(G, g)
-        x = y
-        xs = xs.next
-    return G
-\end{lstlisting}
-
-使用这一定义好的分组函数，本节开头的两个例子就可以通过传入不同的分组条件加以实现。
+如果添加操作append没有尾部引用优化，这一实现的时间复杂度会退化为平方级别。如果部关心顺序，我们可以将append改为cons。使用分组函数，本节开头的两个例子就可以实现如下：
 
 \[
-group(=, \{m,i,s,s,i,s,s,i,p,p,i\}) = \{ \{M\}, \{i\}, \{ss\}, \{i\}, \{ss\}, \{i\}, \{pp\}, \{i\} \}
+group(=, [m,i,s,s,i,s,s,i,p,p,i]) = [[M], [i], [ss], [i], [ss], [i], [pp], [i]]
 \]
+
+和
 
 \[
 \begin{array}{l}
-group(\geq,  \{15, 9, 0, 12, 11, 7, 10, 5, 6, 13, 1, 4, 8, 3, 14, 2\}) \\
-  = \{ \{15, 9, 0\}, \{12, 11, 7\}, \{10, 5\}, \{6\}, \{13, 1\}, \{4\}, \{8, 3\}, \{14, 2\}\}
+group(\geq,  [15, 9, 0, 12, 11, 7, 10, 5, 6, 13, 1, 4, 8, 3, 14, 2]) \\
+  = [[15, 9, 0], [12, 11, 7], [10, 5], [6], [13, 1], [4], [8, 3], [14, 2]]
 \end{array}
 \]
 
-也可以使用此前定义的$span$函数来实现分组。我们向span传入一个条件，结果会将列表分割成两部分，其中那个第一部分是满足条件的最长子列表。我们对剩余部分不断执行span，直到处理完所有元素。
-
-但是我们传入span的条件判断函数是一个“一元函数”（unary function），它只接受一个元素作为参数，检查它是否满足条件。但是在分组时，我们需要的条件判断函数是一个“二元函数”（binary function）。它接受两个相邻的元素，检查它们是否满足条件。为了解决这一差异，我们使用Curry方法，首先将第一个元素传入二元条件判断函数，然后使用Curry后的函数判断剩余的元素。
+也可以使用$span$来实现分组。传入一个条件，$span$将列表分割成两部分：其中之一是满足条件的最长子列表。我们对剩余部分不断执行span，直到处理完所有元素。
+但是传入span的条件函数是一元函数，它只接受一个元素作为参数，检查它是否满足。但是分组时条件要求是二元函数。它接受两个元素并进行比较。可以用柯里化来解决这一差异：将第一个元素传入二元判断函数并固定，然后用柯里化后的函数判断剩余的元素。
 
 \be
-group(p, L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{\phi\} & L = \phi \\
-  \{ \{l_1\} \cup A \} \cup group(p, B) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+group(\sim,\ \nil) & = & [\nil] \\
+group(\sim,\ x:xs) & = & (x:A) : group(\sim, B) \\
+\end{array}
 \ee
 
-其中$(A, B) = span(\lambda_x \cdot p(l_1, x), L')$，是对列表$L$中除第一元素外的剩余部分进行span的结果。
+其中$(A, B) = span(y \mapsto x \sim y, xs)$，是对子列表进行span的结果。虽然这个新分组函数可以将单词中的相同字母分组：
 
-虽然这一新定义的分组函数可以将单词中的相同字母分组，如下：
+\begin{Haskell}
+groupBy (==) ``Mississippi''
+[``m'', ``i'', ``ss'', ``i'', ``ss'', ``i'', ``pp'', ``i'']
+\end{Haskell}
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-groupBy (==) "Mississippi"
-["m","i","ss","i","ss","i","pp","i"]
-\end{lstlisting}
+但它却不能正确地将数字按照降序分组：
 
-但是，它却不能正确地将一列数字，按照降序分组：
-
-\begin{lstlisting}[style=Haskell]
+\begin{Haskell}
 groupBy (>=) [15, 9, 0, 12, 11, 7, 10, 5, 6, 13, 1, 4, 8, 3, 14, 2]
 [[15,9,0,12,11,7,10,5,6,13,1,4,8,3,14,2]]
-\end{lstlisting}
+\end{Haskell}
 
-在这一例子中，第一个元素是15，它被span用来置于$\geq$的左侧进行比较。但15是整个列表中最大的元素，因此span的结果是，所有元素都在$A$中，而$B$为空。这看起来像是一个缺陷，但其实，如果认为分组的条件是一个\underline{抽象相等}判断的话，这是一个正确的行为。
+第一个元素是15，它被置于$\geq$的左侧进行比较。15是列表中的最大元素，因此span把所有元素都置于$A$中，而$B$为空。这并不是错误，而是正确的行为。因为分组被设计为将“等价”的元素放到一起。严格说来，等价关系（$\sim$）条件必须满足三个性质：自反性、传递性、对称性。
 
-严格说来，相等条件必须满足三个性质：自反性（reflexive）、传递性（transitive）、和对称性（symmetric）。它们分别描述如下：
+\begin{enumerate}
+\item \textbf{自反性}：$x \sim x$，即任何元素和它自己等价；
+\item \textbf{传递性}：$x \sim y, y \sim z \Rightarrow x \sim z$，如果两个元素等价，并且其中之一和第三个元素等价，则这三个元素等价；
+\item \textbf{对称性}：$x \sim y \Leftrightarrow y \sim x$，即比较的顺序不影响结果。
+\end{enumerate}
 
-\begin{itemize}
-\item 自反性。$x = x$，即任何元素和它自己相等；
-\item 传递性。$x = y, y = z \Rightarrow x = z$，如果两个元素相等，并且它们其中的一个和第三个元素相等，则这三个元素相等；
-\item 对称性。$x = y \Leftrightarrow y = x$，即比较的顺序不影响结果。
-\end{itemize}
-
-当我们对字符列表“Mississippi”分组时，我们使用等号（$=$）作为判断条件，上述三个条件都被满足。这自然产生了正确的结果。但是当我们将大于等于号（$\geq$）作为相等条件传入，以对列表中的数字分组，就违反了自反性和对称性。这就是我们得到错误分组结果的原因。
-
-这一事实说明，我们用span实现的第二个分组算法，将分组的语义限制为严格\underline{抽象相等}，而第一分组算法则无此种限制。它仅检查任何两个相邻元素是否满足条件，这笔相等性的限制要弱很多。
+对“Mississippi”分组时，我们使用等号（$=$）作为判断条件，上述三个条件都被满足。这自然产生了正确的结果。但将柯里化的大于等于号（$\geq$）作为等价条件传入时，就违反了自反性和对称性。因而无法按照预期对数字进行分组。用span实现的第二个分组算法，将含义限制为更严格的等价关系，而第一个分组算法则无此种限制。它仅检查任何两个相邻元素是否满足条件，这比等价条件要弱。
 
 \begin{Exercise}
-\begin{enumerate}
-\item 选择一门命令式语言，实现就地修改的take和drop算法。请注意处理越界情况。建议同时使用带有GC和不带有GC的语言进行练习。
-\item 选择一门命令式语言，实现take-while和drop-while算法。建议同时使用动态类型和静态类型（不带有类型推导）的语言进行练习。请考虑在静态类型语言中，如何声明通用的条件函数类型？
-\item 考虑下面span的定义
+\Question{修改$take/drop$算法，当$n$是负数时，$take$返回$\nil$，$drop$返回全部列表。}
+\Question{实现就地修改的take和drop算法。}
+\Question{实现takeWhile和dropWhile算法。}
+\Question{考虑下面$span$的实现：
 \[
-span(p, L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, \phi) & L = \phi \\
-  (\{ l_1 \} \cup A, B) & p(l_1) = True, (A, B) = span(p, L') \\
-  (A, \{l_1\} \cup B) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+span(p,\ \nil) & = & (\nil, \nil) \\
+span(p,\ x:xs) & = & \begin{cases}
+  p(x) : & (x:A, B) \\
+  otherwise : & (A, x:B) \\
+\end{cases}
+\end{array}
 \]
-它和我们本节介绍的实现有何不同？
-\item 选择一门命令式语言，通过span来实现分组算法。
-\end{enumerate}
+其中$(A, B) = span(p, xs)$，它和我们本节给出的实现有何不同？}
 \end{Exercise}
 
-\section{Fold}
-\index{fold}
+\section{叠加}
+\index{叠加} \label{sec:fold}
 
-本节介绍高阶编程中最重要的概念之一——fold。它非常强大，本附录中介绍的所有算法几乎都可以用fold来实现。fold有时也被称为reduce（在2010年前后，云计算中的“map-reduce”概念曾引起人们的广泛关注。其中reduce的抽象概念也源自fold）。例如，C++标准库STL和Python都提供了reduce函数，部分实现了fold的功能。
+几乎所有的列表算法都有着共同的结构。这不是一个巧合。这种共性本质上来自列表的递归性质。我们可以将列表算法抽象到更高层次的概念：叠加\footnote{也叫作reduce}。它本质上是所有列表计算的初始代数\cite{unplugged}。
 
-\subsection{从右侧fold}
-\index{列表!foldr}
-\index{列表!从右侧fold}
+\subsection{右侧叠加}
+\index{列表!foldr} \index{列表!右侧叠加}
 
 回顾此前给出的求和与求积定义，它们的结构非常相似：
 

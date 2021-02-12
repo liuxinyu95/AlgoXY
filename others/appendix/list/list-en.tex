@@ -1241,7 +1241,7 @@ Different from array which is capable to slice a continuous segment fast, it typ
 \subsection{take, drop, and split-at}
 \index{List!take} \index{List!drop} \index{List!split at}
 
-Taking the first $n$ elements is essentially to slice the list from 1 to $n$: $sublist(L, 1, n)$. If either $n = 0$ or $L = \nil$, the sub-list is empty; otherwise, we recursively take the first $n - 1$ elements from the $L'$, then prepend the first element.
+Taking the first $n$ elements is essentially to slice the list from 1 to $n$: $sublist(1, n, L)$. If either $n = 0$ or $L = \nil$, the sub-list is empty; otherwise, we recursively take the first $n - 1$ elements from the $L'$, then prepend the first element.
 
 \be
 \begin{array}{rcl}
@@ -1253,7 +1253,7 @@ take(n, x:xs) & = & x : take(n - 1, xs) \\
 
 This algorithm handles the out of bound case like this: if $n > |L|$ or $n$ is negative, it ends up to the edge case that $L$ becomes empty, hence returns the whole list as the result.
 
-Drop, on the other hand, discards the first $n$ elements and returns the rest. It is equivalent to slice the sub-list from right: $sublist(L, n + 1, |L|)$, where $|L|$ is the length. Its implementation is symmetric:
+Drop, on the other hand, discards the first $n$ elements and returns the rest. It is equivalent to slice the sub-list from right: $sublist(n + 1, |L|, L)$, where $|L|$ is the length. Its implementation is symmetric:
 
 \be
 \begin{array}{rcl}
@@ -1266,13 +1266,13 @@ drop(n, x:xs) & = & drop(n - 1, xs) \\
 We leave the imperative implementation for $take/drop$ as exercise. As the next step, we can develop a algorithm to extract sub-list at any position for a given length:
 
 \be
-sublist(L, from, cnt) = take(cnt, drop(from - 1, L))
+sublist(from, cnt, L) = take(cnt, drop(from - 1, L))
 \ee
 
 Or slice the list with left and right boundaries:
 
 \be
-slice(L, from, to) = drop(from - 1, take(to, L))
+slice(from, to, L) = drop(from - 1, take(to, L))
 \ee
 
 \index{List!split at}
@@ -1281,6 +1281,10 @@ The boundary is defined as $[from, to]$. It includes both ends. We can also spli
 \be
 splitAt(i, L) = (take(i, L), drop(i, L))
 \ee
+
+\begin{Exercise}
+\Question{Define $sublist$ and $slice$ in Curried Form without $L$ as parameter.}
+\end{Exercise}
 
 \subsubsection{conditional take and drop}
 \index{List!take while} \index{List!drop while}
@@ -1313,10 +1317,10 @@ dropWhile(p,\ x:xs) & = & \begin{cases}
 \subsection{break and group}
 Break and group are operations to re-arrange a list into multiple sub-lists. They typically perform the re-arrangement while traverse the list to keep the performance linear.
 
-\subsubsection{break}
+\subsubsection{break and span}
 \index{List!break} \index{List!span}
 
-Break can be considered as a general form of splitting. Instead of splitting at a given position, break scans elements with a prediction. It extracts the longest prefix of the list satisfying the condition, and returns it together with the rest as a pair.
+$break/span$ can be considered as a general form of splitting. Instead of splitting at a given position, $break/span$ scans elements with a prediction. It extracts the longest prefix of the list against the condition, and returns it together with the rest as a pair.
 
 There are two different cases. For a given predication, one is to pick the elements satisfied; the other is to pick the elements not satisfied. The former is called $span$, the later is called $break$.
 
@@ -1337,7 +1341,7 @@ and we can define $break$ with span by negating the predication in Curried form:
 break(p) = span(\lnot p)
 \ee
 
-Both $span$ and $break$ find the longest {\em prefix}. They stop immediately when the condition does not meet and ignores the rest. Below is the imperative implementation for span:
+Both $span$ and $break$ find the longest {\em prefix}. They stop immediately when the condition does not meet and ignores the rest. Below is the iterative implementation for span:
 
 \begin{algorithmic}[1]
 \Function{Span}{$p, L$}
@@ -1444,7 +1448,7 @@ group(\geq,  [15, 9, 0, 12, 11, 7, 10, 5, 6, 13, 1, 4, 8, 3, 14, 2]) \\
 \end{array}
 \]
 
-Another method to implement group is to use the $span$ function. Given a predication, span breaks the list into two parts: the longest sub-list satisfies the condition, and the rest. We can repeatedly apply span to the rest part till it becomes empty. However, the predication passed to span is an unary function. It takes an element and tests it. While in group, the predication is a binary function. It takes two elements and compares. We can use Currying: to pass and fix the first element in the binary predication, then use the Curried function to test the other:
+Another method to implement group is to use the $span$ function. Given a predication, span breaks the list into two parts: the longest sub-list satisfies the condition, and the rest. We can repeatedly apply span to the rest part till it becomes empty. However, the predication passed to span is an unary function. It takes an element and tests it. While in group, the predication is a binary function. It takes two elements and compares. We can use Currying: to pass and fix the first element in the binary predication, then use the Curried function to test the other.
 
 \be
 \begin{array}{rcl}
@@ -1467,7 +1471,7 @@ groupBy (>=) [15, 9, 0, 12, 11, 7, 10, 5, 6, 13, 1, 4, 8, 3, 14, 2]
 [[15,9,0,12,11,7,10,5,6,13,1,4,8,3,14,2]]
 \end{Haskell}
 
-When the first number 15 is used as the left hand of $\geq$, it is the maximum value, hence $span$ ends with putting all elements to $A$, and leaves $B$ empty. It is not a defect, but the correct behavior, because group is defined to put equivalent elements together. To be accurate, the equivalent relation ($\sim$) needs satisfy three things: reflexive, transitive, and symmetric:
+When the first number 15 is used as the left hand of $\geq$, it is the maximum value, hence $span$ ends with putting all elements to $A$, and leaves $B$ empty. It is not a defect, but the correct behavior, because group is defined to put equivalent elements together. To be accurate, the equivalent relation ($\sim$) needs satisfy three things: reflexive, transitive, and symmetric.
 
 \begin{enumerate}
 \item \textbf{Reflexive}. $x \sim x$, any element equals to itself;
