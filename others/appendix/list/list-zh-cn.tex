@@ -1789,98 +1789,42 @@ a \in (b:bs) & = & \begin{cases}
 
 这一算法也称作$elem$。它的复杂度为$O(n)$，其中$n$是长度。若序列有序（例如升序），有的人会想用分而治之的方法将其优化到对数时间。但列表不支持常数时间的随机访问，无法在使用二分查找（见第3章）。
 
-\subsection{查找}
-\index{列表!lookup} \index{列表!查找}
+\subsection{查询}
+\index{列表!查询（lookup）}
 
-比存在检查更复杂一些的情况是在列表中寻找感兴趣的信息。有两种典型的方法在元素上保存额外的信息。由于以链表实现的列表本质上是一串节点，我们可以将额外的信息存储与节点中，提供$key(n)$来访问key，$rest(n)$来访问后继的子列表，以及$value(n)$来获取存储的数据。另一种方法是将key和数据成对保存，例如$\{(1, hello), (2, world), (3, foo), ...\}$。我们稍后会介绍如何构建这样成对的列表。
-
-算法和存在检查类似，遍历列表，逐一检查key，当一个节点的key和待查找的相等时，返回节点中保存的数据。显然这是一个线性时间的算法。
+我们接下来扩展$elem$操作。在$n$盏灯趣题中，我们使用了“键/值”对列表$[(k, v)]$。每对元素包含一个键、一个值。这种列表称作“关联列表”或简称为assoc列表。如果在其中查询某个值，我们需要把值的部分提取出来进行比较。
 
 \be
-lookup(x, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  value(l_1) & key(l_1) = x \\
-  lookup(x, L') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+lookup(x, \nil) & = & Nothing \\
+lookup(x, (k, v):kvs) & = & \begin{cases}
+  v = x: & Just\ (k, v) \\
+  v \neq x: & lookup(x, kvs) \\
+  \end{cases}
+\end{array}
 \ee
 
-这一算法中，$L$是一个节点的列表，节点中存有数据。其中第一种情况实际上表示查找失败，因此结果为空。某些函数式编程语言，例如Haskell，提供了\texttt{Maybe}类型来处理可能的失败。我们可以对这一算法略作修改来处理键-值（key-value）对的列表。
+和$elem$不同，我们不仅想知道存在与否，还希望返回返回找到的键/值对。由于待查询的值并不一定存在，我们引入了一种称作“可能”的代数类型，$\mathbf{Maybe}\ A$类型有两类不同的值：或是类型$A$的某个值$a$，或是空。分别记为$Just\ a$或$Nothing$。这是一种解决空引用的方法（\cite{unplugged}4.2.2节）。
+
+\subsection{查找和过滤}
+\index{列表!查找（find）} \index{列表!过滤}
+
+我们可以进一步扩展$lookup$到一般情况。不再仅仅比较元素是否等于待查询的值，而是查找满足某一条件的元素：
 
 \be
-lookup(x, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  snd(l_1) & fst(l_1) = x \\
-  lookup(x, L') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+find(p,\ \nil) & = & Nothing \\
+find(p,\ (x:xs)) & = & \begin{cases}
+  p(x) : & Just\ x \\
+  otherwise: & find(p, xs) \\
+  \end{cases}
+\end{array}
 \ee
 
-这里$L$是键-值对的列表，函数$fst(p)$和$snd(p)$分别返回一对值中的第一和第二部分。
-
-两个算法都是尾递归的，可以被转换为循环。我们将此作为练习留给读者。
-
-\subsection{find和filter}
-\index{列表!find}
-\index{列表!filter}
-
-lookup进行线性查找，仅仅比较元素的key是否和待查找的值相等。更进一步，我们可以查找满足某一条件的元素。我们需要将判定条件作为参数传入一个抽象的线性查找算法。
-
-\be
-find(p, L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  l_1 & p(l_1) \\
-  find(p, L') & otherwise
-  \end{array}
-\right.
-\ee
-
-这一算法遍历列表，逐一检查元素是否满足条件$p$。边界条件下，如果列表为空，而仍未找到元素，则表示搜索失败。如果列表中的第一个元素满足判定条件，算法就返回这一元素（节点），用户可以进一步提取其中保存的数据；否则，算法递归对剩余部分进行递归查找。下面的Haskell例子程序实现了这一算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-find _ [] = Nothing
-find p (x:xs) = if p x then Just x else find p xs
-\end{lstlisting}
-
-可以很容易地给出命令式的定义，我们使用NIL来表示查找失败。
-
-\begin{algorithmic}[1]
-\Function{Find}{$p, L$}
-  \While{$L \neq \phi$}
-    \If{$p$(\Call{First}{$L$})}
-      \State \Return \Call{First}{$L$}
-    \EndIf
-    \State $L \gets$ \Call{Rest}{$L$}
-  \EndWhile
-  \State \Return NIL
-\EndFunction
-\end{algorithmic}
-
-下面的Python例子程序实现了这一算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def find(p, xs):
-    while xs is not None:
-        if p(xs.key):
-            return xs
-        xs = xs.next
-    return None
-\end{lstlisting}
-
-列表中可能有多个元素都满足给定的条件。上面的算法仅找到第一个满足的元素并立即停止。它可以看作是查找所有满足条件的元素的一个特殊情况。
-
-我们也可以将查找算法看作一个黑盒，盒子的输入是一个列表，输出是另一个列表，包含所有满足条件的元素。我们通常称之为filter，如下图所示。
+尽管可能有多个元素满足条件，$find$只返回第一个。我们可以把它扩展为查找全部满足条件的元素，这一过程通常称作过滤，如图\ref{fig:filter}所示。
 
 \begin{figure}[htbp]
-\centering
+   \centering
       \begin{tikzpicture}[scale=0.8]
       \draw (2, 0) rectangle (4, 1) node (filter) [pos=.5] {filter $p$};
       \draw (0, .5) node (in) {输入}
@@ -1888,123 +1832,68 @@ def find(p, xs):
       \draw[thick, ->] (in) edge (filter)
                        (filter) edge (out);
       \end{tikzpicture} \\
-  \caption{输入是原始列表$\{x_1, x_2, ..., x_n\}$，输出是列表$\{x_1', x_2', ..., x_m'\}$，有$\forall x_i'$，条件$p(x_i')$都成立。} \label{fig:filter}
+   \caption{输入：$[x_1, x_2, ..., x_n]$，输出：$[x_1', x_2', ..., x_m']$。满足：$\forall x_i' \Rightarrow p(x_i')$.}
+   \label{fig:filter}
 \end{figure}
 
-我们也可以用集合中的ZF表达式来定义filter，但是这里我们处理的对象是列表，而不是集合。
+我们也可以用ZF表达式来定义$filter$：
 
 \be
-filter(p, L) = \{ x | x \in L \land p(x) \}
+filter(P, X) = [x_i | x_i \in X, p(x_i)]
 \ee
 
-某些环境，如Haskell（Python也可以对任何iterable的内容使用）支持使用list comprehension来直接表达filter。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-filter p xs = [ x | x <- xs, p x]
-\end{lstlisting}
-
-下面的Python例子程序对内置的list类型进行filter。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def filter(p, xs):
-    return [x for x in xs if p(x)]
-\end{lstlisting}
-
-注意，Python中内置的list并非单向链表。
-
-为了修改前面的find算法来实现filter，我们将找到的元素添加到一个结果列表的末尾。然后继续检查剩余列表，找到全部符合判定条件的元素。
+和$find$不同，如果没有任何元素满足条件，$filter$返回空列表。它逐一扫描列表，检查每个元素：
 
 \be
-filter(p, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  cons(l_1, filter(p, L')) & p(l_1) \\
-  filter(p, L') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+filter(p,\ \nil) & = & \nil \\
+filter(p,\ x:xs) & = & \begin{cases}
+  p(x): & x : filter(p, xs) \\
+  otherwise: & filter(p, xs) \\
+  \end{cases}
+\end{array}
 \ee
 
-作为边界条件，如果待查找的列表为空，则结果也是空；否则，令在除第一元素以外的剩余部分filter的结果为$A$，如果第一个元素满足条件，我们将其通过常数时间的cons操作，置于$A$的前面。
-
-下面的Haskell例子程序实现了filter。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-filter _ [] = []
-filter p (x:xs) = if p x then x : filter p xs else filter p xs
-\end{lstlisting}
-
-虽然我们提到，找到的元素是被“添加”到结果列表的，但这一算法实际上从右向左构造结果列表，这样就可以避免向尾部添加的线性时间$O(n)$的操作。和下面命令式的平方级别的实现对比，可以发现这一异同。
+这一算法从右向左构造结果。在迭代实现中，如果用$append$来构造结果，性能会下降到$O(n^2)$。
 
 \begin{algorithmic}[1]
 \Function{Filter}{$p, L$}
-  \State $L' \gets \phi$
-  \While{$L \neq \phi$}
+  \State $L' \gets$ NIL
+  \While{$L \neq$ NIL}
     \If{$p$(\Call{First}{$L$})}
-      \State $L' \gets$ \textproc{Append}($L'$, \Call{First}{$L$}) \Comment{线性操作}
+      \State $L' \gets$ \textproc{Append}($L'$, \Call{First}{$L$}) \Comment{线性时间}
     \EndIf
     \State $L \gets$ \Call{Rest}{$L$}
   \EndWhile
 \EndFunction
 \end{algorithmic}
 
-如注释中所标明的，如果不使用尾指针记录，向列表尾部追加元素的用时和列表的长度成正比。直接将递归形式的filter转换为尾递归，性能会从$O(n)$退化成$O(n^2)$。如下面的定义所示，$filter(p, L) = filter'(p, L, \phi)$的性能和上面的命令式的实现同样差。
+正确的做法是用cons替代，但这样返回的结果是逆序的。我们可以再执行一次线性时间的反转（见练习）。从右向左进行计算的性质提示我们可以用$foldr$来定义过滤。我们需要设计一个函数$f$检查每个元素，如果符合条件就添加到结果中：
 
 \be
-filter'(p, L, A) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  A & L = \phi \\
-  filter'(p, L', A \cup \{l_1\}) & p(l_1) \\
-  filter'(p, L', A) & otherwise
-  \end{array}
-\right.
+f(x, A) = \begin{cases}
+  p(x): & x : A \\
+  otherwise: & A \\
+  \end{cases}
 \ee
 
-为了得到线性时间的命令式算法，我们可以逆序构造结果列表，然后再执行一次$O(n)$时间的反转操作（参考前面的内容）获得最终的结果。我们将这一实现留给读者作为练习。
-
-从右向左构造结果列表的事实，提示我们可以通过右侧fold来实现filter。我们需要定义一个组合函数$f$，使得$filter(p, L) = foldr(f, \phi, L)$。函数$f$接受两个参数，一个是列表中的元素；另一个是从右侧开始构建的中间结果。我们可以这样定义$f(x, A)$，它检查$x$是否满足条件，如果满足就将结果更新为$cons(x, A)$，否则结果$A$保持不变。
+我们需要将判定条件$p$传入$f$。这样一共有3个参数$f(p, x, A)$。将其柯里化就得到用$foldr$定义的过滤算法：
 
 \be
-f(x, A) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  cons(x, A) & p(x) \\
-  A & otherwise
-  \end{array}
-\right.
+filter(p) = foldr((x, A) \mapsto f(p, x, A), \nil)
 \ee
 
-但是，我们需要将判定条件也传入函数$f$。可以通过Curry来实现这一点，函数$f$的实际类型为$f(p, x, A)$。这样filter就可以定义如下：
+我们可以进一步将其简化为（称作$\eta$变换\cite{slpj-book-1987}）：
 
 \be
-filter(p, L) = foldr(\lambda_{x, A} \cdot f(p, x, A), \phi, L)
+filter(p) = foldr(f(p), \nil)
 \ee
 
-这一定义可以进一步用$\eta$变换化简。读者可以参考\cite{slpj-book-1987}了解关于$\eta$变换更多的内容。
-
-\be
-filter(p, L) = foldr(f(p), \phi, L)
-\ee
-
-下面的Haskell例子程序实现了这一定义。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-filter p = foldr f [] where
-    f x xs = if p x then x : xs else xs
-\end{lstlisting}
-
-与映射、fold相同，filter也是一个通用的概念，我们可以对任何可遍历的数据结构应用一个判定条件，获得我们感兴趣的信息。读者可以参考\cite{learn-haskell}中关于幺半群的内容。
+过滤也是一个通用的概念。不仅限于列表，我们可以对任何可遍历的结构应用一个判定条件，获得感兴趣的信息。
 
 \subsection{匹配}
 \index{列表!匹配}
-\index{列表!前缀}
-\index{列表!后缀}
-\index{列表!中缀}
+\index{列表!前缀} \index{列表!后缀} \index{列表!中缀}
 
 匹配一般是指在一个数据结构中寻找某一给定的模式（pattern）。本节中，我们限定数据结构为列表。即使这样，匹配仍然是一个值得广泛、深入探讨的话题，本书中专门有一些章节介绍匹配算法。这里我们仅仅考虑在一个较长的列表中寻找一个子列表的情况。
 
