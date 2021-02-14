@@ -1895,92 +1895,81 @@ filter(p) = foldr(f(p), \nil)
 \index{列表!匹配}
 \index{列表!前缀} \index{列表!后缀} \index{列表!中缀}
 
-匹配一般是指在一个数据结构中寻找某一给定的模式（pattern）。本节中，我们限定数据结构为列表。即使这样，匹配仍然是一个值得广泛、深入探讨的话题，本书中专门有一些章节介绍匹配算法。这里我们仅仅考虑在一个较长的列表中寻找一个子列表的情况。
-
-除了寻找在任意位置可能出现的子列表，还有两种特殊的情况：检查一个列表是否是另外一个列表的前缀或后缀。
-
-在span一节，我们介绍了如何在某一条件下找到最长的前缀。前缀匹配可以被认为是某种特殊情况。它从头开始逐一比较两个列表中的每个元素是否相等，直到发现任何不同的元素或者到达一个列表的尾部。若$P$是$L$的前缀，我们记$P \subseteq L$。
+匹配一般是指在一个结构中寻找某一模式。即使限定为列表和字符串，匹配仍是一个广泛、深入的内容。本书专门有章节介绍字符串匹配。这里我们仅仅考虑给定一个列表$AB$，检查它是否出现在另一个列表$B$中的情况。这里有两个特殊情况：判断$A$是否是$B$的前缀和后缀。式(\ref{eq:span})介绍的$span$算法寻找符合某个条件的最长前缀。我们可以使用类似的方法：逐一比较$A$、$B$中的每个元素直到遇到不同元素或到达任一列表尾部。若$A$是$B$的前缀，则记为：$A \subseteq B$。
 
 \be
-P \subseteq L = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  True & P = \phi \\
-  False & p_1 \neq l_1 \\
-  P' \subseteq L' & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+\nil \subseteq B & = & True \\
+(a:as) \subseteq \nil & = & False \\
+(a:as) \subseteq (b:bs) & = & \begin{cases}
+  a \neq b: & False \\
+  a = b: & as \subseteq bs \\
+  \end{cases}
+\end{array}
 \ee
 
-显然这是一个线性时间的算法。但是我们不能用同样的方法来检查一个列表是否是另一个的后缀。这是因为定位到两个列表的尾部，然后从右向左前进的代价很大。与列表不同，由于数组支持随机访问，因此可以从后面开始遍历。
-
-由于我们只需要是、否这样的答案，为了实现一个线性时间的后缀检查算法，我们可以将两个列表都反转（反转是线性时间的），然后使用前缀检查算法进行判断。如果$P$是$L$的后缀，记$L \supseteq P$。
+由于扫描列表，前缀检查是线性时间的。但是我们不能用同样的方法来检查后缀：对齐两个列表的尾部，然后从右向左倒序比较。这样的代价很大。这一点与数组不同。为了实现线性时间的后缀检查，我们可以将两个列表都反转，然后使用前缀检查进行判断：
 
 \be
-L \supseteq P = reverse(P) \subseteq reverse(L)
+A \supseteq B = reverse(A) \subseteq reverse(B)
 \ee
 
-定义好$\subseteq$后，就可以判断一个列表是否是另外一个的中缀了。方法就是遍历目标列表，不断进行前缀检测，直到成功或者到达末尾。
+使用$\subseteq$，就可以判断一个列表是否是另外一个的子列表。称作中缀检查。方法就是遍历目标列表，不断进行前缀检查：
+
+\be
+\begin{array}{rcl}
+infix?(a:as,\ \nil) & = & False \\
+infix?(A,\ B) & = & \begin{cases}
+  A \subseteq B: & True \\
+  otherwise: & infix?(A, B') \\
+  \end{cases}
+\end{array}
+\ee
+
+若$A$为空，定义空列表是任何列表的中缀。由于$\nil \subseteq B$总成立，因此算法给出正确结果。对于$infix?(\nil, \nil)$，结果也是正确的。下面是对应的迭代实现：
 
 \begin{algorithmic}[1]
-\Function{Is-Infix}{$P, L$}
-  \While{$L \neq \phi$}
-    \If{$P \subseteq L$}
+\Function{Is-Infix}{$A, B$}
+  \If{$A = $ NIL}
+    \State \Return TRUE
+  \EndIf
+  \State $n \gets |A|$
+  \While{$B \neq$ NIL and $n \leq |B|$}
+    \If{$A \subseteq B$}
       \State \Return TRUE
     \EndIf
-    \State $L \gets$ \Call{Rest}{$L$}
+    \State $B \gets$ \Call{Rest}{$B$}
   \EndWhile
   \State \Return FALSE
 \EndFunction
 \end{algorithmic}
 
-也可以递归地定义这一算法。
+由于前缀检测需要线性时间，并且在遍历时被不断调用，这一算法的复杂度为$O(nm)$，其中$n$和$m$分别是两个列表的长度。即使替换成数组，如何将这种逐一比较的算法优化成线性时间仍是一个专门问题。第13章介绍了一些巧妙的方法，例如KMP（Knuth-Morris-Pratt）算法，Boyer-Moore算法。附录C介绍了后缀树方法。
+
+对称地，我们可以枚举出$B$的所有后缀，然后检查$A$是否是某个后缀的前缀：
 
 \be
-infix?(P, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  True & P \subseteq L \\
-  False & L = \phi \\
-  infix?(P, L') & otherwise
-  \end{array}
-\right.
+infix?(A, B) = \exists S \in \textit{suffixes}(B), A \subseteq S
 \ee
 
-这里有一个细节值得注意。若$P$为空，显然$P$是任何其他列表的中缀。这种情况实际上由上式中的第一条处理，这是因为空列表同样是任何列表的前缀。在大多数支持模式匹配的语言中，我们不能把上式中的第二条作为第一个边界条件，否则在计算$infix?(\phi, \phi)$时，结果将为false。（Prolog是一个例外，但是这涉及语言特性，我们不在这里详细讨论。）
+下面的Haskell例子程序使用列表解析实现了这一方法：
 
-由于前缀检测需要线性时间，并且在遍历时被不断调用，这一算法的复杂度为$O(nm)$，其中$n$和$m$分别是待匹配列表和目标列表的长度。即使将底层数据结构从链表换成支持随机索引的数组，我们也没有简单方法能将这种“逐一检查”的扫描算法提高到线性时间。
+\begin{Haskell}
+isInfixOf a b = (not . null) [ s | s <- tails(b), a `isPrefixOf` s]
+\end{Haskell}
 
-本书中有若干章节介绍了快速匹配的方法，包括使用后缀树的Ukkonen算法，Knuth-Morris-Pratt算法以及Boyer-Moore算法。
-
-另外，我们也可以枚举出目标列表的所有后缀，然后检查待匹配的列表是否是这些后缀中的某一个的前缀。这一方法定义如下。
-
-\be
-infix?(P, L) = \exists S \in suffixes(L) \land P \subseteq S
-\ee
-
-下面的Haskell例子程序使用list comprehension实现了这一方法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-isInfixOf x y = (not . null) [ s | s <- tails(y), x `isPrefixOf`s]
-\end{lstlisting}
-
-其中\texttt{isPrefixOf}是此前我们定义的前缀检查函数。函数\texttt{tails}生成一个列表的所有后缀。我们将\texttt{tails}的实现留给读者作为练习。
+其中\texttt{isPrefixOf}进行前缀检查。\texttt{tails}枚举一个列表的所有后缀。我们将其实现作为练习。
 
 \begin{Exercise}
-\begin{itemize}
-\item 选择编程语言，用命令式和函数式的方法实现线性时间的存在检查程序。
-\item 选择一门命令式语言，实现lookup算法。
-\item 实现线性时间的filter算法，首先将结果列表逆序构建，然后在将其反转。请用循环和尾递归这两种方法进行实现。
-\item 选择一门命令式语言，实现前缀检查算法。
-\item 给定一个列表，枚举出它的所有后缀。
-\end{itemize}
+\Question{实现线性时间的属于（存在检查）算法。}
+\Question{实现迭代的查询算法。}
+\Question{使用$reverse$实现线性时间的过滤算法。}
+\Question{实现迭代的前缀检查算法。}
+\Question{给定一个列表，枚举出它的所有后缀。}
 \end{Exercise}
 
 \section{zip和unzip}
-\index{列表!zip}
-\index{列表!unzip}
+\index{列表!zip} \index{列表!unzip}
 
 我们经常要构建包含成对值的列表。例如，在前面“开关灯”趣题的暴力解法中，为了表示所有灯的开关状态，我们使用了这样的列表，它初始化为$\{(1, 0), (2, 0), ..., (n, 0)\}$。另一个例子是key-value列表，如$\{(1, a), (2, an), (3, another), ... \}$。
 
