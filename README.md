@@ -1,9 +1,9 @@
 Elementary Algorithms
 ====
 
-Edition: 0.6180339887498949
+Edition: 1.6180339887498949
 
-2020/10
+2021/02
 
 This book introduces about elementary algorithms and data structure. It includes side-by-side comparison about purely functional realization and their imperative counterpart.
 
@@ -12,11 +12,12 @@ This book introduces about elementary algorithms and data structure. It includes
 Contents
 --------
 
-The book can be downloaded in English ([EN](https://github.com/liuxinyu95/AlgoXY/releases/download/v0.6180334/algoxy-en.pdf)). The book in Chinese ([中文](http://www.ituring.com.cn/book/1907)) was published. I recently switched my focus to the Mathematics of programming, the new book is also available in ([github](https://github.com/liuxinyu95/unplugged))
+From 2020/12, I started re-writing this book. The PDF can be downloaded for preview ([EN](https://github.com/liuxinyu95/AlgoXY/files/5981940/algoxy-en.pdf), [中文](https://github.com/liuxinyu95/AlgoXY/files/5981934/algoxy-zh-cn.pdf)). The 1st edition in Chinese ([中文](http://www.ituring.com.cn/book/1907)) was published in 2017. I recently switched my focus to the Mathematics of programming, the new book is also available in ([github](https://github.com/liuxinyu95/unplugged))
 
 
 - Preface
-- Chapter 1, Binary Search Tree, the 'hello world' data structure;
+- Chapter 0, List;
+- Chapter 1, Binary Search Tree;
 - Chapter 2, The evolution of insertion sort;
 - Chapter 3, Red-black tree, not so complex as it was thought;
 - Chapter 4, AVL tree;
