@@ -656,7 +656,7 @@ sum = sum'(0) \quad \quad \quad product = prod'(1)
 \]
 
 \index{Curried Form} \index{Currying}
-Curried form was introduced by Schönfinkel (1889 - 1942) in 1924, then widely used by Haskell Curry from 1958. It is known as {\em Currying}\cite{slpj-book-1987}. For a function taking 2 parameters $f(x, y)$, when pass one argument $x$, it ends up to another function of $y$: $g(y) = f(x, y)$ or $g = f\ x$. We can further extend it to multiple variables, that $f(x, y, ..., z)$ can be Curried to a series of functions: $f, f\ x, f\ x\ y\, ...$. No matter how many variables, we can treat them as a series of Curried function, each has only one parameter: $f(x, y, ..., z) = f(x)(y)...(z) = f\ x\ y\ ...\ z$.
+Curried form was introduced by Schönfinkel (1889 - 1942) in 1924, then widely used by Haskell Curry from 1958. It is known as {\em Currying}\cite{slpj-book-1987}. For a function taking 2 parameters $f(x, y)$, when pass one argument $x$, it ends up to another function of $y$: $g(y) = f(x, y)$ or $g = f\ x$. We can further extend it to multiple variables, that $f(x, y, ..., z)$ can be Curried to a series of functions: $f, f\ x, f\ x\ y, ...$. No matter how many variables, we can treat them as a series of Curried function, each has only one parameter: $f(x, y, ..., z) = f(x)(y)...(z) = f\ x\ y\ ...\ z$.
 
 The accumulated sum does not only calculate the result from left to right, it needn't book keeping any context, state, or intermediate result for recursion. All such states are either passed as argument (i.e. $A$), or can be dropped (the previous element in the list). Such recursive calls are often optimized as pure loops in practice. We call this kind of function as {\em tail recursion} (or `tail call'), and the optimization to eliminate recursion is called 'tail recursion optimization'\cite{wiki-tail-call}, because the recursion happens at the tail place in the function. The performance of tail call can be greatly improved after optimization, and we can avoid the issue of stack overflow in deep recursions.
 
@@ -681,7 +681,7 @@ As a typical tail call problem, let's consider how to compute $b^n$ effectively?
 \Function{Pow}{$b, n$}
   \State $x \gets 1$
   \Loop{ $n$ times}
-    \State $x \gets x b$
+    \State $x \gets x \cdot b$
   \EndLoop
   \State \Return $x$
 \EndFunction
@@ -783,7 +783,7 @@ Back to the sum and product. The iterative implementation applies plus and multi
 \Function{Product}{$L$}
   \State $p \gets 1$
   \While{$L \neq$ NIL}
-    \State $p \gets p \times $ \Call{First}{$L$}
+    \State $p \gets p\ \cdot$ \Call{First}{$L$}
     \State $L \gets$ \Call{Rest}{$L$}
   \EndWhile
   \State \Return $p$
@@ -1193,12 +1193,12 @@ reverse(x:xs) & = & append(reverse(xs), x) \\
 \end{array}
 \ee
 
-However, the performance is poor. As it need traverse to the end to append, this algorithm is bound to quadratic time. We can optimize it with tail call, use an accumulator to store the reversed part so far. We initialize the accumulator as empty: $reverse(L) = reverse'(L, \nil)$.
+However, the performance is poor. As it need traverse to the end to append, this algorithm is bound to quadratic time. We can optimize it with tail call, use an accumulator to store the reversed part so far. We initialize the accumulator as empty: $reverse = reverse'(\nil)$.
 
 \be
 \begin{array}{rcl}
-reverse'(\nil,\ A) & = & A \\
-reverse'(x:xs,\ A) & = & reverse'(xs,\ x:A) \\
+reverse'(A,\ \nil) & = & A \\
+reverse'(A,\ x:xs) & = & reverse'(x:A,\ xs) \\
 \end{array}
 \ee
 
@@ -1231,6 +1231,7 @@ List<T> reverse(List<T> xs) {
 \end{lstlisting}
 
 \begin{Exercise}
+\Question{Given a number from 0 to 1 billion, write a program to give its English representation. For e.g. 123 is `one hundred and twenty three'. What if there is decimal part?}
 \Question{Implement the algorithm to find the maximum value in a list of pairs $[(k, v)]$ in tail call.}
 \end{Exercise}
 
@@ -1460,14 +1461,14 @@ group(\sim,\ x:xs) & = & (x:A) : group(\sim, B) \\
 Where $(A, B) = span(y \mapsto x \sim y, xs)$ is the span result applied to the rest sub-list. Although this new group function generates the correct result for string case:
 
 \begin{Haskell}
-groupBy (==) ``Mississippi''
+group (==) ``Mississippi''
 [``m'', ``i'', ``ss'', ``i'', ``ss'', ``i'', ``pp'', ``i'']
 \end{Haskell}
 
 However, it can't group the list of numbers correctly with $\leq$ relation:
 
 \begin{Haskell}
-groupBy (>=) [15, 9, 0, 12, 11, 7, 10, 5, 6, 13, 1, 4, 8, 3, 14, 2]
+group (>=) [15, 9, 0, 12, 11, 7, 10, 5, 6, 13, 1, 4, 8, 3, 14, 2]
 [[15,9,0,12,11,7,10,5,6,13,1,4,8,3,14,2]]
 \end{Haskell}
 
@@ -1819,7 +1820,7 @@ Although there can be multiple elements match, the $find$ algorithm picks the fi
 We can define it in ZF expression:
 
 \be
-filter(P, X) = [x_i | x_i \in X, p(x_i)]
+filter(p, X) = [x_i | x_i \in X, p(x_i)]
 \ee
 
 Different from $find$, when there is no element satisfies the predicate, $filter$ returns the empty list. It scans to examine every element one by one:
@@ -2039,6 +2040,21 @@ For the fruits example, suppose the unit price is stored in a assoc list: $U = [
 pay = sum(zipWith(\cdot, snd(unzip(U)), snd(unzip(Q))))
 \ee
 
+As an example, let's see how to use $zipWith$ to define infinite Fibonacci numbers with lazy evaluation:
+
+\be
+F = 0 : 1 : zipWith(+, F, F')
+\ee
+
+Where $F$ is the infinite list of Fibonacci numbers, starts from 0 and 1. $F'$ is the rest Fibonacci numbers without the first one. From the third, every Fibonacci number is the sum of numbers from $F$ and $F'$ at the same position. Below example program list the first 15 Fibonacci numbers:
+
+\begin{Haskell}
+fib = 0 : 1 : zipWith (+) fib (tail fib)
+
+take 15 fib
+[0,1,1,2,3,5,8,13,21,34,55,89,144,233,377]
+\end{Haskell}
+
 $zip$ and $unzip$ are generic. We can expand to $zip$ two trees, where the nodes contain paired elements from both. When traverse a collection of elements, we can also use the generic $zip$ and $unzip$ to track the path, this is a method to mimic the `parent' reference in imperative implementation (last chapter of \cite{learn-haskell}).
 
 \begin{Exercise}
@@ -2056,7 +2072,15 @@ $zip$ and $unzip$ are generic. We can expand to $zip$ two trees, where the nodes
 
 \Question{Define $zip$ with $foldr$.}
 
-\Question{For the fruits example, suppose the quantity assoc list only contains the items with none-zero quantity. i.e. instead of $Q = [(apple, 3), (banana, 0), (orange, 1), ...]$, but $Q = [(apple, 3), (orange, 1), ...]$, because customer does not buy banana. Design a program to calculate the total payment.}
+\Question{For the fruits example, suppose the quantity assoc list only contains the items with none-zero quantity. i.e. instead of
+\[
+Q = [(apple, 3), (banana, 0), (orange, 1), ...]
+\]
+but
+\[
+Q = [(apple, 3), (orange, 1), ...]
+\]
+because customer does not buy banana. Design a program to calculate the total payment.}
 
 \end{Exercise}
 
