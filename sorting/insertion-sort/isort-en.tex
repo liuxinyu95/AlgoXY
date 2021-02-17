@@ -47,7 +47,7 @@ Insertion sort is a straightforward sort algorithm\footnote{We skip the `Bubble 
 
 Based on this idea, we can implement insertion sort as below:
 
-\begin{algorithmic}
+\begin{algorithmic}[1]
 \Function{Sort}{$A$}
   \State $S \gets$ NIL
   \For{each $a \in A$}
@@ -60,20 +60,20 @@ Based on this idea, we can implement insertion sort as below:
 Or define it with $fold_l$ in Curried form:
 
 \be
-  sort = fold_l(insert, \nil)
+sort = fold_l(insert, \nil)
 \ee
 
-We store the sorted result in a new list, alternatively, we can change it to in-place. Let $A = [a_1, a_2, ..., a_n]$:
+We store the sorted result in a new array, alternatively, we can change it to in-place:
 
-\begin{algorithmic}
+\begin{algorithmic}[1]
 \Function{Sort}{$A$}
   \For{$i \gets 2$ to $|A|$}
-    \State insert $a_i$ to sorted sequence $[a'_1, a'_2, ..., a'_{i-1}]$
+    \State ordered insert $A[i]$ to $A[1...(i-1)]$
   \EndFor
 \EndFunction
 \end{algorithmic}
 
-When process the $i$-th element, all elements before $i$ are sorted. We continuously insert elements till consume all the unsorted ones, as shown in figure \ref{fig:in-place-sort}.
+Where the index $i$ ranges from 1 to $n = |A|$. We start from 2, because the singleton sub-array $[A[1]]$ is ordered. When process the $i$-th element, all elements before $i$ are sorted. We continuously insert elements till consume all the unsorted ones, as shown in figure \ref{fig:in-place-sort}.
 
 \begin{figure}[htbp]
   \centering
@@ -94,20 +94,15 @@ sort(x:xs) & = & insert(x, sort(xs)) \\
 \section{Insertion}
 \index{insertion sort!insertion}
 
-We haven't answered the question about how to realize insertion however.
-It's a puzzle how does human locate the proper position so quickly.
+In chapter 1, we give the ordered insertion algorithm for list. For array, we can also scan it to locate the insert position. We can either scan from left or right. Below algorithm is from right:
 
-For computer, it's an obvious option to perform a scan. We can either
-scan from left to right or vice versa. However, if the sequence is
-stored in plain array, it's necessary to scan from right to left.
-
-\begin{algorithmic}
+\begin{algorithmic}[1]
 \Function{Sort}{$A$}
   \For{$i \gets 2$ to $|A|$}
-    \Comment{Insert $A[i]$ to sorted sequence $A[1...i-1]$}
+    \Comment{Insert $A[i]$ to $A[1...(i-1)]$}
     \State $x \gets A[i]$
     \State $j \gets i-1$
-    \While{$j > 0 \land x < A[j]$ }
+    \While{$j > 0$ and $x < A[j]$ }
       \State $A[j+1] \gets A[j]$
       \State $j \gets j - 1$
     \EndWhile
@@ -116,115 +111,32 @@ stored in plain array, it's necessary to scan from right to left.
 \EndFunction
 \end{algorithmic}
 
-One may think scan from left to right is natural. However, it isn't
-as effect as above algorithm for plain array. The reason is that, it's
-expensive to insert an element in arbitrary position in an array.
-As array stores elements continuously, if we want to insert new element
-$x$ in position $i$, we must shift all elements after $i$, including
-$i+1, i+2, ...$ one position to right. After that the cell at position $i$
-is empty, and we can put $x$ in it. This is illustrated in
-figure \ref{fig:array-shift}.
+It's expensive to insert at arbitrary position, as array stores elements continuously. When insert $x$ at position $i$, we need shift all elements after $i$ (i.e. $i + 1, i + 2, ...$) one cell to right. After free the cell at $i$, we put $x$ in, as shown in figure \ref{fig:array-shift}.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.7]{img/array-shift.ps}
-  \caption{Insert $x$ to array $A$ at position $i$.}
+  \caption{Insert $x$ to $A$ at $i$.}
   \label{fig:array-shift}
 \end{figure}
 
-If the length of array is $n$, this indicates we need examine the
-first $i$ elements, then perform
-$n-i+1$ moves, and then insert $x$ to the $i$-th cell. So insertion
-from left to right need traverse the whole array anyway.
-While if we scan from right to
-left, we examine $i$ elements at most, and perform the same
-amount of moves.
-
-Translate the above algorithm to Python yields the following code.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def isort(xs):
-    n = len(xs)
-    for i in range(1, n):
-        x = xs[i]
-        j = i - 1
-        while j >= 0 and x < xs[j]:
-            xs[j+1] = xs[j]
-            j = j - 1
-        xs[j+1] = x
-\end{lstlisting}
-
-It can be found some other equivalent programs, for instance the following
-ANSI C program. However this version isn't as effective as the pseudo code.
-
-\lstset{language=C}
-\begin{lstlisting}
-void isort(Key* xs, int n){
-  int i, j;
-  for(i=1; i<n; ++i)
-    for(j=i-1; j>=0 && xs[j+1] < xs[j]; --j)
-      swap(xs, j, j+1);
-}
-\end{lstlisting}
-
-This is because the swapping function, which can exchange two elements
-typically uses a temporary variable like the following:
-
-\begin{lstlisting}
-void swap(Key* xs, int i, int j){
-  Key temp = xs[i];
-  xs[i] = xs[j];
-  xs[j] = temp;
-}
-\end{lstlisting}
-
-So the ANSI C program presented above takes $3m$ times assignment, where $m$
-is the number of inner loops. While the pseudo code as well as the Python
-program use shift operation instead of swapping. There are $m+2$ times
-assignment.
-
-We can also provide \textproc{Insert}() function explicitly, and call it
-from the general insertion sort algorithm in previous section. We skip
-the detailed realization here and left it as an exercise.
-
-All the insertion algorithms are bound to $O(n)$, where $n$ is the length of
-the sequence. No matter what difference among them, such as scan from left
-or from right. Thus the over all performance for insertion sort is quadratic
-as $O(n^2)$.
+For the array of length $n$, suppose after comparing $x$ to the first $i$ elements, we located the position to insert. Then we shift the rest $n - i + 1$ elements, and put $x$ in the $i$-th cell. Overall, we need traverse the whole array if scan from left. On the other hand, if scan from right to left, we examine $n - i + 1$ elements, and perform the same amount of shifts. We can also define a separated \textproc{Insert}() function, and call it inside the loop. The insertion takes linear time no matter scans from left or right, hence the sort algorithm is bound to $O(n^2)$, where $n$ is the number of elements.
 
 \begin{Exercise}
-
-\begin{itemize}
-\item Provide explicit insertion function, and call it with general
-insertion sort algorithm. Please realize it in both procedural way and
-functional way.
-\end{itemize}
-
+\Question{Implement the insert to scan from left to right.}
+\Question{Define the insert function, and call it from the sort algorithm.}
 \end{Exercise}
 
-% ================================================================
-% Improvement 1
-% ================================================================
-
-\section{Improvement 1}
+\section{Binary search}
 \index{Insertion sort!binary search}
 
-Let's go back to the question, that why human being can find the proper
-position for insertion so quickly. We have shown a solution based on scan.
-Note the fact that at any time, all cards at hands have been well sorted,
-another possible solution is to use binary search to find that location.
+When insert a poker card, we don't scan, but take a quick glance at the deck to locate the position. We can do this because the deck is sorted. Binary search is such a method that applies to ordered sequence.
 
-We'll explain the search algorithms in other dedicated chapter. Binary
-search is just briefly introduced for illustration purpose here.
-
-The algorithm will be changed to call a binary search procedure.
-
-\begin{algorithmic}
+\begin{algorithmic}[1]
 \Function{Sort}{$A$}
   \For{$i \gets 2$ to $|A|$}
     \State $x \gets A[i]$
-    \State $p \gets $ \Call{Binary-Search}{$A[1...i-1], x$}
+    \State $p \gets $ \Call{Binary-Search}{$x, A[1...(i-1)]$}
     \For{$j \gets i$ down to $p$}
       \State $A[j] \gets A[j-1]$
     \EndFor
@@ -233,26 +145,15 @@ The algorithm will be changed to call a binary search procedure.
 \EndFunction
 \end{algorithmic}
 
-Instead of scan elements one by one, binary search utilize the information
-that all elements in slice of array $\{A_1, ..., A_{i-1} \}$ are sorted.
-Let's assume
-the order is monotonic increase order. To find a position $j$ that satisfies
-$A_{j-1} \leq x \leq A_{j}$. We can first examine the middle element, for
-example, $A_{\lfloor i/2 \rfloor}$. If $x$ is less than it, we need next recursively
-perform binary search in the first half of the sequence; otherwise, we
-only need search in last half.
+Binary search utilize the fact that the slice $A[1...(i-1)]$ is ordered. Suppose it is ascending without loss of generality (as we can define $\leq$ abstract). To find the position $j$ that satisfies $A[j-1] \leq x \leq A[j]$, we compare $x$ to the middle element $A[m]$, where $m = \lfloor \dfrac{i}{2} \rfloor$. If $x < A[m]$, we then recursively apply binary search to the first half; otherwise, we search the second half. As every time, we halve the elements, binary search takes $O(\lg i)$ time to locate the insertion position.
 
-Every time, we halve the elements to be examined, this search process runs
-$O(\lg n)$ time to locate the insertion position.
-
-\begin{algorithmic}
-\Function{Binary-Search}{$A, x$}
-  \State $l \gets 1$
-  \State $u \gets 1+|A|$
+\begin{algorithmic}[1]
+\Function{Binary-Search}{$x, A$}
+  \State $l \gets 1, u \gets 1+|A|$
   \While{$l < u$}
-    \State $m \gets \lfloor \frac{l+u}{2} \rfloor$
+    \State $m \gets \lfloor \dfrac{l+u}{2} \rfloor$
     \If{$A[m] = x$}
-      \State \Return $m$ \Comment{Find a duplicated element}
+      \State \Return $m$ \Comment{Duplicated element}
     \ElsIf{$A[m] < x$}
       \State $l \gets m+1$
     \Else
@@ -263,66 +164,25 @@ $O(\lg n)$ time to locate the insertion position.
 \EndFunction
 \end{algorithmic}
 
-The improved insertion sort algorithm is still bound to $O(n^2)$,
-compare to previous section, which we use $O(n^2)$ times comparison and
-$O(n^2)$ moves, with binary search, we just use $O(n \lg n)$ times
-comparison and $O(n^2)$ moves.
-
-The Python program regarding to this algorithm is given below.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def isort(xs):
-    n = len(xs)
-    for i in range(1, n):
-        x = xs[i]
-        p = binary_search(xs[:i], x)
-        for j in range(i, p, -1):
-            xs[j] = xs[j-1]
-        xs[p] = x
-
-def binary_search(xs, x):
-    l = 0
-    u = len(xs)
-    while l < u:
-        m = (l+u)/2
-        if xs[m] == x:
-            return m
-        elif xs[m] < x:
-            l = m + 1
-        else:
-            u = m
-    return l
-\end{lstlisting}
+The improved sort algorithm is still bound to $O(n^2)$. The one with scan takes $O(n^2)$ comparisons and $O(n^2)$ shifts, withe binary search, it takes $O(n \lg n)$ comparisons and $O(n^2)$ shifts.
 
 \begin{Exercise}
-Write the binary search in recursive manner. You needn't use purely functional
-programming language.
+\Question{Implement the recursive binary search.}
 \end{Exercise}
 
-% ================================================================
-% Improvement 2
-% ================================================================
-
-\section{Improvement 2}
+\section{List}
 \index{Insertion sort!linked-list setting}
 
-Although we improve the search time to $O(n \lg n)$ in previous section, the
-number of moves is still $O(n^2)$. The reason of why movement takes so long
-time, is because the sequence is stored in plain array. The nature of array
-is continuously layout data structure, so the insertion operation is expensive.
-This hints us that we can use linked-list setting to represent the sequence.
-It can improve the insertion operation from $O(n)$ to constant time $O(1)$.
+With binary search, although the search time improved to $O(n \lg n)$, the shifts are still $O(n^2)$. This is because we need shift array cells when insert, which is linear time. On the other hand, when use list, the insertion is constant time at a given node reference. Below is the list insertion algorithm defined in chapter 1:
 
 \be
-  insert(A, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ x \} & A = \phi \\
-  \{ x \} \cup A & x < a_1 \\
-  \{ a_1 \} \cup insert(\{ a_2, a_3, ... a_n\}, x)& otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+insert(x,\ \nil) & = & [x] \\
+insert(x,\ y : ys) & = & \begin{cases}
+  x \leq y : & x : y : ys \\
+  otherwise : & y : insert(x, ys) \\
+  \end{cases}
+\end{array}
 \ee
 
 Translating the algorithm to Haskell yields the below program.
