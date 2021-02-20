@@ -57,12 +57,6 @@ Based on this idea, we can implement insertion sort as below:
 \EndFunction
 \end{algorithmic}
 
-Or define it with $fold_l$ in Curried form:
-
-\be
-sort = fold_l(insert, \nil)
-\ee
-
 We store the sorted result in a new array, alternatively, we can change it to in-place:
 
 \begin{algorithmic}[1]
@@ -81,15 +75,6 @@ Where the index $i$ ranges from 1 to $n = |A|$. We start from 2, because the sin
   \caption{Continuously insert elements to the sorted part.}
   \label{fig:in-place-sort}
 \end{figure}
-
-We can also define $sort$ recursively:
-
-\be
-\begin{array}{rcl}
-sort(\nil) & = & \nil \\
-sort(x:xs) & = & insert(x, sort(xs)) \\
-\end{array}
-\ee
 
 \section{Insertion}
 \index{insertion sort!insertion}
@@ -173,7 +158,22 @@ The improved sort algorithm is still bound to $O(n^2)$. The one with scan takes 
 \section{List}
 \index{Insertion sort!linked-list setting}
 
-With binary search, although the search time improved to $O(n \lg n)$, the shifts are still $O(n^2)$. This is because we need shift array cells when insert, which is linear time. On the other hand, when use list, the insertion is constant time at a given node reference. Below is the list insertion algorithm defined in chapter 1:
+With binary search, the search time improved to $O(n \lg n)$. However, as we need shift array cells when insert, the overall all time is still bound to $O(n^2)$. On the other hand, when use list, the insertion is constant time with a given node reference. In chapter 1, we define the insertion sort algorithm for list as below:
+
+\be
+\begin{array}{rcl}
+sort(\nil) & = & \nil \\
+sort(x:xs) & = & insert(x, sort(xs)) \\
+\end{array}
+\ee
+
+Or with $fold_l$ in Curried form:
+
+\be
+sort = fold_l(insert, \nil)
+\ee
+
+However, the $insert$ algorithm still takes linear time, because we need scan the list to locate the insertion position:
 
 \be
 \begin{array}{rcl}
@@ -185,134 +185,35 @@ insert(x,\ y : ys) & = & \begin{cases}
 \end{array}
 \ee
 
-Translating the algorithm to Haskell yields the below program.
+Instead of using node reference, we can also realize list through an additional index array. For every element $A[i]$, $Next[i]$ stores the index to the next element follows $A[i]$. It means $A[Next[i]]$ is the next element of $A[i]$. There are two special index numbers: for the tail node $A[m]$, we define $Next[m] = -1$, indicating it points to NIL; we also define $Next[0]$ index the head. Using the index array, the insertion algorithm can be implemented as below:
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-insert [] x = [x]
-insert (y:ys) x = if x < y then x:y:ys else y:insert ys x
-\end{lstlisting}
-
-And we can complete the two versions of insertion sort program based on
-the first two equations in this chapter.
-
-\begin{lstlisting}
-isort [] = []
-isort (x:xs) = insert (isort xs) x
-\end{lstlisting}
-
-Or we can represent the recursion with folding.
-
-\begin{lstlisting}
-isort = foldl insert []
-\end{lstlisting}
-
-Linked-list setting solution can also be described imperatively. Suppose
-function \textproc{Key}($x$), returns the value of element stored in node
-$x$, and \textproc{Next}($x$) accesses the next node in the linked-list.
-
-\begin{algorithmic}
-\Function{Insert}{$L, x$}
-  \State $p \gets$ NIL
-  \State $H \gets L$
-  \While{$L \neq$ NIL $\land $ \Call{Key}{$L$} $<$ \Call{Key}{$x$}}
-    \State $p \gets L$
-    \State $L \gets $ \Call{Next}{$L$}
-  \EndWhile
-  \State \Call{Next}{$x$} $\gets L$
-  \If{$p =$ NIL}
-    \State $H \gets x$
-  \Else
-    \State \Call{Next}{$p$} $\gets x$
-  \EndIf
-  \State \Return $H$
-\EndFunction
-\end{algorithmic}
-
-For example in ANSI C, the linked-list can be defined as the following.
-
-\lstset{language=C}
-\begin{lstlisting}
-struct node{
-  Key key;
-  struct node* next;
-};
-\end{lstlisting}
-
-Thus the insert function can be given as below.
-
-\begin{lstlisting}
-struct node* insert(struct node* lst, struct node* x){
-  struct node *p, *head;
-  p = NULL;
-  for(head = lst; lst && x->key > lst->key; lst = lst->next)
-    p = lst;
-  x->next = lst;
-  if(!p)
-    return x;
-  p->next = x;
-  return head;
-}
-\end{lstlisting}
-
-Instead of using explicit linked-list such as by pointer or reference
-based structure. Linked-list can also be realized by another index array.
-For any array element $A[i]$, $Next[i]$ stores the index of next element
-follows $A[i]$. It means $A[Next[i]]$ is the next element after $A[i]$.
-
-The insertion algorithm based on this solution is given like below.
-
-\begin{algorithmic}
+\begin{algorithmic}[1]
 \Function{Insert}{$A, Next, i$}
-  \State $j \gets \perp$
-  \While{$Next[j] \neq$ NIL $\land A[Next[j]] < A[i]$}
+  \State $j \gets 0$ \Comment{$Next[0]$ for head}
+  \While{$Next[j] \neq -1$ and $A[Next[j]] < A[i]$}
     \State $j \gets Next[j]$
   \EndWhile
   \State $Next[i] \gets Next[j]$
   \State $Next[j] \gets i$
 \EndFunction
+\Statex
+\Function{Sort}{$A$}
+  \State $n \gets |A|$
+  \State $Next = [1, 2, ..., n, -1]$ \Comment{$n + 1$ indexes}
+  \For{$i \gets 1$ to $n$}
+    \State \Call{Insert}{$A, Next, i$}
+  \EndFor
+  \State \Return $Next$ \Comment{Skip to rearrange $A$ through $Next$}
+\EndFunction
 \end{algorithmic}
 
-Here $\perp$ means the head of the $Next$ table.
-And the relative Python program for this algorithm is given as the following.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def isort(xs):
-    n = len(xs)
-    next = [-1]*(n+1)
-    for i in range(n):
-        insert(xs, next, i)
-    return next
-
-def insert(xs, next, i):
-    j = -1
-    while next[j] != -1 and xs[next[j]] < xs[i]:
-        j = next[j]
-    next[j], next[i] = i, next[j]
-\end{lstlisting}
-
-Although we change the insertion operation to constant time by using
-linked-list. However, we have to traverse the linked-list to find the
-position, which results $O(n^2)$ times comparison. This is because
-linked-list, unlike array, doesn't support random access. It means we
-can't use binary search with linked-list setting.
+With list, although the insert operation changes to constant time, we need traverse the list to locate the insertion position. It is still bound to $O(n^2)$ times comparison. Unlike array, list does not support random access, hence we can not use binary search to speed up.
 
 \begin{Exercise}
-\begin{itemize}
-\item Complete the insertion sort by using linked-list insertion function
-in your favorate imperative programming language.
-\item The index based linked-list return the sequence of rearranged index
-as result. Write a program to re-order the original array of elements from
-this result.
-\end{itemize}
+\Question{For the index based list, we return the rearranged index as result. Design the algorithm to re-order the original array $A$ from the index $Next$.}
 \end{Exercise}
 
-% ================================================================
-% Final improvement
-% ================================================================
-
-\section{Final improvement by binary search tree}
+\section{Binary search tree}
 \index{Insertion sort!binary search tree}
 
 It seems that we drive into a corner. We must improve both the comparison
