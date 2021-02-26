@@ -18,18 +18,18 @@ From 2020/12, I started re-writing this book. The PDF can be downloaded for prev
 - Preface
 - Chapter 0, List;
 - Chapter 1, Binary Search Tree;
-- Chapter 2, The evolution of insertion sort;
-- Chapter 3, Red-black tree, not so complex as it was thought;
+- Chapter 2, Insertion sort;
+- Chapter 3, Red-black tree;
 - Chapter 4, AVL tree;
 - Chapter 5, Radix tree, Trie and Prefix Tree;
 - Chapter 6, B-Trees;
 - Chapter 7, Binary Heaps;
-- Chapter 8, From grape to the world cup, the evolution of selection sort;
+- Chapter 8, Selection sort;
 - Chapter 9, Binomial heap, Fibonacci heap, and pairing heap;
-- Chapter 10, Queue, not so simple as it was thought;
-- Chapter 11, Sequences, The last brick;
-- Chapter 12, Divide and conquer, Quick sort vs. Merge sort
-- Chapter 13, Searching
+- Chapter 10, Queue;
+- Chapter 11, Sequences;
+- Chapter 12, Divide and conquer sort;
+- Chapter 13, Search;
 - Appendix
 
 Install
