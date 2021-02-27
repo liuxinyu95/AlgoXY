@@ -1,7 +1,7 @@
 \ifx\wholebook\relax \else
 % ------------------------
 
-\documentclass{ctexart}
+\documentclass[b5paper]{ctexart}
 \usepackage[nomarginpar
   %, margin=.5in
 ]{geometry}
@@ -58,7 +58,7 @@
 \EndFunction
 \end{algorithmic}
 
-我们将排序的结果存储在新数组$S$中，也可以复用原数组的空间进行就地排序：
+这一实现将排序的结果存储在新数组$S$中，也可以复用原数组的空间进行就地排序：
 
 \begin{algorithmic}[1]
 \Function{Sort}{$A$}
@@ -68,44 +68,27 @@
 \EndFunction
 \end{algorithmic}
 
-当处理第$i$个元素的时候，所有$i$之前的元素都已经排好顺序了。我们不断将当前元素插入，直到处理完全部序列。这一过程如图\ref{fig:in-place-isort}所示。
+其中索引$i$的范围是从1到$n = |A|$。只含有一个元素的子数组$[A[1]]$是已序的，因此我们从第二个元素开始插入。当处理第$i$个元素时，所有$i$之前的元素是已序的。我们不断降为排序的元素插入，如图\ref{fig:in-place-isort}所示。
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.8]{img/in-place-sort.ps}
-  \caption{左侧元素的顺序已经排好，不断将元素插入已序部分}
+  \caption{不断将元素插入已序部分}
   \label{fig:in-place-isort}
 \end{figure}
 
-这一过程中明显存在递归，因此可以表达为如下函数：
-
-\be
-sort(A) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & A = \phi \\
-  insert(sort(\{a_2, a_3, ...\}), a_1) & otherwise
-  \end{array}
-\right.
-\ee
-
-% ================================================================
-% Insertion
-% ================================================================
 \section{插入}
 \index{插入排序!插入}
 
-我们尚未回答如何进行插入。人们还无法确切知道，大脑是如何在一手牌中快速找到插入位置的。
-
-使用计算机，我们可以通过扫描找到插入位置。扫描时可以从左向右或者从右向左。但如果序列是用数组存储的，就必须从右向左进行扫描。
+第一章给出了列表的插入算法。对于数组，也可以通过逐一检查找到插入位置。检查可以从左向右或者从右向左。下面的实现是从右向左进行检查的：
 
 \begin{algorithmic}[1]
 \Function{Sort}{$A$}
   \For{$i \gets 2$ to $|A|$}
-    \Comment{Insert $A[i]$ to sorted sequence $A[1...i-1]$}
-    \State $x \gets A[i]$
+    \Comment{Insert $A[i]$ to $A[1...(i-1)]$}
+    \State $x \gets A[i]$ \Comment{将$A[i]$保存到$x$}
     \State $j \gets i-1$
-    \While{$j > 0 \land x < A[j]$ }
+    \While{$j > 0$ and $x < A[j]$ }
       \State $A[j+1] \gets A[j]$
       \State $j \gets j - 1$
     \EndWhile
@@ -114,7 +97,7 @@ sort(A) = \left \{
 \EndFunction
 \end{algorithmic}
 
-有读者认为从左向右更加自然，但是这样性能上会差很多。在数组中的任意位置插入元素是一个比较费时的操作。由于数组是连续存储元素的，如果需要在第$i$个位置插入元素$x$，我们需要把所有$i$后面的元素，包括第$i+1$、第$i+2$……都向右移动（shift）。之后，第$i$个位置才能空出来用以插入$x$。图\ref{fig:array-shift}描述了这一过程。
+由于数组是连续存储的，在某一位置插入元素是一个代价较高的操作。若在第$i$个位置插入元素$x$，需要把$i$后面的所有元素（包括$A[i+1]$、$A[i+2]$……）都向右移动一个位置。将第$i$个位置空出以放入$x$。如图\ref{fig:array-shift}所示。
 
 \begin{figure}[htbp]
   \centering
@@ -123,77 +106,23 @@ sort(A) = \left \{
   \label{fig:array-shift}
 \end{figure}
 
-从左向右扫描时，如果数组的长度为$n$，插入位置为$i$，我们需要扫描前面$i$个元素，然后进行$n-i+1$次移动，最后将$x$插入到第$i$个位置。也就是说，从左向右扫描会遍历整个数组。相反，如果从右向左扫描，我们最多只需要检查$i$个元素，并且一边扫描一边将元素向右移动。
-
-下面的Python例子程序实现了上述算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def isort(xs):
-    n = len(xs)
-    for i in range(1, n):
-        x = xs[i]
-        j = i - 1
-        while j >= 0 and x < xs[j]:
-            xs[j+1] = xs[j]
-            j = j - 1
-        xs[j+1] = x
-\end{lstlisting}
-
-这一实现也存在一些变形，例如下面C语言的例子程序。它的操作次数比之前给出的方法要多一些。
-
-\lstset{language=C}
-\begin{lstlisting}
-void isort(Key* xs, int n) {
-    int i, j;
-    for(i=1; i<n; ++i)
-        for(j=i-1; j>=0 && xs[j+1] < xs[j]; --j)
-            swap(xs, j, j+1);
-}
-\end{lstlisting}
-
-这是因为交换函数\texttt{swap}通常需要一个中间变量，如下：
-
-\begin{lstlisting}
-void swap(Key* xs, int i, int j) {
-    Key temp = xs[i];
-    xs[i] = xs[j];
-    xs[j] = temp;
-}
-\end{lstlisting}
-
-若内循环的次数为$m$，上述C程序总共需要$3m$次赋值操作，而我们给出的算法及其Python实现使用shift来代替swap，它只需要$m+2$次赋值操作。
-
-我们也可以提供单独的\textproc{Insert}()函数，然后在插入算法中调用它。我们略过这些细节，读者可以作为练习尝试这些不同的实现。
-
-尽管有这些实现上的差异，从左向右也好，从右向左也好，所有这些插入算法的复杂度都是$O(n)$的，其中$n$为序列的长度。因此插入排序的总体复杂度为$O(n^2)$。
+若数组的长度为$n$，比较$x$和前$i$个元素后，定位到了插入位置。接下来需要将剩余的$n - i + 1$的元素向后移动，再将$x$放入第$i$个位置。整体上看，我们从左向右遍历的整个数组。另一方面，如果从右向左处理，则需要检查$n - i + 1$个元素，并执行相同数量的移动操作。我们也可以定义一个单独的\textproc{Insert}()函数，并在循环中调用。无论是从左向右或从右向左处理，插入操作需要线性时间，因此插入排序的总体复杂度为$O(n^2)$，其中$n$是元素的个数。
 
 \begin{Exercise}
-
-\begin{itemize}
-\item 定义单独的插入函数，并在通用的插入排序算法中调用它。请尝试用命令式的方式和函数式的方式给出不同的实现。
-\end{itemize}
-
+\Question{实现从左向右处理的插入操作。}
+\Question{定义单独的插入函数以实现插入排序。}
 \end{Exercise}
 
-% ================================================================
-% Improvement 1
-% ================================================================
-
-\section{改进一，二分查找}
+\section{二分查找}
 \index{插入排序!二分查找}
 
-人的大脑是如何快速在一手牌中找到插入位置的？答案明显不是逐一扫描。任何时刻，我们手中的牌都是已序的，因此我们可以用二分查找来搜索插入位置。
-
-我们将在后面的章节中专门详细讨论搜索算法。本节仅仅对二分查找做一个简单介绍。
-
-下面的排序算法改为调用二分查找来确定插入位置：
+在玩扑克牌的时候，人们并不是逐一比较找到插入位置的。我们之所以能快速定位，是因为手中的牌在任何时刻都是已序的。二分查找是一种在已序序列中快速定位的方法。
 
 \begin{algorithmic}[1]
 \Function{Sort}{$A$}
   \For{$i \gets 2$ to $|A|$}
     \State $x \gets A[i]$
-    \State $p \gets $ \Call{Binary-Search}{$A[1...i-1], x$}
+    \State $p \gets $ \Call{Binary-Search}{$x, A[1...(i-1)]$}
     \For{$j \gets i$ down to $p$}
       \State $A[j] \gets A[j-1]$
     \EndFor
@@ -202,18 +131,15 @@ void swap(Key* xs, int i, int j) {
 \EndFunction
 \end{algorithmic}
 
-我们不再逐一扫描元素，考虑数组中的片断$\{A[1], ..., A[i-1] \}$已经有序了。假设它们是单调增的，我们需要找到一个位置$j$使得$A[j-1] \leq x \leq A[j]$。我们可以先检查中间的元素$A[\lfloor i/2 \rfloor]$。如果$x$比它小，我们需要接下来递归地在前一半序列进行二分查找；否则我们需要查找后一半序列。
-
-由于我们每次都排除掉一半元素，所以这一过程需要$O(\lg n)$的时间来找到插入位置。
+二分查找时，数组中的片断$A[1...(i-1)]$是有序的。不失一般性，设其为单调增（可以定义抽象的$\leq$）。我们需要找到一个位置$j$使得$A[j-1] \leq x \leq A[j]$。我们先用$x$和中间位置的元素$A[m]$比较，其中$m = \lfloor \dfrac{i}{2} \rfloor$。如果$x < A[m]$，则递归地在前一半序列中二分查找；否则查找后一半序列。由于每次都排除掉一半元素，二分查找需要$O(\lg i)$的时间定位到插入点。
 
 \begin{algorithmic}[1]
-\Function{Binary-Search}{$A, x$}
-  \State $l \gets 1$
-  \State $u \gets 1+|A|$
+\Function{Binary-Search}{$x, A$}
+  \State $l \gets 1, u \gets 1+|A|$
   \While{$l < u$}
-    \State $m \gets \lfloor \frac{l+u}{2} \rfloor$
+    \State $m \gets \lfloor \dfrac{l+u}{2} \rfloor$
     \If{$A[m] = x$}
-      \State \Return $m$ \Comment{找到一个重复元素}
+      \State \Return $m$ \Comment{重复元素}
     \ElsIf{$A[m] < x$}
       \State $l \gets m+1$
     \Else
@@ -224,174 +150,71 @@ void swap(Key* xs, int i, int j) {
 \EndFunction
 \end{algorithmic}
 
-这一改进并不能提高插入排序的复杂度，结果仍然是$O(n^2)$。此前的算法进行了$O(n^2)$次比较和$O(n^2)$次移动，使用二分查找后，比较次数变成了$O(n \lg n)$，但是移动次数还是$O(n^2)$。
-
-下面的Python例子程序实现了这一改进。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def isort(xs):
-    n = len(xs)
-    for i in range(1, n):
-        x = xs[i]
-        p = binary_search(xs[:i], x)
-        for j in range(i, p, -1):
-            xs[j] = xs[j-1]
-        xs[p] = x
-
-def binary_search(xs, x):
-    l = 0
-    u = len(xs)
-    while l < u:
-        m = (l+u)/2
-        if xs[m] == x:
-            return m
-        elif xs[m] < x:
-            l = m + 1
-        else:
-            u = m
-    return l
-\end{lstlisting}
+这一改进并不能提高插入排序的整体复杂度，结果仍然是$O(n^2)$。逐一比较的插入排序需要$O(n^2)$次比较和$O(n^2)$次移动；使用二分查找后，比较次数提高到了$O(n \lg n)$，但移动次数还是$O(n^2)$。
 
 \begin{Exercise}
-使用递归来实现二分查找。编程语言不必限定为函数式的。
+\Question{使用递归实现二分查找。}
 \end{Exercise}
 
-% ================================================================
-% Improvement 2
-% ================================================================
+\section{列表}
+\index{插入排序!列表插入排序}
 
-\section{改进二，使用链表}
-\index{插入排序!链表插入排序}
-
-虽然我们通过二分查找，将搜索插入位置的时间降低为$O(n \lg n)$，但是移动元素的时间仍然是$O(n^2)$的。由于序列是使用数组存储的，我们无法避免这个耗时的操作。数组在内存中连续存储元素，插入操作必然需要通过连续的移动以空出位置。我们也可以尝试用链表来存储序列，这样插入操作就可以由线性时间$O(n)$提高到常数时间$O(1)$。
+二分查找将搜索时间降低到$O(n \lg n)$，但由于要依次移动数组中的元素，整体复杂度仍然是$O(n^2)$。另一方面，使用列表存储元素时，一旦获取了插入位置的引用，插入操作本身是常数时间的。在第一章中，我们定义了如下的列表插入排序算法：
 
 \be
-  insert(A, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ x \} & A = \phi \\
-  \{ x \} \cup A & x < a_1 \\
-  \{ a_1 \} \cup insert(\{ a_2, a_3, ... a_n\}, x)& otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+sort(\nil) & = & \nil \\
+sort(x:xs) & = & insert(x, sort(xs)) \\
+\end{array}
 \ee
 
-这一算法可以翻译为下面的Haskell例子程序。
+或使用$fold_l$的柯里化形式：
 
-\begin{lstlisting}[style=Haskell]
-insert [] x = [x]
-insert (y:ys) x = if x < y then x:y:ys else y:insert ys x
-\end{lstlisting}
+\be
+sort = fold_l(insert, \nil)
+\ee
 
-本章开头部分给出的插入排序定义，可以通过调用这一函数来完成。
+由于需要遍历，列表的$insert$算法仍是线性时间的：
 
-\begin{lstlisting}[style=Haskell]
-isort [] = []
-isort (x:xs) = insert (isort xs) x
-\end{lstlisting}
+\be
+\begin{array}{rcl}
+insert(x,\ \nil) & = & [x] \\
+insert(x,\ y : ys) & = & \begin{cases}
+  x \leq y : & x : y : ys \\
+  otherwise : & y : insert(x, ys) \\
+  \end{cases}
+\end{array}
+\ee
 
-或者用fold来实现：
-
-\begin{lstlisting}[style=Haskell]
-isort = foldl insert []
-\end{lstlisting}
-
-我们也可以用命令式方式实现链表的插入排序。令函数\textproc{Key}($x$)返回节点$x$存储的元素，函数\textproc{Next}($x$)用以访问链表中的下一个节点。
-
-\begin{algorithmic}[1]
-\Function{Insert}{$L, x$}
-  \State $p \gets$ NIL
-  \State $H \gets L$
-  \While{$L \neq$ NIL $\land $ \Call{Key}{$L$} $<$ \Call{Key}{$x$}}
-    \State $p \gets L$
-    \State $L \gets $ \Call{Next}{$L$}
-  \EndWhile
-  \State \Call{Next}{$x$} $\gets L$
-  \If{$p =$ NIL}
-    \State $H \gets x$
-  \Else
-    \State \Call{Next}{$p$} $\gets x$
-  \EndIf
-  \State \Return $H$
-\EndFunction
-\end{algorithmic}
-
-下面的C语言例子代码定义了链表的节点：
-
-\lstset{language=C}
-\begin{lstlisting}
-struct node {
-    Key key;
-    struct node* next;
-};
-\end{lstlisting}
-
-根据此定义，插入程序可以实现如下：
-
-\begin{lstlisting}
-struct node* insert(struct node* lst, struct node* x) {
-    struct node *p, *head;
-    p = NULL;
-    for(head = lst; lst && x->key > lst->key; lst = lst->next)
-        p = lst;
-    x->next = lst;
-    if(!p)
-        return x;
-    p->next = x;
-    return head;
-}
-\end{lstlisting}
-
-我们也可以不用基于指针或者引用的数据结构，而通过另一个索引数组来实现链表。对于任何数组元素$A[i]$，$Next[i]$保存了$A[i]$下一个元素的索引。也就是说$A[Next[i]]$是$A[i]$的下一个元素。我们还需要一个变量来记录链表的表头。即索引$i_0$是的$A[i_0]$是链表中的第一个元素。我么可以使用$Next[\perp] = i_0$来代表这一特殊变量。
-
-利用这种索引链表，插入算法可以定义如下：
+也可以不使用节点引用，而通过另一个索引数组来实现链表。对任何元素$A[i]$，$Next[i]$保存了$A[i]$之后下一个元素的索引。也就是说$A[Next[i]]$是$A[i]$的下一个元素。其中有两个特殊索引：对于列表的末尾元素$A[m]$，定义$Next[m] = -1$，表示其指向NIL；此外定义$Next[0]$指向列表的头部。利用索引数组，我们定义插入算法如下：
 
 \begin{algorithmic}[1]
 \Function{Insert}{$A, Next, i$}
-  \State $j \gets \perp$
-  \While{$Next[j] \neq$ NIL $\land A[Next[j]] < A[i]$}
+  \State $j \gets 0$ \Comment{$Next[0]$ for head}
+  \While{$Next[j] \neq -1$ and $A[Next[j]] < A[i]$}
     \State $j \gets Next[j]$
   \EndWhile
   \State $Next[i] \gets Next[j]$
   \State $Next[j] \gets i$
 \EndFunction
+\Statex
+\Function{Sort}{$A$}
+  \State $n \gets |A|$
+  \State $Next = [1, 2, ..., n, -1]$ \Comment{$n + 1$ indexes}
+  \For{$i \gets 1$ to $n$}
+    \State \Call{Insert}{$A, Next, i$}
+  \EndFor
+  \State \Return $Next$
+\EndFunction
 \end{algorithmic}
 
-其中$\perp$表示索引表$Next$的头部。$Next[\perp]$给出了$A$中哪个元素是链表的表头。当实现这一算法时，我们可以在数组$A$的长度之上，再多给$Next$数组申请一个额外元素，并使用$Next$数组的最后一个元素来记录表头的索引。
-
-下面的Python例子程序实现了索引链表的插入排序。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def isort(xs):
-    n = len(xs)
-    next = [-1]*(n+1)
-    for i in range(n):
-        insert(xs, next, i)
-    return next
-
-def insert(xs, next, i):
-    j = -1
-    while next[j] != -1 and xs[next[j]] < xs[i]:
-        j = next[j]
-    next[j], next[i] = i, next[j]
-\end{lstlisting}
-
-虽然使用链表后，插入操作降低为常数时间。但是我们必须遍历链表才能找到合适的插入位置。整个排序算法需要进行$O(n^2)$次比较。与数组不同，链表不支持随机访问（random access），我们不能利用二分查找在链表中搜索插入位置。
+使用链表，尽管在引用位置进行插入只需要常数时间，但必须遍历才能找到插入位置。整体仍需要$O(n^2)$次比较。与数组不同，列表不支持随机访问，不能利用二分查找提升定位速度。
 
 \begin{Exercise}
-\begin{itemize}
-\item 选择一种命令式编程语言，实现完整的链表插入排序算法。
-\item 使用索引数组链表，排序结果是一个重新排列的索引。给出一个方法，根据新的索引，重新排列数组元素。
-\end{itemize}
+\Question{使用索引数组，排序结果是一个重新排列的索引。给出一个方法，根据新的索引$Next$，重新排列数组$A$。}
 \end{Exercise}
 
-% ================================================================
-% Final improvement
-% ================================================================
-
-\section{使用二叉搜索树的最终改进}
+\section{二叉搜索树}
 \index{插入排序!二叉搜索树}
 
 我们似乎钻进了死胡同：必须同时提高查找的速度和插入的速度，单独提高其中的一个仍然会保持$O(n^2)$的复杂度。
