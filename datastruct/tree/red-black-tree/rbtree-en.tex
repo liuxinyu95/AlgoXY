@@ -261,7 +261,7 @@ The idea of red-black tree $insert$ algorithm contains two steps. The first step
   \label{fig:insert-fix}
 \end{figure}
 
-All 4 transformations move the redness one level up. When perform bottom-up recursive fixing, the last step will re-color the root as red. While rule 2 requires the root always be black. We need revert the root back to black finally. By using pattern matching, we can define a $balance$ function to fix the red-black tree. Denote the color as $\mathcal{C}$ with values black $\mathcal{B}$, and red $\mathcal{R}$. A none empty node is present as $T = (\mathcal{C}, T_l, k, T_r)$.
+All 4 transformations move the redness one level up. When perform bottom-up recursive fixing, the last step will re-color the root as red. While rule 2 requires the root always be black. We need revert the root back to black finally. By using pattern matching, we can define a $balance$ function to fix the red-black tree. Denote the color as $\mathcal{C}$ with values black $\mathcal{B}$, and red $\mathcal{R}$. A none empty node is present as $T = (\mathcal{C}, l, k, r)$.
 
 \be
 \begin{array}{rcl}
@@ -284,17 +284,17 @@ where
 \be
 \begin{array}{rcl}
 ins\ \nil\ k & = & (\mathcal{R}, \nil, k, \nil) \\
-ins\ (\mathcal{C}, T_l, k', T_r)\ k & = & \begin{cases}
-  k < k': & balance((ins(T_l, k), k', T_r)) \\
-  k > k': & balance((T_l, k', ins(T_r, k))) \\
+ins\ (\mathcal{C}, l, k', r)\ k & = & \begin{cases}
+  k < k': & balance((ins(l, k), k', r)) \\
+  k > k': & balance((l, k', ins(r, k))) \\
   \end{cases}
 \end{array}
 \ee
 
-If the tree is empty, we create a red leaf of $k$; otherwise, let the sub-trees and the key be $T_l$, $T_r$, $k'$, we compare $k$ and $k'$, then recursively insert $k$ to a sub-tree. After that, we call $balance$ to fix the coloring, then force the root to be black finally.
+If the tree is empty, we create a red leaf of $k$; otherwise, let the sub-trees and the key be $l$, $r$, $k'$, we compare $k$ and $k'$, then recursively insert $k$ to a sub-tree. After that, we call $balance$ to fix the coloring, then force the root to be black finally.
 
 \be
-makeBlack\ (\mathcal{C}, T_l, k, T_r) = (\mathcal{B}, T_l, k, T_r)
+makeBlack\ (\mathcal{C}, l, k, r) = (\mathcal{B}, l, k, r)
 \ee
 
 Below is the corresponding example program:
@@ -327,189 +327,81 @@ We skip to handle the duplicated keys. If the key to be inserted already exists,
   \label{fig:insert-example}
 \end{figure}
 
-This algorithm shows great simplicity by summarizing the uniform pattern
-from the four different unbalanced cases. It is expressive over
-the traditional tree rotation approach, that even in programming languages
-which don't support pattern matching, the algorithm can still be
-implemented by manually check the pattern. A Scheme/Lisp program
-is available along with this book can be referenced as an example.
-
-The insertion algorithm takes $O(\lg n)$ time to insert a key to
-a red-black tree which has $n$ nodes.
+The algorithm performs top-down recursive insertion and fixing. It is bound to $O(h)$ time, where $h$ is the height of the tree. As the red-black tree coloring rules are maintained, $h$ is the logarithm to the number of nodes $n$. The overall performance is $O(\lg n)$.
 
 \begin{Exercise}
-
-\begin{itemize}
-\item Write a program in an imperative language, such as
-C, C++ or python to realize the same algorithm in this
-section. Note that, because there is no language supported
-pattern matching, you need to test the 4 different cases
-manually.
-\end{itemize}
-
+\Question{Implement the $insert$ algorithm without using pattern matching, but test the 4 cases separately.}
 \end{Exercise}
 
-% ================================================================
-%                 Deletion
-% ================================================================
+\section{Delete}
+\index{red-black tree!delete}
 
-\section{Deletion}
-\index{red-black tree!deletion}
+Delete is more complex than insert. Sometimes, we only need build the read-only tree, then offer it for frequently looking up\cite{okasaki-blog}. We'll show that it's possible to implement red-black tree $delete$ algorithm in purely functional way\footnote{Actually, the tree is rebuilt, although the common part is reused. This feature is called `persist'}. There are alternatives to mimic delete. For example, mark the deleted node with a flag, and later rebuild the tree when the number of deleted nodes exceeds 50\%. Delete may also violate the red-black tree coloring rules. We use the same idea to apply fixing after binary search tree delete. The coloring violation only happens when delete a black node, according to rule 5. The black nodes along the path decreases by one, hence not all paths contain the same number of black nodes.
 
-Remind the deletion section in binary search tree. Deletion is
-`imperative only' for red-black tree as well. In many cases,
-the tree is often built just one time, and then
-performs looking up frequently\cite{okasaki-blog}.
+To resume the blackness, we introduce a special `doubly-black' node(\cite{CLRS}, pp290). One such node is counted as 2 black nodes. When delete a black node $x$, we can move the blackness either up to its parent node or down to one sub-tree. Let this node be $y$ that accepts the blackness. If $y$ was red, we turn it black; if $y$ was already black, we make it `doubly-black' (denoted as $\mathcal{B}^2$). Below example program adds the `doubly-black' support:
 
-The purpose of this section is to show that red-black
-tree deletion is possible in purely functional settings,
-although it actually rebuilds the tree because trees are
-read only in terms of purely functional data structure\footnote{Actually, the common part of the tree is reused. Most functional programming environments support this persistent feature.}.
-In real world, it's up to the user (i.e. the
-programmer) to adopt the proper solution. One option is to mark
-the node be deleted with a flag, and later rebuild the tree
-when the number of deleted nodes exceeds 50\%.
-
-Deletion is more complex than insertion in both functional and
-imperative settings, as there are more cases to fix.
-Deletion may also violate the red black tree properties,
-so we need fix it after the normal deletion as described
-in binary search tree.
-
-The problem only happens if you try to
-delete a black node, because it will violate the last property
-of red-black tree. The number of black
-node in the path decreases so not all the paths contain the
-same number of black node.
-
-When delete a black node, we can resume the last red-black property
-by introducing a 'doubly-black' concept(\cite{CLRS}, pp290). It means
-that the although the node is deleted, the blackness is kept
-by storing it in the parent node. If the parent node is red,
-it turns to black, However, if it's already black, it
-turns to `doubly-black'.
-
-In order to express the 'doubly-black node', The definition
-need some modification accordingly.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-data Color = R | B | BB -- BB: doubly black for deletion
-data RBTree a = Empty | BBEmpty -- doubly black empty
+\begin{Haskell}
+data Color = R | B | BB
+data RBTree a = Empty | BBEmpty
               | Node Color (RBTree a) a (RBTree a)
-\end{lstlisting}
+\end{Haskell}
 
-When deleting a node, we first perform the same binary search tree deleting
-algorithm. After that, if the node to be sliced out is black, we
-need fix the tree to keep the red-black properties. The
-delete function is defined as the following.
+Because the empty leaves are all black, when push the blackness down to a leaf, it become `doubly-black' empty (\texttt{BBEmpty}). The first step to delete a node is to perform the normal binary search tree delete; then next, if the sliced out node is black, we move the blackness, and fix the red-black tree coloring.
 
 \be
-delete(T, k) = blackenRoot(del(T, k))
+delete = makeBlack \circ del
 \ee
 
-where
+This is in Curried form. When delete the only element from the tree, it becomes empty. To cover this case, we modify $makeBlack$ as below:
 
 \be
-del(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & T = \phi \\
-  fixBlack^2((\mathcal{C}, del(T_l, k), k', T_r)) & k < k' \\
-  fixBlack^2((\mathcal{C}, T_l, k', del(T_r, k))) & k > k' \\
-  \left \{
-    \begin{array}{r@{\quad:\quad}l}
-    mkBlk(T_r) & \mathcal{C} = \mathcal{B} \\
-    T_r & otherwise
-    \end{array}
-  \right. & T_l = \phi \\
-  \left \{
-    \begin{array}{r@{\quad:\quad}l}
-    mkBlk(T_l) & \mathcal{C} = \mathcal{B} \\
-    T_l & otherwise
-    \end{array}
-  \right.  & T_r = \phi \\
-  fixBlack^2((\mathcal{C}, T_l, k'', del(T_r, k''))) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+makeBlack\ \nil & = & \nil \\
+makeBlack\ (\mathcal{C}, l, k, r) & = & (\mathcal{B}, l, k, r) \\
+\end{array}
 \ee
 
-The real deleting happens inside function $del$.
-For the trivial case, that the tree is empty, the deletion
-result is $\phi$; If the key to be deleted is less
-than the key of the current node, we recursively
-perform deletion on its left sub-tree; if it is bigger
-than the key of the current node, then we recursively
-delete the key from the right sub-tree; Because it
-may bring doubly-blackness, so we need fix it.
-
-If the key to be deleted is equal to the key of the
-current node, we need splice it out. If one of its
-children is empty, we just replace the node by
-the other one and reserve the blackness of this
-node. otherwise we cut and past the minimum
-element $k''=min(T_r)$ from the right sub-tree.
-
-Function $delete$ just forces the result tree of $del$
-to have a black root. This is realized by function
-$blackenRoot$.
+Where $del$ accepts the tree and the element $k$ to be delete:
 
 \be
-blackenRoot(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & T = \phi \\
-  (\mathcal{B}, T_l, k, T_r) & otherwise \\
-  \end{array}
-\right .
+\begin{array}{rcl}
+del\ \nil\ k & = & \nil \\
+del\ (\mathcal{C}, l, k', r)\ k & = & \begin{cases}
+  k < k': & fixB^2(\mathcal{C}, (del\ l\ k), k', r) \\
+  k > k': & fixB^2(\mathcal{C}, l, k', (del\ r\ k)) \\
+  k = k': & \begin{cases}
+    l = \nil: & (\mathcal{C} = \mathcal{B} \mapsto shiftB\ r, r) \\
+    r = \nil: & (\mathcal{C} = \mathcal{B} \mapsto shiftB\ l, l) \\
+    else: & fixB^2(\mathcal{C}, l, k'', (del\ r\ k'')) \\
+    & \text{where}\ k'' = min(r) \\
+  \end{cases}
+\end{cases}
+\end{array}
 \ee
 
-The $blackenRoot(T)$ function is almost same as the $makeBlack(T)$ function defined for insertion
-except for the case of empty tree. This is only valid in
-deletion, because insertion can't result an empty tree,
-while deletion may.
+When the tree is empty, the result is $\nil$; otherwise, we compare the key $k'$ in the tree with $k$. If $k < k'$, we recursively
+delete $k$ from the left sub-tree; if $k > k'$ then delete from the right. Because the recursive result may contain doubly-black node, we need apply $fixB^2$ to fix it. When $k = k'$, we need splice it out. If either sub-tree is empty, we replace it with the other sub-tree, then shift the blackness if the spliced node is black. This is represented with McCarthy form $(p \mapsto a, b)$, which is equivalent to `(if $p$ then $a$ else $b$)'. If neither sub-tree is empty, we cut the minimum element $k'' = min(r)$, and use $k''$ to replace $k$.
 
-Function $mkBlk$ is defined to reserved the blackness
-of a node. If the node to be sliced isn't black, this function
-won't be applied, otherwise, it turns a red node to black
-and turns a black node to doubly-black. This function
-also marks an empty tree $\phi$ to doubly-black empty $\Phi$.
+To reserve the blackness, $shiftBlack$ makes a black node doubly-black, and forces it black for all other cases (it flips doubly-black to normal black when applied twice). Below is the example program (except the doubly-black fixing part).
 
-\be
-mkBlk(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \Phi & T = \phi \\
-  (\mathcal{B}, T_l, k, T_r) & \mathcal{C} = \mathcal{R} \\
-  (\mathcal{B}^2, T_l, k, T_r) & \mathcal{C} = \mathcal{B} \\
-  T & otherwise
-  \end{array}
-\right .
-\ee
-
-where $\mathcal{B}^2$ denotes the doubly-black color.
-
-Summarizing the above functions yields the following Haskell
-program.
-
-\begin{lstlisting}
-delete t x = blackenRoot(del t x) where
+\begin{Haskell}
+delete :: (Ord a) => RBTree a -> a -> RBTree a
+delete t k = makeBlack $ del t k where
     del Empty _ = Empty
-    del (Node color l k r) x
-        | x < k = fixDB color (del l x) k r
-        | x > k = fixDB color l k (del r x)
-        -- x == k, delete this node
-        | isEmpty l = if color==B then makeBlack r else r
-        | isEmpty r = if color==B then makeBlack l else l
-        | otherwise = fixDB color l k' (del r k') where k'= min r
-    blackenRoot (Node _ l k r) = Node B l k r
-    blackenRoot _ = Empty
+    del (Node color l k' r) k
+        | k < k' = fixDB color (del l k) k' r
+        | k > k' = fixDB color l k' (del r k)
+        | isEmpty l = if color == B then shiftBlack r else r
+        | isEmpty r = if color == B then shiftBlack l else l
+        | otherwise = fixDB color l k'' (del r k'') where k''= min r
+    makeBlack (Node _ l k r) = Node B l k r
+    makeBlack _ = Empty
 
-makeBlack (Node B l k r) = Node BB l k r -- doubly black
-makeBlack (Node _ l k r) = Node B l k r
-makeBlack Empty = BBEmpty
-makeBlack t = t
-\end{lstlisting}
+shiftBlack (Node B l k r) = Node BB l k r
+shiftBlack (Node _ l k r) = Node B  l k r
+shiftBlack Empty = BBEmpty
+shiftBlack t = t
+\end{Haskell}
 
 The final attack to the red-black tree deletion algorithm is to
 realize the $fixBlack^2$ function. The purpose of this function

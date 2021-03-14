@@ -22,7 +22,7 @@ import Test.QuickCheck
 import qualified Data.List as L -- for verification purpose only
 import Prelude hiding (min)
 
-data Color = R | B | BB deriving (Show, Eq) -- BB is doubly black, used for deletion
+data Color = R | B | BB deriving (Show, Eq) -- BB is doubly black for deletion
 data RBTree a = Empty
               | Node Color (RBTree a) a (RBTree a)
               | BBEmpty -- doubly black empty
@@ -49,7 +49,7 @@ insert t x = makeBlack $ ins t where  --[1]
 [1]: Always set the root color as black;
 [2]: new node is inserted as a red leaf,
      to reserve property 1, 3, 5, only property 2, 4 may be violated
-[3]: All keys should be indentical -}
+[3]: All keys should be identical -}
 
 -- Core function for insert, to make the tree balanced after insertion.
 -- refer to paper of [Chris Okasaki]
@@ -60,37 +60,35 @@ balance B a x (Node R b y (Node R c z d)) = Node R (Node B a x b) y (Node B c z 
 balance B a x (Node R (Node R b y c) z d) = Node R (Node B a x b) y (Node B c z d) -- case 4
 balance color l k r = Node color l k r
 
-
-delete::(Ord a)=>RBTree a -> a -> RBTree a
-delete t x = blackenRoot (del t x) where
+delete :: (Ord a) => RBTree a -> a -> RBTree a
+delete t x = makeBlack $ del t x where
     del Empty _ = Empty
     del (Node color l k r) x
         | x < k = fixDB color (del l x) k r
         | x > k = fixDB color l k (del r x)
         -- x == k, delete this node
-        | isEmpty l = if color==B then makeBlack r else r
-        | isEmpty r = if color==B then makeBlack l else l
+        | isEmpty l = if color == B then shiftBlack r else r
+        | isEmpty r = if color == B then shiftBlack l else l
         | otherwise = fixDB color l k' (del r k') where k'= min r
-    blackenRoot (Node _ l k r) = Node B l k r
-    blackenRoot _ = Empty
+    makeBlack (Node _ l k r) = Node B l k r
+    makeBlack _ = Empty
 
-makeBlack::RBTree a -> RBTree a
-makeBlack (Node B l k r) = Node BB l k r -- doubly black
-makeBlack (Node _ l k r) = Node B l k r
-makeBlack Empty = BBEmpty
-makeBlack t = t
+shiftBlack (Node B l k r) = Node BB l k r -- doubly black
+shiftBlack (Node _ l k r) = Node B  l k r
+shiftBlack Empty = BBEmpty
+shiftBlack t = t
 
 -- Core function for delete, to solve the uniform black height violation.
 -- refer to CLRS
 fixDB::Color -> RBTree a -> a -> RBTree a -> RBTree a
 -- the sibling is black, and it has one red child (CLRS case 3, 4)
-fixDB color a@(Node BB _ _ _) x (Node B (Node R b y c) z d) = Node color (Node B (makeBlack a) x b) y (Node B c z d)
+fixDB color a@(Node BB _ _ _) x (Node B (Node R b y c) z d) = Node color (Node B (shiftBlack a) x b) y (Node B c z d)
 fixDB color BBEmpty x (Node B (Node R b y c) z d) = Node color (Node B Empty x b) y (Node B c z d)
-fixDB color a@(Node BB _ _ _) x (Node B b y (Node R c z d)) = Node color (Node B (makeBlack a) x b) y (Node B c z d)
+fixDB color a@(Node BB _ _ _) x (Node B b y (Node R c z d)) = Node color (Node B (shiftBlack a) x b) y (Node B c z d)
 fixDB color BBEmpty x (Node B b y (Node R c z d)) = Node color (Node B Empty x b) y (Node B c z d)
-fixDB color (Node B a x (Node R b y c)) z d@(Node BB _ _ _) = Node color (Node B a x b) y (Node B c z (makeBlack d))
+fixDB color (Node B a x (Node R b y c)) z d@(Node BB _ _ _) = Node color (Node B a x b) y (Node B c z (shiftBlack d))
 fixDB color (Node B a x (Node R b y c)) z BBEmpty = Node color (Node B a x b) y (Node B c z Empty)
-fixDB color (Node B (Node R a x b) y c) z d@(Node BB _ _ _) = Node color (Node B a x b) y (Node B c z (makeBlack d))
+fixDB color (Node B (Node R a x b) y c) z d@(Node BB _ _ _) = Node color (Node B a x b) y (Node B c z (shiftBlack d))
 fixDB color (Node B (Node R a x b) y c) z BBEmpty = Node color (Node B a x b) y (Node B c z Empty)
 -- the sibling is red (CLRS case 1)
 fixDB B a@(Node BB _ _ _) x (Node R b y c) = fixDB B (fixDB R a x b) y c
@@ -98,10 +96,10 @@ fixDB B a@BBEmpty x (Node R b y c) = fixDB B (fixDB R a x b) y c
 fixDB B (Node R a x b) y c@(Node BB _ _ _) = fixDB B a x (fixDB R b y c)
 fixDB B (Node R a x b) y c@BBEmpty = fixDB B a x (fixDB R b y c)
 -- the sibling and its 2 children are all black, propagate the blackness up (CLRS case 2)
-fixDB color a@(Node BB _ _ _) x (Node B b y c) = makeBlack (Node color (makeBlack a) x (Node R b y c))
-fixDB color BBEmpty x (Node B b y c) = makeBlack (Node color Empty x (Node R b y c))
-fixDB color (Node B a x b) y c@(Node BB _ _ _) = makeBlack (Node color (Node R a x b) y (makeBlack c))
-fixDB color (Node B a x b) y BBEmpty = makeBlack (Node color (Node R a x b) y Empty)
+fixDB color a@(Node BB _ _ _) x (Node B b y c) = shiftBlack (Node color (shiftBlack a) x (Node R b y c))
+fixDB color BBEmpty x (Node B b y c) = shiftBlack (Node color Empty x (Node R b y c))
+fixDB color (Node B a x b) y c@(Node BB _ _ _) = shiftBlack (Node color (Node R a x b) y (shiftBlack c))
+fixDB color (Node B a x b) y BBEmpty = shiftBlack (Node color (Node R a x b) y Empty)
 -- otherwise
 fixDB color l k r = Node color l k r
 
