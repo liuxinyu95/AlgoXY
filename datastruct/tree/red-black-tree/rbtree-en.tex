@@ -338,7 +338,7 @@ The algorithm performs top-down recursive insertion and fixing. It is bound to $
 
 Delete is more complex than insert. Sometimes, we only need build the read-only tree, then offer it for frequently looking up\cite{okasaki-blog}. We'll show that it's possible to implement red-black tree $delete$ algorithm in purely functional way\footnote{Actually, the tree is rebuilt, although the common part is reused. This feature is called `persist'}. There are alternatives to mimic delete. For example, mark the deleted node with a flag, and later rebuild the tree when the number of deleted nodes exceeds 50\%. Delete may also violate the red-black tree coloring rules. We use the same idea to apply fixing after binary search tree delete. The coloring violation only happens when delete a black node, according to rule 5. The black nodes along the path decreases by one, hence not all paths contain the same number of black nodes.
 
-To resume the blackness, we introduce a special `doubly-black' node(\cite{CLRS}, pp290). One such node is counted as 2 black nodes. When delete a black node $x$, we can move the blackness either up to its parent node or down to one sub-tree. Let this node be $y$ that accepts the blackness. If $y$ was red, we turn it black; if $y$ was already black, we make it `doubly-black' (denoted as $\mathcal{B}^2$). Below example program adds the `doubly-black' support:
+To resume the blackness, we introduce a special `doubly-black' node(\cite{CLRS}, pp290). One such node is counted as 2 black nodes. When delete a black node $x$, we can move the blackness either up to its parent node or down to one sub-tree. Let this node be $y$ that accepts the blackness. If $y$ was red, we turn it black; if $y$ was already black, we make it `doubly-black', denoted as $\mathcal{B}^2$. Below example program adds the `doubly-black' support:
 
 \begin{Haskell}
 data Color = R | B | BB
@@ -346,7 +346,7 @@ data RBTree a = Empty | BBEmpty
               | Node Color (RBTree a) a (RBTree a)
 \end{Haskell}
 
-Because the empty leaves are all black, when push the blackness down to a leaf, it become `doubly-black' empty (\texttt{BBEmpty}). The first step to delete a node is to perform the normal binary search tree delete; then next, if the sliced out node is black, we move the blackness, and fix the red-black tree coloring.
+Because the empty leaves are all black, when push the blackness down to a leaf, it become `doubly-black' empty (\texttt{BBEmpty}). We also denote it as $\pmb{\varnothing}$. The first step to delete a node is to perform the normal binary search tree delete; then next, if the sliced out node is black, we move the blackness, and fix the red-black tree coloring.
 
 \be
 delete = makeBlack \circ del
@@ -400,100 +400,51 @@ delete t k = makeBlack $ del t k where
 shiftBlack (Node B l k r) = Node BB l k r
 shiftBlack (Node _ l k r) = Node B  l k r
 shiftBlack Empty = BBEmpty
-shiftBlack t = t
+shiftBlack BBEmpty = Empty
 \end{Haskell}
 
-The final attack to the red-black tree deletion algorithm is to
-realize the $fixBlack^2$ function. The purpose of this function
-is to eliminate the `doubly-black' colored node by rotation and
-color changing. There are three cases. In every case, the doubly black
-node can either be normal node, or doubly black empty node $\Phi$.
-Let's examine these three cases one by one.
+The $fixB^2$ function eliminates the doubly-black node by rotation and re-coloring. The doubly-black node can be branch node or empty leaf. There are three cases:
 
-\subsection{The sibling of the doubly black node is black, and it has one red child}
+\textbf{Case 1}. The sibling of the doubly-black node is black, and it has a red sub-tree
 
-In this situation, we can fix the doubly-blackness with one rotation.
-Actually there are 4 different sub-cases, all of them can be transformed
-to one uniformed pattern. They are shown in the figure \ref{fig:del-case1}.
+We can fix this case with a rotation. There are 4 sub-cases, all can be transformed to a uniformed pattern, as shown in figure \ref{fig:del-case1}.
 
 \begin{figure}[htbp]
-   \centering
-   \includegraphics[scale=0.4]{img/del-case1.eps}
-   \caption{Fix the doubly black by rotation, the sibling of the doubly-black node is black, and it has one red child.} \label{fig:del-case1}
+  \centering
+  \includegraphics[scale=0.4]{img/del-case1.png}
+  \caption{4 sub-cases share the uniformed fixing pattern}
+  \label{fig:del-case1}
 \end{figure}
 
 The handling of these 4 sub-cases can be realized with pattern matching.
 
 \be
-fixBlack^2(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\mathcal{C}, (\mathcal{B}, mkBlk(A), x, B), y, (\mathcal{B}, C, z, D)) & p 1.1 \\
-  (\mathcal{C}, (\mathcal{B}, A, x, B), y, (\mathcal{B}, C, z, mkBlk(D))) & p 1.2 \\
-  \end{array}
-\right .
+\resizebox{\textwidth}{!}{\ensuremath{
+\begin{array}{lcl}
+\text{case 1.1 left:} & & \\
+fixB^2\ \mathcal{C}, A_{\mathcal{B}^2}, x, (\mathcal{B}, (\mathcal{R}, B, y, C), z, D) & = & (\mathcal{C}, (\mathcal{B}, shiftBlack(A_{\mathcal{B}^2}), x, B), y, (\mathcal{B}, C, z, D)) \\
+\text{case 1.1 right:} & & \\
+fixB^2\ \mathcal{C}, A_{\mathcal{B}^2}, x, (\mathcal{B}, B, y, (\mathcal{R}, C, z, D)) & = & (\mathcal{C}, (\mathcal{B}, shiftBlack(A_{\mathcal{B}^2}), x, B), y, (\mathcal{B}, C, z, D)) \\
+\text{case 1.2 left:} & & \\
+fixB^2\ \mathcal{C}, (\mathcal{B}, A, x, (\mathcal{R}, B, y, C)), z, D_{\mathcal{B}^2} & = & (\mathcal{C}, (\mathcal{B}, A, x, B), y, (\mathcal{B}, C, z, shiftBlack(D_{\mathcal{B}^2}))) \\
+\text{case 1.2 right:} & & \\
+fixB^2\ \mathcal{C}, (\mathcal{B}, (\mathcal{R}, A, x, B), y, C), z, D_{\mathcal{B}^2} & = & (\mathcal{C}, (\mathcal{B}, A, x, B), y, (\mathcal{B}, C, z, shiftBlack(D_{\mathcal{B}^2}))) \\
+\end{array}
+}}
 \label{eq:db-case-1}
 \ee
 
-where $p 1.1$ and $p 1.2$ each represent 2 patterns as the following.
+Where $A_{\mathcal{B}^2}$ means node $A$ is doubly-black, it can be doubly-black branch or empty $\pmb{\varnothing}$.
 
-\[
-p 1.1 : \left \{ \begin{array}{l}
-  T = (\mathcal{C}, A, x, (\mathcal{B}, (\mathcal{R}, B, y, C), z, D)) \land color(A) = \mathcal{B}^2 \\
-  \lor \\
-  T = (\mathcal{C}, A, x, (\mathcal{B}, B, y, (\mathcal{R}, C, z, D))) \land color(A) = \mathcal{B}^2
-  \end{array} \right \}
-\]
+\textbf{Case 2}. The sibling of the doubly-black is red
 
-\[
-p 1.2 : \left \{ \begin{array}{l}
-  T = (\mathcal{C}, (\mathcal{B}, A, x, (\mathcal{R}, B, y, C)), z, D) \land color(D) = \mathcal{B}^2 \\
-  \lor \\
-  T = (\mathcal{C}, (\mathcal{B}, (\mathcal{R}, A, x, B), y, C), z, D) \land color(D) = \mathcal{B}^2
-  \end{array} \right \}
-\]
-
-If the doubly black node is a doubly black empty node $\Phi$, it can be changed back to normal empty node after the above operation. We can add the doubly black empty node handling on top of the (\ref{eq:db-case-1}).
-
-\be
-fixBlack^2(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\mathcal{C}, (\mathcal{B}, mkBlk(A), x, B), y, (\mathcal{B}, C, z, D)) & p 1.1 \\
-  (\mathcal{C}, (\mathcal{B}, \phi, x, B), y, (\mathcal{B}, C, z, D)) & p 1.1' \\
-  (\mathcal{C}, (\mathcal{B}, A, x, B), y, (\mathcal{B}, C, z, mkBlk(D))) & p 1.2 \\
-  (\mathcal{C}, (\mathcal{B}, A, x, B), y, (\mathcal{B}, C, z, \phi)) & p 1.2' \\
-  \end{array}
-\right .
-\label{eq:db-case-1a}
-\ee
-
-Where patter $p 1.1'$ and $p 1.2'$ are defined as below:
-
-\[
-p 1.1' : \left \{ \begin{array}{l}
-  T = (\mathcal{C}, \Phi, x, (\mathcal{B}, (\mathcal{R}, B, y, C), z, D)) \\
-  \lor \\
-  T = (\mathcal{C}, \Phi, x, (\mathcal{B}, B, y, (\mathcal{R}, C, z, D)))
-  \end{array} \right \}
-\]
-
-\[
-p 1.2' : \left \{ \begin{array}{l}
-  T = (\mathcal{C}, (\mathcal{B}, A, x, (\mathcal{R}, B, y, C)), z, \Phi) \\
-  \lor \\
-  T = (\mathcal{C}, (\mathcal{B}, (\mathcal{R}, A, x, B), y, C), z, \Phi)
-  \end{array} \right \}
-\]
-
-\subsection{The sibling of the doubly-black node is red}
-In this case, we can rotate the tree to it to pattern $p 1.1$ or $p 1.2$.
-Figure \ref{fig:del-case2} shows about it.
+We can rotate the tree to case 1.1 or case 1.2, as shown in figure \ref{fig:del-case2}.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[scale=0.4]{img/del-case3.eps}
-  \caption{The sibling of the doubly-black node is red.} \label{fig:del-case2}
+  \includegraphics[scale=0.4]{img/del-case3.png}
+  \caption{The sibling of the doubly-black is red.}
+  \label{fig:del-case2}
 \end{figure}
 
 We can add this case on top of (\ref{eq:db-case-1a}) to gain (\ref{eq:db-case-2}).

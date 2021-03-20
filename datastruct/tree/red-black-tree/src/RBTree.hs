@@ -73,15 +73,19 @@ delete t x = makeBlack $ del t x where
     makeBlack (Node _ l k r) = Node B l k r
     makeBlack _ = Empty
 
-shiftBlack (Node B l k r) = Node BB l k r -- doubly black
+shiftBlack (Node B l k r) = Node BB l k r
 shiftBlack (Node _ l k r) = Node B  l k r
 shiftBlack Empty = BBEmpty
-shiftBlack t = t
+shiftBlack BBEmpty = Empty
+
+isDB (Node BB _ _ _) = True
+isDB BBEmpty = True
+isDB _ = False
 
 -- Core function for delete, to solve the uniform black height violation.
 -- refer to CLRS
 fixDB::Color -> RBTree a -> a -> RBTree a -> RBTree a
--- the sibling is black, and it has one red child (CLRS case 3, 4)
+-- the sibling is black, and it has a red sub-tree (CLRS case 3, 4)
 fixDB color a@(Node BB _ _ _) x (Node B (Node R b y c) z d) = Node color (Node B (shiftBlack a) x b) y (Node B c z d)
 fixDB color BBEmpty x (Node B (Node R b y c) z d) = Node color (Node B Empty x b) y (Node B c z d)
 fixDB color a@(Node BB _ _ _) x (Node B b y (Node R c z d)) = Node color (Node B (shiftBlack a) x b) y (Node B c z d)
