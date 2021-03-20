@@ -85,7 +85,7 @@ isDB _ = False
 -- Core function for delete, to solve the uniform black height violation.
 -- refer to CLRS
 fixDB::Color -> RBTree a -> a -> RBTree a -> RBTree a
--- the sibling is black, and it has a red sub-tree (CLRS case 3, 4)
+-- the sibling is black, and has a red sub-tree (CLRS case 3, 4)
 fixDB color a@(Node BB _ _ _) x (Node B (Node R b y c) z d) = Node color (Node B (shiftBlack a) x b) y (Node B c z d)
 fixDB color BBEmpty x (Node B (Node R b y c) z d) = Node color (Node B Empty x b) y (Node B c z d)
 fixDB color a@(Node BB _ _ _) x (Node B b y (Node R c z d)) = Node color (Node B (shiftBlack a) x b) y (Node B c z d)
