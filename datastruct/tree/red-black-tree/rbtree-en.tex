@@ -521,14 +521,9 @@ The delete algorithm is bound to $O(h)$ time, where $h$ is the height of the tre
 \section{Imperative red-black tree algorithm $\star$}
 \index{red-black tree!imperative insertion}
 
-We almost finished all the content in this chapter. By induction
-the patterns, we can implement the red-black tree in a simple way
-compare to the imperative tree rotation solution. However, we
-should show the comparator for completeness.
+With pattern matching, we simplify the red-black tree implementation compare to the imperative solution based on tree rotations. In this section, we give the imperative algorithm for completeness.
 
-For insertion, the basic idea is to use the similar algorithm
-as described in binary search tree. And then fix the balance
-problem by rotation and return the final result.
+When insert, the first step is as same as the binary search tree. Additionally, we need fix the balance by tree rotations.
 
 \begin{algorithmic}[1]
 \Function{Insert}{$T, k$}
@@ -556,61 +551,31 @@ problem by rotation and return the final result.
 \EndFunction
 \end{algorithmic}
 
-The only difference from the binary search tree insertion algorithm
-is that we set the color of the new node as red, and perform fixing
-before return. Below is the example Python program.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def rb_insert(t, key):
-    root = t
-    x = Node(key)
-    parent = None
-    while(t):
-        parent = t
-        if(key < t.key):
-            t = t.left
-        else:
-            t = t.right
-    if parent is None: #tree is empty
-        root = x
-    elif key < parent.key:
-        parent.set_left(x)
-    else:
-        parent.set_right(x)
-    return rb_insert_fix(root, x)
-\end{lstlisting}
-
-There are 3 base cases for fixing, and if we take the left-right
-symmetric into consideration. there are total 6 cases.
-Among them two cases can be merged together, because they all have
-uncle node in red color, we can toggle the parent color and
-uncle color to black and set grand parent color to red.
-With this merging, the fixing algorithm can be realized as the following.
+We make the new node red, and then perform fixing before return. There are 3 basic cases, each one has a symmetric case, hence there are total 6 cases. Among them, we can merge two cases, because both have a red `uncle' node. We change the parent and uncle to black, and set grand parent to red:
 
 \begin{algorithmic}[1]
 \Function{Insert-Fix}{$T, x$}
-  \While{\Call{Parent}{$x$} $\neq$ NIL $\land$ \textproc{Color}(\Call{Parent}{$x$}) = RED}
+  \While{\Call{Parent}{$x$} $\neq$ NIL and \textproc{Color}(\Call{Parent}{$x$}) = RED}
     \If{\textproc{Color}(\Call{Uncle}{$x$}) $=$ RED}
-      \Comment{Case 1, x's uncle is red}
+      \Comment{Case 1, $x$'s uncle is red}
       \State \textproc{Color}(\Call{Parent}{$x$}) $\gets$ BLACK
       \State \textproc{Color}(\Call{Grand-Parent}{$x$}) $\gets$ RED
       \State \textproc{Color}(\Call{Uncle}{$x$}) $\gets$ BLACK
       \State $x \gets$ \Call{Grand-Parent}{$x$}
     \Else
-      \Comment{x's uncle is black}
+      \Comment{$x$'s uncle is black}
       \If{\Call{Parent}{$x$} = \textproc{Left}(\Call{Grand-Parent}{$x$})}
         \If{ $x =$ \textproc{Right}(\Call{Parent}{$x$})}
-          \Comment{Case 2, x is a right child}
+          \Comment{Case 2, $x$ is on the right}
           \State $x \gets$ \Call{Parent}{$x$}
           \State $T \gets$ \Call{Left-Rotate}{$T, x$}
         \EndIf
-        \Comment{Case 3, x is a left child}
+        \Comment{Case 3, $x$ is on the left}
         \State \textproc{Color}(\Call{Parent}{$x$}) $\gets$ BLACK
         \State \textproc{Color}(\Call{Grand-Parent}{$x$}) $\gets$ RED
         \State $T \gets$ \textproc{Right-Rotate}($T$, \Call{Grand-Parent}{$x$})
       \Else
-         \If{ $x =$ \textproc{Left}(\Call{Parent}{$x$})}
+        \If{ $x =$ \textproc{Left}(\Call{Parent}{$x$})}
           \Comment{Case 2, Symmetric}
           \State $x \gets$ \Call{Parent}{$x$}
           \State $T \gets$ \Call{Right-Rotate}{$T, x$}
@@ -627,74 +592,24 @@ With this merging, the fixing algorithm can be realized as the following.
 \EndFunction
 \end{algorithmic}
 
-This program takes $O(\lg n)$ time to insert a new key to the red-black tree.
-Compare this pseudo code and the $balance$ function we defined in previous
-section, we can see the difference. They differ not only in terms of
-simplicity, but also in logic. Even if we feed the same series of keys to
-the two algorithms, they may build different red-black trees. There
+This algorithm takes $O(\lg n)$ time to insert a key, where $n$ is the number of nodes. Compare to the $balance$ function defined previously, they actually have different logic. Even input the same sequence of keys, they build different red-black trees. There
 is a bit performance overhead in the pattern matching algorithm.
-Okasaki discussed about the difference in detail in his paper\cite{okasaki}.
+Okasaki discussed the difference in detail in \cite{okasaki}.
 
-Translate the above algorithm to Python yields the below program.
-
-\begin{lstlisting}
-# Fix the red->red violation
-def rb_insert_fix(t, x):
-    while(x.parent and x.parent.color==RED):
-        if x.uncle().color == RED:
-            #case 1: ((a:R x:R b) y:B c:R) ==> ((a:R x:B b) y:R c:B)
-            set_color([x.parent, x.grandparent(), x.uncle()],
-                      [BLACK, RED, BLACK])
-            x = x.grandparent()
-        else:
-            if x.parent == x.grandparent().left:
-                if x == x.parent.right:
-                    #case 2: ((a x:R b:R) y:B c) ==> case 3
-                    x = x.parent
-                    t=left_rotate(t, x)
-                # case 3: ((a:R x:R b) y:B c) ==> (a:R x:B (b y:R c))
-                set_color([x.parent, x.grandparent()], [BLACK, RED])
-                t=right_rotate(t, x.grandparent())
-            else:
-                if x == x.parent.left:
-                    #case 2': (a x:B (b:R y:R c)) ==> case 3'
-                    x = x.parent
-                    t = right_rotate(t, x)
-                # case 3': (a x:B (b y:R c:R)) ==> ((a x:R b) y:B c:R)
-                set_color([x.parent, x.grandparent()], [BLACK, RED])
-                t=left_rotate(t, x.grandparent())
-    t.color = BLACK
-    return t
-\end{lstlisting}
-
-Figure \ref{fig:imperative-insert} shows the results of feeding same
-series of keys to the above python insertion program. Compare them with
-figure \ref{fig:insert-example}, one can tell the difference clearly.
+Figure \ref{fig:imperative-insert} shows the result when input the same sequence of keys to the imperative algorithm. We can see the difference from figure \ref{fig:insert-example}.
 
 \begin{figure}[htbp]
    \centering
-   \subcaptionbox{}{\includegraphics[scale=0.4]{img/clrs-fig-13-4.ps}}
-   \subcaptionbox{}{\includegraphics[scale=0.4]{img/python-insert.ps}}
+   \includegraphics[scale=0.4]{img/clrs-fig-13-4.ps}
+   \includegraphics[scale=0.4]{img/python-insert.ps}
    \caption{Red-black trees created by imperative algorithm.}
    \label{fig:imperative-insert}
 \end{figure}
 
-We put the red-black tree delete algorithm in imperative settings in Appendix B,
-because it is more complex than the insertion.
+We provide the imperative delete algorithm in Appendix A of this book.
 
-\section{More words}
-Red-black tree is the most popular implementation of balanced binary search
-tree. Another one is the AVL tree, which we'll introduce in next chapter.
-Red-black tree can be a good start point for more data structures. If we
-extend the number of children from 2 to $k$, and keep the balance as well,
-it leads to B-tree, If we store the data along with edge but not inside
-node, it leads to Tries. However, the multiple cases handling and the long
-program tends to make new comers think red-black tree is complex.
-
-Okasaki's work helps making the red-black tree much easily understand.
-There are many implementation in other programming languages in that
-manner \cite{rosetta}. It's also inspired me to find the pattern matching
-solution for Splay tree and AVL tree etc.
+\section{Summary}
+Red-black tree is a popular implementation of balanced binary search tree. We'll introduce another one, called AVL tree in the next chapter. Red-black tree is a good start for more data structures. If extend the number of children from 2 to $k$, and maintain the balance, it leads to B-tree; If store the data along with the edge but not inside node, it leads to Radix tree. To maintain the balance, we need handle multiple cases. Okasaki's developed a method that makes the red-black tree much easier to implement. There are many implementations based on this idea\cite{rosetta}. We also provide AVL tree and Splay tree implementation based on pattern matching in this book.
 
 \section{Appendix: Example programs}
 
@@ -715,6 +630,88 @@ data Node<T> {
         if (left != null) then left.parent = this
         if (right != null) then right.parent = this
     }
+
+    Self setLeft(l) {
+        left = l
+        if (l != null) { l.parent = this }
+    }
+
+    Self setRight(r) {
+        right = r
+        if (r != null) { r.parent = this }
+    }
+
+    Node<T> sibling() {
+        return if parent.left == this then parent.right
+               else parent.left
+    }
+
+    Node<T> uncle() {  return parent.sibling() }
+
+    Node<T> grandparent() { return parent.parent }
+}
+\end{lstlisting}
+
+Insert a key to red-black tree:
+
+\begin{lstlisting}[language = Bourbaki]
+Node<T> insert(Node<T> t, T key) {
+    root = t
+    x = Node(key)
+    parent = null
+    while (t != null) {
+        parent = t
+        t = if (key < t.key) then t.left else t.right
+    }
+    if (parent == null) {    //tree is empty
+        root = x
+    } else if (key < parent.key) {
+        parent.setLeft(x)
+    } else {
+        parent.setRight(x)
+    }
+    return insertFix(root, x)
+}
+\end{lstlisting}
+
+Fix the balance:
+
+\begin{lstlisting}[language = Bourbaki]
+// Fix the red->red violation
+Node<T> insertFix(Node<T> t, Node<T> x) {
+    while (x.parent != null and x.parent.color == Color.RED) {
+        if (x.uncle().color == Color.RED) {
+            // case 1: ((a:R x:R b) y:B c:R) ==> ((a:R x:B b) y:R c:B)
+            x.parent.color = Color.BLACK
+            x.grandparent().color = Color.RED
+            x.uncle().color = Color.BLACK
+            x = x.grandparent()
+        } else {
+            if (x.parent == x.grandparent().left) {
+                if (x == x.parent.right) {
+                    #case 2: ((a x:R b:R) y:B c) ==> case 3
+                    x = x.parent
+                    t = leftRotate(t, x)
+                }
+                # case 3: ((a:R x:R b) y:B c) ==> (a:R x:B (b y:R c))
+                x.parent.color = Color.BLACK
+                x.grandparent().color = Color.RED
+                t = rightRotate(t, x.grandparent())
+            } else {
+                if (x == x.parent.left) {
+                    #case 2': (a x:B (b:R y:R c)) ==> case 3'
+                    x = x.parent
+                    t = rightRotate(t, x)
+                }
+                # case 3': (a x:B (b y:R c:R)) ==> ((a x:R b) y:B c:R)
+                x.parent.color = Color.BLACK
+                x.grandparent().color = Color.RED
+                t = leftRotate(t, x.grandparent())
+            }
+        }
+    }
+    t.color = Color.BLACK
+    return t
 }
 \end{lstlisting}
 
