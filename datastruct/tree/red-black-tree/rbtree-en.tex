@@ -331,13 +331,13 @@ data RBTree a = Empty | BBEmpty
               | Node Color (RBTree a) a (RBTree a)
 \end{Haskell}
 
-Because all empty leaves are black, when push the blackness down to a leaf, it becomes `doubly-black' empty (\texttt{BBEmpty}, or $\pmb{\varnothing}$). The first step is to perform the normal binary search tree delete; then next, if the node cut off is black, we move the blackness, and fix the red-black tree coloring.
+Because all empty leaves are black, when push the blackness down to a leaf, it becomes `doubly-black' empty (\texttt{BBEmpty}, or $\pmb{\varnothing}$). The first step is to perform the normal binary search tree delete; then if the cut off node is black, we shift the blackness, and fix the tree coloring.
 
 \be
 delete = makeBlack \circ del
 \ee
 
-This is in Curried form. When delete the only element from the tree, it becomes empty. To cover this case, we modify $makeBlack$ as below:
+This definition is in Curried form. When delete the only element, the tree becomes empty. To cover this case, we modify $makeBlack$ as below:
 
 \be
 \begin{array}{rcl}
@@ -346,7 +346,7 @@ makeBlack\ (\mathcal{C}, l, k, r) & = & (\mathcal{B}, l, k, r) \\
 \end{array}
 \ee
 
-Where $del$ accepts the tree and the element $k$ to be delete:
+Where $del$ accepts the tree and $k$ to be deleted:
 
 \be
 \begin{array}{rcl}
@@ -365,9 +365,9 @@ del\ (\mathcal{C}, l, k', r)\ k & = & \begin{cases}
 \ee
 
 When the tree is empty, the result is $\nil$; otherwise, we compare the key $k'$ in the tree with $k$. If $k < k'$, we recursively
-delete $k$ from the left sub-tree; if $k > k'$ then delete from the right. Because the recursive result may contain doubly-black node, we need apply $fixB^2$ to fix it. When $k = k'$, we need splice it out. If either sub-tree is empty, we replace it with the other sub-tree, then shift the blackness if the spliced node is black. This is represented with McCarthy form $(p \mapsto a, b)$, which is equivalent to `(if $p$ then $a$ else $b$)'. If neither sub-tree is empty, we cut the minimum element $k'' = min(r)$, and use $k''$ to replace $k$.
+delete $k$ from the left sub-tree; if $k > k'$ then delete from the right. Because the recursive result may contain doubly-black node, we need apply $fixB^2$ to fix it. When $k = k'$, we need splice it out. If either sub-tree is empty, we replace it with the other, then shift the blackness if the spliced node is black. This is represented with McCarthy form $(p \mapsto a, b)$, which is equivalent to `(if $p$ then $a$ else $b$)'. If neither sub-tree is empty, we cut the minimum element $k'' = min(r)$, and use $k''$ to replace $k$.
 
-To reserve the blackness, $shiftB$ makes a black node doubly-black, and forces it black for all other cases (it flips doubly-black to normal black when applied twice). Below is the example program (except the doubly-black fixing part).
+To reserve the blackness, $shiftB$ makes a black node doubly-black, and forces it black for other cases. It flips doubly-black to normal black when applied twice. Below is the example program (except the doubly-black fixing part).
 
 \begin{Haskell}
 delete :: (Ord a) => RBTree a -> a -> RBTree a
@@ -399,7 +399,7 @@ The $fixB^2$ function eliminates the doubly-black node by rotation and re-colori
   \label{fig:del-case1}
 \end{figure}
 
-The handling of these 4 sub-cases can be realized with pattern matching.
+The fixing for these 4 sub-cases can be realized with pattern matching.
 
 \be
 \resizebox{\textwidth}{!}{\ensuremath{
@@ -443,7 +443,7 @@ fixB^2\ \mathcal{B}\ (\mathcal{R}, a, x, b)\ y\ c_{\mathcal{B}^2} & = & fixB^2\ 
 \label{eq:db-case-2}
 \ee
 
-\textbf{Case 3}. {\em The sibling of the doubly-black node, and its two children are all black.} In this case, we change the sibling to red, flip the
+\textbf{Case 3}. {\em The sibling of the doubly-black node, and its two sub-trees are all black.} In this case, we change the sibling to red, flip the
 doubly-black node to black, and propagate the doubly-blackness a level up to parent as shown in figure \ref{fig:del-case3}.
 
 \begin{figure}[htbp]
@@ -453,7 +453,7 @@ doubly-black node to black, and propagate the doubly-blackness a level up to par
   \label{fig:del-case3}
 \end{figure}
 
-There are two symmetric sub-cases. For the upper case, $x$ was either red or black. $x$ changes to black if it was red, otherwise changes to doubly-black; Same coloring changes for $y$ in the lower case. We add this fixing to equation (\ref{eq:db-case-2}):
+There are two symmetric sub-cases. For the upper case, $x$ was either red or black. $x$ changes to black if it was red, otherwise changes to doubly-black; Same coloring changes to $y$ in the lower case. We add this fixing to equation (\ref{eq:db-case-2}):
 
 \be
 %\resizebox{\textwidth}{!}{\ensuremath{
@@ -470,7 +470,7 @@ fixB^2\ \mathcal{C}\ l\ k\ r\ & = & (\mathcal{C}, l, k, r) \\
 \label{eq:db-case-3}
 \ee
 
-If none of the patterns match, the last row keeps the node unchanged. The doubly-black fixing is recursive. It terminates in two ways: One is \textbf{Case 1}, the doubly-black node is eliminated. Otherwise the blackness may propagate up till the root. Finally the we force the root be black. Below example program put all three cases together:
+If none of the patterns match, the last row keeps the node unchanged. The doubly-black fixing is recursive. It terminates in two ways: One is \textbf{Case 1}, the doubly-black node is eliminated. Otherwise the blackness may propagate up till the root. Finally the we force the root be black. Below example program puts all three cases together:
 
 \begin{Haskell}
 -- the sibling is black, and has a red sub-tree
