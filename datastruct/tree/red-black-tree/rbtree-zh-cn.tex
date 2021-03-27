@@ -1,20 +1,22 @@
 \ifx\wholebook\relax \else
 % ------------------------
 
-\documentclass{ctexart}
+\documentclass[b5paper]{ctexart}
+\usepackage[nomarginpar
+  %, margin=.5in
+]{geometry}
+
+\addtolength{\oddsidemargin}{-0.05in}
+\addtolength{\evensidemargin}{-0.05in}
+\addtolength{\textwidth}{0.1in}
+
 \usepackage[cn]{../../../prelude}
 
 \setcounter{page}{1}
 
 \begin{document}
 
-%--------------------------
-
-% ================================================================
-%                 COVER PAGE
-% ================================================================
-
-\title{并不复杂的红黑树}
+\title{红黑树}
 
 \author{刘新宇
 \thanks{{\bfseries 刘新宇} \newline
@@ -24,43 +26,39 @@
 \maketitle
 \fi
 
-\markboth{红黑树}{初等算法}
+\markboth{红黑树}{基本算法}
 
 \ifx\wholebook\relax
-\chapter{并不复杂的红黑树}
+\chapter{红黑树}
 \numberwithin{Exercise}{chapter}
 \fi
 
 % ================================================================
 %                 Introduction
 % ================================================================
-上一章中，我们给过一个例子：通过使用二叉搜索树来统计文章中每个词出现的次数。
+在第二章的例子中，我们使用二叉搜索树来统计文章中每个词的出现次数。一个自然的想法是用二叉搜索树处理通讯录，用来查询联系人的电话。如下面的例子代码所示：
 
-从这个例子出发，人们很自然希望用二叉搜索树处理电话黄页\footnote{一种公共发布的电话号码簿，因用黄色纸张印刷所以称为黄页。}，并用它来查询某联系人的电话。
-
-我们可以把之前的例子代码稍做改动来实现这一功能：
-
-\begin{lstlisting}
-int main(int, char** ) {
-    ifstream f("yp.txt");
-    map<string, string> dict;
-    string name, phone;
-    while(f>>name && f>>phone)
-        dict[name]=phone;
-    for(;;) {
-        cout<<"\nname: ";
-        cin>>name;
-        if(dict.find(name) == dict.end())
-            cout<<"not found";
-        else
-            cout<<"phone: "<<dict[name];
+\lstset{frame = single}
+\begin{lstlisting}[language=Bourbaki]
+void addrBook(Input in) {
+    bst<string, string> dict
+    while (string name, string addr) = read(in)) {
+        dict[name] = addr
+    }
+    loop {
+        string name = read(console)
+        var addr = dict[name]
+        if (addr == null) {
+            print("not found")
+        } else {
+            print("address: ", addr)
+        }
     }
 }
 \end{lstlisting}
 
-这段程序运行良好。但是，如果我们把STL库提供的map换成普通的二叉搜索树，程序的性能就变差了。尤其是搜索诸如Zara、Zed、Zulu等姓名时特别明显。
+但这个方法的性能不佳，尤其是搜索诸如Zara、Zed、Zulu等姓名时更加明显。通讯录通常是按照字典顺序排列的。如果依次把自然数1, 2, 3, ..., $n$插入二叉搜索树，就会得如图\ref{fig:unbalanced-tree}中的结果。这是一棵极不平衡的二叉树。对于高为$h$的二叉搜索树，$lookup()$的复杂度为$O(h)$。如果树比较平衡，我们就能够达到$O(\lg n)$的性能。但在这一极端情况下，查找的性能退化为$O(n)$。几乎等同于列表扫描。
 
-电话黄页通常是按照字典字母顺序（lexicographic order）印刷的，因此姓名会按照升序排列。如果我们依次把数字1, 2, 3, ..., $n$插入二叉搜索树，就会得如图\ref{fig:unbalanced-tree}中的结果。
 
 \begin{figure}[htbp]
     \centering
@@ -68,111 +66,110 @@ int main(int, char** ) {
     \caption{不平衡的树} \label{fig:unbalanced-tree}
 \end{figure}
 
-这是一棵极不平衡的二叉树。对于高度为$h$的二叉搜索树，查找算法的复杂度为$O(h)$。如果树比较平衡，我们就能够达到$O(\lg n)$的性能。但在如图\ref{fig:unbalanced-tree}所示的极端情况下，查找的性能退化为$O(n)$。几乎和链表一样。
 
 \begin{Exercise}
-
-\begin{itemize}
-\item 对于巨大的电话黄页列表，为了加快速度，一个想法是使用两个并发的任务（task，可以是线程或进程）。一个任务从头部向后读“姓名――电话”信息，另外一个任务从尾部向前读。当两个任务在中间相遇时程序结束。这样构建出的二叉搜索树是什么样子的？如果我们把黄页列表分割成更多片断，使用更多的任务会得到什么结果？
-\item 参考图\ref{fig:unbalanced-trees}，你能找到更多的情况造成二叉搜索树表现不佳么？
-\end{itemize}
-
+\Question{对于较大的通讯录，为了加快构建速度，有人使用两个并发的任务。一个任务从头部向后，另外一个任务从后向前读取。当两个任务在中间相遇时结束。这样构建出的二叉搜索树是什么样子的？如果把通讯录分成更多片断，使用更多的任务会得到什么结果？}
+\Question{参考图\ref{fig:unbalanced-trees}，找出更多的不平衡情况。}
 \end{Exercise}
 
 \begin{figure}[htbp]
-       \centering
-       \subcaptionbox{}{\includegraphics[scale=0.4]{img/unbalanced-2.ps}}
-       \subcaptionbox{}{\includegraphics[scale=0.4]{img/unbalanced-zigzag.ps}} \\
-       \subcaptionbox{}{\includegraphics[scale=0.4]{img/unbalanced-3.ps}}
-       \caption{一些不平衡的二叉树}
-       \label{fig:unbalanced-trees}
+  \centering
+  \subcaptionbox{}{\includegraphics[scale=0.4]{img/unbalanced-2.ps}}
+  \subcaptionbox{}{\includegraphics[scale=0.4]{img/unbalanced-zigzag.ps}} \\
+  \subcaptionbox{}{\includegraphics[scale=0.4]{img/unbalanced-3.ps}}
+  \caption{一些不平衡的二叉树}
+  \label{fig:unbalanced-trees}
 \end{figure}
 
-\subsection{如何保证树的平衡}
+\subsection{平衡}
 
-为了避免出现不平衡情况，我们可以预先使用随机算法将输入序列打乱（参见\cite{CLRS}的12.4节）。但这个方法有一定的局限性，例如序列是由用户交互输入的，每当用户输入一个key后，树就会被更新。也就是说，树是随着用户输入逐步构建的。
+为了避免这种极不平衡的情况，我们可以将输入序列打乱（\cite{CLRS}第12.4节）。但这种方法有一定的局限性，如果序列是用户交互输入的，则无法应用这一方法。人们找到了一些解决平衡性的方法，它们大多依赖于二叉树的旋转操作。旋转操作可以在改变树结构的同时，保持元素间顺序不变。这一章介绍红黑树。它是一种被广泛使用的自平衡二叉搜索树。下一章我们介绍另外一种自平衡树――AVL树。第8章还会介绍伸展树，它能够随着操作，逐步把树变得平衡。
 
-人们已经发现了好几种方法可以解决二叉搜索树的平衡问题。它们中有很多依赖于二叉树的旋转（rotation）操作。旋转操作可以在保持元素顺序的前提下，改变树的结构。因此可以用来提高平衡性。
-
-本章介绍红黑树，一种被广泛使用的自平衡二叉搜索树（self-adjusting balanced binary search tree）。下一章我们介绍另外一种自平衡树――AVL树。在后面第8章关于二叉堆的章节中，我们还会遇到一种有趣的树――splay树，它能够随着操作，逐渐把树变得越来越平衡。
-
-\subsection{树的旋转}
-\index{树的旋转}
+\subsection{树旋转}
+\index{树旋转}
 
 \begin{figure}[htbp]
-   \centering
-   \includegraphics[scale=0.4]{img/tree-rotation.png}
-   \caption{树的旋转操作}
-   \label{fig:tree-rotation}
+  \centering
+  \includegraphics[scale=0.4]{img/tree-rotation.png}
+  \caption{树的左右旋转}
+  \label{fig:tree-rotation}
 \end{figure}
 
-树的旋转是一种特殊的操作，它在保持中序遍历结果不变的情况下，改变树的结构。这是因为存在多个不同的二叉搜索树对应到一个特定的中序遍历顺序。图\ref{fig:tree-rotation}描述了旋转操作。图中左侧的二叉搜索树，经过左旋可以变换为右侧的树，而右旋是左旋的逆变换。
+树旋转在保持中序遍历结果不变的情况下，改变树的结构。存在多个不同的二叉树对应到一个特定的中序遍历顺序。图\ref{fig:tree-rotation}描述了旋转操作。
 
-旋转操作可以通过一系列的步骤来描述。我们也可以利用模式匹配（pattern matching），非常容易地定义它们。将非空的二叉树记为三元组$T=(T_l, k, T_r)$，下面的函数定义了左右旋转。
-
-\be
-rotate_L(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  ((a, X, b), Y, c) & T = (a, X, (b, Y, c)) \\
-  T & otherwise
-  \end{array}
-\right .
-\ee
+旋转操作可以通过模式匹配来定义：
 
 \be
-rotate_R(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (a, X, (b, Y, c)) & T = ((a, X, b), Y, c)) \\
-  T & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+rotate_l\ ((a, x, b), y, c) & = & (a, x, (b, y, c)) \\
+rotate_l\ T & = & T \\
+\end{array}
 \ee
 
-用伪代码描述时，除了左右分支和key，还需要设置好父节点。
+和
+
+\be
+\begin{array}{rcl}
+rotate_r\ (a, x, (b, y, c)) & = & ((a, x, b), y, c)) \\
+rotate_r\ T & = & T \\
+\end{array}
+\ee
+
+如果模式没有匹配（例如两棵子树都为空），每个式子的第二行保证树不变。旋转操作也可以通过一系列步骤实现。我们需要将子树和父引用设置正确。在旋转时，我们传入根节点$T$和要旋转的子树$x$：
 
 \begin{algorithmic}[1]
 \Function{Left-Rotate}{$T, x$}
   \State $p \gets$ \Call{Parent}{$x$}
-  \State $y \gets$ \Call{Right}{$x$} \Comment{假设$y \ne$ NIL}
+  \State $y \gets$ \Call{Right}{$x$} \Comment{设$y \ne$ NIL}
   \State $a \gets$ \Call{Left}{$x$}
   \State $b \gets$ \Call{Left}{$y$}
   \State $c \gets$ \Call{Right}{$y$}
-  \State \Call{Replace}{$x, y$}
-  \State \Call{Set-Children}{$x, a, b$}
-  \State \Call{Set-Children}{$y, x, c$}
-  \If{$p = $ NIL}
+  \State \Call{Replace}{$x, y$}  \Comment{用$y$替换$x$}
+  \State \Call{Set-Subtrees}{$x, a, b$} \Comment{令$a, b$为$x$的子树}
+  \State \Call{Set-Subtrees}{$y, x, c$} \Comment{令$x, c$为$y$的子树}
+  \If{$p = $ NIL}  \Comment{此前$x$是根节点}
     \State $T \gets y$
   \EndIf
   \State \Return $T$
 \EndFunction
+\end{algorithmic}
 
-\Statex
+右旋\textproc{Right-Rotate}的实现是对称的，我们将其留作练习。\textproc{Replace}($x$, $y$)使用$y$替换$x$：
 
-\Function{Right-Rotate}{$T, y$}
-  \State $p \gets$ \Call{Parent}{$y$}
-  \State $x \gets$ \Call{Left}{$y$} \Comment{假设$x \ne$ NIL}
-  \State $a \gets$ \Call{Left}{$x$}
-  \State $b \gets$ \Call{Right}{$x$}
-  \State $c \gets$ \Call{Right}{$y$}
-  \State \Call{Replace}{$y, x$}
-  \State \Call{Set-Children}{$y, b, c$}
-  \State \Call{Set-Children}{$x, a, y$}
-  \If{$p = $ NIL}
-    \State $T \gets x$
+\begin{algorithmic}[1]
+\Function{Replace}{$x, y$}
+  \State $p \gets$ \Call{Parent}{$x$}
+  \If{$p$ = NIL} \Comment{$x$是根节点}
+    \If{$y \ne$ NIL}
+           \Call{Parent}{$y$} $\gets$ NIL
+    \EndIf
+  \ElsIf{\Call{Left}{$p$} $= x$}
+    \State \Call{Set-Left}{$p$, $y$}
+  \Else
+    \State \Call{Set-Right}{$p$, $y$}
   \EndIf
-  \State \Return $T$
+  \State \Call{Parent}{$x$} $\gets$ NIL
 \EndFunction
+\end{algorithmic}
 
-\Statex
+\textproc{Set-Subtrees}($x, L, R$)将$L$设为$x$的左子树，$R$设为右子树：
 
+\begin{algorithmic}[1]
+\Function{Set-Subtrees}{$x, L, R$}
+  \State \Call{Set-Left}{$x, L$}
+  \State \Call{Set-Right}{$x, R$}
+\EndFunction
+\end{algorithmic}
+
+它进一步调用\textproc{Set-Left}和\textproc{Set-Right}完成子树的设置：
+
+\begin{algorithmic}[1]
 \Function{Set-Left}{$x, y$}
   \State \Call{Left}{$x$} $\gets y$
   \If{$y \ne$ NIL}
     \Call{Parent}{$y$} $\gets x$
   \EndIf
-\EndFunction
+  \EndFunction
 
 \Statex
 
@@ -182,51 +179,26 @@ rotate_R(T) = \left \{
     \Call{Parent}{$y$} $\gets x$
   \EndIf
 \EndFunction
-
-\Statex
-
-\Function{Set-Children}{$x, L, R$}
-  \State \Call{Set-Left}{$x, L$}
-  \State \Call{Set-Right}{$x, R$}
-\EndFunction
-
-\Statex
-
-\Function{Replace}{$x, y$}
-  \If{\Call{Parent}{$x$} =NIL}
-    \If{$y \ne$ NIL}
-      \Call{Parent}{$y$} $\gets$ NIL
-    \EndIf
-  \ElsIf{\textproc{Left}(\Call{Parent}{$x$}) $= x$}
-    \State \textproc{Set-Left}(\Call{Parent}{$x$}, $y$)
-  \Else
-    \State \textproc{Set-Right}(\Call{Parent}{$x$}, $y$)
-  \EndIf
-  \State \Call{Parent}{$x$} $\gets$ NIL
-\EndFunction
 \end{algorithmic}
 
-对比伪代码和模式匹配函数，后者主要从树结构变化的角度出发，而前者集中于描述变换的过程。如本章题目所讲，红黑树并不像看起来那样复杂。如果用传统方法来讲解红黑树，需要处理许多不同的情况。每种情况都必须仔细处理节点中的数据。如果换成函数式的思路，虽然会牺牲一些性能，但很多问题会变得简单直观。
+通过对比，可以看到模式匹配如何简化树旋转的实现。从这一点出发Okasaki在1995年实现了红黑树的纯函数式算法\cite{okasaki}。
 
-本章中的大部分内容来自Chris Okasaki的成果\cite{okasaki}。
+\begin{Exercise}
+\Question{实现右旋\textproc{Right-Rotate}操作。}
+\end{Exercise}
 
-% ================================================================
-% Definition
-% ================================================================
-\section{红黑树的定义}
+\section{定义}
 \index{红黑树}
 
-红黑树是一种自平衡二叉搜索树\cite{wiki-rbt}\footnote{红黑树是2-3-4树的等价形式（有关2-3-4树，可参考B树一章）。也就是说，对于任一2-3-4树，都存在至少一棵红黑树，使得它们中所有元素的顺序相同。}。通过对节点进行着色和旋转，红黑树可以很容易地保持树的平衡。
+红黑树是一种自平衡二叉搜索树\cite{wiki-rbt}。它是2-3-4树的等价形式\footnote{第7章，B树。对于任一2-3-4树，都存在至少一棵红黑树，其元素顺序相同。}。通过对节点进行着色和旋转，红黑树可以高效地地保持平衡性。我们在二叉搜索树的定义上给节点赋予红、黑颜色。我们称一棵树为红黑树，如果它满足下面5条性质\cite{CLRS}：
 
-我们需要在二叉搜索树上增加一个额外的颜色信息。节点可以被涂成红色或黑色。如果一棵二叉搜索树满足下面的全部5条性质，我们称之为红黑树\cite{CLRS}。
 \index{红黑树!红黑性质}
-
 \begin{enumerate}
-\item 任一节点要么是红色，要么是黑色。
+\item 节点的颜色为红色或黑色。
 \item 根节点为黑色。
-\item 所有的叶节点（NIL节点）为黑色。
+\item 所有的叶节点（NIL）为黑色。
 \item 如果一个节点为红色，则它的两个子节点都是黑色。
-\item 对任一节点，从它出发到所有叶子节点的路径上包含相同数量的黑色节点。
+\item 从任一节点出发到所有叶子节点的路径上包含相同数量的黑色节点。
 \end{enumerate}
 
 为什么这5条性质能保证红黑树的平衡性呢？因为它们有一个关键的特性：从根节点出发到达叶节点的所有路径中，最长路径不会超过最短路径两倍。
