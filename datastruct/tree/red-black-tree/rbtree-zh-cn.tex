@@ -234,13 +234,7 @@ data RBTree a = Empty
 \section{插入}
 \index{红黑树!插入}
 
-由于插入操作会改变树的结构，因此可能变得不平衡。为了保持红黑树的性质，我们需要在插入操作后进行变换来修复平衡问题。
-
-当插入一个key时，我们可以把新节点一律染成红色。只要它不是根节点，除了第四条外的所有红黑树性质都可以满足。唯一的问题就是可能引入两个相邻的红色节点。
-
-函数式和命令式实现使用不同的方法来修复平衡。前者直观简单，但是存在一点性能损失；后者有些复杂，但是具有更高的性能。大多数的算法书籍介绍后一种方法。本章中，我们关注函数式的方法，并展示这一方法极为简洁的特性。我们也会给出传统的命令式实现以作为对比。
-
-Chris Okasaki指出，共有四种情况会违反红黑树的第四条性质。它们都带有两个相邻的红色节点。非常关键的一点是：它们可以被修复为一个统一形式\cite{okasaki}，如图 \ref{fig:insert-fix}所示。
+插入算法包含两个步骤。第一步和二叉搜索树相同，树可能会变得不再平衡。第二步修复红黑树的颜色性质。插入时，我们令新节点为红色。只要它不是根节点，除了第四条外的所有性质都可以满足。唯一的问题是可能引入两个相邻的红色节点，共有4种情况需要修复。Okasaki发现它们具有统一的形式\cite{okasaki}，如图 \ref{fig:insert-fix}所示。
 
 \begin{figure}[htbp]
   \centering
@@ -249,46 +243,39 @@ Chris Okasaki指出，共有四种情况会违反红黑树的第四条性质。�
   \label{fig:insert-fix}
 \end{figure}
 
-注意到这一变换会把红色向上“移动”一层。如果进行自底向上的递归修复，最后一步会把根节点染成红色。根据红黑树的第二条性质，根节点必须是黑色的。因此我们最后要把根节点再染回黑色。为了方便，我们把节点的颜色记为$\mathcal{C}$，它有两个值，黑色$\mathcal{B}$和红色$\mathcal{R}$。这样一棵非空的红黑树可以表达为一个四元组$T=(\mathcal{C}, T_l, k, T_r)$。
+四种情况都把红色向上移动一层。如果进行自底向上的递归修复，最后一步会把根节点染成红色。红黑树性质2要求根节点必须是黑色，因此最后需要把根节点染回黑色。利用模式匹配，我们定义$balance$函数修复平衡性。令节点的颜色变量为$\mathcal{C}$，取值为黑色$\mathcal{B}$或红色$\mathcal{R}$。非空节点表达为一个四元组$T=(\mathcal{C}, l, k, r)$，其中$l$、$r$是左右子树，$k$是值。
 
 \be
-balance(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\mathcal{R}, (\mathcal{B}, A, x, B), y, (\mathcal{B}, C, z, D)) & match(T) \\
-  T & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+%\text{up left:} & & \\
+balance\ \mathcal{B}\ (\mathcal{R}, (\mathcal{R}, a, x, b), y, c)\ z\ d & = & (\mathcal{R}, (\mathcal{B}, a, x, b), y, (\mathcal{B}, c, z, d)) \\
+%\text{up right:} & & \\
+balance\ \mathcal{B}, (\mathcal{R}, a, x, (\mathcal{R}, b, y, c))\ z\ d  & = & (\mathcal{R}, (\mathcal{B}, a, x, b), y, (\mathcal{B}, c, z, d)) \\
+%\text{bottom left:} & & \\
+balance\ \mathcal{B}\ a\ x\ (\mathcal{R}, b, y, (\mathcal{R}, c, z, d)) & = & (\mathcal{R}, (\mathcal{B}, a, x, b), y, (\mathcal{B}, c, z, d))  \\
+%\text{bottom right:} & & \\
+balance\ \mathcal{B}\ a\ x\ (\mathcal{R}, (\mathcal{R}, b, y, c), z, d) & = & (\mathcal{R}, (\mathcal{B}, a, x, b), y, (\mathcal{B}, c, z, d))  \\
+%\text{otherwise:} & & \\
+balance\ T & = & T \\
+\end{array}
 \ee
 
-其中，函数$match(T)$用以判断树是否符合图\ref{fig:insert-fix}中四种需要修复的情况。定义如下：
-
-\[
-match(T) : \left \{ T = \begin{array}{l}
-         (\mathcal{B}, (\mathcal{R}, (\mathcal{R}, A, x, B), y, C), z, D) \lor \\
-         (\mathcal{B}, (\mathcal{R}, A, x, (\mathcal{R}, B, y, C), z, D)) \lor \\
-         (\mathcal{B}, A, x, (\mathcal{R}, B, y, (\mathcal{R}, C, z, D))) \lor \\
-         (\mathcal{B}, A, x, (\mathcal{R}, (\mathcal{R}, B, y, C), z, D)) \\
-         \end{array} \right \}
-\]
-
-定义好函数$balance(T)$后，我们就可以修改二叉搜索树的插入函数，使其支持红黑树。
+如果四种模式都不满足，最后一行保证此时不会改变树的形状。红黑树的插入算法定义如下：
 
 \be
-insert(T, k) = makeBlack(ins(T, k))
+insert\ T\ k = makeBlack\ (ins\ T\ k)
 \ee
 
-其中$ins(T, k)$函数定义如下：
+其中
 
 \be
-ins(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\mathcal{R}, \phi, k, \phi) & T = \phi \\
-  balance((ins(T_l, k), k', T_r)) & k < k' \\
-  balance((T_l, k', ins(T_r, k))) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+ins\ \nil\ k & = & (\mathcal{R}, \nil, k, \nil) \\
+ins\ (\mathcal{C}, l, k', r)\ k & = & \begin{cases}
+  k < k': & balance\ \mathcal{C}\ (ins\ l\ k)\ k'\ r \\
+  k > k': & balance\ \mathcal{C}\ l\ k'\ (ins\ r\ k) \\
+  \end{cases}
+\end{array}
 \ee
 
 如果待插入的树为空，则创建一个新的红色节点，节点的key就是待插入的$k$；否则，记树的左右分支和key分别为$T_l$、$T_r$和$k'$，我们比较$k$和$k'$的大小，递归地将它插入子分支中，然后再用$balance$函数恢复平衡。最后，我们使用$makeBlack(T)$函数把根节点染成黑色。
