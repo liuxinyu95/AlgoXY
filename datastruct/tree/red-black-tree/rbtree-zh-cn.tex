@@ -339,90 +339,68 @@ data RBTree a = Empty | BBEmpty
 delete = makeBlack \circ del
 \ee
 
-这一定义是柯里化的。
-
-其中
+这一定义是柯里化的。如果树中只有一个元素，删除后它变为空。为了处理这一情况，我们需要修改$makeBlack$的定义如下：
 
 \be
-del(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & T = \phi \\
-  fixBlack^2((\mathcal{C}, del(T_l, k), k', T_r)) & k < k' \\
-  fixBlack^2((\mathcal{C}, T_l, k', del(T_r, k))) & k > k' \\
-  \left \{
-    \begin{array}{r@{\quad:\quad}l}
-    mkBlk(T_r) & \mathcal{C} = \mathcal{B} \\
-    T_r & otherwise
-    \end{array}
-  \right. & T_l = \phi \\
-  \left \{
-    \begin{array}{r@{\quad:\quad}l}
-    mkBlk(T_l) & \mathcal{C} = \mathcal{B} \\
-    T_l & otherwise
-    \end{array}
-  \right.  & T_r = \phi \\
-  fixBlack^2((\mathcal{C}, T_l, k'', del(T_r, k''))) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+makeBlack\ \nil & = & \nil \\
+makeBlack\ (\mathcal{C}, l, k, r) & = & (\mathcal{B}, l, k, r) \\
+\end{array}
 \ee
 
-函数$del$定义了各种不同的情况。如果树为空，这种边界情况下的删除结果也为空$\phi$；否则，如果待删除的key比当前节点的key小，我们递归地在左侧分支进行删除；如果比当前节点的key大，则递归地在右侧分支删除。由于可能引入双重黑色，所以需要后继的修复处理。
-
-如果待删除的key恰好等于当前节点的key，我们需要将其“切下”。若当前节点有一个子分支为空，我们只要用另外一个分支替换当前节点，并且保持当前节点的颜色属性就可以了。否则，如果两个分支都不为空，我们从右侧子分支中找到最小值$k''=min(T_r)$，将其“切下”并替换掉当前的节点的key。
-
-最后，函数$delete$通过调用$blackenRoot$强制将根节点染成黑色。
+$del$接受一棵树和要删除的元素$k$：
 
 \be
-blackenRoot(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & T = \phi \\
-  (\mathcal{B}, T_l, k, T_r) & otherwise \\
-  \end{array}
-\right .
+\begin{array}{rcl}
+del\ \nil\ k & = & \nil \\
+del\ (\mathcal{C}, l, k', r)\ k & = & \begin{cases}
+  k < k': & fixB^2(\mathcal{C}, (del\ l\ k), k', r) \\
+  k > k': & fixB^2(\mathcal{C}, l, k', (del\ r\ k)) \\
+  k = k': & \begin{cases}
+    l = \nil: & (\mathcal{C} = \mathcal{B} \mapsto shiftB\ r, r) \\
+    r = \nil: & (\mathcal{C} = \mathcal{B} \mapsto shiftB\ l, l) \\
+    \text{否则}: & fixB^2(\mathcal{C}, l, k'', (del\ r\ k'')) \\
+    & \text{其中}\ k'' = min(r) \\
+  \end{cases}
+\end{cases}
+\end{array}
 \ee
 
-和红黑树插入算法中的$makeBlack$函数相比，$blackenRoot$仅仅多了对为空树的处理。这一处理仅在删除时才需要考虑，因为插入操作不可能产生一棵空树，而删除操作是有可能的。
+如果树为空，结果为$\nil$；否则我们比较$k$和树中的$k'$，如果$k < k'$，我们递归地从左侧分支删除$k$；如果$k > k'$，则递归地从右侧删除。由于递归结果中可能含有双重黑色节点，需要应用$fixB^2$进行修复。当$k = k'$时，我们定位到了要删除的节点。如果任一子树为空，我们用另一子树替换掉当前节点。如果当前节点是黑色的，还需要将黑色移动到子树中。这段定义使用了麦卡锡形式$(p \mapsto a, b)$，它相当于条件表达式：(if $p$ then $a$ else $b$)。如果两棵子树都不为空，我们将右子树中的最小值$k'' = min(r)$切下，并用$k''$替换$k$。
 
-函数$mkBlk$用于保持被“切下”节点的黑色属性。如果被“切下”的节点为黑色，它将红色的结果改为黑色，把黑色的结果改为双重黑色。如果结果为空，则将其标记为双重黑色的空，记为$\Phi$。
+为了保持黑色节点个数，$shiftB$将红色节点变为黑色，将黑色节点变为双重黑色。如果再次应用到双重黑色节点上，则变回黑色。
 
 \be
-mkBlk(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \Phi & T = \phi \\
-  (\mathcal{B}, T_l, k, T_r) & \mathcal{C} = \mathcal{R} \\
-  (\mathcal{B}^2, T_l, k, T_r) & \mathcal{C} = \mathcal{B} \\
-  T & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+shiftB\ (\mathcal{B}, l, k, r) & = & (\mathcal{B}^2, l, k, r) \\
+shiftB\ (\mathcal{C}, l, k, r) & = & (\mathcal{B}, l, k, r) \\
+shiftB\ \nil & = & \pmb{\nil} \\
+shiftB\ \pmb{\nil} & = & \nil \\
+\end{array}
 \ee
 
-其中，符号$\mathcal{B}^2$表示双重黑色。
+下面是相应的例子程序（不包含双重黑色的修复部分）：
 
-将目前的函数定义翻译为Haskell可以得到下面的例子程序。
-
-\begin{lstlisting}[style=Haskell]
-delete t x = blackenRoot(del t x) where
+\begin{Haskell}
+delete :: (Ord a) => RBTree a -> a -> RBTree a
+delete t k = makeBlack $ del t k where
     del Empty _ = Empty
-    del (Node color l k r) x
-        | x < k = fixDB color (del l x) k r
-        | x > k = fixDB color l k (del r x)
-        -- x == k, 删除此节点
-        | isEmpty l = if color==B then makeBlack r else r
-        | isEmpty r = if color==B then makeBlack l else l
-        | otherwise = fixDB color l k' (del r k') where k'= min r
-    blackenRoot (Node _ l k r) = Node B l k r
-    blackenRoot _ = Empty
+    del (Node color l k' r) k
+        | k < k' = fixDB color (del l k) k' r
+        | k > k' = fixDB color l k' (del r k)
+        | isEmpty l = if color == B then shiftBlack r else r
+        | isEmpty r = if color == B then shiftBlack l else l
+        | otherwise = fixDB color l k'' (del r k'') where k''= min r
+    makeBlack (Node _ l k r) = Node B l k r
+    makeBlack _ = Empty
 
-makeBlack (Node B l k r) = Node BB l k r -- 双重黑色
-makeBlack (Node _ l k r) = Node B l k r
-makeBlack Empty = BBEmpty
-makeBlack t = t
-\end{lstlisting}
+shiftBlack (Node B l k r) = Node BB l k r
+shiftBlack (Node _ l k r) = Node B  l k r
+shiftBlack Empty = BBEmpty
+shiftBlack BBEmpty = Empty
+\end{Haskell}
 
-删除算法中，唯一还没有定义的函数是$fixBlack^2$。我们需要在这个函数中，通过树的旋转操作和重新染色，最终去掉“双重黑色”。这里有三种情况需要处理。每一种情况中，双重黑色的节点即可以是普通节点，也可以是双重黑色的空节点$\Phi$。我们首先看第一种情况。
+函数$fixB^2$。我们需要在这个函数中，通过树的旋转操作和重新染色，最终去掉“双重黑色”。这里有三种情况需要处理。每一种情况中，双重黑色的节点即可以是普通节点，也可以是双重黑色的空节点$\Phi$。我们首先看第一种情况。
 
 \subsection{双重黑色节点的兄弟为黑色，并且该兄弟节点有一个红色子节点}
 对于这种情况，我们可以通过旋转操作来修复。总共有四种不同的细分情况，它们全部可以变换到一种统一的形式。如图\ref{fig:del-case1}所示。
