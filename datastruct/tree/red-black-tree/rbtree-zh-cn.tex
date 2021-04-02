@@ -481,60 +481,58 @@ fixB^2\ \mathcal{C}\ l\ k\ r\ & = & (\mathcal{C}, l, k, r) \\
 \label{eq:db-case-3}
 \ee
 
+如果没有匹配到上述三种模式，最后一行保持节点不变。双重黑色的修复是递归的。它中止与两种情况：一个是\textbf{情况1}，双重黑色节点被消除了；另外一个是双重黑色向上移动，直到根节点。并最终恢复为黑色。下面的例子程序将以上情况汇总到一起：
 
-至此，我们对于双重黑色的全部情况都完成了修复。算法被定义为一个递归函数。它有两个终止条件：一个是$p1.1$和$p1.2$，双重黑色节点被直接消除了；另外一个是将双重黑色继续向上传递，直到根节点。由于算法最终会将根节点染成黑色，所以双重黑色也会被消除。
-
-综合公式（\ref{eq:db-case-1a}）、（\ref{eq:db-case-2}）和（\ref{eq:db-case-3a}），我们可以得到最终的Haskell删除程序。
-
-\begin{lstlisting}[style=Haskell]
--- 兄弟节点为黑色，并且有一个红色子节点
+\begin{Haskell}
+-- the sibling is black, and has a red sub-tree
 fixDB color a@(Node BB _ _ _) x (Node B (Node R b y c) z d)
-      = Node color (Node B (makeBlack a) x b) y (Node B c z d)
+      = Node color (Node B (shiftBlack a) x b) y (Node B c z d)
 fixDB color BBEmpty x (Node B (Node R b y c) z d)
       = Node color (Node B Empty x b) y (Node B c z d)
 fixDB color a@(Node BB _ _ _) x (Node B b y (Node R c z d))
-      = Node color (Node B (makeBlack a) x b) y (Node B c z d)
+      = Node color (Node B (shiftBlack a) x b) y (Node B c z d)
 fixDB color BBEmpty x (Node B b y (Node R c z d))
       = Node color (Node B Empty x b) y (Node B c z d)
 fixDB color (Node B a x (Node R b y c)) z d@(Node BB _ _ _)
-      = Node color (Node B a x b) y (Node B c z (makeBlack d))
+      = Node color (Node B a x b) y (Node B c z (shiftBlack d))
 fixDB color (Node B a x (Node R b y c)) z BBEmpty
       = Node color (Node B a x b) y (Node B c z Empty)
 fixDB color (Node B (Node R a x b) y c) z d@(Node BB _ _ _)
-      = Node color (Node B a x b) y (Node B c z (makeBlack d))
+      = Node color (Node B a x b) y (Node B c z (shiftBlack d))
 fixDB color (Node B (Node R a x b) y c) z BBEmpty
       = Node color (Node B a x b) y (Node B c z Empty)
--- 兄弟节点是红色
-fixDB B a@(Node BB _ _ _) x (Node R b y c) = fixDB B (fixDB R a x b) y c
-fixDB B a@BBEmpty x (Node R b y c) = fixDB B (fixDB R a x b) y c
-fixDB B (Node R a x b) y c@(Node BB _ _ _) = fixDB B a x (fixDB R b y c)
-fixDB B (Node R a x b) y c@BBEmpty = fixDB B a x (fixDB R b y c)
--- 兄弟节点和它的两个子节点都是黑色，向上传递黑色
-fixDB color a@(Node BB _ _ _) x (Node B b y c) = makeBlack (Node color (makeBlack a) x (Node R b y c))
-fixDB color BBEmpty x (Node B b y c) = makeBlack (Node color Empty x (Node R b y c))
-fixDB color (Node B a x b) y c@(Node BB _ _ _) = makeBlack (Node color (Node R a x b) y (makeBlack c))
-fixDB color (Node B a x b) y BBEmpty = makeBlack (Node color (Node R a x b) y Empty)
--- 其他情况
+-- the sibling is red
+fixDB B a@(Node BB _ _ _) x (Node R b y c)
+      = fixDB B (fixDB R a x b) y c
+fixDB B a@BBEmpty x (Node R b y c)
+      = fixDB B (fixDB R a x b) y c
+fixDB B (Node R a x b) y c@(Node BB _ _ _)
+      = fixDB B a x (fixDB R b y c)
+fixDB B (Node R a x b) y c@BBEmpty
+      = fixDB B a x (fixDB R b y c)
+-- the sibling and its 2 children are all black, propagate the blackness up
+fixDB color a@(Node BB _ _ _) x (Node B b y c)
+      = shiftBlack (Node color (shiftBlack a) x (Node R b y c))
+fixDB color BBEmpty x (Node B b y c)
+      = shiftBlack (Node color Empty x (Node R b y c))
+fixDB color (Node B a x b) y c@(Node BB _ _ _)
+      = shiftBlack (Node color (Node R a x b) y (shiftBlack c))
+fixDB color (Node B a x b) y BBEmpty
+      = shiftBlack (Node color (Node R a x b) y Empty)
+-- otherwise
 fixDB color l k r = Node color l k r
-\end{lstlisting}
+\end{Haskell}
 
-对于含有$n$个节点的红黑树，删除算法的复杂度为$O(\lg n)$。
+删除算法的复杂度为$O(h)$，其中$h$为树的高度。由于红黑树保持平衡性，对于$n$个节点的树，$h = O(\lg n)$。
 
 \begin{Exercise}
-
-\begin{itemize}
-\item 选用一种编程语言，实现本节提到的“标记――重建”删除算法：也就是先将要删除的节点标记，但不进行真正的删除。当被标记的节点数目超过50\%的时候，用全部未标记的节点重建树。
-\item 为什么不需要在$mkBlk$的调用处，显示地再调用$fixBlack^2$?
-\end{itemize}
-
+\Question{实现“标记――重建”删除算法：标记被删除的节点，但不进行真正的移除。当被标记的节点数目超过50\%时重建树。}
 \end{Exercise}
 
-\section{命令式的红黑树算法$\star$}
+\section{命令式红黑树算法$\star$}
 \index{红黑树!命令式插入}
 
-通过归纳，我们能够简洁地实现红黑树算法。作为对比，我们来看一下传统的命令式方法。
-
-插入算法的基本思想仍然和二叉搜索树相同。此外，算法需要通过树的旋转操作修复平衡。
+通过模式匹配和递归，我们简化了红黑树的实现。为了完整，我们给出命令式的实现。插入算法的第一步和二叉搜索树相同，接下来通过旋转操作修复平衡。
 
 \begin{algorithmic}[1]
 \Function{Insert}{$T, k$}
@@ -562,34 +560,11 @@ fixDB color l k r = Node color l k r
 \EndFunction
 \end{algorithmic}
 
-当插入一个新节点时，我们将其染成红色，然后修复平衡并返回。上述算法可以转换为下面的Python例子程序。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def rb_insert(t, key):
-    root = t
-    x = Node(key)
-    parent = None
-    while(t):
-        parent = t
-        if(key < t.key):
-            t = t.left
-        else:
-            t = t.right
-    if parent is None: #树为空
-        root = x
-    elif key < parent.key:
-        parent.set_left(x)
-    else:
-        parent.set_right(x)
-    return rb_insert_fix(root, x)
-\end{lstlisting}
-
-总共有3种基本情况需要修复。如果考虑左右对称，则需要修复6种情况。3种基本情况中的两种可以合并。新插入节点的父节点，以及父节点的兄弟节点均为红色。我们可以把它们变为黑色，然后把新插入节点的祖父节点染为红色。修复算法的实现如下：
+新节点为红色，接下来修复平衡。共有3种基本情况，每种都有左右对称的情况，总计6种情况。其中有两种可以合并，它们都有红色的“叔父”节点，我们可将父节点和叔父节点都变为黑色，将祖父节点变为红色：
 
 \begin{algorithmic}[1]
 \Function{Insert-Fix}{$T, x$}
-  \While{\Call{Parent}{$x$} $\neq$ NIL $\land$ \textproc{Color}(\Call{Parent}{$x$}) = RED}
+  \While{\Call{Parent}{$x$} $\neq$ NIL and \textproc{Color}(\Call{Parent}{$x$}) = RED}
     \If{\textproc{Color}(\Call{Uncle}{$x$}) $=$ RED}
       \Comment{情况1：$x$的叔父节点是红色}
       \State \textproc{Color}(\Call{Parent}{$x$}) $\gets$ BLACK
@@ -600,21 +575,21 @@ def rb_insert(t, key):
       \Comment{$x$的叔父节点是黑色}
       \If{\Call{Parent}{$x$} = \textproc{Left}(\Call{Grand-Parent}{$x$})}
         \If{ $x =$ \textproc{Right}(\Call{Parent}{$x$})}
-          \Comment{情况2：$x$是右侧子节点}
+          \Comment{情况2：$x$是右子树}
           \State $x \gets$ \Call{Parent}{$x$}
           \State $T \gets$ \Call{Left-Rotate}{$T, x$}
         \EndIf
-        \Comment{情况3：$x$是左侧子节点}
+        \Comment{情况3：$x$是左子树}
         \State \textproc{Color}(\Call{Parent}{$x$}) $\gets$ BLACK
         \State \textproc{Color}(\Call{Grand-Parent}{$x$}) $\gets$ RED
         \State $T \gets$ \textproc{Right-Rotate}($T$, \Call{Grand-Parent}{$x$})
       \Else
          \If{ $x =$ \textproc{Left}(\Call{Parent}{$x$})}
-          \Comment{情况2的对称情况}
+          \Comment{情况2的对称}
           \State $x \gets$ \Call{Parent}{$x$}
           \State $T \gets$ \Call{Right-Rotate}{$T, x$}
         \EndIf
-        \Comment{情况3的对称情况}
+        \Comment{情况3的对称}
         \State \textproc{Color}(\Call{Parent}{$x$}) $\gets$ BLACK
         \State \textproc{Color}(\Call{Grand-Parent}{$x$}) $\gets$ RED
         \State $T \gets$ \textproc{Left-Rotate}($T$, \Call{Grand-Parent}{$x$})
@@ -626,57 +601,126 @@ def rb_insert(t, key):
 \EndFunction
 \end{algorithmic}
 
-这一算法向红黑树中插入key的复杂度为$O(\lg n)$。和前面定义的$balance$函数相比，我们可以发现它们的差异。两种方法不仅仅在篇幅长短上不同，具体的逻辑也不一样。即使输入同一序列的key，两种方法也会构造出不同的红黑树。并且，和这一命令式算法相比，前面使用模式匹配的函数式算法存在一些性能上的损失。Okasaki在\cite{okasaki}中给出了关于函数式红黑树插入算法性能的详细分析。
+插入算法的复杂度为$O(\lg n)$，其中$n$是节点数。和$balance$函数对比，它们的处理逻辑并不相同。即使输入相同序列，也会构造出不同的红黑树。使用模式匹配的函数式算法存在一些性能损失。Okasaki在\cite{okasaki}中给出了详细分析。
 
-上述修复算法可以实现为如下的Python例子程序。
-
-\lstset{language=Python}
-\begin{lstlisting}
-# 修复连续的红色节点
-def rb_insert_fix(t, x):
-    while(x.parent and x.parent.color==RED):
-        if x.uncle().color == RED:
-            # 情况1: ((a:R x:R b) y:B c:R) ==> ((a:R x:B b) y:R c:B)
-            set_color([x.parent, x.grandparent(), x.uncle()],
-                      [BLACK, RED, BLACK])
-            x = x.grandparent()
-        else:
-            if x.parent == x.grandparent().left:
-                if x == x.parent.right:
-                    # 情况2: ((a x:R b:R) y:B c) ==> 情况3
-                    x = x.parent
-                    t=left_rotate(t, x)
-                # 情况3: ((a:R x:R b) y:B c) ==> (a:R x:B (b y:R c))
-                set_color([x.parent, x.grandparent()], [BLACK, RED])
-                t=right_rotate(t, x.grandparent())
-            else:
-                if x == x.parent.left:
-                    # 情况2': (a x:B (b:R y:R c)) ==> 情况3'
-                    x = x.parent
-                    t = right_rotate(t, x)
-                # 情况3': (a x:B (b y:R c:R)) ==> ((a x:R b) y:B c:R)
-                set_color([x.parent, x.grandparent()], [BLACK, RED])
-                t=left_rotate(t, x.grandparent())
-    t.color = BLACK
-    return t
-\end{lstlisting}
-
-图\ref{fig:imperative-insert}给出了两棵红黑树，它们是使用和图\ref{fig:insert-example}中完全相同的序列构造出的。我们可以发现它们明显不同。
+图\ref{fig:imperative-insert}给出了两棵红黑树，它们是使用和图\ref{fig:insert-example}中完全相同的序列构造出的。我们可以发现它们的不同。
 
 \begin{figure}[htbp]
    \centering
-   \subcaptionbox{}{\includegraphics[scale=0.4]{img/clrs-fig-13-4.ps}}
-   \subcaptionbox{}{\includegraphics[scale=0.4]{img/python-insert.ps}}
+   \includegraphics[scale=0.4]{img/clrs-fig-13-4.ps}
+   \includegraphics[scale=0.4]{img/python-insert.ps}
    \caption{命令式算法构建出的红黑树}
    \label{fig:imperative-insert}
 \end{figure}
 
-红黑树的命令式删除算法和插入算法相比更为复杂。我们不在正文给出，读者可以参考本书附录B了解其详细实现。
+红黑树的命令式删除算法更为复杂，参见本书附录A。
 
-\section{其它}
-红黑树是最广泛使用的一种平衡二叉搜索树。另外一种自平衡二叉树是AVL树，我们将在下一章介绍。红黑树可以帮助我们了解其它更复杂的数据结构。如果我们将子节点的数目从两个扩展到$k$个，并且保持树的平衡，就可以演化到B树。如果我们在边上，而非在节点中存储数据，我们就得到了Trie。由于常见红黑树算法需要处理很多情况，代码篇幅较长，初学者往往会感觉红黑树很复杂。
+\section{小结}
+红黑树是广泛使用的一种平衡二叉搜索树。我们在下一章介绍另外一种自平衡二叉树——AVL树。红黑树可以看作是其它复杂的数据结构的基础。将子节点的数目从两个扩展到$k$个，并且保持树的平衡，就可以演化到B树。如果将数据存储在边上，而非节点中，就演化出基数树。在红黑树的实现中，为了修复平衡性，需要处理多种情况。Okasaki给出了一种简化方法，并激发了多种类似的实现\cite{rosetta}。本书中的AVL树、Splay树的实现都是基于模式匹配方法的。
 
-Okasaki的工作使得红黑树算法变得容易理解。这激发了很多其它程序设计语言进行类似的实现\cite{rosetta}。本书中给出的Splay树、AVL树等模式匹配算法也是受到这一启发而完成的。
+\section{附录：例子程序}
+
+带有父节点引用的红黑树定义，默认节点为红色。
+
+\begin{lstlisting}[language = Bourbaki]
+data Node<T> {
+    T key
+    Color color
+    Node<T> left
+    Node<T> right
+    Node<T> parent
+
+    Node(T x) = Node(null, x, null, Color.RED)
+
+    Node(Node<T> l, T k, Node<T> r, Color c) {
+        left = l, key = k, right = r, color = c
+        if (left != null) then left.parent = this
+        if (right != null) then right.parent = this
+    }
+
+    Self setLeft(l) {
+        left = l
+        if (l != null) { l.parent = this }
+    }
+
+    Self setRight(r) {
+        right = r
+        if (r != null) { r.parent = this }
+    }
+
+    Node<T> sibling() {
+        return if parent.left == this then parent.right
+               else parent.left
+    }
+
+    Node<T> uncle() {  return parent.sibling() }
+
+    Node<T> grandparent() { return parent.parent }
+}
+\end{lstlisting}
+
+红黑树的插入：
+
+\begin{lstlisting}[language = Bourbaki]
+Node<T> insert(Node<T> t, T key) {
+    root = t
+    x = Node(key)
+    parent = null
+    while (t != null) {
+        parent = t
+        t = if (key < t.key) then t.left else t.right
+    }
+    if (parent == null) {    //tree is empty
+        root = x
+    } else if (key < parent.key) {
+        parent.setLeft(x)
+    } else {
+        parent.setRight(x)
+    }
+    return insertFix(root, x)
+}
+\end{lstlisting}
+
+插入后的平衡修复：
+
+\begin{lstlisting}[language = Bourbaki]
+// Fix the red->red violation
+Node<T> insertFix(Node<T> t, Node<T> x) {
+    while (x.parent != null and x.parent.color == Color.RED) {
+        if (x.uncle().color == Color.RED) {
+            // case 1: ((a:R x:R b) y:B c:R) ==> ((a:R x:B b) y:R c:B)
+            x.parent.color = Color.BLACK
+            x.grandparent().color = Color.RED
+            x.uncle().color = Color.BLACK
+            x = x.grandparent()
+        } else {
+            if (x.parent == x.grandparent().left) {
+                if (x == x.parent.right) {
+                    // case 2: ((a x:R b:R) y:B c) ==> case 3
+                    x = x.parent
+                    t = leftRotate(t, x)
+                }
+                // case 3: ((a:R x:R b) y:B c) ==> (a:R x:B (b y:R c))
+                x.parent.color = Color.BLACK
+                x.grandparent().color = Color.RED
+                t = rightRotate(t, x.grandparent())
+            } else {
+                if (x == x.parent.left) {
+                    // case 2': (a x:B (b:R y:R c)) ==> case 3'
+                    x = x.parent
+                    t = rightRotate(t, x)
+                }
+                // case 3': (a x:B (b y:R c:R)) ==> ((a x:R b) y:B c:R)
+                x.parent.color = Color.BLACK
+                x.grandparent().color = Color.RED
+                t = leftRotate(t, x.grandparent())
+            }
+        }
+    }
+    t.color = Color.BLACK
+    return t
+}
+\end{lstlisting}
 
 \ifx\wholebook\relax \else
 \begin{thebibliography}{99}
