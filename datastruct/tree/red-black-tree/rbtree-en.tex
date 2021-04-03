@@ -321,7 +321,7 @@ The algorithm performs top-down recursive insertion and fixing. It is bound to $
 \section{Delete}
 \index{red-black tree!delete}
 
-Delete is more complex than insert. Sometimes, we build the read-only tree, then offer it for frequently looking up\cite{okasaki-blog}. It is possible to implement the $delete$ algorithm for red-black tree in purely functional way\footnote{Actually, the tree is rebuilt, although the common part is reused. This feature is called `persist'}. There are alternatives to mimic delete. For example, mark the deleted node with a flag, and later rebuild the tree when such nodes exceeds 50\%. Delete may also violate the red-black tree coloring rules. We use the same idea to apply fixing after delete. The coloring violation only happens when delete a black node according to rule 5. The black nodes along the path decreases by one, hence not all paths contain the same number of black nodes.
+Delete is more complex than insert. We can also use pattern matching and recursion to simplify the $delete$ algorithm for red-black tree\footnote{Actually, the tree is rebuilt in purely functional setting, although the common part is reused. This feature is called `persist'}. There are alternatives to mimic delete. Sometimes, we build the read-only tree, then use it for frequently looking up\cite{okasaki-blog}. When delete, we mark the deleted node with a flag, and later rebuild the tree if such nodes exceeds 50\%. Delete may also violate the red-black tree coloring rules. We use the same idea to apply fixing after delete. The coloring violation only happens when delete a black node according to rule 5. The black nodes along the path decreases by one, hence not all paths contain the same number of black nodes.
 
 To resume the blackness, we introduce a special `doubly-black' node(\cite{CLRS}, pp290). One such node is counted as 2 black nodes. When delete a black node $x$, we can move the blackness either up to its parent or down to one sub-tree. Let this node be $y$ that accepts the blackness. If $y$ was red, we turn it black; if $y$ was already black, we make it `doubly-black', denoted as $\mathcal{B}^2$. Below example program adds the `doubly-black' support:
 
@@ -331,7 +331,7 @@ data RBTree a = Empty | BBEmpty
               | Node Color (RBTree a) a (RBTree a)
 \end{Haskell}
 
-Because all empty leaves are black, when push the blackness down to a leaf, it becomes `doubly-black' empty (\texttt{BBEmpty}, or $\pmb{\varnothing}$). The first step is to perform the normal binary search tree delete; then if the cut off node is black, we shift the blackness, and fix the tree coloring.
+Because all empty leaves are black, when push the blackness down to a leaf, it becomes `doubly-black' empty (\texttt{BBEmpty}, or bold $\pmb{\varnothing}$). The first step is to perform the normal binary search tree delete; then if the cut off node is black, we shift the blackness, and fix the tree coloring.
 
 \be
 delete = makeBlack \circ del
@@ -430,7 +430,7 @@ fixB^2\ \mathcal{C}\ (\mathcal{B}, (\mathcal{R}, a, x, b), y, c)\ z\ d_{\mathcal
 
 Where $a_{\mathcal{B}^2}$ means node $a$ is doubly-black, it can be branch or $\pmb{\varnothing}$.
 
-\textbf{Case 2}. {\em The sibling of the doubly-black is red.} We can rotate the tree to turn it into case 1, as shown in figure \ref{fig:del-case2}.
+\textbf{Case 2}. {\em The sibling of the doubly-black is red.} We can rotate the tree to turn it into case 1 or 3, as shown in figure \ref{fig:del-case2}.
 
 \begin{figure}[htbp]
   \centering
@@ -510,7 +510,7 @@ fixDB B (Node R a x b) y c@(Node BB _ _ _)
       = fixDB B a x (fixDB R b y c)
 fixDB B (Node R a x b) y c@BBEmpty
       = fixDB B a x (fixDB R b y c)
--- the sibling and its 2 children are all black, propagate the blackness up
+-- the sibling and its 2 children are all black, move the blackness up
 fixDB color a@(Node BB _ _ _) x (Node B b y c)
       = shiftBlack (Node color (shiftBlack a) x (Node R b y c))
 fixDB color BBEmpty x (Node B b y c)
@@ -601,11 +601,7 @@ We make the new node red, and then perform fixing before return. There are 3 bas
 \EndFunction
 \end{algorithmic}
 
-This algorithm takes $O(\lg n)$ time to insert a key, where $n$ is the number of nodes. Compare to the $balance$ function defined previously, they have different logic. Even input the same sequence of keys, they build different red-black trees. There
-is a bit performance overhead in the pattern matching algorithm.
-Okasaki discussed the difference in detail in \cite{okasaki}.
-
-Figure \ref{fig:imperative-insert} shows the result when input the same sequence of keys to the imperative algorithm. We can see the difference from figure \ref{fig:insert-example}.
+This algorithm takes $O(\lg n)$ time to insert a key, where $n$ is the number of nodes. Compare to the $balance$ function defined previously, they have different logic. Even input the same sequence of keys, they build different red-black trees. Figure \ref{fig:imperative-insert} shows the result when input the same sequence of keys to the imperative algorithm. We can see the difference from figure \ref{fig:insert-example}. There is a bit performance overhead in the pattern matching algorithm. Okasaki discussed the difference in detail in \cite{okasaki}.
 
 \begin{figure}[htbp]
    \centering
@@ -636,28 +632,26 @@ data Node<T> {
 
     Node(Node<T> l, T k, Node<T> r, Color c) {
         left = l, key = k, right = r, color = c
-        if (left != null) then left.parent = this
-        if (right != null) then right.parent = this
+        if left != null then left.parent = this
+        if right != null then right.parent = this
     }
 
     Self setLeft(l) {
         left = l
-        if (l != null) { l.parent = this }
+        if l != null then l.parent = this
     }
 
     Self setRight(r) {
         right = r
-        if (r != null) { r.parent = this }
+        if r != null then r.parent = this
     }
 
-    Node<T> sibling() {
-        return if parent.left == this then parent.right
-               else parent.left
-    }
+    Node<T> sibling() = if parent.left == this then parent.right
+                        else parent.left
 
-    Node<T> uncle() {  return parent.sibling() }
+    Node<T> uncle() = parent.sibling()
 
-    Node<T> grandparent() { return parent.parent }
+    Node<T> grandparent() = parent.parent
 }
 \end{lstlisting}
 

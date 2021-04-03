@@ -323,9 +323,9 @@ balance color l k r = Node color l k r
 \section{删除}
 \index{红黑树!删除}
 
-删除比插入复杂。某些情况下，我们一次性构建一棵树，用于后继的频繁查找\cite{okasaki-blog}。可以通过纯函数式的方法实现红黑树的删除算法\footnote{实际上通过重用不变的部分重新构建了树。这一特性称作persist}。还存在其它一些方法来达到删除的效果。例如，在被删除的节点上加一个标记，当带有删除标记的节点超过50\%的时候，用未标记的节点重建一棵树。删除也会破坏红黑树的性质，因此同样需要进行修复。问题只发生在删除黑色的节点时。这会违反性质5，使得某一路径上的黑色节点数目少于其它的路径。
+红黑树的删除比插入复杂。也可以通过模式匹配和递归简化删除算法\footnote{实际上通过重用不变的部分重新构建了树。这一特性称作persist}的实现。我们还可以利用其它方式来达到删除的效果。例如，一次性构建一棵树，用于后继的多次查找\cite{okasaki-blog}。删除时在节点上加一个标记，当带有标记的节点超过50\%时，用未标记的节点重建一棵树。删除也会破坏红黑树的性质，因此同样需要进行修复。问题只发生在删除黑色节点时，这会违反性质5，使得某一路径上的黑色节点数目少于其它的路径。
 
-我们可以通过引入“双重黑色”（\cite{CLRS}第290页）节点来恢复第五条性质。这样的节点算作两个黑色节点。删除黑色节点$x$时，我们将黑色或者向上移动到父节点，或者向下移动到子树上。令接受黑色的节点为$y$。如果$y$原来是红色，将其变为黑色；如果$y$原来是黑色，则变为“双重黑色”，记作$\mathcal{B}^2$。下面的例子程序增加了双重黑色的定义：
+我们可以引入“双重黑色”（\cite{CLRS}，290页）节点来恢复第五条性质。一个这样的节点算作两个黑色节点。删除黑色节点$x$时，我们将黑色向上移动到父节点，或者向下移动到子树上。令接受黑色的节点为$y$。如果$y$原来是红色，将其变为黑色；如果$y$原来是黑色，则变为“双重黑色”，记作$\mathcal{B}^2$。下面的例子程序增加了双重黑色的定义：
 
 \begin{Haskell}
 data Color = R | B | BB
@@ -333,7 +333,7 @@ data RBTree a = Empty | BBEmpty
               | Node Color (RBTree a) a (RBTree a)
 \end{Haskell}
 
-由于所有的空叶子节点都是黑色，当将黑色移动到叶子时，其变为“双重黑色”空节点（\texttt{BBEmpty}或$\pmb{\varnothing}$）。删除时，第一步和普通二叉搜索树相同；如果被删除节点是黑色的，接下来进行修复：
+由于所有的空节点都是黑色，当将黑色移动到空节点时，其变为“双重黑色”空节点（\texttt{BBEmpty}或加粗的$\pmb{\varnothing}$）。删除时，第一步和普通二叉搜索树相同；如果被删除节点是黑色的，接下来进行修复：
 
 \be
 delete = makeBlack \circ del
@@ -431,7 +431,7 @@ fixB^2\ \mathcal{C}\ (\mathcal{B}, (\mathcal{R}, a, x, b), y, c)\ z\ d_{\mathcal
 
 其中$a_{\mathcal{B}^2}$表示节点$a$是双重黑色，可以是分枝节点或$\pmb{\varnothing}$。
 
-\textbf{情况2：双重黑色节点的兄弟节点为红色。}可以通过旋转，将其变换为情况1。如图\ref{fig:del-case2}所示。
+\textbf{情况2：双重黑色节点的兄弟节点为红色。}可以通过旋转，将其变换为情况1或3。如图\ref{fig:del-case2}所示。
 
 \begin{figure}[htbp]
   \centering
@@ -464,7 +464,7 @@ fixB^2\ \mathcal{B}\ (\mathcal{R}, a, x, b)\ y\ c_{\mathcal{B}^2} & = & fixB^2\ 
   \label{fig:del-case3}
 \end{figure}
 
-有两种对称情况。对于上方的情况，如果$x$是红色，则变为黑色，否则变为双重黑色；对于下方的情况$y$的变化与此类似。我们继续在式（\ref{eq:db-case-2}）的基础上增加此种修复：
+有两种对称情况：对于上方的情况，如果$x$是红色，则变为黑色，否则变为双重黑色；对于下方的情况，$y$的变化与此类似。我们继续在式（\ref{eq:db-case-2}）的基础上增加此种修复：
 
 \be
 %\resizebox{\textwidth}{!}{\ensuremath{
@@ -481,7 +481,7 @@ fixB^2\ \mathcal{C}\ l\ k\ r\ & = & (\mathcal{C}, l, k, r) \\
 \label{eq:db-case-3}
 \ee
 
-如果没有匹配到上述三种模式，最后一行保持节点不变。双重黑色的修复是递归的。它中止与两种情况：一个是\textbf{情况1}，双重黑色节点被消除了；另外一个是双重黑色向上移动，直到根节点。并最终恢复为黑色。下面的例子程序将以上情况汇总到一起：
+如果没有匹配到上述三种模式，最后一行保持节点不变。双重黑色的修复是递归的。它中止于两种情况：一个是\textbf{情况1}，双重黑色节点被消除了；另外一个是双重黑色向上移动，直到根节点，并最终恢复为黑色。下面的例子程序将以上情况汇总到一起：
 
 \begin{Haskell}
 -- the sibling is black, and has a red sub-tree
@@ -510,7 +510,7 @@ fixDB B (Node R a x b) y c@(Node BB _ _ _)
       = fixDB B a x (fixDB R b y c)
 fixDB B (Node R a x b) y c@BBEmpty
       = fixDB B a x (fixDB R b y c)
--- the sibling and its 2 children are all black, propagate the blackness up
+-- the sibling and its 2 children are all black, move the blackness up
 fixDB color a@(Node BB _ _ _) x (Node B b y c)
       = shiftBlack (Node color (shiftBlack a) x (Node R b y c))
 fixDB color BBEmpty x (Node B b y c)
@@ -526,7 +526,7 @@ fixDB color l k r = Node color l k r
 删除算法的复杂度为$O(h)$，其中$h$为树的高度。由于红黑树保持平衡性，对于$n$个节点的树，$h = O(\lg n)$。
 
 \begin{Exercise}
-\Question{实现“标记――重建”删除算法：标记被删除的节点，但不进行真正的移除。当被标记的节点数目超过50\%时重建树。}
+\Question{实现“标记——重建”删除算法：标记被删除的节点，但不进行真正的移除。当被标记的节点数目超过50\%时重建树。}
 \end{Exercise}
 
 \section{命令式红黑树算法$\star$}
@@ -601,9 +601,7 @@ fixDB color l k r = Node color l k r
 \EndFunction
 \end{algorithmic}
 
-插入算法的复杂度为$O(\lg n)$，其中$n$是节点数。和$balance$函数对比，它们的处理逻辑并不相同。即使输入相同序列，也会构造出不同的红黑树。使用模式匹配的函数式算法存在一些性能损失。Okasaki在\cite{okasaki}中给出了详细分析。
-
-图\ref{fig:imperative-insert}给出了两棵红黑树，它们是使用和图\ref{fig:insert-example}中完全相同的序列构造出的。我们可以发现它们的不同。
+插入算法的复杂度为$O(\lg n)$，其中$n$是节点数。和$balance$函数对比，它们的处理逻辑并不相同。即使输入相同序列，也会构造出不同的红黑树。图\ref{fig:imperative-insert}给出了两棵红黑树，它们是使用和图\ref{fig:insert-example}中完全相同的序列构造出的。我们可以发现它们的不同。使用模式匹配的函数式算法存在一些性能损失。Okasaki在\cite{okasaki}中给出了详细分析。
 
 \begin{figure}[htbp]
    \centering
@@ -616,7 +614,7 @@ fixDB color l k r = Node color l k r
 红黑树的命令式删除算法更为复杂，参见本书附录A。
 
 \section{小结}
-红黑树是广泛使用的一种平衡二叉搜索树。我们在下一章介绍另外一种自平衡二叉树——AVL树。红黑树可以看作是其它复杂的数据结构的基础。将子节点的数目从两个扩展到$k$个，并且保持树的平衡，就可以演化到B树。如果将数据存储在边上，而非节点中，就演化出基数树。在红黑树的实现中，为了修复平衡性，需要处理多种情况。Okasaki给出了一种简化方法，并激发了多种类似的实现\cite{rosetta}。本书中的AVL树、Splay树的实现都是基于模式匹配方法的。
+红黑树是广泛使用的一种平衡二叉搜索树。我们在下一章介绍另外一种自平衡二叉树——AVL树。红黑树可以看作是其它复杂的数据结构的基础：将子节点的数目扩展到$k$个，并且保持树的平衡，就可以演化到B树。如果将数据存储在边上，而非节点中，就演化出基数树。在红黑树的实现中，为了修复平衡性，需要处理多种情况。Okasaki给出了一种简化方法，并激发了多种类似的实现\cite{rosetta}。本书中的AVL树、Splay树都是基于模式匹配方法实现的。
 
 \section{附录：例子程序}
 
@@ -634,28 +632,26 @@ data Node<T> {
 
     Node(Node<T> l, T k, Node<T> r, Color c) {
         left = l, key = k, right = r, color = c
-        if (left != null) then left.parent = this
-        if (right != null) then right.parent = this
+        if left != null then left.parent = this
+        if right != null then right.parent = this
     }
 
     Self setLeft(l) {
         left = l
-        if (l != null) { l.parent = this }
+        if l != null then l.parent = this
     }
 
     Self setRight(r) {
         right = r
-        if (r != null) { r.parent = this }
+        if r != null then r.parent = this
     }
 
-    Node<T> sibling() {
-        return if parent.left == this then parent.right
-               else parent.left
-    }
+    Node<T> sibling() = if parent.left == this then parent.right
+                        else parent.left
 
-    Node<T> uncle() {  return parent.sibling() }
+    Node<T> uncle() = parent.sibling()
 
-    Node<T> grandparent() { return parent.parent }
+    Node<T> grandparent() = parent.parent
 }
 \end{lstlisting}
 
