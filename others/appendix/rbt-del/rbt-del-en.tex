@@ -1,23 +1,25 @@
 \ifx\wholebook\relax \else
 % ------------------------
 
-\documentclass{article}
+\documentclass[b5paper]{article}
+\usepackage[nomarginpar
+  %, margin=.5in
+]{geometry}
+
+\addtolength{\oddsidemargin}{-0.05in}
+\addtolength{\evensidemargin}{-0.05in}
+\addtolength{\textwidth}{0.1in}
+
 \usepackage[en]{../../../prelude}
 
 \setcounter{page}{1}
 
 \begin{document}
 
-%--------------------------
+\title{Imperative delete for red-black tree}
 
-% ================================================================
-%                 COVER PAGE
-% ================================================================
-
-\title{The imperative red-black tree deletion algorithm}
-
-\author{Larry~LIU~Xinyu
-\thanks{{\bfseries Larry LIU} \newline
+\author{Xinyu LIU
+\thanks{{\bfseries Xinyu LIU} \newline
   Email: liuxinyu95@gmail.com \newline}
   }
 
@@ -27,28 +29,22 @@
 \markboth{Red-black tree}{Elementary Algorithms}
 
 \ifx\wholebook\relax
-\chapter{The imperative red-black tree deletion algorithm}
+\chapter{Imperative delete for red-black tree}
 \numberwithin{Exercise}{chapter}
 \fi
 
-% ================================================================
-%                 Introduction
-% ================================================================
-\index{Red-black tree!Imperative deletion}
+\index{Red-black tree!Imperative delete}
 
-This appendix introduces the imperative red-black tree deletion algorithm. The idea is to perform the tree rotations and re-coloring on top of the binary search tree deletion result to adjust the balance of the tree. As mentioned in the chapter of red-black tree, the 5th red-black tree property will be violated when deleting a black node. This is because the number of black nodes in the paths through that node will reduce by one. To keep the number of black nodes unchanged, we introduce a concept of 'doubly blackness'.
+The imperative $delete$ for red-black tree need handle more cases than $insert$. To resume balance after cut off a node, we perform rotations and re-coloring. When delete a black node, rule 5 will be violated because the number of black nodes along the paths through that node reduces by one. We introduced `doubly-black' node to maintain the number of black nodes unchanged.
 
-\section{Doubly Black node}
-\index{Reb-black tree!doubly black}
+Below example program adds `doubly black' to the color definition:
 
-In order to realize 'doubly black' node, we need add a new color definition. As the following C++ example.
-
-\lstset{language=C++}
-\begin{lstlisting}
-enum class Color { RED, BLACK, DOUBLY_BLACK };
+\lstset{frame = single}
+\begin{lstlisting}[language = Bourbaki]
+data Color { RED, BLACK, DOUBLY_BLACK };
 \end{lstlisting}
 
-When deleting a node, we re-use the binary search tree algorithm and record the parent of the deleted node. We need further processing if the deleted node is black before performing the fixing.
+When deleting a node, we re-use the binary search tree $delete$ i the first step. then further fix the balance if the deleted node is black.
 
 \begin{algorithmic}[1]
 \Function{Delete}{$T, x$}
@@ -56,17 +52,17 @@ When deleting a node, we re-use the binary search tree algorithm and record the 
   \State $q \gets$ NIL
   \If{\Call{Left}{$x$} = NIL}
     \State $q \gets$ \Call{Right}{$x$}
-    \State replace $x$ with \Call{Right}{$x$}
+    \State \textproc{Replace}($x$, \Call{Right}{$x$}) \Comment{replace $x$ with its right sub-tree}
   \ElsIf{\Call{Right}{$x$} = NIL}
     \State $q \gets$ \Call{Left}{$x$}
-    \State replace $x$ with \Call{Left}{$x$}
+    \State \textproc{Replace}($x$, \Call{Left{$x$}}) \Comment{replace $x$ with its right sub-tree}
   \Else
     \State $y \gets$ \textproc{Min}(\Call{Right}{$x$})
     \State $p \gets$ \Call{Parent}{$y$}
     \State $q \gets$ \Call{Right}{$y$}
     \State \Call{Key}{$x$} $\gets$ \Call{Key}{$y$}
-    \State copy satellite data from $y$ to $x$
-    \State replace $y$ with \Call{Right}{$y$}
+    \State copy data from $y$ to $x$
+    \State \textproc{Replace}($y$, \Call{Right}{$y$}) \Comment{replace $y$ with its right sub-tree}
     \State $x \gets y$
   \EndIf
   \If{\Call{Color}{$x$} = BLACK}
@@ -77,12 +73,12 @@ When deleting a node, we re-use the binary search tree algorithm and record the 
 \EndFunction
 \end{algorithmic}
 
-The deletion algorithm takes the root $T$ and the node $x$ to be deleted. If $x$ has an empty sub-tree, we can cut off $x$, then replace it with the other sub-tree $q$. Otherwise, we locate the minimum node $y$ in the right child of $x$, then replace $x$ with $y$. We next cut off $y$ after that. If the deleted node $x$ is black, we call \textproc{Make-Black}($p$, $q$) to keep the blackness and start further processing.
+\textproc{Delete} takes the root $T$ and the node $x$ to be deleted. $x$ can be located through $lookup$. If $x$ has an empty sub-tree, we cut off $x$, then replace it with the other sub-tree $q$. Otherwise, we locate the minimum node $y$ in the right sub-tree of $x$, then replace $x$ with $y$. We cut off $y$ after that. If $x$ is black, we call \textproc{Make-Black}($p$, $q$) to maintain the blackness before further fixing.
 
 \begin{algorithmic}[1]
 \Function{Make-Black}{$p$, $q$}
-  \If{$p$ = NIL $\land$ $q$ = NIL}
-    \State \Return NIL \Comment{Returns empty if delete a singleton leaf.}
+  \If{$p$ = NIL and $q$ = NIL}
+    \State \Return NIL \Comment{The tree was singleton}
   \ElsIf{$q$ = NIL}
     \State $n \gets$ Doubly Black NIL
     \State \Call{Parent}{$n$} $\gets p$
@@ -93,9 +89,7 @@ The deletion algorithm takes the root $T$ and the node $x$ to be deleted. If $x$
 \EndFunction
 \end{algorithmic}
 
-If both $p$ and $q$ passed to \textproc{Make-Black} are empty, we are deleting the only leaf node from a singleton tree. It becames empty as the result. If the parent $p$ isn't empty, but $q$ is, it means we deleted a black leaf node, and used the NIL node to replace that black node. According to the red-black tree property 3, NIL node is black. We can change the NIL node to 'doubly black' NIL to retain the number of black nodes for all the paths through that node. Otherwise, if both $p$ and $q$ are not empty, we call \textproc{Blacken} procedure, if $q$ is red, then we color it to black; if it is already black, we color it to doubly black.
-
-In order to resume all the red-black tree properties, we next get rid of the doubly blackness by tree rotations and re-coloring. There are three different cases (pp292 in \cite{CLRS}). The doubly black node can either be normal node or NIL node in all the cases.
+If both $p$ and $q$ are empty, we are deleting the only leaf from a singleton tree. The result is empty. If the parent $p$ is not empty, but $q$ is, we are deleting a black leaf. We use NIL to replace that black leaf. As NIL is already black, we change it to 'doubly black' NIL to maintain the blackness. Otherwise, if neither $p$ nor $q$ is empty, we call \textproc{Blacken}. Where if $q$ is red, it changes to black; if $q$ is already black, it changes to doubly black. As the next step, we need eliminate the doubly blackness through tree rotation and re-coloring. There are three different cases (\cite{CLRS}, pp292). The doubly black node is either branch or NIL in all the cases.
 
 \subsection{The doubly black node has a black sibling, and one of its nephew is red.}
 We can rotate the tree to fix the doubly black. There are 4 sub-cases, all can be transformed to a uniformed structure as shown in figure \ref{fig:del-case1}.
@@ -478,5 +472,5 @@ Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest and Clifford Stein.
 
 \end{thebibliography}
 
-\end{document}
+\expandafter\enddocument
 \fi
