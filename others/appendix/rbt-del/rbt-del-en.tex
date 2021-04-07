@@ -256,192 +256,164 @@ The sibling of the doubly black isn't empty in all above 3 cases. Otherwise, we 
 \EndFunction
 \end{algorithmic}
 
-When fixing the deletion result, we passed in the root $T$; the node (can be doubly black) to be fixed as $x$; and a flag $f$. The flag is true if the node to be fixed $x$ is doubly black NIL. We record the doubly black NIL with $n$, and replace $n$ with the normal NIL after fixing.
+When fixing, we pass in the root $T$, the node $x$ (can be doubly black), and a flag $f$. The flag is true if $x$ is doubly black NIL. We record the doubly black NIL with $n$, and replace $n$ with the normal NIL after fixing.
 
-The following is the example deletion program in C++.
+Below is the example program implements delete:
 
-\lstset{language=C++}
-\begin{lstlisting}
-Node* del(Node* t, Node* x) {
-    if (!x) return t;
-    Node* parent = x->parent;
-    Node* db = nullptr;        //doubly black
-    Node* y;
+\begin{lstlisting}[language = Bourbaki]
+Node del(Node t, Node x) {
+    if x == null then return t
+    var parent = x.parent;
+    Node db = null;        //doubly black
 
-    if (x->left == nullptr) {
-        db = x->right;
-        x->replaceWith(db);
-    } else if (x->right == nullptr) {
-        db = x->left;
-        x->replaceWith(db);
+    if x.left == null {
+        db = x.right
+        x.replaceWith(db)
+    } else if x.right == null {
+        db = x.left
+        x.replaceWith(db)
     } else {
-        y = min(x->right);
-        parent = y->parent;
-        db = y->right;
-        x->key = y->key;
-        y->replaceWith(db);
-        x = y;
+        var y = min(x.right)
+        parent = y.parent
+        db = y.right
+        x.key = y.key
+        y.replaceWith(db)
+        x = y
     }
-    if (x->color == Color::BLACK)
-        t = deleteFix(t, makeBlack(parent, db), db == nullptr);
-    remove(x);
-    return t;
+    if x.color == Color.BLACK {
+        t = deleteFix(t, makeBlack(parent, db), db == null);
+    }
+    remove(x)
+    return t
 }
 \end{lstlisting}
 
-Where \texttt{makeBlack} check if the node change to doubly black after deletion, and handle the special case of doubly black NIL.
+Where \texttt{makeBlack} checks if the node changes to doubly black, and handles the special case of doubly black NIL.
 
-\begin{lstlisting}
-Node* makeBlack(Node* parent, Node* x) {
-    if (!parent && ! x)
-        return nullptr;
-    if (!x)
-        return Node::replace(parent, x, new Node(0, Color::DOUBLY_BLACK));
-    return blacken(x);
+\begin{lstlisting}[language = Bourbaki]
+Node makeBlack(Node parent, Node x) {
+    if parent == null and x == null then return null
+    return if x == null
+        then replace(parent, x, Node(0, Color.DOUBLY_BLACK))
+        else blacken(x)
 }
 \end{lstlisting}
 
-The function \texttt{replace(parent, x, y)} replaces the child of the \texttt{parent}, which is \texttt{x}, with the node \texttt{y}.
+The function \texttt{replace(parent, x, y)} replaces the child of the \texttt{parent}, which is \texttt{x}, with \texttt{y}.
 
-\begin{lstlisting}
-static Node* replace(Node* parent, Node* x, Node* y) {
-    if (parent == nullptr) {
-        if (y) y->parent = nullptr;
-    } else if (parent->left == x) {
-        parent->setLeft(y);
+\begin{lstlisting}[language = Bourbaki]
+Node replace(Node parent, Node x, Node y) {
+    if parent == null {
+        if y != null then y.parent = null
+    } else if parent.left == x {
+        parent.setLeft(y)
     } else {
-        parent->setRight(y);
+        parent.setRight(y)
     }
-    if (x) x->parent = nullptr;
-    return y;
+    if x != null then x.parent = null
+    return y
 }
 \end{lstlisting}
 
-The function \texttt{blacken(node)} re-colors the red node to black, and re-colors the black node to doubly black.
+The function \texttt{blacken(node)} changes the red node to black, and the black node to doubly black:
 
-\begin{lstlisting}
-Node* blacken(Node* x) {
-    x->color = isRed(x) ? Color::BLACK : Color::DOUBLY_BLACK;
-    return x;
+\begin{lstlisting}[language = Bourbaki]
+Node blacken(Node x) {
+    x.color = if isRed(x) then Color.BLACK else Color.DOUBLY_BLACK
+    return x
 }
 \end{lstlisting}
 
-Below is the final fixing process.
+Below example program implements the fixing:
 
-\begin{lstlisting}
-Node* deleteFix(Node* t, Node* db, bool isDBEmpty) {
-    Node* dbEmpty = isDBEmpty ? db : nullptr;
-    if (!db) return nullptr;    // remove the root from a leaf tree;
-    while (db != t && db->color == Color::DOUBLY_BLACK) {
-        if (db->sibling() != nullptr) {
-            if (isRed(db->sibling())) {
-                // the sibling is red, (transform to make the sibling black)
-                setColors(db->parent, Color::RED,
-                          db->sibling(), Color::BLACK);
-                if (db == db->parent->left)
-                    t = leftRotate(t, db->parent);
-                else
-                    t = rightRotate(t, db->parent);
-            } else if (isBlack(db->sibling()) && isRed(db->sibling()->left)) {
-                // the sibling is black, and one nephew is red
-                if (db == db->parent->left) {
-                    setColors(db, Color::BLACK,
-                              db->parent, Color::BLACK,
-                              db->sibling()->left, db->parent->color);
-                    t = rightRotate(t, db->sibling());
-                    t = leftRotate(t, db->parent);
+\begin{lstlisting}[language = Bourbaki]
+Node deleteFix(Node t, Node db, Bool isDBEmpty) {
+    var dbEmpty = if isDBEmpty then db else null
+    if db == null then return null    // delete the root
+    while (db != t and db.color == Color.DOUBLY_BLACK) {
+        var s = db.sibling()
+        var p = db.parent
+        if (s != null) {
+            if isRed(s) {
+                // the sibling is red
+                p.color = Color.RED
+                s.color = Color.BLACK
+                t = if db == p.left then leftRotate(t, p)
+                                    else rightRotate(t, p)
+            } else if isBlack(s) and isRed(s.left) {
+                // the sibling is black, and one sub-tree is red
+                if db == p.left {
+                    db.color = Color.BLACK
+                    p.color  = Color.BLACK
+                    s.left.color = p.color
+                    t = rightRotate(t, s)
+                    t = leftRotate(t, p)
                 } else {
-                    setColors(db, Color::BLACK,
-                              db->parent, Color::BLACK,
-                              db->sibling(), db->parent->color,
-                              db->sibling()->left, Color::BLACK);
-                    t = rightRotate(t, db->parent);
+                    db.color = Color.BLACK
+                    p.color  = Color.BLACK
+                    s.color = p.color
+                    s.left.color = Color.BLACK
+                    t = rightRotate(t, p)
                 }
-            } else if (isBlack(db->sibling()) && isRed(db->sibling()->right)) {
-                if (db == db->parent->left) {
-                    setColors(db, Color::BLACK,
-                              db->parent, Color::BLACK,
-                              db->sibling(), db->parent->color,
-                              db->sibling()->right, Color::BLACK);
-                    t = leftRotate(t, db->parent);
+            } else if isBlack(s) and isRed(s.right) {
+                if (db == p.left) {
+                    db.color = Color.BLACK
+                    p.color  = Color.BLACK
+                    s.color  = p.color
+                    s.right.color = Color.BLACK
+                    t = leftRotate(t, p)
                 } else {
-                    setColors(db, Color::BLACK,
-                              db->parent, Color::BLACK,
-                              db->sibling()->right, db->parent->color);
-                    t = leftRotate(t, db->sibling());
-                    t = rightRotate(t, db->parent);
+                    db.color = Color.BLACK
+                    p.color  = Color.BLACK
+                    s.right.color = p.color
+                    t = leftRotate(t, s)
+                    t = rightRotate(t, p)
                 }
-            } else if (isBlack(db->sibling()) &&
-                       isBlack(db->sibling()->left) &&
-                       isBlack(db->sibling()->right)) {
-                // the sibling and both nephews are black.
-                // move the blackness up
-                setColors(db, Color::BLACK,
-                          db->sibling(), Color::RED);
-                blacken(db->parent);
-                db = db->parent;
+            } else if isBlack(s) and isBlack(s.left) and
+                      isBlack(s.right) {
+                // the sibling and both sub-trees are black.
+                // move blackness up
+                db.color = Color.BLACK
+                s.color  = Color.RED
+                blacken(p)
+                db = p
             }
-        } else { // no sibling, move the blackness up
-            db->color = Color::BLACK;
-            blacken(db->parent);
-            db = db->parent;
+        } else { // no sibling, move blackness up
+            db.color = Color.BLACK
+            blacken(p)
+            db = p
         }
     }
-    t->color = Color::BLACK;
-    if (dbEmpty) { // change the doubly black nil to nil
-        dbEmpty->replaceWith(nullptr);
-        delete dbEmpty;
+    t.color = Color.BLACK
+    if (dbEmpty != null) { // change the doubly black nil to nil
+        dbEmpty.replaceWith(null)
+        delete dbEmpty
     }
-    return t;
+    return t
 }
 \end{lstlisting}
 
-Where \texttt{isBlack(node)} tests if a node is black, the NIL node is also black according to the red-black tree property.
+Where \texttt{isBlack(x)} tests if a node is black, the NIL node is also black.
 
-\begin{lstlisting}
-bool isBlack(Node* x) {
-    return x == nullptr || x->color == Color::BLACK;
-}
+\begin{lstlisting}[language = Bourbaki]
+Bool isBlack(Node x) = (x == null or x.color == Color.BLACK)
 
-bool isRed(Node* x) {
-    return x != nullptr && x->color == Color::RED;
+Bool isRed(Node x) = (x != null and x.color == Color.RED)
+\end{lstlisting}
+
+Before returning the final result, we check the doubly black NIL, and call the \texttt{replaceWith} function defined in \texttt{Node}.
+
+\begin{lstlisting}[language = Bourbaki]
+data Node<T> {
+    //...
+    void replaceWith(Node y) = replace(parent, this, y)
 }
 \end{lstlisting}
 
-The \texttt{setColors} is a set of auxiliary functions to re-color nodes.
-
-\begin{lstlisting}
-void setColors(Node* x, Color a, Node* y, Color b) { x->color = a; y->color = b; }
-
-void setColors(Node* x, Color a, Node* y, Color b, Node* z, Color c) {
-    setColors(x, a, y, b);
-    z->color = c;
-}
-
-void setColors(Node* x, Color a, Node* y, Color b,
-               Node* z, Color c, Node* q, Color d) {
-    setColors(x, a, y, b);
-    setColors(z, c, q, d);
-}
-\end{lstlisting}
-
-Before returning the final result, the algorithm check the doubly black NIL, it calls the \texttt{replaceWith} method of the node, which is implemented with the \texttt{replace} function defined previously.
-
-\begin{lstlisting}
-void replaceWith(Node* y) {
-    replace(parent, this, y);
-}
-\end{lstlisting}
-
-The algorithm terminates when reach the root or the doubly blackness is eliminated. Consider the red-black tree is balanced, the deletion algorithm is bound to $O(\lg n)$ time for the tree contains $n$ nodes.
+The program terminates when reach the root or the doubly blackness is eliminated. As we maintain the red-black tree balanced, the delete algorithm is bound to $O(\lg n)$ time for the tree of $n$ nodes.
 
 \begin{Exercise}
-
-\begin{itemize}
-\item Implement the red-black tree deletion algorithm in an imperative programming langauge.
-\item Write a program in an imperative programming language to test if a given tree satisfies the 5 red-black tree properties. Use this program to verify the red-black tree deletion algorithm.
-\end{itemize}
-
+\Question{Write a program to test if a tree satisfies the 5 red-black tree rules. Use this program to verify the red-black tree delete implementation.}
 \end{Exercise}
 
 \ifx\wholebook\relax \else
