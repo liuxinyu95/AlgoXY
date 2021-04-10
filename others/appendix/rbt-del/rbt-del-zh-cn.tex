@@ -1,18 +1,20 @@
 \ifx\wholebook\relax \else
 % ------------------------
 
-\documentclass{ctexart}
+\documentclass[b5paper]{ctexart}
+\usepackage[nomarginpar
+  %, margin=.5in
+]{geometry}
+
+\addtolength{\oddsidemargin}{-0.05in}
+\addtolength{\evensidemargin}{-0.05in}
+\addtolength{\textwidth}{0.1in}
+
 \usepackage[cn]{../../../prelude}
 
 \setcounter{page}{1}
 
 \begin{document}
-
-%--------------------------
-
-% ================================================================
-%                 COVER PAGE
-% ================================================================
 
 \title{红黑树的命令式删除算法}
 
@@ -24,31 +26,25 @@
 \maketitle
 \fi
 
-\markboth{红黑树}{初等算法}
+\markboth{红黑树}{基本算法}
 
 \ifx\wholebook\relax
 \chapter{红黑树的命令式删除算法}
 \numberwithin{Exercise}{chapter}
 \fi
 
-% ================================================================
-%                 Introduction
-% ================================================================
 \index{红黑树!命令式删除}
 
-本附录包含红黑树的命令式删除算法。我们需要在普通二叉搜索树删除算法的基础上，通过旋转和重新染色恢复红黑树的性质，以保持树的平衡。我们在红黑树一章中指出，当删除黑色节点时，会破坏红黑树的第五条性质。使得某一路径上的黑色节点数目减少。为此，我们引入“双重黑色”节点，来保持所删除路径上的黑色节点数目不变。
+和插入相比，红黑树的命令式删除算法需要处理更多的情况。在普通二叉搜索树的删除算法之上，我们通过旋转和重新染色恢复平衡性。删除黑色节点会破坏红黑树的第五条性质，使得某一路径上的黑色节点数目减少。为此，我们引入“双重黑色”，来保持黑色节点数目不变。下面的例子程序增加了双重黑色的定义：
 
-\section{双重黑色}
 \index{红黑树!双重黑色}
 
-为了支持“双重黑色”的节点，我们需要增加颜色的定义。如下面的C++例子代码所示。
-
-\lstset{language=C++}
-\begin{lstlisting}
-enum class Color { RED, BLACK, DOUBLY_BLACK };
+\lstset{frame = single}
+\begin{lstlisting}[language = Bourbaki]
+data Color {RED, BLACK, DOUBLY_BLACK}
 \end{lstlisting}
 
-在删除一个节点时，我们复用二叉搜索树的删除算法，并记录被删除节点的父节点。如果被删除节点的颜色是黑色我们需要通过处理保持黑色的属性，然后再进行进一步修复。
+我们首先复用二叉搜索树的删除算法，并记录被删除节点的父节点。如果被删除节点的颜色是黑色，我们通过双重黑色保持性质5，然后再做进一步修复。
 
 \begin{algorithmic}[1]
 \Function{Delete}{$T, x$}
@@ -56,17 +52,17 @@ enum class Color { RED, BLACK, DOUBLY_BLACK };
   \State $q \gets$ NIL
   \If{\Call{Left}{$x$} = NIL}
     \State $q \gets$ \Call{Right}{$x$}
-    \State replace $x$ with \Call{Right}{$x$}
+    \State \textproc{Replace}($x$, \Call{Right}{$x$}) \Comment{replace $x$ with its right sub-tree}
   \ElsIf{\Call{Right}{$x$} = NIL}
     \State $q \gets$ \Call{Left}{$x$}
-    \State replace $x$ with \Call{Left}{$x$}
+    \State \textproc{Replace}($x$, \Call{Left{$x$}}) \Comment{replace $x$ with its right sub-tree}
   \Else
     \State $y \gets$ \textproc{Min}(\Call{Right}{$x$})
     \State $p \gets$ \Call{Parent}{$y$}
     \State $q \gets$ \Call{Right}{$y$}
     \State \Call{Key}{$x$} $\gets$ \Call{Key}{$y$}
-    \State copy satellite data from $y$ to $x$
-    \State replace $y$ with \Call{Right}{$y$}
+    \State copy data from $y$ to $x$
+    \State \textproc{Replace}($y$, \Call{Right}{$y$}) \Comment{replace $y$ with its right sub-tree}
     \State $x \gets y$
   \EndIf
   \If{\Call{Color}{$x$} = BLACK}
@@ -77,12 +73,12 @@ enum class Color { RED, BLACK, DOUBLY_BLACK };
 \EndFunction
 \end{algorithmic}
 
-删除算法接受树的根节点$T$和待删除节点$x$。如果待删除节点存在一个为空的分支，我们可以将$x$“切下”，并用另一个分支$q$来替代$x$。否则，我们在$x$的右子树中找到最小的节点$y$，用$y$替换$x$。然后递归地将$y$“切下”。如果被删除的节点$x$的颜色为黑色，我们调用\textproc{Make-Black}($p$, $q$)，来保持黑色属性，以便进行下一步的修复。
+删除算法接受两个输入：根节点$T$和待删除节点$x$。$x$可以通过查找定位到。如果$x$含有为空的子树，我们将$x$“切下”，并用另一子树$q$来替代$x$。否则，我们在$x$的右子树中找到最小元素$y$，用$y$替换$x$。然后递归地将$y$“切下”。如果$x$是黑色的，我们调用\textproc{Make-Black}($p$, $q$)保持黑色属性，以便进行下一步的修复。
 
 \begin{algorithmic}[1]
 \Function{Make-Black}{$p$, $q$}
-  \If{$p$ = NIL $\land$ $q$ = NIL}
-    \State \Return NIL \Comment{删除只有一个叶子节点的树后，变为空}
+  \If{$p$ = NIL and $q$ = NIL}
+    \State \Return NIL \Comment{树中只有一个叶子节点}
   \ElsIf{$q$ = NIL}
     \State $n \gets$ Doubly Black NIL
     \State \Call{Parent}{$n$} $\gets p$
@@ -93,40 +89,33 @@ enum class Color { RED, BLACK, DOUBLY_BLACK };
 \EndFunction
 \end{algorithmic}
 
-如果传入\textproc{Make-Black}的参数$p$和$q$都为空，说明我们在删除只有一个叶子节点的树，删除后树变为空。否则如果父节点$p$不为空，而节点$q$为空。说明我们删除了一个黑色的叶子节点。这相当于，此时一个NIL节点替换了被删除的黑色节点。根据红黑树的性质3，NIL节点实际上都是黑色的。我们可以把这一NIL节点变成“双重黑色”NIL节点来保持其所在路径上的黑色节点数目不变。最后，如果$p$、$q$都不为空，我们调用\textproc{Blacken}检查$q$的颜色，如果是红色的，将它重新染成黑色，如果$q$已经是黑色的，我们将它染成双重黑色。
+如果$p$和$q$都为空，我们在删除只有一个叶子节点的树，删除后树变为空。如果父节点$p$不为空，而$q$为空，说明删除了一个黑色叶子节点。我们用NIL替换掉它。根据红黑树性质3，NIL是黑色的。我们把这一NIL变成“双重黑色”的NIL来保持性质5仍然成立。如果$p$、$q$都不为空，我们调用\textproc{Blacken}($q$)检查$q$的颜色，如果是红色的，将它染成黑色，如果$q$已经是黑色的，将它染成双重黑色。接下来，我们通过旋转和重新染色，最终去掉“双重黑色”。这里有三种情况需要处理（\cite{CLRS}，292页）。每种情况中，双重黑色的节点即可以是普通节点，也可以是双重黑色的空节点。
 
-\subsection{修复}
-
-为了最终恢复红黑树的性质，我们需要通过树的旋转操作和重新染色，最终去掉“双重黑色”。这里有三种情况需要处理（\cite{CLRS}第292页）。每一种情况中，双重黑色的节点即可以是普通节点，也可以是双重黑色的空节点。我们首先看第一种情况。
-
-\subsection{双重黑色节点的兄弟为黑色，并且该兄弟节点有一个红色子节点}
-对于这种情况，我们可以通过旋转操作来修复。总共有四种不同的细分情况，它们全部可以变换到一种统一的形式。如图\ref{fig:del-case1}所示。
+\textbf{情况1}: {\em 双重黑色节点的兄弟为黑色，并且该兄弟节点有一个红色子节点。}我们可以通过旋转来修复。共有四种细分情况，它们全部可以变换到一种统一形式。如图\ref{fig:del-case1}所示。
 
 \begin{figure}[htbp]
    \centering
    \includegraphics[scale=0.4]{../../../datastruct/tree/red-black-tree/img/del-case1.png}
-   \caption{双重黑色节点的兄弟为黑色，并且该兄弟节点有一个红色子节点。这种情况可以通过一次旋转操作来修复。}
+   \caption{双重黑色节点的兄弟为黑色，并且该兄弟节点有一个红色子节点。通过一次旋转操作修复。}
    \label{fig:del-case1}
 \end{figure}
-
-下面的算法描述了针对这一情况的处理。
 
 \begin{algorithmic}[1]
 \Function{Delete-Fix}{$T$, $x$, $f$}
   \State $n \gets$ NIL
-  \If{$f$ = True}  \Comment{$x$是一个双重黑色NIL节点}
+  \If{$f$ = True}  \Comment{$x$是双重黑色NIL}
     \State $n \gets x$
   \EndIf
-  \If{$x$ = NIL} \Comment{将只有一个叶子节点的树删空}
+  \If{$x$ = NIL} \Comment{删除唯一的叶子}
     \State \Return NIL
   \EndIf
-  \While{$x \neq T \land$ \Call{Color}{$x$} $= \mathcal{B}^2$}
-    \Comment{$x$不是根且$x$是双重黑色}
-    \If{\Call{Sibling}{$x$} $\neq$ NIL} \Comment{双重黑色节点的兄弟节点不为空}
+  \While{$x \neq T$ and \Call{Color}{$x$} $= \mathcal{B}^2$}
+    \Comment{$x$是双重黑色，但不是根节点}
+    \If{\Call{Sibling}{$x$} $\neq$ NIL} \Comment{兄弟节点不为空}
         \State $s \gets$ \Call{Sibling}{$x$}
         \State ...
-        \If{$s$ is black $\land$ \Call{Left}{$s$} is red}
-          \Comment{兄弟为黑，一个侄子为红}
+        \If{$s$ is black and \Call{Left}{$s$} is red}
+          %\Comment{sibling: black, nephew: red}
           \If{$x = $ \textproc{Left}(\Call{Parent}{$x$})}
             \Comment{$x$在左侧}
             \State set $x$, \Call{Parent}{$x$}, and \Call{Left}{$s$} all black
@@ -136,8 +125,8 @@ enum class Color { RED, BLACK, DOUBLY_BLACK };
             \State set $x$, \Call{Parent}{$x$}, $s$, and \Call{Left}{$s$} all black
             \State $T \gets$ \textproc{Rotate-Right}($T$, \Call{Parent}{$x$})
           \EndIf
-        \ElsIf{$s$ is black $\land$ \Call{Right}{$s$} is red}
-          \Comment{兄弟为黑，一个侄子为红}
+        \ElsIf{$s$ is black and \Call{Right}{$s$} is red}
+          %\Comment{sibling: black, nephew: red}
           \If{$x = $ \textproc{Left}(\Call{Parent}{$x$})} \Comment{$x$在左侧}
             \State set $x$, \Call{Parent}{$x$}, $s$, and \Call{Right}{$s$} all black
             \State $T \gets$ \textproc{Rotate-Left}($T$, \Call{Parent}{$x$})
@@ -153,13 +142,13 @@ enum class Color { RED, BLACK, DOUBLY_BLACK };
 \EndFunction
 \end{algorithmic}
 
-\subsection{双重黑色节点的兄弟节点为红色}
-这种情况下，我们可以通过旋转，将双重黑色恢复为普通的黑色节点。如图\ref{fig:del-case2}所示，将左侧的树旋转到右侧的结构后，可将双重黑色的节点$a$或$c$恢复为黑色。
+\textbf{情况2}: {\em 双重黑色节点的兄弟节点为红色。}可以通过旋转，将双重黑色恢复为普通黑色。如图\ref{fig:del-case2}所示，$a$或$c$恢复为黑色。
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.4]{../../../datastruct/tree/red-black-tree/img/del-case3.png}
-  \caption{双重黑色节点的兄弟节点为红色} \label{fig:del-case2}
+  \caption{双重黑色节点的兄弟节点为红色}
+  \label{fig:del-case2}
 \end{figure}
 
 我们在此前给出算法上增加这一处理。
@@ -167,17 +156,17 @@ enum class Color { RED, BLACK, DOUBLY_BLACK };
 \begin{algorithmic}[1]
 \Function{Delete-Fix}{$T$, $x$, $f$}
   \State $n \gets$ NIL
-  \If{$f$ = True}  \Comment{$x$是一个双重黑色NIL节点}
+  \If{$f$ = True}  \Comment{$x$是双重黑色NIL}
     \State $n \gets x$
   \EndIf
-  \If{$x$ = NIL} \Comment{将只有一个叶子节点的树删空}
+  \If{$x$ = NIL} \Comment{删除唯一的叶子}
     \State \Return NIL
   \EndIf
-  \While{$x \neq T \land$ \Call{Color}{$x$} $= \mathcal{B}^2$}
-    \Comment{$x$不是根且$x$是双重黑色}
-    \If{\Call{Sibling}{$x$} $\neq$ NIL} \Comment{双重黑色节点的兄弟节点不为空}
+  \While{$x \neq T$ and \Call{Color}{$x$} $= \mathcal{B}^2$}
+    %\Comment{$x$ isn't root and is doubly black}
+    \If{\Call{Sibling}{$x$} $\neq$ NIL}
         \State $s \gets$ \Call{Sibling}{$x$}
-        \If{$s$ is red} \Comment{兄弟为红色}
+        \If{$s$ is red}   \Comment{兄弟节点为红色}
           \State set \Call{Parent}{$x$} red
           \State set $s$ black
           \If{$x = $ \textproc{Left}(\Call{Parent}{$x$})} \Comment{$x$在左侧}
@@ -185,8 +174,8 @@ enum class Color { RED, BLACK, DOUBLY_BLACK };
           \Else \Comment{$x$在右侧}
             \State $T \gets$ \textproc{Rotate-Right}{$T$, \Call{Parent}{$x$}}
           \EndIf
-        \ElsIf{$s$ is black $\land$ \Call{Left}{$s$} is red}
-          \Comment{兄弟为黑，一个侄子为红}
+        \ElsIf{$s$ is black and \Call{Left}{$s$} is red}
+          %\Comment{The sibling is black, a nephew is red}
           \State ...
         \EndIf
     \EndIf
@@ -194,44 +183,32 @@ enum class Color { RED, BLACK, DOUBLY_BLACK };
 \EndFunction
 \end{algorithmic}
 
-\subsection{双重黑色节点的兄弟节点为黑色，该兄弟节点的两个子节点也全是黑色。}
-这种情况下，我们可以将这个兄弟节点染成红色，将双重黑色变回黑色，然后将双重黑色属性向上传递一层到父节点。如图\ref{fig:del-case3}所示，有两种对称的情况。
+\textbf{情况3}: {\em 双重黑色节点的兄弟节点为黑色，该兄弟节点的两个子节点也全是黑色。}可以将兄弟节点染成红色，将双重黑色变回黑色，然后将双重黑色属性向上传递一层到父节点。如图\ref{fig:del-case3}所示，有两种对称的情况。
 
 \begin{figure}[htbp]
   \centering
-  \setlength{\unitlength}{1cm}
-  \begin{picture}(10, 4)
-  \put(5, 2){$\Rightarrow$}
-  \subcaptionbox{$x$的颜色为红或者黑。}{\includegraphics[scale=0.4]{../../../datastruct/tree/red-black-tree/img/case2-a.ps}}
-  \subcaptionbox{若$x$此前的颜色为红，将其变为黑色，否则变为双重黑色。}{\includegraphics[scale=0.4]{../../../datastruct/tree/red-black-tree/img/case2-a1.ps}}
-  \end{picture}
-  \\
-  \begin{picture}(10, 5)
-  \put(5, 2){$\Rightarrow$}
-  \subcaptionbox{$y$的颜色为红或者黑。}{\includegraphics[scale=0.4]{../../../datastruct/tree/red-black-tree/img/case2-b.ps}}
-  \subcaptionbox{若$y$此前的颜色为红，将其变为黑色，否则变为双重黑色。}{\includegraphics[scale=0.4]{../../../datastruct/tree/red-black-tree/img/case2-b1.ps}}
-  \end{picture}
-  \\
-  \begin{picture}(1, 0.5)\end{picture} %pad
-  \caption{将双重黑色向上传递} \label{fig:del-case3}
+  \includegraphics[scale=0.4]{../../../datastruct/tree/red-black-tree/img/del-case3.png}
+  \caption{向上传递黑色}
+  \label{fig:del-case3}
+
 \end{figure}
 
-上述三种情况中，双重黑色节点的兄弟节点都不为空。如果其兄弟节点为空，我们可以直接将双重黑色恢复为普通黑色，然后将黑色向上传递。如果双重黑色最终向上传递到根节点，我们可以将根节点变为普通黑色节点，从而结束修复过程。另外，如果双重黑色在修复过程中被重新染色为普通节点，我们也可以终止。最后，我们需要一个额外处理，即如果最终的双重黑色节点是一个双重黑色空节点，我们需要将其恢复为普通空节点。最终的算法如下所示。
+上述三种情况中，双重黑色节点的兄弟节点都不为空。否则，我们直接将双重黑色恢复为普通黑色，然后将黑色向上传递。如果最终到达根节点，我们将根节点变为普通黑色，并结束修复过程。另外，如果在双重黑色在修复过程中被消除，也可以终止。最后，针对双重黑色NIL的情况，我们将其恢复为普通NIL。
 
 \begin{algorithmic}[1]
 \Function{Delete-Fix}{$T$, $x$, $f$}
   \State $n \gets$ NIL
-  \If{$f$ = True}  \Comment{$x$是一个双重黑色NIL节点}
+  \If{$f$ = True}  \Comment{$x$是双重黑色NIL}
     \State $n \gets x$
   \EndIf
-  \If{$x$ = NIL} \Comment{将只有一个叶子节点的树删空}
+  \If{$x$ = NIL} \Comment{删除唯一的叶子}
     \State \Return NIL
   \EndIf
-  \While{$x \neq T \land$ \Call{Color}{$x$} $= \mathcal{B}^2$}
-    \Comment{$x$不是根且$x$是双重黑色}
-    \If{\Call{Sibling}{$x$} $\neq$ NIL} \Comment{双重黑色节点的兄弟节点不为空}
+  \While{$x \neq T$ and \Call{Color}{$x$} $= \mathcal{B}^2$}
+    %\Comment{$x$ isn't root and is doubly black}
+    \If{\Call{Sibling}{$x$} $\neq$ NIL} \Comment{兄弟节点不为空}
         \State $s \gets$ \Call{Sibling}{$x$}
-        \If{$s$ is red} \Comment{兄弟为红色}
+        \If{$s$ is red} \Comment{兄弟节点为红色}
           \State set \Call{Parent}{$x$} red
           \State set $s$ black
           \If{$x = $ \textproc{Left}(\Call{Parent}{$x$})} \Comment{$x$在左侧}
@@ -239,8 +216,8 @@ enum class Color { RED, BLACK, DOUBLY_BLACK };
           \Else \Comment{$x$在右侧}
             \State $T \gets$ \textproc{Rotate-Right}{$T$, \Call{Parent}{$x$}}
           \EndIf
-        \ElsIf{$s$ is black $\land$ \Call{Left}{$s$} is red}
-          \Comment{兄弟为黑，一个侄子为红}
+        \ElsIf{$s$ is black and \Call{Left}{$s$} is red}
+          %\Comment{The sibling is black, a nephew is red}
           \If{$x = $ \textproc{Left}(\Call{Parent}{$x$})}
             \Comment{$x$在左侧}
             \State set $x$, \Call{Parent}{$x$}, and \Call{Left}{$s$} all black
@@ -250,8 +227,8 @@ enum class Color { RED, BLACK, DOUBLY_BLACK };
             \State set $x$, \Call{Parent}{$x$}, $s$, and \Call{Left}{$s$} all black
             \State $T \gets$ \textproc{Rotate-Right}($T$, \Call{Parent}{$x$})
           \EndIf
-        \ElsIf{$s$ is black $\land$ \Call{Right}{$s$} is red}
-          \Comment{兄弟为黑，一个侄子为红}
+        \ElsIf{$s$ is black and \Call{Right}{$s$} is red}
+          %\Comment{The sibling is black, a nephew is red}
           \If{$x = $ \textproc{Left}(\Call{Parent}{$x$})}
             \Comment{$x$在左侧}
             \State set $x$, \Call{Parent}{$x$}, $s$, and \Call{Right}{$s$} all black
@@ -262,212 +239,184 @@ enum class Color { RED, BLACK, DOUBLY_BLACK };
             \State $T \gets$ \textproc{Rotate-Right}($T$, \Call{Parent}{$x$})
           \EndIf
         \ElsIf{$s$, \Call{Left}{$s$}, and \Call{Right}{$s$} are all black}
-          \Comment{兄弟和侄子都为黑色}
+          %\Comment{The sibling and sub-trees are all black}
           \State set $x$ black
           \State set $s$ red
           \State \textproc{Blacken}(\Call{Parent}{$x$})
           \State $x \gets$ \Call{Parent}{$x$}
         \EndIf
-    \Else \Comment{无兄弟节点，将黑色向上传递}
+    \Else \Comment{向上传递黑色}
       \State set $x$ black
       \State \textproc{Blacken}(\Call{Parent}{$x$})
       \State $x \gets$ \Call{Parent}{$x$}
     \EndIf
   \EndWhile
   \State set $T$ black
-  \If{$n \neq$ NIL} \Comment{替换双重黑色的NIL节点为普通NIL}
+  \If{$n \neq$ NIL}
     \State replace $n$ with NIL
   \EndIf
   \State \Return $T$
 \EndFunction
 \end{algorithmic}
 
-删除修复时，传入了三个参数，一个是树的根节点$T$；一个是待修复的节点$x$，它可能是双重黑色的节点；还有一个标记$f$，如果带修复的节点$x$是双重黑色的空节点NIL，则$f$为真。此时我们用$n$来记录这一双重黑色的空节点NIL，并且在最终修复完毕后，用普通NIL替换掉$n$。
+修复时，我们传入三个参数：根节点$T$、待修复节点$x$（可能是双重黑色）、标记$f$。如果$x$是双重黑色NIL，则$f$为真。此时我们用$n$来记录它，并在最终修复完毕后，用普通NIL替换$n$。
 
-下面的C++例子程序实现了红黑树的删除算法。
+下面的例子程序实现了红黑树删除算法。
 
-\lstset{language=C++}
-\begin{lstlisting}
-Node* del(Node* t, Node* x) {
-    if (!x) return t;
-    Node* parent = x->parent;
-    Node* db = nullptr;        //doubly black
-    Node* y;
+\begin{lstlisting}[language = Bourbaki]
+Node del(Node t, Node x) {
+    if x == null then return t
+    var parent = x.parent;
+    Node db = null;        //doubly black
 
-    if (x->left == nullptr) {
-        db = x->right;
-        x->replaceWith(db);
-    } else if (x->right == nullptr) {
-        db = x->left;
-        x->replaceWith(db);
+    if x.left == null {
+        db = x.right
+        x.replaceWith(db)
+    } else if x.right == null {
+        db = x.left
+        x.replaceWith(db)
     } else {
-        y = min(x->right);
-        parent = y->parent;
-        db = y->right;
-        x->key = y->key;
-        y->replaceWith(db);
-        x = y;
+        var y = min(x.right)
+        parent = y.parent
+        db = y.right
+        x.key = y.key
+        y.replaceWith(db)
+        x = y
     }
-    if (x->color == Color::BLACK)
-        t = deleteFix(t, makeBlack(parent, db), db == nullptr);
-    remove(x);
-    return t;
+    if x.color == Color.BLACK {
+        t = deleteFix(t, makeBlack(parent, db), db == null);
+    }
+    remove(x)
+    return t
 }
 \end{lstlisting}
 
-其中\texttt{makeBlack}函数检查删除后节点是否变为双重黑色，并处理双重黑色空节点NIL的特殊情况。
+其中\texttt{makeBlack}检查删除后节点是否变为双重黑色，并处理双重黑色NIL的特殊情况。
 
-\begin{lstlisting}
-Node* makeBlack(Node* parent, Node* x) {
-    if (!parent && ! x)
-        return nullptr;
-    if (!x)
-        return Node::replace(parent, x, new Node(0, Color::DOUBLY_BLACK));
-    return blacken(x);
+\begin{lstlisting}[language = Bourbaki]
+Node makeBlack(Node parent, Node x) {
+    if parent == null and x == null then return null
+    return if x == null
+        then replace(parent, x, Node(0, Color.DOUBLY_BLACK))
+        else blacken(x)
 }
 \end{lstlisting}
 
 其中函数\texttt{replace(parent, x, y)}将\texttt{parent}的子节点\texttt{x}，用\texttt{y}替换。
 
-\begin{lstlisting}
-static Node* replace(Node* parent, Node* x, Node* y) {
-    if (parent == nullptr) {
-        if (y) y->parent = nullptr;
-    } else if (parent->left == x) {
-        parent->setLeft(y);
+\begin{lstlisting}[language = Bourbaki]
+Node replace(Node parent, Node x, Node y) {
+    if parent == null {
+        if y != null then y.parent = null
+    } else if parent.left == x {
+        parent.setLeft(y)
     } else {
-        parent->setRight(y);
+        parent.setRight(y)
     }
-    if (x) x->parent = nullptr;
-    return y;
+    if x != null then x.parent = null
+    return y
 }
 \end{lstlisting}
 
 函数\texttt{blacken(node)}将红色节点染为黑色，将黑色节点染为双重黑色。
 
-\begin{lstlisting}
-Node* blacken(Node* x) {
-    x->color = isRed(x) ? Color::BLACK : Color::DOUBLY_BLACK;
-    return x;
+\begin{lstlisting}[language = Bourbaki]
+Node blacken(Node x) {
+    x.color = if isRed(x) then Color.BLACK else Color.DOUBLY_BLACK
+    return x
 }
 \end{lstlisting}
 
-最终的修复过程的实现如下。
+下面的例子程序实现了修复过程：
 
-\begin{lstlisting}
-Node* deleteFix(Node* t, Node* db, bool isDBEmpty) {
-    Node* dbEmpty = isDBEmpty ? db : nullptr;
-    if (!db) return nullptr;    // remove the root from a leaf tree;
-    while (db != t && db->color == Color::DOUBLY_BLACK) {
-        if (db->sibling() != nullptr) {
-            if (isRed(db->sibling())) {
-                // the sibling is red, (transform to make the sibling black)
-                setColors(db->parent, Color::RED,
-                          db->sibling(), Color::BLACK);
-                if (db == db->parent->left)
-                    t = leftRotate(t, db->parent);
-                else
-                    t = rightRotate(t, db->parent);
-            } else if (isBlack(db->sibling()) && isRed(db->sibling()->left)) {
-                // the sibling is black, and one nephew is red
-                if (db == db->parent->left) {
-                    setColors(db, Color::BLACK,
-                              db->parent, Color::BLACK,
-                              db->sibling()->left, db->parent->color);
-                    t = rightRotate(t, db->sibling());
-                    t = leftRotate(t, db->parent);
+\begin{lstlisting}[language = Bourbaki]
+Node deleteFix(Node t, Node db, Bool isDBEmpty) {
+    var dbEmpty = if isDBEmpty then db else null
+    if db == null then return null    // delete the root
+    while (db != t and db.color == Color.DOUBLY_BLACK) {
+        var s = db.sibling()
+        var p = db.parent
+        if (s != null) {
+            if isRed(s) {
+                // the sibling is red
+                p.color = Color.RED
+                s.color = Color.BLACK
+                t = if db == p.left then leftRotate(t, p)
+                                    else rightRotate(t, p)
+            } else if isBlack(s) and isRed(s.left) {
+                // the sibling is black, and one sub-tree is red
+                if db == p.left {
+                    db.color = Color.BLACK
+                    p.color  = Color.BLACK
+                    s.left.color = p.color
+                    t = rightRotate(t, s)
+                    t = leftRotate(t, p)
                 } else {
-                    setColors(db, Color::BLACK,
-                              db->parent, Color::BLACK,
-                              db->sibling(), db->parent->color,
-                              db->sibling()->left, Color::BLACK);
-                    t = rightRotate(t, db->parent);
+                    db.color = Color.BLACK
+                    p.color  = Color.BLACK
+                    s.color = p.color
+                    s.left.color = Color.BLACK
+                    t = rightRotate(t, p)
                 }
-            } else if (isBlack(db->sibling()) && isRed(db->sibling()->right)) {
-                if (db == db->parent->left) {
-                    setColors(db, Color::BLACK,
-                              db->parent, Color::BLACK,
-                              db->sibling(), db->parent->color,
-                              db->sibling()->right, Color::BLACK);
-                    t = leftRotate(t, db->parent);
+            } else if isBlack(s) and isRed(s.right) {
+                if (db == p.left) {
+                    db.color = Color.BLACK
+                    p.color  = Color.BLACK
+                    s.color  = p.color
+                    s.right.color = Color.BLACK
+                    t = leftRotate(t, p)
                 } else {
-                    setColors(db, Color::BLACK,
-                              db->parent, Color::BLACK,
-                              db->sibling()->right, db->parent->color);
-                    t = leftRotate(t, db->sibling());
-                    t = rightRotate(t, db->parent);
+                    db.color = Color.BLACK
+                    p.color  = Color.BLACK
+                    s.right.color = p.color
+                    t = leftRotate(t, s)
+                    t = rightRotate(t, p)
                 }
-            } else if (isBlack(db->sibling()) &&
-                       isBlack(db->sibling()->left) &&
-                       isBlack(db->sibling()->right)) {
-                // the sibling and both nephews are black.
-                // move the blackness up
-                setColors(db, Color::BLACK,
-                          db->sibling(), Color::RED);
-                blacken(db->parent);
-                db = db->parent;
+            } else if isBlack(s) and isBlack(s.left) and
+                      isBlack(s.right) {
+                // the sibling and both sub-trees are black.
+                // move blackness up
+                db.color = Color.BLACK
+                s.color  = Color.RED
+                blacken(p)
+                db = p
             }
-        } else { // no sibling, move the blackness up
-            db->color = Color::BLACK;
-            blacken(db->parent);
-            db = db->parent;
+        } else { // no sibling, move blackness up
+            db.color = Color.BLACK
+            blacken(p)
+            db = p
         }
     }
-    t->color = Color::BLACK;
-    if (dbEmpty) { // change the doubly black nil to nil
-        dbEmpty->replaceWith(nullptr);
-        delete dbEmpty;
+    t.color = Color.BLACK
+    if (dbEmpty != null) { // change the doubly black nil to nil
+        dbEmpty.replaceWith(null)
+        delete dbEmpty
     }
-    return t;
+    return t
 }
 \end{lstlisting}
 
-其中\texttt{isBlack(node)}判断一个节点是否为黑色，根据红黑树的性质，所有的NIL节点的颜色为黑色。
+其中\texttt{isBlack(node)}判断一个节点是否为黑色，根据红黑树的性质，NIL也是黑色的。
 
-\begin{lstlisting}
-bool isBlack(Node* x) {
-    return x == nullptr || x->color == Color::BLACK;
-}
+\begin{lstlisting}[language = Bourbaki]
+Bool isBlack(Node x) = (x == null or x.color == Color.BLACK)
 
-bool isRed(Node* x) {
-    return x != nullptr && x->color == Color::RED;
+Bool isRed(Node x) = (x != null and x.color == Color.RED)
+\end{lstlisting}
+
+算法在结束前修复双重黑色NIL，调用\texttt{Node}中的\texttt{replaceWith}进行替换。
+
+\begin{lstlisting}[language = Bourbaki]
+data Node<T> {
+    //...
+    void replaceWith(Node y) = replace(parent, this, y)
 }
 \end{lstlisting}
 
-函数\texttt{setColors}为一组辅助函数，用于对节点染色。
-
-\begin{lstlisting}
-void setColors(Node* x, Color a, Node* y, Color b) { x->color = a; y->color = b; }
-
-void setColors(Node* x, Color a, Node* y, Color b, Node* z, Color c) {
-    setColors(x, a, y, b);
-    z->color = c;
-}
-
-void setColors(Node* x, Color a, Node* y, Color b,
-               Node* z, Color c, Node* q, Color d) {
-    setColors(x, a, y, b);
-    setColors(z, c, q, d);
-}
-\end{lstlisting}
-
-算法在结束前修复双重黑色空节点NIL时，调用节点的\texttt{replaceWith}方法，它通过调用前面定义的\texttt{replace}函数实现。
-
-\begin{lstlisting}
-void replaceWith(Node* y) {
-    replace(parent, this, y);
-}
-\end{lstlisting}
-
-考虑红黑树的平衡性，删除算法或者到达根节点终止，或者双重黑色消失终止。对于含有$n$个节点的红黑树，删除算法的复杂度为$O(\lg n)$。
+考虑红黑树的平衡性，删除算法或者到达根节点终止，或者在双重黑色消失时终止。对于含有$n$个节点的红黑树，其复杂度为$O(\lg n)$。
 
 \begin{Exercise}
-
-\begin{itemize}
-\item 选择一种命令式编程语言，实现完整的红黑树删除算法。
-\item 选择一种命令式编程语言，编写程序判断一个给定的红黑树是否满足红黑树的5条性质，并用这一程序测试红黑树的删除算法。
-\end{itemize}
-
+\Question{编写程序判断一棵树是否满足红黑树的5条性质，并用来验证红黑树的删除算法。}
 \end{Exercise}
 
 \ifx\wholebook\relax \else
@@ -479,5 +428,5 @@ Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest and Clifford Stein.
 
 \end{thebibliography}
 
-\end{document}
+\expandafter\enddocument
 \fi
