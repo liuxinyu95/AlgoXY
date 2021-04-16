@@ -131,7 +131,7 @@ We prove the height of AVL tree is proportion to $O(\lg n)$, indicating AVL tree
 
 When insert or delete, the balance factor may exceed the valid value range, we need fix to resume $|\delta|<1$. Traditionally, the fixing is through tree rotations. We give the simplified implementation based on pattern matching. The idea is similar to the functional red-black tree(Okasaki, \cite{okasaki}). Because of this `modify-fix' approach, AVL tree is also self-balanced binary search tree.
 
-We can define AVL tree as algebraic data type with four cases\cite{hackage}: \texttt{E} for empty tree $\nil$, \texttt{N} for tree with $\delta = -1$, \texttt{P} for $\delta = 1$, and \texttt{Z} $\delta = 0$. A direct way is to re-use the binary search tree definition. Although the balance factor $\delta$ can be computed recursively, we record it inside each node, and update when mutate the tree\footnote{Alternatively, we can record the height instead of $\delta$\cite{py-avl}.}. Below example program adds $\delta$ as an \texttt{Int}:
+We can define AVL tree as algebraic data type with four cases\cite{hackage}: \texttt{E} for empty tree $\nil$, \texttt{N} for tree with $\delta = -1$, \texttt{P} for $\delta = 1$, and \texttt{Z} for $\delta = 0$. A direct way is to re-use the binary search tree definition. Although the balance factor $\delta$ can be computed recursively, we record it inside each node, and update when mutate the tree\footnote{Alternatively, we can record the height instead of $\delta$\cite{py-avl}.}. Below example program adds $\delta$ as an \texttt{Int}:
 
 \lstset{frame = single}
 \begin{Haskell}
@@ -144,87 +144,50 @@ For AVL tree, $lookup$, $max$, $min$ are as same as the binary search tree. We f
 \section{Insert}
 \index{AVL tree!insert}
 
-When insert a new element, $|\delta(T)|$ may exceed 1. Traditional fixing use tree rotation to maintain the balance factor in different cases. Alternatively, we can use pattern matching similar to red-black tree implementation\cite{okasaki} to develop a simplified solution.
+When insert a new element, $|\delta(T)|$ may exceed 1. Traditional fixing uses tree rotation to maintain the balance factor in different cases. Alternatively, we can use pattern matching similar to red-black tree implementation\cite{okasaki} to develop a simplified solution.
 
-When insert a new key to the AVL tree, the balance factor of the
-root may {\em changes} in range $[-1, 1]$\footnote{Note that, it doesn't mean $\delta$ is in range $[-1, 1]$, the changes of $\delta$ is in this range.},
-and the height may increase
-at most by one, which we need recursively use this information
-to update the $\delta$ value in further level nodes. We can define
-the result of the insertion algorithm as a pair of data
-$(T', \Delta H)$. Where $T'$ is the new tree and $\Delta H$ is the
-increment of height. Let's denote function $first(pair)$
-can return the first element in a pair. We can modify
-the binary search tree insertion algorithm as the following to
-handle AVL tree.
+After insert element $x$, for those sub-trees which are the ancestors of $x$, the height may increase at most by 1. We need recursively update the balance factor along the path of insertion. Define the insert result as a pair $(T', \Delta H)$, where $T'$ is the updated tree and $\Delta H$ is the increment of height. We modify the binary search tree $insert$ function for AVL tree as below:
 
 \be
-insert(T, k) = first(ins(T, k))
+insert = \textit{fst} \circ ins
 \ee
 
-where
+Where $\textit{fst}\ (a, b) = a$ returns the first element in a pair. $ins(T, k)$ does the actual work to insert element $k$ into tree $T$:
 
 \be
-ins(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  ((\phi, k, \phi, 0), 1) & T = \phi \\
-  tree(ins(T_l, k), k', (T_r, 0), \Delta) & k < k' \\
-  tree((T_l, 0), k', ins(T_r, k), \Delta) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+ins\ \nil\ k & = & ((\nil, k, \nil, 0), 1) \\
+ins\ (l, k', r, \delta)\ k & = & \begin{cases}
+  k < k': tree\ (ins\ l\ k)\ k'\ (r, 0)\ \delta \\
+  k > k': tree\ (l, 0)\ k'\ (ins\ r, k)\ \delta \\
+\end{cases}
+\end{array}
 \label{eq:ins}
 \ee
 
-$T_l, T_r, k', \Delta$ represent the left child, right child, the key and
-the balance factor of a tree.
-
-\[
-  \begin{array}{l}
-  T_l = left(T) \\
-  T_r = right(T) \\
-  k' = key(T) \\
-  \Delta = \delta(T)
-  \end{array}
-\]
-
-When we insert a new key $k$ to a AVL tree $T$, if the tree is
-empty, we create a leaf with $k$ as the key, set the balance
-factor as 0, and the height is increased by one.
-
-If $T$ isn't empty, we need compare the key $k'$ with $k$.
-If $k$ is less than the key, we recursively insert it to the left
-child, otherwise we insert it to the right.
-
-As the result of the recursive insertion is a
-pair like $(T_l', \Delta H_l)$, we need do balance adjustment and
-update the increment of height. Function $tree()$ is defined
-to dealing with this task. It takes 4 parameters as $(T_l', \Delta H_l)$,
-$k'$, $(T_r', \Delta H_r)$, and $\Delta$. The result of this function
-is defined as $(T', \Delta H)$, where $T'$ is the new tree after
-adjustment, and $\Delta H$ is the new increment of height. It is
-defined as below.
+If the tree is empty $\nil$, the result is a leaf of $k$ with balance factor 0. The height increases to 1. Otherwise let $T = (l, k', r, \delta)$. We compare the new element $k$ with $k'$. If $k < k'$, we recursively insert $k$ it to the left sub-tree $l$, otherwise insert to the right. As the recursive insert result is a pair of $(l', \Delta l')$ or $(r', \Delta r')$, we need adjust the balance factor and update tree height through function $tree()$, it takes 4 parameters: $(l', \Delta l')$, $k'$, $(r', \Delta r')$, and $\delta$. The result is $(T', \Delta H)$, where $T'$ is the tree after adjustment, and $\Delta H$ is the increment of height, defined as:
 
 \be
   \Delta H = |T'| - |T|
 \ee
 
-This can be further detailed deduced in 4 cases.
+We can further break it down into 4 cases:
 
 \be
-\begin{array}{rl}
-  \Delta H & = |T'| - |T| \\
-              & = 1 + max(|T_r'|, |T_l'|) - (1 + max(|T_r|, |T_l|)) \\
-              & = max(|T_r'|, |T_l'|) - max(|T_r|, |T_l|) \\
-              & = \left \{
-                  \begin{array}{r@{\quad:\quad}l}
-                  \Delta H_r & \Delta \geq 0 \land \Delta' \geq 0 \\
-                  \Delta + \Delta H_r & \Delta \leq 0 \land \Delta' \geq 0 \\
-                  \Delta H_l - \Delta & \Delta \geq 0 \land \Delta' \leq 0 \\
-                  \Delta H_l & otherwise
-                  \end{array} \right .
+\begin{array}{rcl}
+  \Delta H & = & |T'| - |T| \\
+           & = & 1 + max(|r'|, |l'|) - (1 + max(|r|, |l|)) \\
+           & = & max(|r'|, |l'|) - max(|r|, |l|) \\
+           & = & \begin{cases}
+\delta \geq 0, \delta' \geq 0: & \Delta r \\
+\delta \leq 0, \delta' \geq 0: & \delta + \Delta r \\
+\delta \geq 0, \delta' \leq 0: & \Delta l - \delta \\
+otherwise: & \Delta l
+\end{cases}
 \end{array}
 \ee
+
+Where $\delta' = \delta(T') = r' - l'$
 
 The proof of this equation can be referred from Appendix C.
 
