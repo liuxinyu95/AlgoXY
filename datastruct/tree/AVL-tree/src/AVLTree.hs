@@ -53,18 +53,12 @@ delete t x = fst $ del t x where
 
 -- params: (left, increment on left) key (right, increment on right)
 node::(AVLTree a, Int) -> a -> (AVLTree a, Int) -> Int -> (AVLTree a, Int)
-node (l, dl) k (r, dr) d = balance (Br l k r d', delta) where
+node (l, dl) k (r, dr) d = balance (Br l k r d', deltaH) where
     d' = d + dr - dl
-    delta = deltaH d d' dl dr
-
--- delta(Height) = max(|R'|, |L'|) - max (|R|, |L|)
---  where we denote height(R) as |R|
-deltaH :: Int -> Int -> Int -> Int -> Int
-deltaH d d' dl dr
-       | d >=0 && d' >=0 = dr
-       | d <=0 && d' >=0 = d+dr
-       | d >=0 && d' <=0 = dl - d
-       | otherwise = dl
+    deltaH | d >=0 && d' >=0 = dr
+           | d <=0 && d' >=0 = d+dr
+           | d >=0 && d' <=0 = dl - d
+           | otherwise = dl
 
 balance :: (AVLTree a, Int) -> (AVLTree a, Int)
 balance (Br (Br (Br a x b dx) y c (-1)) z d (-2), dH) = (Br (Br a x b dx) y (Br c z d 0) 0, dH-1)
@@ -133,6 +127,15 @@ prop_delete xs = snd $ foldl verifyDel (tr, isAVL tr) xs' where
   tr = fromList xs'
   verifyDel (_, False) _ = (Empty, False)
   verifyDel (t, _) x = let t' = delete t x in (t', isAVL t')
+
+testAll = do
+  quickCheck (prop_bst::[Int]->Bool)
+  quickCheck (prop_delta::[Int]->Bool)
+  quickCheck (prop_avl::[Int]->Bool)
+  quickCheck (prop_insert::[Int]->Bool)
+  quickCheck (prop_del::[Int]->Bool)
+  quickCheck (prop_del_avl::[Int]->Bool)
+  quickCheck (prop_delete::[Int]->Bool)
 
 -- Helper function for pretty printing
 instance Show a => Show (AVLTree a) where
