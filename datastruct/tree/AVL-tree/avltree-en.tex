@@ -165,7 +165,7 @@ ins\ (l, k', r, \delta)\ k & = & \begin{cases}
 \label{eq:ins}
 \ee
 
-If the tree is empty $\nil$, the result is a leaf of $k$ with balance factor 0. The height increases to 1. Otherwise let $T = (l, k', r, \delta)$. We compare the new element $k$ with $k'$. If $k < k'$, we recursively insert $k$ it to the left sub-tree $l$, otherwise insert to the right. As the recursive insert result is a pair of $(l', \Delta l)$ or $(r', \Delta r)$, we need adjust the balance factor and update tree height through function $tree()$, it takes 4 parameters: $(l', \Delta l)$, $k'$, $(r', \Delta r)$, and $\delta$. The result is $(T', \Delta H)$, where $T'$ is the tree after adjustment, and $\Delta H$ is the increment of height, defined as:
+If the tree is empty $\nil$, the result is a leaf of $k$ with balance factor 0. The height increases to 1. Otherwise let $T = (l, k', r, \delta)$. We compare the new element $k$ with $k'$. If $k < k'$, we recursively insert $k$ it to the left sub-tree $l$, otherwise insert to the right. As the recursive insert result is a pair of $(l', \Delta l)$ or $(r', \Delta r)$, we need adjust the balance factor and update tree height through function $tree$, it takes 4 parameters: $(l', \Delta l)$, $k'$, $(r', \Delta r)$, and $\delta$. The result is $(T', \Delta H)$, where $T'$ is the tree after adjustment, and $\Delta H$ is the increment of height, defined as:
 
 \be
   \Delta H = |T'| - |T|
@@ -198,11 +198,11 @@ Where $\delta' = \delta(T') = |r'| - |l'|$, is the updated balance factor. Appen
 \end{array}
 \ee
 
-With the changes in height and balance factor, we can define the $tree()$ function in (\ref{eq:ins}):
+With the changes in height and balance factor, we can define the $tree$ function in (\ref{eq:ins}):
 
 \be
-tree((l', \Delta l), k, (r', \Delta r), \delta) =
-  balance ((l', k, r', \delta'), \Delta H)
+tree\ (l', \Delta l)\ k\ (r', \Delta r)\ \delta =
+  balance\ (l', k, r', \delta')\ \Delta H
 \ee
 
 Below example programs implements what we deduced so far:
@@ -214,7 +214,7 @@ insert t x = fst $ ins t where
         | x < k = tree (ins l) k (r,  0) d
         | x > k = tree (l,  0) k (ins r) d
 
-tree (l, dl) k (r, dr) d = balance (Br l k r d', deltaH) where
+tree (l, dl) k (r, dr) d = balance (Br l k r d') deltaH where
     d' = d + dr - dl
     deltaH | d >=0 && d' >=0 = dr
            | d <=0 && d' >=0 = d+dr
@@ -233,14 +233,9 @@ There are 4 cases need fix as shown in figure \ref{fig:avl-insert-fix}. The bala
   \label{fig:avl-insert-fix}
 \end{figure}
 
-We call these four cases left-left lean, right-right lean, right-left lean,
-and left-right lean cases in clock-wise direction from top-left. We denote
-the balancing factor before fixing as $\delta(x), \delta(y)$, and $\delta(z)$, while after fixing, they changes to $\delta'(x), \delta'(y)$, and
-$\delta'(z)$ respectively.
+We call the 4 cases: left-left, right-right, right-left, and left-right. Denote the balance factors before fixing as $\delta(x), \delta(y)$, and $\delta(z)$; after fixing, they change to $\delta'(x), \delta'(y) = 0$, and $\delta'(z)$ respectively. The values of $\delta'(x)$ and $\delta'(z)$ can be given as below. Appendix B gives the proof.
 
-After fixing, we have $\delta(y)=0$ for all four cases. The result values of $\delta'(x)$ and $\delta'(z)$ can be given as below. The proof are provided in Appendix C.
-
-\subsubsection*{Left-left lean}
+Left-left:
 
 \be
   \begin{array}{l}
@@ -250,7 +245,7 @@ After fixing, we have $\delta(y)=0$ for all four cases. The result values of $\d
   \end{array}
 \ee
 
-\subsubsection*{Right-right lean}
+Right-right:
 
 \be
   \begin{array}{l}
@@ -261,73 +256,54 @@ After fixing, we have $\delta(y)=0$ for all four cases. The result values of $\d
   \label{eq:rr-result}
 \ee
 
-\subsubsection*{Right-left lean and Left-right lean}
+Right-left and Left-right:
 
 \be
   \begin{array}{l}
-  \delta'(x) = \left \{
-    \begin{array}
-    {r@{\quad:\quad}l}
-    -1 & \delta(y) = 1 \\
-    0 & otherwise
-    \end{array}
-    \right. \\
+  \delta'(x) = \begin{cases}
+    \delta(y) = 1: & -1 \\
+    otherwise: & 0 \\
+    \end{cases} \\
   \delta'(y) = 0 \\
-  \delta'(z) = \left \{
-    \begin{array}
-    {r@{\quad:\quad}l}
-    1 & \delta(y) = -1 \\
-    0 & otherwise
-    \end{array}
-    \right.
+  \delta'(z) = \begin{cases}
+    \delta(y) = -1: & 1 \\
+    otherwise: & 0 \\
+    \end{cases} \\
   \end{array}
   \label{eq:rl-result}
 \ee
 
-\subsection{Pattern Matching}
-The pattern matching fixing function can be given as the following.
+Based on this, we can implement the pattern matching fix as below:
 
 \be
-balance(T, \Delta H) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (((A, x, B, \delta(x)), y, (C, z, D, 0), 0), \Delta H - 1) & P_{ll}(T) \\
-  (((A, x, B, 0), y, (C, z, D, \delta(z)), 0), \Delta H - 1) & P_{rr}(T) \\
-  (((A, x, B, \delta'(x)), y, (C, z, D, \delta'(z)), 0), \Delta H - 1) & P_{rl}(T) \lor P_{lr}(T) \\
-  (T, \Delta H) & otherwise
-  \end{array}
-\right.
-\ee
-
-Where $P_{ll}(T)$ means the pattern of tree $T$ is left-left lean respectively. $\delta'(x)$ and $delta'(z)$ are defined in (\ref{eq:rl-result}). The four patterns are tested as below.
-
-\be
-\begin{array}{l}
-P_{ll}(T): T = (((A, x, B, \delta(x)), y, C, -1), z, D, -2) \\
-P_{rr}(T): T = (A, x, (B, y, node(C, z, D, \delta(z)), 1), 2) \\
-P_{rl}(T): T = ((A, x, (B, y, C, \delta(y)), 1), z, D, -2) \\
-P_{lr}(T): T = (A, x, ((B, y, C, \delta(y)), z, D, -1), 2)
+\resizebox{\textwidth}{!}{\ensuremath{
+\begin{array}{rcl}
+balance\ (((a, x, b, \delta(x)), y, c, -1), z, d, -2)\ \Delta H & = & ((a, x, b, \delta(x)), y, (c, z, d, 0), 0, \Delta H -1) \\
+balance\ (a, x, (b, y, (c, z, d, \delta(z)), 1), 2)\ \Delta H & = & ((a, x, b, 0), y, (c, z, d, \delta(z)), 0, \Delta H -1) \\
+balance\ ((a, x, (b, y, c, \delta(y)), 1), z, d, -2)\ \Delta H & = & ((a, x, b, \delta'(x)), y, (c, z, d, \delta'(z)), 0, \Delta H - 1) \\
+balance\ (a, x, ((b, y, c, \delta(y)), z, d, -1), 2)\ \Delta H & = & ((a, x, b, \delta'(x)), y, (c, z, d, \delta'(z)), 0, \Delta H - 1) \\
+balance\ T\ \Delta H & = & (T, \Delta H) \\
 \end{array}
+}}
 \ee
 
-Translating the above function definition to Haskell yields a simple
-and intuitive program.
+Where $\delta'(x)$ and $delta'(z)$ are defined in (\ref{eq:rl-result}). If none of the pattern matches, the last row keeps the tree unchanged. Below is the example program implements $balance$:
 
-\begin{lstlisting}
-balance (Br (Br (Br a x b dx) y c (-1)) z d (-2), _) =
-        (Br (Br a x b dx) y (Br c z d 0) 0, 0)
-balance (Br a x (Br b y (Br c z d dz)    1)    2, _) =
-        (Br (Br a x b 0) y (Br c z d dz) 0, 0)
-balance (Br (Br a x (Br b y c dy)    1) z d (-2), _) =
-        (Br (Br a x b dx') y (Br c z d dz') 0, 0) where
+\begin{Haskell}
+balance (Br (Br (Br a x b dx) y c (-1)) z d (-2)) dH =
+            (Br (Br a x b dx) y (Br c z d 0) 0, dH-1)
+balance (Br a x (Br b y (Br c z d dz)    1)    2) dH =
+            (Br (Br a x b 0) y (Br c z d dz) 0, dH-1)
+balance (Br (Br a x (Br b y c dy)    1) z d (-2)) dH =
+            (Br (Br a x b dx') y (Br c z d dz') 0, dH-1) where
     dx' = if dy ==  1 then -1 else 0
     dz' = if dy == -1 then  1 else 0
-balance (Br a x (Br (Br b y c dy) z d (-1))    2, _) =
-        (Br (Br a x b dx') y (Br c z d dz') 0, 0) where
+balance (Br a x (Br (Br b y c dy) z d (-1))    2) dH =
+            (Br (Br a x b dx') y (Br c z d dz') 0, dH-1) where
     dx' = if dy ==  1 then -1 else 0
     dz' = if dy == -1 then  1 else 0
-balance (t, d) = (t, d)
-\end{lstlisting}
+balance t d = (t, d)
+\end{Haskell}
 
 The insertion algorithm takes time proportion to the height of the
 tree. As AVL is balanced according to (\ref{eq:AVL-height}), its performance
