@@ -343,14 +343,9 @@ height (Br l _ r _) = 1 + max (height l) (height r)
 \end{Exercise}
 
 \section{Imperative AVL tree algorithm $\star$}
-\index{AVL tree!imperative insertion}
+\index{AVL tree!imperative insert}
 
-This section shows the traditional insert-and-rotate
-approach to realize AVL tree insertion algorithm.
-
-Similar to the red-black tree algorithm, the strategy
-is to first do the binary search tree insertion,
-then fix the balance by rotation and return the final result.
+This section gives the imperative algorithm for completeness. Similar to the red-black tree algorithm, we first re-use the binary search tree insert, then fix the balance through tree rotations.
 
 \begin{algorithmic}[1]
 \Function{Insert}{$T, k$}
@@ -378,75 +373,41 @@ then fix the balance by rotation and return the final result.
 \EndFunction
 \end{algorithmic}
 
-Note that after insertion, the balance factor $\delta$ may change because
-the height of the tree can grow. Inserting on right side can
-increase $\delta$ by 1, while insert on left side can decrease it. By
-the end of this algorithm, we need perform bottom-up fixing from node $x$
-towards root.
-
-We can translate the pseudo code to Python example program\footnote{C and C++ source code are available along with this book}.
-\lstset{language=Python}
-\begin{lstlisting}
-def avl_insert(t, key):
-    root = t
-    x = Node(key)
-    parent = None
-    while(t):
-        parent = t
-        if(key < t.key):
-            t = t.left
-        else:
-            t = t.right
-    if parent is None: #tree is empty
-        root = x
-    elif key < parent.key:
-        parent.set_left(x)
-    else:
-        parent.set_right(x)
-    return avl_insert_fix(root, x)
-\end{lstlisting}
-
-This is a top-down algorithm. It searches the tree from root down to the proper
-position and inserts the new key as a leaf. By the end of this algorithm, it calls the fixing function with the root and the new inserted node.
-
-Note that we reuse the same methods of \texttt{set\_left()} and \texttt{set\_right()} as
-we defined in chapter of red-black tree.
-
-In order to resume the AVL tree property, we first check if the new node is inserted on left or right. If it is on left, the balance factor $\delta$ decreases, otherwise it increases. If we denote the new value as $\delta'$, there are 3 cases between $\delta$ and $\delta'$.
+After insert, the balance factor $\delta$ may change because of the tree growth. Insert to the right may increase $\delta$ by 1, while insert to the left may decrease it. We perform bottom-up fixing from $x$ to root. Denote the new balance factor as $\delta'$, there are 3 cases:
 
 \begin{itemize}
-\item If $|\delta| = 1$ and $|\delta'| = 0$, it means the new node makes the tree perfectly balanced, the height of the parent node doesn't change, the algorithm can be terminated.
+\item $|\delta| = 1$, $|\delta'| = 0$. The new node makes the tree well balanced. The height of the parent keeps unchanged.
 
-\item If $|\delta| = 0$ and $|\delta'| = 1$, it means either the left or the right sub tree increases its height. We need go on checking the upper level of the tree.
+\item $|\delta| = 0$, $|\delta'| = 1$. Either the left or the right sub-tree increases its height. We need go on checking the upper level.
 
-\item If $|\delta| = 1$ and $|\delta'| = 2$, it means the AVL tree property is violated due to the new insertion. We need perform rotation to fix it.
+\item $|\delta| = 1$, $|\delta'| = 2$. We need rotate the tree to fix the balance factor.
 \end{itemize}
 
 \begin{algorithmic}[1]
 \Function{AVL-Insert-Fix}{$T, x$}
   \While{\Call{Parent}{$x$} $\neq$ NIL}
-    \State $\delta \gets $ \textproc{$\delta$}(\Call{Parent}{$x$})
-    \If{$x = $ \textproc{Left}(\Call{Parent}{$x$})}
+    \State $P \gets $ \Call{Parent}{$x$}
+    \State $L \gets $ \Call{Left}{$x$}
+    \State $R \gets $ \Call{Right}{$x$}
+    \State $\delta \gets \delta(P)$
+    \If{$x = $ \Call{Left}{$P$}}
       \State $\delta' \gets \delta - 1$
     \Else
       \State $\delta' \gets \delta + 1$
     \EndIf
-    \State \textproc{$\delta$}(\Call{Parent}{$x$}) $\gets \delta'$
-    \State $P \gets $ \Call{Parent}{$x$}
-    \State $L \gets $ \Call{Left}{$x$}
-    \State $R \gets $ \Call{Right}{$x$}
-    \If{$|\delta| = 1$ and $|\delta'| = 0$} \Comment{Height doesn't change, terminates.}
+    \State $\delta(P) \gets \delta'$
+    \If{$|\delta| = 1$ and $|\delta'| = 0$} \Comment{Height unchanged}
       \State \Return $T$
-    \ElsIf{$|\delta| = 0$ and $|\delta'| = 1$} \Comment{Go on bottom-up updating.}
+    \ElsIf{$|\delta| = 0$ and $|\delta'| = 1$} \Comment{Go on bottom-up update}
       \State $x \gets P$
     \ElsIf{$|\delta| = 1$ and $|\delta'| = 2$}
       \If{$\delta'=2$}
-        \If{$\delta(R) = 1$} \Comment{Right-right case}
+        \If{$\delta(R) = 1$} \Comment{Right-right}
           \State $\delta(P) \gets 0$ \Comment{By (\ref{eq:rr-result})}
           \State $\delta(R) \gets 0$
           \State $T \gets $ \Call{Left-Rotate}{$T, P$}
         \EndIf
-        \If{$\delta(R) = -1$} \Comment{Right-left case}
+        \If{$\delta(R) = -1$} \Comment{Right-left}
           \State $\delta_y \gets $ \textproc{$\delta$}(\Call{Left}{$R$}) \Comment{By (\ref{eq:rl-result})}
           \If{$\delta_y = 1$}
             \State $\delta(P) \gets -1$
@@ -464,11 +425,11 @@ In order to resume the AVL tree property, we first check if the new node is inse
         \EndIf
       \EndIf
       \If{$\delta' = -2$}
-        \If{$\delta(L) = -1$} \Comment{Left-left case}
+        \If{$\delta(L) = -1$} \Comment{Left-left}
           \State $\delta(P) \gets 0$
           \State $\delta(L) \gets 0$
           \State \Call{Right-Rotate}{$T, P$}
-        \Else \Comment{Left-Right case}
+        \Else \Comment{Left-Right}
           \State $\delta_y \gets $ \textproc{$\delta$}(\Call{Right}{$L$})
           \If{$\delta_y = 1$}
             \State $\delta(L) \gets -1$
@@ -492,70 +453,10 @@ In order to resume the AVL tree property, we first check if the new node is inse
 \EndFunction
 \end{algorithmic}
 
-As rotation operation doesn't update the balance factor $\delta$,
-we need update it for impacted nodes. Among the four cases, the right-right case and the left-left case need only one rotation, while the right-left case and the left-right case need two rotations.
-
-The relative example python program is as the following.
-
-\begin{lstlisting}
-def avl_insert_fix(t, x):
-    while x.parent is not None:
-        d2 = d1 = x.parent.delta
-        if x == x.parent.left:
-            d2 = d2 - 1
-        else:
-            d2 = d2 + 1
-        x.parent.delta = d2
-        (p, l, r) = (x.parent, x.parent.left, x.parent.right)
-        if abs(d1) == 1 and abs(d2) == 0:
-            return t
-        elif abs(d1) == 0 and abs(d2) == 1:
-            x = x.parent
-        elif abs(d1)==1 and abs(d2) == 2:
-            if d2 == 2:
-                if r.delta == 1:  # Right-right case
-                    p.delta = 0
-                    r.delta = 0
-                    t = left_rotate(t, p)
-                if r.delta == -1: # Right-Left case
-                    dy = r.left.delta
-                    if dy == 1:
-                        p.delta = -1
-                    else:
-                        p.delta = 0
-                    r.left.delta = 0
-                    if dy == -1:
-                        r.delta = 1
-                    else:
-                        r.delta = 0
-                    t = right_rotate(t, r)
-                    t = left_rotate(t, p)
-            if d2 == -2:
-                if l.delta == -1: # Left-left case
-                    p.delta = 0
-                    l.delta = 0
-                    t = right_rotate(t, p)
-                if l.delta == 1: # Left-right case
-                    dy = l.right.delta
-                    if dy == 1:
-                        l.delta = -1
-                    else:
-                        l.delta = 0
-                    l.right.delta = 0
-                    if dy == -1:
-                        p.delta = 1
-                    else:
-                        p.delta = 0
-                    t = left_rotate(t, l)
-                    t = right_rotate(t, p)
-            break
-    return t
-\end{lstlisting}
-
-We put the AVL tree deletion algorithm in appendix C for reference.
+Besides rotation, we also need update $\delta$ for the impacted nodes. The right-right and left-left cases need one rotation, while the right-left and left-right case need two rotations. We skip the AVL tree delete algorithm in this chapter. Appendix B provides the delete implementation.
 
 \section{Summary}
-We skip the AVL tree delete algorithm in this chapter. Appendix B provides the delete implementation. AVL tree was developed in 1962 by Adelson-Velskii and Landis\cite{wiki-avl}, \cite{TFATP}. It is named after the two authors. AVL tree was developed earlier than the red-black tree. Both are self-balance binary search trees. Most tree operations are bound $O(\lg n)$ time. From (\ref{eq:AVL-height}), AVL tree is more rigidly balanced, and performs faster than red-black tree in looking up intensive applications \cite{wiki-avl}. However, red-black tree performs better in frequently insertion and removal cases. Many popular self-balance binary search tree libraries are implemented on top of red-black tree. AVL tree also provides the intuitive and effective solution to the balance problem.
+AVL tree was developed in 1962 by Adelson-Velskii and Landis\cite{wiki-avl}, \cite{TFATP}. It is named after the two authors. AVL tree was developed earlier than the red-black tree. Both are self-balance binary search trees. Most tree operations are bound $O(\lg n)$ time. From (\ref{eq:AVL-height}), AVL tree is more rigidly balanced, and performs faster than red-black tree in looking up intensive applications \cite{wiki-avl}. However, red-black tree performs better in frequently insertion and removal cases. Many popular self-balance binary search tree libraries are implemented on top of red-black tree. AVL tree also provides the intuitive and effective solution to the balance problem.
 
 \section{Appendix: Example programs}
 
@@ -568,6 +469,55 @@ data Node<T> {
     Node<T> left
     Node<T> right
     Node<T> parent
+}
+\end{lstlisting}
+
+Fix the balance:
+
+\begin{lstlisting}[language = Bourbaki]
+Node<T> insertFix(Node<T> t, Node<T> x) {
+    while (x.parent != null ) {
+        var (p, l, r) = (x.parent, x.parent.left, x.parent.right)
+        var d1 = p.delta
+        var d2 = if x == parent.left then d1 - 1 else d1 + 1
+        p.delta = d2
+
+        if abs(d1) == 1 and abs(d2) == 0 {
+            return t
+        } else if abs(d1) == 0 and abs(d2) == 1 {
+            x = p
+        } else if abs(d1) == 1 and abs(d2) == 2 {
+            if d2 == 2 {
+                if r.delta == 1 {    //Right-right
+                    p.delta = 0
+                    r.delta = 0
+                    t = rotateLeft(t, p)
+                } else if r.delta == -1 {    //Right-Left
+                    var dy = r.left.delta
+                    p.delta = if dy == 1 then -1 else 0
+                    r.left.delta = 0
+                    r.delta = if dy == -1 then 1 else 0
+                    t = rotateRight(t, r)
+                    t = rotateLeft(t, p)
+                }
+            } else if d2 == -2 {
+                if l.delta == -1 {    //Left-left
+                    p.delta = 0
+                    l.delta = 0
+                    t = rotateRight(t, p)
+                } else if l.delta == 1 {    //Left-right
+                    var dy = l.right.delta
+                    l.delta = if dy == 1 then -1 else 0
+                    l.right.delta = 0
+                    p.delta = if dy == -1 then 1 else 0
+                    t = rotateLeft(t, l)
+                    t = rotateRight(t, p)
+                }
+            }
+            break
+        }
+    }
+    return t
 }
 \end{lstlisting}
 
