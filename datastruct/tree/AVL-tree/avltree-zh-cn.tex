@@ -1,18 +1,20 @@
 \ifx\wholebook\relax \else
 % ------------------------
 
-\documentclass{ctexart}
+\documentclass[b5paper]{ctexart}
+\usepackage[nomarginpar
+  %, margin=.5in
+]{geometry}
+
+\addtolength{\oddsidemargin}{-0.05in}
+\addtolength{\evensidemargin}{-0.05in}
+\addtolength{\textwidth}{0.1in}
+
 \usepackage[cn]{../../../prelude}
 
 \setcounter{page}{1}
 
 \begin{document}
-
-%--------------------------
-
-% ================================================================
-%                 COVER PAGE
-% ================================================================
 
 \title{AVL树}
 
@@ -24,68 +26,58 @@
 \maketitle
 \fi
 
-\markboth{AVL树}{初等算法}
+\markboth{AVL树}{基本算法}
 
 \ifx\wholebook\relax
 \chapter{AVL树}
 \numberwithin{Exercise}{chapter}
 \fi
 
-% ================================================================
-%                 Introduction
-% ================================================================
+\label{introduction}
+\index{AVL树}
 
-\label{introduction} \index{AVL树}
-
-本章介绍AVL树。同红黑树类似，AVL树也是为了解决二叉树的平衡问题而提出的。它采用了更为直观的平衡性定义，以及恢复平衡的策略。对比红黑树和AVL树的设计和实现，有助于我们进一步理解自平衡二叉树的特性。
-
-%\subsection{度量树的平衡性}
-
-除了红黑树，还有没有其他自平衡二叉树呢？为了度量一棵二叉树的平衡，我们可以比较左右分支的高度差，如果差很大，则说明树不平衡。定义一棵树的高度差如下：
+为了解决平衡问题，红黑树限制在某一路径上的节点数。AVL树采用了更为直接方法：度量分枝间的差异。对于树$T$，定义：
 
 \be
-  \delta(T) = |T_r| - |T_l|
+  \delta(T) = |r| - |l|
 \ee
 
-其中$|T|$代表树$T$的高度，$T_l$和$T_r$分别代表左右分支。
+其中$|T|$为树的高度，$l$、$r$为左右子树。定义空树$\delta(\nil) = 0$。如果每棵子树$T$都有$\delta(T) = 0$，则树是完全平衡的。例如，一棵高度为$h$的完全二叉树有$n = 2^h - 1$个节点。除了叶子节点外，所有节点都不为空。$\delta(T)$的绝对值越小，树越平衡。我们称$\delta(T)$为二叉树的“平衡因子”。
 
-若每棵子树都有$\delta(T) = 0$，说明树是平衡的。例如，一棵高度为$h$的完全二叉树有$n = 2^h-1$个节点。除了叶子节点外，所有节点都含有两个非空的分支。完全二叉树的所有分支都满足$\delta(T)=0$。另外一个特殊的例子是空树：$\delta(\phi) = 0$。通常$\delta(T)$的绝对值越小，说明树越平衡。
-
-我们定义$\delta(T)$为一棵二叉树的\underline{平衡因子}。
-
-% ================================================================
-% Definition
-% ================================================================
-\section{AVL树的定义}
+\section{定义}
 \index{AVL树!定义}
-
-如果一棵二叉搜索树的所有子树都满足如下条件，我们称之为AVL树。
-
-\be
-  |\delta(T)| \leq 1
-\ee
-
-AVL树中所有子树平衡因子的绝对值都不大于1，只可能是-1、0、1这三个值。图\ref{fig:avl-example}给出了一棵AVL树的例子。
 
 \begin{figure}[htbp]
    \centering
    \includegraphics[scale=0.5]{img/avl-example.ps}
-   \caption{AVL树的例子} \label{fig:avl-example}
+   \caption{AVL树} \label{fig:avl-example}
 \end{figure}
 
-为什么AVL树能保证平衡性呢？或者说为什么这个定义能保证一棵有$n$个节点的树的高度为$O(\lg n)$？我们可以用下面的方法来证明这一事实。
-
-对于一棵高为$h$的AVL树，它的节点数目并不是一个固定的值。当它是一棵完全二叉树时，含有的节点数目最多，为$2^h-1$。那么它最少包含多少节点呢？定义函数$N(h)$代表高度为$h$的AVL树所含有的最少节点数目。对于简单的情况，我们可以立即得出$N(h)$的值：
-
-\begin{itemize}
-\item 空树，$h=0$，$N(0)=0$；
-\item 只有一个根节点的树，$h=1$，$N(1)=1$；
-\end{itemize}
-
-一般情况下$N(h)$是怎样的？图\ref{fig:N-h-relation}中给出了一个高度为$h$的AVL树$T$。它包含三部分：根节点和左右两个分支$T_l$、$T_r$。树的高度和子树高度之间满足下面的关系：
+一棵二叉搜索树称为AVL树，如果所有子树$T$都满足如下条件：
 
 \be
-  h = max(|T_l|, |T_r|) + 1
+  |\delta(T)| \leq 1
+  \label{eq:avl-rule}
+\ee
+
+平衡因子$\delta(T)$只能是$\pm 1$、0。图\ref{fig:avl-example}给出了一棵AVL树的例子。如果树中有$n$个节点，这一定义保证了树的高度$h = O(\lg n)$。我们可以证明这个结论。一棵高为$h$的AVL树，其节点数目并不是一个固定的值。当它是完全二叉树时，含有的节点数目最多，为$2^h - 1$。我们关心它至少包含多少节点。定义$N(h)$代表高度为$h$的AVL树的最小节点数目。我们有：
+
+\begin{itemize}
+\item 空树$\nil$：$h = 0$，$N(0) = 0$；
+\item 只有一个节点的树：$h = 1$，$N(1) = 1$；
+\end{itemize}
+
+图\ref{fig:N-h-relation}中给出了一个高度为$h$的AVL树$T$。它包含三部分：元素$k$和左右子树$l$、$r$。树的高度$h$和子树高度之间满足下面的关系：
+
+\begin{figure}[htbp]
+   \centering
+   \includegraphics[scale=0.5]{img/Nh-lvr.ps}
+   \caption{高度为$h$的AVL树，其中一棵子树高$h - 1$，另外一棵的高度不小于$h - 2$}
+   \label{fig:N-h-relation}
+\end{figure}
+
+\be
+  h = max(|l|, |r|) + 1
 \ee
 
 因此，必然存在一个子树的高度为$h-1$。根据AVL树的定义，我们有 $||T_l| -|T_r|| \leq 1$。所以另外一棵子树的高度不会小于$h-2$。而$T$所包含的节点数为两个子树的节点数再加1（1个根节点）。于是我们得到下面的递归关系：
@@ -95,11 +87,6 @@ AVL树中所有子树平衡因子的绝对值都不大于1，只可能是-1、0�
   \label{eq:Fibonacci-like}
 \ee
 
-\begin{figure}[htbp]
-   \centering
-   \includegraphics[scale=0.5]{img/Nh-lvr.ps}
-   \caption{高度为$h$的AVL树，其中一个分支高$h-1$，另外一个分支的高度不小于$h-2$} \label{fig:N-h-relation}
-\end{figure}
 
 这一递归形式让我们联想起著名的斐波那契（Fibonacci）数列。如果定义$N'(h) = N(h)+1$，我们就可以将(\ref{eq:Fibonacci-like})转换成斐波那契数列。
 
