@@ -131,82 +131,39 @@
 
 这一不等式说明AVL树的高度为$O(\lg n)$，从而保证了平衡性。
 
-在树的基本操作中，插入和删除会改变树的结构。如果由此导致平衡因子的绝对值超过1，就需要通过修复使得$|\delta|$恢复到1以内。常见的修复方法是使用树旋转。受到Okasaki在红黑树\cite{okasaki}中的思路启发，本章中，我们介绍一种模式匹配（pattern matching）方法。这种“改变―恢复”的操作，使得AVL树成为了一种自平衡二叉树。作为比较，本章同样也给出命令式的AVL树算法。
+插入和删除会改变树的结构，导致平衡因子的绝对值超出1，需要通过修复使得$|\delta| < 1$。传统的修复方法是树旋转。我们给出一种基于模式匹配的方法简化实现。思路类似于函数式的红黑树\cite{okasaki}。由于这种“改变——恢复”的策略，AVL树也是一种自平衡二叉树。我们复用二叉搜索树的定义，尽管平衡因子$\delta$可以递归地求出，为了方便，我们在每个节点$T = (l, k, r, \delta)$中保存平衡因子的值，并在改变树结构时更新它\footnote{也可以保存树的高度而非$\delta$\cite{py-avl}。}。下面的例子程序增加了一个整型变量$\delta$：
 
-平衡因子$\delta$显然可以通过递归求出。另外一种方法是在每个节点中保存一分平衡因子的值，如果树结构发生改变，我们只要更新这个值就可以了。这一方法不需要每次都进行遍历计算。
-
-根据这一思路，我们在二叉搜索树的定义中增加一个$\delta$变量，如下面的C++代码所示\footnote{有些实现不保存$\delta$，取而代之保存树的高度，如\cite{py-avl}。}。
-
-\lstset{language=C++}
-\begin{lstlisting}
-template <class T>
-struct node {
-    int delta;
-    T key;
-    node* left;
-    node* right;
-    node* parent;
-};
-\end{lstlisting}
-
-某些纯函数式实现使用不同的构造函数（constructor）来保存平衡因子$\delta$。例如在\cite{hackage-avl}中，定义了4个constructor：\texttt{E}、\texttt{N}、\texttt{P}、\texttt{Z}。其中，\texttt{E}代表空树$\phi$；\texttt{N}代表平衡因子为-1；\texttt{P}代表平衡因子为1；\texttt{Z}代表平衡因子为0。
-
-本章中，我们直接在节点中保存平衡因子的值。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
+\lstset{frame = single}
+\begin{Haskell}
 data AVLTree a = Empty
                | Br (AVLTree a) a (AVLTree a) Int
-\end{lstlisting}
+\end{Haskell}
 
-我们将略过树的只读操作，包括查找、寻找最大、最小值等等，它们和二叉搜索树完全一样。我们仅关注哪些会改变树结构的操作。
+AVL树的$lookup$、$max$、$min$等操作和二叉搜索树相同，而插入和删除操作是特殊的。
 
-% ================================================================
-%                 Insertion
-% ================================================================
 \section{插入}
 \index{AVL树!插入}
 
-在AVL树中插入一个新元素可能会破坏平衡，使得平衡因子$\delta$的绝对值超过1。为了恢复平衡，可以根据不同的情形进行树的旋转操作。大多数命令式实现采用这种方法。
-
-另外一种方法很像Okasaki在红黑树实现中使用的模式匹配方法。它的特点是简单直观。
-
-向AVL树中插入一个新key，根节点的平衡因子的\underline{变化}会在$[-1, 1]$之间\footnote{注意：这里不是说平衡因子的值在$[-1, 1]$内，而是说它的变化在这个范围内。}，树的高度最多增加1。我们需要递归地使用这一信息来更新其他层级上的平衡因子。定义插入算法的结果为一对值$(T', \Delta H)$，其中$T'$为插入后的新树，$\Delta H$为树高度的增加值。令函数$first(pair)$取得一对值中的第一个元素，我们可以在二叉搜索树的插入算法上进行改动，定义AVL树的插入操作：
+当向AVL树中插入一个新元素时，平衡因子的绝对值$|\delta(T)|$可能超过1。我们用类似红黑树修复的模式匹配方法恢复平衡。插入元素$x$后，包含它的子树高度最多增加1。我们需要沿着插入路径递归地更新平衡因子。定义插入结果为一对值$(T', \Delta H)$，其中$T'$为插入后的树，$\Delta H$为高度的增加值。我们将二叉搜索树的插入算法修改如下：
 
 \be
-insert(T, k) = first(ins(T, k))
+insert = \textit{fst} \circ ins
 \ee
 
-其中
+其中$\textit{fst}\ (a, b) = a$返回一对值中的第一个。$ins(T, k)$将元素$x$插入到树$T$中：
 
 \be
-ins(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  ((\phi, k, \phi, 0), 1) & T = \phi \\
-  tree(ins(T_l, k), k', (T_r, 0), \Delta) & k < k' \\
-  tree((T_l, 0), k', ins(T_r, k), \Delta) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+ins\ \nil\ k & = & ((\nil, k, \nil, 0), 1) \\
+ins\ (l, k', r, \delta)\ k & = & \begin{cases}
+  k < k': tree\ (ins\ l\ k)\ k'\ (r, 0)\ \delta \\
+  k > k': tree\ (l, 0)\ k'\ (ins\ r, k)\ \delta \\
+\end{cases}
+\end{array}
 \label{eq:ins}
 \ee
 
-$T_l$、$T_r$、$k'$、$\Delta$的定义如下，它们分别表示左右子树，key和平衡因子。
-
-\[
-  \begin{array}{l}
-  T_l = left(T) \\
-  T_r = right(T) \\
-  k' = key(T) \\
-  \Delta = \delta(T)
-  \end{array}
-\]
-
-向AVL树$T$中插入一个新key $k$时，如果树为空，结果为一个叶子节点，节点的key为$k$，平衡因子为0。树的高度增加1。
-
-否则，如果$T$不为空，我们需要比较根节点的key $k'$和待插入key $k$的大小。如果$k$小于根节点的key，我们将其递归插入左子树，否则将其插入右子树。
-
-根据定义，递归插入的结果为一对值，例如$(T_l', \Delta H_l)$。我们需要对插入的结果调整平衡，并更新高度的增加值。为此定义函数$tree()$，它接受4个参数：$(T_l', \Delta H_l)$、$k'$、$(T_r', \Delta H_r)$和$\Delta$。这一函数的运算结果记为$(T', \Delta H)$。其中，$T'$为调整平衡后的树，$\Delta H$是树高度的增加值，定义如下：
+如果树为空$\nil$，结果为包含$k$的叶子节点，平衡因子为0。高度增加1。否则，令$T = (l, k', r, \delta)$。我们比较$k$和$k'$，如果$k < k'$，我们递归地将$k$插入到左子树$l$中，否则插入右子树$r$。递归插入的结果也是一对值$(l', \Delta l)$或$(r', \Delta r)$。我们通过函数$tree$调整平衡因子并更新高度，它接受4个参数：$(l', \Delta l)$、$k'$、$(r', \Delta r)$、$\delta$，并产生结果$(T', \Delta H)$。其中$T$为新树，$\Delta H$定义如下：
 
 \be
   \Delta H = |T'| - |T|
