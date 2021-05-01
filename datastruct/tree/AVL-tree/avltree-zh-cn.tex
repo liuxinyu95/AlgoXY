@@ -342,9 +342,7 @@ height (Br l _ r _) = 1 + max (height l) (height r)
 \section{AVL树的命令式算法$\bigstar$}
 \index{AVL树!命令式插入}
 
-我们已经介绍了AVL树相关的主要内容。本节我们展示传统的AVL树“插入－旋转”算法，读者可以将其和模式匹配算法进行比较。
-
-和红黑树的命令式插入算法相似，我们先按照普通二叉搜索树将新元素插入，然后再通过旋转操作恢复平衡。
+为了完整，本节我们给出AVL树的命令式算法。和红黑树的命令式算法相似，我们先按二叉搜索树将新元素插入，然后再通过旋转操作恢复平衡。
 
 \begin{algorithmic}[1]
 \Function{Insert}{$T, k$}
@@ -372,42 +370,14 @@ height (Br l _ r _) = 1 + max (height l) (height r)
 \EndFunction
 \end{algorithmic}
 
-插入新元素后，树的高度可能增加，因此平衡因子$\delta$也会变化。插入到右侧会使$\delta$增加1，插入左侧会使$\delta$减少1。在算法结束前，我们需要从$x$开始，自底向上修复平衡，直到根节点。
-
-下面的Python例子程序实现了插入算法的主要部分。
-\lstset{language=Python}
-\begin{lstlisting}
-def avl_insert(t, key):
-    root = t
-    x = Node(key)
-    parent = None
-    while(t):
-        parent = t
-        if(key < t.key):
-            t = t.left
-        else:
-            t = t.right
-    if parent is None: #tree is empty
-        root = x
-    elif key < parent.key:
-        parent.set_left(x)
-    else:
-        parent.set_right(x)
-    return avl_insert_fix(root, x)
-\end{lstlisting}
-
-算法首先自顶向下从根开始搜索插入位置，然后将新元素作为叶子节点插入。最后它调用修复程序，并传入根和新插入的节点。
-
-这里我们复用了红黑树一章中定义的\texttt{set\_left()}和\texttt{set\_right()}方法。
-
-为了修复平衡，我们需要检查新节点是插入到了左侧还是右侧。如果在左侧，平衡因子$\delta$减小，否则增加。记新的平衡因子为$\delta'$，我们有如下三种情况：
+插入新元素后，树的高度可能增加，因此平衡因子$\delta$也会变化。插入到右侧可能使$\delta$增加1，插入左侧可能使$\delta$减少1。我们从$x$开始，自底向上修复平衡，直到根节点。记新的平衡因子为$\delta'$，共有3种情况：
 
 \begin{itemize}
-\item 若$|\delta| = 1$而$|\delta'| = 0$，说明插入后树处于平衡状态。父节点的高度没有发生变化，算法结束。
+\item $|\delta| = 1$、$|\delta'| = 0$。插入后树处于平衡状态。父节点的高度没有变化。
 
-\item 若$|\delta| = 0$而$|\delta'| = 1$，说明左右分支之一的高度增加了，我们需要继续向上检查树的平衡性。
+\item $|\delta| = 0$、$|\delta'| = 1$。左右分支之一的高度增加了，需要继续向上检查平衡性。
 
-\item 若$|\delta| = 1$ and $|\delta'| = 2$，说明AVL树不再平衡了，我们需要进行旋转操作进行修复。
+\item $|\delta| = 1$、$|\delta'| = 2$。需要旋转以修复平衡。
 \end{itemize}
 
 \begin{algorithmic}[1]
@@ -423,18 +393,18 @@ def avl_insert(t, key):
     \State $P \gets $ \Call{Parent}{$x$}
     \State $L \gets $ \Call{Left}{$x$}
     \State $R \gets $ \Call{Right}{$x$}
-    \If{$|\delta| = 1$ and $|\delta'| = 0$} \Comment{高度没有变化，结束。}
+    \If{$|\delta| = 1$ and $|\delta'| = 0$} \Comment{高度没有变化。}
       \State \Return $T$
-    \ElsIf{$|\delta| = 0$ and $|\delta'| = 1$} \Comment{继续自底向上进行更新。}
+    \ElsIf{$|\delta| = 0$ and $|\delta'| = 1$} \Comment{继续自底向上更新}
       \State $x \gets P$
     \ElsIf{$|\delta| = 1$ and $|\delta'| = 2$}
       \If{$\delta'=2$}
-        \If{$\delta(R) = 1$} \Comment{右-右情况}
+        \If{$\delta(R) = 1$} \Comment{右-右}
           \State $\delta(P) \gets 0$ \Comment{根据式(\ref{eq:rr-result})}
           \State $\delta(R) \gets 0$
           \State $T \gets $ \Call{Left-Rotate}{$T, P$}
         \EndIf
-        \If{$\delta(R) = -1$} \Comment{右-左情况}
+        \If{$\delta(R) = -1$} \Comment{右-左}
           \State $\delta_y \gets $ \textproc{$\delta$}(\Call{Left}{$R$}) \Comment{根据式(\ref{eq:rl-result})}
           \If{$\delta_y = 1$}
             \State $\delta(P) \gets -1$
@@ -452,11 +422,11 @@ def avl_insert(t, key):
         \EndIf
       \EndIf
       \If{$\delta' = -2$}
-        \If{$\delta(L) = -1$} \Comment{左-左情况}
+        \If{$\delta(L) = -1$} \Comment{左-左}
           \State $\delta(P) \gets 0$
           \State $\delta(L) \gets 0$
           \State \Call{Right-Rotate}{$T, P$}
-        \Else \Comment{左-右情况}
+        \Else \Comment{左-右}
           \State $\delta_y \gets $ \textproc{$\delta$}(\Call{Right}{$L$})
           \If{$\delta_y = 1$}
             \State $\delta(L) \gets -1$
@@ -480,75 +450,73 @@ def avl_insert(t, key):
 \EndFunction
 \end{algorithmic}
 
-这里我们复用了红黑树一章中定义的旋转操作。单纯旋转操作并不更新平衡因子$\delta$。由于旋转变换改变了树结构，增加了平衡性，因此我们需要重新计算平衡因子。这里直接使用了上面的结果。在4种情况中，右－右偏和左－左偏需要进行一次旋转；而右－左偏和左－右偏需要进行两次旋转。
-
-相关的Python例子程序如下：
-
-\begin{lstlisting}
-def avl_insert_fix(t, x):
-    while x.parent is not None:
-        d2 = d1 = x.parent.delta
-        if x == x.parent.left:
-            d2 = d2 - 1
-        else:
-            d2 = d2 + 1
-        x.parent.delta = d2
-        (p, l, r) = (x.parent, x.parent.left, x.parent.right)
-        if abs(d1) == 1 and abs(d2) == 0:
-            return t
-        elif abs(d1) == 0 and abs(d2) == 1:
-            x = x.parent
-        elif abs(d1)==1 and abs(d2) == 2:
-            if d2 == 2:
-                if r.delta == 1:  # 右-右情况
-                    p.delta = 0
-                    r.delta = 0
-                    t = left_rotate(t, p)
-                if r.delta == -1: # 右-左情况
-                    dy = r.left.delta
-                    if dy == 1:
-                        p.delta = -1
-                    else:
-                        p.delta = 0
-                    r.left.delta = 0
-                    if dy == -1:
-                        r.delta = 1
-                    else:
-                        r.delta = 0
-                    t = right_rotate(t, r)
-                    t = left_rotate(t, p)
-            if d2 == -2:
-                if l.delta == -1: # 左-左情况
-                    p.delta = 0
-                    l.delta = 0
-                    t = right_rotate(t, p)
-                if l.delta == 1: # 左-右情况
-                    dy = l.right.delta
-                    if dy == 1:
-                        l.delta = -1
-                    else:
-                        l.delta = 0
-                    l.right.delta = 0
-                    if dy == -1:
-                        p.delta = 1
-                    else:
-                        p.delta = 0
-                    t = left_rotate(t, l)
-                    t = right_rotate(t, p)
-            break
-    return t
-\end{lstlisting}
-
-命令式的AVL书删除算法可以参考附录C。
+除了旋转，还需要更新平衡因子$\delta$。右－右和左－左情况需要进行一次旋转；而右－左和左－右需要进行两次旋转。我们略过了AVL树的删除算法，附录B给出了删除的实现。
 
 \section{小结}
-AVL树是在1962年由Adelson-Velskii和Landis\cite{wiki-avl}、\cite{TFATP}发表的。AVL树的命名来自两位作者的名字。它的历史要比红黑树更早。
+AVL树是在1962年由Adelson-Velskii和Landis\cite{wiki-avl}、\cite{TFATP}提出的，并以两位作者的名字命名。它比红黑树更早。AVL树和红黑树都是自平衡二叉搜索树，大多数操作的性能都是$O(\lg n)$。式(\ref{eq:AVL-height})使得AVL树的平衡性更为严格。在大量查询的情况下，其表现要好于红黑树\cite{wiki-avl}。但红黑树在频繁插入和删除的情况下性能更佳。很多程序库使用红黑树作为自平衡二叉搜索树的内部实现，AVL树同样也可以直观、高效地解决平衡问题。
 
-人们很自然会比较AVL树和红黑树。它们都是自平衡二叉搜索树，对于主要的树操作，它们的性能都是$O(\lg n)$的。根据式(\ref{eq:AVL-height})的结果，AVL树的平衡性更为严格，因此在频繁查询的情况下，其表现要好于红黑树\cite{wiki-avl}。但红黑树在频繁插入和删除的情况下性能更佳。
+\section{附录：例子程序}
 
-很多流行的程序库使用红黑树作为自平衡二叉搜索树的内部实现，例如STL，AVL树同样也可以直观、高效地解决平衡问题。
+AVL树的定义：
 
-在接下来的章节里，我们将介绍一些数据结构，它们使用边，而不是节点来存储信息，如Trie和Patricia等等。在保证平衡的情况下，如果允许含有两个以上的子分支，我们就得到了另一种有趣的数据结构－B树。
+\begin{lstlisting}[language = Bourbaki]
+data Node<T> {
+    int delta
+    T key
+    Node<T> left
+    Node<T> right
+    Node<T> parent
+}
+\end{lstlisting}
+
+平衡修复：
+
+\begin{lstlisting}[language = Bourbaki]
+Node<T> insertFix(Node<T> t, Node<T> x) {
+    while (x.parent != null ) {
+        var (p, l, r) = (x.parent, x.parent.left, x.parent.right)
+        var d1 = p.delta
+        var d2 = if x == parent.left then d1 - 1 else d1 + 1
+        p.delta = d2
+
+        if abs(d1) == 1 and abs(d2) == 0 {
+            return t
+        } else if abs(d1) == 0 and abs(d2) == 1 {
+            x = p
+        } else if abs(d1) == 1 and abs(d2) == 2 {
+            if d2 == 2 {
+                if r.delta == 1 {    //Right-right
+                    p.delta = 0
+                    r.delta = 0
+                    t = rotateLeft(t, p)
+                } else if r.delta == -1 {    //Right-Left
+                    var dy = r.left.delta
+                    p.delta = if dy == 1 then -1 else 0
+                    r.left.delta = 0
+                    r.delta = if dy == -1 then 1 else 0
+                    t = rotateRight(t, r)
+                    t = rotateLeft(t, p)
+                }
+            } else if d2 == -2 {
+                if l.delta == -1 {    //Left-left
+                    p.delta = 0
+                    l.delta = 0
+                    t = rotateRight(t, p)
+                } else if l.delta == 1 {    //Left-right
+                    var dy = l.right.delta
+                    l.delta = if dy == 1 then -1 else 0
+                    l.right.delta = 0
+                    p.delta = if dy == -1 then 1 else 0
+                    t = rotateLeft(t, l)
+                    t = rotateRight(t, p)
+                }
+            }
+            break
+        }
+    }
+    return t
+}
+\end{lstlisting}
 
 \ifx\wholebook\relax \else
 \begin{thebibliography}{99}
