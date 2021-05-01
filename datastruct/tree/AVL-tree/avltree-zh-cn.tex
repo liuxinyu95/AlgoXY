@@ -169,72 +169,56 @@ ins\ (l, k', r, \delta)\ k & = & \begin{cases}
   \Delta H = |T'| - |T|
 \ee
 
-它可以进一步分解为4种情况。
+它可以进一步分解为4种情况：
 
 \be
-\begin{array}{rl}
-  \Delta H & = |T'| - |T| \\
-              & = 1 + max(|T_r'|, |T_l'|) - (1 + max(|T_r|, |T_l|)) \\
-              & = max(|T_r'|, |T_l'|) - max(|T_r|, |T_l|) \\
-              & = \left \{
-                  \begin{array}{r@{\quad:\quad}l}
-                  \Delta H_r & \Delta \geq 0 \land \Delta' \geq 0 \\
-                  \Delta + \Delta H_r & \Delta \leq 0 \land \Delta' \geq 0 \\
-                  \Delta H_l - \Delta & \Delta \geq 0 \land \Delta' \leq 0 \\
-                  \Delta H_l & otherwise
-                  \end{array} \right .
+\begin{array}{rcl}
+  \Delta H & = & |T'| - |T| \\
+           & = & 1 + max(|r'|, |l'|) - (1 + max(|r|, |l|)) \\
+           & = & max(|r'|, |l'|) - max(|r|, |l|) \\
+           & = & \begin{cases}
+\delta \geq 0, \delta' \geq 0: & \Delta r \\
+\delta \leq 0, \delta' \geq 0: & \delta + \Delta r \\
+\delta \geq 0, \delta' \leq 0: & \Delta l - \delta \\
+otherwise: & \Delta l
+\end{cases}
 \end{array}
 \ee
 
-这一结论的详细证明可以参考附录C。
-
-在进行平衡调整前，我们还需要确定新的平衡因子$\Delta'$。根据AVL树平衡因子的定义，我们有：
+其中$\delta' = \delta(T') = |r'| - |l'|$，是变化后的平衡因子。附录B给出了相关证明。在平衡调整前，还需要确定新的平衡因子$\delta'$。
 
 \be
-\begin{array}{rl}
-\Delta' & = |T_r'| - |T_l'| \\
-        & = |T_r| + \Delta H_r - (|T_l| + \Delta H_l) \\
-        & = |T_r| - |T_l| + \Delta H_r - \Delta H_l \\
-        & = \Delta + \Delta H_r - \Delta H_l
+\begin{array}{rcl}
+\delta' & = & |r'| - |l'| \\
+        & = & |r| + \Delta r - (|l| + \Delta l) \\
+        & = & |r| - |l| + \Delta r - \Delta l \\
+        & = & \delta + \Delta r - \Delta l \\
 \end{array}
 \ee
 
-树高度的变化和平衡因子都准备好后，就可以定义(\ref{eq:ins})中的函数$tree()$了。
+使用树的高度变化和平衡因子，就可进一步定义(\ref{eq:ins})中的函数$tree$：
 
 \be
-tree((T_l', \Delta H_l), k', (T_r', \Delta H_r), \Delta) =
-  balance ((T_l', k', T_r', \Delta'), \Delta H)
+tree\ (l', \Delta l)\ k\ (r', \Delta r)\ \delta =
+  balance\ (l', k, r', \delta')\ \Delta H
 \ee
 
-在具体解释平衡调整的细节前，我们可以先给出上述函数的Haskell例子代码。首先是插入函数：
+下面的例子程序实现了目前给出的结论：
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
+\begin{Haskell}
 insert t x = fst $ ins t where
     ins Empty = (Br Empty x Empty 0, 1)
     ins (Br l k r d)
-        | x < k     = tree (ins l) k (r, 0) d
-        | x == k    = (Br l k r d, 0)
-        | otherwise = tree (l, 0) k (ins r) d
-\end{lstlisting} %$
+        | x < k = tree (ins l) k (r,  0) d
+        | x > k = tree (l,  0) k (ins r) d
 
-这段代码中，如果待插入的key已经存在，它仅仅使用新key覆盖原先的值。
-
-\begin{lstlisting}[style=Haskell]
-tree (l, dl) k (r, dr) d = balance (Br l k r d', delta) where
+tree (l, dl) k (r, dr) d = balance (Br l k r d') deltaH where
     d' = d + dr - dl
-    delta = deltaH d d' dl dr
-\end{lstlisting}
-
-高度增加的计算函数定义如下：
-
-\begin{lstlisting}[style=Haskell]
-deltaH d d' dl dr
-       | d >=0 && d' >=0 = dr
-       | d <=0 && d' >=0 = d+dr
-       | d >=0 && d' <=0 = dl - d
-       | otherwise = dl
-\end{lstlisting}
+    deltaH | d >=0 && d' >=0 = dr
+           | d <=0 && d' >=0 = d+dr
+           | d >=0 && d' <=0 = dl - d
+           | otherwise = dl
+\end{Haskell}
 
 \subsection{平衡调整}
 \index{AVL树!平衡调整}
