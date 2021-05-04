@@ -312,46 +312,36 @@ Deletion may reduce the height of the sub-tree. If the balance factor exceeds th
 
 \subsection{Functional delete}
 
-We can reuse most of the deletion algorithm for BST, then check the balance factor
-and perform fixing. Similiar to the insertion algorithm, the result after deletion
-is a pair $(T', \Delta H)$, where $T'$ is the new tree and $\Delta H$ is the decrement
-of the height. Let function $first(pair)$ return the first component in a pair.
-We define the deletion algorithm as below.
+When delete, we re-use the binary search tree $delete$ in the first step, then check the balance factors and perform fixing. The result is a pair $(T', \Delta H)$, where $T'$ is the new tree and $\Delta H$ is the height decrement. We define $delete$ as below:
 
 \be
-delete(T, k) = first(del(T, k))
+delete = \textit{fst} \circ del
 \ee
 
-where
+where $del(T, k)$ does the actual work to delete element $k$ from $T$:
 
 \be
-del(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, 0) & T = \phi \\
-  tree(del(T_l, k), k', (T_r, 0), \Delta) & k < k' \\
-  tree((T_l, 0), k', del(T_r, k), \Delta) & k > k' \\
-  (T_r, -1) & k = k', T_l = \phi \\
-  (T_l, -1) & k = k', T_r = \phi \\
-  tree((T_l, 0), k'', del(T_r, k''), \Delta) & otherwise, k'' = min(T_r)
-  \end{array}
-\right.
+\begin{array}{rcl}
+del\ \nil\ k & = & (\nil, 0) \\
+del\ (l, k', r, \delta) & = & \begin{cases}
+  k < k': & tree\ (del\ l\ k)\ k'\ (r, 0)\ \delta \\
+  k > k': & tree\ (l, 0)\ k'\ (del\ r\ k)\ \delta \\
+  k = k': & \begin{cases}
+    l = \nil: & (r, -1) \\
+    r = \nil: & (l, -1) \\
+    else: & tree\ (l, 0)\ k''\ (del\ r\ k'')\ \delta \\
+          & \text{where}\ k'' = min(r) \\
+  \end{cases} \\
+\end{cases}
+\end{array}
 \label{eq:avl-del}
 \ee
 
-If the tree is empty, the result is empty as well; Otherwise, we compare the
-key with the value to be delete and recursively lookup and perform delete
-along the sub trees. If the node to be delete has only one child, we cut
-that node off. Otherwise, we use the minimum value in the right sub tree
-to replace the key, and cut the minimum node off.
-
-We can reuse the $tree()$ function, as well as the result for $\Delta H$.
-But different from insertion, there are extra two cases can violate AVL
-properties, thus need fixing.
+If the tree is empty, the result is $(\nil, 0)$; otherwise, let the tree be $T = (l, k', r, \delta)$. We compare the $k$ and $k'$, lookup and delete recursively. When $k = k'$, we locate the node to be deleted. If it has either empty sub-tree, we cut the node off, and replace it with the other sub-tree; otherwise, we use the minimum $k''$ in the right sub-tree to replace $k'$, and cut $k''$ off. We re-use the $tree$ function and $\Delta H$ result. Additional to the $insert$ cases, there are two cases violate AVL rule, and need fixing. As shown in figure \ref{fig:avl-del-fixing}, both cases can be fixed by a tree rotation. We define them as pattern matching:
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{Fix AVL violation after deletion. case A}{
+  \subcaptionbox{Fix case A}{
     \begin{tikzpicture}[scale=1,
         trnode/.style={circle, draw, inner sep= 0pt, minimum size = .6cm}
       ]
@@ -386,7 +376,7 @@ properties, thus need fixing.
 
       \draw (2, -1) node{$\Longrightarrow$};
   \end{tikzpicture}} \\
-  \subcaptionbox{Fix AVL violation after deletion. case B}{
+  \subcaptionbox{Fix case B}{
     \begin{tikzpicture}[scale=1,
         trnode/.style={circle, draw, inner sep= 0pt, minimum size = .6cm}
       ]
@@ -422,56 +412,46 @@ properties, thus need fixing.
 
       \draw (2.5, -1) node{$\Longrightarrow$};
   \end{tikzpicture}}
-  \caption{AVL tree fixing for delete} \label{fig:avl-del-fixing}
+  \caption{delete fix}
+  \label{fig:avl-del-fixing}
 \end{figure}
 
-As shown in figure \ref{fig:avl-del-fixing}, both cases can be fixed by a tree rotation. It can be essentailly catpured by pattern matching to the tree structure.
-
 \be
-balance(T, \Delta H) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
+\begin{array}{rcl}
+ ... \\
+balance\ ((a, x, b, \delta(x)), y, c, -2)\ \Delta H & = & (a, x, (b, y, c, -1), \delta(x) + 1, \Delta H) \\
+balance\ (a, x, (b, y, c, \delta(y)),  2)\ \Delta H & = & ((a, x, b, 1), y, c, \delta(y) - 1, \Delta H) \\
   ... \\
-  (A, x, (B, y, C, -1), \delta(x) + 1, \Delta H) & T = ((A, x, B \delta(x)), y, C, -2, \Delta H) \\
-  ((A, x, B 1), y, C, \delta(y) - 1, \Delta H) & T = (A, x, (B, y, C \delta(y)), 2, \Delta H) \\
-  ...
-  \end{array}
-\right.
+\end{array}
 \ee
 
-Below is the example program in Haskell
+Below is the example program:
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-delete::(Ord a) => AVLTree a -> a -> AVLTree a
+\lstset{frame = single}
+\begin{Haskell}
 delete t x = fst $ del t x where
-  -- result is a pair (t, d), t: tree, d: decrement in height
   del Empty _ = (Empty, 0)
   del (Br l k r d) x
     | x < k = node (del l x) k (r, 0) d
     | x > k = node (l, 0) k (del r x) d
-    -- x == k, delete this node
     | isEmpty l = (r, -1)
     | isEmpty r = (l, -1)
     | otherwise = node (l, 0) k' (del r k') d where k' = min r
-\end{lstlisting}
+\end{Haskell}
 
-Where the auxiliary function \texttt{min} are implemented similiar to the binary
-search tree, it traverses along the left sub tree till the end. Function \texttt{isEmpty} test if a tree is empty.
+Where \texttt{min} and \texttt{isEmpty} are defined as below:
 
-\begin{lstlisting}
+\begin{Haskell}
 isEmpty Empty = True
 isEmpty _ = False
 
-min :: AVLTree a -> a
 min (Br Empty x _ _) = x
 min (Br l _ _ _) = min l
-\end{lstlisting}
+\end{Haskell}
 
-After adding the extra two cases for fixing, there are total 7 cases in the \texttt{balance} function.
+With the additional two, there are total 7 cases in \texttt{balance} implementation:
 
-\begin{lstlisting}
-balance :: (AVLTree a, Int) -> (AVLTree a, Int)
+\begin{Haskell}
 balance (Br (Br (Br a x b dx) y c (-1)) z d (-2), dH) =
         (Br (Br a x b dx) y (Br c z d 0) 0, dH-1)
 balance (Br a x (Br b y (Br c z d dz)    1)    2, dH) =
@@ -484,13 +464,15 @@ balance (Br a x (Br (Br b y c dy) z d (-1))    2, dH) =
         (Br (Br a x b dx') y (Br c z d dz') 0, dH-1) where
     dx' = if dy ==  1 then -1 else 0
     dz' = if dy == -1 then  1 else 0
--- Delete specific fixing
-balance (Br (Br a x b dx) y c (-2), dH) = (Br a x (Br b y c (-1)) (dx+1), dH)
-balance (Br a x (Br b y c dy)    2, dH) = (Br (Br a x b    1) y c (dy-1), dH)
+-- Delete specific
+balance (Br (Br a x b dx) y c (-2), dH) =
+        (Br a x (Br b y c (-1)) (dx+1), dH)
+balance (Br a x (Br b y c dy)    2, dH) =
+        (Br (Br a x b    1) y c (dy-1), dH)
 balance (t, d) = (t, d)
-\end{lstlisting}
+\end{Haskell}
 
-\subsection{Imperative deletion}
+\subsection{Imperative delete}
 
 Imperative deletion algorithm uses tree rotation to resume the balance of the tree.
 There are more cases need to handle. We firstly apply the binary search tree deletion
