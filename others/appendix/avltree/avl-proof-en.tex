@@ -474,10 +474,7 @@ balance (t, d) = (t, d)
 
 \subsection{Imperative delete}
 
-Imperative deletion algorithm uses tree rotation to resume the balance of the tree.
-There are more cases need to handle. We firstly apply the binary search tree deletion
-process, then fix the balance if it violates the AVL properties due to the sub tree
-height shrink. The main deletion algorithm is given as the following.
+The imperative $delete$ uses tree rotations for fixing. In the first step, we re-use the binary search tree algorithm to delete the node $x$ from tree $T$; then in the second step, check the balance factor and perform rotation.
 
 \begin{algorithmic}[1]
 \Function{Delete}{$T, x$}
@@ -493,7 +490,7 @@ height shrink. The main deletion algorithm is given as the following.
     \State replace $x$ with $y$
   \Else
     \State $z \gets$ \textproc{Min}(\Call{Right}{$x$})
-    \State copy key and satellite date from $z$ to $x$
+    \State copy data from $z$ to $x$
     \State $p \gets$ \Call{Parent}{$z$}
     \State $y \gets$ \Call{Right}{$z$}
     \State replace $z$ with $y$
@@ -502,32 +499,18 @@ height shrink. The main deletion algorithm is given as the following.
 \EndFunction
 \end{algorithmic}
 
-If the node subject to delete is empty, the tree doesn't change. In normal case,
-we record the parent of that node as $p$. If either of sub tree is empty, we
-cut off the node, and replace it with the other sub tree. Otherwise, we locate
-the node contains the minimum key from the right sub tree as $z$, copy the key and the
-satellite data to $x$, then cut $z$ off. Finally, we call the fixing function
-and pass the root, the parent, and the node replaces the removed one as parameters.
+When delete node $x$, we record its parent in $p$. If either sub-tree is empty, we cut off $x$, and replace it with the other sub-tree. Otherwise if neither sub-tree is empty, we locate the minimum element $z$ of the right sub-tree, copy data from $z$ to $x$, then cut $z$ off. Finally, we call \textproc{AVL-Delete-Fix} with the root $T$, the parent $p$, and the replacement node $y$. Let the balance factor of $p$ be $\delta(p)$, and it changes to $\delta(p)'$ after delete. There are three cases:
 
-Denote the balance factor of the parent node as $\delta(p)$, by checking the new value
-$\delta(p)'$, there are three different cases.
+\begin{enumerate}
+\item $|\delta(p)| = 0$, $|\delta(p)'| = 1$. After delete, although a sub-tree height decreases, the parent still satisfies the AVL
+rule. The algorithm terminates as the tree is still balanced;
 
-\begin{itemize}
-\item Case 1, $|\delta(p)| = 0$, $|\delta(p)'| = 1$. It means, after deletion,
-although one sub tree height shrinks, the parent node still satisfies the AVL
-property. The algorithm terminates as the tree is still balanced;
-\item Case 2, $|\delta(p)| = 1$, $|\delta(p)'| = 0$. It means before the deletion,
-the height difference between the two sub trees are 1; while after deletion, the
-sub tree with greater height shrinks by 1, thus the heights are same now. As the
-result, the height of the parent tree also decrease by 1. We need go on the
-bottom-up updating along the parent link towards the root;
-\item Case 3, $|\delta(p)| = 1$, $|\delta(p)'| = 2$. It means the tree after deletion
-violates the AVL property, we need fix it by tree rotation.
-\end{itemize}
+\item $|\delta(p)| = 1$, $|\delta(p)'| = 0$. Before the delete, the height difference between the two sub-trees is 1; while after delete, the higher sub-tree shrinks by 1. Both sub-trees have the same height now. As the result, the height of the parent also decrease by 1. We need continue the bottom-up update along the parent reference to the root;
 
-For case 3, most of fixing operations are similar to to insertion fixing. However,
-we need add two extra sub cases to cover the situations illustrated in figure
-\ref{fig:avl-del-fixing}. The fixing algorithm is given as the following.
+\item $|\delta(p)| = 1$, $|\delta(p)'| = 2$. After delete, the tree violates the AVL height rule, we need rotate the tree to fix it.
+\end{enumerate}
+
+For case 3, the implementation is similar to the insert fixing. We need add two additional sub-cases as shown in figure \ref{fig:avl-del-fixing}.
 
 \begin{algorithmic}[1]
 \Function{AVL-Delete-Fix}{$T, p, x$}
@@ -549,12 +532,12 @@ we need add two extra sub cases to cover the situations illustrated in figure
       \State \Return $T$
     \ElsIf{$|\delta| = 1 \land |\delta'| = 2$}
       \If{$\delta' = 2$}
-        \If{$\delta(r) = 1$} \Comment{Right-right case}
+        \If{$\delta(r) = 1$} \Comment{Right-right}
           \State $\delta(p) \gets 0$
           \State $\delta(r) \gets 0$
           \State $p \gets r$
           \State $T \gets $ \Call{Left-Rotate}{$T, p$}
-        \ElsIf {$\delta(r) = -1$} \Comment{Right-left case}
+        \ElsIf {$\delta(r) = -1$} \Comment{Right-left}
           \State $\delta_y \gets \delta($ \Call{Left}{$r$} $)$
           \If{$\delta_y = 1$}
             \State $\delta(p) \gets -1$
@@ -567,19 +550,19 @@ we need add two extra sub cases to cover the situations illustrated in figure
           \Else
             \State $\delta(r) \gets 0$
           \EndIf
-        \Else \Comment{Delete specific right-right case}
+        \Else \Comment{Delete specific right-right}
           \State $\delta(p) \gets 1$
           \State $\delta(r) \gets \delta(r) - 1$
           \State $T \gets$ \Call{Left-Rotate}{$T, p$}
           \State break \Comment{No furthur height change}
         \EndIf
       \ElsIf{$\delta' = -2$}
-        \If{$\delta(l) = -1$} \Comment{Left-left case}
+        \If{$\delta(l) = -1$} \Comment{Left-left}
           \State $\delta(p) \gets 0$
           \State $\delta(l) \gets 0$
           \State $p \gets l$
           \State $T \gets $ \Call{Right-Rotate}{$T, p$}
-        \ElsIf {$\delta(l) = 1$} \Comment{Left-right case}
+        \ElsIf {$\delta(l) = 1$} \Comment{Left-right}
           \State $\delta_y \gets \delta($ \Call{Right}{$l$} $)$
           \If{$\delta_y = -1$}
             \State $\delta(p) \gets 1$
@@ -592,14 +575,14 @@ we need add two extra sub cases to cover the situations illustrated in figure
           \Else
             \State $\delta(l) \gets 0$
           \EndIf
-        \Else \Comment{Delete specific left-left case}
+        \Else \Comment{Delete specific left-left}
           \State $\delta(p) \gets -1$
           \State $\delta(l) \gets \delta(l) + 1$
           \State $T \gets$ \Call{Right-Rotate}{$T, p$}
           \State break \Comment{No furthur height change}
         \EndIf
       \EndIf
-      \Comment{Height decrease, go on bottom-up updating}
+      \Comment{Height decreases, go on bottom-up updating}
       \State $x \gets p$
       \State $p \gets$ \Call{Parent}{$x$}
     \EndIf
@@ -611,147 +594,106 @@ we need add two extra sub cases to cover the situations illustrated in figure
 \EndFunction
 \end{algorithmic}
 
-The follow C++ example program implements this AVL tree delete algorithm.
+\begin{Exercise}
+\Question{Compare the imperative tree fixing for $insert$ and $delete$, there are similarities. Develop a common fix function for both $insert$ and $delete$.}
+\end{Exercise}
 
-\lstset{language=C++}
-\begin{lstlisting}
-Node* del(Node* t, Node* x) {
-    if (!x) return t;
-    Node *y, *parent = x->parent;
-    if (!x->left) {
-        y = x->replaceWith(x->right);
-    } else if (!x->right) {
-        y = x->replaceWith(x->left);
+\section{Example program}
+
+The main $delete$ program:
+
+\begin{lstlisting}[language = Bourbaki]
+Node del(Node t, Node x) {
+    if x == null then return t
+    Node y
+    var parent = x.parent
+    if x.left == null {
+        y = x.replaceWith(x.right)
+    } else if x.right == null {
+        y = x.replaceWith(x.left)
     } else {
-        y = min(x->right);
-        x->key = y->key;
-        parent = y->parent;
-        x = y;
-        y = y->replaceWith(y->right);
+        y = min(x.right)
+        x.key = y.key
+        parent = y.parent
+        x = y
+        y = y.replaceWith(y.right)
     }
-    t = deleteFix(t, parent, y);
-    remove(x);
-    return t;
+    t = deleteFix(t, parent, y)
+    release(x)
+    return t
 }
 \end{lstlisting}
 
-Where method \texttt{replaceWith(tree)} replaces the current node with the parameter
-passed in, and returns the new node as the result.
+Where \texttt{replaceWith} is defined in the chapter of red-black tree. \texttt{release(x)} releases the memory of a node. Function \texttt{deleteFix} is implemented as below:
 
-\begin{lstlisting}
-Node* replaceWith(Node* y) {
-    return replace(parent, this, y);
-}
-\end{lstlisting}
-
-And the function \texttt{replace(parent, x, y)} replaces child \texttt{x} with \texttt{y} to its parent.
-
-\begin{lstlisting}
-// change from: parent --> x to parent --> y
-Node* replace(Node* parent, Node* x, Node* y) {
-    if (!parent) {
-        if (y) y->parent = nullptr;
-    } else if (parent->left == x) {
-        parent->setLeft(y);
-    } else {
-        parent->setRight(y);
-    }
-    if (x) x->parent = nullptr;
-    return y;
-}
-\end{lstlisting}
-
-Function \texttt{min(t)} recursively find the minimum node for a given tree. Function \texttt{remove(tree)} helps to release the memory for a given node.
-
-\begin{lstlisting}
-Node* min(Node* t) {
-    while (t && t->left) t = t->left;
-    return t;
-}
-
-void remove(Node* x) {
-    if (x) {
-        x->parent = x->left = x->right = nullptr;
-        delete x;
-    }
-}
-\end{lstlisting}
-
-The fixing method is implemented as below.
-
-\begin{lstlisting}
-Node* deleteFix(Node* t, Node* parent, Node* x) {
-    int d1, d2, dy;
-    Node *p, *l, *r;
-    while (parent) {
-        d2 = d1 = parent->delta;
-        d2 += (x == parent->left ? 1 : -1);
-        if (isLeaf(parent)) d2 = 0;
-        parent->delta = d2;
-        p = parent;
-        l = parent->left;
-        r = parent->right;
-        if (abs(d1) == 1 && abs(d2) == 0) {
-            x = parent;
-            parent = x->parent;
-        } else if (abs(d1) == 0 && abs(d2) == 1) {
-            return t;
-        } else if (abs(d1) == 1 && abs(d2) == 2) {
-            if (d2 == 2) {
-                if (r->delta == 1) {  // right-right case
-                    p->delta = r->delta = 0;
-                    parent = r;
-                    t = leftRotate(t, p);
-                } else if (r->delta == -1) { // right-left case
-                    dy = r->left->delta;
-                    p->delta = dy == 1 ? -1 : 0;
-                    r->left->delta = 0;
-                    r->delta = dy == -1 ? 1 : 0;
-                    parent = r->left;
-                    t = rightRotate(t, r);
-                    t = leftRotate(t, p);
-                } else { // delete specific right-right case
-                    p->delta = 1;
-                    r->delta--;
-                    t = leftRotate(t, p);
-                    break; // no further height change
+\begin{lstlisting}[language = Bourbaki]
+Node deleteFix(Node t, Node parent, Node x) {
+    int d1, d2, dy
+    Node p, l, r
+    while parent != null {
+        d2 = d1 = parent.delta
+        d2 = d2 + if x == parent.left then 1 else -1
+        if isLeaf(parent) then d2 = 0
+        parent.delta = d2
+        p = parent
+        l = parent.left
+        r = parent.right
+        if abs(d1) == 1 and abs(d2) == 0 {
+            x = parent
+            parent = x.parent
+        } else if abs(d1) == 0 and abs(d2) == 1 {
+            return t
+        } else if abs(d1) == 1 and abs(d2) == 2 {
+            if d2 == 2 {
+                if r.delta == 1 {  // right-right
+                    p.delta = 0
+                    r.delta = 0
+                    parent = r
+                    t = leftRotate(t, p)
+                } else if r.delta == -1 { // right-left
+                    dy = r.left.delta
+                    p.delta = if dy == 1 then -1 else 0
+                    r.left.delta = 0
+                    r.delta = if dy == -1 then 1 else 0
+                    parent = r.left
+                    t = rightRotate(t, r)
+                    t = leftRotate(t, p)
+                } else { // delete specific right-right
+                    p.delta = 1
+                    r.delta = r.delta - 1
+                    t = leftRotate(t, p)
+                    break // no further height change
                 }
-            } else if (d2 == -2) {
-                if (l->delta == -1) { // left-left case
-                    p->delta = l->delta = 0;
-                    parent = l;
-                    t = rightRotate(t, p);
-                } else if (l->delta == 1) { // left-right case
-                    dy = l->right->delta;
-                    l->delta = dy == 1 ? -1 : 0;
-                    l->right->delta = 0;
-                    p->delta = dy == -1 ? 1 : 0;
-                    parent = l->right;
-                    t = leftRotate(t, l);
-                    t = rightRotate(t, p);
-                } else { // delete specific left-left case
-                    p->delta = -1;
-                    l->delta++;
-                    t = rightRotate(t, p);
-                    break; // no further height change
+            } else if d2 == -2 {
+                if (l.delta == -1) { // left-left
+                    p.delta = 0
+                    l.delta = 0
+                    parent = l
+                    t = rightRotate(t, p)
+                } else if l.delta == 1 { // left-right
+                    dy = l.right.delta
+                    l.delta = if dy == 1 then -1 else 0
+                    l.right.delta = 0
+                    p.delta = if dy == -1 then 1 else 0
+                    parent = l.right;
+                    t = leftRotate(t, l)
+                    t = rightRotate(t, p)
+                } else { // delete specific left-left
+                    p.delta = -1
+                    l.delta = l.delta + 1
+                    t = rightRotate(t, p)
+                    break // no further height change
                 }
             }
-            // the 4 rebalance cases cause height decrease, go on bottom-up update
-            x = parent;
-            parent = x->parent;
-        } else {
-            printf("shouldn't be here, d1 = %d, d2 = %d", d1, d2);
-            assert(false);
+            // height decreases, go on bottom-up update
+            x = parent
+            parent = x.parent
         }
     }
-    if (!parent) return x; // delete the root
-    return t;
+    if parent == null then return x // delete the root
+    return t
 }
 \end{lstlisting}
-
-\begin{Exercise}
-Compare the imperative AVL tree fixing algorithms for insertion and deletion, there are similarities. Develop a common AVL tree fixing algorith can serve for both insertion and deletion.
-\end{Exercise}
 
 \ifx\wholebook\relax \else
 %% \begin{thebibliography}{99}
