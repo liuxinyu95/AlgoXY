@@ -308,45 +308,41 @@ otherwise: & \Delta l
 
 \section{删除算法}
 
-删除后会引起子树高度的变化。如果平衡因子因此超出了$[-1, 1]$的范围，就需要修复以维持AVL树的性质。
+删除后会引起子树高度的降低。如果平衡因子超出了$[-1, 1]$的范围，就需要修复以保持AVL树的性质。
 
-\subsection{函数式删除算法}
+\subsection{函数式删除}
 
-我们可以复用大部分的二叉搜索树删除算法，然后检查平衡因子并进行修复。和插入算法类似，删除的结果为一对值
-$(T', \Delta H)$，其中$T'$是删除后的新树、$\Delta H$是高度的减少量。令函数$first(pair)$返回一对
-值中的前一个分量。我们可以将删除算法定义如下：
+我们先复用二叉搜索树删除算法，然后检查平衡因子并进行修复。删除的结果为一对值
+$(T', \Delta H)$，其中$T'$是删除后的新树、$\Delta H$是高度的减少量。删除算法定义如下：
 
 \be
-delete(T, k) = first(del(T, k))
+delete = \textit{fst} \circ del
 \ee
 
-其中
+其中$del(T, k)$从树$T$种将元素$k$删除：
 
 \be
-del(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, 0) & T = \phi \\
-  tree(del(T_l, k), k', (T_r, 0), \Delta) & k < k' \\
-  tree((T_l, 0), k', del(T_r, k), \Delta) & k > k' \\
-  (T_r, -1) & k = k', T_l = \phi \\
-  (T_l, -1) & k = k', T_r = \phi \\
-  tree((T_l, 0), k'', del(T_r, k''), \Delta) & otherwise, k'' = min(T_r)
-  \end{array}
-\right.
+\begin{array}{rcl}
+del\ \nil\ k & = & (\nil, 0) \\
+del\ (l, k', r, \delta) & = & \begin{cases}
+  k < k': & tree\ (del\ l\ k)\ k'\ (r, 0)\ \delta \\
+  k > k': & tree\ (l, 0)\ k'\ (del\ r\ k)\ \delta \\
+  k = k': & \begin{cases}
+    l = \nil: & (r, -1) \\
+    r = \nil: & (l, -1) \\
+    else: & tree\ (l, 0)\ k''\ (del\ r\ k'')\ \delta \\
+          & \text{where}\ k'' = min(r) \\
+  \end{cases} \\
+\end{cases}
+\end{array}
 \label{eq:avl-del}
 \ee
 
-如果树为空，删除的结果也为空；否则，我们比较节点的key和待删除的值，并沿着子树递归地进行查找和删除。
-如果待删除的节点含有的非空子树少于两棵，可以将其直接切下。否则，我们用右子树中的最小值替换节点的key，
-然后将最小值节点切下。
-
-我们可以复用定义好的$tree()$函数和$\Delta H$的结果。和插入算法相比，需要处理两种删除中特有的
-额外情况。
+如果树为空，结果为$(\nil, 0)$；否则令树为$T = (l, k', r, \delta)$。我们比较$k$和$k'$的关系，并沿着子树递归查找和删除。当$k = k'$时，我们定位到了要删除的节点。如果它的任一子树为空，可以将其切下并用另一棵子树替代。否则，将右子树中的最小值$k''$切下，并替换$k'$。我们可以复用$tree$函数和$\Delta H$的结果。和插入算法相比，需要增加两种删除中特有的情况：
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{AVL树删除后需要修复的情况A}{
+  \subcaptionbox{情况A}{
     \begin{tikzpicture}[scale=1,
         trnode/.style={circle, draw, inner sep= 0pt, minimum size = .6cm}
       ]
@@ -381,7 +377,7 @@ del(T, k) = \left \{
 
       \draw (2, -1) node{$\Longrightarrow$};
   \end{tikzpicture}} \\
-  \subcaptionbox{AVL树删除后需要修复的情况B}{
+  \subcaptionbox{情况B}{
     \begin{tikzpicture}[scale=1,
         trnode/.style={circle, draw, inner sep= 0pt, minimum size = .6cm}
       ]
@@ -417,55 +413,46 @@ del(T, k) = \left \{
 
       \draw (2.5, -1) node{$\Longrightarrow$};
   \end{tikzpicture}}
-  \caption{AVL树在删除后需要修复的两种情况} \label{fig:avl-del-fixing}
+  \caption{删除修复}
+  \label{fig:avl-del-fixing}
 \end{figure}
 
-如图\ref{fig:avl-del-fixing}所示，两种情况都可以通过一次树的旋转操作来修复。我们可以用模式匹配来概括这种结构上的变化。
-
 \be
-balance(T, \Delta H) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
+\begin{array}{rcl}
+ ... \\
+balance\ ((a, x, b, \delta(x)), y, c, -2)\ \Delta H & = & (a, x, (b, y, c, -1), \delta(x) + 1, \Delta H) \\
+balance\ (a, x, (b, y, c, \delta(y)),  2)\ \Delta H & = & ((a, x, b, 1), y, c, \delta(y) - 1, \Delta H) \\
   ... \\
-  (A, x, (B, y, C, -1), \delta(x) + 1, \Delta H) & T = ((A, x, B \delta(x)), y, C, -2, \Delta H) \\
-  ((A, x, B 1), y, C, \delta(y) - 1, \Delta H) & T = (A, x, (B, y, C \delta(y)), 2, \Delta H) \\
-  ...
-  \end{array}
-\right.
+\end{array}
 \ee
 
-下面的Haskell例子程序实现了这种AVL树的删除算法。
+相应的例子程序如下：
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-delete::(Ord a) => AVLTree a -> a -> AVLTree a
+\lstset{frame = single}
+\begin{Haskell}
 delete t x = fst $ del t x where
-  -- 结果为一对值(t, d)，t：树、d：高度的减小值
   del Empty _ = (Empty, 0)
   del (Br l k r d) x
     | x < k = node (del l x) k (r, 0) d
     | x > k = node (l, 0) k (del r x) d
-    -- x == k，删除该节点
     | isEmpty l = (r, -1)
     | isEmpty r = (l, -1)
     | otherwise = node (l, 0) k' (del r k') d where k' = min r
-\end{lstlisting}
+\end{Haskell}
 
-其中辅助函数\texttt{min}和二叉搜索树中的定义相同，它沿着左子树遍历到尽头。函数\texttt{isEmpty}检查给定的树是否为空。
+其中\texttt{min}和\texttt{isEmpty}定义为：
 
-\begin{lstlisting}
+\begin{Haskell}
 isEmpty Empty = True
 isEmpty _ = False
 
-min :: AVLTree a -> a
 min (Br Empty x _ _) = x
 min (Br l _ _ _) = min l
-\end{lstlisting}
+\end{Haskell}
 
-在函数\texttt{balance}中增加用于删除的两种情况后，总共有7种情况需要修复。
+这样总共有7种情况需要在\texttt{balance}中实现：
 
-\begin{lstlisting}
-balance :: (AVLTree a, Int) -> (AVLTree a, Int)
+\begin{Haskell}
 balance (Br (Br (Br a x b dx) y c (-1)) z d (-2), dH) =
         (Br (Br a x b dx) y (Br c z d 0) 0, dH-1)
 balance (Br a x (Br b y (Br c z d dz)    1)    2, dH) =
@@ -478,13 +465,15 @@ balance (Br a x (Br (Br b y c dy) z d (-1))    2, dH) =
         (Br (Br a x b dx') y (Br c z d dz') 0, dH-1) where
     dx' = if dy ==  1 then -1 else 0
     dz' = if dy == -1 then  1 else 0
--- 删除时需要额外处理的两种情况
-balance (Br (Br a x b dx) y c (-2), dH) = (Br a x (Br b y c (-1)) (dx+1), dH)
-balance (Br a x (Br b y c dy)    2, dH) = (Br (Br a x b    1) y c (dy-1), dH)
+-- Delete specific
+balance (Br (Br a x b dx) y c (-2), dH) =
+        (Br a x (Br b y c (-1)) (dx+1), dH)
+balance (Br a x (Br b y c dy)    2, dH) =
+        (Br (Br a x b    1) y c (dy-1), dH)
 balance (t, d) = (t, d)
-\end{lstlisting}
+\end{Haskell}
 
-\subsection{命令式删除算法}
+\subsection{命令式删除}
 
 命令式删除算法使用树的旋转操作来恢复平衡。和插入算法相比，删除需要处理更多的情况。我们首先使用二叉搜索树
 删除算法，然后再修复由于子树高度变化引起的平衡问题。删除算法的基本部分描述如下：
