@@ -475,8 +475,7 @@ balance (t, d) = (t, d)
 
 \subsection{命令式删除}
 
-命令式删除算法使用树的旋转操作来恢复平衡。和插入算法相比，删除需要处理更多的情况。我们首先使用二叉搜索树
-删除算法，然后再修复由于子树高度变化引起的平衡问题。删除算法的基本部分描述如下：
+命令式删除使用树旋作来修复平衡。和插入相比，删除需要处理更多的情况。我们首先复用二叉搜索树删除，然后再修复子树高度变化引起的平衡问题。
 
 \begin{algorithmic}[1]
 \Function{Delete}{$T, x$}
@@ -501,25 +500,17 @@ balance (t, d) = (t, d)
 \EndFunction
 \end{algorithmic}
 
-首先时特殊情况。如果待删除节点为空，树没有变化。一般情况下，我们记待删除节点的父节点为$p$，如果任一子树
-为空，我们将待删除节点切下，取代为另一非空子树。否则，我们在右子树中找到最小值节点$z$，将其中的key和
-数据复制到待删除节点$x$，然后将$z$切下。最后，我们调用修复函数，并传入根节点、父节点、和替换掉待删除节点的
-新节点。
+删除节点$x$时，记$x$的父节点为$p$。如果任一子树为空，我们将$x$切下，取代为另一子树。否则，如果两棵子树都不为空，我们在右子树中找到最小值节点$z$，将其中的数据复制到$x$，然后将$z$切下。最后，我们调用\textproc{AVL-Delete-Fix}，并传入根节点$T$、父节点$p$、和替换节点$y$。记父节点$p$的平衡因子为$\delta(p)$，删除后的平衡因子为$\delta(p)'$。它们之间的关系有三种不同的情况：
 
-记父节点的平衡因子为$\delta(p)$，和删除后的新平衡因子$\delta(p)'$比较，我们会发现三种不同的情况。
+\begin{enumerate}
+\item $|\delta(p)| = 0$、$|\delta(p)'| = 1$。虽然删除后子树的高度降低了，但是父节点仍然满足AVL树的性质。
 
-\begin{itemize}
-\item 情况1：$|\delta(p)| = 0$、$|\delta(p)'| = 1$。这说明，虽然删除后子树的高度降低了，但是父节点
-仍然满足AVL树的性质，保持平衡。算法退出；
-\item 情况2：$|\delta(p)| = 1$、$|\delta(p)'| = 0$。这说明，删除前左右子树的高度差为1，删除后原来
-较高的树高度减小了1。左右子树现在高度相等。结果是父节点的高度也减小了1。我们需要继续自底向上沿着父节点
-更新树的高度；
-\item 情况3：$|\delta(p)| = 1$、$|\delta(p)'| = 2$。这说明删除后子树的高度差违反了AVL树的性质，
-我们需要通过树的旋转操作来修复平衡。
-\end{itemize}
+\item $|\delta(p)| = 1$、$|\delta(p)'| = 0$。删除前左右子树的高度差为1，删除后原来较高的树减小了1。左右子树现在高度相等。结果是父节点的高度也减小了1。我们需要继续自底向上更新树的高度。
 
-对于情况3，大部分的修复操作和插入算法相同。但是我们需要针对图\ref{fig:avl-del-fixing}中所示
-的两种特殊情况，进行额外的处理。完整的修复算法如下。
+\item $|\delta(p)| = 1$、$|\delta(p)'| = 2$。这说明删除后子树的高度差违反了AVL树的性质，我们需要通过树旋转来修复平衡。
+\end{enumerate}
+
+对于情况3，大部分修复和插入算法相同。我们需要针对图\ref{fig:avl-del-fixing}中所示的两种特殊情况，进行额外的处理。
 
 \begin{algorithmic}[1]
 \Function{AVL-Delete-Fix}{$T, p, x$}
@@ -541,12 +532,12 @@ balance (t, d) = (t, d)
       \State \Return $T$
     \ElsIf{$|\delta| = 1 \land |\delta'| = 2$}
       \If{$\delta' = 2$}
-        \If{$\delta(r) = 1$} \Comment{右－右情况}
+        \If{$\delta(r) = 1$} \Comment{右－右}
           \State $\delta(p) \gets 0$
           \State $\delta(r) \gets 0$
           \State $p \gets r$
           \State $T \gets $ \Call{Left-Rotate}{$T, p$}
-        \ElsIf {$\delta(r) = -1$} \Comment{右－左情况}
+        \ElsIf {$\delta(r) = -1$} \Comment{右－左}
           \State $\delta_y \gets \delta($ \Call{Left}{$r$} $)$
           \If{$\delta_y = 1$}
             \State $\delta(p) \gets -1$
@@ -559,19 +550,19 @@ balance (t, d) = (t, d)
           \Else
             \State $\delta(r) \gets 0$
           \EndIf
-        \Else \Comment{删除特有的右－右情况}
+        \Else \Comment{删除特有，右－右}
           \State $\delta(p) \gets 1$
           \State $\delta(r) \gets \delta(r) - 1$
           \State $T \gets$ \Call{Left-Rotate}{$T, p$}
           \State break \Comment{高度不再变化}
         \EndIf
       \ElsIf{$\delta' = -2$}
-        \If{$\delta(l) = -1$} \Comment{左－左情况}
+        \If{$\delta(l) = -1$} \Comment{左－左}
           \State $\delta(p) \gets 0$
           \State $\delta(l) \gets 0$
           \State $p \gets l$
           \State $T \gets $ \Call{Right-Rotate}{$T, p$}
-        \ElsIf {$\delta(l) = 1$} \Comment{左－右情况}
+        \ElsIf {$\delta(l) = 1$} \Comment{左－右}
           \State $\delta_y \gets \delta($ \Call{Right}{$l$} $)$
           \If{$\delta_y = -1$}
             \State $\delta(p) \gets 1$
@@ -584,11 +575,11 @@ balance (t, d) = (t, d)
           \Else
             \State $\delta(l) \gets 0$
           \EndIf
-        \Else \Comment{删除特有的左－左情况}
+        \Else \Comment{删除特有，左－左}
           \State $\delta(p) \gets -1$
           \State $\delta(l) \gets \delta(l) + 1$
           \State $T \gets$ \Call{Right-Rotate}{$T, p$}
-          \State break \Comment{高度不再继续变化}
+          \State break \Comment{高度不再变化}
         \EndIf
       \EndIf
       \Comment{高度减小，继续自底向上更新}
@@ -603,146 +594,106 @@ balance (t, d) = (t, d)
 \EndFunction
 \end{algorithmic}
 
-下面的C++例子程序实现了AVL树的删除算法。
+\begin{Exercise}
+Question{比较AVL树的命令式删除和插入，将共同的部分抽出，实现一个通用的AVL树修复算法。}
+\end{Exercise}
 
-\lstset{language=C++}
-\begin{lstlisting}
-Node* del(Node* t, Node* x) {
-    if (!x) return t;
-    Node *y, *parent = x->parent;
-    if (!x->left) {
-        y = x->replaceWith(x->right);
-    } else if (!x->right) {
-        y = x->replaceWith(x->left);
+\section{例子程序}
+
+下面的例子程序实现了AVL树的删除算法：
+
+\begin{lstlisting}[language = Bourbaki]
+Node del(Node t, Node x) {
+    if x == null then return t
+    Node y
+    var parent = x.parent
+    if x.left == null {
+        y = x.replaceWith(x.right)
+    } else if x.right == null {
+        y = x.replaceWith(x.left)
     } else {
-        y = min(x->right);
-        x->key = y->key;
-        parent = y->parent;
-        x = y;
-        y = y->replaceWith(y->right);
+        y = min(x.right)
+        x.key = y.key
+        parent = y.parent
+        x = y
+        y = y.replaceWith(y.right)
     }
-    t = deleteFix(t, parent, y);
-    remove(x);
-    return t;
+    t = deleteFix(t, parent, y)
+    release(x)
+    return t
 }
 \end{lstlisting}
 
-其中方法\texttt{replaceWith(tree)}用传入的子树替换掉当前节点，它返回新节点作为结果。
+其中\texttt{replaceWith}的定义参见红黑树的部分。\texttt{release(x)}释放节点$x$的空间。修复函数的实现如下：
 
-\begin{lstlisting}
-Node* replaceWith(Node* y) {
-    return replace(parent, this, y);
-}
-\end{lstlisting}
-
-函数\texttt{replace(parent, x, y)}用子树\texttt{y}替换掉父节点的子树\texttt{x}。
-
-\begin{lstlisting}
-// change from: parent --> x to parent --> y
-Node* replace(Node* parent, Node* x, Node* y) {
-    if (!parent) {
-        if (y) y->parent = nullptr;
-    } else if (parent->left == x) {
-        parent->setLeft(y);
-    } else {
-        parent->setRight(y);
-    }
-    if (x) x->parent = nullptr;
-    return y;
-}
-\end{lstlisting}
-
-函数\texttt{min(t)}递归地查找子树的最小值节点。函数\texttt{remove(tree)}用于将节点释放。
-
-\begin{lstlisting}
-Node* min(Node* t) {
-    while (t && t->left) t = t->left;
-    return t;
-}
-
-void remove(Node* x) {
-    if (x) {
-        x->parent = x->left = x->right = nullptr;
-        delete x;
-    }
-}
-\end{lstlisting}
-
-修复函数的实现如下。
-
-\begin{lstlisting}
-Node* deleteFix(Node* t, Node* parent, Node* x) {
-    int d1, d2, dy;
-    Node *p, *l, *r;
-    while (parent) {
-        d2 = d1 = parent->delta;
-        d2 += (x == parent->left ? 1 : -1);
-        if (isLeaf(parent)) d2 = 0;
-        parent->delta = d2;
-        p = parent;
-        l = parent->left;
-        r = parent->right;
-        if (abs(d1) == 1 && abs(d2) == 0) {
-            x = parent;
-            parent = x->parent;
-        } else if (abs(d1) == 0 && abs(d2) == 1) {
-            return t;
-        } else if (abs(d1) == 1 && abs(d2) == 2) {
-            if (d2 == 2) {
-                if (r->delta == 1) {  // 右－右情况
-                    p->delta = r->delta = 0;
-                    parent = r;
-                    t = leftRotate(t, p);
-                } else if (r->delta == -1) { // 右－左情况
-                    dy = r->left->delta;
-                    p->delta = dy == 1 ? -1 : 0;
-                    r->left->delta = 0;
-                    r->delta = dy == -1 ? 1 : 0;
-                    parent = r->left;
-                    t = rightRotate(t, r);
-                    t = leftRotate(t, p);
-                } else { // 删除特有的右－右情况
-                    p->delta = 1;
-                    r->delta--;
-                    t = leftRotate(t, p);
-                    break; // 高度不再继续变化
+\begin{lstlisting}[language = Bourbaki]
+Node deleteFix(Node t, Node parent, Node x) {
+    int d1, d2, dy
+    Node p, l, r
+    while parent != null {
+        d2 = d1 = parent.delta
+        d2 = d2 + if x == parent.left then 1 else -1
+        if isLeaf(parent) then d2 = 0
+        parent.delta = d2
+        p = parent
+        l = parent.left
+        r = parent.right
+        if abs(d1) == 1 and abs(d2) == 0 {
+            x = parent
+            parent = x.parent
+        } else if abs(d1) == 0 and abs(d2) == 1 {
+            return t
+        } else if abs(d1) == 1 and abs(d2) == 2 {
+            if d2 == 2 {
+                if r.delta == 1 {  // 右－右
+                    p.delta = 0
+                    r.delta = 0
+                    parent = r
+                    t = leftRotate(t, p)
+                } else if r.delta == -1 { // 右－左
+                    dy = r.left.delta
+                    p.delta = if dy == 1 then -1 else 0
+                    r.left.delta = 0
+                    r.delta = if dy == -1 then 1 else 0
+                    parent = r.left
+                    t = rightRotate(t, r)
+                    t = leftRotate(t, p)
+                } else { // 删除特有，右－右
+                    p.delta = 1
+                    r.delta = r.delta - 1
+                    t = leftRotate(t, p)
+                    break // 高度不再继续变化
                 }
-            } else if (d2 == -2) {
-                if (l->delta == -1) { // 左－左情况
-                    p->delta = l->delta = 0;
-                    parent = l;
-                    t = rightRotate(t, p);
-                } else if (l->delta == 1) { // 左－右情况
-                    dy = l->right->delta;
-                    l->delta = dy == 1 ? -1 : 0;
-                    l->right->delta = 0;
-                    p->delta = dy == -1 ? 1 : 0;
-                    parent = l->right;
-                    t = leftRotate(t, l);
-                    t = rightRotate(t, p);
-                } else { // 删除特有的左－左情况
-                    p->delta = -1;
-                    l->delta++;
-                    t = rightRotate(t, p);
-                    break; // 高度不再继续变化
+            } else if d2 == -2 {
+                if (l.delta == -1) { // 左－左
+                    p.delta = 0
+                    l.delta = 0
+                    parent = l
+                    t = rightRotate(t, p)
+                } else if l.delta == 1 { // 左－右
+                    dy = l.right.delta
+                    l.delta = if dy == 1 then -1 else 0
+                    l.right.delta = 0
+                    p.delta = if dy == -1 then 1 else 0
+                    parent = l.right;
+                    t = leftRotate(t, l)
+                    t = rightRotate(t, p)
+                } else { // 删除特有，左－左
+                    p.delta = -1
+                    l.delta = l.delta + 1
+                    t = rightRotate(t, p)
+                    break // 高度不再继续变化
                 }
             }
-            // 以上修复会造成高度减小，需要继续自底向上更新
-            x = parent;
-            parent = x->parent;
-        } else {
-            printf("shouldn't be here, d1 = %d, d2 = %d", d1, d2);
-            assert(false);
+            // 高度减小，继续自底向上更新
+            x = parent
+            parent = x.parent
         }
     }
-    if (!parent) return x; // 删除根节点
-    return t;
+    if parent == null then return x // 删除根节点
+    return t
 }
 \end{lstlisting}
-
-\begin{Exercise}
-比较AVL树的命令式删除和插入算法，将共同的部分抽出，实现一个通用的AVL树修复算法。
-\end{Exercise}
 
 \ifx\wholebook\relax \else
 %% \begin{thebibliography}{99}
