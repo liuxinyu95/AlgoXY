@@ -50,14 +50,13 @@ value (Branch _ v _) = v
 value Empty = Nothing
 
 -- Insertion
--- if user insert a value already binding with existed key, just over write
--- the previous value
--- usage: insert trie key x
+-- override the value if key already exits
+-- usage: insert trie key value
 insert :: IntTrie a -> Key -> a -> IntTrie a
-insert t 0 x = Branch (left t) (Just x) (right t)
-insert t k x = if even k
-               then Branch (insert (left t) (k `div` 2) x) (value t) (right t)
-               else Branch (left t) (value t) (insert (right t) (k `div` 2) x)
+insert Empty k x = insert (Branch Empty Nothing Empty) k x
+insert (Branch l v r) 0 x = Branch l (Just x) r
+insert (Branch l v r) k x | even k    = Branch (insert l (k `div` 2) x) v r
+                          | otherwise = Branch l v (insert r (k `div` 2) x)
 
 -- Look up
 search :: IntTrie a -> Key -> Maybe a
