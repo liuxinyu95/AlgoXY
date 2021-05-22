@@ -50,7 +50,6 @@ value :: IntTrie a -> Maybe a
 value (Branch _ v _) = v
 value Empty = Nothing
 
--- Insertion
 -- override the value if key already exits
 -- usage: insert trie key value
 insert :: IntTrie a -> Key -> a -> IntTrie a
@@ -59,12 +58,11 @@ insert (Branch l v r) 0 x = Branch l (Just x) r
 insert (Branch l v r) k x | even k    = Branch (insert l (k `div` 2) x) v r
                           | otherwise = Branch l v (insert r (k `div` 2) x)
 
--- Look up
 lookup :: IntTrie a -> Key -> Maybe a
-lookup Empty k = Nothing
-lookup t 0 = value t
-lookup t k = if even k then lookup (left t) (k `div` 2)
-             else lookup (right t) (k `div` 2)
+lookup Empty _ = Nothing
+lookup (Branch _ v _) 0 = v
+lookup (Branch l _ r) k | even k    = lookup l (k `div` 2)
+                        | otherwise = lookup r (k `div` 2)
 
 fromList :: [(Key, a)] -> IntTrie a
 fromList xs = foldl ins Empty xs where
