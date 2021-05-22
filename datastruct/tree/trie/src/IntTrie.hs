@@ -29,6 +29,7 @@ module IntTrie where
 
 import Test.QuickCheck
 import Data.Maybe (isNothing)
+import Prelude hiding (lookup)
 
 data IntTrie a = Empty
                | Branch (IntTrie a) (Maybe a) (IntTrie a) -- left, value, right
@@ -59,11 +60,11 @@ insert (Branch l v r) k x | even k    = Branch (insert l (k `div` 2) x) v r
                           | otherwise = Branch l v (insert r (k `div` 2) x)
 
 -- Look up
-search :: IntTrie a -> Key -> Maybe a
-search Empty k = Nothing
-search t 0 = value t
-search t k = if even k then search (left t) (k `div` 2)
-             else search (right t) (k `div` 2)
+lookup :: IntTrie a -> Key -> Maybe a
+lookup Empty k = Nothing
+lookup t 0 = value t
+lookup t k = if even k then lookup (left t) (k `div` 2)
+             else lookup (right t) (k `div` 2)
 
 fromList :: [(Key, a)] -> IntTrie a
 fromList xs = foldl ins Empty xs where
@@ -89,13 +90,13 @@ instance Arbitrary Sample where
 
 prop_build :: Sample -> Bool
 prop_build (S kvs ks') = let t = fromList kvs in
-  (all (\(k, v) -> Just v == search t k) kvs ) &&
-  (all (isNothing . search t) ks')
+  (all (\(k, v) -> Just v == lookup t k) kvs ) &&
+  (all (isNothing . lookup t) ks')
 
 example = do
   let t = fromList [(1, 'a'), (4, 'b'), (5, 'c'), (9, 'd')]
   putStrLn $ show $ toList t
-  putStrLn "search t 4"
-  putStrLn $ show $ search t 4
-  putStrLn "search t 0"
-  putStrLn $ show $ search t 0
+  putStrLn "lookup t 4"
+  putStrLn $ show $ lookup t 4
+  putStrLn "lookup t 0"
+  putStrLn $ show $ lookup t 0
