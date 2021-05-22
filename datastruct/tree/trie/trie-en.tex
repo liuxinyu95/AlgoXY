@@ -61,7 +61,7 @@ We call the data structure in figure \ref{fig:radix-tree} \emph{binary trie}. Tr
 It is inefficient to treat the prefix zeros as valid bits. If the represent integer with 32 bits, we need a tree of 32 levels to insert number 1. Okasaki suggested to use little-endian integers instead\cite{okasaki-int-map}. 1 is represented as bits $(1)_2$, 2 as $(01)_2$, and 3 is $(11)_2$, ...
 
 \subsection{Definition}
-We can re-use binary tree structure to define the littel-endian binary trie. A node is either empty, or a branch containing the left, right sub-trees, and an optional value. The left sub-tree is encoded as 0 and the right sub-tree is encoded as 1.
+We can re-use binary tree structure to define the little-endian binary trie. A node is either empty, or a branch containing the left, right sub-trees, and an optional value. The left sub-tree is encoded as 0 and the right sub-tree is encoded as 1.
 
 \lstset{frame = single}
 \begin{Haskell}
@@ -81,8 +81,8 @@ When insert an integer $k$ and value $v$, we convert $k$ into binary form. If $k
 insert\ \nil\ k\ v & = & insert (\nil, \textit{Nothing}, \nil)\ k\ v \\
 insert\ (l, v', r)\ 0\ v & = & (l, v, r) \\
 insert\ (l, v', r)\ k\ v & = & \begin{cases}
-  even(k): (insert\ l\ \lfloor \dfrac{k}{2} \rfloor\ v, v', r) \\
-  odd(k) : (l, v', insert\ r\ \lfloor \dfrac{k}{2} \rfloor\ v) \\
+  even(k): & (insert\ l\ \dfrac{k}{2}\ v, v', r) \\
+  odd(k) : & (l, v', insert\ r\ \lfloor \dfrac{k}{2} \rfloor\ v) \\
 \end{cases}
 \end{array}
 \ee
@@ -138,21 +138,17 @@ We can define the even/odd testing by modular 2, and check if the remainder is 0
 \subsection{Look up}
 \index{Integer trie!look up}
 
-To look up key $k$ in the little-endian integer binary trie,
-if the trie is empty, the looking up fails; if $k=0$, then we return the data stored
-in the current node; if the last bit is 0, we recursively look up the
-left sub-tree; otherwise we look up the right sub-tree.
+When look up key $k$ in a none empty integer trie, if $k = 0$, then the root node is the target. Otherwise, we check the lowest bit, then recursively look up the left or right sub-tree accordingly.
 
 \be
-lookup(T, k) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & T = \phi \\
-  d & k = 0 \\
-  lookup(T_l, k / 2) & even(k) \\
-  lookup(T_r, \lfloor k / 2 \rfloor) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+lookup\ \nil\ k & = & \textit{Nothing} \\
+lookup\ (l, v, r)\ 0 & = & v \\
+lookup\ (l, v, r)\ k & = & \begin{cases}
+  even(k): & lookup\ l\ \dfrac{k}{2} \\
+  odd(k):  & lookup\ r\ \lfloor \dfrac{k}{2} \rfloor \\
+\end{cases}
+\end{array}
 \ee
 
 The following Haskell example program implements the recursive
