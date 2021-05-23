@@ -107,13 +107,13 @@ insert :: IntTree a -> Key -> a -> IntTree a
 insert t k x
    = case t of
        Empty -> Leaf k x
-       Leaf k' x' -> if k==k' then Leaf k x
-                     else join k (Leaf k x) k' t -- t@(Leaf k' x')
+       Leaf k' x' -> if k == k' then Leaf k x
+                     else join k (Leaf k x) k' t
        Branch p m l r
           | match k p m -> if zero k m
                            then Branch p m (insert l k x) r
                            else Branch p m l (insert r k x)
-          | otherwise -> join k (Leaf k x) p t -- t@(Branch p m l r)
+          | otherwise -> join k (Leaf k x) p t
 
 {-----------------------------------
   4. Look up

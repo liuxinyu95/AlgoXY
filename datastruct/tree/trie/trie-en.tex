@@ -211,7 +211,7 @@ Integer prefix tree is a special binary tree. It is either empty or a node of:
 \item Or a branch with the left and right sub-trees, that share the \textbf{longest common prefix} bits for their keys. For the left sub-tree, the next bit is 0, for the right, it is 1.
 \end{itemize}
 
-Below example program defines integer prefix tree. The branch node contains 4 components: The longest prefix, a mask integer indicating from which bit the sub-trees branch out, the left and right sub-trees. The mask is $m = 2^n$ for some integer $n \geq 0$. All bits that are lower than $n$ do not belong to the common prefix.
+Below example program defines the integer prefix tree. The branch node contains 4 components: The longest prefix, a mask integer indicating from which bit the sub-trees branch out, the left and right sub-trees. The mask is $m = 2^n$ for some integer $n \geq 0$. All bits that are lower than $n$ do not belong to the common prefix.
 
 \begin{Haskell}
 data IntTree a = Empty
@@ -221,186 +221,99 @@ data IntTree a = Empty
 
 \subsection{Insert}
 \index{Integer tree!insert}
-When insert a key, if the tree is empty, we create a leaf node as shown in figure
-\ref{fig:int-patricia-insert-a}.
-
-\begin{figure}[htbp]
-  \centering
-    \begin{tikzpicture}[scale=1,
-      treenode/.style={circle, draw, inner sep= 0pt, minimum size = .6cm}]
-    \node[treenode] at (-2, 0) {NIL};
-    \node[treenode] at (2, 0) {12};
-    \end{tikzpicture}
-  %\includegraphics[scale=1]{img/int-patricia-insert-a.ps}
-  \caption{Left: the empty tree; Right: After insert key 12.}
-  \label{fig:int-patricia-insert-a}
-\end{figure}
-
-If the tree is a singleton leaf node $x$, we create a new leaf $y$,
-put the key and the value into it. After that, we need create a new branch
-node, set $x$ and $y$ as the two sub-trees.
-In order to determine if $y$ should be on the left or right, we need
-find the longest common prefix of $x$ and $y$. For example if $key(x)$
-is 12 ($(1100)_2$ in binary), $key(y)$ is 15 ($(1111)_2$ in binary), then the longest
-common prefix is $(11oo)_2$. Where $o$ denotes the bits we don't care about.
-We can use another integer to mask those bits.
-In this case, the mask number is 4 (100 in binary).
-The next bit after the longest common prefix presents $2^1$. This bit is
-0 in $key(x)$, while it is 1 in $key(y)$. We should set $x$ as the left
-sub-tree and $y$ as the right sub-tree. Figure \ref{fig:int-patricia-insert-b}
-shows this example.
+When insert integer $y$ to tree $T$, if $T$ is empty, we create a leaf of $y$; If $T$ is a singleton leaf of $x$, besides the new leaf of $y$, we need create a branch node, set $x$ and $y$ as the two sub-trees. To determine whether $y$ is on the left or right, we need find the longest common prefix $p$ of $x$ and $y$. For example if $x = 12 = (1100)_2$, $y = 15 = (1111)_2$, then $p = (11oo)_2$, where $o$ denotes the bits we don't care. We can use another integer $m$ to mask those bits. In this example, $m = 4 = (100)_2$. The next bit after $p$ presents $2^1$. It is 0 in $x$, 1 in $y$. Hence, we set $x$ as the left sub-tree and $y$ as the right, as shown in figure \ref{fig:int-patricia-insert-b}.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.7]{img/int-patricia-insert-b.ps}
-  \caption{Left: A tree with a singleton leaf 12; Right: After insert key 15.}
+  \caption{Left: $T$ is a leaf of 12; Right: After insert 15.}
   \label{fig:int-patricia-insert-b}
 \end{figure}
 
-In case the tree is neither empty, nor a singleton leaf, we need
-firstly check if the key to be inserted matches the longest common
-prefix recorded in the root.
-Then recursively insert the key to the left or right
-according to the next bit of the longest common prefix.
-For example, if insert key 14 ($(1110)_2$ in binary) to the result tree
-in figure \ref{fig:int-patricia-insert-b}, since the common prefix is
-$(11oo)_2$, and the next bit (the bit of $2^1$) is 1, we need recursively
-insert to the right sub-tree.
-
-If the key to be inserted doesn't match the longest
-common prefix in the root, we need branch a new leaf
-out. Figure \ref{fig:int-patricia-insert-c} shows these two different cases.
+If $T$ is neither empty nor a leaf, we firstly check if $y$ matches the longest common prefix $p$ in the root, then recursively insert it to the sub-tree according to the next bit after $p$. For example, when insert $y = 14 = (1110)_2$ to the tree shown in figure \ref{fig:int-patricia-insert-b}, since $p = (11oo)_2$ and the next bit (the bit of $2^1$) is 1, we recursively insert $y$ to the right sub-tree. If $y$ does not match $p$ in the root, we need branch a new leaf as shown in figure \ref{fig:int-patricia-insert-c}.
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{Insert key 14. It matches the longest common prefix $(1100)_2$; 14 is then recursively inserted to the right sub-tree.}{\includegraphics[scale=0.5]{img/int-patricia-insert-c.ps}}\\
-  \subcaptionbox{Insert key 5. It doesn't match the longest common prefix $(1100)_2$, a new leaf is branched out.}{\includegraphics[scale=0.5]{img/int-patricia-insert-d.ps}}
-  \caption{Insert key to the branch node.}
+  \subcaptionbox{Insert $14 = (1110)_2$, which matches $p = (1100)_2$. It is inserted to the right.}{\includegraphics[scale=0.5]{img/int-patricia-insert-c.ps}}\\
+  \subcaptionbox{Insert $5 = (101)_2$, which does not match $p = (1100)_2$. Branch out a new leaf.}{\includegraphics[scale=0.5]{img/int-patricia-insert-d.ps}}
+  \caption{The tree is a branch node.}
   \label{fig:int-patricia-insert-c}
 \end{figure}
 
-For a given key $k$ and value $v$, denote $(k, v)$ as the leaf node. For branch
-node, denote it in form of $(p, m, T_l, T_r)$, where $p$ is the longest common
-prefix, $m$ is the mask, $T_l$ and $T_r$ are the left and right sub-trees.
-Summarize the above cases, the insertion algorithm can be defined as below.
+For integer key $k$ and value $v$, let $(k, v)$ be the leaf. For branch node, denote it as $(p, m, l, r)$, where $p$ is the longest common prefix, $m$ is the mask, $l$ and $r$ are the left and right sub-trees. Below $insert$ function defines the above 3 cases:
 
 \be
-insert(T, k, v) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (k, v) & T = \phi \lor T = (k, v') \\
-  join(k, (k, v), k', T) & T = (k', v') \\
-  (p, m, insert(T_l, k, v), T_r) & T = (p, m, T_l, T_r), match(k, p, m), zero(k, m) \\
-  (p, m, T_l, insert(T_r, k, v)) & T = (p, m, T_l, T_r), match(k, p, m), \lnot zero(k, m) \\
-  join(k, (k, v), p, T) & T = (p, m, T_l, T_r), \lnot match(k, p, m)
-  \end{array}
-\right.
+\resizebox{\textwidth}{!}{\ensuremath{
+\begin{array}{rcl}
+insert\ \nil\ k\ v\ & = & (k, v) \\
+insert\ (k, v')\ k\ v\ & = & (k, v) \\
+insert\ (k', v')\ k\ v\ & = & join\ k\ (k, v)\ k'\ (k', v') \\
+insert\ (p, m, l, r)\ k\ v\ & = & \begin{cases}
+  match(k, p, m): & \begin{cases}
+    zero(k, m): & (p, m, insert\ l\ k\ v) \\
+    otherwise:  & (p, m, insert\ r\ k\ v) \\
+  \end{cases} \\
+  otherwise: & join\ k\ (k, v)\ p\ (p, m, l, r) \\
+\end{cases} \\
+\end{array}
+}}
 \ee
 
-The first clause deals with the edge cases, if $T$ is empty, the result is a leaf
-node. If $T$ is a leaf node with the same key, we overwrite the previous
-value.
-
-The second clause handles the case that $T$ is a leaf node, but with different
-key. Here we branch out another leaf, then extract the longest
-common prefix, and determine which leaf should be set as the left sub-tree.
-Function $join(k_1, T_1, k_2, T_2)$ does this work. We'll define it later.
-
-The third clause deals with the case that $T$ is a branch node, the
-longest common prefix matches the key to be inserted, and the next
-bit to the common prefix is zero. Here we need recursively insert
-to the left sub-tree.
-
-The fourth clause handles the similar case as the third one, except
-that the next bit to the common prefix is one, but not zero. We need
-recursively insert to the right sub-tree.
-
-The last clause is for the case that the key to be inserted doesn't
-match the longest common prefix in the branch. We need branch
-out a new leaf by calling the $join$ function.
-
-We need define function $match(k, p, m)$ to test if the key $k$, has
-the same prefix $p$ above the masked bits $m$.
-For example, suppose the prefix stored in a branch node is
-$(p_np_{n-1} ... p_i...p_0)_2$ in binary, key $k$ is
-$(k_nk_{n-1} ... k_i ... k_0)_2$ in binary, and the mask is
-$(100...0)_2=2^i$. They match if and only if $p_j=k_j$ for all $j$, that $i \leq j \leq n$.
-
-One solution to realize match is to test if $mask(k, m) = p$ is satisfied.
-Where $mask(x, m) = \overline{m-1} \& x$, that we perform bitwise-not of $m-1$, then
-perform bitwise-and with $x$.
-
-Function $zero(k, m)$ test the next bit of the common prefix is zero.
-With the help of the mask $m$, we can shift $m$ one bit to the right,
-then perform bitwise-and with the key.
+The first clause creates leaf when $T = \nil$; the second clause overrides the value for the same key. Function $match(k, p, m)$ tests if integer $k$ and prefix $p$ have the same bits after masked with $m$ through: $mask(k, m) = p$, where $mask(k, m) = \overline{m-1} \& k$. It applies bit-wise not to $m-1$, then does bit-wise and with $k$. $zero(k, m)$ tests the next bit in $k$ masked with $m$ is 0 or not. We shift $m$ one bit to right, then do bit-wise and with $k$:
 
 \be
-zero(k, m) = x \& shift_r(m, 1)
+zero(k, m) = x \& (m >> 1)
 \ee
 
-If the mask $m = (100..0)_2 = 2^i$, $k = (k_nk_{n-1}...k_i1...k_0)_2$,
-because the bit next to $k_i$ is 1, $zero(k, m)$ returns false value;
-if $k = (k_nk_{n-1}...k_i0...k_0)_2$, then the result is true.
-
-Function $join(p_1, T_1, p_2, T_2)$ takes two different prefixes and trees.
-It extracts the longest common prefix of $p_1$ and $p_2$, create a
-new branch node, and set $T_1$ and $T_2$ as the two sub-trees.
+Function $join(p_1, T_1, p_2, T_2)$ takes two different prefixes and trees. It extracts the longest common prefix of $p_1$ and $p_2$ as $(p, m) = LCP(p_1, p_2)$, creates a new branch node, then set $T_1$ and $T_2$ as the two sub-trees:
 
 \be
-join(p_1, T_1, p_2, T_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (p, m, T_1, T_2) & zero(p1, m), (p, m) = LCP(p_1, p_2) \\
-  (p, m, T_2, T_1) & \lnot zero(p1, m)
-  \end{array}
-\right.
+join(p_1, T_1, p_2, T_2) = \begin{cases}
+  zero(p1, m): & (p, m, T_1, T_2) \\
+  otherwise: & (p, m, T_2, T_1) \\
+\end{cases}
 \ee
 
-In order to calculate the longest common prefix of $p_1$ and $p_2$,
-we can firstly compute bitwise exclusive-or for them, then count
-the number of bits in this result, and generate a mask $m = 2^{|xor(p_1,p_2)|}$.
-The longest common prefix $p$ can be given by masking the bits with $m$
-for either $p_1$ or $p_2$.
+To calculate the longest common prefix, we can firstly compute bit-wise exclusive-or for $p1$ and $p2$, then count the highest bit $highest(xor(p_1, p_2))$ as:
 
-\be
-p = mask(p_1, m)
-\ee
+\[
+\begin{array}{rcl}
+highest(0) & = & 0 \\
+highest(n) & = & 1 + highest(n >> 1) \\
+\end{array}
+\]
 
-The following Haskell example program implements the insertion algorithm.
+Then generate a mask $m = 2^{highest(xor(p_1,p_2))}$. The longest common prefix $p$ can be given by masking the bits with $m$ for either $p_1$ or $p_2$, like $p = mask(p_1, m)$. The following example program implements the $insert$ function:
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-import Data.Bits
-
+\begin{Haskell}
 insert t k x
    = case t of
        Empty -> Leaf k x
-       Leaf k' x' -> if k==k' then Leaf k x
-                     else join k (Leaf k x) k' t -- t@(Leaf k' x')
+       Leaf k' x' -> if k == k' then Leaf k x
+                     else join k (Leaf k x) k' t
        Branch p m l r
           | match k p m -> if zero k m
                            then Branch p m (insert l k x) r
                            else Branch p m l (insert r k x)
-          | otherwise -> join k (Leaf k x) p t -- t@(Branch p m l r)
+          | otherwise -> join k (Leaf k x) p t
 
 join p1 t1 p2 t2 = if zero p1 m then Branch p m t1 t2
                                 else Branch p m t2 t1
     where
       (p, m) = lcp p1 p2
 
-lcp :: Prefix -> Prefix -> (Prefix, Mask)
 lcp p1 p2 = (p, m) where
     m = bit (highestBit (p1 `xor` p2))
     p = mask p1 m
 
 highestBit x = if x == 0 then 0 else 1 + highestBit (shiftR x 1)
 
-mask x m = (x .&. complement (m-1)) -- complement means bit-wise not.
+mask x m = x .&. complement (m - 1)
 
 zero x m = x .&. (shiftR m 1) == 0
 
 match k p m = (mask k m) == p
-\end{lstlisting}
+\end{Haskell}
 
 The insertion algorithm can also be realized imperatively.
 
