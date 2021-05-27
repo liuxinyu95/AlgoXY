@@ -315,13 +315,12 @@ zero x m = x .&. (shiftR m 1) == 0
 match k p m = (mask k m) == p
 \end{Haskell}
 
-The insertion algorithm can also be realized imperatively.
+We can also implement $insert$ imperatively:
 
 \begin{algorithmic}[1]
 \Function{Insert}{$T, k, v$}
   \If{$T = $ NIL}
-    \State $T \gets$ \Call{Create-Leaf}{$k, v$}
-    \State \Return $T$
+    \State \Return \Call{Create-Leaf}{$k, v$}
   \EndIf
   \State $y \gets T$
   \State $p \gets$ NIL
@@ -334,7 +333,7 @@ The insertion algorithm can also be realized imperatively.
     \EndIf
   \EndWhile
   \If{$y$ is leaf, and $k = $ \Call{Key}{$y$}}
-    \State \Call{Data}{$y$} $\gets v$
+    \State \Call{Value}{$y$} $\gets v$
   \Else
     \State $z \gets$ \textproc{Branch}($y$, \Call{Create-Leaf}{$k, v$})
     \If{$p = $ NIL}
@@ -351,14 +350,12 @@ The insertion algorithm can also be realized imperatively.
 \EndFunction
 \end{algorithmic}
 
-Function \textproc{Branch}($T_1, T_2$) does the similar job as what $join$ is defined.
-It creates a new branch node, extracts the longest common prefix, sets $T_1$ and
-$T_2$ as the two sub-trees.
+Where \textproc{Branch}($T_1, T_2$) creates a new branch node, extracts the longest common prefix, then sets $T_1$ and $T_2$ as the two sub-trees.
 
 \begin{algorithmic}[1]
 \Function{Branch}{$T_1, T_2$}
   \State $T \gets$ \Call{Empty-Node}{}
-  \State $($ \Call{Prefix}{$T$}, \Call{Mask}{$T$} $) \gets$ \textproc{LCP}(\Call{Prefix}{$T_1$}, \Call{Prefix}{$T_2$})
+  \State (\Call{Prefix}{$T$}, \Call{Mask}{$T$}) $\gets$ \textproc{LCP}(\Call{Prefix}{$T_1$}, \Call{Prefix}{$T_2$})
   \If{\textproc{Zero?}(\Call{Prefix}{$T_1$}, \Call{Mask}{$T$})}
     \State \Call{Left}{$T$} $\gets T_1$
     \State \Call{Right}{$T$} $\gets T_2$
@@ -368,77 +365,43 @@ $T_2$ as the two sub-trees.
   \EndIf
   \State \Return $T$
 \EndFunction
+\Statex
+\Function{Zero?}{$x, m$}
+  \State \Return $(x \& \lfloor \dfrac{m}{2} \rfloor) = 0$
+\EndFunction
 \end{algorithmic}
 
+Function \textproc{LCP} find the longest bit prefix from two integers:
 
-The following Python example program implements the insertion algorithm.
+\begin{algorithmic}[1]
+\Function{LCP}{$a, b$}
+  \State $d \gets xor(a, b)$
+  \State $m \gets 1$
+    \While{$d \neq 0$}
+    \State $d \gets \lfloor \dfrac{d}{2} \rfloor$
+    \State $m \gets 2m$
+  \EndWhile
+  \State \Return (\Call{MaskBit}{$a, m$}, $m$)
+\EndFunction
+\Statex
+\Function{MaskBit}{$x, m$}
+  \State \Return $x \& \overline{m - 1}$
+\EndFunction
+\Statex
+\end{algorithmic}
 
-\lstset{language=Python}
-\begin{lstlisting}
-def insert(t, key, value):
-    if t is None:
-        return IntTree(key, value)
-    node = t
-    parent = None
-    while (not node.isleaf()) and node.match(key):
-        parent = node
-        if zero(key, node.mask):
-            node = node.left
-        else:
-            node = node.right
-    if node.isleaf() and key == node.key:
-        node.value = value
-    else:
-        p = branch(node, IntTree(key, value))
-        if parent is None:
-            return p
-        parent.replace(node, p)
-    return t
-\end{lstlisting}
-
-The auxiliary functions, \texttt{branch}, \texttt{lcp} etc. are given as below.
-
-\begin{lstlisting}
-def maskbit(x, mask):
-    return x & (~(mask - 1))
-
-def zero(x, mask):
-    return x & (mask >> 1) == 0
-
-def lcp(p1, p2):
-    diff = p1 ^ p2
-    mask = 1
-    while diff != 0:
-        diff >>= 1
-        mask <<= 1
-    return (maskbit(p1, mask), mask)
-
-def branch(t1, t2):
-    t = IntTree()
-    (t.prefix, t.mask) = lcp(t1.prefix, t2.prefix)
-    if zero(t1.prefix, t.mask):
-        t.left, t.right = t1, t2
-    else:
-        t.left, t.right = t2, t1
-    return t
-\end{lstlisting}
-
-Figure \ref{fig:int-patricia-haskell-insert} shows the example integer tree created
-with the insertion algorithm.
+Figure \ref{fig:int-patricia-haskell-insert} gives an example integer prefix tree created from the $insert$ algorithm.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.6]{img/int-patricia-haskell-insert.ps}
-  \caption{Insert map $1 \rightarrow x, 4 \rightarrow y, 5 \rightarrow z$ into the big-endian integer prefix tree.}
+  \caption{Insert $\{1 \rightarrow x, 4 \rightarrow y, 5 \rightarrow z\}$ to the big-endian integer prefix tree.}
   \label{fig:int-patricia-haskell-insert}
 \end{figure}
 
 
-% ================================================================
-%                 Lookup in int patricia tree
-% ================================================================
-\subsection{Look up}
-\index{Integer tree!look up}
+\subsection{Lookup}
+\index{Integer tree!lookup}
 
 If the integer tree $T$ is empty, or it's a singleton leaf with
 the key that is different from what we are looking up, the result is empty.
@@ -1820,6 +1783,55 @@ data IntTree<T> {
 }
 
 Int maskbit(Int x, Int mask) = x & (~(mask - 1))
+\end{lstlisting}
+
+Insert key-value to integer prefix tree.
+
+\begin{lstlisting}[language = Bourbaki]
+IntTree<T> insert(IntTree<T> t, Int key, T value) {
+    if t == null then return IntTree(key, value)
+    node = t
+    Node<T> parent = null
+    while (not node.isLeaf()) and node.match(key) {
+        parent = node
+        node = if zero(key, node.mask) then node.left else node.right
+    }
+    if node.isleaf() and key == node.key {
+        node.value = value
+    } else {
+        p = branch(node, IntTree(key, value))
+        if parent == null then return p
+        parent.replace(node, p)
+    }
+    return t
+}
+\end{lstlisting}
+
+The auxiliary functions, \texttt{branch}, \texttt{lcp} etc. are given as below.
+
+\begin{lstlisting}
+def maskbit(x, mask):
+    return x & (~(mask - 1))
+
+def zero(x, mask):
+    return x & (mask >> 1) == 0
+
+def lcp(p1, p2):
+    diff = p1 ^ p2
+    mask = 1
+    while diff != 0:
+        diff >>= 1
+        mask <<= 1
+    return (maskbit(p1, mask), mask)
+
+def branch(t1, t2):
+    t = IntTree()
+    (t.prefix, t.mask) = lcp(t1.prefix, t2.prefix)
+    if zero(t1.prefix, t.mask):
+        t.left, t.right = t1, t2
+    else:
+        t.left, t.right = t2, t1
+    return t
 \end{lstlisting}
 
 \ifx\wholebook\relax \else
