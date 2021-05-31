@@ -428,20 +428,12 @@ lookup\ (p, m, l, r)\ k & = & \begin{cases}
 %%                           | otherwise = Nothing
 %% \end{Haskell}
 
-The look up algorithm can also be realized imperatively.
-Consider the property of integer prefix tree. When look up a
-key, if it has common prefix with the root,
-then we check the next bit. If
-this bit is zero, we then recursively look up the left sub-tree;
-otherwise we look up the right sub-tree if the bit is one.
-
-When arrive at the leaf node, we check if the key of the
-leaf equals to the one we are looking up.
+We can also eliminate the recursion to implement the iterative lookup algorithm.
 
 \begin{algorithmic}[1]
 \Function{Look-Up}{$T, k$}
   \If{$T =$ NIL}
-    \State \Return $NIL$ \Comment{Not found}
+    \State \Return NIL
   \EndIf
   \While{$T$ is not leaf, and \textproc{Match}($k$, \Call{Prefix}{$T$}, \Call{Mask}{$T$})}
     \If{\textproc{Zero?}($k$, \Call{Mask}{$T$})}
@@ -451,87 +443,44 @@ leaf equals to the one we are looking up.
     \EndIf
   \EndWhile
   \If{$T$ is leaf, and \Call{Key}{$T$} $=k$}
-    \State \Return \Call{Data}{$T$}
+    \State \Return \Call{Value}{$T$}
   \Else
-    \State \Return $NIL$ \Comment{Not found}
+    \State \Return NIL
   \EndIf
 \EndFunction
 \end{algorithmic}
 
-Below Python example program implements the looking up algorithm.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def lookup(t, key):
-    while t is not None and (not t.isleaf()) and t.match(key):
-        if zero(key, t.mask):
-            t = t.left
-        else:
-            t = t.right
-    if t is not None and t.isleaf() and t.key == key:
-        return t.value
-    return None
-\end{lstlisting}
-
-
-% ================================================================
-%                 Alphabetic trie
-% ================================================================
-\section{Alphabetic Trie}
+\section{Trie}
 \index{Trie}
-Integer based trie and tree can be a good start point. The
-Glasgow Haskell Compiler (GHC) utilized the similar integer tree
-implementation for several years before 1998\cite{okasaki-int-map}.
+From integer trie and tree, we can extend the key to a list of elements. Particularly the trie and tree with key in alphabetic string are powerful tools for text manipulation.
 
-If we extend the key from integer to alphabetic
-value, Trie and integer tree can be very powerful in solving
-textual manipulation problems.
-
-% ================================================================
-%                 Definition of Alphabetic trie
-% ================================================================
 \subsection{Definition}
-It's not enough to just use the left and right sub-trees to represent
-alphabetic keys. Taking English for example, there are 26 letters.
-If we don't care about the case, one solution is to limit the number
-of branches (children) to 26. Some simplified implementation defines
-the trie with the array of 26 letters.
-This can be illustrated as in Figure \ref{fig:trie-of-26}.
+When extend the key type from 0/1 bits to generic list, the tree structure changes from binary tree to multiple sub-trees. Taking English characters for example, there are up to 26 sub-trees when ignore the case as shown in figure \ref{fig:trie-of-26}.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.5]{img/trie-of-26.ps}
-  \caption{A trie with 26 branches, containing key 'a', 'an', 'another', 'bool',
-    'boy' and 'zoo'.}
+  \caption{A trie of 26 branches, containing key `a', `an', `another', `bool', `boy', and `zoo'.}
   \label{fig:trie-of-26}
 \end{figure}
 
-Not all the 26 branches contain data. For instance, in Figure \ref{fig:trie-of-26},
-the root only has three non-empty branches representing letter 'a',
-'b', and 'z'. Other branches such as for letter 'c', are all
-empty. We will not show empty branch in the future.
+Not all the 26 sub-trees contain data. In figure \ref{fig:trie-of-26}, there are only three none empty sub-trees bound to `a', `b', and `z'. Other sub-trees, such as for `c', are empty. We can hide them in the figure. When it is case sensitive, or extent the key from alphabetic string to generic list, we can adopt collection types, like map to define trie.
 
-When dealing with case sensitive problems, or handling languages other than English,
-there can be more letters. We can use the collection data structures, like Hash map
-to define the trie.
+A trie is either empty or a node of 2 kinds:
 
-Alphabetic trie is either empty or a node. There are two types of node.
+\begin{enumerate}
+\item A leaf of value $v$ without any sub-trees;
+\item A branch, containing a value $v$ and multiple sub-trees. Each sub-tree is bound to an element $k$ of type $K$.
+\end{enumerate}
 
-\begin{itemize}
-\item A leaf node does not have any sub-trees;
-\item A branch node contains multiple sub-trees. Each sub-tree is bound to a character.
-\end{itemize}
+Let the type of value be $V$, we denote the trie as $Trie\ K\ V$. Below example program defines trie.
 
-Both leaf and branch can contain optional satellite data. The following Haskell
-code shows the example definition.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-data Trie a = Trie { value :: Maybe a
-                   , children :: [(Char, Trie a)]}
+\begin{Haskell}
+data Trie k v = Trie { value :: Maybe v
+                     , subTrees :: [(k, Trie k v)]}
 
 empty = Trie Nothing []
-\end{lstlisting}
+\end{Haskell}
 
 Below ANSI C example code defines the alphabetic trie. For illustration purpose,
 it limits the character set to lower case English letters, from 'a' to 'z'.
@@ -1815,6 +1764,16 @@ Int lcp(Int p1, Int p2) {
     return (maskbit(p1, mask), mask)
 }
 \end{lstlisting}
+
+%% \begin{lstlisting}[language = Bourbaki]
+%% Optional<Node<T>> lookup(Node<T> t, Int key) {
+%%     while t != null and (not t.isLeaf()) and t.match(key) {
+%%         t = if zero(key, t.mask) then t.left else t.right
+%%     }
+%%     return if t != null and t.isLeaf() and t.key == key
+%%            then Optional.of(t.value) else Optional.None
+%% }
+%% \end{lstlisting}
 
 \ifx\wholebook\relax \else
 \begin{thebibliography}{99}

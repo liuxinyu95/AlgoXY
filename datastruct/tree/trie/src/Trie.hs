@@ -24,14 +24,14 @@ import Data.Function (on)
 
 -- definition
 data Trie k v = Trie { value :: Maybe v
-                     , children :: [(k, Trie k v)]} deriving (Show)
+                     , subTrees :: [(k, Trie k v)]} deriving (Show)
 
 empty = Trie Nothing []
 
 -- insert
 insert :: Eq k => Trie k v -> [k] -> v -> Trie k v
-insert t []     x = Trie (Just x)  (children t)
-insert t (k:ks) x = Trie (value t) (ins (children t) k ks x) where
+insert t []     x = Trie (Just x)  (subTrees t)
+insert t (k:ks) x = Trie (value t) (ins (subTrees t) k ks x) where
     ins [] k ks x = [(k, (insert empty ks x))]
     ins (p:ps) k ks x = if fst p == k
                         then (k, insert (snd p) ks x):ps
@@ -40,7 +40,7 @@ insert t (k:ks) x = Trie (value t) (ins (children t) k ks x) where
 -- lookup
 find :: Eq k => Trie k v -> [k] -> Maybe v
 find t [] = value t
-find t (k:ks) = case lookup k (children t) of
+find t (k:ks) = case lookup k (subTrees t) of
                   Nothing -> Nothing
                   Just t' -> find t' ks
 
@@ -59,7 +59,7 @@ keys t = map reverse $ keys' t [] where
     (Just _ ) -> prefix : ks
     where
       ks = concatMap (\(k, t') -> keys' t' (k : prefix)) ts
-      ts = sortBy (compare `on` fst) (children t)
+      ts = sortBy (compare `on` fst) (subTrees t)
 
 -- example
 example = insert (fromString "a place where animals are for public to see") "zoo" 0
