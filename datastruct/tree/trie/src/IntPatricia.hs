@@ -120,15 +120,11 @@ insert t k x
 --------------------------------------}
 
 -- look up a key
-search :: IntTree a -> Key -> Maybe a
-search t k
-  = case t of
-      Empty -> Nothing
-      Leaf k' x -> if k==k' then Just x else Nothing
-      Branch p m l r
-             | match k p m -> if zero k m then search l k
-                              else search r k
-             | otherwise -> Nothing
+lookup :: IntTree a -> Key -> Maybe a
+lookup Empty _ = Nothing
+lookup (Leaf k' v) k = if k == k' then Just v else Nothing
+lookup (Branch p m l r) k | match k p m = if zero k m then lookup l k else lookup r k
+                          | otherwise = Nothing
 
 {---------------------------------
   5. Test helper
@@ -151,8 +147,8 @@ toString t =
 {---------------------------------
   6. Test cases
 ----------------------------------}
-testIntTree = "t=" ++ (toString t) ++ "\nsearch t 4: " ++ (show $ search t 4) ++
-              "\nsearch t 0: " ++ (show $ search t 0)
+testIntTree = "t=" ++ (toString t) ++ "\nlookup t 4: " ++ (show $ lookup t 4) ++
+              "\nlookup t 0: " ++ (show $ lookup t 0)
     where
       t = fromList [(1, 'x'), (4, 'y'), (5, 'z')]
 
@@ -169,5 +165,5 @@ instance Arbitrary Sample where
 
 prop_build :: Sample -> Bool
 prop_build (S kvs ks') = let t = fromList kvs in
-  (all (\(k, v) -> Just v == search t k) kvs ) &&
-  (all (isNothing . search t) ks')
+  (all (\(k, v) -> Just v == lookup t k) kvs ) &&
+  (all (isNothing . lookup t) ks')
