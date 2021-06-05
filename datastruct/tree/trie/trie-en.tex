@@ -499,11 +499,11 @@ insert\ (v, ts)\ (k:ks)\ v' & = & (v, ins\ ts) \\
 \end{array}
 \ee
 
-When the key is empty, we override the value; otherwise, we extract the first element $k$, check if there is map among the sub-trees for $k$, and recursively insert $ks$ and $v'$:
+When the key is empty, we override the value; otherwise, we extract the first element $k$, check if there is a map among the sub-trees for $k$, and recursively insert $ks$ and $v'$:
 
 \be
 \begin{array}{rcl}
-ins\ \nil & = & [k \mapsto (\texttt{Nothing}, [])] \\
+ins\ \nil & = & [k \mapsto insert\ (\texttt{Nothing}, [])\ ks\ v'] \\
 ins\ ((c \mapsto t) : ts) & = & \begin{cases}
   c = k: & (k \mapsto insert\ t\ ks\ v') : ts \\
   otherwise: & (c \mapsto t) : (ins\ ts) \\
@@ -511,23 +511,17 @@ ins\ ((c \mapsto t) : ts) & = & \begin{cases}
 \end{array}
 \ee
 
-If $C$ is empty, we create a pair, mapping from character $k_1$ to
-a new empty tree (it is not $\phi$, but a node with empty value and empty sub-tree list), and recursively insert the rest characters.
-Otherwise, the algorithm locates the child which is mapped
-from $k_1$ for further insertion.
+As the first step, if there is no sub-tree in the node, we create a mapping from $k$ to an empty trie node $t = (\texttt{Nothing}, [])$; otherwise, we located the sub-tree $t$ mapped to $k$. then in the second step, we recursively insert $ks$ to $t$. Below is the example program implement $insert$, it's based on associated list to manage sub-tree mappings.
 
-The following Haskell example program implements the insertion
-algorithm.
+\begin{Haskell}
+insert (Trie _ ts) [] x = Trie (Just x) ts
+insert (Trie v ts) (k:ks) x = Trie v (ins ts) where
+    ins [] = [(k, insert empty ks x)]
+    ins ((c, t) : ts) = if c == k then (k, insert t ks x) : ts
+                        else (c, t) : (ins ts)
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-insert t []     x = Trie (Just x)  (children t)
-insert t (k:ks) x = Trie (value t) (ins (children t) k ks x) where
-    ins [] k ks x = [(k, (insert empty ks x))]
-    ins (p:ps) k ks x = if fst p == k
-                        then (k, insert (snd p) ks x):ps
-                        else p:(ins ps k ks x)
-\end{lstlisting}
+empty = Trie Nothing []
+\end{Haskell}
 
 To realize the insertion imperatively, starting from the root, we pick the character
 one by one from the string. For each character, we examine which child sub-tree
