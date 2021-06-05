@@ -17,48 +17,46 @@
 -}
 
 -- Refer to http://en.wikipedia.org/wiki/Trie
-module Trie where
+module MapTrie where
 
 import Data.List (sort, sortBy)
 import Data.Function (on)
 import qualified Data.Map as Map
+import Prelude hiding (lookup)
 
+-- Map based Trie
+data MapTrie k v = MapTrie { value :: Maybe v
+                           , subTrees :: Map.Map k (MapTrie k v)} deriving (Show)
 
--- Assoc list based Trie
-data Trie k v = Trie { value :: Maybe v
-                     , subTrees :: [(k, Trie k v)]} deriving (Show)
+empty = MapTrie Nothing Map.empty
 
-empty = Trie Nothing []
+insert :: Ord k => MapTrie k v -> [k] -> v -> MapTrie k v
+insert (MapTrie _ ts) [] x = MapTrie (Just x) ts
+insert (MapTrie v ts) (k:ks) x = MapTrie v (Map.insert k (insert t ks x) ts)
+  where
+    t = maybe empty id (Map.lookup k ts)
 
-insert :: Eq k => Trie k v -> [k] -> v -> Trie k v
-insert (Trie _ ts) [] x = Trie (Just x) ts
-insert (Trie v ts) (k:ks) x = Trie v (ins ts) where
-    ins [] = [(k, insert empty ks x)]
-    ins ((c, t) : ts) = if c == k then (k, insert t ks x) : ts
-                        else (c, t) : (ins ts)
-
-lookup :: Eq k => [k] -> Trie k v -> Maybe v
-lookup [] t = value t
-lookup (k:ks) t = case Prelude.lookup k (subTrees t) of
+lookup :: Ord k => [k] -> MapTrie k v -> Maybe v
+lookup [] (MapTrie v _) = v
+lookup (k:ks) (MapTrie _ ts) = case Map.lookup k ts of
                   Nothing -> Nothing
-                  Just t' -> Trie.lookup ks t'
+                  Just t' -> lookup ks t'
 
-fromList :: Eq k => [([k], v)] -> Trie k v
+fromList :: Ord k => [([k], v)] -> MapTrie k v
 fromList xs = foldl ins empty xs where
-  ins t (k, v) = insert t k v
+  ins t (k, v) =  insert t k v
 
-fromString :: (Enum v, Num v) => String -> Trie Char v
+fromString :: (Enum v, Num v) => String -> MapTrie Char v
 fromString = fromList . (flip zip [1..]) . words
 
 -- Pre-order traverse to populate keys in lexicographical order
-keys :: Ord k => Trie k v -> [[k]]
+keys :: Ord k => MapTrie k v -> [[k]]
 keys t = map reverse $ keys' t [] where
-  keys' t prefix = case (value t) of
+  keys' (MapTrie v ts) prefix = case v of
     Nothing -> ks
     (Just _ ) -> prefix : ks
     where
-      ks = concatMap (\(k, t') -> keys' t' (k : prefix)) ts
-      ts = sortBy (compare `on` fst) (subTrees t)
+      ks = concatMap (\(k, t') -> keys' t' (k : prefix)) (Map.toAscList ts)
 
 -- example
 example = insert (fromString "a place where animals are for public to see") "zoo" 0
@@ -69,7 +67,7 @@ assocs = [[("a", 1), ("an", 2), ("another", 7), ("boy", 3), ("bool", 4), ("zoo",
 
 verify = all (\as ->
                  let t = fromList as in
-                   all (\(k, v) -> maybe False (==v) (Trie.lookup k t)) as) assocs
+                   all (\(k, v) -> maybe False (==v) (lookup k t)) as) assocs
 
 verifyKeys = all (\as ->
                    keys (fromList as) == (sort $ fst $ unzip as)) assocs
