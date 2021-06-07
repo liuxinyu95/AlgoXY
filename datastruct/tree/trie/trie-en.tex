@@ -182,7 +182,7 @@ We can also eliminate the recursion to implement the iterative $lookup$ as the f
 The $lookup$ function is bound to $O(m)$ time, where $m$ is the number of bits of $k$.
 
 \begin{Exercise}
-\Question{Can we change the definition from \texttt{Branch (IntTrie a) (Maybe a) (IntTrie a)} to \texttt{Branch (IntTrie a) a (IntTrie a)}, and return \texttt{Nothing} if the value does not exist, and \texttt{Just\ v} otherwise?}
+\Question{Can we change the definition from \texttt{Branch (IntTrie a) (Maybe a) (IntTrie a)} to \texttt{Branch (IntTrie a) a (IntTrie a)}, and return \textit{Nothing} if the value does not exist, and \textit{Just\ v} otherwise?}
 \end{Exercise}
 
 \section{Integer prefix tree}
@@ -485,7 +485,7 @@ data Trie k v = Trie { value :: Maybe v
                      , subTrees :: [(k, Trie k v)]}
 \end{Haskell}
 
-Then the empty trie is in form of $(\texttt{Nothing}\ [])$.
+Then the empty trie is in form of $(\textit{Nothing}\ [])$.
 
 \subsection{Insert}
 \index{Trie!insert}
@@ -503,7 +503,7 @@ When the key is empty, we override the value; otherwise, we extract the first el
 
 \be
 \begin{array}{rcl}
-ins\ \nil & = & [k \mapsto insert\ (\texttt{Nothing}, [])\ ks\ v'] \\
+ins\ \nil & = & [k \mapsto insert\ (\textit{Nothing}, [])\ ks\ v'] \\
 ins\ ((c \mapsto t) : ts) & = & \begin{cases}
   c = k: & (k \mapsto insert\ t\ ks\ v') : ts \\
   otherwise: & (c \mapsto t) : (ins\ ts) \\
@@ -511,7 +511,7 @@ ins\ ((c \mapsto t) : ts) & = & \begin{cases}
 \end{array}
 \ee
 
-As the first step, if there is no sub-tree in the node, we create a mapping from $k$ to an empty trie node $t = (\texttt{Nothing}, [])$; otherwise, we located the sub-tree $t$ mapped to $k$. then in the second step, we recursively insert $ks$ to $t$. Below is the example program implement $insert$, it's based on associated list to manage sub-tree mappings.
+As the first step, if there is no sub-tree in the node, we create a mapping from $k$ to an empty trie node $t = (\textit{Nothing}, [])$; otherwise, we located the sub-tree $t$ mapped to $k$. then in the second step, we recursively insert $ks$ to $t$. Below is the example program implement $insert$, it's based on associated list to manage sub-tree mappings.
 
 \begin{Haskell}
 insert (Trie _ ts) [] x = Trie (Just x) ts
@@ -545,123 +545,53 @@ We can also eliminate the recursion to implement $insert$ iteratively.
 \subsection{Look up}
 \index{Trie!look up}
 
-When looking up a key, we start from the first character,
-if it is bound to some sub-tree, we then
-recursively search the rest characters in that child sub-tree.
-Denote the trie as $T = (v, C)$, the key being looked up as
-$K = k_1k_2...k_n$ if it isn't empty. The first character in
-the key is $k_1$, and the rest characters are represented as $K'$.
+When look up a none empty key $k:ks$ from Trie $T = (v, ts)$, starting from the first element $k$, if there exists sub-tree $T'$ mapped to $k$, we then recursively lookup $ks$ in $T'$. When the key is empty, then return the value as result:
 
 \be
-lookup(T, K) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  v & K = \phi \\
-  \phi & find(C, k_1) = \phi \\
-  lookup(T', K') & find(C, k_1) = T'
-  \end{array}
-\right.
+\begin{array}{rcl}
+lookup\ []\ (v, ts) & = & v \\
+lookup\ (k:ks)\ (v, ts) & = & \begin{cases}
+  lookup_{l}\ k\ ts = \textit{Nothing}: & \textit{Nothing} \\
+  lookup_{l}\ k\ ts = \textit{Just}\ t: & lookup\ ks\ t \\
+\end{cases}
+\end{array}
 \ee
 
-Where function $find(C, k)$ examines the character-tree pairs one by one to check
-if any child sub-tree is bound to character $k$. If the list of pairs $C$ is empty,
-then the subject key does not exist. Otherwise,
-let $C = \{(k_1, T_1), (k_2, T_2), ..., (k_m, T_m)\}$, the first sub-tree $T_1$
-is bound to $k_1$, the rest of pairs are represented as $C'$. We repeatedly
-consumes each pair to located the sub-tree for further search.
-Below equation defines the $find$ function.
-
-\be
-find(C, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & C = \phi \\
-  T_1 & k_1 = k \\
-  find(C', k) & otherwise
-  \end{array}
-\right.
-\ee
-
-The following Haskell example program implements the trie looking up
-algorithm. It uses the \texttt{lookup} function provided in standard library.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-find t [] = value t
-find t (k:ks) = case lookup k (children t) of
-                  Nothing -> Nothing
-                  Just t' -> find t' ks
-\end{lstlisting}
-
-To realize the look up algorithm imperatively, we extract the character from the
-key one by one. For each character, we search among the sub-trees
-to see if there is a branch matches this character.
-If there is no such a child, the look up process terminates
-to indicate that the key does not exist.
-When we arrive at the last character of the key,
-the data stored in the current node is the result.
+Where function $lookup_{l}$ is defined in chapter 1. It looks up if a key exits in an assoc list. Below is the corresponding iterative implementation:
 
 \begin{algorithmic}[1]
 \Function{Look-Up}{$T, key$}
   \If{$T = $ NIL}
-    \State \Return not found
+    \State \Return \textit{Nothing}
   \EndIf
   \For{each $c$ in $key$}
-    \If{\Call{Children}{$T$}[$c$] = NIL}
-      \State \Return not found
+    \If{\Call{Sub-Trees}{$T$}[$c$] = NIL}
+      \State \Return \textit{Nothing}
     \EndIf
-    \State $T \gets $ \Call{Children}{$T$}[$c$]
+    \State $T \gets $ \Call{Sub-Trees}{$T$}[$c$]
   \EndFor
-  \State \Return \Call{Data}{$T$}
+  \State \Return \Call{Value}{$T$}
 \EndFunction
 \end{algorithmic}
-
-Below ANSI C example program implements the look up algorithm.
-It returns NULL if the key does not exist.
-
-\lstset{language=C}
-\begin{lstlisting}
-void* lookup(struct Trie* t, const char* key) {
-    while (*key && t && t->children[*key - 'a'])
-        t = t->children[*key++ - 'a'];
-    return (*key || !t) ? NULL : t->data;
-}
-\end{lstlisting}
 
 \begin{Exercise}
 \Question{Use the self-balance binary tree, like red-black tree or AVL tree to implement a $map$ data structure, and manage the sub-trees with $map$. We call such implementation $MapTrie$ and $MapTree$ respectively. What are the performance of $insert$ and $lookup$ for map based tree and trie?}
 \end{Exercise}
 
-% ================================================================
-%                 Alphabetic Prefix Tree
-% ================================================================
-\section{Alphabetic prefix tree}
-\index{Patricia}
-\index{Prefix tree}
+\section{Prefix tree}
+\index{Patricia} \index{Prefix tree}
 
-Similar to integer trie, alphabetic trie is not memory
-efficient. We can use the same approach to compress alphabetic trie to
-prefix tree.
+Trie is not space efficient, We can use the same idea to consolidate the chained nodes to obtain prefix tree.
 
-% ================================================================
-%                 Definition of Alphabetic Prefix Tree
-% ================================================================
 \subsection{Definition}
 
-Alphabetic prefix tree is a special prefix tree, each node contains
-multiple branches. All sub-trees share the longest common
-prefix string in a node. As the result, there is no node has only one child,
-because it conflicts with the longest common prefix property.
-
-If we turn the trie shown in figure \ref{fig:trie-of-26} into prefix tree
-by compressing all nodes which have only one child. we can get
-a prefix tree as in figure \ref{fig:patricia-tree}.
+Prefix tree node contains zero or multiple sub-trees, where all sub-trees share the longest common prefix list in the node. This definition ensures no node has only one sub-tree, as it would conflict the longest common prefix rule otherwise. Consolidate the chained nodes figure \ref{fig:trie-of-26}, we obtained the corresponding prefix tree in figure \ref{fig:patricia-tree}.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.5]{img/patricia-tree.ps}
   \caption{A prefix tree, with keys: 'a', 'an', 'another', 'bool',
-    'boy' and 'zoo'.}
+    'boy', 'zoo'.}
   \label{fig:patricia-tree}
 \end{figure}
 
