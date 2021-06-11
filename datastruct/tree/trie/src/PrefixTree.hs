@@ -26,7 +26,7 @@ import qualified Data.Map as Map
 
 -- definition
 data PrefixTree k v = PrefixTree { value :: Maybe v
-                                 , children :: [([k], PrefixTree k v)]}
+                                 , subTrees :: [([k], PrefixTree k v)]}
                       deriving Show
 
 empty = PrefixTree Nothing []
@@ -35,11 +35,11 @@ leaf x = PrefixTree (Just x) []
 
 -- insertion
 insert :: Eq k => PrefixTree k v -> [k] -> v -> PrefixTree k v
-insert t ks x = PrefixTree (value t) (ins (children t) ks x) where
+insert t ks x = PrefixTree (value t) (ins (subTrees t) ks x) where
     ins []     ks x = [(ks, leaf x)]
     ins (p@(ks', t') : ps) ks x
         | ks' == ks
-            = (ks, PrefixTree (Just x) (children t')) : ps  -- overwrite
+            = (ks, PrefixTree (Just x) (subTrees t')) : ps  -- overwrite
         | match ks' ks
             = (branch ks x ks' t') : ps
         | otherwise
@@ -70,7 +70,7 @@ lcp (x:xs) (y:ys) = if x==y then x : (lcp xs ys) else []
 
 -- lookup
 find :: Eq k => PrefixTree k v -> [k] -> Maybe v
-find t = find' (children t) where
+find t = find' (subTrees t) where
     find' [] _ = Nothing
     find' (p@(ks', t') : ps) ks
           | ks' == ks = value t'
@@ -93,7 +93,7 @@ keys = keys' [] where
     (Just _) -> prefix : kss
     where
       kss = concatMap (\(ks, t') -> keys' (prefix ++ ks) t') ts
-      ts = sortBy (compare `on` fst) (children t)
+      ts = sortBy (compare `on` fst) (subTrees t)
 
 -- find all candidates in PrefixTree
 
@@ -131,7 +131,7 @@ findT9 t k = concatMap find prefixes
     n = length k
     find (s, t') = map (take n . (s++)) $ findT9 t' (k `diff` s)
     diff x y = drop (length y) x
-    prefixes = [(s, t') | (s, t') <- children t, let ds = digits s in
+    prefixes = [(s, t') | (s, t') <- subTrees t, let ds = digits s in
                           ds `isPrefixOf` k || k `isPrefixOf` ds]
 
 -- look up the prefix tree up to n candidates
