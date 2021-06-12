@@ -33,21 +33,16 @@ empty = PrefixTree Nothing []
 
 leaf v = PrefixTree (Just v) []
 
-insert :: Eq k => PrefixTree k v -> [k] -> v -> PrefixTree k v
 insert (PrefixTree _ ts) [] v = PrefixTree (Just v) ts
 insert (PrefixTree v' ts) k v = PrefixTree v' (ins ts) where
     ins [] = [(k, leaf v)]
-    ins (p@(k', t) : ts)
-        | match k k'
-            = (branch k v k' t) : ts
-        | otherwise
-            = p : (ins ts)
+    ins (p@(k', t) : ts) | match k k' = (branch k v k' t) : ts
+                         | otherwise  = p : ins ts
 
 match [] _ = True
 match _ [] = True
 match (a:_) (b:_) = a == b
 
-branch :: Eq k => [k] -> v -> [k] -> PrefixTree k v -> ([k], PrefixTree k v)
 branch a v b t = case lcp a b of
   (c, [], b') -> (c, PrefixTree (Just v) [(b', t)])
   (c, a', []) -> (c, insert t a' v)

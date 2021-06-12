@@ -584,7 +584,7 @@ Where function $lookup_{l}$ is defined in chapter 1. It looks up if a key exits 
 Trie is not space efficient. We can consolidate the chained nodes to obtain the prefix tree.
 
 \subsection{Definition}
-A prefix tree node $t$ contains two parts: an optional value $v$; zero or multiple sub prefix trees, each is bound to a list, denoted as $[s_i \mapsto t_i]$. These lists share the longest common prefix $s$ bound to the node $t$. i.e. $s$ is the longest common prefix of $s \doubleplus s_1$, $s \doubleplus s_2$, ... For any $i \neq j$, list $s_i$ and $s_j$ don't have none empty common prefix. Consolidate the chained nodes in figure \ref{fig:trie-of-26}, we obtain the corresponding prefix tree in figure \ref{fig:patricia-tree}.
+A prefix tree node $t$ contains two parts: an optional value $v$; zero or multiple sub prefix trees, each $t_i$ is bound to a list $s_i$. The sub-trees and their mappings are denoted as $[s_i \mapsto t_i]$. These lists share the longest common prefix $s$ bound to the node $t$. i.e. $s$ is the longest common prefix of $s \doubleplus s_1$, $s \doubleplus s_2$, ... For any $i \neq j$, list $s_i$ and $s_j$ don't have none empty common prefix. Consolidate the chained nodes in figure \ref{fig:trie-of-26}, we obtain the corresponding prefix tree in figure \ref{fig:patricia-tree}.
 
 \begin{figure}[htbp]
   \centering
@@ -600,7 +600,7 @@ data PrefixTree k v = PrefixTree { value :: Maybe v
                                  , subTrees :: [([k], PrefixTree k v)]}
 \end{Haskell}
 
-We denote prefix tree $t = (v, ts)$, particularly, $(\texttt{Nothing}, [])$ is the empty node, and $(\texttt{Just}\ v, [])$ is a leaf node of value $x$.
+We denote prefix tree $t = (v, ts)$, particularly, $(\textit{Nothing}, [])$ is the empty node, and $(\textit{Just}\ v, [])$ is a leaf node of value $v$.
 
 \subsection{Insert}
 \index{Prefix tree!insert}
@@ -613,45 +613,35 @@ When insert key $s$, if the prefix tree is empty, we create a leaf node of $s$ a
   \label{fig:patricia-insert}
 \end{figure}
 
-For prefix tree $T = (v, C)$, function $insert(T, k, v')$ inserts
-key $k$, and value $v'$ to the tree.
+Below function inserts key $s$ and value $v$ to the prefix tree $t = (v', ts)$:
 
 \be
-insert(T, k, v') = (v, ins(C, k, v'))
+\begin{array}{rcl}
+insert\ (v', ts)\ []\ v & = & (\textit{Just}\ v, ts) \\
+insert\ (v', ts)\ s\ v & = & (v', ins\ ts) \\
+\end{array}
 \ee
 
-This function calls another function $ins(C, k, v')$.
-If the children sub-trees $C$ is empty, a new leaf is created; Otherwise
-we examine the sub-trees one by one. Denote $C = \{(k_1, T_1), (k_2, T_2), ..., (k_n, T_n)\}$,
-$C'$ holds all the (prefix, sub-tree) pairs except for the first one. the
-$ins$ function can be defined as the following.
+If the key $s$ is empty, we overwrite the value to $v$; otherwise, we call $ins$ to examine the sub-trees and their prefixes.
 
 \be
-ins(C, k, v') = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{(k, (v', \phi))\} & C = \phi \\
-  \{(k, (v', C_{T_1}))\} \cup C' & k_1 = k \\
-  \{branch(k, v', k_1, T_1)\} \cup C' & match(k_1, k) \\
-  \{(k_1, T_1)\} \cup ins(C', k, v') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+ins\ []\ & = & [ s \mapsto (\textit{Just}\ v, []) ] \\
+ins\ (s' \mapsto t) : ts' & = & \begin{cases}
+  match\ s\ s': & (branch\ s\ v\ s'\ t) : ts' \\
+  otherwise: & (s' \mapsto t) : ins\ ts' \\
+  \end{cases}
+\end{array}
 \ee
 
-The first clause deals with the edge case of empty children. A
-leaf node bound to $k$, containing $v'$ is
-returned as the only sub-tree. The second clause overwrites
-the previous value with $v'$ if there is some child bound
-to the same key. $C_{T_1}$ represents the children of
-sub-tree $T_1$. The third clause branches out a new leaf
-if the first child matches the key $k$. The last clause
-goes on checking the rest sub-trees.
-
-We define two keys $A$ and $B$ matching if they
-have non-empty common prefix.
+If there is no sub-tree, then we create a leaf node of $v$ as the single sub-tree, and map $s$ to it; otherwise, for each sub-tree mapping $s' \mapsto t$, we compare $s'$ with $s$. If they have common prefix (tested by the $match$ function), then we $branch$ out new sub-tree. We define two lists matching if they have common prefix:
 
 \be
-match(A, B) = A \neq \phi \land B \neq \phi \land a_1 = b_1
+\begin{array}{rcl}
+match\ \nil\ B & = & True \\
+match\ A\ \nil & = & True \\
+match\ (a:as)\ (b:bs) & = & a = b \\
+\end{array}
 \ee
 
 Where $a_1$ and $b_1$ are the first characters in $A$ and $B$ if
