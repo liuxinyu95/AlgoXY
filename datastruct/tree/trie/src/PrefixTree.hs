@@ -31,42 +31,33 @@ data PrefixTree k v = PrefixTree { value :: Maybe v
 
 empty = PrefixTree Nothing []
 
-leaf x = PrefixTree (Just x) []
+leaf v = PrefixTree (Just v) []
 
--- insertion
 insert :: Eq k => PrefixTree k v -> [k] -> v -> PrefixTree k v
-insert t ks x = PrefixTree (value t) (ins (subTrees t) ks x) where
-    ins []     ks x = [(ks, leaf x)]
-    ins (p@(ks', t') : ps) ks x
-        | ks' == ks
-            = (ks, PrefixTree (Just x) (subTrees t')) : ps  -- overwrite
-        | match ks' ks
-            = (branch ks x ks' t') : ps
+insert (PrefixTree _ ts) [] v = PrefixTree (Just v) ts
+insert (PrefixTree v' ts) k v = PrefixTree v' (ins ts) where
+    ins [] = [(k, leaf v)]
+    ins (p@(k', t) : ts)
+        | match k k'
+            = (branch k v k' t) : ts
         | otherwise
-            = p : (ins ps ks x)
+            = p : (ins ts)
 
-match x y = x /= [] && y /= [] && head x == head y
+match [] _ = True
+match _ [] = True
+match (a:_) (b:_) = a == b
 
 branch :: Eq k => [k] -> v -> [k] -> PrefixTree k v -> ([k], PrefixTree k v)
-branch ks1 x ks2 t2
-    | ks1 == ks
-        -- ex: insert "an" into "another"
-        = (ks, PrefixTree (Just x) [(ks2', t2)])
-    | ks2 == ks
-        -- ex: insert "another" into "an"
-        = (ks, insert t2 ks1' x)
-    | otherwise = (ks, PrefixTree Nothing [(ks1', leaf x), (ks2', t2)])
-   where
-      ks = lcp ks1 ks2
-      m = length ks
-      ks1' = drop m ks1
-      ks2' = drop m ks2
+branch a v b t = case lcp a b of
+  (c, [], b') -> (c, PrefixTree (Just v) [(b', t)])
+  (c, a', []) -> (c, insert t a' v)
+  (c, a', b') -> (c, PrefixTree Nothing [(a', leaf v), (b', t)])
 
 -- longest common prefix
-lcp :: Eq k => [k] -> [k] -> [k]
-lcp [] _ = []
-lcp _ [] = []
-lcp (x:xs) (y:ys) = if x==y then x : (lcp xs ys) else []
+lcp [] bs = ([], [], bs)
+lcp as [] = ([], as, [])
+lcp (a:as) (b:bs) | a /= b = ([], (a:as), (b:bs))
+                  | otherwise = (a:cs, as', bs') where (cs, as', bs') = lcp as bs
 
 -- lookup
 find :: Eq k => PrefixTree k v -> [k] -> Maybe v
@@ -74,9 +65,8 @@ find t = find' (subTrees t) where
     find' [] _ = Nothing
     find' (p@(ks', t') : ps) ks
           | ks' == ks = value t'
-          | ks' `isPrefixOf` ks = find t' (diff ks ks')
+          | ks' `isPrefixOf` ks = find t' (drop (length ks') ks)
           | otherwise = find' ps ks
-    diff ks1 ks2 = drop (length (lcp ks1 ks2)) ks1
 
 fromList :: Eq k => [([k], v)] -> PrefixTree k v
 fromList = foldl ins empty where
