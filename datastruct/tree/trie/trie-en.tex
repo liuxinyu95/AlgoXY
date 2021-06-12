@@ -485,7 +485,7 @@ data Trie k v = Trie { value :: Maybe v
                      , subTrees :: [(k, Trie k v)]}
 \end{Haskell}
 
-Then the empty trie is in form of $(\textit{Nothing}\ [])$.
+Then the empty trie is in form of $(\textit{Nothing}\ \nil)$.
 
 \subsection{Insert}
 \index{Trie!insert}
@@ -494,7 +494,7 @@ When insert a pair of key and value to the trie, where the key is a list of elem
 
 \be
 \begin{array}{rcl}
-insert\ (v, ts)\ []\ v' & = & (v', ts) \\
+insert\ (v, ts)\ \nil\ v' & = & (v', ts) \\
 insert\ (v, ts)\ (k:ks)\ v' & = & (v, ins\ ts) \\
 \end{array}
 \ee
@@ -503,7 +503,7 @@ When the key is empty, we override the value; otherwise, we extract the first el
 
 \be
 \begin{array}{rcl}
-ins\ \nil & = & [k \mapsto insert\ (\textit{Nothing}, [])\ ks\ v'] \\
+ins\ \nil & = & [k \mapsto insert\ (\textit{Nothing}, \nil)\ ks\ v'] \\
 ins\ ((c \mapsto t) : ts) & = & \begin{cases}
   c = k: & (k \mapsto insert\ t\ ks\ v') : ts \\
   otherwise: & (c \mapsto t) : (ins\ ts) \\
@@ -511,7 +511,7 @@ ins\ ((c \mapsto t) : ts) & = & \begin{cases}
 \end{array}
 \ee
 
-As the first step, if there is no sub-tree in the node, we create a mapping from $k$ to an empty trie node $t = (\textit{Nothing}, [])$; otherwise, we located the sub-tree $t$ mapped to $k$. then in the second step, we recursively insert $ks$ to $t$. Below is the example program implement $insert$, it's based on associated list to manage sub-tree mappings.
+As the first step, if there is no sub-tree in the node, we create a mapping from $k$ to an empty trie node $t = (\textit{Nothing}, \nil)$; otherwise, we located the sub-tree $t$ mapped to $k$. then in the second step, we recursively insert $ks$ to $t$. Below is the example program implement $insert$, it's based on associated list to manage sub-tree mappings.
 
 \begin{Haskell}
 insert (Trie _ ts) [] x = Trie (Just x) ts
@@ -549,7 +549,7 @@ When look up a none empty key $k:ks$ from Trie $T = (v, ts)$, starting from the 
 
 \be
 \begin{array}{rcl}
-lookup\ []\ (v, ts) & = & v \\
+lookup\ \nil\ (v, ts) & = & v \\
 lookup\ (k:ks)\ (v, ts) & = & \begin{cases}
   lookup_{l}\ k\ ts = \textit{Nothing}: & \textit{Nothing} \\
   lookup_{l}\ k\ ts = \textit{Just}\ t: & lookup\ ks\ t \\
@@ -600,7 +600,7 @@ data PrefixTree k v = PrefixTree { value :: Maybe v
                                  , subTrees :: [([k], PrefixTree k v)]}
 \end{Haskell}
 
-We denote prefix tree $t = (v, ts)$, particularly, $(\textit{Nothing}, [])$ is the empty node, and $(\textit{Just}\ v, [])$ is a leaf node of value $v$.
+We denote prefix tree $t = (v, ts)$, particularly, $(\textit{Nothing}, \nil)$ is the empty node, and $(\textit{Just}\ v, \nil)$ is a leaf node of value $v$.
 
 \subsection{Insert}
 \index{Prefix tree!insert}
@@ -617,7 +617,7 @@ Below function inserts key $s$ and value $v$ to the prefix tree $t = (v', ts)$:
 
 \be
 \begin{array}{rcl}
-insert\ (v', ts)\ []\ v & = & (\textit{Just}\ v, ts) \\
+insert\ (v', ts)\ \nil\ v & = & (\textit{Just}\ v, ts) \\
 insert\ (v', ts)\ s\ v & = & (v', ins\ ts) \\
 \end{array}
 \ee
@@ -626,7 +626,7 @@ If the key $s$ is empty, we overwrite the value to $v$; otherwise, we call $ins$
 
 \be
 \begin{array}{rcl}
-ins\ []\ & = & [ s \mapsto (\textit{Just}\ v, []) ] \\
+ins\ \nil\ & = & [ s \mapsto (\textit{Just}\ v, \nil) ] \\
 ins\ (s' \mapsto t) : ts' & = & \begin{cases}
   match\ s\ s': & (branch\ s\ v\ s'\ t) : ts' \\
   otherwise: & (s' \mapsto t) : ins\ ts' \\
@@ -634,7 +634,7 @@ ins\ (s' \mapsto t) : ts' & = & \begin{cases}
 \end{array}
 \ee
 
-If there is no sub-tree, then we create a leaf node of $v$ as the single sub-tree, and map $s$ to it; otherwise, for each sub-tree mapping $s' \mapsto t$, we compare $s'$ with $s$. If they have common prefix (tested by the $match$ function), then we $branch$ out new sub-tree. We define two lists matching if they have common prefix:
+If there is no sub-tree in the node, then we create a leaf of $v$ as the single sub-tree, and map $s$ to it; otherwise, for each sub-tree mapping $s' \mapsto t$, we compare $s'$ with $s$. If they have common prefix (tested by the $match$ function), then we $branch$ out new sub-tree. We define two lists matching if they have common prefix:
 
 \be
 \begin{array}{rcl}
@@ -644,98 +644,58 @@ match\ (a:as)\ (b:bs) & = & a = b \\
 \end{array}
 \ee
 
-Where $a_1$ and $b_1$ are the first characters in $A$ and $B$ if
-they are not empty.
-
-Function $branch(k_1, v, k_2, T_2)$ takes two keys, a value
-and a tree. It extracts the longest common prefix $k = lcp(k_1, k_2)$,
-and assigns the different part to $k_1' = k_1 - k$, $k_2' = k_2 - k$.
-The algorithm firstly handles the edge cases that either $k_1$ is the prefix
-of $k_2$ or $k_2$ is the prefix of $k_1$. For the former one,
-it creates a new node containing $v$, binds this node to $k$,
-and set $(k_2', T_2)$ as the only child sub-tree; For the later one,
-it recursively inserts $k_1'$ and $v$ to $T_2$. Otherwise,
-the algorithm creates a branch node, binds it to the longest
-common prefix $k$, and set the two children sub-trees for it. One sub-tree
-is $(k_2', T_2)$, the other is a leaf node containing $v$, and
-being bound to $k_1'$.
+To extract the longest common prefix of two lists $A$ and $B$, we define a function $(C, A', B') = lcp\ A\ B$, where $C \doubleplus A' = A$ and $C \doubleplus B' = B$ hold. If either $A$ or $B$ is empty, or their first elements are different, then the common prefix $C = \nil$; otherwise, we recursively extract the longest common prefix from the rest lists, and preprend the head element:
 
 \be
-branch(k_1, v, k_2, T_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (k, (v, \{(k_2', T_2)\})) & k = k_1 \\
-  (k, insert(T_2, k_1', v)) & k = k_2 \\
-  (k, (\phi, \{(k_1', (v, \phi)), (k_2', T_2)\}) & otherwise
-  \end{array}
-\right.
-\ee
-
-Where
-
-\[
-\begin{array}{l}
-k = lcp(k_1, k_2) \\
-k_1' = k_1 - k \\
-k_2' = k_1 - k
+\begin{array}{rcl}
+lcp\ \nil\ B & = & (\nil, \nil, B) \\
+lcp\ A\ \nil & = & (\nil, A, \nil) \\
+lcp\ (a:as)\ (b:bs) & = & \begin{cases}
+  a \neq b: & (\nil, a:as, b:bs) \\
+  otherwise: & (a:cs, as', bs')\\
+  \end{cases}
 \end{array}
-\]
-
-Function $lcp(A, B)$ keeps taking the same characters from $A$ and $B$
-one by one. Denote $a_1$ and $b_1$ as
-the first characters in $A$ and $B$ if they are not empty.
-$A'$ and $B'$ are the rest characters.
-
-\be
-lcp(A, B) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & A = \phi \lor B = \phi \lor a_1 \neq b_1 \\
-  \{a_1\} \cup lcp(A', B') & a_1 = b_1
-  \end{array}
-\right.
 \ee
 
-The following Haskell example program implements the prefix tree insertion
-algorithm.
+where $(cs, as', bs') = lcp\ as\ bs$ in the recursive case. Function $branch\ A\ v\ B\ t$ takes two keys $A$, $B$, a value $v$, and a tree $t$. It extracts the longest common prefix $C$ from $A$ and $B$, maps it to a new branch node, and assign sub-trees:
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-import Data.List (isPrefixOf)
+\be
+\begin{array}{l}
+branch\ A\ v\ B\ t = \\
+\ lcp\ A\ B = \begin{cases}
+   (C, \nil, B'): & (C, (\textit{Just}\ v, [B' \mapsto t])) \\
+   (C, A', \nil): & (C, insert\ t\ A'\ v) \\
+   (C, A', B'): & (C, (\textit{Nothing}, [A' \mapsto (\textit{Just}\ v, \nil), B' \mapsto t])) \\
+\end{cases}
+\end{array}
+\ee
 
-insert :: Eq k => PrefixTree k v -> [k] -> v -> PrefixTree k v
-insert t ks x = PrefixTree (value t) (ins (children t) ks x) where
-    ins []     ks x = [(ks, leaf x)]
-    ins (p@(ks', t') : ps) ks x
-        | ks' == ks
-            = (ks, PrefixTree (Just x) (children t')) : ps  -- overwrite
-        | match ks' ks
-            = (branch ks x ks' t') : ps
-        | otherwise
-            = p : (ins ps ks x)
+If $A$ is the prefix of $B$, then $A$ is mapped to the node of $v$, and the remaining list is re-mapped to $t$, which is the single sub-tree in the branch; if $B$ is the prefix of $A$, then we recursively insert the remaining list and the value to $t$; otherwise, we create a leaf node of $v$ put it together with $t$ as the two sub-trees of the branch. The following example program implements the $insert$ algorithm:
 
-match x y = x /= [] && y /= [] && head x == head y
+\begin{Haskell}
+insert (PrefixTree _ ts) [] v = PrefixTree (Just v) ts
+insert (PrefixTree v' ts) k v = PrefixTree v' (ins ts) where
+    ins [] = [(k, leaf v)]
+    ins ((k', t) : ts) | match k k' = (branch k v k' t) : ts
+                       | otherwise  = (k', t) : ins ts
 
-branch :: Eq k => [k] -> v -> [k] -> PrefixTree k v -> ([k], PrefixTree k v)
-branch ks1 x ks2 t2
-    | ks1 == ks
-        -- ex: insert "an" into "another"
-        = (ks, PrefixTree (Just x) [(ks2', t2)])
-    | ks2 == ks
-        -- ex: insert "another" into "an"
-        = (ks, insert t2 ks1' x)
-    | otherwise = (ks, PrefixTree Nothing [(ks1', leaf x), (ks2', t2)])
-   where
-      ks = lcp ks1 ks2
-      m = length ks
-      ks1' = drop m ks1
-      ks2' = drop m ks2
+match [] _ = True
+match _ [] = True
+match (a:_) (b:_) = a == b
 
-lcp :: Eq k => [k] -> [k] -> [k]
-lcp [] _ = []
-lcp _ [] = []
-lcp (x:xs) (y:ys) = if x==y then x : (lcp xs ys) else []
-\end{lstlisting}
+branch a v b t = case lcp a b of
+  (c, [], b') -> (c, PrefixTree (Just v) [(b', t)])
+  (c, a', []) -> (c, insert t a' v)
+  (c, a', b') -> (c, PrefixTree Nothing [(a', leaf v), (b', t)])
+
+lcp [] bs = ([], [], bs)
+lcp as [] = ([], as, [])
+lcp (a:as) (b:bs) | a /= b = ([], a:as, b:bs)
+                  | otherwise = (a:cs, as', bs') where
+                        (cs, as', bs') = lcp as bs
+
+leaf v = PrefixTree (Just v) []
+\end{Haskell}
 
 The insertion algorithm can be realized imperative as below.
 

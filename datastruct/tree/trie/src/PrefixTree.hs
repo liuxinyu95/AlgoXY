@@ -36,8 +36,8 @@ leaf v = PrefixTree (Just v) []
 insert (PrefixTree _ ts) [] v = PrefixTree (Just v) ts
 insert (PrefixTree v' ts) k v = PrefixTree v' (ins ts) where
     ins [] = [(k, leaf v)]
-    ins (p@(k', t) : ts) | match k k' = (branch k v k' t) : ts
-                         | otherwise  = p : ins ts
+    ins ((k', t) : ts) | match k k' = (branch k v k' t) : ts
+                       | otherwise  = (k', t) : ins ts
 
 match [] _ = True
 match _ [] = True
@@ -51,7 +51,7 @@ branch a v b t = case lcp a b of
 -- longest common prefix
 lcp [] bs = ([], [], bs)
 lcp as [] = ([], as, [])
-lcp (a:as) (b:bs) | a /= b = ([], (a:as), (b:bs))
+lcp (a:as) (b:bs) | a /= b = ([], a:as, b:bs)
                   | otherwise = (a:cs, as', bs') where (cs, as', bs') = lcp as bs
 
 -- lookup
