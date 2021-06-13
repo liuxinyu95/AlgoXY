@@ -33,8 +33,7 @@ def lcp(s1, s2):
     return (s1[0:j], s1[j:], s2[j:])
 
 def branch(key1, tree1, key2, tree2):
-    if key1 == "":
-        #example: insert "an" into "another"
+    if key1 == []:
         tree1.subtrees[key2] = tree2
         return tree1
     t = PrefixTree()
@@ -50,13 +49,12 @@ def insert(t, key, value):
         match = False
         for k, tr in node.subtrees.items():
             if key == k: # overwrite
-                tr.value = value   # or: node.subtrees[k].value = value
+                tr.value = value
                 return t
             prefix, k1, k2 = lcp(key, k)
             if prefix != "":
                 match = True
-                if k2 == "":
-                    # e.g.: insert "another" into "an", go on traversing
+                if k2 == "":  # go on traversing
                     node = tr
                     key = k1
                     break

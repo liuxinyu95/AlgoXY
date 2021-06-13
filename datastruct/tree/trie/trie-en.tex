@@ -544,7 +544,7 @@ We can also eliminate the recursion to implement $insert$ iteratively.
 \EndFunction
 \end{algorithmic}
 
-For the key type $[K]$, list of $K$, if $K$ is infinite set of $m$ elements, and the length of the key is $n$, then the insert algorithm is bound to $O(mn)$. When the key is lower case English strings, them $m = 26$, the insert operation is proportion to the length of key string.
+For the key type $[K]$, list of $K$, if $K$ is infinite set of $m$ elements, and the length of the key is $n$, then the insert algorithm is bound to $O(mn)$. When the key is lower case English strings, then $m = 26$, the insert operation is proportion to the length of key string.
 
 \subsection{Look up}
 \index{Trie!look up}
@@ -703,7 +703,7 @@ lcp (a:as) (b:bs) | a /= b = ([], a:as, b:bs)
                         (cs, as', bs') = lcp as bs
 \end{Haskell}
 
-The insertion algorithm can be realized imperative as below.
+We can eliminate the recursion to implement the $insert$ algorithm in loops.
 
 \begin{algorithmic}[1]
 \Function{Insert}{$T, k, v$}
@@ -713,29 +713,27 @@ The insertion algorithm can be realized imperative as below.
   \State $p \gets T$
   \Loop
     \State $match \gets$ FALSE
-    \For{each $(s_i, T_i) \in$ \Call{Children}{$p$}}
+    \For{each $s_i \mapsto T_i $ in \Call{Sub-Trees}{$p$}}
       \If{$k = s_i$}
         \State \Call{Value}{$T_i$} $\gets v$ \Comment{Overwrite}
         \State \Return $T$
       \EndIf
       \State $c \gets$ \Call{LCP}{$k, s_i$}
-      \State $k_1 \gets k - c$
-      \State $k_2 \gets s_i - c$
+      \State $k_1 \gets k - c$, $k_2 \gets s_i - c$
       \If{$c \neq $ NIL}
         \State $match \gets$ TRUE
         \If{$k_2 = $ NIL} \Comment{$s_i$ is prefix of $k$}
-          \State $p \gets T_i$
-          \State $k \gets k_1$
+          \State $p \gets T_i$, $k \gets k_1$
           \State break
         \Else \Comment{Branch out a new leaf}
-          \State \textproc{Add}(\Call{Children}{$p$}, ($c$, \textproc{Branch}($k_1$, \Call{Leaf}{$v$}, $k_2$, $T_i$)))
-          \State \textproc{Delete}(\Call{Children}{$p$}, $(s_i, T_i)$)
+          \State \textproc{Add}(\Call{Sub-Trees}{$p$}, $c \mapsto$ \textproc{Branch}($k_1$, \Call{Leaf}{$v$}, $k_2$, $T_i$))
+          \State \textproc{Delete}(\Call{Sub-Trees}{$p$}, $s_i \mapsto T_i$)
           \State \Return $T$
         \EndIf
       \EndIf
     \EndFor
-    \If{$\lnot match$} \Comment{Add a new leaf}
-      \State \textproc{Add}(\Call{Children}{$p$}, ($k$, \Call{Leaf}{$v$}))
+    \If{not $match$} \Comment{Add a new leaf}
+      \State \textproc{Add}(\Call{Sub-Trees}{$p$}, $k \mapsto$ \Call{Leaf}{$v$})
       \State break
     \EndIf
   \EndLoop
@@ -743,97 +741,34 @@ The insertion algorithm can be realized imperative as below.
 \EndFunction
 \end{algorithmic}
 
-In this algorithm, function \textproc{LCP} finds the longest
-common prefix of the two strings. For example, string `bool' and `boy'
-have the longest common prefix `bo'. The subtraction symbol '-' for
-strings gives the different part of two strings. For example `bool' - `bo' = `ol'. Function \textproc{Branch} creates a branch node and updates keys.
-
-The longest common prefix can be extracted character by character from two strings till there is unmatch.
+Function \textproc{LCP} extracts the longest common prefix from two lists.
 
 \begin{algorithmic}[1]
 \Function{LCP}{$A, B$}
   \State $i \gets 1 $
-  \While{$i \leq |A| \land i \leq |B| \land A[i] = B[i]$}
+  \While{$i \leq |A|$ and $i \leq |B|$ and $A[i] = B[i]$}
     \State $i \gets i + 1$
   \EndWhile
   \State \Return $A[1...i-1]$
 \EndFunction
 \end{algorithmic}
 
-There are two cases when branch out a new leaf. \textproc{Branch}($s_1, T_1, s_2, T_2$)
-takes two different keys and trees. If $s_1$ is empty, we are
-dealing with the case such as insert key `an' into a child bound to
-string `another'. We set $T_2$ as the child sub-tree of $T_1$. Otherwise,
-we create a new branch node and set $T_1$ and $T_2$ as the two children.
+There is a special case in \textproc{Branch}($s_1, T_1, s_2, T_2$). If $s_1$ is empty, the key to be insert is some prefix. We set $T_2$ as the sub-tree of $T_1$. Otherwise, we create a new branch node and set $T_1$ and $T_2$ as the two sub-trees.
 
 \begin{algorithmic}[1]
 \Function{Branch}{$s_1, T_1, s_2, T_2$}
-  \If{$s_1 = \phi$}
-    \State \textproc{Add}(\Call{Children}{$T_1$}, $(s_2, T_2)$)
+  \If{$s_1 = $ NIL}
+    \State \textproc{Add}(\Call{Sub-Trees}{$T_1$}, $s_2 \mapsto T_2$)
     \State \Return $T_1$
   \EndIf
   \State $T \gets$ \Call{Empty-Node}{}
-  \State \Call{Children}{$T$} $\gets \{(s_1, T_1), (s_2, T_2)\}$
+  \State \Call{Sub-Trees}{$T$} $\gets \{s_1 \mapsto T_1, s_2 \mapsto T_2\}$
   \State \Return $T$
 \EndFunction
 \end{algorithmic}
 
-The following example Python program implements the prefix tree insertion algorithm.
+Although the prefix tree improves the space efficiency of trie, it is still bound to $O(m n)$, where $n$ is the length of the key, and $m$ is the size of the element set.
 
-\lstset{language=Python}
-\begin{lstlisting}
-def insert(t, key, value):
-    if t is None:
-        t = PrefixTree()
-    node = t
-    while True:
-        match = False
-        for k, tr in node.subtrees.items():
-            if key == k: # overwrite
-                tr.value = value
-                return t
-            prefix, k1, k2 = lcp(key, k)
-            if prefix != "":
-                match = True
-                if k2 == "":
-                    # e.g.: insert "another" into "an", go on traversing
-                    node = tr
-                    key = k1
-                    break
-                else: #branch out a new leaf
-                    node.subtrees[prefix] = branch(k1, PrefixTree(value), k2, tr)
-                    del node.subtrees[k]
-                    return t
-        if not match: # add a new leaf
-            node.subtrees[key] = PrefixTree(value)
-            break
-    return t
-\end{lstlisting}
-
-Where the \texttt{lcp} and \texttt{branch} functions are implemented as below.
-
-\begin{lstlisting}
-def lcp(s1, s2):
-    j = 0
-    while j < len(s1) and j < len(s2) and s1[j] == s2[j]:
-        j += 1
-    return (s1[0:j], s1[j:], s2[j:])
-
-def branch(key1, tree1, key2, tree2):
-    if key1 == "":
-        #example: insert "an" into "another"
-        tree1.subtrees[key2] = tree2
-        return tree1
-    t = PrefixTree()
-    t.subtrees[key1] = tree1
-    t.subtrees[key2] = tree2
-    return t
-\end{lstlisting}
-
-
-% ================================================================
-%                 Look up in Alphabetic Patrica Tree
-% ================================================================
 \subsection{Look up}
 \index{Prefix tree!look up}
 
@@ -1569,14 +1504,77 @@ Trie<K, V> insert(Trie<K, V> t, [K] key, V value) {
 }
 \end{lstlisting}
 
-Below Python example program reuses the trie definition to define prefix tree.
+Definition of Prefix Tree:
 
-\lstset{language=Python}
-\begin{lstlisting}
-class PrefixTree:
-    def __init__(self, value = None):
-        self.value = value
-        self.subtrees = {}
+\begin{lstlisting}[language = Bourbaki]
+data PrefixTree<K, V> {
+    Optional<V> value = Optional.None
+    Map<[K], PrefixTree<K, V>> subTrees = Map.empty()
+
+    Self PrefixTree(V v) {
+        value = Optional.of(v)
+    }
+}
+\end{lstlisting}
+
+Insert key-value to Prefix Tree:
+
+\begin{lstlisting}[language = Bourbaki]
+PrefixTree<K, V> insert(PrefixTree<K, V> t, [K] key, V value) {
+    if t == null then t = PrefixTree()
+    var node = t
+    loop {
+        bool match = False
+        for var (k, tr) in node.subtrees {
+            if key == k {
+                tr.value = value
+                return t
+            }
+            prefix, k1, k2 = lcp(key, k)
+            if prefix != [] {
+                match = True
+                if k2 == [] {
+                    node = tr
+                    key = k1
+                    break
+                } else {
+                    node.subtrees[prefix] = branch(k1, PrefixTree(value),
+                                                   k2, tr)
+                    node.subtrees.delete(k)
+                    return t
+                }
+            }
+        }
+        if !match {
+            node.subtrees[key] = PrefixTree(value)
+            break
+        }
+    }
+    return t
+}
+\end{lstlisting}
+
+The longest common prefix \texttt{lcp} and \texttt{branch} example programs.
+
+\begin{lstlisting}[language = Bourbaki]
+([K], [K], [K]) lcp([K] s1, [K] s2) {
+    j = 0
+    while j < length(s1) and j < length(s2) and s1[j] == s2[j] {
+        j = j + 1
+    }
+    return (s1[0..j-1], s1[j..], s2[j..])
+}
+
+PrefixTree<K, V> branch([K] key1, PrefixTree<K, V> tree1,
+                        [K] key2, PrefixTree<K, V> tree2) {
+    if key1 == []:
+        tree1.subtrees[key2] = tree2
+        return tree1
+    t = PrefixTree()
+    t.subtrees[key1] = tree1
+    t.subtrees[key2] = tree2
+    return t
+}
 \end{lstlisting}
 
 \ifx\wholebook\relax \else
