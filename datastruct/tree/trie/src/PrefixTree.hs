@@ -19,7 +19,8 @@
 
 module PrefixTree where
 
-import Data.List (isPrefixOf, sort, sortBy, inits, nub)
+import Prelude hiding (lookup)
+import Data.List (isPrefixOf, sort, sortBy, inits, nub, find)
 import Data.Function (on)
 import Control.Arrow (first)
 import qualified Data.Map as Map
@@ -55,13 +56,11 @@ lcp (a:as) (b:bs) | a /= b = ([], a:as, b:bs)
                   | otherwise = (a:cs, as', bs') where (cs, as', bs') = lcp as bs
 
 -- lookup
-find :: Eq k => PrefixTree k v -> [k] -> Maybe v
-find t = find' (subTrees t) where
-    find' [] _ = Nothing
-    find' (p@(ks', t') : ps) ks
-          | ks' == ks = value t'
-          | ks' `isPrefixOf` ks = find t' (drop (length ks') ks)
-          | otherwise = find' ps ks
+lookup :: Eq k => [k] -> PrefixTree k v -> Maybe v
+lookup [] (PrefixTree v _) = v
+lookup ks (PrefixTree v ts) = case find (\(s, t) -> s `isPrefixOf` ks) ts of
+  Nothing -> Nothing
+  Just (s, t) -> lookup (drop (length s) ks) t
 
 fromList :: Eq k => [([k], v)] -> PrefixTree k v
 fromList = foldl ins empty where
@@ -132,7 +131,7 @@ assocs = [[("a", 1), ("an", 2), ("another", 7), ("boy", 3), ("bool", 4), ("zoo",
 -- tests
 verify = all (\as ->
                  let t = fromList as in
-                   all (\(k, v) -> maybe False (==v) (find t k)) as) assocs
+                   all (\(k, v) -> maybe False (==v) (lookup k t)) as) assocs
 
 verifyKeys = all (\as ->
                    keys (fromList as) == (sort $ fst $ unzip as)) assocs
