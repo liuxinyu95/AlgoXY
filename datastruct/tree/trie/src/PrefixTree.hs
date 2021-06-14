@@ -56,7 +56,6 @@ lcp (a:as) (b:bs) | a /= b = ([], a:as, b:bs)
                   | otherwise = (a:cs, as', bs') where (cs, as', bs') = lcp as bs
 
 -- lookup
-lookup :: Eq k => [k] -> PrefixTree k v -> Maybe v
 lookup [] (PrefixTree v _) = v
 lookup ks (PrefixTree v ts) = case find (\(s, t) -> s `isPrefixOf` ks) ts of
   Nothing -> Nothing

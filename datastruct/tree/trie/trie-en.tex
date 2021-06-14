@@ -772,50 +772,28 @@ Although the prefix tree improves the space efficiency of trie, it is still boun
 \subsection{Look up}
 \index{Prefix tree!look up}
 
-When look up a key, we can't examine the characters one by one
-as in trie any more. Start from the root, we need search among the
-children sub-trees to see if any one is bound to some prefix of the key.
-If there is such a sub-tree, we remove the prefix from the key,
-and recursively look up the updated key in this child sub-tree.
-The look up fails if there's no sub-tree bound to any prefix of the key.
-
-For prefix tree $T = (v, C)$, we search among its children sub-tree $C$.
+When look up a key $k$, we start from the root. If $k = \nil$ is empty, then return the root value as the result; otherwise, we examine the sub-tree mappings, locate the one $s_i \mapsto t_i$, such that $s_i$ is some prefix of $k$, then recursively look up $k - s_i$ in sub-tree $t_i$. If there does not exist $s_i$ as the prefix of $k$, then there is no such key in the prefix tree.
 
 \be
-lookup(T, k) = find(C, k)
+\begin{array}{rcl}
+lookup\ \nil\ (v, ts) & = & v \\
+lookup\ k\ (v, ts) & = & find\ ((s, t) \mapsto s \sqsubseteq k)\ ts\ =  \\
+  & & \begin{cases}
+    \textit{Nothing} : & Nothing \\
+    \textit{Just}\ (s, t): & lookup\ (k - s)\ t
+  \end{cases}
+\end{array}
 \ee
 
-If $C$ is empty, the lookup fails; Otherwise, For $C = \{(k_1, T_1), (k_2, T_2), ..., (k_n, T_n)\}$, we firstly examine if $k$ is the prefix of $k_1$, then
-recursively check the rest pairs denoted as $C'$.
+Where $A \sqsubseteq B$ means list $A$ is prefix of $B$. Function $find$ is defined in chapter 1, which searches element in a list with a given predication. Below example program implements the look up algorithm.
 
-\be
-find(C, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & C = \phi \\
-  v_{T_1} & k = k_1 \\
-  lookup(T_1, k - k_1) & k_1 \sqsubset k \\
-  find(C', k) & otherwise
-  \end{array}
-\right.
-\ee
-
-Where $A \sqsubset B$ means string $A$ is prefix of $B$. $find$ mutually
-calls $lookup$ if a child is bound to some prefix of the key.
-
-Below Haskell example program implements the looking up algorithm.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-find :: Eq k => PrefixTree k v -> [k] -> Maybe v
-find t = find' (children t) where
-    find' [] _ = Nothing
-    find' (p@(ks', t') : ps) ks
-          | ks' == ks = value t'
-          | ks' `isPrefixOf` ks = find t' (diff ks ks')
-          | otherwise = find' ps ks
-    diff ks1 ks2 = drop (length (lcp ks1 ks2)) ks1
-\end{lstlisting}
+\begin{Haskell}
+lookup [] (PrefixTree v _) = v
+lookup ks (PrefixTree v ts) =
+  case find (\(s, t) -> s `isPrefixOf` ks) ts of
+    Nothing -> Nothing
+    Just (s, t) -> lookup (drop (length s) ks) t
+\end{Haskell}
 
 The look up algorithm can also be realized imperatively.
 
@@ -1373,7 +1351,7 @@ The following example $insert$ program uses bit-wise operation to test even/odd,
 
 \begin{lstlisting}[language = Bourbaki]
 IntTrie<T> insert(IntTrie<T> t, Int key,
-                                Optional<T> value = Optional.None) {
+                  Optional<T> value = Optional.None) {
     if t == null then t = IntTrie<T>()
     p = t
     while key != 0 {
