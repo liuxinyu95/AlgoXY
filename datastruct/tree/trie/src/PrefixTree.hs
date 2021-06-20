@@ -78,26 +78,16 @@ keys = keys' [] where
       kss = concatMap (\(ks, t') -> keys' (prefix ++ ks) t') ts
       ts = sortBy (compare `on` fst) (subTrees t)
 
--- find all candidates in PrefixTree
+startsWith [] (PrefixTree Nothing ts) = enum ts
+startsWith [] (PrefixTree (Just v) ts) = ([], v) : enum ts
+startsWith k (PrefixTree _ ts) =
+  case find (\(s, t) -> s `isPrefixOf` k || k `isPrefixOf` s) ts of
+    Nothing -> []
+    Just (s, t) -> map (first (s ++)) (startsWith (drop (length s) k) t)
 
-findAll :: Eq k => PrefixTree k v -> [k] -> [([k], v)]
-findAll (PrefixTree Nothing cs) [] = enum cs
-findAll (PrefixTree (Just x) cs) [] = ([], x) : enum cs
-findAll (PrefixTree _ cs) k = find' cs k
-  where
-    find' [] _ = []
-    find' ((k', t') : ps) k
-          | k `isPrefixOf` k'
-              = map (first (k' ++)) (findAll t' [])
-          | k' `isPrefixOf` k
-              = map (first (k' ++)) (findAll t' $ drop (length k') k)
-          | otherwise = find' ps k
-
-enum :: Eq k => [([k], PrefixTree k v)] -> [([k], v)]
-enum = concatMap (\(k, t) -> map (first (k ++)) (findAll t []))
+enum = concatMap (\(k, t) -> map (first (k ++)) (startsWith [] t))
 
 -- T9 (Textonym) lookup
-
 mapT9 = Map.fromList [('1', ",."), ('2', "abc"), ('3', "def"), ('4', "ghi"),
                       ('5', "jkl"), ('6', "mno"), ('7', "pqrs"), ('8', "tuv"),
                       ('9', "wxyz")]
@@ -118,7 +108,7 @@ findT9 t k = concatMap find prefixes
                           ds `isPrefixOf` k || k `isPrefixOf` ds]
 
 -- look up the prefix tree up to n candidates
-get n t k = take n $ findAll t k
+get n t k = take n $ startsWith k t
 
 --
 example = insert (fromString "a place where animals are for public to see") "zoo" 0
