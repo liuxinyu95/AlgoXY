@@ -108,7 +108,7 @@ findT9 t k = concatMap find prefixes
                           ds `isPrefixOf` k || k `isPrefixOf` ds]
 
 -- look up the prefix tree up to n candidates
-get n t k = take n $ startsWith k t
+get n k t = take n $ startsWith k t
 
 --
 example = insert (fromString "a place where animals are for public to see") "zoo" 0
@@ -125,7 +125,7 @@ verify = all (\as ->
 verifyKeys = all (\as ->
                    keys (fromList as) == (sort $ fst $ unzip as)) assocs
 
-verifyFindAll = all verifyLookup [("a", 5), ("a", 6), ("a", 7), ("ab", 2),
+verifyStartsWith = all verifyLookup [("a", 5), ("a", 6), ("a", 7), ("ab", 2),
                                   ("ab", 5), ("b", 2), ("bo", 5), ("z", 3)]
   where
     lst = [("a", "the first letter of English"),
@@ -142,7 +142,7 @@ verifyFindAll = all verifyLookup [("a", 5), ("a", 6), ("a", 7), ("ab", 2),
     verifyLookup (k, n) = length r <= n &&
                           all (\(k', v) -> k `isPrefixOf` k' && k' `Map.member` m) r
       where
-        r = get n t k
+        r = get n k t
 
 verifyT9 = all verify' $ concatMap (tail . inits) ["4663", "22", "2668437"]
   where
