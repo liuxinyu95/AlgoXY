@@ -824,94 +824,41 @@ A dictionary can contain hundreds of thousands words. It's expensive to perform 
   \label{fig:word-completion}
 \end{figure}
 
-Both examples give the `auto-completion' functionality. We can implement it with prefix tree. For illustration purpose, we limit to English characters, and set a upper bound $n$ for the number of candidates. A dictionary stores key-value pairs, where the key is English word or phrase, the value is the corresponding meaning and explanation. When user input string $s$, we look up the prefix tree for all keys start with $s$. If $s$ is empty we expand all sub-trees till reach to $n$ candidates; otherwise, we locate the sub-tree from the mapped key, and look up recursively. In the environment supports lazy evaluation, we can expand all candidates, and take the first $n$ on demand: $take\ n\ (findAll\ t\ k)$
+Both examples give the `auto-completion' functionality. We can implement it with prefix tree. For illustration purpose, we limit to English characters, and set a upper bound $n$ for the number of candidates. A dictionary stores key-value pairs, where the key is English word or phrase, the value is the corresponding meaning and explanation. When user input string $s$, we look up the prefix tree for all keys start with $s$. If $s$ is empty we expand all sub-trees till reach to $n$ candidates; otherwise, we locate the sub-tree from the mapped key, and look up recursively. In the environment supports lazy evaluation, we can expand all candidates, and take the first $n$ on demand: $take\ n\ (startsWith\ s\ t)$, where $t$ is the prefix tree.
 
 \be
-findAll(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  enum(C) & k = \phi, v = \phi \\
-  \{(\phi, v)\} \cup enum(C) & k = \phi, v \neq \phi \\
-  find(C, k) & k \neq \phi
-  \end{array}
-\right.
+\begin{array}{c}
+\begin{array}{rcl}
+startsWith\ \nil\ (\textit{Nothing}, ts) & = & enum\ ts \\
+startsWith\ \nil\ (\textit{Just}\ x, ts) & = & (\nil, x) : enum\ ts \\
+startsWith\ s\ (v, ts) & = & find\ ((k, t) \mapsto s \sqsubseteq k\ \text{or}\ k \sqsubseteq s)\ ts = \\
+\end{array} \\
+\quad \begin{cases}
+  \textit{Nothing}: & \nil \\
+  \textit{Just}\ (k, t): & [(k \doubleplus a, b) | (a, b) \in startsWith\ (s - k)\ t]
+\end{cases}
+\end{array}
 \ee
 
-The first two clauses deal with the edge cases that the key is empty.
-All the children sub-trees are enumerated except for those with empty values.
-The last clause finds child sub-tree matches $k$.
-
-For non-empty children sub-trees, $C = \{(k_1, T_1), (k_2, T_2), ..., (k_m, T_m)\}$,
-denote the rest pairs except for the first one as $C'$.
-The enumeration algorithm can be defined as below.
+Given a prefix $s$, function $startsWith$ searches all candidates in the prefix tree starts with $s$. If $s$ is empty, it enumerates all sub-trees, and prepand $(\nil, x)$ for none empty value $x$ in the root. Function $enum\ ts$ is defined as:
 
 \be
-enum(C) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & C = \phi \\
-  mapAppend(k_1, findAll(T_1, \phi)) \cup enum(C')
-  \end{array}
-\right.
+enum = concatMap\ (k, t) \mapsto [(k \doubleplus a, b) | (a, b) \in startsWith\ \nil\ t]
 \ee
 
-Where $mapAppend(k, L) = \{(k + k_i, v_i)| (k_i, v_i) \in L\}$. It concatenate
-the prefix $k$ in front of every key-value pair in list $L$\footnote{The concept here is to map on the first thing. In some environment, like Haskell, $mapAppend$ can be expressed as $map(first(k+), L)$ by using the arrow in category theory.}.
+Where $concatMap$ (also known as $flatMap$) is an important concept for list computation. Literally, it results like firstly map on each element, then concatenate the result together. It's typically realized with 'build-foldr' fusion law to eliminate the intermediate list overhead. (see chapter 5 in my book {\em Isomorphism -- mathematics of programming}) If the input prefix $s$ is not empty, we examine the sub-tree mappings, for each list and sub-tree pair $(k, t)$, if either $s$ is prefix of $k$ or vice versa, we recursively expand $t$ and prepand $k$ to each result key; otherwise, $s$ does not match any sub-trees, hence the result is empty. Below example program implements this algorithm.
 
-Function $enum$ can also be defined with concept of $concatMap$ (also called $flatMap$)\footnote{Literally, it results like first map on each element, then concatenate the result together. It's typically realized with 'build-foldr' to eliminate the intermediate list.}.
+\begin{Haskell}
+startsWith [] (PrefixTree Nothing ts) = enum ts
+startsWith [] (PrefixTree (Just v) ts) = ([], v) : enum ts
+startsWith k (PrefixTree _ ts) =
+  case find (\(s, t) -> s `isPrefixOf` k || k `isPrefixOf` s) ts of
+    Nothing -> []
+    Just (s, t) -> [(s ++ a, b) |
+                         (a, b) <- startsWith (drop (length s) k) t]
 
-\be
-enum(C) = concatMap(\lambda_{(k, T)} . mapAppend(k, findAll(T, \phi)))
-\ee
-
-Function $find(C, k)$ is defined as the following. For empty children, the
-result is empty as well; Otherwise, it examines the first child sub-tree $T_1$ which
-is bound to string $k_1$. If $k$ equals to $k_1$ or is a prefix of $k_1$, it calls $mapAppend$ to concatenate the prefix $k_1$ in front of the key of every child sub-tree under $T_1$; If $k_1$ is prefix
-of $k$, the algorithm recursively find all children sub-trees start with $k - k_1$;
-otherwise, the algorithm by-passes the first child sub-tree
-and goes on finding the rest sub-trees.
-
-\be
-find(C, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & C = \phi \\
-  mapAppend(k_1, findAll(T_1, \phi)) & k \sqsubset k_1 \\
-  mapAppend(k_1, findAll(T_1, k - k_1)) & k_1 \sqsubset k \\
-  find(C', k) & otherwise
-  \end{array}
-\right.
-\ee
-
-Below example Haskell program implements the e-dictionary application
-according to the above equations.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-import Control.Arrow (first)
-
-get n t k = take n $ findAll t k
-
-findAll :: Eq k => PrefixTree k v -> [k] -> [([k], v)]
-findAll (PrefixTree Nothing cs) [] = enum cs
-findAll (PrefixTree (Just x) cs) [] = ([], x) : enum cs
-findAll (PrefixTree _ cs) k = find' cs k
-  where
-    find' [] _ = []
-    find' ((k', t') : ps) k
-          | k `isPrefixOf` k'
-              = map (first (k' ++)) (findAll t' [])
-          | k' `isPrefixOf` k
-              = map (first (k' ++)) (findAll t' $ drop (length k') k)
-          | otherwise = find' ps k
-
-enum :: Eq k => [([k], PrefixTree k v)] -> [([k], v)]
-enum = concatMap (\(k, t) -> map (first (k ++)) (findAll t []))
-\end{lstlisting}
-
-In the lazy evaluation environment, the top $n$ candidates can be
-gotten like $take(n, findAll(T, k))$. Appendix A has detailed definition
-of $take$ function.
+enum = concatMap (\(k, t) -> [(k ++ a, b) | (a, b) <- startsWith [] t])
+\end{Haskell}
 
 We can also realize this algorithm impertiavely.
 The following algorithm reuses the looking up defined for prefix tree. When
@@ -1469,6 +1416,9 @@ Suffix Tree, Wikipedia. \url{http://en.wikipedia.org/wiki/Suffix_tree}
 
 \bibitem{wiki-trie}
 Trie, Wikipedia. \url{http://en.wikipedia.org/wiki/Trie}
+
+\bibitem{unplugged}
+Xinyu LIU. ``Isomorphism - mathematics of programming''. \url{https://github.com/liuxinyu95/unplugged}
 
 \bibitem{wiki-t9}
 T9 (predictive text), Wikipedia. \url{http://en.wikipedia.org/wiki/T9_(predictive_text)}

@@ -83,9 +83,9 @@ startsWith [] (PrefixTree (Just v) ts) = ([], v) : enum ts
 startsWith k (PrefixTree _ ts) =
   case find (\(s, t) -> s `isPrefixOf` k || k `isPrefixOf` s) ts of
     Nothing -> []
-    Just (s, t) -> map (first (s ++)) (startsWith (drop (length s) k) t)
+    Just (s, t) -> [(s ++ a, b) | (a, b) <- startsWith (drop (length s) k) t]
 
-enum = concatMap (\(k, t) -> map (first (k ++)) (startsWith [] t))
+enum = concatMap (\(k, t) -> [(k ++ a, b) | (a, b) <- startsWith [] t])
 
 -- T9 (Textonym) lookup
 mapT9 = Map.fromList [('1', ",."), ('2', "abc"), ('3', "def"), ('4', "ghi"),
