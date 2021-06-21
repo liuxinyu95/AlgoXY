@@ -867,18 +867,18 @@ We can also realize the algorithm \textproc{Starts-With}($T, k, n$) imperatively
   \If{$T = $ NIL}
      \State \Return NIL
   \EndIf
-  \State $prefix \gets$ NIL
+  \State $s \gets$ NIL
   \Repeat
     \State $match \gets$ FALSE
     \For{$k_i \mapsto T_i$ in \Call{Sub-Trees}{$T$}}
       \If{$k$ is prefix of $k_i$}
-        \State \Return \Call{Expand}{$prefix \doubleplus k_i, T_i, n$}
+        \State \Return \Call{Expand}{$s \doubleplus k_i, T_i, n$}
       \EndIf
       \If{$k_i$ is prefix of $k$}
         \State $match \gets$ TRUE
         \State $k \gets k - k_i$  \Comment{drop the prefix}
         \State $T \gets T_i$
-        \State $prefix \gets prefix \doubleplus k_i$
+        \State $s \gets s \doubleplus k_i$
         \State break
       \EndIf
     \EndFor
@@ -887,70 +887,27 @@ We can also realize the algorithm \textproc{Starts-With}($T, k, n$) imperatively
 \EndFunction
 \end{algorithmic}
 
-Where function \textproc{Expand}($T, prefix, n$) picks $n$ sub-trees. They
-share the same prefix in $T$. It is realized as BFS (Bread-First-Search) traverse. 14.3.1 in the Chapter of search explains BFS in detail.
+Where function \textproc{Expand}($s, T, n$) populates $n$ results from $T$ and prepand $s$ to each key. We implement it with `bread first search' method (see section 14.3):
 
 \begin{algorithmic}[1]
-\Function{Expand}{$prefix, T, n$}
-  \State $R \gets \phi$
-  \State $Q \gets \{(prefix, T)\}$
-  \While{$|R| < n \land Q$ is not empty}
+\Function{Expand}{$s, T, n$}
+  \State $R \gets $ NIL
+  \State $Q \gets [(s, T)]$
+  \While{$|R| < n$ and $Q \neq$ NIL}
     \State $(k, T) \gets$ \Call{Pop}{$Q$}
-    \If{\Call{Data}{$T$} $\neq$ NIL}
-      \State $R \gets R \cup \{(k, $ \Call{Data}{$T$} $)\}$
+    \State $v \gets$ \Call{Value}{$T$}
+    \If{$v \neq$ NIL}
+      \State \Call{Insert}{$R, (k, v)$}
     \EndIf
-    \For{$\forall (k_i, T_i) \in$ \Call{Children}{$T$} in sorted order}
-      \State \Call{Push}{$Q, (k + k_i, T_i)$}
+    \For{$k_i \mapsto T_i$ in \Call{Sub-Trees}{$T$}}
+      \State \Call{Push}{$Q, (k \doubleplus k_i, T_i)$}
     \EndFor
   \EndWhile
 \EndFunction
 \end{algorithmic}
 
-The following example Python program implements the e-dictionary application.
-When testing if a string is prefix of another one, it uses the \texttt{find}
-function provided in standard string library.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def lookup(t, key, n):
-    if t is None:
-        return []
-    prefix = ""
-    while True:
-        match = False
-        for k, tr in t.subtrees.items():
-            if string.find(k, key) == 0: # key is prefix of k
-                return expand(prefix + k, tr, n)
-            if string.find(key, k) ==0:
-                match = True
-                key = key[len(k):]
-                t = tr
-                prefix += k
-                break
-        if not match:
-            break
-    return []
-
-def expand(prefix, t, n):
-    res = []
-    q = [(prefix, t)]
-    while len(res)<n and q:
-        (s, p) = q.pop(0)
-        if p.value is not None:
-            res.append((s, p.value))
-        for k, tr in sorted(p.subtrees.items()):
-            q.append((s + k, tr))
-    return res
-\end{lstlisting}
-
-
-%=====================================
-% T9
-%=====================================
-
-\subsection{T9 input method}
+\subsection{Predictive text input}
 \index{T9}
-\index{Textonym input method}
 
 When people edit text in the mobile phone, the experience is quite different.
 This is because the so called ITU-T key pad has much fewer
@@ -1341,7 +1298,7 @@ PrefixTree<K, V> insert(PrefixTree<K, V> t, [K] key, V value) {
     if t == null then t = PrefixTree()
     var node = t
     loop {
-        bool match = False
+        bool match = false
         for var (k, tr) in node.subtrees {
             if key == k {
                 tr.value = value
@@ -1349,7 +1306,7 @@ PrefixTree<K, V> insert(PrefixTree<K, V> t, [K] key, V value) {
             }
             prefix, k1, k2 = lcp(key, k)
             if prefix != [] {
-                match = True
+                match = true
                 if k2 == [] {
                     node = tr
                     key = k1
@@ -1391,6 +1348,44 @@ PrefixTree<K, V> branch([K] key1, PrefixTree<K, V> tree1,
     t.subtrees[key1] = tree1
     t.subtrees[key2] = tree2
     return t
+}
+\end{lstlisting}
+
+Populate multiple candidates, they share the common prefix
+
+\begin{lstlisting}[language = Bourbaki]
+[([K], V)] startsWith(PrefixTree<K, V> t, [K] key, Int n) {
+    if t == null then return []
+    [T] s = []
+    repeat {
+        bool match = false
+        for var (k, tr) in t.subtrees {
+            if key.isPrefixOf(k) {
+                return expand(s ++ k, tr, n)
+            } else if k.isPrefixOf(key) {
+                match = true
+                key = key[length(k)..]
+                t = tr
+                s = s ++ k
+                break
+            }
+        }
+    } until not match
+    return []
+}
+
+[([K], V)] expand([K] s, PrefixTree<K, V> t, Int n) {
+    [([K], V)] r = []
+    var q = Queue([(s, t)])
+    while length(r) < n and !q.isEmpty() {
+        var (s, t) = q.pop()
+        v = t.value
+        if v.isPresent() then r.append((s, v.get()))
+        for k, tr in t.subtrees {
+            q.push((s ++ k, tr))
+        }
+    }
+    return r
 }
 \end{lstlisting}
 
