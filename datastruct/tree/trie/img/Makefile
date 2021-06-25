@@ -1,4 +1,4 @@
-IMG_OBJECTS = itu-t
+IMG_OBJECTS =
 DOT_OBJECTS = int-trie big-endian-trie little-endian-patricia \
 int-patricia-insert-a int-patricia-insert-b int-patricia-insert-c \
 int-patricia-insert-d int-patricia-haskell-insert trie-of-26 \
