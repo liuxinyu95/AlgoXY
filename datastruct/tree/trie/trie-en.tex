@@ -969,64 +969,34 @@ rmapT9 = Map.fromList $ concatMap (\(d, s) -> [(c, d) | c <- s]) $
 digits = map (\c -> Map.findWithDefault '#' c rmapT9)
 \end{Haskell}
 
+Suppose we already build the prefix tree $(v, ts)$ from all words in a dictionary. We need change the above auto completion algorithm to process digit string $ds$. For every sub-tree mappings $(s \mapsto t) \in ts$, we convert the prefix $s$ to $digits(s)$, check if it matches to $ds$ (either one is the prefix of the other). There can be multiple sub-trees match $ds$ as:
 
-When input digits $D = d_1d_2...d_n$, we define the T9 lookup algorithm as below.
-
-\be
-findT9(T, D) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ \phi \} & D = \phi \\
-  concatMap(find, prefixes(T)) & otherwise
-  \end{array}
-\right.
-\ee
-
-Where $T$ is the prefix tree built from a set of words and phrases. It's kind of a dictionary we'll look up. If the input
-$D$ is empty, the result is an empty string. Otherwise, it looks up the sub-trees that match the input, and concat the result together.
-
-To enumerate the matched sub-trees, we examine all the children sub-trees $C_T$,
-for every pair $(k_i, T_i)$. We first convert string $k_i$ to digit sequence $d_i$,
-then compare $d_i$ and $D$. If either one is the prefix of the other, then this pair
-is selected as a candidate for further search.
+\[
+\textit{pfx} = [(s, t) | (s \mapsto t) \in ts, digits(s) \sqsubseteq ds\ \textit{or}\ ds\ \sqsubseteq digits(s)]
+\]
 
 \be
-prefixes(T) = \{(k_i, T_i) | (k_i, T_i) \in C_T, d_i = digits(k_i), d_i \sqsubset D \lor D \sqsubset d_i \}
+\begin{array}{rcl}
+find_{T9}\ t\ \nil & = & [ \nil ] \\
+find_{T9}\ (v, ts)\ ds & = & \textit{concatMap}\ find\ \textit{pfx} \\
+\end{array}
 \ee
 
-
-Function $find$ takes a passed in prefix $S$, and a sub-tree $T'$ to look up further. As $S$ is prefix of $D$, it removes it from $D$ to get a new input to $D' = D - S$ to search, then later insert $S$ back in front of every recursive search result.
+For each mapping $(s, t)$ in \textit{pfx}, function $find$ recursively lookup the remaining digits $ds'$ in $t$, where $ds' = drop\ |s|\ ds$, then prepend $s$ to every candidate. However, the length may exceeds the number of digits, we need cut and only take $n = |ds|$ characters:
 
 \be
-find(S, T') = \{ take(n, S + s_i) | s_i \in findT9(T', D - S) \}
+find\ (s, t) = [ take\ n\ (s \doubleplus s_i) | s_i \in find_{T9}\ t\ ds']
 \ee
 
-Where $n = |D|$ is the length of the input digits. Function $take(n, L)$ takes the first $n$ elements from the list $L$. If the length of the list is less then $n$, or the elements are taken.
+The following example program implements the predictive input look up algorithm:
 
-The following Haskell example program implements the T9 look up algorithm with prefix tree.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-import qualified Data.Map as Map
-
-mapT9 = Map.fromList [('1', ",."), ('2', "abc"), ('3', "def"), ('4', "ghi"),
-                      ('5', "jkl"), ('6', "mno"), ('7', "pqrs"), ('8', "tuv"),
-                      ('9', "wxyz")]
-
-rmapT9 = Map.fromList $ concatMap (\(d, s) -> [(c, d) | c <- s]) $ Map.toList mapT9
-
-digits = map (\c -> Map.findWithDefault '#' c rmapT9)
-
-findT9 :: PrefixTree Char v -> String -> [String]
-findT9 t [] = [""]
-findT9 t k = concatMap find prefixes
-  where
-    n = length k
-    find (s, t') = map (take n . (s++)) $ findT9 t' (k `diff` s)
-    diff x y = drop (length y) x
-    prefixes = [(s, t') | (s, t') <- children t, let ds = digits s in
-                          ds `isPrefixOf` k || k `isPrefixOf` ds]
-\end{lstlisting}
+\begin{Haskell}
+findT9 _ [] = [[]]
+findT9 (PrefixTree _ ts) k = concatMap find pfx where
+  find (s, t) = map (take (length k) . (s++)) $ findT9 t (drop (length s) k)
+  pfx = [(s, t) | (s, t) <- ts, let ds = digits s in
+              ds `isPrefixOf` k || k `isPrefixOf` ds]
+\end{Haskell}
 
 To realize this algorithm imperatively, we can perform BFS search with a queue $Q$.
 The queue stores tuples $(prefix, D, T)$. Every tuple records the possible

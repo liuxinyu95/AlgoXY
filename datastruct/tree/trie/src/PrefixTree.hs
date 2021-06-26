@@ -87,25 +87,21 @@ startsWith k (PrefixTree _ ts) =
 
 enum = concatMap (\(k, t) -> [(k ++ a, b) | (a, b) <- startsWith [] t])
 
--- T9 (Textonym) lookup
+-- ITU-T keypad mapping
 mapT9 = Map.fromList [('1', ",."), ('2', "abc"), ('3', "def"), ('4', "ghi"),
                       ('5', "jkl"), ('6', "mno"), ('7', "pqrs"), ('8', "tuv"),
                       ('9', "wxyz")]
 
--- reverse T9 map
+-- reverse ITU-T keypad map
 rmapT9 = Map.fromList $ concatMap (\(d, s) -> [(c, d) | c <- s]) $ Map.toList mapT9
 
 digits = map (\c -> Map.findWithDefault '#' c rmapT9)
 
-findT9 :: PrefixTree Char v -> String -> [String]
-findT9 t [] = [""]
-findT9 t k = concatMap find prefixes
-  where
-    n = length k
-    find (s, t') = map (take n . (s++)) $ findT9 t' (k `diff` s)
-    diff x y = drop (length y) x
-    prefixes = [(s, t') | (s, t') <- subTrees t, let ds = digits s in
-                          ds `isPrefixOf` k || k `isPrefixOf` ds]
+findT9 _ [] = [[]]
+findT9 (PrefixTree _ ts) k = concatMap find pfx where
+  find (s, t) = map (take (length k) . (s++)) $ findT9 t (drop (length s) k)
+  pfx = [(s, t) | (s, t) <- ts, let ds = digits s in
+              ds `isPrefixOf` k || k `isPrefixOf` ds]
 
 -- look up the prefix tree up to n candidates
 get n k t = take n $ startsWith k t
