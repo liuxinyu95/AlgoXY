@@ -909,7 +909,7 @@ Where function \textproc{Expand}($s, T, n$) populates $n$ results from $T$ and p
 \subsection{Predictive text input}
 \index{T9}
 
-Before 2010, most mobile phones had a small keypad as shown in \ref{fig:itut-keypad}. It is called ITU-T keypad.
+Before 2010, most mobile phones had a small keypad as shown in \ref{fig:itut-keypad}, called ITU-T keypad. It maps a digit to 3 to 4 characters. For example, when input word `home', one can press keys in below sequence:
 
 \begin{figure}[htbp]
   \centering
@@ -918,62 +918,57 @@ Before 2010, most mobile phones had a small keypad as shown in \ref{fig:itut-key
   \label{fig:itut-keypad}
 \end{figure}
 
-There are typical two methods to input word or phrases with ITU-T key pad.
-If user wants to enter a word `home' for example, he can press the keys
-in below sequence.
+\begin{enumerate}
+\item Press key `4' twice to enter `h';
+\item Press key `6' three times to enter `o';
+\item Press key `6' to enter  `m';
+\item Press key `3' twice to enter `e';
+\end{enumerate}
 
-\begin{itemize}
-\item Press key '4' twice to enter the letter 'h';
-\item Press key '6' three times to enter the letter 'o';
-\item Press key '6' to enter the letter 'm';
-\item Press key '3' twice to enter the letter 'e';
-\end{itemize}
+A smarter input method allows to press less keys:
 
-Another much quicker way is to just press the following keys.
-
-\begin{itemize}
-\item Press key '4', '6', '6', '3', word `home' appears on top of the candidate list;
-\item Press key '*' to change a candidate word, so word `good' appears;
-\item Press key '*' again to change another candidate word, next word `gone' appears;
+\begin{enumerate}
+\item Press key sequence `4', `6', `6', `3', the word `home' appears as a candidate;
+\item Press key `*' to change to next candidate, word `good' appears;
+\item Press key '*' again for another candidate, word `gone' appears;
 \item ...
-\end{itemize}
+\end{enumerate}
 
-Compare the two methods, the second one is much easier for the user.
-The only overhead is the need to store a dictionary of candidate words.
-
-The second method is known as `T9' input method, or predictive input method
-\cite{wiki-t9}, \cite {wiki-predictive-text}. The abbreviation 'T9' stands
-for 'textonym'. It start with 'T' with 9 characters. T9 input can also be
-realized with prefix tree.
-
-In order to provide candidate words, a dictionary must be prepared
-in advance. Prefix tree can be used to store the dictionary. The
-commercial T9 implementations typically use multiple layers indexed dictionary in
-both file system and cache. The realization shown here is for illustration
-purpose only.
-
-Firstly, we need define the T9 mapping, which maps from digit to candidate
-characters.
+This is called predictive input, or abbreviated as `T9'\cite{wiki-t9}, \cite {wiki-predictive-text}. We can realize it by storing the word dictionary in a prefix tree. The commercial implementations uses multiple layers of caches/index in both memory and file system. We simplify it as an example of prefix tree application. First, we need define the digit key mappings:
 
 \be
 \begin{array}{ll}
-M_{T9} = \{ & 2 \rightarrow abc, 3 \rightarrow def, 4 \rightarrow ghi, \\
-           & 5 \rightarrow jkl, 6 \rightarrow mno, 7 \rightarrow pqrs, \\
-           & 8 \rightarrow tuv, 9 \rightarrow wxyz \}
+M_{T9} = \{ & 2 \mapsto \texttt{"abc"}, 3 \mapsto \texttt{"def"}, 4 \mapsto \texttt{"ghi"}, \\
+           & 5 \mapsto \texttt{"jkl"}, 6 \mapsto \texttt{"mno"}, 7 \mapsto \texttt{"pqrs"}, \\
+           & 8 \mapsto \texttt{"tuv"}, 9 \mapsto \texttt{"wxyz"} \quad \}
 \end{array}
 \ee
 
-With this mapping, $M_{T9}[i]$ returns the corresponding characters for digit $i$. We can also define the reversed mapping from a character back to digit.
+$M_{T9}[i]$ gives the corresponding characters for digit $i$. We can also define the reversed mapping from a character back to digit.
 
 \be
-M^{-1}_{T9} = concat(\{\{c \rightarrow d | c \in S\} | (d \rightarrow S) \in M_{T9}\})
+M^{-1}_{T9} = \textit{concatMap}\ ((d, s) \mapsto [(c, d) | c \in s])\ M_{T9}
 \ee
 
-Given a sequence of characters, we can convert it to a sequence of digits by looking up $M^{-1}_{T9}$.
+Given a string, we can convert it to a sequence of digits by looking up $M^{-1}_{T9}$.
 
 \be
-digits(S) = \{ M^{-1}_{T9}[c]| c \in S \}
+digits(s) = [ M^{-1}_{T9}[c] | c \in s ]
 \ee
+
+For any character does not belong [\texttt{a..z}], we map it to a special key \texttt{'\#'} as fallback. Below example program defines the above two mappings.
+
+\begin{Haskell}
+mapT9 = Map.fromList [('2', "abc"), ('3', "def"), ('4', "ghi"),
+                      ('5', "jkl"), ('6', "mno"), ('7', "pqrs"),
+                      ('8', "tuv"), ('9', "wxyz")]
+
+rmapT9 = Map.fromList $ concatMap (\(d, s) -> [(c, d) | c <- s]) $
+           Map.toList mapT9
+
+digits = map (\c -> Map.findWithDefault '#' c rmapT9)
+\end{Haskell}
+
 
 When input digits $D = d_1d_2...d_n$, we define the T9 lookup algorithm as below.
 
