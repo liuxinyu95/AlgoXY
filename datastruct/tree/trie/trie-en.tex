@@ -998,84 +998,30 @@ findT9 (PrefixTree _ ts) k = concatMap find pfx where
               ds `isPrefixOf` k || k `isPrefixOf` ds]
 \end{Haskell}
 
-To realize this algorithm imperatively, we can perform BFS search with a queue $Q$.
-The queue stores tuples $(prefix, D, T)$. Every tuple records the possible
-prefix string we've searched so far; the rest of the digits to be searched;
-and the sub-tree we are going to search. The queue is initialized with the
-empty prefix, the whole digit sequence, and the prefix tree root. The algorithm
-keeps picking the tuple from the queue until it's empty. For every tuple
-popped from the queue, we extract the tree from the tuple, then examine the
-children sub-trees of it. for each sub-tree $T_i$, we convert the corresponding
-prefix string $k_i$ to digits $D'$ by looking up the reversed T9 map. If the
-$D$ is prefix of $D'$, it's a valid candidate. We concatenate $k_i$ after
-the prefix in the tuple, and record this string in the result. If $D'$ is
-prefix of $D$, we need furthur search this sub-tree. To do this, we
-create a new tuple consist of the new prefix ends with $k_i$, the rest of
-the digits $D-D'$, and the sub-tree. Then push this tuple back to the queue.
+To realize the predictive text input imperatively, we can perform bread first search with a queue $Q$ of tuples $(\textit{prefix}, D, t)$. Every tuple records the possible \textit{prefix} searched so far; the remaining digits $D$ to be searched; and the sub-tree $t$ we are going to search. $Q$ is initialized with the empty prefix, the whole digits sequence, and the root. We repeatedly pop the tuple from the queue, and examine the sub-tree mappings. for every mapping $(s \mapsto T')$, we convert $s$ to $digits(s)$. If $D$ is prefix of it, then we find a candidate. We append $s$ to \textit{prefix}, and record it in the result. If $digits(s)$ is prefix of $D$, we need further search the sub-tree $T'$. We create a new tuple of $(\textit{prefix} \doubleplus s, D', T')$, where $D'$ is the remaining digits to be searched. Then push this new tuple back to the queue.
 
 \begin{algorithmic}[1]
 \Function{Look-Up-T9}{$T, D$}
-  \State $R \gets \phi$
-  \If{$T =$ NIL or $D = \phi$}
+  \State $R \gets $ NIL
+  \If{$T =$ NIL or $D =$ NIL}
     \State \Return $R$
   \EndIf
   \State $n \gets |D|$
-  \State $Q \gets \{(\phi, D, T)\}$
-  \While{$Q \neq \phi$}
-    \State $(prefix, D, T) \gets$ \Call{Pop}{$Q$}
-    \For{$\forall (k_i, T_i) \in $ \Call{Children}{$T$}}
-      \State $D' \gets$ \Call{Digits}{$k_i$}
+  \State $Q \gets \{(\text{NIL}, D, T)\}$
+  \While{$Q \neq $ NIL}
+    \State $(\textit{prefix}, D, T) \gets$ \Call{Pop}{$Q$}
+    \For{$(s \mapsto T') \in $ \Call{Sub-Trees}{$T$}}
+      \State $D' \gets$ \Call{Digits}{$s$}
       \If{$D' \sqsubset D$} \Comment{$D'$ is prefix of $D$}
-        \State $R \gets R \cup \{$ \textproc{Take} $(n, prefix + k_i) \}$ \Comment{limit the length to $n$}
+        \State \Call{Append}{$R, (\textit{prefix} \doubleplus s)[1..n]$} \Comment{limit the length to $n$}
       \ElsIf{$D \sqsubset D'$}
-        \State \textproc{Push}($Q, (prefix + k_i, D - D', T_i)$)
+        \State \Call{Push}{$Q, (\textit{prefix} \doubleplus s, D - D', T')$}
       \EndIf
     \EndFor
   \EndWhile
   \State \Return $R$
 \EndFunction
 \end{algorithmic}
-
-Function \textproc{Digits}($S$) converts string $S$ to sequence of digits.
-
-\begin{algorithmic}[1]
-\Function{Digits}{$S$}
-  \State $D \gets \phi$
-  \For{each $c \in S$}
-    \State $D \gets D \cup \{M^{-1}_{T9}[c]\}$
-  \EndFor
-  \State \Return $D$
-\EndFunction
-\end{algorithmic}
-
-The following example Python program implements the T9 input method with prefix tree.
-
-\lstset{language=Python}
-\begin{lstlisting}
-T9MAP={'2':"abc", '3':"def", '4':"ghi", '5':"jkl", \
-       '6':"mno", '7':"pqrs", '8':"tuv", '9':"wxyz"}
-
-T9RMAP = dict([(c, d) for d, cs in T9MAP.items() for c in cs])
-
-def digits(w):
-    return ''.join([T9RMAP[c] for c in w])
-
-def lookup_t9(t, key):
-    if t is None or key == "":
-        return []
-    res = []
-    n = len(key)
-    q = [("", key, t)]
-    while q:
-        prefix, key, t = q.pop(0)
-        for k, tr in t.subtrees.items():
-            ds = digits(k)
-            if string.find(ds, key) == 0: # key is prefix of ds
-                res.append((prefix + k)[:n])
-            elif string.find(key, ds) == 0: # ds is prefix of key
-                q.append((prefix + k, key[len(k):], tr))
-    return res
-\end{lstlisting}
 
 
 \begin{Exercise}
@@ -1349,6 +1295,36 @@ Populate multiple candidates, they share the common prefix
         }
     }
     return r
+}
+\end{lstlisting}
+
+
+Predictive text input lookup
+\begin{lstlisting}[language = Bourbaki]
+var T9MAP={'2':"abc", '3':"def", '4':"ghi", '5':"jkl", \
+       '6':"mno", '7':"pqrs", '8':"tuv", '9':"wxyz"}
+
+var T9RMAP = { c : d for var (d, cs) in T9MAP for var c in cs }
+
+string digits(string w) = ''.join([T9RMAP[c] for c in w])
+
+[string] lookupT9(PrefixTree<char, V> t, string key) {
+    if t == null or key == "" then return []
+    res = []
+    n = length(key)
+    q = Queue(("", key, t))
+    while not q.isEmpty() {
+        (prefix, key, t) = q.pop()
+        for var (k, tr) in t.subtrees {
+            ds = digits(k)
+            if key.isPrefixOf(ds) {
+                res.append((prefix ++ k)[:n])
+            } else if ds.isPrefixOf(key) {
+                q.append((prefix ++ k, key[length(k)..], tr))
+            }
+        }
+    }
+    return res
 }
 \end{lstlisting}
 
