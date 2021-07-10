@@ -50,48 +50,28 @@
 \section{整数trie}
 \label{int-trie} \index{基数树!整数trie}
 
-图\ref{fig:radix-tree}中所示的数据结构常被称为\emph{binary trie}。Trie是Edward Fredkin提出的。它来自英文单词retrieval，最开始发音为/'tri:/。但是许多人都把它读作/'trai/(和英文单词try的发音相同)\cite{wiki-trie}。Trie也被称为前缀树。一棵binary trie是一种特殊的二叉树，每个key存放的位置由它的二进制位来决定。0表示“向左”，而1表示“向右”\cite{okasaki-int-map}。
-
-由于整数可以表示为二进制，我们可以用整数代替0/1串作为key。当把一个整数插入到Trie时，我们首先将其转化为二进制，然后检查第一位，若为0，则递归插入到左侧分支，若为1，则插入到右侧分支。但是这里有一个问题。考虑图\ref{fig:big-endian-trie}中的Trie，如果使用0/1串，这3个key各不相同，但它们却代表同一个十进制整数。对于这个例子来说，我们应该在Trie中的哪个位置插入整数3呢？
+我们称图\ref{fig:radix-tree}所示的数据结构为\emph{binary trie}。Trie是Edward Fredkin在1960年提出的。它来自英文单词re\textbf{trie}val。Fredkin将其读作/'tri:/，但其他人读作/'trai/(和英文单词try的发音相同)\cite{wiki-trie}。有些情况下trie也被称为前缀树，在本章中，trie和前缀树分指不同的数据结构。一棵binary trie是一种特殊的二叉树，每个键的位置由它的二进制位来决定。0表示“向左”，1表示“向右”\cite{okasaki-int-map}。考虑图\ref{fig:big-endian-trie}中的trie，3个不同串``11''、``011''、``0011''代表同一个十进制整数3。
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.4]{img/big-endian-trie.ps}
-  \caption{大端（big-endian）Trie} \label{fig:big-endian-trie}
+  \caption{大端（big-endian）trie}
+  \label{fig:big-endian-trie}
 \end{figure}
 
-如果把前面的0也当作有效位，在一个32位整数的系统中，向空Trie插入1，结果将是一棵有32层分支的树。其中的31个中间节点只有一个左子树，最后一个节点只有一个右子树。空间利用率很低。
+如果把前面的0也当作有效位，在一个32位整数的系统中，向空trie插入1，结果将是一棵有32层分支的树。为了解决这一问题，Okasaki建议使用小端整数\cite{okasaki-int-map}。二进制数的最高位（MSB）通常在左边，最低位（LSB）在右边。这种形式称为大端整数，反之最高位在右边称为小端整数。使用小端，1表示为$(1)_2$,、2表示为$(01)_2$、3表示为$(11)_2$……
 
-Okasaki给出了一种解决方法\cite{okasaki-int-map}。二进制数的最高位（MSB）通常在左边，最低位（LSB）在右边。这种Trie称作大端（big-endian）树。我们也可以使用小端（little-endian）数来表示key。这样，十进制的1表示为小端二进制的1。如果插入到空Trie中，结果就是含有一个右侧叶子节点的树。它只有一层分支。十进制的2将被表示为小端二进制的01，十进制的3表示为小端二进制$(11)_2$。这样就消除了有效位前面的0，每一个整数key在Trie中的位置可以被唯一确定。
+\subsection{定义}
+我们可以重用二叉树的定义。一个节点要么为空，要么包含左右两个分支和一个值（值可以为空）左侧分支编码为0，右侧分支编码为1。
 
-%=========================================================================
-%       Definition of integer trie
-%=========================================================================
-\subsection{整数Trie的定义}
-我们可以重用二叉树的结构来定义binary trie。一个binary trie的节点要么为空，要么包含左右两个分支。非空节点可以保存额外的附加数据（satellite data）。左侧分支编码为0，右侧分支编码为1。
-
-下面的Haskell例子代码定义了Trie的代数数据类型。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
+\lstset{frame = single}
+\begin{Haskell}
 data IntTrie a = Empty
                | Branch (IntTrie a) (Maybe a) (IntTrie a)
-\end{lstlisting}
+\end{Haskell}
 
-在命令式编程语言中，Trie通常被定义为结构或类，如下面的Python例子代码所示：
+对于binary trie中的任一节点，其对应的整数键是由节点大的位置唯一确定的。因此我们无需在节点中存储键，而只需存储值。键的类型被固定为整数，如果值的类型为$A$，则树的类型为$IntTrie\ A$。
 
-\lstset{language=Python}
-\begin{lstlisting}
-class IntTrie:
-    def __init__(self):
-        self.left = self.right = None
-        self.value = None
-\end{lstlisting}
-
-
-% ================================================================
-%               Insertion of integer trie
-% ================================================================
 \subsection{插入}
 \index{整数trie!插入}
 
