@@ -88,36 +88,22 @@ insert\ (l, v', r)\ k\ v & = & \begin{cases}
 \end{array}
 \ee
 
-如果待插入的key已经存在，这一算法会覆盖原来存储的数据。也可以使用链表保存同一key上的所有数据。
-
-图\ref{int-trie}的例子是依次插入射对\{$ 1 \rightarrow a, 4 \rightarrow b, 5 \rightarrow c, 9 \rightarrow d$\}的结果。
+如果$k = 0$，我们将$v$存入节点。如果$T = \nil$，结果为$(\nil, \textit{Just}\ v, \nil)$。只要$k \neq 0$，我们就根据$k$的奇偶性前进，遇到$\nil$就建立一个空叶子节点$(\nil, \textit{Nothing}, \nil)$。如果$k$已经存在，这一算法覆盖以前的值。我们也可以用一个列表存储多个值，并将$v$添加到列表中。图\ref{int-trie}的例子是依次插入映射对\{$ 1 \rightarrow a, 4 \rightarrow b, 5 \rightarrow c, 9 \rightarrow d$\}的结果。下面的例子程序实现了$insert$函数：
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.5]{img/int-trie.ps}
-  \caption{用小端整数binary trie实现的映射：
+  \caption{用小端整数trie，包含映射：
           \{$ 1 \rightarrow a, 4 \rightarrow b, 5 \rightarrow c, 9 \rightarrow d$\}}
   \label{fig:int-trie}
 \end{figure}
 
-下面的Haskell例子程序实现了这一插入算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-insert t 0 x = Branch (left t) (Just x) (right t)
-insert t k x
-    | even k = Branch (insert (left t) (k `div` 2) x) (value t) (right t)
-    | otherwise = Branch (left t) (value t) (insert (right t) (k `div` 2) x)
-
-left (Branch l _ _) = l
-left Empty = Empty
-
-right (Branch _ _ r) = r
-right Empty = Empty
-
-value (Branch _ v _) = v
-value Empty = Nothing
-\end{lstlisting}
+\begin{Haskell}
+insert Empty k x = insert (Branch Empty Nothing Empty) k x
+insert (Branch l v r) 0 x = Branch l (Just x) r
+insert (Branch l v r) k x | even k    = Branch (insert l (k `div` 2) x) v r
+                          | otherwise = Branch l v (insert r (k `div` 2) x)
+\end{Haskell}
 
 也可以用命令式的方式定义插入算法。由于key是小端整数，插入时，我们需要从右侧逐位进行处理。若为0，则递归插入左子树；若为1，则插入右子树。如果子树为空，我们需要创建一个新节点。重复这一步骤直到处理完最后一位（最左侧的位）后停止。
 
