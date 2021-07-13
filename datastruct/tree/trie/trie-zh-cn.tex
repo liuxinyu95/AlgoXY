@@ -139,35 +139,33 @@ insert (Branch l v r) k x | even k    = Branch (insert l (k `div` 2) x) v r
 \subsection{查找}
 \index{整数trie!查找}
 
-在小端整数trie中查找数字$k$时，若树为空，则显然$k$不存在；如果$k=0$，则返回当前根节点中存储的数据。否则根据最后一位是0还是1，在左右分支进行递归查找。
+在一棵非空的小端整数trie中查找$k$时，若$k = 0$，则返回根节点中存储的数据。否则根据最后一位是0还是1，在左右子树进行递归查找。
 
 \be
-lookup(T, k) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & T = \phi \\
-  d & k = 0 \\
-  lookup(T_l, k / 2) & even(k) \\
-  lookup(T_r, \lfloor k / 2 \rfloor) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+lookup\ \nil\ k & = & \textit{Nothing} \\
+lookup\ (l, v, r)\ 0 & = & v \\
+lookup\ (l, v, r)\ k & = & \begin{cases}
+  even(k): & lookup\ l\ \dfrac{k}{2} \\
+  odd(k):  & lookup\ r\ \lfloor \dfrac{k}{2} \rfloor \\
+\end{cases}
+\end{array}
 \ee
 
-下面的Haskell例子程序实现了递归查找算法。
+下面的例子程序实现了$lookup$函数：
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-search Empty k = Nothing
-search t 0 = value t
-search t k = if even k then search (left t) (k `div` 2)
-             else search (right t) (k `div` 2)
-\end{lstlisting}
+\begin{Haskell}
+lookup Empty _ = Nothing
+lookup (Branch _ v _) 0 = v
+lookup (Branch l _ r) k | even k    = lookup l (k `div` 2)
+                        | otherwise = lookup r (k `div` 2)
+\end{Haskell}
 
-也可以用命令式的方式实现查找，我们从$k$的二进制形式最右侧开始，逐位检查，如果为0，就继续在左侧分支查找；如果为1，则在右侧分支查找。直到所有位都处理完毕。
+我们也可以消除递归实现迭代式的查找算法：
 
 \begin{algorithmic}[1]
 \Function{Lookup}{$T, k$}
-  \While{$k \neq 0 \land T \neq $NIL}
+  \While{$k \neq 0$ and $T \neq $NIL}
     \If{ \Call{Even?}{$k$} }
       \State $T \gets$ \Call{Left}{$T$}
     \Else
@@ -176,27 +174,11 @@ search t k = if even k then search (left t) (k `div` 2)
     \State $k \gets \lfloor k/2 \rfloor$
   \EndWhile
   \If{$T \neq $ NIL}
-    \State \Return \Call{Data}{$T$}
+    \State \Return \Call{Value}{$T$}
   \Else
-    \State \Return not found \EndIf
+    \State \Return NIL \EndIf
 \EndFunction
 \end{algorithmic}
-
-下面的Python例子程序实现了查找算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def lookup(t, key):
-    while t is not None and k != 0:
-        if key & 1 == 0:
-            t = t.left
-        else:
-            t = t.right
-        key = key >> 1
-    return None if t is None else t.value
-\end{lstlisting}
-
-若待查找的key有$m$位，则查找算法的复杂度为$O(m)$。
 
 % ================================================================
 %               Int 前缀树
