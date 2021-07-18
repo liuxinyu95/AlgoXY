@@ -402,43 +402,38 @@ match k p m = (mask k m) == p
 \subsection{查找}
 \index{整数前缀树!查找}
 
-如果前缀树为空或仅包含一个叶子节点，且节点的key不等于待查找的整数，则查找结果为空。如果树仅有一个叶子节点，且节点的key恰好等于待查找的值，则查找结果就是该叶子节点所包含的数据。否则，树$T$是一个分支节点，我们需要比较节点中存储的最长公共前缀是否和待查找的整数一致，并根据下一位是0还是1进行递归查找。如果最长公共前缀不一致，说明待查找的整数不存在。
+当查找整数$k$时，如果树$T = \nil$为空，或者是键为其它整数的叶子节点$T = (k', v)$，则$k$不存在；如果$k = k'$，则$v$为查找结果。如果$T = (p, m, l, r)$是一个分枝节点，我们需要检查公共前缀$p$和$k$在掩码$m$下是否匹配，并根据下一位递归在子树$l$或$r$中查找。如果不匹配公共前缀$p$，则$k$不存在。
 
 \be
-lookup(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & T = \phi \lor (T = (k', v), k' \neq k) \\
-  v & T = (k', v), k' = k \\
-  lookup(T_l, k) & T = (p, m, T_l, T_r), match(k, p, m), zero(k, m) \\
-  lookup(T_r, k) & T = (p, m, T_l, T_r), match(k, p, m), \lnot zero(k, m) \\
-  \phi & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+lookup\ \nil\ k & = & \textit{Nothing} \\
+lookup\ (k', v)\ k & = & \begin{cases}
+  k = k': & \textit{Just}\ v \\
+  otherwise: & \textit{Nothing} \\
+  \end{cases} \\
+lookup\ (p, m, l, r)\ k & = & \begin{cases}
+  match(k, p, m): & \begin{cases}
+    zero(k, m): & lookup\ l\ k \\
+    otherwise: &  lookup\ r\ k \\
+    \end{cases} \\
+  otherwise: & \textit{Nothing} \\
+  \end{cases}\\
+\end{array}
 \ee
 
-下面的Haskell例子程序实现了递归查找算法。
+%% \begin{Haskell}
+%% lookup Empty _ = Nothing
+%% lookup (Leaf k' v) k = if k == k' then Just v else Nothing
+%% lookup (Branch p m l r) k | match k p m = if zero k m then lookup l k else lookup r k
+%%                           | otherwise = Nothing
+%% \end{Haskell}
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-search t k
-  = case t of
-      Empty -> Nothing
-      Leaf k' x -> if k==k' then Just x else Nothing
-      Branch p m l r
-             | match k p m -> if zero k m then search l k
-                              else search r k
-             | otherwise -> Nothing
-\end{lstlisting}
-
-也可以用命令式方法实现查找。根据前缀树的性质，如果待查找的整数和根节点有相同的前缀，我们接下来检查前缀后的位。如果是0，接下来在左子树查找；如果是1，则在右子树继续查找。
-
-当到达一个叶子节点时，我们需要比较节点的key是否等于待查找的整数。算法描述如下：
+我们也可以消除递归用迭代的命令式方法实现查找。
 
 \begin{algorithmic}[1]
 \Function{Look-Up}{$T, k$}
   \If{$T =$ NIL}
-    \State \Return $NIL$ \Comment{没找到}
+    \State \Return NIL
   \EndIf
   \While{$T$ is not leaf, and \textproc{Match}($k$, \Call{Prefix}{$T$}, \Call{Mask}{$T$})}
     \If{\textproc{Zero?}($k$, \Call{Mask}{$T$})}
@@ -448,27 +443,12 @@ search t k
     \EndIf
   \EndWhile
   \If{$T$ is leaf, and \Call{Key}{$T$} $=k$}
-    \State \Return \Call{Data}{$T$}
+    \State \Return \Call{Value}{$T$}
   \Else
-    \State \Return $NIL$ \Comment{没找到}
+    \State \Return NIL
   \EndIf
 \EndFunction
 \end{algorithmic}
-
-下面的Python例子程序实现了这一查找算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def lookup(t, key):
-    while t is not None and (not t.isleaf()) and t.match(key):
-        if zero(key, t.mask):
-            t = t.left
-        else:
-            t = t.right
-    if t is not None and t.isleaf() and t.key == key:
-        return t.value
-    return None
-\end{lstlisting}
 
 
 % ================================================================
