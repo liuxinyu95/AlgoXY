@@ -220,136 +220,106 @@ data IntTree a = Empty
 
 \subsection{插入}
 \index{整数前缀树!插入}
-当插入key时，如果树为空，结果为一个叶子节点，key和相关的数据存储于节点中，如图\ref{fig:int-patricia-insert-a}所示。
-
-\begin{figure}[htbp]
-  \centering
-    \begin{tikzpicture}[scale=1,
-      treenode/.style={circle, draw, inner sep= 0pt, minimum size = .6cm}]
-    \node[treenode] at (-2, 0) {NIL};
-    \node[treenode] at (2, 0) {12};
-    \end{tikzpicture}
-  %\includegraphics[scale=0.8]{img/int-patricia-insert-a.ps}
-  \caption{左侧：树为空；右侧：插入整数12后}
-  \label{fig:int-patricia-insert-a}
-\end{figure}
-
-如果树只有一个叶子节点$x$，我们把待插入的key和数据放入一个新的叶子节点$y$中。然后创建一个新的分支节点，并令$x$和$y$为这一新分支节点的两个子节点。为了确定$y$应该在左边还是右边，我们需要找到$x$和$y$的最长公共前缀。举个例子，假设$key(x)$为12（二进制1100）,$key(y)$为15（二进制1111），则最长公共前缀为二进制$11oo$，其中$o$代表我们不关心的二进制位，我们可以使用一个整数通过掩码来去掉这些位。在这个例子中，可以用4（二进制100）作为掩码。最长公共前缀后面的一位代表$2^1$。$key(x)$中这一位是0，而$key(y)$中这一位是1。因此$x$是左子树，而$y$是右子树。这个例子如图\ref{fig:int-patricia-insert-b}所示。
+当向树$T$插入整数$y$时，若$T$为空，我们用$y$创建一个叶子节点；如果$T$本身只包含一个叶子节点$x$，我们创建一个分枝，并将两个叶子节点$x$和$y$分别设为左右子树。为了确定左右，我们需要找到$x$和$y$的最长公共前缀$p$。例如，$x = 12 = (1100)_2$、$y = 15 = (1111)_2$，则$p = (11oo)_2$，其中$o$表示我们不关心的二进制位，我们使用一个掩码整数$m$来去掉（mask）这些位。在本例中，$m = 4 = (100)_2$，最长公共前缀$p$后面的一位代表$2^1$。$x$中这一位是0，而$y$中这一位是1。因此$x$是左子树，而$y$是右子树。如图\ref{fig:int-patricia-insert-b}所示。
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.7]{img/int-patricia-insert-b.ps}
-  \caption{左侧：只含有一个叶子节点12的树；右侧：插入整数15后}
+  \caption{Left: $T$ is a leaf of 12; Right: After insert 15.}
   \label{fig:int-patricia-insert-b}
 \end{figure}
 
-如果树既不为空，也不是一个单独的叶子节点，我们需要先比较待插入的key和根节点中记录的最长公共前缀是否一致。如果一致，则根据接下来的位是0还是1递归地在左侧或右侧进行插入。例如，若将整数14（二进制1110）插入图\ref{fig:int-patricia-insert-b}中所示的树中，由于最长公共前缀是$11oo$而接下来的一位（$2^1$位）是1，所以需要将14递归插入到右子树。
-
-最后，如果待插入的整数和根节点中记录的最长公共前缀不一致，我们需要从根节点分出一棵新的枝杈。图\ref{fig:int-patricia-insert-c}展示了这两种不同的情况。
+如果树$T$既不为空，也不是叶子节点，我们需要先比较$y$是否和$T$的最长公共前缀$p$匹配。如果匹配，则根据下一位是0或1递归地在左、右子树中插入。例如，若将$y = 14 = (1110)_2$插入图\ref{fig:int-patricia-insert-b}所示的树，由于最长公共前缀$p = (11oo)_2$，并且接下来的一位（$2^1$位）是1，我们递归地将$y$插入右子树。如果$y$和最长公共前缀$p$不匹配，我们需要分出一个新叶子节点。如图\ref{fig:int-patricia-insert-c}所示。
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{插入整数14。它和最长公共前缀$(1100)_2$一致。需要将其递归插入到右侧分支中。}{\includegraphics[scale=0.5]{img/int-patricia-insert-c.ps}}\\
-  \subcaptionbox{插入整数5。它和最长公共前缀$(1100)_2$不一致。需要新分杈出一个分支。}{\includegraphics[scale=0.5]{img/int-patricia-insert-d.ps}}
-  \caption{向分支节点插入整数}
+  \subcaptionbox{插入$14 = (1110)_2$，它和最长公共前缀$p = (1100)_2$匹配，递归插入右子树。}{\includegraphics[scale=0.5]{img/int-patricia-insert-c.ps}}\\
+  \subcaptionbox{插入$5 = (101)_2$，它和最长公共前缀$p = (1100)_2$不匹配，分出一个新叶子节点。}{\includegraphics[scale=0.5]{img/int-patricia-insert-d.ps}}
+  \caption{根节点为分枝。}
   \label{fig:int-patricia-insert-c}
 \end{figure}
 
-记要插入的整数为$k$，数据为$v$的节点为$(k, v)$，分支节点记为$(p, m, T_l, T_r)$，其中$p$代表最长公共前缀，$m$表示掩码，$T_l$和$T_r$分别代表左右子分支。上述情况可以归纳为下面的插入算法：
+如果整数键$k$值为$v$，令叶子节点为$(k, v)$。如果是分枝节点，则记为$(p, m, l, r)$，其中$p$是最长公共前缀，$m$是掩码，$l$和$r$分别是左右子树。下面的$insert$函数包含了上述三种情况：
 
 \be
-insert(T, k, v) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (k, v) & T = \phi \lor T = (k, v') \\
-  join(k, (k, v), k', T) & T = (k', v') \\
-  (p, m, insert(T_l, k, v), T_r) & T = (p, m, T_l, T_r), match(k, p, m), zero(k, m) \\
-  (p, m, T_l, insert(T_r, k, v)) & T = (p, m, T_l, T_r), match(k, p, m), \lnot zero(k, m) \\
-  join(k, (k, v), p, T) & T = (p, m, T_l, T_r), \lnot match(k, p, m)
-  \end{array}
-\right.
+\resizebox{\textwidth}{!}{\ensuremath{
+\begin{array}{rcl}
+insert\ \nil\ k\ v\ & = & (k, v) \\
+insert\ (k, v')\ k\ v\ & = & (k, v) \\
+insert\ (k', v')\ k\ v\ & = & join\ k\ (k, v)\ k'\ (k', v') \\
+insert\ (p, m, l, r)\ k\ v\ & = & \begin{cases}
+  match(k, p, m): & \begin{cases}
+    zero(k, m): & (p, m, insert\ l\ k\ v) \\
+    otherwise:  & (p, m, insert\ r\ k\ v) \\
+  \end{cases} \\
+  otherwise: & join\ k\ (k, v)\ p\ (p, m, l, r) \\
+\end{cases} \\
+\end{array}
+}}
 \ee
 
-第一行处理边界情况，$T$或者为空，或者是一个具有同样key的叶子节点。我们用新的值覆盖此前的数据。
-
-第二行处理$T$为叶子节点，但是key不同的情况。这时需要分支出一个新的叶子节点，为此，我们需要计算出最长公共前缀，并判断哪个在左侧，哪个在右侧。函数$join(k_1, T_1, k_2, T_2)$负责这些处理，我们稍后会定义它。
-
-第三、四行处理$T$为分支节点，且分支代表的前缀和待插入的整数一致的情况。如果接下来的一位是0，则第三行会递归地向左侧分支进行插入。否则第四行递归地向右侧分支插入。
-
-最后一行处理$T$为分支节点，但是key不一致的情况。我门需要调用$join$函数来分支出一个新的叶子节点。
-
-接下来需要定义函数$match(k, p, m)$用以判断整数$k$在掩码$m$以上的位是否和$p$一致。也就是检查$p$在掩码以上的位是否为$k$的一个前缀。例如，一个分支节点的key表示为二进制$(p_np_{n-1} ... p_i...p_0)_2$，待插入的key $k$的二进制形式为$(k_nk_{n-1} ... k_i ... k_0)_2$，掩码为$(100...0)_2=2^i$。则称$k$、$p$、$m$一致当且仅当对于任意$j$, $i \leq j \leq n$有$p_j=k_j$。
-
-我们可以通过判断等式$mask(k, m) = p$是否成立来实现$match$函数。其中$mask(x, m) = \overline{m-1} \& x$。即先对$m-1$按位取反，然后将结果和$x$按位进行与运算。
-
-函数$zero(k, m)$检查公共前缀接下来的一位是否为0。我们可以将掩码$m$向右做1位移位运算，接下来和$k$进行按位与运算。
+当$T = \nil$为空时，我们创建一个叶子节点；如果键相同，我们用新值覆盖此前的值。函数$match(k, p, m)$检查整数$k$和最长公共前缀$p$在掩码$m$下是否相同：$mask(k, m) = p$，其中$mask(k, m) = \overline{m-1} \& k$。它先对$m - 1$按位取反，然后和$k$按位与。函数$zero(k, m)$检查掩码$m$之后的二进制位是0还是1。我们将$m$向右移动1位，然后和$k$按位与：
 
 \be
-zero(k, m) = k \& shift_r(m, 1)
+zero(k, m) = k \& (m >> 1)
 \ee
 
-举例来说，若$m = (100...0)_2 = 2^i$、$k = (k_nk_{n-1}...k_i1...k_0)_2$，由于$k_i$的下一位是1，所以$zero(k, m)$的结果为false；反之，若$k = (k_nk_{n-1}...k_i0...k_0)_2$，则结果为true。
-
-函数$join(p_1, T_1, p_2, T_2)$接受两个前缀和两棵树作为参数。它找出$p_1$与$p_2$的最长公共前缀，然后创建一个新的分支节点，并将$T_1$和$T_2$作为子节点。
+函数$join(p_1, T_1, p_2, T_2)$接受两个前缀和两棵树。它从$p_1$、$p_2$抽出最长公共前缀$(p, m) = LCP(p_1, p_2)$，创建一个新分枝，并将$T_1$、$T_2$设为子树：
 
 \be
-join(p_1, T_1, p_2, T_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (p, m, T_1, T_2) & zero(p1, m), (p, m) = LCP(p_1, p_2) \\
-  (p, m, T_2, T_1) & \lnot zero(p1, m)
-  \end{array}
-\right.
+join(p_1, T_1, p_2, T_2) = \begin{cases}
+  zero(p1, m): & (p, m, T_1, T_2) \\
+  otherwise: & (p, m, T_2, T_1) \\
+\end{cases}
 \ee
 
-为了计算$p_1$和$p_2$的最长公共前缀，我们可以先对它们计算异或，然后用这个结果的有效位数产生一个掩码$m = 2^{|xor(p_1,p_2)|}$。最长公共前缀就可以用这个掩码和$p_1$与$p_2$中的任何一个得出。例如：
+为了计算最长公共前缀，我们先对$p_1$、$p_2$按位计算异或，然后数出最高位$highest(xor(p_1, p_2))$：
 
-\be
-p = mask(p_1, m)
-\ee
+\[
+\begin{array}{rcl}
+highest(0) & = & 0 \\
+highest(n) & = & 1 + highest(n >> 1) \\
+\end{array}
+\]
 
-下面的Haskell例子程序实现了插入算法：
+接下来我们产生掩码$m = 2^{highest(xor(p_1,p_2))}$。最长公共前缀$p$可以用掩码$m$和$p_1$、$p_2$中的任何一个得出。例如$p = mask(p_1, m)$。下面的例子程序实现了$insert$函数：
 
-\begin{lstlisting}[style=Haskell]
-import Data.Bits
-
+\begin{Haskell}
 insert t k x
    = case t of
        Empty -> Leaf k x
-       Leaf k' x' -> if k==k' then Leaf k x
-                     else join k (Leaf k x) k' t -- t@(Leaf k' x')
+       Leaf k' x' -> if k == k' then Leaf k x
+                     else join k (Leaf k x) k' t
        Branch p m l r
           | match k p m -> if zero k m
                            then Branch p m (insert l k x) r
                            else Branch p m l (insert r k x)
-          | otherwise -> join k (Leaf k x) p t -- t@(Branch p m l r)
+          | otherwise -> join k (Leaf k x) p t
 
 join p1 t1 p2 t2 = if zero p1 m then Branch p m t1 t2
                                 else Branch p m t2 t1
     where
       (p, m) = lcp p1 p2
 
-lcp :: Prefix -> Prefix -> (Prefix, Mask)
 lcp p1 p2 = (p, m) where
     m = bit (highestBit (p1 `xor` p2))
     p = mask p1 m
 
 highestBit x = if x == 0 then 0 else 1 + highestBit (shiftR x 1)
 
-mask x m = (x .&. complement (m-1)) -- complement表示按位取反
+mask x m = x .&. complement (m - 1)
 
 zero x m = x .&. (shiftR m 1) == 0
 
 match k p m = (mask k m) == p
-\end{lstlisting}
+\end{Haskell}
 
-插入算法也可以用命令式方法实现：
+我们也可以用命令式方式实现实现$insert$：
 
 \begin{algorithmic}[1]
 \Function{Insert}{$T, k, v$}
   \If{$T = $ NIL}
-    \State $T \gets$ \Call{Create-Leaf}{$k, v$}
-    \State \Return $T$
+    \State \Return \Call{Create-Leaf}{$k, v$}
   \EndIf
   \State $y \gets T$
   \State $p \gets$ NIL
@@ -362,7 +332,7 @@ match k p m = (mask k m) == p
     \EndIf
   \EndWhile
   \If{$y$ is leaf, and $k = $ \Call{Key}{$y$}}
-    \State \Call{Data}{$y$} $\gets v$
+    \State \Call{Value}{$y$} $\gets v$
   \Else
     \State $z \gets$ \textproc{Branch}($y$, \Call{Create-Leaf}{$k, v$})
     \If{$p = $ NIL}
@@ -379,12 +349,12 @@ match k p m = (mask k m) == p
 \EndFunction
 \end{algorithmic}
 
-函数\textproc{Branch}($T_1, T_2$)的作用和前面定义的$join$类似。它创建一个新的分支节点，计算最长公共前缀，然后将$T_1$和$T_2$设置为两棵子树。
+其中\textproc{Branch}($T_1, T_2$)创建一个新分枝，抽出最长公共前缀，并将$T_1$和$T_2$设为子树。
 
 \begin{algorithmic}[1]
 \Function{Branch}{$T_1, T_2$}
   \State $T \gets$ \Call{Empty-Node}{}
-  \State $($ \Call{Prefix}{$T$}, \Call{Mask}{$T$} $) \gets$ \textproc{LCP}(\Call{Prefix}{$T_1$}, \Call{Prefix}{$T_2$})
+  \State (\Call{Prefix}{$T$}, \Call{Mask}{$T$}) $\gets$ \textproc{LCP}(\Call{Prefix}{$T_1$}, \Call{Prefix}{$T_2$})
   \If{\textproc{Zero?}(\Call{Prefix}{$T_1$}, \Call{Mask}{$T$})}
     \State \Call{Left}{$T$} $\gets T_1$
     \State \Call{Right}{$T$} $\gets T_2$
@@ -394,73 +364,41 @@ match k p m = (mask k m) == p
   \EndIf
   \State \Return $T$
 \EndFunction
+\Statex
+\Function{Zero?}{$x, m$}
+  \State \Return $(x \& \lfloor \dfrac{m}{2} \rfloor) = 0$
+\EndFunction
 \end{algorithmic}
 
-下面的Python例子程序实现了插入算法：
+函数\textproc{LCP}获取两个整数的最长公共前缀：
 
-\lstset{language=Python}
-\begin{lstlisting}
-def insert(t, key, value):
-    if t is None:
-        return IntTree(key, value)
-    node = t
-    parent = None
-    while (not node.isleaf()) and node.match(key):
-        parent = node
-        if zero(key, node.mask):
-            node = node.left
-        else:
-            node = node.right
-    if node.isleaf() and key == node.key:
-        node.value = value
-    else:
-        p = branch(node, IntTree(key, value))
-        if parent is None:
-            return p
-        parent.replace(node, p)
-    return t
-\end{lstlisting}
+\begin{algorithmic}[1]
+\Function{LCP}{$a, b$}
+  \State $d \gets xor(a, b)$
+  \State $m \gets 1$
+    \While{$d \neq 0$}
+    \State $d \gets \lfloor \dfrac{d}{2} \rfloor$
+    \State $m \gets 2m$
+  \EndWhile
+  \State \Return (\Call{MaskBit}{$a, m$}, $m$)
+\EndFunction
+\Statex
+\Function{MaskBit}{$x, m$}
+  \State \Return $x \& \overline{m - 1}$
+\EndFunction
+\Statex
+\end{algorithmic}
 
-辅助函数\texttt{branch}和\texttt{lcp}等定义如下：
-
-\begin{lstlisting}
-def maskbit(x, mask):
-    return x & (~(mask - 1))
-
-def zero(x, mask):
-    return x & (mask >> 1) == 0
-
-def lcp(p1, p2):
-    diff = p1 ^ p2
-    mask = 1
-    while diff != 0:
-        diff >>= 1
-        mask <<= 1
-    return (maskbit(p1, mask), mask)
-
-def branch(t1, t2):
-    t = IntTree()
-    (t.prefix, t.mask) = lcp(t1.prefix, t2.prefix)
-    if zero(t1.prefix, t.mask):
-        t.left, t.right = t1, t2
-    else:
-        t.left, t.right = t2, t1
-    return t
-\end{lstlisting}
-
-图\ref{fig:int-patricia-haskell-insert}展示了使用插入算法构造的前缀树。
+图\ref{fig:int-patricia-haskell-insert}展示了使用插入算法构造的前缀树。虽然整数前缀树压缩了链接在一起的节点，但获取最长前缀仍然需要线性扫描二进制位，对$m$位整数，插入算法的复杂度是$O(m)$。
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.6]{img/int-patricia-haskell-insert.ps}
-  \caption{插入映射$1 \rightarrow x, 4 \rightarrow y, 5 \rightarrow z$到一个大端整数前缀树树}
+  \caption{插入映射$1 \rightarrow x, 4 \rightarrow y, 5 \rightarrow z$到大端整数前缀树}
   \label{fig:int-patricia-haskell-insert}
 \end{figure}
 
 
-% ================================================================
-%                 Lookup in int 前缀树
-% ================================================================
 \subsection{查找}
 \index{整数前缀树!查找}
 
