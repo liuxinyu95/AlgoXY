@@ -460,56 +460,36 @@ lookup\ (p, m, l, r)\ k & = & \begin{cases}
 \section{Trie}
 \index{trie}
 
-整数Trie和前缀树可以作为了解文字处理问题的起点，与其相关的技术在编译器实现中有着重要的应用。Haskell语言的编译器GHC（Glasgow Haskell Compiler）在1998年以前的实现中已经使用了整数前缀树\cite{okasaki-int-map}。如果将key的类型扩展为字符，Trie和前缀树就可以成为文字处理的有力武器。
+在整数trie和整数前缀树的基础上，我们可以把键的类型从整数扩展到列表。其中一个特例是作为字符列表的字符串。前缀树和trie可以作为文本处理的有力工具。
 
-% ================================================================
-%                 Definition of Alphabetic trie
-% ================================================================
 \subsection{定义}
-使用字符作为key，仅仅左右两个分支就不够了。拿英语来说，一共有26个字符。如果忽略大小写，一种简单的办法是限定分支（子树）的个数不得超过26。有些简化的实现使用长度为26的数组来管理分支。如图\ref{fig:trie-of-26}所示。
+当键从二进制0/1扩展到通用列表时，树结构也自然从二叉树扩展为多分枝树。拿英语来说，一共有26个字符，如果忽略大小写，分枝的个数可以达到26，如图\ref{fig:trie-of-26}所示。
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.45]{img/trie-of-26.ps}
-  \caption{最多含有26个分支的字符Trie，包含a、an、another、bool、boy和zoo共6个key}
+  \caption{含有多达26个分枝的trie，包含键：a、an、another、bool、boy、zoo}
   \label{fig:trie-of-26}
 \end{figure}
 
-并非所有的26个分支都含有数据。例如图\ref{fig:trie-of-26}中，根节点的分支中，只有代表'a'、'b'和'z'的3个子分支不为空。其他分支，例如代表'c'的分支，全部是空的。简单起见，我们在接下来的部分不画出这些空的分支。
+并非所有的26棵子树都包含数据。在图\ref{fig:trie-of-26}的根节点的分枝中，只有代表a、b、z的3棵子树不为空。其它分枝，例如代表c的子树，全部是空的。我们可以将这些空子树隐藏起来。如果区分大小写或者进一步将类型从字符串扩展到列表，我们可以通过使用map等数据结构来处理动态数目的分枝。
 
-如果区分大小写，或者处理英语以外的其他语言，分支的数目会超过26。我们可以通过使用Hash表或者map等数据结构来解决动态数目分支的情况。
+一棵trie或者为空，或者是一个节点，包含以下两种情况：
 
-综上，一棵字符Trie或者为空，或者是一个节点。节点的类型有两种：
+\begin{enumerate}
+\item 值为$v$的叶子节点，不含有子树；
+\item 分支节点，包含值$v$和多棵子树。每棵子树对应类型$K$中的某个值$k$。
+\end{enumerate}
 
-\begin{itemize}
-\item 叶子节点，不含有任何子分支；
-\item 分支节点，含有多个子分支，每个子分支都代表一个不同的字符。
-\end{itemize}
+若树中值的类型为$V$，我们记trie的类型为$Trie\ K\ V$。下面的例子程序定义了trie：
 
-叶子节点和分支节点都可能存储相关的数据。下面的Haskell例子代码定义了字符Trie。
+\begin{Haskell}
+data Trie k v = Trie { value :: Maybe v
+                     , subTrees :: [(k, Trie k v)]}
+\end{Haskell}
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-data Trie a = Trie { value :: Maybe a
-                   , children :: [(Char, Trie a)]}
+内容为空的树被定义为：$(\textit{Nothing}, \nil)$
 
-empty = Trie Nothing []
-\end{lstlisting}
-
-下面的ANSI C例子代码给出了字符Trie的结构定义。简单起见，我们限定字符集仅仅包含小写英文字母'a'到'z'。
-
-\lstset{language=C}
-\begin{lstlisting}
-struct Trie {
-    struct Trie* children[26];
-    void* data;
-};
-\end{lstlisting}
-
-
-% ================================================================
-%                 Insertion of Alphabetic trie
-% ================================================================
 \subsection{插入}
 \index{trie!插入}
 
