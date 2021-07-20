@@ -493,48 +493,40 @@ data Trie k v = Trie { value :: Maybe v
 \subsection{插入}
 \index{trie!插入}
 
-记待插入的字符串为$K = k_1k_2...k_n$，其中$k_i$是第$i$个字符。$K'$是除第一个字符$k_1$外的剩余字符串。$v'$是待插入的数据。记树为$T = (v, C)$，其中$v$为根节点保存的数据。$C = \{(c_1, T_1), (c_2, T_2), ..., (c_m, T_m)\}$为子分支的映射。它将字符$c_i$映射到子树$T_i$。如果树$T$为空，则相应的映射$C$也为空。
+考虑插入一对键、值到trie中，其中键为若干元素的列表。令trie为$T = (v, ts)$，其中$v$是树中存储的值，$ts = \{ c_1 \mapsto T_1, c_2 \mapsto T_2, ..., c_m \mapsto T_m \}$包含字符和子树间的映射。元素$c_i$映射到子树$T_iT$。我们可以使用关联列表$[(c_1, T_1), (c_2, T_2), ..., (c_m, T_m)]$或者自平衡树实现映射（见第4、5章）。
 
 \be
-insert(T, K, v') = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (v', C) & K = \phi \\
-  (v, ins(C, k_1, K', v')) & otherwise.
-  \end{array}
-\right.
+\begin{array}{rcl}
+insert\ (v, ts)\ \nil\ v' & = & (v', ts) \\
+insert\ (v, ts)\ (k:ks)\ v' & = & (v, ins\ ts) \\
+\end{array}
 \ee
 
-如果待插入的key为空串，我们用新数据$v'$覆盖以前的数据$v$。否则，需要找到对应子分支的映射，并递归进行插入。这一过程由函数$ins(C, k_1, K', v')$实现。它逐一检查$C$中的字符－子树映射对。令$C'$为除第一个映射以外的其他映射，这一函数可以定义如下：
+如果键为空，我们覆盖掉以前的值；否则，我们取出第一个元素$k$，找到映射到$k$的子树，并递归将$ks$和$v'$插入：
 
 \be
-ins(C, k_1, K', v') = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{(k_1, insert((\phi, \phi), K', v'))\} & C = \phi \\
-  \{k_1, insert(T_1, K', v')\} \cup C' & k_1 = c_1 \\
-  \{(c_1, T_1)\} \cup ins(C', k_1, K', v') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+ins\ \nil & = & [k \mapsto insert\ (\textit{Nothing}, \nil)\ ks\ v'] \\
+ins\ ((c \mapsto t) : ts) & = & \begin{cases}
+  c = k: & (k \mapsto insert\ t\ ks\ v') : ts \\
+  otherwise: & (c \mapsto t) : (ins\ ts) \\
+  \end{cases}
+\end{array}
 \ee
 
-若$C$为空，我们将字符$k_1$映射到一个新的空节点上（包含一个空值和一个空子树列表），然后递归插入剩余的字符；否则算法找到字符$k_1$映射到的子树，然后递归进行插入。
+如果没有子树映射到$k$，我们就新建一棵空子树$t = (\textit{Nothing}, \nil)$，并将$k$映射到其上；否则，我们找到映射到$k$的子树$t$，递归地向$t$中插入$ks$和$v'$。下面的例子程序实现了$insert$函数，它使用关联列表保存映射。
 
-下面的Haskell例子程序实现了这一插入算法。
+\begin{Haskell}
+insert (Trie _ ts) [] x = Trie (Just x) ts
+insert (Trie v ts) (k:ks) x = Trie v (ins ts) where
+    ins [] = [(k, insert empty ks x)]
+    ins ((c, t) : ts) = if c == k then (k, insert t ks x) : ts
+                        else (c, t) : (ins ts)
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-insert t []     x = Trie (Just x)  (children t)
-insert t (k:ks) x = Trie (value t) (ins (children t) k ks x) where
-    ins [] k ks x = [(k, (insert empty ks x))]
-    ins (p:ps) k ks x = if fst p == k
-                        then (k, insert (snd p) ks x):ps
-                        else p:(ins ps k ks x)
-\end{lstlisting}
+empty = Trie Nothing []
+\end{Haskell}
 
-也可以用命令式方法实现插入。我们从根节点开始，逐一检查字符串中的每个字符和相应的分支。如果为空，就创建一个新的节点，然后处理下一个字符和对应的分支。我们重复这一过程直到处理完所有的字符。最后将数据存入此刻到达的节点。
-
-插入算法的描述如下：
+我们也可以消除递归，实现迭代方式的$insert$函数：
 
 \begin{algorithmic}[1]
 \Function{Insert}{$T, k, v$}
@@ -543,51 +535,18 @@ insert t (k:ks) x = Trie (value t) (ins (children t) k ks x) where
   \EndIf
   \State $p \gets T$
   \For{each $c$ in $k$}
-    \If{\Call{Children}{$p$}[c] = NIL}
-      \State \Call{Children}{$p$}[c] $\gets$ \Call{Empty-Node}{}
+    \If{\Call{Sub-Trees}{$p$}[c] = NIL}
+      \State \Call{Sub-Trees}{$p$}[c] $\gets$ \Call{Empty-Node}{}
     \EndIf
-    \State $p \gets $ \Call{Children}{$p$}[c]
+    \State $p \gets $ \Call{Sub-Trees}{$p$}[c]
   \EndFor
-  \State \Call{Data}{$p$} $\gets v$
+  \State \Call{Value}{$p$} $\gets v$
   \State \Return $T$
 \EndFunction
 \end{algorithmic}
 
-下面的ANSI C例子程序实现了这一插入算法。
+若键的类型为$[K]$（$K$的列表），若$K$是包含$m$个元素的有限集，键的长度为$n$，则插入算法的复杂度为$O(mn)$。当键是小写英文字符串时，$m = 26$，插入操作的复杂度和字符串长度成正比。
 
-\lstset{language=C}
-\begin{lstlisting}
-struct Trie* insert(struct Trie* t, const char* key, void* value) {
-    int c;
-    struct Trie *p;
-    if(!t)
-        t = create_node();
-    for (p = t; *key; ++key, p = p->children[c]) {
-        c = *key - 'a';
-        if (!p->children[c])
-            p->children[c] = create_node();
-    }
-    p->data = value;
-    return t;
-}
-\end{lstlisting}
-
-其中函数\texttt{create\_node}创建一个空节点，并将所有的子分支设置为空。
-
-\begin{lstlisting}
-struct Trie* create_node() {
-    struct Trie* t = (struct Trie*) malloc(sizeof(struct Trie));
-    int i;
-    for (i = 0; i < 26; ++i)
-        t->children[i] = NULL;
-    t->data = NULL;
-    return t;
-}
-\end{lstlisting}
-
-% ================================================================
-%                 Look up in Alphabetic trie
-% ================================================================
 \subsection{查找}
 \index{trie!查找}
 
