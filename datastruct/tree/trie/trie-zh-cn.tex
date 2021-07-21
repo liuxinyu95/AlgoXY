@@ -612,124 +612,100 @@ data PrefixTree k v = PrefixTree { value :: Maybe v
 \subsection{插入}
 \index{前缀树!插入}
 
-插入字符串$s$时，若树为空，则创建一个叶子节点，如图\ref{fig:patricia-insert}（a）所示。否则，我们逐一检查子分支映射。如果存在某个子分支$T_i$对应到字符串$s_i$，并且$s_i$和$s$存在共同的前缀，我们分叉出一个新的分支$T_j$。具体来说，我们创建一个新的内部分支节点，将其映射到公共前缀，然后将$T_i$和$T_j$作为新节点的两棵子树。$T_i$和$T_j$共有这一前缀。如图\ref{fig:patricia-insert}（b）所示。这里存在两种特殊情况：一种是$s$为$s_i$的前缀，如图\ref{fig:patricia-insert}（c）所示；另外一种是$s_i$为$s$的前缀，如图\ref{fig:patricia-insert}（d）所示。
+插入字符串$s$时，若前缀树为空，我们为$s$创建一个叶子节点，如图\ref{fig:patricia-insert}(a)所示。如果$s$和某个子树$t_i$相对应$s_i$存在公共前缀，我们创建一个新叶子节点$t_j$，抽出公共前缀，并将其映射到一个新分枝$t'$上，然后令$t_i$、$t_j$分别为$t'$的两棵子树。如图\ref{fig:patricia-insert}(b)所示。这里有两种特殊情况：$s$为$s_i$的前缀，如图\ref{fig:patricia-insert}(c) $\to$ (e)；以及$s_i$为$s$的前缀，如图\ref{fig:patricia-insert}(d) $\to$ (e)。
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{将字符串boy插入一空树，结果为一叶子节点。}{\hspace{.2\textwidth}\includegraphics[scale=0.45]{img/patricia-insert-a.ps}\hspace{.1\textwidth}}\hspace{.1\textwidth}
-  \subcaptionbox{继续插入bool，创建一新分支，对应的公共前缀为bo。}{\hspace{.1\textwidth}\includegraphics[scale=0.45]{img/patricia-insert-b.ps}\hspace{.2\textwidth}} \\
-  \subcaptionbox{以字符串an作为key将数据$y$插入。根节点存有数据$x$，并对应前缀another。}{\hspace{.3\textwidth}\includegraphics[scale=0.45]{img/patricia-insert-c.ps}\hspace{.3\textwidth}} \\
-  \subcaptionbox{某一子分支对应前缀an，将字符串another作为key插入。需要递归将子串other插入到子分支中。}{\hspace{.3\textwidth}\includegraphics[scale=0.45]{img/patricia-insert-d.ps}\hspace{.3\textwidth}}
-  \caption{插入前缀树树的各种情况}
+  \includegraphics[scale=0.4]{img/prefix-tree-insert.png}
+  \caption{(a) 向空树插入boy；(b) 插入bool，创建新分枝；(c) 向(b)插入another (d) 向(b)插入an (e) 向(c)插入an，结果与向(d)插入another相同}
   \label{fig:patricia-insert}
 \end{figure}
 
-记前缀树为$T = (v, C)$，函数$insert(T, k, v')$将字符串$k$和数据$v'$插入到$T$中。
+下面的函数向前缀树$t = (v', ts)$中插入键$s$和值$v$：
 
 \be
-insert(T, k, v') = (v, ins(C, k, v'))
-\ee
-
-这里，我们调用另外一个函数$ins(C, k, v')$还实现插入。如果子分支的映射$C$为空，我们创建一个新叶子节点；否则需要逐一检查每个子树。记$C = \{(k_1, T_1), (k_2, T_2), ..., (k_n, T_n)\}$，$C'$为除去第一个“前缀—映射”对以外的所有其他映射。
-
-\be
-ins(C, k, v') = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{(k, (v', \phi))\} & C = \phi \\
-  \{(k, (v', C_{T_1}))\} \cup C' & k_1 = k \\
-  \{branch(k, v', k_1, T_1)\} \cup C' & match(k_1, k) \\
-  \{(k_1, T_1)\} \cup ins(C', k, v') & otherwise
-  \end{array}
-\right.
-\ee
-
-第一行处理映射为空的边界情况。我们创建一个叶子节点，将$v'$存入其中，然后将$k$映射到这个节点上。并返回这一映射对。第二行处理待插入的key已经存在的情况，我们用新数据$v'$覆盖了原来的数据。其中$C_{T_1}$表示子树$T_1$的所有子分支映射。第三行处理$k$和第一个映射对中的key匹配的情况。最后一行继续查找剩余的子树映射。
-
-我们称两个串$A$和$B$匹配当且仅当它们含有非空的公共前缀。
-
-\be
-match(A, B) = A \neq \phi \land B \neq \phi \land a_1 = b_1
-\ee
-
-其中$a_1$和$b_1$分别是$A$和$B$不为空时的第一个字符。
-
-函数$branch(k_1, v, k_2, T_2)$的参数包括两个串$k_1$和$k_2$，数据$v$和一棵树$T_2$。它查找两个串的最长公共前缀$k = lcp(k_1, k_2)$，记前缀后不同的部分为：$k_1' = k_1 - k$和$k_2' = k_2 - k$。我们首先要处理两种边界情况：$k_1$为$k_2$的前缀，或者$k_2$为$k_1$的前缀。对于第一种情况，我们创建一个新的叶子节点，将$v$存入其中，将$k$映射到这个节点上。然后令$(k_2', T_2)$为唯一的子树映射。对于第二种情况，我们递归地将$k_1$和$v$插入$T_2$。否则，我们需要创建一个分支节点，将其作为最长公共前缀$k$的映射。这一分支节点有两个子树，一个是$(k_2', T_2)$, 另外一个是一个叶子节点，存有数据$v$，并且是$k_1'$的映射。
-
-\be
-branch(k_1, v, k_2, T_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (k, (v, \{(k_2', T_2)\})) & k = k_1 \\
-  (k, insert(T_2, k_1', v)) & k = k_2 \\
-  (k, (\phi, \{(k_1', (v, \phi)), (k_2', T_2)\}) & otherwise
-  \end{array}
-\right.
-\ee
-
-其中
-
-\[
-\begin{array}{l}
-k = lcp(k_1, k_2) \\
-k_1' = k_1 - k \\
-k_2' = k_1 - k
+\begin{array}{rcl}
+insert\ (v', ts)\ \nil\ v & = & (\textit{Just}\ v, ts) \\
+insert\ (v', ts)\ s\ v & = & (v', ins\ ts) \\
 \end{array}
-\]
-
-函数$lcp(A, B)$不断从$A$和$B$中提取相同的字符。记$a_1$和$b_1$分别为$A$和$B$非空时的第一个字符，$A'$和$B'$代表剩余的字符。
-
-\be
-lcp(A, B) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & A = \phi \lor B = \phi \lor a_1 \neq b_1 \\
-  \{a_1\} \cup lcp(A', B') & a_1 = b_1
-  \end{array}
-\right.
 \ee
 
-下面的Haskell例子程序实现了前缀树的插入算法。
+如果键$s$为空，我们用$v$覆盖掉以前的值；否则调用$ins$检查子树和它们的前缀。
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-import Data.List (isPrefixOf)
+\be
+\begin{array}{rcl}
+ins\ \nil\ & = & [ s \mapsto (\textit{Just}\ v, \nil) ] \\
+ins\ (s' \mapsto t) : ts' & = & \begin{cases}
+  match\ s\ s': & (branch\ s\ v\ s'\ t) : ts' \\
+  otherwise: & (s' \mapsto t) : ins\ ts' \\
+  \end{cases}
+\end{array}
+\ee
 
-insert :: Eq k => PrefixTree k v -> [k] -> v -> PrefixTree k v
-insert t ks x = PrefixTree (value t) (ins (children t) ks x) where
-    ins []     ks x = [(ks, leaf x)]
-    ins (p@(ks', t') : ps) ks x
-        | ks' == ks
-            = (ks, PrefixTree (Just x) (children t')) : ps  -- overwrite
-        | match ks' ks
-            = (branch ks x ks' t') : ps
-        | otherwise
-            = p : (ins ps ks x)
+如果节点不含任何子树，我们创建一个值为$v$的子树，并将$s$映射到其上；否则，对于每个子树映射$s' \mapsto t$，我们比较$s'$和$s$。如果它们有公共前缀（通过$match$函数检测），则利用$branch$函数分枝出子树。我们定义两个列表匹配如果它们有公共前缀：
 
-match x y = x /= [] && y /= [] && head x == head y
+\be
+\begin{array}{rcl}
+match\ \nil\ B & = & True \\
+match\ A\ \nil & = & True \\
+match\ (a:as)\ (b:bs) & = & a = b \\
+\end{array}
+\ee
 
-branch :: Eq k => [k] -> v -> [k] -> PrefixTree k v -> ([k], PrefixTree k v)
-branch ks1 x ks2 t2
-    | ks1 == ks
-        -- ex: insert "an" into "another"
-        = (ks, PrefixTree (Just x) [(ks2', t2)])
-    | ks2 == ks
-        -- ex: insert "another" into "an"
-        = (ks, insert t2 ks1' x)
-    | otherwise = (ks, PrefixTree Nothing [(ks1', leaf x), (ks2', t2)])
-   where
-      ks = lcp ks1 ks2
-      m = length ks
-      ks1' = drop m ks1
-      ks2' = drop m ks2
+我们定义函数$(C, A', B') = lcp\ A\ B$来提取列表$A$和$B$的最长公共前缀，其中$C \doubleplus A' = A$且$C \doubleplus B' = B$成立。如果$A$、$B$中的任何一个为空或者它们的第一个元素不同，则公共前缀$C = \nil$；否则，我们递归地从子列表中提取公共前缀，并将头部元素附加在前：
 
-lcp :: Eq k => [k] -> [k] -> [k]
-lcp [] _ = []
-lcp _ [] = []
-lcp (x:xs) (y:ys) = if x==y then x : (lcp xs ys) else []
-\end{lstlisting}
+\be
+\begin{array}{rcl}
+lcp\ \nil\ B & = & (\nil, \nil, B) \\
+lcp\ A\ \nil & = & (\nil, A, \nil) \\
+lcp\ (a:as)\ (b:bs) & = & \begin{cases}
+  a \neq b: & (\nil, a:as, b:bs) \\
+  otherwise: & (a:cs, as', bs')\\
+  \end{cases}
+\end{array}
+\ee
 
-命令式的插入算法描述如下：
+其中$(cs, as', bs') = lcp\ as\ bs$是递归提取的结果，函数$branch\ A\ v\ B\ t$接受两个键$A$、$B$，一个值$v$和树$t$，它提取出$A$、$B$的最长公共前缀$C$，将其映射到新分枝节点上，并设置好子树：
+
+\be
+\begin{array}{l}
+branch\ A\ v\ B\ t = \\
+\ lcp\ A\ B = \begin{cases}
+   (C, \nil, B'): & (C, (\textit{Just}\ v, [B' \mapsto t])) \\
+   (C, A', \nil): & (C, insert\ t\ A'\ v) \\
+   (C, A', B'): & (C, (\textit{Nothing}, [A' \mapsto (\textit{Just}\ v, \nil), B' \mapsto t])) \\
+\end{cases}
+\end{array}
+\ee
+
+如果$A$是$B$的前缀，则将$A$映射到$v$所在的节点，列表的剩余部分被重新映射到分枝的唯一子树$t$；如果$B$是$A$的前缀，我们递归地将剩余列表和值插入到$t$中；否则，我们创建一个值为$v$的叶子节点，将其和$t$作为分枝的两棵子树。下面的例子程序实现了$insert$算法：
+
+\begin{Haskell}
+insert (PrefixTree _ ts) [] v = PrefixTree (Just v) ts
+insert (PrefixTree v' ts) k v = PrefixTree v' (ins ts) where
+    ins [] = [(k, leaf v)]
+    ins ((k', t) : ts) | match k k' = (branch k v k' t) : ts
+                       | otherwise  = (k', t) : ins ts
+
+leaf v = PrefixTree (Just v) []
+
+match [] _ = True
+match _ [] = True
+match (a:_) (b:_) = a == b
+
+branch a v b t = case lcp a b of
+  (c, [], b') -> (c, PrefixTree (Just v) [(b', t)])
+  (c, a', []) -> (c, insert t a' v)
+  (c, a', b') -> (c, PrefixTree Nothing [(a', leaf v), (b', t)])
+
+lcp [] bs = ([], [], bs)
+lcp as [] = ([], as, [])
+lcp (a:as) (b:bs) | a /= b = ([], a:as, b:bs)
+                  | otherwise = (a:cs, as', bs') where
+                        (cs, as', bs') = lcp as bs
+\end{Haskell}
+
+我们也可以消除递归，用循环实现插入算法：
 
 \begin{algorithmic}[1]
 \Function{Insert}{$T, k, v$}
@@ -739,29 +715,27 @@ lcp (x:xs) (y:ys) = if x==y then x : (lcp xs ys) else []
   \State $p \gets T$
   \Loop
     \State $match \gets$ FALSE
-    \For{each $(s_i, T_i) \in$ \Call{Children}{$p$}}
+    \For{each $s_i \mapsto T_i $ in \Call{Sub-Trees}{$p$}}
       \If{$k = s_i$}
         \State \Call{Value}{$T_i$} $\gets v$ \Comment{覆盖}
         \State \Return $T$
       \EndIf
       \State $c \gets$ \Call{LCP}{$k, s_i$}
-      \State $k_1 \gets k - c$
-      \State $k_2 \gets s_i - c$
+      \State $k_1 \gets k - c$, $k_2 \gets s_i - c$
       \If{$c \neq $ NIL}
         \State $match \gets$ TRUE
         \If{$k_2 = $ NIL} \Comment{$s_i$是$k$的前缀}
-          \State $p \gets T_i$
-          \State $k \gets k_1$
+          \State $p \gets T_i$, $k \gets k_1$
           \State break
-        \Else \Comment{分支出一个新叶子节点}
-          \State \textproc{Add}(\Call{Children}{$p$}, ($c$, \textproc{Branch}($k_1$, \Call{Leaf}{$v$}, $k_2$, $T_i$)))
-          \State \textproc{Delete}(\Call{Children}{$p$}, $(s_i, T_i)$)
+        \Else \Comment{新分枝}
+          \State \textproc{Add}(\Call{Sub-Trees}{$p$}, $c \mapsto$ \textproc{Branch}($k_1$, \Call{Leaf}{$v$}, $k_2$, $T_i$))
+          \State \textproc{Delete}(\Call{Sub-Trees}{$p$}, $s_i \mapsto T_i$)
           \State \Return $T$
         \EndIf
       \EndIf
     \EndFor
-    \If{$\lnot match$} \Comment{增加一个新叶子节点}
-      \State \textproc{Add}(\Call{Children}{$p$}, ($k$, \Call{Leaf}{$v$}))
+    \If{not $match$} \Comment{新叶子}
+      \State \textproc{Add}(\Call{Sub-Trees}{$p$}, $k \mapsto$ \Call{Leaf}{$v$})
       \State break
     \EndIf
   \EndLoop
@@ -769,86 +743,33 @@ lcp (x:xs) (y:ys) = if x==y then x : (lcp xs ys) else []
 \EndFunction
 \end{algorithmic}
 
-上述算法中，函数\textproc{LCP}寻找两个字符串的最长公共前缀。例如字符串bool和boy的最长公共前缀为bo。字符串的减号（-）运算用以给出两个字符串的不同部分。例如bool - bo = ol。函数\textproc{Branch}负责创建分支节点并更新对应的key。
-
-为了获取最长公共前缀，我们可以逐一比较两个字符串的字符，直到遇到不相同的字符为止。
+函数\textproc{LCP}提取出两个列表的公共前缀：
 
 \begin{algorithmic}[1]
 \Function{LCP}{$A, B$}
   \State $i \gets 1 $
-  \While{$i \leq |A| \land i \leq |B| \land A[i] = B[i]$}
+  \While{$i \leq |A|$ and $i \leq |B|$ and $A[i] = B[i]$}
     \State $i \gets i + 1$
   \EndWhile
   \State \Return $A[1...i-1]$
 \EndFunction
 \end{algorithmic}
 
-分支出新叶子节点时存在两种情况。\textproc{Branch}($s_1, T_1, s_2, T_2$)的参数是两个不同的key和两棵树。如果$s_1$为空，说明一个字符串是另一个的前缀。例如把字符串an插入到一棵前缀为another的树中。这种情况结果是$T_2$成为了$T_1$的一棵子树。否则，如果$s_1$不为空，我们需要创建出一个新的分支节点，并令$T_1$和$T_2$分别为新节点的两棵子树。
+\textproc{Branch}($s_1, T_1, s_2, T_2$)中需要处理特殊情况。如果$s_1$为空，说明待插入的键是某个子树的前缀，我们将$T_2$设置为$T_1$的子树。否则，我们创建一个新的分枝节点，并将$T_1$、$T_2$设置为子树。
 
 \begin{algorithmic}[1]
 \Function{Branch}{$s_1, T_1, s_2, T_2$}
-  \If{$s_1 = \phi$}
-    \State \textproc{Add}(\Call{Children}{$T_1$}, $(s_2, T_2)$)
+  \If{$s_1 = $ NIL}
+    \State \textproc{Add}(\Call{Sub-Trees}{$T_1$}, $s_2 \mapsto T_2$)
     \State \Return $T_1$
   \EndIf
   \State $T \gets$ \Call{Empty-Node}{}
-  \State \Call{Children}{$T$} $\gets \{(s_1, T_1), (s_2, T_2)\}$
+  \State \Call{Sub-Trees}{$T$} $\gets \{s_1 \mapsto T_1, s_2 \mapsto T_2\}$
   \State \Return $T$
 \EndFunction
 \end{algorithmic}
 
-下面的Python例子程序实现了前缀树的插入算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def insert(t, key, value = None):
-    if t is None:
-        t = PrefixTree()
-    node = t
-    while True:
-        match = False
-        for k, tr in node.children.items():
-            if key == k: # 覆盖原先数据
-                tr.value = value
-                return t
-            prefix, k1, k2 = lcp(key, k)
-            if prefix != "":
-                match = True
-                if k2 == "":
-                    # 例如将``another''插入前缀为``an''的树，继续遍历
-                    node = tr
-                    key = k1
-                    break
-                else: # 分支出一个新叶子节点
-                    node.children[prefix] = branch(k1, Patricia(value), k2, tr)
-                    del node.children[k]
-                    return t
-        if not match: # 增加一个新叶子节点
-            node.children[key] = PrefixTree(value)
-            return t
-    return t
-\end{lstlisting}
-
-其中查找最长公共前缀和分支出新节点的函数实现如下：
-
-\begin{lstlisting}
-# 返回\texttt{(p, s1', s2')}, 其中\texttt{p}是\texttt{lcp}，\texttt{s1'=s1-p}，\texttt{s2'=s2-p}
-def lcp(s1, s2):
-    j = 0
-    while j < len(s1) and j < len(s2) and s1[j] == s2[j]:
-        j += 1
-    return (s1[0:j], s1[j:], s2[j:])
-
-def branch(key1, tree1, key2, tree2):
-    if key1 == "":
-        # 例如将``an''插入到前缀为``another''的树中
-        tree1.children[key2] = tree2
-        return tree1
-    t = PrefixTree()
-    t.children[key1] = tree1
-    t.children[key2] = tree2
-    return t
-\end{lstlisting}
+虽然前缀树提高了空间利用率，但其复杂度仍然是$O(mn)$，其中$n$是键的长度，$m$是列表元素集合的大小。
 
 
 % ================================================================
