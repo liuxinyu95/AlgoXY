@@ -810,47 +810,38 @@ lookup ks (PrefixTree v ts) =
 \subsection{词典和自动补齐}
 \index{自动补齐}
 
-图\ref{fig:e-dict}展示的是某英汉电子词典的界面。为了易用，当用户输入某些字符后，电子词典会搜索词库，将所有候选单词全部列出。
+如图\ref{fig:e-dict}所示，当用户输入某些字符后，词典会搜索词库，列出候选单词。
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.5]{img/edict-en.png}
-  \caption{电子词典。所有和用户输入匹配的候选单词全被列出}
+  \caption{词典}
   \label{fig:e-dict}
 \end{figure}
 
-电子词典通常存有数十万单词。进行全词查找的开销很大。商业电子词典软件会同时使用多重方法以提高性能，包括缓存（caching）、索引（indexing）等等。
-
-和电子词典类似，图\ref{fig:word-completion}显示了某互联网搜索引擎的界面。当用户输入内容后，会列出一些可能的候选搜索项。这些项的开头部分和用户输入相匹配\footnote{实际功能会更加复杂，包括拼写检查，关键词提取、引导等。}，并且按照被搜索的热门程度排序。被搜索的次数越多，越排在前面。
+词典通常存有数十万单词，全部查找的开销很大。商业词典软件会使用多种工程方法以提高性能，包括缓存、索引等。图\ref{fig:word-completion}是一个带有自动补齐功能的输入框。当输入内容后，会列出一些可能的候选项。它们以用户输入的内容为前缀。
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.5]{img/adaptive-input.png}
-  \caption{搜索引擎。和用户输入匹配的候选搜索被列出}
+  \caption{带有自动补齐的输入框}
   \label{fig:word-completion}
 \end{figure}
 
-这两个例子中，软件都提供了某种自动完成的机制。在某些现代的IDE（集成开发环境）中，编辑器还可以帮助用户自动完成程序代码。
-
-我们看看如何使用前缀树来实现电子词典。为了简化问题，假设我们的词典是英—英词典。
-
-词典中保存了key-value对，key是英文单词或者词组，value是对应的解释。
-
-当用户输入‘a’的时候，词典不是只给出‘a’的意思，而是提供一系列候选单词的列表。这些候选单词都以‘a’开头，包括abandon、about、accent、adam……当然，这些都是存储在前缀树中的单词。
-
-如果候选单词太多，一种方案是只显示前10个，如果用户查找的单词不在其中，他可以浏览更多的候选项。如果待查找的字符串为空，我们从当前节点扩展出前$n$个子节点作为候选项；否则，我们递归地在有共同前缀的子分支中查找。
-
-在支持惰性求值（lazy evaluation）的编程环境中，一种简单直观的方法是惰性扩展全部的子节点，然后根据需要取前$n$个。记前缀树前缀树为$T = (v, C)$，下面的函数枚举所有以$k$开头的内容。
+这两个例子都展示了自动补齐的功能。我们可以用前缀树来实现它。简单起见，我们在例子中限定字符为英文，候选列表不超过$n$个条目。一个词典保存了多个键、值对，其中键是英文单词或词组，值是对应的意思和解释。当用户输入字符串$s$时，我们在前缀树实现的词典中查找所有以$s$开头的键。如果$s$为空，就扩展出所有子树直到达到$n$条结果；否则，我们根据匹配的子树递归查找。在支持惰性求值的环境中，我们可以扩展出全部候选项，然后按需取得前$n$个：$take\ n\ (startsWith\ s\ t)$，其中$t$是前缀树。
 
 \be
-findAll(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  enum(C) & k = \phi, v = \phi \\
-  \{(\phi, v)\} \cup enum(C) & k = \phi, v \neq \phi \\
-  find(C, k) & k \neq \phi
-  \end{array}
-\right.
+\begin{array}{c}
+\begin{array}{rcl}
+startsWith\ \nil\ (\textit{Nothing}, ts) & = & enum\ ts \\
+startsWith\ \nil\ (\textit{Just}\ x, ts) & = & (\nil, x) : enum\ ts \\
+startsWith\ s\ (v, ts) & = & find\ ((k, t) \mapsto s \sqsubseteq k\ \text{or}\ k \sqsubseteq s)\ ts = \\
+\end{array} \\
+\quad \begin{cases}
+  \textit{Nothing}: & \nil \\
+  \textit{Just}\ (k, t): & [(k \doubleplus a, b) | (a, b) \in startsWith\ (s - k)\ t]
+\end{cases}
+\end{array}
 \ee
 
 前两行处理key为空的边界情况。此时，我们通过枚举扩展所有数据不为空的子节点。最后一行调用$find$函数寻找和前缀$k$匹配的子分支。
