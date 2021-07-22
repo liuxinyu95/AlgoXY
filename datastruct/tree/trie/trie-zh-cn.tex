@@ -844,156 +844,75 @@ startsWith\ s\ (v, ts) & = & find\ ((k, t) \mapsto s \sqsubseteq k\ \text{or}\ k
 \end{array}
 \ee
 
-前两行处理key为空的边界情况。此时，我们通过枚举扩展所有数据不为空的子节点。最后一行调用$find$函数寻找和前缀$k$匹配的子分支。
-
-如果节点的子分支不为空，记$C = \{(k_1, T_1), (k_2, T_2), ..., (k_m, T_m)\}$，令除去第一对映射以外的剩余映射为$C'$。枚举算法可以定义如下：
+给定一个列表$s$，函数$startsWith$在前缀树中搜索所有以$s$前缀的结果。如果$s$为空，它枚举所有子树。如果根节点中的值$x$不为空，则将$(\nil, x)$附加到结果之前。函数$enum\ ts$定义如下：
 
 \be
-enum(C) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & C = \phi \\
-  mapAppend(k_1, findAll(T_1, \phi)) \cup enum(C')
-  \end{array}
-\right.
+enum = \textit{concatMap}\ (k, t) \mapsto [(k \doubleplus a, b) | (a, b) \in startsWith\ \nil\ t]
 \ee
 
-其中$mapAppend(k, L) = \{(k + k_i, v_i)| (k_i, v_i) \in L\}$。它将前缀$k$添加到列表$L$中的所有key-value对的key前面\footnote{可以进一步抽象为对第一个元素进行映射。在Haskell中，使用范畴论中的箭头概念，$mapAppend$可被表示为$map(first(k+), L)$}。
+其中$\textit{concatMap}$（也称为$flatMap$）是列表计算中的一个重要概念。效果上相当于先对每个元素进行映射，然后将结果连接起来。通常使用build-foldr融合律来实现，以消除计算中产生的中间结果列表（见《同构——编程中的数学》第5章）。如果$s$不为空，我们检查子树映射，对于每个映射对$(k, t)$，如果$s$或$k$是另外一个的前缀，我们就递归地扩展子树$t$，并将$k$附加到每个结果的键之前；否则，如果$s$不和任何子树的映射匹配，则不存在以$s$为前缀的结果。下面的例子程序实现了这一算法：
 
-函数$enum$也可用$concatMap$的概念定义（亦称为$flatMap$）\footnote{效果上相当于先对每个元素进行映射，然后将结果连接起来。通常使用build-foldr来消除中间结果中的列表}。
+\begin{Haskell}
+startsWith [] (PrefixTree Nothing ts) = enum ts
+startsWith [] (PrefixTree (Just v) ts) = ([], v) : enum ts
+startsWith k (PrefixTree _ ts) =
+  case find (\(s, t) -> s `isPrefixOf` k || k `isPrefixOf` s) ts of
+    Nothing -> []
+    Just (s, t) -> [(s ++ a, b) |
+                         (a, b) <- startsWith (drop (length s) k) t]
 
-\be
-enum(C) = concatMap(\lambda_{(k, T)} . mapAppend(k, findAll(T, \phi)))
-\ee
+enum = concatMap (\(k, t) -> [(k ++ a, b) | (a, b) <- startsWith [] t])
+\end{Haskell}
 
-函数$find(C, k)$定义如下。如果子树为空，结果也为空；否则，它首先检查$k_1$映射的子树$T_1$。如果$k_1$和$k$相等，就调用$mapAppend$向$T_1$所有子分支的key前增加前缀$k$；如果$k_1$是$k$的前缀，算法就递归地查找所有以$k - k_1$开头的子分支；反之，如果$k$是$k_1$的前缀，则$T_1$的所有子分支都是候选项。否则，算法跳过第一对映射，继续处理剩余的其他映射。
-
-\be
-find(C, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & C = \phi \\
-  mapAppend(k_1, findAll(T_1, \phi)) & k \sqsubset k_1 \\
-  mapAppend(k_1, findAll(T_1, k - k_1)) & k_1 \sqsubset k \\
-  find(C', k) & otherwise
-  \end{array}
-\right.
-\ee
-
-下面的Haskell例子程序按照上述算法实现了一个简单的电子词典：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-import Control.Arrow (first)
-
-get n t k = take n $ findAll t k
-
-findAll :: Eq k => PrefixTree k v -> [k] -> [([k], v)]
-findAll (PrefixTree Nothing cs) [] = enum cs
-findAll (PrefixTree (Just x) cs) [] = ([], x) : enum cs
-findAll (PrefixTree _ cs) k = find' cs k
-  where
-    find' [] _ = []
-    find' ((k', t') : ps) k
-          | k `isPrefixOf` k'
-              = map (first (k' ++)) (findAll t' [])
-          | k' `isPrefixOf` k
-              = map (first (k' ++)) (findAll t' $ drop (length k') k)
-          | otherwise = find' ps k
-
-enum :: Eq k => [([k], PrefixTree k v)] -> [([k], v)]
-enum = concatMap (\(k, t) -> map (first (k ++)) (findAll t []))
-\end{lstlisting}
-
-在Haskell这样的惰性求值编程环境中，前$n$个候选项可以通过$take(n, findAll(T, k))$来获取。附录A给出了$take$函数的详细定义。
-
-也可以用命令式的方式实现电子词典。下面的算法复用了前面定义的前缀树查找函数。当我们找到一个节点，其对应的前缀和用户输入的内容一致时，算法将扩展该节点的所有子树直到获取到前$n$个候选项。
+我们也可以用命令式的方式实现\textproc{Starts-With}($T, k, n$)。从根节点开始，我们循环检查每个子树映射$k_i \mapsto T_i$。如果$k$是某个子树$T_i$的前缀，我们就将这棵子树扩展到最多$n$条结果；如果$k_i$是$k$的前缀，我们就去掉前缀部分，用新键$k - k_i$在$T_i$中递归查找。
 
 \begin{algorithmic}[1]
-\Function{Look-Up}{$T, k, n$}
+\Function{Starts-With}{$T, k, n$}
   \If{$T = $ NIL}
-     \State \Return $\phi$
+     \State \Return NIL
   \EndIf
-  \State $prefix \gets$ NIL
+  \State $s \gets$ NIL
   \Repeat
     \State $match \gets$ FALSE
-    \For{$\forall (k_i, T_i) \in $ \Call{Children}{$T$}}
+    \For{$k_i \mapsto T_i$ in \Call{Sub-Trees}{$T$}}
       \If{$k$ is prefix of $k_i$}
-        \State \Return \Call{Expand}{$prefix + k _i, T_i, n$}
+        \State \Return \Call{Expand}{$s \doubleplus k_i, T_i, n$}
       \EndIf
       \If{$k_i$ is prefix of $k$}
         \State $match \gets$ TRUE
-        \State $k \gets k - k_i$
+        \State $k \gets k - k_i$  \Comment{drop the prefix}
         \State $T \gets T_i$
-        \State $prefix \gets prefix + k_i$
+        \State $s \gets s \doubleplus k_i$
         \State break
       \EndIf
     \EndFor
-  \Until{$\lnot match$}
-  \State \Return $\phi$
+  \Until{not $match$}
+  \State \Return NIL
 \EndFunction
 \end{algorithmic}
 
-其中函数\textproc{Expand}($T, prefix, n$)选取$n$个子树，这些子树在$T$中有同样的前缀。它的实现为广度优先遍历（BFS），本书最后一章对包括广度优先在内的搜索算法有详细的介绍。
+其中函数\textproc{Expand}($s, T, n$)从$T$中扩展出$n$个结果，并将$s$附加在每个键的前面。我们可以用广度优先搜索方法实现它（见14.3节）：
 
 \begin{algorithmic}[1]
-\Function{Expand}{$prefix, T, n$}
-  \State $R \gets \phi$
-  \State $Q \gets \{(prefix, T)\}$
-  \While{$|R| < n \land Q$ is not empty}
+\Function{Expand}{$s, T, n$}
+  \State $R \gets $ NIL
+  \State $Q \gets [(s, T)]$
+  \While{$|R| < n$ and $Q \neq$ NIL}
     \State $(k, T) \gets$ \Call{Pop}{$Q$}
-    \If{\Call{Data}{$T$} $\neq$ NIL}
-      \State $R \gets R \cup \{(k, $ \Call{Data}{$T$} $)\}$
+    \State $v \gets$ \Call{Value}{$T$}
+    \If{$v \neq$ NIL}
+      \State \Call{Insert}{$R, (k, v)$}
     \EndIf
-    \For{$\forall (k_i, T_i) \in$ \Call{Children}{$T$} in sorted order}
-      \State \Call{Push}{$Q, (k + k_i, T_i)$}
+    \For{$k_i \mapsto T_i$ in \Call{Sub-Trees}{$T$}}
+      \State \Call{Push}{$Q, (k \doubleplus k_i, T_i)$}
     \EndFor
   \EndWhile
 \EndFunction
 \end{algorithmic}
 
-下面的Python例子程序实现了一个电子词典。它使用了标准库中的\texttt{find}函数来判断一个字符串是否是另一个的前缀。
 
-\lstset{language=Python}
-\begin{lstlisting}
-def lookup(t, key, n):
-    if t is None:
-        return []
-    prefix = ""
-    while True:
-        match = False
-        for k, tr in t.subtrees.items():
-            if string.find(k, key) == 0: # key is prefix of k
-                return expand(prefix + k, tr, n)
-            if string.find(key, k) ==0:
-                match = True
-                key = key[len(k):]
-                t = tr
-                prefix += k
-                break
-        if not match:
-            break
-    return []
-
-def expand(prefix, t, n):
-    res = []
-    q = [(prefix, t)]
-    while len(res)<n and q:
-        (s, p) = q.pop(0)
-        if p.value is not None:
-            res.append((s, p.value))
-        for k, tr in sorted(p.subtrees.items()):
-            q.append((s + k, tr))
-    return res
-\end{lstlisting}
-
-%=====================================
-% T9
-%=====================================
-
-\subsection{T9输入法}
+\subsection{数字键盘输入法}
 \index{T9}
-\index{Textonym输入法}
 
 手机用户编辑短信或者电子邮件时的体验和PC上完全不同。手机键盘（称为ITU-T键盘）上只有非常少的按键。如图\ref{fig:itut-keypad}所示。
 
