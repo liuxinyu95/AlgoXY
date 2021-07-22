@@ -914,7 +914,7 @@ enum = concatMap (\(k, t) -> [(k ++ a, b) | (a, b) <- startsWith [] t])
 \subsection{数字键盘输入法}
 \index{T9}
 
-手机用户编辑短信或者电子邮件时的体验和PC上完全不同。手机键盘（称为ITU-T键盘）上只有非常少的按键。如图\ref{fig:itut-keypad}所示。
+2010年前，大多数手机上都提供一个如图\ref{fig:itut-keypad}所示的数字键盘，称为ITU-T键盘。它将每个数字映射到3到4个英文字母上。如果要输入英文单词home，我们可以按照下面的顺序按键：
 
 \begin{figure}[htbp]
   \centering
@@ -923,103 +923,85 @@ enum = concatMap (\(k, t) -> [(k ++ a, b) | (a, b) <- startsWith [] t])
   \label{fig:itut-keypad}
 \end{figure}
 
-在ITU-T键盘上输入英文单词或短语有两种方法。例如用户要输入单词home，他需要按照下面的顺序按键：
-
-\begin{itemize}
-\item 按两次4键以输入字符h；
-\item 按三次6键以输入字符o；
-\item 按一次6键以输入字符m；
-\item 按两次3键以输入字符e；
-\end{itemize}
+\begin{enumerate}
+\item 按两次4键输入字符h；
+\item 按三次6键输入字符o；
+\item 按一次6键输入字符m；
+\item 按两次3键输入字符e；
+\end{enumerate}
 
 另外一种更快速的方法使用下面的按键顺序：
 
-\begin{itemize}
-\item 依次按下4、6、6、3，单词home出现在候选列表的最上方；
-\item 按下‘*’号键以变换不同的候选单词，good此时出现在候选列表上；
-\item 按下‘*’号键再次变换，下一个候选单词gone出现在列表上；
+\begin{enumerate}
+\item 依次按下4、6、6、3，候选单词home出现；
+\item 按下‘*’号键以变换到下一个候选单词good；
+\item 按下‘*’号键再次变换到下一个候选单词gone；
 \item ……
-\end{itemize}
+\end{enumerate}
 
-对比这两个方法，可以发现后者更加方便，但是需要额外保存一个候选单词字典。这种方法被称作“T9输入法”或预测输入法\cite{wiki-t9}、\cite {wiki-predictive-text}。T9是英文textonym的缩写，它以T开头，后面跟9个字母。T9输入法可以用前缀树来实现。
-
-为了向用户提供候选单词，T9输入法需要预先准备一个词典。商业上的T9输入法通常使用更加复杂的索引词典，同时在文件系统和缓存中进行快速索引。本节中的实现仅仅出于演示的目的。
-
-首先我们需要定义T9键盘映射，它将数字映射为候选字符。
+后者称为预测式输入，简称为T9\cite{wiki-t9}、\cite {wiki-predictive-text}。商业实现通常使用多级在内存和文件系统中的缓存和索引。作为示例，我们可以将单词存储在一个前缀树中来实现这种输入法。首先我们需要定义数字键盘映射：
 
 \be
 \begin{array}{ll}
-M_{T9} = \{ & 2 \rightarrow abc, 3 \rightarrow def, 4 \rightarrow ghi, \\
-           & 5 \rightarrow jkl, 6 \rightarrow mno, 7 \rightarrow pqrs, \\
-           & 8 \rightarrow tuv, 9 \rightarrow wxyz \}
+M_{T9} = \{ & 2 \mapsto \texttt{"abc"}, 3 \mapsto \texttt{"def"}, 4 \mapsto \texttt{"ghi"}, \\
+           & 5 \mapsto \texttt{"jkl"}, 6 \mapsto \texttt{"mno"}, 7 \mapsto \texttt{"pqrs"}, \\
+           & 8 \mapsto \texttt{"tuv"}, 9 \mapsto \texttt{"wxyz"} \quad \}
 \end{array}
 \ee
 
-使用这一映射后，$M_{T9}[i]$就返回数字$i$对应的若干个字符。我们也可以定义从字符到数字的逆映射。
+$M_{T9}[i]$就给出数字$i$对应的若干字符。我们也可以定义从字符到数字的逆映射。
 
 \be
-M^{-1}_{T9} = concat(\{\{c \rightarrow d | c \in S\} | (d \rightarrow S) \in M_{T9}\})
+M^{-1}_{T9} = \textit{concatMap}\ ((d, s) \mapsto [(c, d) | c \in s])\ M_{T9}
 \ee
 
 通过查找$M^{-1}_{T9}$，我们可以将字符串转换成一组按键序列。
 
 \be
-digits(S) = \{ M^{-1}_{T9}[c]| c \in S \}
+digits(s) = \{ M^{-1}_{T9}[c]| c \in s \}
 \ee
 
+对于任何不属于[\texttt{a..z}]中的字符，我们将其映射到特殊字符\texttt{'\#'}上。下面的例子程序定义了上述映射：
 
-给定一个数字序列$D = d_1d_2...d_n$，我们定义T9查找的算法如下。
+\begin{Haskell}
+mapT9 = Map.fromList [('2', "abc"), ('3', "def"), ('4', "ghi"),
+                      ('5', "jkl"), ('6', "mno"), ('7', "pqrs"),
+                      ('8', "tuv"), ('9', "wxyz")]
 
-\be
-findT9(T, D) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ \phi \} & D = \phi \\
-  concatMap(find, prefixes(T)) & otherwise
-  \end{array}
-\right.
-\ee
-
-其中$T$是从一组单词和词组中构造出的前缀树。我们将其作为T9输入法的词典。若输入的数字串$D$为空，则候选单词的结果列表也是空。否则，我们搜索匹配输入的子树并将结果连接起来。
-
-为了枚举所有匹配的子树，我们检查子树集$C_T$中的每一对$(k_i, T_i)$。首先将字符串$k_i$转换为数字串$d_i$，然后比较$d_i$和$D$。如果其中之一是另一个的前缀，则选中这一对$(k_i, T_i)$进行进一步查找。
-
-\be
-prefixes(T) = \{(k_i, T_i) | (k_i, T_i) \in C_T, d_i = digits(k_i), d_i \sqsubset D \lor D \sqsubset d_i \}
-\ee
-
-函数$find$接受两个参数，一个前缀$S$和需要进一步查找的子树$T'$。其中$S$是$D$的前缀。为此，我们从$D$中去除这一前缀，然后用剩余的数字串$D' = D - S$继续查找。最后再将$S$添加回递归查找的各个结果前面。
-
-\be
-find(S, T') = \{ take(n, S + s_i) | s_i \in findT9(T', D - S) \}
-\ee
-
-其中$n = |D|$是输入数字串的长度。函数$take(n, L)$从列表$L$中获取前$n$个元素。如果列表的长度短于$n$，则获取全部元素。
-
-下面的Haskell例子程序实现了从前缀树查找的T9输入法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-import qualified Data.Map as Map
-
-mapT9 = Map.fromList [('1', ",."), ('2', "abc"), ('3', "def"), ('4', "ghi"),
-                      ('5', "jkl"), ('6', "mno"), ('7', "pqrs"), ('8', "tuv"),
-                      ('9', "wxyz")]
-
-rmapT9 = Map.fromList $ concatMap (\(d, s) -> [(c, d) | c <- s]) $ Map.toList mapT9
+rmapT9 = Map.fromList $ concatMap (\(d, s) -> [(c, d) | c <- s]) $
+           Map.toList mapT9
 
 digits = map (\c -> Map.findWithDefault '#' c rmapT9)
+\end{Haskell}
 
-findT9 :: PrefixTree Char v -> String -> [String]
-findT9 t [] = [""]
-findT9 t k = concatMap find prefixes
-  where
-    n = length k
-    find (s, t') = map (take n . (s++)) $ findT9 t' (k `diff` s)
-    diff x y = drop (length y) x
-    prefixes = [(s, t') | (s, t') <- children t, let ds = digits s in
-                          ds `isPrefixOf` k || k `isPrefixOf` ds]
-\end{lstlisting}  %$
+令$(v, ts)$是从所有候选单词构建出的前缀树。我们可以修改自动补齐算法来处理数字序列$ds$。我们把每个子树映射$(s \mapsto t) \in ts$中的前缀$s$转换为$digits(s)$，检查它是否和$ds$匹配（其中一个为另一个的前缀）。可能存在多个子树匹配$ds$的情况：
+
+\[
+\textit{pfx} = [(s, t) | (s \mapsto t) \in ts, digits(s) \sqsubseteq ds\ \textit{or}\ ds\ \sqsubseteq digits(s)]
+\]
+
+\be
+\begin{array}{rcl}
+find_{T9}\ t\ \nil & = & [ \nil ] \\
+find_{T9}\ (v, ts)\ ds & = & \textit{concatMap}\ find\ \textit{pfx} \\
+\end{array}
+\ee
+
+对\textit{pfx}中的每个映射$(s, t)$，函数$find$递归地在$t$中查找剩余数字$ds'$，其中$ds' = drop\ |s|\ ds$，然后将$s$附加到每个候选项前面。为了防止长度超出数字个数，我们截取前$n = |ds|$个字符：
+
+\be
+find\ (s, t) = [ take\ n\ (s \doubleplus s_i) | s_i \in find_{T9}\ t\ ds']
+\ee
+
+下面的例子程序实现了预测输入法：
+
+\begin{Haskell}
+findT9 _ [] = [[]]
+findT9 (PrefixTree _ ts) k = concatMap find pfx where
+  find (s, t) = map (take (length k) . (s++)) $ findT9 t (drop (length s) k)
+  pfx = [(s, t) | (s, t) <- ts, let ds = digits s in
+              ds `isPrefixOf` k || k `isPrefixOf` ds]
+\end{Haskell} %$
 
 可以使用广度优先搜索实现命令式的T9输入法。我们使用一个队列$Q$，其保存的元素为三元组
 $(prefix, D, T)$。每个三元组包含一个已搜索过的前缀$prefix$，尚未搜索的剩余部分$D$，
