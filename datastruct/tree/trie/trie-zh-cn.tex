@@ -1003,31 +1003,24 @@ findT9 (PrefixTree _ ts) k = concatMap find pfx where
               ds `isPrefixOf` k || k `isPrefixOf` ds]
 \end{Haskell} %$
 
-可以使用广度优先搜索实现命令式的T9输入法。我们使用一个队列$Q$，其保存的元素为三元组
-$(prefix, D, T)$。每个三元组包含一个已搜索过的前缀$prefix$，尚未搜索的剩余部分$D$，
-还有待搜索的子树$T$。队列初始的时候，三元组包含一个空前缀，全部待搜索的数字，以及前缀树
-的根节点。算法不断从队列中取出三元组，对其中的树$T$，依次检查它的子树$T_i$。通过检索
-T9的逆映射，我们将子树对应的前缀串$k_i$转换成数字串$D'$。如果$D$是$D'$的前缀，说明
-找到了一个候选单词。我们将$k_i$添加到三元组中的前缀$prefix$后，并纪录下这一结果。
-如果$D'$是$D$的前缀，我们需要继续在这棵子树中查找。为此，我们将已$k_i$结尾的前缀，
-剩余的数字串$D-D'$和该子树组成一个新的三元组，放入队列的尾部。
+用命令式方法实现广度优先搜索时，可以用一个队列$Q$，队列中的元素为三元组$(\textit{prefix}, D, t)$。每个三元组包含已搜索过的前缀\textit{prefix}，尚未搜索的数字$D$，和待搜索的子树$t$。队列初始的时候，三元组包含空前缀，全部数字，以及前缀树的根节点。我们不断从队列中取出三元组，检查子树的映射。对于每个映射$(s \mapsto T')$，我们将$s$转换成$digits(s)$。如果$D$是它的前缀，就找到了一个候选词。我们将$s$附加到\textit{prefix}的前面，并记录下这一结果。如果$digits(s)$是$D$的前缀，我们需要递归在子树$T'$中搜索，我们新建一个三元组$(\textit{prefix} \doubleplus s, D', T')$，其中$D'$是剩余的数字。然后将这一新三元组放回队列。
 
 \begin{algorithmic}[1]
 \Function{Look-Up-T9}{$T, D$}
-  \State $R \gets \phi$
-  \If{$T =$ NIL or $D = \phi$}
+  \State $R \gets $ NIL
+  \If{$T =$ NIL or $D =$ NIL}
     \State \Return $R$
   \EndIf
   \State $n \gets |D|$
-  \State $Q \gets \{(\phi, D, T)\}$
-  \While{$Q \neq \phi$}
-    \State $(prefix, D, T) \gets$ \Call{Pop}{$Q$}
-    \For{$\forall (k_i, T_i) \in $ \Call{Children}{$T$}}
-      \State $D' \gets$ \Call{Digits}{$k_i$}
+  \State $Q \gets \{(\text{NIL}, D, T)\}$
+  \While{$Q \neq $ NIL}
+    \State $(\textit{prefix}, D, T) \gets$ \Call{Pop}{$Q$}
+    \For{$(s \mapsto T') \in $ \Call{Sub-Trees}{$T$}}
+      \State $D' \gets$ \Call{Digits}{$s$}
       \If{$D' \sqsubset D$} \Comment{$D'$ is prefix of $D$}
-        \State $R \gets R \cup \{$ \textproc{Take} $(n, prefix + k_i) \}$ \Comment{限制长度不超过$n$}
+        \State \Call{Append}{$R, (\textit{prefix} \doubleplus s)[1..n]$} \Comment{limit the length to $n$}
       \ElsIf{$D \sqsubset D'$}
-        \State \textproc{Push}($Q, (prefix + k_i, D - D', T_i)$)
+        \State \Call{Push}{$Q, (\textit{prefix} \doubleplus s, D - D', T')$}
       \EndIf
     \EndFor
   \EndWhile
@@ -1035,58 +1028,12 @@ T9的逆映射，我们将子树对应的前缀串$k_i$转换成数字串$D'$。
 \EndFunction
 \end{algorithmic}
 
-函数\textproc{Digits}($S$)将字符串$S$转换为数字串。
-
-\begin{algorithmic}[1]
-\Function{Digits}{$S$}
-  \State $D \gets \phi$
-  \For{each $c \in S$}
-    \State $D \gets D \cup \{M^{-1}_{T9}[c]\}$
-  \EndFor
-  \State \Return $D$
-\EndFunction
-\end{algorithmic}
-
-下面的Python例子程序使用前缀树实现了T9输入法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-T9MAP={'2':"abc", '3':"def", '4':"ghi", '5':"jkl", \
-       '6':"mno", '7':"pqrs", '8':"tuv", '9':"wxyz"}
-
-T9RMAP = dict([(c, d) for d, cs in T9MAP.items() for c in cs])
-
-def digits(w):
-    return ''.join([T9RMAP[c] for c in w])
-
-def lookup_t9(t, key):
-    if t is None or key == "":
-        return []
-    res = []
-    n = len(key)
-    q = [("", key, t)]
-    while q:
-        prefix, key, t = q.pop(0)
-        for k, tr in t.subtrees.items():
-            ds = digits(k)
-            if string.find(ds, key) == 0: # key is prefix of ds
-                res.append((prefix + k)[:n])
-            elif string.find(key, ds) == 0: # ds is prefix of key
-                q.append((prefix + k, key[len(k):], tr))
-    return res
-\end{lstlisting}
-
 \begin{Exercise}
-\begin{itemize}
-\item 使用Trie实现电子词典和T9输入法。
-\item 对于返回多个候选结果的前缀树查找算法，如何保证输出的结果按照字典顺序排序？这会对性能产生怎样的影响？
-\item 如果不使用惰性求值，如何实现函数式的电子词典和T9输入法？
-\end{itemize}
+\Question{使用trie实现自动补齐和预测式输入。}
+\Question{对于返回多个候选结果的前缀树查找算法，如何保证输出的结果按照字典顺序排序？这会对性能产生怎样的影响？}
+\Question{在没有惰性求值的环境中，如何按需返回最多$n$条结果？}
 \end{Exercise}
 
-% ================================================================
-%                 Short summary
-% ================================================================
 \section{小结}
 
 本章一开始介绍了整数Trie和前缀树。基于整数前缀树的映射结构在编译器的实现中得到了重要的应用。字符Trie和字符前缀树可以看做是整数映射结构的自然扩展。它们可以被用来处理文字信息。作为例子，我们介绍了自动预测完成输入的电子词典和T9输入法。尽管和商业软件的实现不同，这些例子展示了如何使用Trie和前缀树来解决问题的方法。某些重要的数据结构，如后缀树和本章中介绍的内容紧密相关。读者可以参考附录D。
