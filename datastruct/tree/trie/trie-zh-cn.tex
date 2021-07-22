@@ -1035,8 +1035,286 @@ findT9 (PrefixTree _ ts) k = concatMap find pfx where
 \end{Exercise}
 
 \section{小结}
+我们从整数trie和整数前缀树开始，通过将整数的二进制表示，我们复用二叉树结构实现了基于整数的映射（map）结构。接下来我们将键的类型从整数扩展到有限集元素的列表。其中一个特例就是字符串，trie和前缀树可以用来进行文字处理。我们给出了两个应用的例子：自动补齐和预测式输入。基数树的另外一个应用是后缀树，它和trie与前缀树有着密切的关系，是文字和DNA处理的有力工具。
 
-本章一开始介绍了整数Trie和前缀树。基于整数前缀树的映射结构在编译器的实现中得到了重要的应用。字符Trie和字符前缀树可以看做是整数映射结构的自然扩展。它们可以被用来处理文字信息。作为例子，我们介绍了自动预测完成输入的电子词典和T9输入法。尽管和商业软件的实现不同，这些例子展示了如何使用Trie和前缀树来解决问题的方法。某些重要的数据结构，如后缀树和本章中介绍的内容紧密相关。读者可以参考附录D。
+\section{附录：例子程序}
+
+复用二叉树定义整数trie：
+
+\begin{lstlisting}[language = Bourbaki]
+data IntTrie<T> {
+    IntTrie<T> left = null
+    IntTrie<T> right = null
+    Optional<T> value = Optional.None
+}
+\end{lstlisting}
+
+下面的$insert$例子程序用位运算实现了奇偶测试和向右移位：
+
+\begin{lstlisting}[language = Bourbaki]
+IntTrie<T> insert(IntTrie<T> t, Int key,
+                  Optional<T> value = Optional.None) {
+    if t == null then t = IntTrie<T>()
+    p = t
+    while key != 0 {
+        if key & 1 == 0 {
+            p = if p.left == null then IntTrie<T>() else p.left
+        } else {
+            p = if p.right == null then IntTrie<T>() else p.right
+        }
+        key = key >> 1
+    }
+    p.value = Optional.of(value)
+    return t
+}
+\end{lstlisting}
+
+%% Integer trie lookup:
+
+%% \begin{lstlisting}[language = Bourbaki]
+%% Optional<T> lookup(IntTrie<T> t, Int key) {
+%%     while t != null and k != 0 {
+%%         t = if key & 1 == 0 then t.left else t.right
+%%         key = key >> 1
+%%     }
+%%     return if t == null then Optional.None else t.value
+%% }
+%% \end{lstlisting}
+
+整数前缀树的定义：
+
+\begin{lstlisting}[language = Bourbaki]
+data IntTree<T> {
+    Int key
+    T value
+    Int prefix
+    Int mask = 1
+    IntTree<T> left = null
+    IntTree<T> right = null
+
+    IntTree(Int k, T v) {
+        key = k, value = v, prefix = k
+    }
+
+    bool isLeaf = (left == null and right == null)
+
+    Self replace(IntTree<T> x, IntTree<T> y) {
+        if left == x then left = y else right = y
+    }
+
+    bool match(Int k) = maskbit(k, mask) == prefix
+}
+
+Int maskbit(Int x, Int mask) = x & (~(mask - 1))
+\end{lstlisting}
+
+向整数前缀树插入键、值：
+
+\begin{lstlisting}[language = Bourbaki]
+IntTree<T> insert(IntTree<T> t, Int key, T value) {
+    if t == null then return IntTree(key, value)
+    node = t
+    Node<T> parent = null
+    while (not node.isLeaf()) and node.match(key) {
+        parent = node
+        node = if zero(key, node.mask) then node.left else node.right
+    }
+    if node.isleaf() and key == node.key {
+        node.value = value
+    } else {
+        p = branch(node, IntTree(key, value))
+        if parent == null then return p
+        parent.replace(node, p)
+    }
+    return t
+}
+
+IntTree<T> branch(IntTree<T> t1, IntTree<T> t2) {
+    var t = IntTree<T>()
+    (t.prefix, t.mask) = lcp(t1.prefix, t2.prefix)
+    (t.left, t.right) = if zero(t1.prefix, t.mask) then (t1, t2)
+                        else (t2, t1)
+    return t
+}
+
+bool zero(int x, int mask) = (x & (mask >> 1) == 0)
+
+Int lcp(Int p1, Int p2) {
+    Int diff = p1 ^ p2
+    Int mask = 1
+    while diff != 0 {
+        diff = diff >> 1
+        mask = mask << 1
+    }
+    return (maskbit(p1, mask), mask)
+}
+\end{lstlisting}
+
+%% \begin{lstlisting}[language = Bourbaki]
+%% Optional<Node<T>> lookup(Node<T> t, Int key) {
+%%     while t != null and (not t.isLeaf()) and t.match(key) {
+%%         t = if zero(key, t.mask) then t.left else t.right
+%%     }
+%%     return if t != null and t.isLeaf() and t.key == key
+%%            then Optional.of(t.value) else Optional.None
+%% }
+%% \end{lstlisting}
+
+trie的定义和插入：
+
+\begin{lstlisting}[language = Bourbaki]
+data Trie<K, V> {
+  Optional<V> value = Optional.None
+  Map<K, Trie<K, V>> subTrees = Map.empty()
+}
+
+Trie<K, V> insert(Trie<K, V> t, [K] key, V value) {
+    if t == null then t = Trie<K, V>()
+    var p = t
+    for c in key {
+        if p.subTrees[c] == null then p.subTrees[c] = Trie<K, V>()
+        p = p.subTrees[c]
+    }
+    p.value = Optional.of(value)
+    return t
+}
+\end{lstlisting}
+
+前缀树的定义和插入：
+
+\begin{lstlisting}[language = Bourbaki]
+data PrefixTree<K, V> {
+    Optional<V> value = Optional.None
+    Map<[K], PrefixTree<K, V>> subTrees = Map.empty()
+
+    Self PrefixTree(V v) {
+        value = Optional.of(v)
+    }
+}
+
+PrefixTree<K, V> insert(PrefixTree<K, V> t, [K] key, V value) {
+    if t == null then t = PrefixTree()
+    var node = t
+    loop {
+        bool match = false
+        for var (k, tr) in node.subtrees {
+            if key == k {
+                tr.value = value
+                return t
+            }
+            prefix, k1, k2 = lcp(key, k)
+            if prefix != [] {
+                match = true
+                if k2 == [] {
+                    node = tr
+                    key = k1
+                    break
+                } else {
+                    node.subtrees[prefix] = branch(k1, PrefixTree(value),
+                                                   k2, tr)
+                    node.subtrees.delete(k)
+                    return t
+                }
+            }
+        }
+        if !match {
+            node.subtrees[key] = PrefixTree(value)
+            break
+        }
+    }
+    return t
+}
+\end{lstlisting}
+
+提取最长公共前缀\texttt{lcp}和分枝\texttt{branch}：
+
+\begin{lstlisting}[language = Bourbaki]
+([K], [K], [K]) lcp([K] s1, [K] s2) {
+    j = 0
+    while j < length(s1) and j < length(s2) and s1[j] == s2[j] {
+        j = j + 1
+    }
+    return (s1[0..j-1], s1[j..], s2[j..])
+}
+
+PrefixTree<K, V> branch([K] key1, PrefixTree<K, V> tree1,
+                        [K] key2, PrefixTree<K, V> tree2) {
+    if key1 == []:
+        tree1.subtrees[key2] = tree2
+        return tree1
+    t = PrefixTree()
+    t.subtrees[key1] = tree1
+    t.subtrees[key2] = tree2
+    return t
+}
+\end{lstlisting}
+
+枚举共同前缀的所有候选项：
+
+\begin{lstlisting}[language = Bourbaki]
+[([K], V)] startsWith(PrefixTree<K, V> t, [K] key, Int n) {
+    if t == null then return []
+    [T] s = []
+    repeat {
+        bool match = false
+        for var (k, tr) in t.subtrees {
+            if key.isPrefixOf(k) {
+                return expand(s ++ k, tr, n)
+            } else if k.isPrefixOf(key) {
+                match = true
+                key = key[length(k)..]
+                t = tr
+                s = s ++ k
+                break
+            }
+        }
+    } until not match
+    return []
+}
+
+[([K], V)] expand([K] s, PrefixTree<K, V> t, Int n) {
+    [([K], V)] r = []
+    var q = Queue([(s, t)])
+    while length(r) < n and !q.isEmpty() {
+        var (s, t) = q.pop()
+        v = t.value
+        if v.isPresent() then r.append((s, v.get()))
+        for k, tr in t.subtrees {
+            q.push((s ++ k, tr))
+        }
+    }
+    return r
+}
+\end{lstlisting}
+
+预测式输入：
+\begin{lstlisting}[language = Bourbaki]
+var T9MAP={'2':"abc", '3':"def", '4':"ghi", '5':"jkl", \
+       '6':"mno", '7':"pqrs", '8':"tuv", '9':"wxyz"}
+
+var T9RMAP = { c : d for var (d, cs) in T9MAP for var c in cs }
+
+string digits(string w) = ''.join([T9RMAP[c] for c in w])
+
+[string] lookupT9(PrefixTree<char, V> t, string key) {
+    if t == null or key == "" then return []
+    res = []
+    n = length(key)
+    q = Queue(("", key, t))
+    while not q.isEmpty() {
+        (prefix, key, t) = q.pop()
+        for var (k, tr) in t.subtrees {
+            ds = digits(k)
+            if key.isPrefixOf(ds) {
+                res.append((prefix ++ k)[:n])
+            } else if ds.isPrefixOf(key) {
+                q.append((prefix ++ k, key[length(k)..], tr))
+            }
+        }
+    }
+    return res
+}
+\end{lstlisting}
 
 \ifx\wholebook\relax\else
 \begin{thebibliography}{99}
