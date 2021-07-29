@@ -23,7 +23,7 @@ import Control.Monad (foldM_, mapM_)
 
 -- Definition
 data BTree a = Node{ keys :: [a]
-                   , children :: [BTree a]
+                   , subTrees :: [BTree a]
                    , degree :: Int} deriving (Eq, Show)
 
 -- Auxiliary functions
@@ -42,7 +42,7 @@ insert tr x = fixRoot $ ins tr x
 
 ins :: (Ord a) => BTree a -> a -> BTree a
 ins (Node ks [] t) x = Node (L.insert x ks) [] t
-ins (Node ks cs t) x = make (ks', cs') (ins c x) (ks'', cs'') 
+ins (Node ks cs t) x = make (ks', cs') (ins c x) (ks'', cs'')
     where
       (ks', ks'') = L.partition (<x) ks
       (cs', (c:cs'')) = L.splitAt (length ks') cs
@@ -54,9 +54,9 @@ delete tr x = fixRoot $ del tr x
 
 del:: (Ord a) => BTree a -> a -> BTree a
 del (Node ks [] t) x = Node (L.delete x ks) [] t
-del (Node ks cs t) x = 
+del (Node ks cs t) x =
     case L.elemIndex x ks of
-      Just i -> merge (Node (take i ks) (take (i+1) cs) t) 
+      Just i -> merge (Node (take i ks) (take (i+1) cs) t)
                       (Node (drop (i+1) ks) (drop (i+1) cs) t)
       Nothing -> make (ks', cs') (del c x) (ks'', cs'')
     where
@@ -66,7 +66,7 @@ del (Node ks cs t) x =
 -- Search
 
 search :: (Ord a)=> BTree a -> a -> Maybe (BTree a, Int)
-search tr@(Node ks cs _) k 
+search tr@(Node ks cs _) k
     | matchFirst k $ drop len ks = Just (tr, len)
     | otherwise = if null cs then Nothing
                   else search (cs !! len) k
@@ -85,14 +85,14 @@ split (Node ks cs t) = (c1, k, c2) where
 
 unsplit :: BTree a -> a -> BTree a -> BTree a
 unsplit c1 k c2 = Node ((keys c1)++[k]++(keys c2))
-                       ((children c1)++(children c2)) (degree c1)
+                       ((subTrees c1)++(subTrees c2)) (degree c1)
 
 -- merge two nodes into one--  k1, k2, ..., kn          k1', k2', ..., km'
 --C1, C2, ..., Cn, C{n+1}  C1',C2', ..., Cm', C{m+1}
 -- recursively merge C{n+1} and C1' until both nodes are leaves
 merge :: BTree a -> BTree a -> BTree a
 merge (Node ks [] t) (Node ks' [] _) = Node (ks++ks') [] t
-merge (Node ks cs t) (Node ks' cs' _) = make (ks, init cs) 
+merge (Node ks cs t) (Node ks' cs' _) = make (ks, init cs)
                                              (merge (last cs) (head cs'))
                                              (ks', tail cs')
 
@@ -100,8 +100,8 @@ merge (Node ks cs t) (Node ks' cs' _) = make (ks, init cs)
 
 fixRoot :: BTree a -> BTree a
 fixRoot (Node [] [tr] _) = tr -- shrink height
-fixRoot tr = if full tr then Node [k] [c1, c2] (degree tr) 
-             else tr 
+fixRoot tr = if full tr then Node [k] [c1, c2] (degree tr)
+             else tr
     where
       (c1, k, c2) = split tr
 
@@ -118,8 +118,8 @@ fixFull (ks', cs') c (ks'', cs'') = Node (ks'++[k]++ks'')
       (c1, k, c2) = split c
 
 fixLow :: ([a], [BTree a]) -> BTree a -> ([a], [BTree a]) -> BTree a
-fixLow (ks'@(_:_), cs') c (ks'', cs'') = make (init ks', init cs') 
-                                              (unsplit (last cs') (last ks') c) 
+fixLow (ks'@(_:_), cs') c (ks'', cs'') = make (init ks', init cs')
+                                              (unsplit (last cs') (last ks') c)
                                               (ks'', cs'')
 fixLow (ks', cs') c (ks''@(_:_), cs'') = make (ks', cs')
                                               (unsplit c (head ks'') (head cs''))
@@ -131,7 +131,7 @@ fixLow _ c _ = c
 
 toString :: (Show a)=>BTree a -> String
 toString (Node ks [] _) = "("++(L.intercalate ", " (map show ks))++")"
-toString tr = "("++(toStr (keys tr) (children tr))++")" where
+toString tr = "("++(toStr (keys tr) (subTrees tr))++")" where
     toStr (k:ks) (c:cs) = (toString c)++", "++(show k)++", "++(toStr ks cs)
     toStr [] [c] = toString c
 
