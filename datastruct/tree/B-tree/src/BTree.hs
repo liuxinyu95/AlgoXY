@@ -29,7 +29,8 @@ data BTree a = BTree { keys :: [a]
 
 empty = BTree [] []
 
--- d - 1 <= |keys| <= 2 * d - 1
+-- Define BTree of degree d as (d, t) :: (Int, BTree a) where
+--   d - 1 <= |keys t| <= 2 * d - 1
 
 full d (BTree ks _) = (length ks) > 2 * d - 1
 
@@ -61,12 +62,12 @@ insert x (d, t) = fixRoot (d, ins t) where
 
 delete :: (Ord a, Eq a) => a -> (Int, BTree a) -> (Int, BTree a)
 delete x (d, t) = fixRoot (d, del x t) where
-    del x t@(BTree ks ts)
-      | null ts = BTree (L.delete x ks) []
-      | otherwise = let (l, t', r@(ks', ts')) = partition x t in
-          if (not $ null ks') && (x == head ks') then
-            let k' = max' t' in balance d l (del k' t') (k':(tail ks'), ts')
-          else balance d l (del x t') r
+    del x (BTree ks []) = BTree (L.delete x ks) []
+    del x t = if (not $ null ks') && (x == head ks') then
+                let k' = max' t' in balance d l (del k' t') (k':(tail ks'), ts')
+              else balance d l (del x t') r
+      where
+        (l, t', r@(ks', ts')) = partition x t
 
 fixRoot (d, BTree [] [t]) = (d, t)
 fixRoot (d, t) | full d t  = let (t1, k, t2) = split d t in
@@ -89,15 +90,10 @@ balance d (ks1, ts1) t (ks2, ts2)
                                       (tail ks2, tail ts2)
            | otherwise = t
 
--- lookup :: (Ord a)=> a -> BTree a -> Maybe (BTree a, Int)
--- lookup tr@(BTree ks cs _) k
---     | matchFirst k $ drop len ks = Just (tr, len)
---     | otherwise = if null cs then Nothing
---                   else lookup (cs !! len) k
---     where
---       matchFirst x (y:_) = x==y
---       matchFirst x _ = False
---       len = length $ filter (<k) ks
+lookup k t@(BTree ks []) = if k `elem` ks then Just t else Nothing
+lookup k t = if (not $ null ks) && (k == head ks) then Just t
+             else BTree.lookup k t'  where
+  (_, t', (ks, _)) = partition k t
 
 fromList d xs = foldr insert (d, empty) xs
 
@@ -132,8 +128,15 @@ prop_del_balance xs x = isBTree d 0 $ snd $ delete x $ fromList d ys where
   ys = L.nub xs
   d = degOf xs
 
+prop_lookup :: [Int] -> Int -> Bool
+prop_lookup xs x = f $ BTree.lookup x $ snd $ fromList d xs where
+  d = degOf xs
+  f Nothing = not $ elem x xs
+  f (Just (BTree ks _)) = x `elem` ks
+
 testAll = do
   quickCheck prop_order
   quickCheck prop_insert
   quickCheck prop_delete
   quickCheck prop_del_balance
+  quickCheck prop_lookup
