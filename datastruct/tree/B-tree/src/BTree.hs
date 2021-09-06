@@ -29,8 +29,6 @@ data BTree a = BTree { keys :: [a]
 
 empty = BTree [] []
 
-size (BTree ks _) = length ks
-
 -- d - 1 <= |keys| <= 2 * d - 1
 
 full d (BTree ks _) = (length ks) > 2 * d - 1
@@ -42,8 +40,6 @@ partition x (BTree ks ts) = (l, t, r) where
   r = (ks2, ts2)
   (ks1, ks2) = L.partition (< x) ks
   (ts1, (t:ts2)) = L.splitAt (length ks1) ts
-
-divide t = split ((size t) `div` 2) t
 
 split d (BTree ks ts) = (BTree ks1 ts1, k, BTree ks2 ts2) where
   (ks1, k:ks2) = L.splitAt (d - 1) ks
@@ -71,13 +67,6 @@ delete x (d, t) = fixRoot (d, del x t) where
           if (not $ null ks') && (x == head ks') then
             let k' = max' t' in balance d l (del k' t') (k':(tail ks'), ts')
           else balance d l (del x t') r
-
-xs = [-68,-1,-56,-2,-3,-4,-58,-5,-6,-7,0,-57,-59,1,2,3,4,-55]
--- k = -55
--- d = 4
-tr = snd $ fromList 4 xs
-tr' = snd $ delete (-55) $ fromList 4 xs
-
 
 fixRoot (d, BTree [] [t]) = (d, t)
 fixRoot (d, t) | full d t  = let (t1, k, t2) = split d t in
