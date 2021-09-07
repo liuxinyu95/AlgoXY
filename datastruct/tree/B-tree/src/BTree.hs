@@ -63,11 +63,14 @@ insert x (d, t) = fixRoot (d, ins t) where
 delete :: (Ord a, Eq a) => a -> (Int, BTree a) -> (Int, BTree a)
 delete x (d, t) = fixRoot (d, del x t) where
     del x (BTree ks []) = BTree (L.delete x ks) []
-    del x t = if (not $ null ks') && (x == head ks') then
+    del x t = if (Just x) == safeHead ks' then
                 let k' = max' t' in balance d l (del k' t') (k':(tail ks'), ts')
               else balance d l (del x t') r
       where
         (l, t', r@(ks', ts')) = partition x t
+
+safeHead [] = Nothing
+safeHead (x:_) = Just x
 
 fixRoot (d, BTree [] [t]) = (d, t)
 fixRoot (d, t) | full d t  = let (t1, k, t2) = split d t in
@@ -91,7 +94,7 @@ balance d (ks1, ts1) t (ks2, ts2)
            | otherwise = t
 
 lookup k t@(BTree ks []) = if k `elem` ks then Just t else Nothing
-lookup k t = if (not $ null ks) && (k == head ks) then Just t
+lookup k t = if (Just k) == safeHead ks then Just t
              else BTree.lookup k t'  where
   (_, t', (ks, _)) = partition k t
 
