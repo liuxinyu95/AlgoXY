@@ -119,40 +119,187 @@ The empty node is in the form of $(\nil, \nil)$ or \texttt{BTree [] []}. Instead
 \section{Insert}
 \label{btree-insertion} \index{B-tree!insert}
 
-B-tree can be created by inserting
-keys repeatedly. The basic idea is similar to the binary
-search tree. When insert key $x$, from the tree root, we examine all the
-keys in the node to find a position where all the keys on the left are
-less than $x$, while all the keys on the right are greater than $x$.\footnote{This is a strong constraint. In fact, only less-than and equality testing is necessary. The later exercise address this point.}
-If the current node is a leaf node, and it is not full (there are
-less then $2t-1$ keys in this node), $x$ will be insert at this position.
-Otherwise, the position points to a child node.
-We need recursively insert $x$ to it.
+The idea of B-tree insertion is similar to the binary search tree. The difference is we need deal with multiple keys and sub-trees. When insert key $x$ to a B-tree $t$, start from the root, we examine the keys in the node to locate a position where all keys on the left to this position are less than $x$, while the rest keys on the right are greater than $x$.\footnote{In fact, only less-than and equality are sufficient. See exercise after this section.} If the node is a leaf, and is not full ($|keys(t)| < 2d-1$), we insert $x$ at this position. Otherwise, this position points to a sub-tree $t'$, we recursively insert $x$ to $t'$.
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{Insert key 22 to the 2-3-4 tree. $22 > 20$, go to the right child; $22 < 26$ go to the first child.}{\includegraphics[scale=0.5]{img/btree-insert-simple1.ps}} \\
-  \subcaptionbox{$21 < 22 < 25$, and the leaf isn't full.}{\includegraphics[scale=0.5]{img/btree-insert-simple2.ps}}
-  \caption{Insertion is similar to binary search tree.} \label{fig:btree-insert-simple}
+  \subcaptionbox{Insert 22 to a 2-3-4 tree. $22 > 20$, go to the right sub-tree; next as $22 < 26$, go to the first sub-tree.}{\includegraphics[scale=0.5]{img/btree-insert-simple1.ps}} \\
+  \subcaptionbox{$21 < 22 < 25$, the leaf is not full.}{\includegraphics[scale=0.5]{img/btree-insert-simple2.ps}}
+  \caption{Insert.} \label{fig:btree-insert-simple}
 \end{figure}
 
-Figure \ref{fig:btree-insert-simple} shows one example. The B-tree illustrated
-is 2-3-4 tree. When insert key $x=22$, because it's greater than the root,
-the right child contains key 26, 38, 45 is examined next; Since $22 < 26$,
-the first child contains key 21 and 25 are examined. This is a leaf
-node, and it is not full, key 22 is inserted to this node.
+As an example, consider the 2-3-4 tree in figure \ref{fig:btree-insert-simple}. when insert $x = 22$, because $20 < 22$, we next examine the sub-tree on the left, which contains 26, 38, 45. Since $22 < 26$, we next go to the first sub-tree containing 21 and 25. This is a leaf, and it is not full. Hence we insert 22 to this node.
 
-However, if there are $2t-1$ keys in the leaf, the new key $x$ can't
-be inserted, because this node is 'full'. When try to insert key 18
-to the above example B-tree will meet this problem. There are 2 methods to
-solve it.
+However, if there are $2d - 1$ keys in the leaf, we will break the B-tree rules after insert $x$, as the node will be too 'full'. For the same B-tree in figure \ref{fig:btree-insert-simple}, we'll meet this issue when insert 18. There are 2 approaches to solve it.
 
-%=========================================================================
-%       Splitting
-%=========================================================================
-\subsection{Splitting}
-\index{B-tree!split}
-\label{split}
+\subsubsection{Insert then split}
+
+We can adopt the similar insert then fix method as for red-black tree. First, we insert the key to proper ordering position without considering the B-tree balance rules, then as the next step, if the new tree violates the balance rule, we perform a recursive bottom-up fixing by splitting the overly full nodes. We need define the function to test whether a given node exceeds the minimum degree constraint or not.
+
+
+\be
+\begin{cases}
+full\ d\ (ks, ts) & = |ks| > 2d - 1 \\
+low\  d\ (ks, ts) & = |ks| < d - 1 \\
+\end{cases}
+\ee
+
+When the node contains too many keys and sub-trees, we define $split$ to break it into 3 parts:
+
+
+\be
+insert(T, k) = fix(ins(T, k))
+\ee
+
+Function $ins(T, k)$ traverse the B-tree $T$ from root to find a proper
+position where key $k$ can be inserted. After that, function $fix$ is
+applied to resume the B-tree properties. Denote B-tree in a form of
+$T = (K, C, t)$, where $K$ represents keys, $C$ represents children,
+and $t$ is the minimum degree.
+
+Below is the Haskell definition of B-tree.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+data BTree a = Node{ keys :: [a]
+                   , children :: [BTree a]
+                   , degree :: Int} deriving (Eq)
+\end{lstlisting}
+
+The insertion function can be provided based on this definition.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+insert tr x = fixRoot $ ins tr x
+\end{lstlisting} %$
+
+There are two cases when realize $ins(T, k)$ function. If the tree $T$ is
+leaf, $k$ is inserted to the keys; Otherwise if $T$ is the branch node, we
+need recursively insert $k$ to the proper child.
+
+Figure \ref{fig:recursive-insert} shows the branch case. The
+algorithm first locates the position. for certain key $k_i$,
+if the new key $k$ to be inserted satisfy $k_{i-1}<k<k_i$,
+Then we need recursively insert $k$ to child $c_i$.
+
+This position divides the node into 3 parts, the left part,
+the child $c_i$ and the right part.
+
+\begin{figure}[htbp]
+  \centering
+  \subcaptionbox{Locate the child to insert.}{\includegraphics[scale=0.5]{img/insert-before.ps}} \\
+  \subcaptionbox{Recursive insert.}{\includegraphics[scale=0.5]{img/insert-after.ps}}
+  \caption{Insert a key to a branch node} \label{fig:recursive-insert}
+\end{figure}
+
+\be
+ins(T, k) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (K' \cup \{k\} \cup K'', \phi, t) & C = \phi, (K', K'') = divide(K, k) \\
+  make((K', C_1), ins(c, k), (K'', C_2')) & (C_1, C_2) = split(|K'|, C)
+  \end{array}
+\right.
+\ee
+
+The first clause deals with the leaf case.
+Function $divide(K, k)$ divide keys into two parts, all keys in the first
+part are not greater than $k$, and all rest keys are not less than $k$.
+
+\[
+K = K' \cup K'' \land \forall k' \in K', k'' \in K'' \Rightarrow k' \leq k \leq k''
+\]
+
+The second clause handle the branch case.
+Function $split(n, C)$ splits children in two parts, $C_1$ and $C_2$.
+$C_1$ contains the first $n$ children; and $C_2$ contains the rest.
+Among $C_2$, the first child is denoted as $c$, and others are
+represented as $C_2'$.
+
+Here the key $k$ need be recursively inserted into child $c$. Function
+$make$ takes 3 parameter. The first and the third are pairs of
+key and children; the second parameter is a child node. It examines
+if a B-tree node made from these keys and children violates the
+minimum degree constraint and performs fixing if necessary.
+
+\be
+make((K', C'), c, (K'', C'')) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  fixFull((K', C'), c, (K'', C'')) & full(c) \\
+  (K' \cup K'', C' \cup \{c\} \cup C'', t) & otherwise
+  \end{array}
+\right.
+\ee
+
+Where function $full(c)$ tests if the child $c$ is full.
+Function $fixFull$ splits the the child $c$, and forms a new B-tree node
+with the pushed up key.
+
+\be
+fixFull((K', C'), c, (K'', C'')) = (K' \cup \{k'\} \cup K'', C' \cup \{c_1, c_2\} \cup C'', t)
+\ee
+
+Where $(c_1, k', c_2) = split(c)$. During splitting, the first $t-1$ keys and $t$ children
+are extract to one new child, the last $t-1$ keys and $t$ children form another child.
+The $t$-th key $k'$ is pushed up.
+
+With all the above functions defined, we can realize $fix(T)$ to complete the functional B-tree
+insertion algorithm. It firstly checks if the root contains too
+many keys. If it exceeds the limit, splitting will be applied.
+The split result will be used to make a new node, so the total
+height of the tree increases by one.
+
+\be
+fix(T) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  c & T = (\phi, \{c\}, t) \\
+  (\{k'\}, \{c_1, c_2\}, t) & full(T), (c_1, k', c_2) = split(T) \\
+  T & otherwise
+  \end{array}
+\right.
+\ee
+
+The following Haskell example code implements the B-tree insertion.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+import qualified Data.List as L
+
+ins (Node ks [] t) x = Node (L.insert x ks) [] t
+ins (Node ks cs t) x = make (ks', cs') (ins c x) (ks'', cs'')
+    where
+      (ks', ks'') = L.partition (<x) ks
+      (cs', (c:cs'')) = L.splitAt (length ks') cs
+
+fixRoot (Node [] [tr] _) = tr -- shrink height
+fixRoot tr = if full tr then Node [k] [c1, c2] (degree tr)
+             else tr
+    where
+      (c1, k, c2) = split tr
+
+make (ks', cs') c (ks'', cs'')
+    | full c = fixFull (ks', cs') c (ks'', cs'')
+    | otherwise = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
+
+fixFull (ks', cs') c (ks'', cs'') = Node (ks'++[k]++ks'')
+                                         (cs'++[c1,c2]++cs'') (degree c)
+    where
+      (c1, k, c2) = split c
+
+full tr = (length $ keys tr) > 2*(degree tr)-1
+\end{lstlisting}
+
+Figure \ref{fig:btree-insert-fp} shows the varies of results of building B-trees
+by continuously inserting keys "GMPXACDEJKNORSTUVYZ".
+
+\begin{figure}[htbp]
+  \centering
+  \subcaptionbox{Insert result of a 2-3-4 tree.}{\includegraphics[scale=0.5]{img/btree-insert-fp-234.ps}} \\
+  \subcaptionbox{Insert result of a B-tree with $t = 3$}{\includegraphics[scale=0.5]{img/btree-insert-fp-3.ps}}
+    \caption{Insert then fixing results} \label{fig:btree-insert-fp}
+\end{figure}
 
 \subsubsection{Split before insertion}
 
@@ -355,174 +502,6 @@ of the collection is $n$. The \texttt{ordered\_insert} program firstly appends
  the new element at the end of the existing collection, then iterates from the
 last element to the first one, and checks if the current two elements next to each other
 are ordered. If not, these two elements will be swapped.
-
-% ================================================================
-%               Insert and fix method
-% ================================================================
-
-\subsubsection{Insert then fixing}
-
-In functional settings, B-tree insertion can be realized in a way similar to
-red-black tree. When insert a key to red-black tree, it is firstly inserted
-as in the normal binary search tree, then recursive fixing is performed to
-resume the balance of the tree. B-tree can be viewed as extension to the
-binary search tree, that each node contains multiple keys and children.
-We can firstly insert the key without considering if the node is full.
-Then perform fixing to satisfy the minimum degree constraint.
-
-\be
-insert(T, k) = fix(ins(T, k))
-\ee
-
-Function $ins(T, k)$ traverse the B-tree $T$ from root to find a proper
-position where key $k$ can be inserted. After that, function $fix$ is
-applied to resume the B-tree properties. Denote B-tree in a form of
-$T = (K, C, t)$, where $K$ represents keys, $C$ represents children,
-and $t$ is the minimum degree.
-
-Below is the Haskell definition of B-tree.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-data BTree a = Node{ keys :: [a]
-                   , children :: [BTree a]
-                   , degree :: Int} deriving (Eq)
-\end{lstlisting}
-
-The insertion function can be provided based on this definition.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-insert tr x = fixRoot $ ins tr x
-\end{lstlisting} %$
-
-There are two cases when realize $ins(T, k)$ function. If the tree $T$ is
-leaf, $k$ is inserted to the keys; Otherwise if $T$ is the branch node, we
-need recursively insert $k$ to the proper child.
-
-Figure \ref{fig:recursive-insert} shows the branch case. The
-algorithm first locates the position. for certain key $k_i$,
-if the new key $k$ to be inserted satisfy $k_{i-1}<k<k_i$,
-Then we need recursively insert $k$ to child $c_i$.
-
-This position divides the node into 3 parts, the left part,
-the child $c_i$ and the right part.
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{Locate the child to insert.}{\includegraphics[scale=0.5]{img/insert-before.ps}} \\
-  \subcaptionbox{Recursive insert.}{\includegraphics[scale=0.5]{img/insert-after.ps}}
-  \caption{Insert a key to a branch node} \label{fig:recursive-insert}
-\end{figure}
-
-\be
-ins(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (K' \cup \{k\} \cup K'', \phi, t) & C = \phi, (K', K'') = divide(K, k) \\
-  make((K', C_1), ins(c, k), (K'', C_2')) & (C_1, C_2) = split(|K'|, C)
-  \end{array}
-\right.
-\ee
-
-The first clause deals with the leaf case.
-Function $divide(K, k)$ divide keys into two parts, all keys in the first
-part are not greater than $k$, and all rest keys are not less than $k$.
-
-\[
-K = K' \cup K'' \land \forall k' \in K', k'' \in K'' \Rightarrow k' \leq k \leq k''
-\]
-
-The second clause handle the branch case.
-Function $split(n, C)$ splits children in two parts, $C_1$ and $C_2$.
-$C_1$ contains the first $n$ children; and $C_2$ contains the rest.
-Among $C_2$, the first child is denoted as $c$, and others are
-represented as $C_2'$.
-
-Here the key $k$ need be recursively inserted into child $c$. Function
-$make$ takes 3 parameter. The first and the third are pairs of
-key and children; the second parameter is a child node. It examines
-if a B-tree node made from these keys and children violates the
-minimum degree constraint and performs fixing if necessary.
-
-\be
-make((K', C'), c, (K'', C'')) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  fixFull((K', C'), c, (K'', C'')) & full(c) \\
-  (K' \cup K'', C' \cup \{c\} \cup C'', t) & otherwise
-  \end{array}
-\right.
-\ee
-
-Where function $full(c)$ tests if the child $c$ is full.
-Function $fixFull$ splits the the child $c$, and forms a new B-tree node
-with the pushed up key.
-
-\be
-fixFull((K', C'), c, (K'', C'')) = (K' \cup \{k'\} \cup K'', C' \cup \{c_1, c_2\} \cup C'', t)
-\ee
-
-Where $(c_1, k', c_2) = split(c)$. During splitting, the first $t-1$ keys and $t$ children
-are extract to one new child, the last $t-1$ keys and $t$ children form another child.
-The $t$-th key $k'$ is pushed up.
-
-With all the above functions defined, we can realize $fix(T)$ to complete the functional B-tree
-insertion algorithm. It firstly checks if the root contains too
-many keys. If it exceeds the limit, splitting will be applied.
-The split result will be used to make a new node, so the total
-height of the tree increases by one.
-
-\be
-fix(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  c & T = (\phi, \{c\}, t) \\
-  (\{k'\}, \{c_1, c_2\}, t) & full(T), (c_1, k', c_2) = split(T) \\
-  T & otherwise
-  \end{array}
-\right.
-\ee
-
-The following Haskell example code implements the B-tree insertion.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-import qualified Data.List as L
-
-ins (Node ks [] t) x = Node (L.insert x ks) [] t
-ins (Node ks cs t) x = make (ks', cs') (ins c x) (ks'', cs'')
-    where
-      (ks', ks'') = L.partition (<x) ks
-      (cs', (c:cs'')) = L.splitAt (length ks') cs
-
-fixRoot (Node [] [tr] _) = tr -- shrink height
-fixRoot tr = if full tr then Node [k] [c1, c2] (degree tr)
-             else tr
-    where
-      (c1, k, c2) = split tr
-
-make (ks', cs') c (ks'', cs'')
-    | full c = fixFull (ks', cs') c (ks'', cs'')
-    | otherwise = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
-
-fixFull (ks', cs') c (ks'', cs'') = Node (ks'++[k]++ks'')
-                                         (cs'++[c1,c2]++cs'') (degree c)
-    where
-      (c1, k, c2) = split c
-
-full tr = (length $ keys tr) > 2*(degree tr)-1
-\end{lstlisting}
-
-Figure \ref{fig:btree-insert-fp} shows the varies of results of building B-trees
-by continuously inserting keys "GMPXACDEJKNORSTUVYZ".
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{Insert result of a 2-3-4 tree.}{\includegraphics[scale=0.5]{img/btree-insert-fp-234.ps}} \\
-  \subcaptionbox{Insert result of a B-tree with $t = 3$}{\includegraphics[scale=0.5]{img/btree-insert-fp-3.ps}}
-    \caption{Insert then fixing results} \label{fig:btree-insert-fp}
-\end{figure}
 
 Compare to the imperative insertion result
 as shown in figure \ref{fig:btree-insert-fp}
