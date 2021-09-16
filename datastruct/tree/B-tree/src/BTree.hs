@@ -40,7 +40,7 @@ low d (BTree ks _) = (length ks) < d - 1
 partition x (BTree ks ts) = (l, t, r) where
   l = (ks1, ts1)
   r = (ks2, ts2)
-  (ks1, ks2) = L.partition (< x) ks
+  (ks1, ks2) = L.span (< x) ks
   (ts1, (t:ts2)) = L.splitAt (length ks1) ts
 
 split d (BTree ks ts) = (BTree ks1 ts1, k, BTree ks2 ts2) where
