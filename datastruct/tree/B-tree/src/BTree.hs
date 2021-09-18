@@ -101,6 +101,16 @@ fromList d xs = foldr insert (d, empty) xs
 toList (BTree ks []) = ks
 toList (BTree ks (t:ts)) = concat ((toList t) : (zipWith (\k tr -> k : toList tr) ks ts))
 
+foldt :: (a -> b -> b) -> b -> (BTree a) -> b
+foldt f z (BTree ks []) = foldr f z ks
+foldt f z (BTree [] [t]) = foldt f z t
+foldt f z (BTree (k:ks) (t:ts)) = let z' = foldt f z (BTree ks ts) in
+  foldt f (f k z') t
+
+toStr (BTree ks []) = "(" ++ L.intercalate ", " (map show ks) ++ ")"
+toStr (BTree ks (t:ts)) = "(" ++ L.intercalate ", " ss ++ ")" where
+  ss = (toStr t) : (concat (zipWith (\k tr -> [show k, toStr tr]) ks ts))
+
 -- Quick check
 
 degOf [] = 2
@@ -135,9 +145,15 @@ prop_lookup xs x = f $ BTree.lookup x $ snd $ fromList d xs where
   f Nothing = not $ elem x xs
   f (Just (BTree ks _)) = x `elem` ks
 
+prop_foldt :: [Int] -> Bool
+prop_foldt xs = toList t == foldt (:) [] t where
+  t = snd $ fromList d xs
+  d = degOf xs
+
 testAll = do
   quickCheck prop_order
   quickCheck prop_insert
   quickCheck prop_delete
   quickCheck prop_del_balance
   quickCheck prop_lookup
+  quickCheck prop_foldt
