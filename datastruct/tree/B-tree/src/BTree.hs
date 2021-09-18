@@ -1,20 +1,18 @@
-{-
-    BTree.hs, B-Tree in Haskell.
-    Copyright (C) 2010, Liu Xinyu (liuxinyu95@gmail.com)
+-- BTree.hs
+-- Copyright (C) 2010, Liu Xinyu (liuxinyu95@gmail.com)
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+-- This program is free software: you can redistribute it and/or modify
+-- it under the terms of the GNU General Public License as published by
+-- the Free Software Foundation, either version 3 of the License, or
+-- (at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+-- This program is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-- GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
--}
+-- You should have received a copy of the GNU General Public License
+-- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 module BTree where
 
@@ -106,10 +104,6 @@ foldt f z (BTree ks []) = foldr f z ks
 foldt f z (BTree [] [t]) = foldt f z t
 foldt f z (BTree (k:ks) (t:ts)) = let z' = foldt f z (BTree ks ts) in
   foldt f (f k z') t
-
-toStr (BTree ks []) = "(" ++ L.intercalate ", " (map show ks) ++ ")"
-toStr (BTree ks (t:ts)) = "(" ++ L.intercalate ", " ss ++ ")" where
-  ss = (toStr t) : (concat (zipWith (\k tr -> [show k, toStr tr]) ks ts))
 
 -- Quick check
 

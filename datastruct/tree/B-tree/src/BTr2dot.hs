@@ -19,7 +19,7 @@
 module Main where
 
 import System.Environment (getArgs)
-import Text.ParserCombinators.Parsec
+import Text.Parsec
 import Control.Monad (mapM_, liftM2)
 import Control.Applicative ((<$>))
 import Data.List (intercalate, zipWith)
@@ -46,7 +46,7 @@ leaf = do
   char ')'
   return (Node ks [])
 
-branch = do 
+branch = do
   char '('
   (cs, ks)<- everyOther node key (char ',')
   char ')'
@@ -79,8 +79,8 @@ genDot fname (Right node) = writeFile fname dots >> putStrLn dots
 -- tests
 testParse = mapM_ (parseTest node) toks where
     toks = map (filter (not.isSpace))
-           ["((A, B), C, (D, E))", 
-            "((A,B), C, (D,E))", 
+           ["((A, B), C, (D, E))",
+            "((A,B), C, (D,E))",
             "(((A, B), C, (D, E, F), G, (H, I, J, K)), M, ((N, O), P, (Q, R, S), T, (U, V), W, (X, Y, Z)))"]
 
 testDefNode = map defNode [["A"], ["A", "B", "C"]]
