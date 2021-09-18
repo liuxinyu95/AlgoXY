@@ -187,20 +187,20 @@ fix\ (d, t) = \begin{cases}
 \end{cases}
 \ee
 
-$ins$ need handle two cases: for leaf node, we can reuse the list ordered $insert$ function defined in chapter 1 (\autoref{eq:list-ordered-insert}); otherwise, we need find the position to recursively insert to sub-tree. To do that, we define a function as: $partition\ x\ (ks, ts) = (l, t, r)$, where $l = (ks_l, ts_l)$ and $r = (ks_r, ts_r)$. It further uses the list partition function $span$ defined in chapter 1 (\autoref{eq:span}):
+$ins$ need handle two cases: for leaf node, we can reuse the list ordered $insert$ function defined in chapter 1 (\autoref{eq:list-ordered-insert}); otherwise, we need find the position to recursively insert to sub-tree. To do that, we define a function as: $partition\ x\ (ks, ts) = (l, t', r)$, where $l = (ks_l, ts_l)$ and $r = (ks_r, ts_r)$. It further uses the list partition function $span$ defined in chapter 1 (\autoref{eq:span}):
 
 \[
 \begin{cases}
 (ks_l, ks_r) & = span\ (< x)\ ks \\
-(ts_l, (t:ts_r)) & = splitAt\ |ks_l| ts
+(ts_l, (t':ts_r)) & = splitAt\ |ks_l| ts
 \end{cases}
 \]
 
-We next recursively insert $x$ to $t$ located by the $partition$ function, as shown in figure \ref{fig:recursive-insert}.
+As such, we separate all the keys and sub-trees less than $x$ on the left as $l$, and those greater than $x$ on the right as $r$. The last sub-tree that less than $x$ is extracted as $t'$. We then recursively insert $x$ to $t'$, as shown in figure \ref{fig:recursive-insert}.
 
 \be
 \begin{array}{rcll}
-  ins\ (ks, \nil) & = & (insert_L\ x\ ks, \nil) & \text{list insert}\\
+  ins\ (ks, \nil) & = & (insert_L\ x\ ks, \nil) & \text{list insert for leaf}\\
   ins\ (ks, ts)   & = & balance\ d\ l\ (ins\ t')\ r & \text{where}\ (l, t', r) = partition\ x\ t \\
 \end{array}
 \ee
@@ -212,84 +212,58 @@ We next recursively insert $x$ to $t$ located by the $partition$ function, as sh
   \label{fig:recursive-insert}
 \end{figure}
 
+After insert $x$ to $t'$, it may contains too many keys over B-tree constraint. We define function $balance$ to recursively resume B-tree property by splitting sub-tree.
 
 \be
-make((K', C'), c, (K'', C'')) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  fixFull((K', C'), c, (K'', C'')) & full(c) \\
-  (K' \cup K'', C' \cup \{c\} \cup C'', t) & otherwise
-  \end{array}
-\right.
+balance\ d\ (ks_l, ts_l)\ t\ (ks_r, ts_r) = \begin{cases}
+  full\ d\ t: fix_f \\
+  otherwise: ((ks_l \doubleplus ks_r), (ts_l \doubleplus [t] \doubleplus ts_r))
+  \end{cases}
 \ee
 
-Where function $full(c)$ tests if the child $c$ is full.
-Function $fixFull$ splits the the child $c$, and forms a new B-tree node
-with the pushed up key.
+where $fix_f$ splits sub-tree $t$ with degree $d$ as $(t_1, k, t_2) = split\ d\ t$, then combine to a new B-tree node:
 
 \be
-fixFull((K', C'), c, (K'', C'')) = (K' \cup \{k'\} \cup K'', C' \cup \{c_1, c_2\} \cup C'', t)
+fix_f = ((ks_l \doubleplus [k] \doubleplus ks_r), (ts_l \doubleplus [t_1, t_2] \doubleplus ts_r))
 \ee
 
-Where $(c_1, k', c_2) = split(c)$. During splitting, the first $t-1$ keys and $t$ children
-are extract to one new child, the last $t-1$ keys and $t$ children form another child.
-The $t$-th key $k'$ is pushed up.
+The following example program implements $insert$ for B-tree.
 
-With all the above functions defined, we can realize $fix(T)$ to complete the functional B-tree
-insertion algorithm. It firstly checks if the root contains too
-many keys. If it exceeds the limit, splitting will be applied.
-The split result will be used to make a new node, so the total
-height of the tree increases by one.
+\begin{Haskell}
+partition x (BTree ks ts) = (l, t, r) where
+  l = (ks1, ts1)
+  r = (ks2, ts2)
+  (ks1, ks2) = span (< x) ks
+  (ts1, (t:ts2)) = splitAt (length ks1) ts
 
-\be
-fix(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  c & T = (\phi, \{c\}, t) \\
-  (\{k'\}, \{c_1, c_2\}, t) & full(T), (c_1, k', c_2) = split(T) \\
-  T & otherwise
-  \end{array}
-\right.
-\ee
+split d (BTree ks ts) = (BTree ks1 ts1, k, BTree ks2 ts2) where
+  (ks1, k:ks2) = splitAt (d - 1) ks
+  (ts1, ts2) = splitAt d ts
 
-The following Haskell example code implements the B-tree insertion.
+insert x (d, t) = fixRoot (d, ins t) where
+    ins (BTree ks []) = BTree (List.insert x ks) []
+    ins t = balance d l (ins t') r where (l, t', r) = partition x t
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-import qualified Data.List as L
+fixRoot (d, t) | full d t  = let (t1, k, t2) = split d t in
+                               (d, BTree [k] [t1, t2])
+               | otherwise = (d, t)
 
-ins (Node ks [] t) x = Node (L.insert x ks) [] t
-ins (Node ks cs t) x = make (ks', cs') (ins c x) (ks'', cs'')
-    where
-      (ks', ks'') = L.partition (<x) ks
-      (cs', (c:cs'')) = L.splitAt (length ks') cs
+balance d (ks1, ts1) t (ks2, ts2)
+    | full d t  = fixFull
+    | otherwise = BTree (ks1 ++ ks2) (ts1 ++ [t] ++ ts2)
+  where
+    fixFull = let (t1, k, t2) = split d t in
+                BTree (ks1 ++ [k] ++ ks2) (ts1 ++ [t1, t2] ++ ts2)
+\end{Haskell}
 
-fixRoot (Node [] [tr] _) = tr -- shrink height
-fixRoot tr = if full tr then Node [k] [c1, c2] (degree tr)
-             else tr
-    where
-      (c1, k, c2) = split tr
-
-make (ks', cs') c (ks'', cs'')
-    | full c = fixFull (ks', cs') c (ks'', cs'')
-    | otherwise = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
-
-fixFull (ks', cs') c (ks'', cs'') = Node (ks'++[k]++ks'')
-                                         (cs'++[c1,c2]++cs'') (degree c)
-    where
-      (c1, k, c2) = split c
-
-full tr = (length $ keys tr) > 2*(degree tr)-1
-\end{lstlisting}
-
-Figure \ref{fig:btree-insert-fp} shows the varies of results of building B-trees
-by continuously inserting keys "GMPXACDEJKNORSTUVYZ".
+Figure \ref{fig:btree-insert-fp} shows the example B-trees built by repeatedly insert elements from list "GMPXACDEJKNORSTUVYZ".
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{Insert result of a 2-3-4 tree.}{\includegraphics[scale=0.5]{img/btree-insert-fp-234.ps}} \\
-  \subcaptionbox{Insert result of a B-tree with $t = 3$}{\includegraphics[scale=0.5]{img/btree-insert-fp-3.ps}}
-    \caption{Insert then fixing results} \label{fig:btree-insert-fp}
+  \subcaptionbox{2-3-4 tree}{\includegraphics[scale=0.5]{img/btree-insert-fp-234.ps}} \\
+  \subcaptionbox{B-tree of $d = 3$}{\includegraphics[scale=0.5]{img/btree-insert-fp-3.ps}}
+  \caption{Repeatedly insert elements from "GMPXACDEJKNORSTUVYZ".}
+  \label{fig:btree-insert-fp}
 \end{figure}
 
 \subsubsection{Split before insertion}
