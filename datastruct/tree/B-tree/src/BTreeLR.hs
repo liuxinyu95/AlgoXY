@@ -89,6 +89,7 @@ isBTree :: Int -> Int -> (BTree a) -> Bool
 isBTree _ _ Empty = True
 isBTree d n t@(BTree l t' r) = (not $ full d t)
                           && (n == 0 || (not $ low d t))
+                          && isBTree d (n + 1) t'
                           && (and [isBTree d (n + 1) tr | (_, tr) <- (l ++ r)])
 
 prop_order :: [Int] -> Bool
