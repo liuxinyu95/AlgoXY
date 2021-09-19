@@ -18,8 +18,9 @@ module BTreeLR where
 
 -- Implement B-Tree with paired back-to-back lists.
 
-import qualified Data.List as L
+import Data.List (nub, sort)
 import Test.QuickCheck
+import Data.Maybe (listToMaybe)
 
 data BTree a = Empty
              | BTree [(a, BTree a)] (BTree a) [(a, BTree a)]
@@ -38,16 +39,18 @@ stepL (BTree ((k, t):l) t' r) = BTree l t ((k, t'):r)
 
 stepR (BTree l t' ((k, t):r)) = BTree ((k, t'):l) t r
 
-partition x t@(BTree [] tm r)
-  | x < (fst $ head r) = ([], tm, r)
-  | otherwise = partition x (stepR t)
-partition x t@(BTree l tm [])
-  | x > (fst $ head l) = (l, tm, [])
-  | otherwise = partition x (stepL t)
-partition x t@(BTree l tm r)
-  | (fst $ head l) < x && x < (fst $ head r) = (l, tm, r)
-  | x > (fst $ head r) = partition x (stepR t)
-  | x < (fst $ head l) = partition x (stepL t)
+hd = fst . head
+
+partition p t@(BTree [] m r)
+  | p (hd r) = partition p (stepR t)
+  | otherwise = ([], m, r)
+partition p t@(BTree l m [])
+  | (not . p) (hd l) = partition p (stepL t)
+  | otherwise = (l, m, [])
+partition p t@(BTree l m r)
+  | p (hd l) && (not . p) (hd r) = (l, m, r)
+  | p (hd r) = partition p (stepR t)
+  | (not . p) (hd l) = partition p (stepL t)
 
 split :: Int -> (BTree a) -> ((BTree a), a, (BTree a))
 split d t@(BTree l _ _) | n < d = sp $ iterate stepR t !! (d - n)
@@ -60,7 +63,7 @@ split d t@(BTree l _ _) | n < d = sp $ iterate stepR t !! (d - n)
 insert :: (Ord a) => a -> (Int, BTree a) -> (Int, BTree a)
 insert x (d, t) = fixRoot (d, ins t) where
   ins Empty = BTree [] Empty [(x, Empty)]
-  ins t = let (l, t', r) = partition x t in
+  ins t = let (l, t', r) = partition (< x) t in
     case t' of
       Empty -> balance d l Empty ((x, Empty):r)
       _     -> balance d l (ins t') r
@@ -74,6 +77,11 @@ balance d l t r | full d t = fixFull
                 | otherwise = BTree l t r
   where
     fixFull = let (t1, k, t2) = split d t in BTree l t1 ((k, t2):r)
+
+lookup x Empty = Nothing
+lookup x t = let (l, t', r) = partition (< x) t in
+  if (Just x) == fmap fst (listToMaybe r) then Just (BTree l t' r)
+  else BTreeLR.lookup x t'
 
 fromList d xs = foldr insert (d, Empty) xs
 
@@ -93,15 +101,24 @@ isBTree d n t@(BTree l t' r) = (not $ full d t)
                           && (and [isBTree d (n + 1) tr | (_, tr) <- (l ++ r)])
 
 prop_order :: [Int] -> Bool
-prop_order xs = (L.sort ys) == (toList $ snd $ fromList d ys) where
+prop_order xs = (sort ys) == (toList $ snd $ fromList d ys) where
   d = degOf xs
-  ys = L.nub xs
+  ys = nub xs
 
 prop_insert :: [Int] -> Bool
 prop_insert xs = isBTree d 0 $ snd $ fromList d ys where
   d = degOf xs
-  ys = L.nub xs
+  ys = nub xs
+
+prop_lookup :: [Int] -> Int -> Bool
+prop_lookup xs x = f $ BTreeLR.lookup x $ snd $ fromList d ys where
+  d = degOf xs
+  ys = nub xs
+  f Nothing = not $ elem x xs
+  f (Just (BTree l t [])) = False
+  f (Just (BTree l t ((y, _):_))) = x == y
 
 testAll = do
   quickCheck prop_order
   quickCheck prop_insert
+  quickCheck prop_lookup
