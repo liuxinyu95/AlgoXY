@@ -285,64 +285,47 @@ The second method is to split a node before insertion to prevent it becoming ove
 \EndProcedure
 \end{algorithmic}
 
-After splitting, a key is pushed up to its parent node.
-It is quite possible that the parent node has already been full.
-And this pushing violates the B-tree property.
-
-In order to solve this problem, we can check from the root along
-the path of insertion traversing till the leaf. If there is any node
-in this path is full, the splitting is applied. Since the parent
-of this node has been examined, it is ensured that there are
-less than $2t-1$ keys in the parent. It won't make the
-parent full if pushing up one key. This approach only need one single
-pass down the tree without any back-tracking.
-
-If the root need splitting, a new node is created as the new root.
-There is no keys in this new created root, and the previous root is
-set as the only child. After that, splitting is performed top-down.
-And we can insert the new key finally.
+When split the node $x = t_i(z)$, we push the $d$-th key $k_d(x)$ up to the parent node $z$. If $z$ is already full, the pushing will broken B-tree rules. To solve this problem, we need do the top-down check from the root along the path when insert. Split any node with $2d - 1$ keys. Since all parent nodes are processed to be not full, they can accept the additional key pushed up. This method needs one single pass down the tree without any back-tracking. If the root is full, we create a new node, and put the root as it singleton sub-tree. Below is the insert algorithm:
 
 \begin{algorithmic}[1]
-\Function{Insert}{$T, k$}
-  \State $r \gets T$
+\Function{Insert}{$t, k$}
+  \State $r \gets t$
   \If{$r$ is full} \Comment{root is full}
     \State $s \gets$ \Call{CREATE-NODE}{}
-    \State $C(s) \gets \{r\}$
-    \State \Call{Split-Child}{$s, 1$}
+    \State $T(s) \gets [ r ]$
+    \State \Call{Split}{$s, 1$}
     \State $r \gets s$
   \EndIf
   \State \Return \Call{Insert-Nonfull}{$r, k$}
 \EndFunction
 \end{algorithmic}
 
-Where algorithm \textproc{Insert-Nonfull} assumes the node passed in
-is not full. If it is a leaf node, the new key is inserted to
-the proper position based on the order; Otherwise, the algorithm
-finds a proper child node to which the new key will be inserted.
-If this child is full, splitting will be performed.
+Where \textproc{Insert-Nonfull} assumes the node $r$ passed in
+is not full. If $r$ is a leaf, we insert $k$ to the keys based on order; otherwise, we locate the position, where $k_i(r) < k < k_{i+1}(r)$. Split the sub-tree $t_i(r)$ if it is full, and go on insert to this sub-tree.
 
 \begin{algorithmic}[1]
-\Function{Insert-Nonfull}{$T, k$}
-  \If{$T$ is leaf}
+\Function{Insert-Nonfull}{$r, k$}
+  \State $n \gets |K(r)|$
+  \If{$r$ is leaf}
     \State $i \gets 1$
-    \While{$i \leq |K(T)| \land k > k_i(T)$}
-      \State $i \gets i+1$
+    \While{$i \leq n$ and $k > k_i(r)$}
+      \State $i \gets i + 1$
     \EndWhile
-    \State \Call{Insert}{$K(T), i, k$}
+    \State \Call{Insert-At}{$K(r), i, k$}
   \Else
-    \State $i \gets |K(T)|$
-    \While{$i>1 \land k < k_i(T)$}
-      \State $i \gets i-1$
+    \State $i \gets n$
+    \While{$i > 1$ and $k < k_i(r)$}
+      \State $i \gets i - 1$
     \EndWhile
-    \If{$c_i(T)$ is full}
-      \State \Call{Split-Child}{$T, i$}
-      \If{$k > k_i(T)$}
-        \State $i \gets i+1$
+    \If{$t_i(r)$ is full}
+      \State \Call{Split}{$r, i$}
+      \If{$k > k_i(r)$}
+        \State $i \gets i + 1$
       \EndIf
     \EndIf
-    \State \Call{Insert-Nonfull}{$c_i(T), k$}
+    \State \Call{Insert-Nonfull}{$t_i(r), k$}
   \EndIf
-  \State \Return $T$
+  \State \Return $r$
 \EndFunction
 \end{algorithmic}
 
