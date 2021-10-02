@@ -256,7 +256,7 @@ balance d (ks1, ts1) t (ks2, ts2)
                 BTree (ks1 ++ [k] ++ ks2) (ts1 ++ [t1, t2] ++ ts2)
 \end{Haskell}
 
-Figure \ref{fig:btree-insert-fp} shows the example B-trees built by repeatedly insert elements from list "GMPXACDEJKNORSTUVYZ".
+Figure \ref{fig:btree-insert-fp} shows the example B-trees built by repeatedly insert elements from list ``GMPXACDEJKNORSTUVYZ''.
 
 \begin{figure}[htbp]
   \centering
@@ -329,84 +329,15 @@ is not full. If $r$ is a leaf, we insert $k$ to the keys based on order; otherwi
 \EndFunction
 \end{algorithmic}
 
-This algorithm is recursive. In B-tree,
-the minimum degree $t$ is typically relative to magnetic disk structure.
-Even small depth can support huge amount of data
-(with $t=10$, maximum to 10 billion data can be stored in a B-tree with height of 10).
-The recursion can also be eliminated. This is left as exercise to the reader.
-
-Figure \ref{fig:btree-insert} shows the result of continuously inserting
-keys G, M, P, X, A, C, D, E, J, K, N, O, R, S, T, U, V, Y, Z to the empty tree.
-The first result is the 2-3-4 tree ($t=2$). The second result shows how
-it varies when $t=3$.
+This is recursive algorithm is recursive. There is an exercise problem to eliminate the recursion with pure loops. Figure \ref{fig:btree-insert} gives the result with the same input of ``GMPXACDEJKNORSTUVYZ''.
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{2-3-4 tree.}{\includegraphics[scale=0.5]{img/btree-insert-2-3-4.ps}}\\
-  \subcaptionbox{$t=3$}{\includegraphics[scale=0.5]{img/btree-insert-3.ps}}
-  \caption{Insertion result} \label{fig:btree-insert}
+  \subcaptionbox{$d = 2$, 2-3-4 tree}{\includegraphics[scale=0.5]{img/btree-insert-2-3-4.ps}}\\
+  \subcaptionbox{$d = 3$}{\includegraphics[scale=0.5]{img/btree-insert-3.ps}}
+  \caption{Insert from ``GMPXACDEJKNORSTUVYZ''}
+  \label{fig:btree-insert}
 \end{figure}
-
-Below example Python program implements this algorithm.
-\lstset{language=Python}
-\begin{lstlisting}
-def insert(tr, key):
-    root = tr
-    if is_full(root):
-        s = BTree(root.t)
-        s.children.insert(0, root)
-        split_child(s, 0)
-        root = s
-    return insert_nonfull(root, key)
-\end{lstlisting}
-
-And the insertion to non-full node is implemented as the following.
-
-\begin{lstlisting}
-def insert_nonfull(tr, key):
-    if is_leaf(tr):
-        ordered_insert(tr.keys, key)
-    else:
-        i = len(tr.keys)
-        while i>0 and key < tr.keys[i-1]:
-            i = i-1
-        if is_full(tr.children[i]):
-            split_child(tr, i)
-            if key>tr.keys[i]:
-                i = i+1
-        insert_nonfull(tr.children[i], key)
-    return tr
-\end{lstlisting}
-
-Where function \texttt{ordered\_insert} is used to insert an element
-to an ordered list. Function \texttt{is\_full} tests if a node contains
-$2t-1$ keys.
-
-\begin{lstlisting}
-def ordered_insert(lst, x):
-    i = len(lst)
-    lst.append(x)
-    while i>0 and lst[i]<lst[i-1]:
-        (lst[i-1], lst[i]) = (lst[i], lst[i-1])
-        i=i-1
-
-def is_full(node):
-    return len(node.keys) >= 2 * node.t - 1
-\end{lstlisting}
-
-For the array based collection, append on the tail is much more effective than
-insert in other position, because the later takes $O(n)$ time, if the length
-of the collection is $n$. The \texttt{ordered\_insert} program firstly appends
- the new element at the end of the existing collection, then iterates from the
-last element to the first one, and checks if the current two elements next to each other
-are ordered. If not, these two elements will be swapped.
-
-Compare to the imperative insertion result
-as shown in figure \ref{fig:btree-insert-fp}
-we can found that there are different. However, they are all valid
-because all B-tree properties
-are satisfied.
-
 
 % ================================================================
 %               Deletion
@@ -1124,6 +1055,57 @@ void split(BTree<K, deg> z, Int i) {
 }
 
 Bool isLeaf(BTree<K, deg> t) = t.subTrees == []
+\end{lstlisting}
+
+Insert a key to B-tree:
+
+\begin{lstlisting}[language = Bourbaki]
+BTree<K, deg> insert(BTree<K, deg> tr, K key) {
+    var root = tr
+    if isFull(root) {
+        var s = BTree<K, deg>()
+        s.subTrees.insert(0, root)
+        split(s, 0)
+        root = s
+    }
+    return insertNonfull(root, key)
+}
+\end{lstlisting}
+
+Insert a key to a non-full node.
+
+\begin{lstlisting}[language = Bourbaki]
+BTree<K, deg> insertNonfull(BTree<K, deg> tr, K key) {
+    if isLeaf(tr) {
+        orderedInsert(tr.keys, key)
+    } else {
+        Int i = length(tr.keys)
+        while i > 0 and key < tr.keys[i - 1] {
+            i = i - 1
+        }
+        if isFull(tr.subTrees[i]) {
+            split(tr, i)
+            if key > tr.keys[i] then i = i + 1
+        }
+        insertNonfull(tr.subTree[i], key)
+    }
+    return tr
+}
+\end{lstlisting}
+
+Where \texttt{orderedInsert} inserts an element to an ordered list.
+
+\begin{lstlisting}[language = Bourbaki]
+void orderedInsert([K] lst, K x) {
+    Int i = length(lst)
+    lst.append(x)
+    while i > 0 and lst[i] < lst[i-1] {
+        (lst[i-1], lst[i]) = (lst[i], lst[i-1])
+        i = i - 1
+    }
+}
+
+Bool isFull(BTree<K, deg> x) = length(x.keys) >= 2 * deg - 1
 \end{lstlisting}
 
 \ifx\wholebook\relax \else

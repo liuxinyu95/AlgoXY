@@ -56,7 +56,6 @@ def split(node, i):
         y.subtrees = x.subtrees[deg : ]
         x.subtrees = x.subtrees[ : deg]
 
-# insertion
 def insert(tr, key):
     root = tr
     if is_full(root):
@@ -76,20 +75,17 @@ def ordered_insert(lst, x):
 def insert_nonfull(tr, key):
     if is_leaf(tr):
         ordered_insert(tr.keys, key)
-        #disk_write(tr)
     else:
         i = len(tr.keys)
         while i > 0 and key < tr.keys[i-1]:
             i = i - 1
-        #disk_read(tr.subtrees[i])
         if is_full(tr.subtrees[i]):
             split(tr, i)
-            if key>tr.keys[i]:
+            if key > tr.keys[i]:
                 i = i + 1
         insert_nonfull(tr.subtrees[i], key)
     return tr
 
-# deletion
 def B_tree_delete(tr, key):
     i = len(tr.keys)
     while i>0:
