@@ -131,5 +131,42 @@ def test():
             return
     print "OK"
 
+    
+def FirstKelements(arr,size,k):
+     
+    # Creating Min Heap for given
+    # array with only k elements
+    # Create min heap with priority queue
+    minHeap = []
+    for i in range(k):
+        minHeap.append(arr[i])
+     
+    # Loop For each element in array
+    # after the kth element
+    for i in range(k, size):
+        minHeap.sort()
+         
+        # If current element is smaller
+        # than minimum ((top element of
+        # the minHeap) element, do nothing
+        # and continue to next element
+        if (minHeap[0] > arr[i]):
+            continue
+             
+        # Otherwise Change minimum element
+        # (top element of the minHeap) to
+        # current element by polling out
+        # the top element of the minHeap
+        else:
+            minHeap.pop(0)
+            minHeap.append(arr[i])
+             
+    # Now min heap contains k maximum
+    # elements, Iterate and print  
+    for i in minHeap:
+        print(i, end = " ")
+     
+    
+    
 if __name__ == "__main__":
     test()
