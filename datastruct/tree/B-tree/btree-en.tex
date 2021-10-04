@@ -187,7 +187,13 @@ fix\ (d, t) = \begin{cases}
 \end{cases}
 \ee
 
-$ins$ need handle two cases: for leaf node, we can reuse the list ordered $insert$ function defined in chapter 1 (\autoref{eq:list-ordered-insert}); otherwise, we need find the position to recursively insert to sub-tree. To do that, we define a function as: $partition\ x\ (ks, ts) = (l, t', r)$, where $l = (ks_l, ts_l)$ and $r = (ks_r, ts_r)$. It further uses the list partition function $span$ defined in chapter 1 (\autoref{eq:span}):
+$ins$ need handle two cases: for leaf node, we can reuse the list ordered $insert$ function defined in chapter 1 (\autoref{eq:list-ordered-insert}); otherwise, we need find the position to recursively insert to sub-tree. To do that, we define a $partition$ function as:
+
+\be
+partition\ x\ (ks, ts) = (l, t', r)
+\ee
+
+Where $l = (ks_l, ts_l)$ and $r = (ks_r, ts_r)$. It further uses the list partition function $span$ defined in chapter 1 (\autoref{eq:span}):
 
 \[
 \begin{cases}
@@ -503,6 +509,90 @@ split d t@(BTree l _ _) | n < d = sp $ iterate stepR t !! (d - n)
 % No, is still linear, although the search speed up to O(\lg n), the insertion takes O(n) time to shift elements.
 \end{Exercise}
 
+\section{Look up}
+\index{B-tree!look up}
+
+We can extend the binary search tree look up method to multiple branches, and obtain the generic B-tree look up solution. When looking up the binary search tree, there are only two directions: left and right, while, there are multiple ways in B-tree. Consider look up $k$ in B-tree $t = (ks, ts)$, if it is a leaf ($tr$ is empty), then the problem becomes list look up; otherwise, we partition the $tree$ with $k$ into three parts: $l = (ks_l, ts_l), t', r = (ks_r, ts_r)$, where all keys in $l$ and sub-tree $t'$ are less then $k$, and the remaining ($\geq k$) are in $r$. If the first key in $ks_r$ equals $k$, then we find the answer; otherwise, we recursive look up in sub-tree $t'$.
+
+\be
+\begin{array}{lcl}
+  lookup\ k\ (ks, []) & = & \begin{cases}
+    k \in ks: & \textit{Just}\ (ks, []) \\
+    otherwise: & \textit{Nothing}
+  \end{cases} \\
+  lookup\ k\ (ks, ts) & = & \begin{cases}
+    \textit{Just}\ k = \textit{safeHd}\ ks_r: & \textit{Just}\ (ks, ts) \\
+    otherwise: & lookup\ k\ t' \\
+  \end{cases}\\
+\end{array}
+\ee
+
+Where $((ks_l, ts_l), t', (ks_r, ts_r)) = partition\ k\ t$, and
+
+\[
+\begin{array}{lcl}
+  \textit{safeHd}\ [] & = & \textit{Nothing} \\
+  \textit{safeHd}\ (x:xs) & \textit{Just}\ x \\
+\end{array}
+\]
+
+Below example program implements $lookup$.
+
+\begin{Haskell}
+lookup k t@(BTree ks []) = if k `elem` ks then Just t else Nothing
+lookup k t = if (Just k) == listToMaybe ks then Just t
+             else BTree.lookup k t'  where
+  (_, t', (ks, _)) = partition k t
+\end{Haskell}
+
+Imperative
+
+\begin{algorithmic}[1]
+\Function{Search}{$T, k$}
+  \Loop
+    \State $i \gets 1$
+    \While{$i \leq |K(T)| \land k > k_i(T)$}
+      \State $i \gets i+1$
+    \EndWhile
+    \If{$i \leq |K(T)| \land k = k_i(T)$}
+      \State \Return $(T, i)$
+    \EndIf
+    \If{$T$ is leaf}
+      \State \Return $NIL$ \Comment{$k$ doesn't exist}
+    \Else
+      \State $T \gets c_i(T)$
+    \EndIf
+  \EndLoop
+\EndFunction
+\end{algorithmic}
+
+Starts from the root, this program examines each key one by one
+from the smallest to the biggest. In case it finds the
+matched key, it returns the current node and the index of this
+key. Otherwise, if it finds the position $i$ that $k_i < k < k_{i+1}$,
+the program will next search the child node
+$c_{i+1}$ for the key. If it traverses to some leaf node, and
+fails to find the key, the empty value is returned to
+indicate that this key doesn't exist in the tree.
+
+The following example Python program implements the search algorithm.
+
+\lstset{language=Python}
+\begin{lstlisting}
+def B_tree_search(tr, key):
+    while True:
+        for i in range(len(tr.keys)):
+            if key <= tr.keys[i]:
+                break
+        if key == tr.keys[i]:
+            return (tr, i)
+        if tr.leaf:
+            return None
+        else:
+            if key > tr.keys[-1]:
+                i=i+1
+            tr = tr.children[i]
+\end{lstlisting}
 
 % ================================================================
 %               Deletion
@@ -1067,105 +1157,6 @@ the B-tree properties, so they are all valid.
   \caption{Result of delete-then-fixing (3)} \label{fig:result-del-fp3}
 \end{figure}
 
-
-% ================================================================
-%               Searching
-% ================================================================
-\section{Searching}
-\index{B-tree!search}
-
-Searching in B-tree can be considered as the generalized
-tree search extended from binary search tree.
-
-When searching in the binary tree, there are only 2 different directions,
-the left and the right. However, there are multiple directions in B-tree.
-
-\begin{algorithmic}[1]
-\Function{Search}{$T, k$}
-  \Loop
-    \State $i \gets 1$
-    \While{$i \leq |K(T)| \land k > k_i(T)$}
-      \State $i \gets i+1$
-    \EndWhile
-    \If{$i \leq |K(T)| \land k = k_i(T)$}
-      \State \Return $(T, i)$
-    \EndIf
-    \If{$T$ is leaf}
-      \State \Return $NIL$ \Comment{$k$ doesn't exist}
-    \Else
-      \State $T \gets c_i(T)$
-    \EndIf
-  \EndLoop
-\EndFunction
-\end{algorithmic}
-
-Starts from the root, this program examines each key one by one
-from the smallest to the biggest. In case it finds the
-matched key, it returns the current node and the index of this
-key. Otherwise, if it finds the position $i$ that $k_i < k < k_{i+1}$,
-the program will next search the child node
-$c_{i+1}$ for the key. If it traverses to some leaf node, and
-fails to find the key, the empty value is returned to
-indicate that this key doesn't exist in the tree.
-
-The following example Python program implements the search algorithm.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def B_tree_search(tr, key):
-    while True:
-        for i in range(len(tr.keys)):
-            if key <= tr.keys[i]:
-                break
-        if key == tr.keys[i]:
-            return (tr, i)
-        if tr.leaf:
-            return None
-        else:
-            if key > tr.keys[-1]:
-                i=i+1
-            tr = tr.children[i]
-\end{lstlisting}
-
-The search algorithm can also be realized by recursion. When search
-key $k$ in B-tree $T = (K, C, t)$, we partition the keys with $k$.
-
-\[
-\begin{array}{l}
-K_1 = \{ k' | k' < k \} \\
-K_2 = \{ k' | k \leq k' \}
-\end{array}
-\]
-
-Thus $K_1$ contains all the keys less than $k$, and $K_2$ holds the
-rest. If the first element in $K_2$ is equal to $k$, we find the key.
-Otherwise, we recursively search the key in child $c_{|K_1|+1}$.
-
-\be
-search(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (T, |K_1|+1) & k \in K_2 \\
-  \phi & C = \phi \\
-  search(c_{|K_1|+1}, k) & otherwise
-  \end{array}
-\right.
-\ee
-
-Below example Haskell program implements this algorithm.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-search :: (Ord a)=> BTree a -> a -> Maybe (BTree a, Int)
-search tr@(Node ks cs _) k
-    | matchFirst k $ drop len ks = Just (tr, len)
-    | otherwise = if null cs then Nothing
-                  else search (cs !! len) k
-    where
-      matchFirst x (y:_) = x==y
-      matchFirst x _ = False
-      len = length $ filter (<k) ks
-\end{lstlisting}
 
 
 % ================================================================
