@@ -532,7 +532,7 @@ Where $((ks_l, ts_l), t', (ks_r, ts_r)) = partition\ k\ t$, and
 \[
 \begin{array}{lcl}
   \textit{safeHd}\ [] & = & \textit{Nothing} \\
-  \textit{safeHd}\ (x:xs) & \textit{Just}\ x \\
+  \textit{safeHd}\ (x:xs) & = & \textit{Just}\ x \\
 \end{array}
 \]
 
@@ -540,59 +540,56 @@ Below example program implements $lookup$.
 
 \begin{Haskell}
 lookup k t@(BTree ks []) = if k `elem` ks then Just t else Nothing
-lookup k t = if (Just k) == listToMaybe ks then Just t
-             else BTree.lookup k t'  where
+lookup k t = if (Just k) == safeHd ks then Just t
+             else lookup k t'  where
   (_, t', (ks, _)) = partition k t
 \end{Haskell}
 
-Imperative
+For the paired list implementation, the idea is similar. If the tree is not empty, we partition it with the predicate $< k$. Then check if the first key in the right part equals to $k$, or recursively look up the partitioned sub-tree:
+
+\be
+\begin{array}{lcl}
+  lookup\ k\ \nil & = & \textit{Nothing} \\
+  lookup\ k\ t & = & \begin{cases}
+    \textit{Just}\ k = \textit{safeFst}\ (\textit{safeHd}\ r): & \textit{Just}\ (l, t', r) \\
+    otherwise: & lookup\ k\ t' \\
+    \end{cases}
+\end{array}
+\ee
+
+Where $(l, t, r) = partition (< k) t$ in the none empty case. \textit{safeFst} applies \textit{fst} function to a 'Maybe' value. Below example program utilizes \textit{fmap} to do this:
+
+\begin{Haskell}
+lookup x Empty = Nothing
+lookup x t = let (l, t', r) = partition (< x) t in
+  if (Just x) == fmap fst (safeHd r) then Just (BTree l t' r)
+  else lookup x t'
+\end{Haskell}
+
+For the imperative implementation, we start from the root $r$, find a position $i$ among the keys, such that $k_i(r) \leq k < k_{i+1}(r)$. If $k_i(r) = k$ then return the node $r$ together with $i$ as a pair; otherwise, move to sub-tree $t_i(r)$ to go on looking up. If $r$ is a leaf and $k$ is not in its keys, the return nothing. It means $k$ does not exit in the tree.
 
 \begin{algorithmic}[1]
-\Function{Search}{$T, k$}
+\Function{Look-Up}{$r, k$}
   \Loop
-    \State $i \gets 1$
-    \While{$i \leq |K(T)| \land k > k_i(T)$}
-      \State $i \gets i+1$
+    \State $i \gets 1, n \gets |K(r)|$
+    \While{$i \leq n$ and $k > k_i(r)$}
+      \State $i \gets i + 1$
     \EndWhile
-    \If{$i \leq |K(T)| \land k = k_i(T)$}
-      \State \Return $(T, i)$
+    \If{$i \leq n$ and $k = k_i(r)$}
+      \State \Return $(r, i)$
     \EndIf
-    \If{$T$ is leaf}
-      \State \Return $NIL$ \Comment{$k$ doesn't exist}
+    \If{$r$ is leaf}
+      \State \Return Nothing \Comment{$k$ does not exist}
     \Else
-      \State $T \gets c_i(T)$
+      \State $r \gets t_i(r)$ \Comment{go to the $i$-th sub-tree}
     \EndIf
   \EndLoop
 \EndFunction
 \end{algorithmic}
 
-Starts from the root, this program examines each key one by one
-from the smallest to the biggest. In case it finds the
-matched key, it returns the current node and the index of this
-key. Otherwise, if it finds the position $i$ that $k_i < k < k_{i+1}$,
-the program will next search the child node
-$c_{i+1}$ for the key. If it traverses to some leaf node, and
-fails to find the key, the empty value is returned to
-indicate that this key doesn't exist in the tree.
-
-The following example Python program implements the search algorithm.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def B_tree_search(tr, key):
-    while True:
-        for i in range(len(tr.keys)):
-            if key <= tr.keys[i]:
-                break
-        if key == tr.keys[i]:
-            return (tr, i)
-        if tr.leaf:
-            return None
-        else:
-            if key > tr.keys[-1]:
-                i=i+1
-            tr = tr.children[i]
-\end{lstlisting}
+\begin{Exercise}
+  \Question{Improve the imperative look up with binary search among keys.}
+\end{Exercise}
 
 % ================================================================
 %               Deletion
@@ -1255,6 +1252,25 @@ void orderedInsert([K] lst, K x) {
 }
 
 Bool isFull(BTree<K, deg> x) = length(x.keys) >= 2 * deg - 1
+\end{lstlisting}
+
+Iterative look up:
+
+\begin{lstlisting}[language = Bourbaki]
+Optional<(BTree<K, deg>, Int)> lookup(BTree<K, deg> tr, K key) {
+    loop {
+        Int i = 0, n = length(tr.keys)
+        while i < n and key > tr.keys[i] {
+            i = i + 1
+        }
+        if i < n and key == tr.keys[i] then return Optional((tr, i))
+        if isLeaf(tr) {
+            return Optional.None
+        } else {
+            tr = tr.subTrees[i]
+        }
+    }
+}
 \end{lstlisting}
 
 \ifx\wholebook\relax \else
