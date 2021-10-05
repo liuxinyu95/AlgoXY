@@ -591,26 +591,266 @@ For the imperative implementation, we start from the root $r$, find a position $
   \Question{Improve the imperative look up with binary search among keys.}
 \end{Exercise}
 
-% ================================================================
-%               Deletion
-% ================================================================
-\section{Deletion}
+\section{Delete}
 \index{B-tree!delete}
 
-Deleting a key from
-B-tree may violate balance properties. Except the root, a node shouldn't
-contain too few keys less than $t-1$, where $t$ is the
-minimum degree.
+After delete a key, the number of keys may be too few to be valid B-tree node. Except the root, the number of keys should not be less than $d - 1$, where $d$ is the minimum degree. There are two methods symmetric to insert, we can either delete then fix, or merge before delete.
 
-Similar to the approaches for insertion, we can either do some preparation
-so that the node from where the key being deleted contains enough
-keys; or do some fixing after the deletion if the node has too few keys.
+\subsection{Delete and fix}
 
+We first expand the $delete$ algorithm for binary search tree to multiple branches, then fix the B-tree balance rules. The main delete program is defined with this two steps:
 
-% ================================================================
-%               Merge before delete method
-% ================================================================
-\subsection{Merge before delete method}
+\be
+delete\ x\ (d, t) = fix (d, del\ x\ t)
+\ee
+
+Where function $del$ is the one we expand to support multiple branches. If $t$ is a leaf, we merely delete $x$ from the keys; otherwise, we partition the tree with $x$ into 3 parts: $(l, t', r)$. Where all the keys in $l$ and sub-tree $t'$ are less than $x$, and the rest in $r$ are great than or equal ($\geq$) to $x$. When $r$ isn't empty, we pick the first key $k_0$ from it. If the key equals to $x$, ($k_0 = x$), we next replace it with the maximum key $k'$ of sub-tree $t'$ ($k' = max(t')$), and recursively delete $k'$ from $t'$. Otherwise (either $r$ is empty, or $k_0 \neq x$), we recursively delete $x$ from sub-tree $t'$.
+
+When delete a key from B-tree, we firstly locate
+which node this key is contained. We traverse
+from the root to the leaves till find this key in some node.
+
+If this node is a leaf, we can remove the key, and then
+examine if the deletion makes the node contains too few keys to
+satisfy the B-tree balance properties.
+
+If it is a branch node, removing the key breaks the node into
+two parts. We need merge them together. The merging is a recursive
+process which is shown in figure \ref{fig:del-fp-merge}.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.5]{img/btree-del-fp-merge.eps}
+  \caption{Delete a key from a branch node. Removing $k_i$ breaks
+the node into 2 parts. Merging these 2 parts
+is a recursive process. When the two parts are leaves, the merging
+terminates.} \label{fig:del-fp-merge}
+\end{figure}
+
+When do merging, if the two nodes are not leaves, we merge the keys
+together, and recursively merge the last child of the left part
+and the first child of the right part to one new node. Otherwise,
+if they are leaves, we merely put all keys together.
+
+Till now, the deleting is performed in straightforward way. However, deleting
+decreases the number of keys of a node, and it may result in
+violating the B-tree balance properties. The solution is to perform
+fixing along the path traversed from root.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.5]{img/btree-del-fp-make.eps}
+  \caption{After delete key $k$ from node $c_i$, denote the result
+as $c_i'$. The fixing makes a new node from the
+left part, $c_i'$ and the right part.}
+  \label{fig:del-fp-make}
+\end{figure}
+
+During the recursive deletion, the branch node is broken into 3 parts.
+The left part contains all keys less than $k$, includes $k_1, k_2, ..., k_{i-1}$,
+and children $c_1, c_2, ..., c_{i-1}$, the right part contains all keys
+greater than $k$, say $k_i, k_{i+1}, ..., k_{n+1}$, and children
+$c_{i+1}, c_{i+2}, ..., c_{n+1}$. Then key $k$ is recursively deleted
+from child $c_i$. Denote the result becomes $c_i'$ after that.
+We need make a new node from these 3 parts,
+as shown in figure \ref{fig:del-fp-make}.
+
+At this time point, we need examine if $c_i'$ contains enough keys.
+If there are too less keys (less than $t-1$, but not $t$ in
+contrast to the merge-and-delete approach), we can either borrow a key-child
+pair from the left or the right part, and do inverse operation of
+splitting. Figure \ref{fig:del-fp-fixlow} shows example of borrowing from the left part.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.5]{img/btree-del-fp-fixlow.eps}
+  \caption{Borrow a key-child pair from left part and
+un-split to a new child.} \label{fig:del-fp-fixlow}
+\end{figure}
+
+If both left part and right part are empty, we can simply
+push $c_i'$ up.
+
+Denote the B-tree as $T=(K, C, t)$, where $K$ and $C$ are keys and children.
+The $del(T, k)$ function deletes key $k$
+from the tree.
+
+\be
+del(T, k) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (delete(K, k), \phi, t) & C = \phi \\
+  merge((K_1, C_1, t), (K_2, C_2, t)) & k_i = k \\
+  make((K_1', C_1'), del(c, k), (K_2', C_2')) & k \notin K
+  \end{array}
+\right.
+\ee
+
+If children $C = \phi$ is empty, $T$ is leaf. $k$ is deleted from keys directly.
+Otherwise, $T$ is internal node. If $k \in K$, removing it separates the keys
+and children in two parts $(K_1, C_1)$ and $(K_2, C_2)$. They will be recursively
+merged.
+
+\[
+\begin{array}{l}
+K_1 = \{k_1, k_2, ..., k_{i-1}\} \\
+K_2 = \{k_{i+1}, k_{i+2}, ..., k_m\} \\
+C_1 = \{c_1, c_2, ..., c_i\} \\
+C_2 = \{c_{i+1}, c_{i+2}, ..., c_{m+1}\}
+\end{array}
+\]
+
+If $k \notin K$, we need locate a child $c$, and further delete $k$ from
+it.
+
+\[
+\begin{array}{l}
+(K_1', K_2') = (\{k' | k' \in K, k' < k \}, \{k' | k' \in K, k < k' \}) \\
+(C_1', \{c\} \cup C_2') = splitAt(|K_1'|, C)
+\end{array}
+\]
+
+The recursive merge function is defined as the following. When merge two
+trees $T_1 = (K_1, C_1, t)$ and $T_2 = (K_2, C_2, t)$, if both are leaves,
+we create a new leave by concatenating the keys. Otherwise, the last
+child in $C_1$, and the first child in $C_2$ are recursively merged.
+And we call $make$ function to form the new tree. When $C_1$ and $C_2$
+are not empty, denote the last child of $C_1$ as $c_{1, m}$, the rest
+as $C_1'$; the first child of $C_2$ as $C_{2, 1}$, the rest as $C_2'$.
+Below equation defines the merge function.
+
+\be
+merge(T_1, T_2) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (K_1 \cup K_2, \phi, t) & C_1 = C_2 = \phi \\
+  make((K_1, C_1'), merge(c_{1,m}, c_{2, 1}), (K_2, C_2')) & otherwise
+  \end{array}
+\right.
+\ee
+
+The $make$ function defined above only handles the case that a node
+contains too many keys due to insertion. When delete key, it may
+cause a node contains too few keys. We need test and fix this
+situation as well.
+
+\be
+make((K', C'), c, (K'', C'')) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  fixFull((K', C'), c, (K'', C'')) & full(c) \\
+  fixLow((K', C'), c, (K'', C'')) & low(c) \\
+  (K' \cup K'', C' \cup \{c\} \cup C'', t) & otherwise
+  \end{array}
+\right.
+\ee
+
+Where $low(T)$ checks if there are too few keys less than $t-1$.
+Function $fixLow(P_l, c, P_r)$ takes three arguments, the left pair of keys and children,
+a child node, and the right pair of keys and children.
+If the left part isn't empty, we borrow a pair of key-child, and
+do un-splitting to make the child contain enough keys, then recursively
+call $make$; If the right part isn't empty, we borrow a pair
+from the right; and if both sides are empty, we
+return the child node as result. In this case, the height of the tree
+shrinks.
+
+Denote the left part $P_l = (K_l, C_l)$. If $K_l$ isn't empty, the last
+key and child are represented as $k_{l, m}$ and $c_{l, m}$ respectively.
+The rest keys and children become $K_l'$ and $C_l'$; Similarly, the
+right part is denoted as $P_r = (K_r, C_r)$. If $K_r$ isn't empty, the
+first key and child are represented as $k_{r, 1}$, and $c_{r, 1}$. The
+rest keys and children are $K_r'$ and $C_r'$. Below equation gives
+the definition of $fixLow$.
+
+\be
+fixLow(P_l, c, P_r) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  make((K_l', C_l'), unsplit(c_{l, m}, k_{l, m}, c), (K_r, C_r)) & K_l \neq \phi \\
+  make((K_r, C_r), unsplit(c, k_{r, 1}, c_{r, 1}), (K_r', C_r')) & K_r \neq \phi \\
+  c & otherwise
+  \end{array}
+\right.
+\ee
+
+Function $unsplit(T_1, k, T_2)$ is the inverse operation to splitting.
+It forms a new B-tree nodes from two small nodes and a key.
+
+\be
+unsplit(T_1, k, T_2) = (K_1 \cup \{k\} \cup K_2, C_1 \cup C_2, t)
+\ee
+
+The following example Haskell program implements the B-tree deletion
+algorithm.
+
+\lstset{language=Haskell}
+\begin{lstlisting}
+import qualified Data.List as L
+
+delete tr x = fixRoot $ del tr x
+
+del:: (Ord a) => BTree a -> a -> BTree a
+del (Node ks [] t) x = Node (L.delete x ks) [] t
+del (Node ks cs t) x =
+    case L.elemIndex x ks of
+      Just i -> merge (Node (take i ks) (take (i+1) cs) t)
+                      (Node (drop (i+1) ks) (drop (i+1) cs) t)
+      Nothing -> make (ks', cs') (del c x) (ks'', cs'')
+    where
+      (ks', ks'') = L.partition (<x) ks
+      (cs', (c:cs'')) = L.splitAt (length ks') cs
+
+merge (Node ks [] t) (Node ks' [] _) = Node (ks++ks') [] t
+merge (Node ks cs t) (Node ks' cs' _) = make (ks, init cs)
+                                             (merge (last cs) (head cs'))
+                                             (ks', tail cs')
+
+make (ks', cs') c (ks'', cs'')
+    | full c = fixFull (ks', cs') c (ks'', cs'')
+    | low c  = fixLow  (ks', cs') c (ks'', cs'')
+    | otherwise = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
+
+low tr = (length $ keys tr) < (degree tr)-1
+
+fixLow (ks'@(_:_), cs') c (ks'', cs'') = make (init ks', init cs')
+                                              (unsplit (last cs') (last ks') c)
+                                              (ks'', cs'')
+fixLow (ks', cs') c (ks''@(_:_), cs'') = make (ks', cs')
+                                              (unsplit c (head ks'') (head cs''))
+                                              (tail ks'', tail cs'')
+fixLow _ c _ = c
+
+unsplit c1 k c2 = Node ((keys c1)++[k]++(keys c2))
+                       ((children c1)++(children c2)) (degree c1)
+\end{lstlisting}
+
+When delete the same keys from the B-tree as in delete and fixing
+approach, the results are different. However, both satisfy
+the B-tree properties, so they are all valid.
+
+\begin{figure}[htbp]
+  \centering
+  \subcaptionbox{B-tree before deleting}{\includegraphics[scale=0.5]{img/btree-del-fp-before.ps}}\\
+  \subcaptionbox{After delete key 'E'.}{\includegraphics[scale=0.5]{img/btree-del-fp-E.ps}}
+  \caption{Result of delete-then-fixing (1)} \label{fig:result-del-fp1}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \subcaptionbox{After delete key 'G',}{\includegraphics[scale=0.5]{img/btree-del-fp-G.ps}} \\
+  \subcaptionbox{After delete key 'A'.}{\includegraphics[scale=0.5]{img/btree-del-fp-A.ps}}
+  \caption{Result of delete-then-fixing (2)} \label{fig:result-del-fp2}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \subcaptionbox{After delete key 'M'.}{\includegraphics[scale=0.5]{img/btree-del-fp-M.ps}} \\
+  \subcaptionbox{After delete key 'U'.}{\includegraphics[scale=0.5]{img/btree-del-fp-U.ps}}
+  \caption{Result of delete-then-fixing (3)} \label{fig:result-del-fp3}
+\end{figure}
+
+\subsection{Merge before delete}
 
 We start from the easiest case. If the key $k$ to be deleted
 can be located in node $x$, and $x$ is a leaf node,
@@ -893,267 +1133,6 @@ def B_tree_delete(tr, key):
         tr = tr.children[0]
     return tr
 \end{lstlisting}
-
-% ================================================================
-%               Delete and fix method
-% ================================================================
-
-\subsection{Delete and fix method}
-
-The merge and delete algorithm is a bit complex.
-There are several cases, and in each case, there are sub cases to deal.
-
-Another approach to design the deleting algorithm is to perform fixing
-after deletion. It is similar to the insert-then-fix strategy.
-
-\be
-delete(T, k) = fix(del(T, k))
-\ee
-
-When delete a key from B-tree, we firstly locate
-which node this key is contained. We traverse
-from the root to the leaves till find this key in some node.
-
-If this node is a leaf, we can remove the key, and then
-examine if the deletion makes the node contains too few keys to
-satisfy the B-tree balance properties.
-
-If it is a branch node, removing the key breaks the node into
-two parts. We need merge them together. The merging is a recursive
-process which is shown in figure \ref{fig:del-fp-merge}.
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.5]{img/btree-del-fp-merge.eps}
-  \caption{Delete a key from a branch node. Removing $k_i$ breaks
-the node into 2 parts. Merging these 2 parts
-is a recursive process. When the two parts are leaves, the merging
-terminates.} \label{fig:del-fp-merge}
-\end{figure}
-
-When do merging, if the two nodes are not leaves, we merge the keys
-together, and recursively merge the last child of the left part
-and the first child of the right part to one new node. Otherwise,
-if they are leaves, we merely put all keys together.
-
-Till now, the deleting is performed in straightforward way. However, deleting
-decreases the number of keys of a node, and it may result in
-violating the B-tree balance properties. The solution is to perform
-fixing along the path traversed from root.
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.5]{img/btree-del-fp-make.eps}
-  \caption{After delete key $k$ from node $c_i$, denote the result
-as $c_i'$. The fixing makes a new node from the
-left part, $c_i'$ and the right part.}
-  \label{fig:del-fp-make}
-\end{figure}
-
-During the recursive deletion, the branch node is broken into 3 parts.
-The left part contains all keys less than $k$, includes $k_1, k_2, ..., k_{i-1}$,
-and children $c_1, c_2, ..., c_{i-1}$, the right part contains all keys
-greater than $k$, say $k_i, k_{i+1}, ..., k_{n+1}$, and children
-$c_{i+1}, c_{i+2}, ..., c_{n+1}$. Then key $k$ is recursively deleted
-from child $c_i$. Denote the result becomes $c_i'$ after that.
-We need make a new node from these 3 parts,
-as shown in figure \ref{fig:del-fp-make}.
-
-At this time point, we need examine if $c_i'$ contains enough keys.
-If there are too less keys (less than $t-1$, but not $t$ in
-contrast to the merge-and-delete approach), we can either borrow a key-child
-pair from the left or the right part, and do inverse operation of
-splitting. Figure \ref{fig:del-fp-fixlow} shows example of borrowing from the left part.
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.5]{img/btree-del-fp-fixlow.eps}
-  \caption{Borrow a key-child pair from left part and
-un-split to a new child.} \label{fig:del-fp-fixlow}
-\end{figure}
-
-If both left part and right part are empty, we can simply
-push $c_i'$ up.
-
-Denote the B-tree as $T=(K, C, t)$, where $K$ and $C$ are keys and children.
-The $del(T, k)$ function deletes key $k$
-from the tree.
-
-\be
-del(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (delete(K, k), \phi, t) & C = \phi \\
-  merge((K_1, C_1, t), (K_2, C_2, t)) & k_i = k \\
-  make((K_1', C_1'), del(c, k), (K_2', C_2')) & k \notin K
-  \end{array}
-\right.
-\ee
-
-If children $C = \phi$ is empty, $T$ is leaf. $k$ is deleted from keys directly.
-Otherwise, $T$ is internal node. If $k \in K$, removing it separates the keys
-and children in two parts $(K_1, C_1)$ and $(K_2, C_2)$. They will be recursively
-merged.
-
-\[
-\begin{array}{l}
-K_1 = \{k_1, k_2, ..., k_{i-1}\} \\
-K_2 = \{k_{i+1}, k_{i+2}, ..., k_m\} \\
-C_1 = \{c_1, c_2, ..., c_i\} \\
-C_2 = \{c_{i+1}, c_{i+2}, ..., c_{m+1}\}
-\end{array}
-\]
-
-If $k \notin K$, we need locate a child $c$, and further delete $k$ from
-it.
-
-\[
-\begin{array}{l}
-(K_1', K_2') = (\{k' | k' \in K, k' < k \}, \{k' | k' \in K, k < k' \}) \\
-(C_1', \{c\} \cup C_2') = splitAt(|K_1'|, C)
-\end{array}
-\]
-
-The recursive merge function is defined as the following. When merge two
-trees $T_1 = (K_1, C_1, t)$ and $T_2 = (K_2, C_2, t)$, if both are leaves,
-we create a new leave by concatenating the keys. Otherwise, the last
-child in $C_1$, and the first child in $C_2$ are recursively merged.
-And we call $make$ function to form the new tree. When $C_1$ and $C_2$
-are not empty, denote the last child of $C_1$ as $c_{1, m}$, the rest
-as $C_1'$; the first child of $C_2$ as $C_{2, 1}$, the rest as $C_2'$.
-Below equation defines the merge function.
-
-\be
-merge(T_1, T_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (K_1 \cup K_2, \phi, t) & C_1 = C_2 = \phi \\
-  make((K_1, C_1'), merge(c_{1,m}, c_{2, 1}), (K_2, C_2')) & otherwise
-  \end{array}
-\right.
-\ee
-
-The $make$ function defined above only handles the case that a node
-contains too many keys due to insertion. When delete key, it may
-cause a node contains too few keys. We need test and fix this
-situation as well.
-
-\be
-make((K', C'), c, (K'', C'')) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  fixFull((K', C'), c, (K'', C'')) & full(c) \\
-  fixLow((K', C'), c, (K'', C'')) & low(c) \\
-  (K' \cup K'', C' \cup \{c\} \cup C'', t) & otherwise
-  \end{array}
-\right.
-\ee
-
-Where $low(T)$ checks if there are too few keys less than $t-1$.
-Function $fixLow(P_l, c, P_r)$ takes three arguments, the left pair of keys and children,
-a child node, and the right pair of keys and children.
-If the left part isn't empty, we borrow a pair of key-child, and
-do un-splitting to make the child contain enough keys, then recursively
-call $make$; If the right part isn't empty, we borrow a pair
-from the right; and if both sides are empty, we
-return the child node as result. In this case, the height of the tree
-shrinks.
-
-Denote the left part $P_l = (K_l, C_l)$. If $K_l$ isn't empty, the last
-key and child are represented as $k_{l, m}$ and $c_{l, m}$ respectively.
-The rest keys and children become $K_l'$ and $C_l'$; Similarly, the
-right part is denoted as $P_r = (K_r, C_r)$. If $K_r$ isn't empty, the
-first key and child are represented as $k_{r, 1}$, and $c_{r, 1}$. The
-rest keys and children are $K_r'$ and $C_r'$. Below equation gives
-the definition of $fixLow$.
-
-\be
-fixLow(P_l, c, P_r) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  make((K_l', C_l'), unsplit(c_{l, m}, k_{l, m}, c), (K_r, C_r)) & K_l \neq \phi \\
-  make((K_r, C_r), unsplit(c, k_{r, 1}, c_{r, 1}), (K_r', C_r')) & K_r \neq \phi \\
-  c & otherwise
-  \end{array}
-\right.
-\ee
-
-Function $unsplit(T_1, k, T_2)$ is the inverse operation to splitting.
-It forms a new B-tree nodes from two small nodes and a key.
-
-\be
-unsplit(T_1, k, T_2) = (K_1 \cup \{k\} \cup K_2, C_1 \cup C_2, t)
-\ee
-
-The following example Haskell program implements the B-tree deletion
-algorithm.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-import qualified Data.List as L
-
-delete tr x = fixRoot $ del tr x
-
-del:: (Ord a) => BTree a -> a -> BTree a
-del (Node ks [] t) x = Node (L.delete x ks) [] t
-del (Node ks cs t) x =
-    case L.elemIndex x ks of
-      Just i -> merge (Node (take i ks) (take (i+1) cs) t)
-                      (Node (drop (i+1) ks) (drop (i+1) cs) t)
-      Nothing -> make (ks', cs') (del c x) (ks'', cs'')
-    where
-      (ks', ks'') = L.partition (<x) ks
-      (cs', (c:cs'')) = L.splitAt (length ks') cs
-
-merge (Node ks [] t) (Node ks' [] _) = Node (ks++ks') [] t
-merge (Node ks cs t) (Node ks' cs' _) = make (ks, init cs)
-                                             (merge (last cs) (head cs'))
-                                             (ks', tail cs')
-
-make (ks', cs') c (ks'', cs'')
-    | full c = fixFull (ks', cs') c (ks'', cs'')
-    | low c  = fixLow  (ks', cs') c (ks'', cs'')
-    | otherwise = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
-
-low tr = (length $ keys tr) < (degree tr)-1
-
-fixLow (ks'@(_:_), cs') c (ks'', cs'') = make (init ks', init cs')
-                                              (unsplit (last cs') (last ks') c)
-                                              (ks'', cs'')
-fixLow (ks', cs') c (ks''@(_:_), cs'') = make (ks', cs')
-                                              (unsplit c (head ks'') (head cs''))
-                                              (tail ks'', tail cs'')
-fixLow _ c _ = c
-
-unsplit c1 k c2 = Node ((keys c1)++[k]++(keys c2))
-                       ((children c1)++(children c2)) (degree c1)
-\end{lstlisting}
-
-When delete the same keys from the B-tree as in delete and fixing
-approach, the results are different. However, both satisfy
-the B-tree properties, so they are all valid.
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{B-tree before deleting}{\includegraphics[scale=0.5]{img/btree-del-fp-before.ps}}\\
-  \subcaptionbox{After delete key 'E'.}{\includegraphics[scale=0.5]{img/btree-del-fp-E.ps}}
-  \caption{Result of delete-then-fixing (1)} \label{fig:result-del-fp1}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{After delete key 'G',}{\includegraphics[scale=0.5]{img/btree-del-fp-G.ps}} \\
-  \subcaptionbox{After delete key 'A'.}{\includegraphics[scale=0.5]{img/btree-del-fp-A.ps}}
-  \caption{Result of delete-then-fixing (2)} \label{fig:result-del-fp2}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{After delete key 'M'.}{\includegraphics[scale=0.5]{img/btree-del-fp-M.ps}} \\
-  \subcaptionbox{After delete key 'U'.}{\includegraphics[scale=0.5]{img/btree-del-fp-U.ps}}
-  \caption{Result of delete-then-fixing (3)} \label{fig:result-del-fp3}
-\end{figure}
-
 
 
 % ================================================================
