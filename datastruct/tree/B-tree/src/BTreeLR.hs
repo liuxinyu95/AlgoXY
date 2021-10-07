@@ -16,9 +16,9 @@
 
 module BTreeLR where
 
--- Implement B-Tree with paired back-to-back lists.
+-- Implement B-Tree with paired head-to-head lists.
 
-import Data.List (nub, sort)
+import Data.List (nub, sort, delete)
 import Test.QuickCheck
 import Data.Maybe (listToMaybe)
 
@@ -60,6 +60,10 @@ split d t@(BTree l _ _) | n < d = sp $ iterate stepR t !! (d - n)
     n = length l
     sp (BTree l t ((k, t'):r)) = (BTree l t [], k, BTree [] t' r)
 
+unsplit (BTree l1 m1 []) k (BTree [] m2 r2) = BTree l1 m1 ((k, m2):r2)
+unsplit t1 k t2@(BTree (_:_) _ _) = unsplit t1 k (stepL t2)
+unsplit t1@(BTree _ _ (_:_)) k t2 = unsplit (stepR t1) k t2
+
 insert :: (Ord a) => a -> (Int, BTree a) -> (Int, BTree a)
 insert x (d, t) = fixRoot (d, ins t) where
   ins Empty = BTree [] Empty [(x, Empty)]
@@ -68,15 +72,37 @@ insert x (d, t) = fixRoot (d, ins t) where
       Empty -> balance d l Empty ((x, Empty):r)
       _     -> balance d l (ins t') r
 
+delete :: (Ord a, Eq a) => a -> (Int, BTree a) -> (Int, BTree a)
+delete x (d, t) = fixRoot (d, del x t) where
+  del _ Empty = Empty
+  del x t = if (Just x) == fmap fst (listToMaybe r) then
+              case t' of
+                Empty -> balance d l Empty (tail r)
+                _     -> let k' = max' t' in
+                  balance d l (del k' t') ((k', snd $ head r):(tail r))
+            else balance d l (del x t') r
+    where
+      (l, t', r) = partition (< x) t
+
+max' t@(BTree _ _ []) = max' (stepL t)
+max' (BTree _ _ [(k, Empty)]) = k
+max' (BTree _ _ [(k, t)]) = max' t
+max' t = max' (stepR t)
+
+fixRoot (d, BTree [] t []) = (d, t)
 fixRoot (d, t) | full d t = let (t1, k, t2) = split d t in
                    (d, BTree [] t1 [(k, t2)])
                | otherwise = (d, t)
 
 balance :: Int -> [(a, BTree a)] -> BTree a -> [(a, BTree a)] -> BTree a
 balance d l t r | full d t = fixFull
+                | low  d t = fixLow l t r
                 | otherwise = BTree l t r
   where
     fixFull = let (t1, k, t2) = split d t in BTree l t1 ((k, t2):r)
+    fixLow ((k', t'):l) t r = balance d l (unsplit t' k' t) r
+    fixLow l t ((k', t'):r) = balance d l (unsplit t k' t') r
+    fixLow l t r = t        -- l == r == []
 
 lookup x Empty = Nothing
 lookup x t = let (l, t', r) = partition (< x) t in
@@ -118,7 +144,20 @@ prop_lookup xs x = f $ BTreeLR.lookup x $ snd $ fromList d ys where
   f (Just (BTree l t [])) = False
   f (Just (BTree l t ((y, _):_))) = x == y
 
+prop_delete :: [Int] -> Int -> Bool
+prop_delete xs x = (sort $ Data.List.delete x ys ) ==
+                   (toList $ snd $ BTreeLR.delete x $ fromList d ys) where
+  d = degOf xs
+  ys = nub xs
+
+prop_del_balance :: [Int] -> Int -> Bool
+prop_del_balance xs x = isBTree d 0 $ snd $ BTreeLR.delete x $ fromList d ys where
+  d = degOf xs
+  ys = nub xs
+
 testAll = do
   quickCheck prop_order
   quickCheck prop_insert
   quickCheck prop_lookup
+  quickCheck prop_delete
+  quickCheck prop_del_balance

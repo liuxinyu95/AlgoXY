@@ -87,7 +87,7 @@ balance d (ks1, ts1) t (ks2, ts2)
            | not $ null ks2 = balance d (ks1, ts1)
                                       (unsplit t (head ks2) (head ts2))
                                       (tail ks2, tail ts2)
-           | otherwise = t
+           | otherwise = t -- ks2 == ks1 == []
 
 lookup k t@(BTree ks []) = if k `elem` ks then Just t else Nothing
 lookup k t = if (Just k) == listToMaybe ks then Just t
