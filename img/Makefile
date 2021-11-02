@@ -1,4 +1,4 @@
-IMG_OBJECTS = fibonacci-spiral
+IMG_OBJECTS =
 # DOT_OBJECTS =
 DOT_SOURCES = $(foreach file, $(DOT_OBJECTS), $(file).dot)
 
