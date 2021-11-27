@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from random import sample, randint
+
 TREE_2_3_4 = 2
 
 class BTree:
@@ -23,7 +25,20 @@ class BTree:
         self.keys = []
         self.subtrees = []
 
+    def __str__(self):
+        res = "("
+        if is_leaf(self):
+            res += ", ".join(self.keys)
+        else:
+            for i in range(len(self.keys)):
+                res += str(self.subtrees[i]) + ", " + self.keys[i] + ", "
+            res += str(self.subtrees[-1])
+        return res + ")"
+
 # d - 1 <= |t.keys| <= 2 * d - 1
+#
+# To avoid violating B-tree after insert/delete, when keys reach to either boundary
+# (= hold), trigger split/merge
 
 def is_leaf(t):
     return t.subtrees == []
@@ -32,14 +47,14 @@ def full(d, t):
     return len(t.keys) >= 2 * d - 1
 
 def low(d, t):
-    return len(t.keys) <= d
+    return len(t.keys) <= d - 1
 
-def merge_subtrees(tr, i):
-    """merge subtrees[i], keys[i], subtrees[i+1]"""
-    tr.subtrees[i].keys += [tr.keys[i]] + tr.subtrees[i + 1].keys
-    tr.subtrees[i].subtrees += tr.subtrees[i + 1].subtrees
-    tr.keys.pop(i)
-    tr.subtrees.pop(i + 1)
+def merge_subtrees(t, i):
+    """merge t.subtrees[i], keys[i], t.subtrees[i+1]"""
+    t.subtrees[i].keys += [t.keys[i]] + t.subtrees[i + 1].keys
+    t.subtrees[i].subtrees += t.subtrees[i + 1].subtrees
+    t.keys.pop(i)
+    t.subtrees.pop(i + 1)
 
 def split(d, z, i):
     """split z.subtrees[i] at degree d"""
@@ -68,11 +83,11 @@ def insert_nonfull(d, t, x):
         ordered_insert(t.keys, x)
     else:
         i = len(t.keys)
-        while i > 0 and key < t.keys[i-1]:
+        while i > 0 and x < t.keys[i-1]:
             i = i - 1
         if full(d, t.subtrees[i]):
             split(d, t, i)
-            if key > t.keys[i]:
+            if x > t.keys[i]:
                 i = i + 1
         insert_nonfull(d, t.subtrees[i], x)
     return t
@@ -136,7 +151,6 @@ def B_tree_delete(tr, key):
     return tr
 
 def lookup(t, k):
-    """lookup key k in tree t"""
     for i in range(len(t.keys)):
         if k <= t.keys[i]:
             break
@@ -168,16 +182,37 @@ def tolist(t):
         xs += tolist(t.subtrees[-1])
     return xs
 
-def B_tree_to_str(tr):
-    res = "("
-    if is_leaf(tr):
-        res += ", ".join(tr.keys)
-    else:
-        for i in range(len(tr.keys)):
-            res+= B_tree_to_str(tr.subtrees[i]) + ", " + tr.keys[i] + ", "
-        res += B_tree_to_str(tr.subtrees[len(tr.keys)])
-    res += ")"
-    return res
+# verification
+
+def deg(xs):
+    return (xs[0] % 5) + 2 if xs else 2
+
+def is_btree(d, t, depth):
+    if t is None:
+        return True
+    n = len(t.keys)
+    if n > 2 * d - 1:
+        return False
+    if depth > 0 and n < d - 1:
+        return False
+    for tr in t.subtrees:
+        if not is_btree(d, tr, depth + 1):
+            return False
+    return True
+
+def prop_order(xs):
+    d = deg(xs)
+    t = fromlist(d, xs)
+    ys = tolist(t)
+    zs = sorted(xs)
+    assert ys == zs, f"ys = {ys}, zs = {zs}, t = {t}"
+
+def test(f):
+    for _ in range(100):
+        n = randint(0, 100)
+        xs = sample(range(100), n)
+        f(xs)
+    print(f"100 tests for {f} passed.\n")
 
 if __name__ == "__main__":
-    # run tests
+    test(prop_order)
