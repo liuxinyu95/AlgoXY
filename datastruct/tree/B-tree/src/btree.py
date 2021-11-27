@@ -16,54 +16,66 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-TREE_2_3_4 = 2 #by default, create 2-3-4 tree
+TREE_2_3_4 = 2
 
 class BTree:
-    def __init__(self, d = TREE_2_3_4):
-        self.deg = d     # degree
-        self.keys = []   # self.data = ...
+    def __init__(self):
+        self.keys = []
         self.subtrees = []
+
+# d - 1 <= |t.keys| <= 2 * d - 1
 
 def is_leaf(t):
     return t.subtrees == []
 
-def is_full(node):
-    return len(node.keys) >= 2 * node.deg - 1
+def full(d, t):
+    return len(t.keys) >= 2 * d - 1
 
-def can_remove(tr):
-    return len(tr.keys) >= tr.deg
-
-def replace_key(tr, i, k):
-    tr.keys[i] = k
-    return k
+def low(d, t):
+    return len(t.keys) <= d
 
 def merge_subtrees(tr, i):
-    #merge subtrees[i] and subtrees[i+1] by pushing keys[i] down
+    """merge subtrees[i], keys[i], subtrees[i+1]"""
     tr.subtrees[i].keys += [tr.keys[i]] + tr.subtrees[i + 1].keys
     tr.subtrees[i].subtrees += tr.subtrees[i + 1].subtrees
     tr.keys.pop(i)
     tr.subtrees.pop(i + 1)
 
-def split(node, i):
-    deg = node.deg
-    x = node.subtrees[i]
-    y = BTree(deg)
-    node.keys.insert(i, x.keys[deg - 1])
-    node.subtrees.insert(i + 1, y)
-    y.keys = x.keys[deg : ]
-    x.keys = x.keys[ : deg - 1]
+def split(d, z, i):
+    """split z.subtrees[i] at degree d"""
+    x = z.subtrees[i]
+    y = BTree()
+    z.keys.insert(i, x.keys[d - 1])
+    z.subtrees.insert(i + 1, y)
+    y.keys = x.keys[d : ]
+    x.keys = x.keys[ : d - 1]
     if not is_leaf(x):
-        y.subtrees = x.subtrees[deg : ]
-        x.subtrees = x.subtrees[ : deg]
+        y.subtrees = x.subtrees[d : ]
+        x.subtrees = x.subtrees[ : d]
 
-def insert(tr, key):
-    root = tr
-    if is_full(root):
-        s = BTree(root.deg)
-        s.subtrees.insert(0, root)
-        split(s, 0)
+def insert(d, t, x):
+    """insert key x to tree t, where the degree is d"""
+    root = t
+    if full(d, root):
+        s = BTree()
+        s.subtrees = [root]
+        split(d, s, 0)
         root = s
-    return insert_nonfull(root, key)
+    return insert_nonfull(d, root, x)
+
+def insert_nonfull(d, t, x):
+    if is_leaf(t):
+        ordered_insert(t.keys, x)
+    else:
+        i = len(t.keys)
+        while i > 0 and key < t.keys[i-1]:
+            i = i - 1
+        if full(d, t.subtrees[i]):
+            split(d, t, i)
+            if key > t.keys[i]:
+                i = i + 1
+        insert_nonfull(d, t.subtrees[i], x)
+    return t
 
 def ordered_insert(lst, x):
     i = len(lst)
@@ -72,21 +84,10 @@ def ordered_insert(lst, x):
         (lst[i - 1], lst[i]) = (lst[i], lst[i - 1])
         i = i - 1
 
-def insert_nonfull(tr, key):
-    if is_leaf(tr):
-        ordered_insert(tr.keys, key)
-    else:
-        i = len(tr.keys)
-        while i > 0 and key < tr.keys[i-1]:
-            i = i - 1
-        if is_full(tr.subtrees[i]):
-            split(tr, i)
-            if key > tr.keys[i]:
-                i = i + 1
-        insert_nonfull(tr.subtrees[i], key)
-    return tr
-
 def B_tree_delete(tr, key):
+    def replace_key(tr, i, k):
+        tr.keys[i] = k
+        return k
     i = len(tr.keys)
     while i>0:
         if key == tr.keys[i-1]:
@@ -134,19 +135,38 @@ def B_tree_delete(tr, key):
         tr = tr.subtrees[0]
     return tr
 
-def B_tree_search(tr, key):
-    for i in range(len(tr.keys)):
-        if key<= tr.keys[i]:
+def lookup(t, k):
+    """lookup key k in tree t"""
+    for i in range(len(t.keys)):
+        if k <= t.keys[i]:
             break
-    if key == tr.keys[i]:
-        return (tr, i)
-    if is_leaf(tr):
+    if key == t.keys[i]:
+        return (t, i)
+    elif is_leaf(t):
         return None
     else:
-        if key>tr.keys[-1]:
-            i=i+1
-        #disk_read
-        return B_tree_search(tr.subtrees[i], key)
+        if k > t.keys[-1]:
+            i = i + 1
+        return lookup(t.subtrees[i], k)
+
+def fromlist(d, xs):
+    t = BTree()
+    for x in xs:
+        t = insert(d, t, x)
+    return t
+
+def tolist(t):
+    xs = []
+    if t is None:
+        return xs
+    if is_leaf(t):
+        xs = [k for k in t.keys]
+    else:
+        for i in range(len(t.keys)):
+            xs += tolist(t.subtrees[i])
+            xs.append(t.keys[i])
+        xs += tolist(t.subtrees[-1])
+    return xs
 
 def B_tree_to_str(tr):
     res = "("
@@ -159,82 +179,5 @@ def B_tree_to_str(tr):
     res += ")"
     return res
 
-def list_to_B_tree(l, t=TREE_2_3_4):
-    tr = BTree(t)
-    for x in l:
-        tr = insert(tr, x)
-    return tr
-
-class BTreeTest:
-    def __init__(self):
-        print "B-tree testing"
-
-    def run(self):
-        self.test_insert()
-        self.test_delete()
-        self.test_search()
-        #self.__test_insert_verbose()
-
-    def test_insert(self):
-        lst = ["G", "M", "P", "X", "A", "C", "D", "E", "J", "K", \
-               "N", "O", "R", "S", "T", "U", "V", "Y", "Z"]
-        print "2-3-4 tree of", lst
-        tr = list_to_B_tree(lst)
-        print B_tree_to_str(tr)
-        print "B-tree with t=3 of", lst
-        print B_tree_to_str(list_to_B_tree(lst, 3))
-
-    def __test_insert_verbose(self):
-        lst = ["G", "M", "P", "X", "A", "C", "D", "E", "J", "K", \
-               "N", "O", "R", "S", "T", "U", "V", "Y", "Z"]
-        for i in range(1, len(lst)):
-            print "2-3-4 tree of", lst[:i]
-            tr = list_to_B_tree(lst[:i])
-            print B_tree_to_str(tr)
-
-    def test_delete(self):
-        print "test delete"
-        t = 3
-        tr = BTree(t)
-        tr.keys=["P"]
-        tr.subtrees=[BTree(t), BTree(t)]
-        tr.subtrees[0].keys=["C", "G", "M"]
-        tr.subtrees[0].subtrees=[BTree(t), BTree(t), BTree(t), BTree(t)]
-        tr.subtrees[0].subtrees[0].keys=["A", "B"]
-        tr.subtrees[0].subtrees[1].keys=["D", "E", "F"]
-        tr.subtrees[0].subtrees[2].keys=["J", "K", "L"]
-        tr.subtrees[0].subtrees[3].keys=["N", "O"]
-        tr.subtrees[1].keys=["T", "X"]
-        tr.subtrees[1].subtrees=[BTree(t), BTree(t), BTree(t)]
-        tr.subtrees[1].subtrees[0].keys=["Q", "R", "S"]
-        tr.subtrees[1].subtrees[1].keys=["U", "V"]
-        tr.subtrees[1].subtrees[2].keys=["Y", "Z"]
-        print B_tree_to_str(tr)
-        lst = ["F", "M", "G", "D", "B", "U"]
-        reduce(self.__test_del__, lst, tr)
-
-    def __test_del__(self, tr, key):
-        print "delete", key
-        tr = B_tree_delete(tr, key)
-        print B_tree_to_str(tr)
-        return tr
-
-    def test_search(self):
-        lst = ["G", "M", "P", "X", "A", "C", "D", "E", "J", "K", \
-               "N", "O", "R", "S", "T", "U", "V", "Y", "Z"]
-        tr = list_to_B_tree(lst, 3)
-        print "test search\n", B_tree_to_str(tr)
-        for i in lst:
-            self.__test_search__(tr, i)
-        self.__test_search__(tr, "W")
-
-    def __test_search__(self, tr, k):
-        res = B_tree_search(tr, k)
-        if res is None:
-            print k, "not found"
-        else:
-            (node, i) = res
-            print "found", node.keys[i]
-
 if __name__ == "__main__":
-    BTreeTest().run()
+    # run tests
