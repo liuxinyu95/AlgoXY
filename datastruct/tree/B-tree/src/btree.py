@@ -28,10 +28,10 @@ class BTree:
     def __str__(self):
         res = "("
         if is_leaf(self):
-            res += ", ".join(self.keys)
+            res += ", ".join(str(k) for k in self.keys)
         else:
             for i in range(len(self.keys)):
-                res += str(self.subtrees[i]) + ", " + self.keys[i] + ", "
+                res += str(self.subtrees[i]) + ", " + str(self.keys[i]) + ", "
             res += str(self.subtrees[-1])
         return res + ")"
 
@@ -151,10 +151,12 @@ def B_tree_delete(tr, key):
     return tr
 
 def lookup(t, k):
+    if t.keys == []:
+        return None
     for i in range(len(t.keys)):
         if k <= t.keys[i]:
             break
-    if key == t.keys[i]:
+    if k == t.keys[i]:
         return (t, i)
     elif is_leaf(t):
         return None
@@ -201,18 +203,36 @@ def is_btree(d, t, depth):
     return True
 
 def prop_order(xs):
-    d = deg(xs)
-    t = fromlist(d, xs)
+    t = fromlist(deg(xs), xs)
     ys = tolist(t)
     zs = sorted(xs)
     assert ys == zs, f"ys = {ys}, zs = {zs}, t = {t}"
 
+def prop_insert(xs):
+    d = deg(xs)
+    t = fromlist(d, xs)
+    assert is_btree(d, t, 0), f"violate B-tree: d = {d}, t = {t}"
+
+def prop_lookup(xs):
+    d = deg(xs)
+    t = fromlist(d, xs)
+    ys = sample(xs, min(5, len(xs))) + sample(range(100), 5)
+    for y in ys:
+        r = lookup(t, y)
+        if y in xs:
+            assert r, f"not found {y} in t = {t}"
+            (tr, i) = r
+            assert tr.keys[i] == y, f"y = {y}, tr = {tr}, i = {i}"
+        else:
+            assert (r is None), f"y = {y}, r = {r}"
+
 def test(f):
     for _ in range(100):
-        n = randint(0, 100)
-        xs = sample(range(100), n)
+        xs = sample(range(100), randint(0, 100))
         f(xs)
     print(f"100 tests for {f} passed.\n")
 
 if __name__ == "__main__":
     test(prop_order)
+    test(prop_insert)
+    test(prop_lookup)
