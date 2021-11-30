@@ -120,20 +120,23 @@ def delete(d, t, x):
         if x > t.keys[-1]:
             i = i + 1
         if low(d, t.subtrees[i]):
+            n = len(t.subtrees)
             tl = None if i == 0 else t.subtrees[i - 1]
-            tr = None if i == len(t.subtrees) - 1 else t.subtrees[i + 1]
+            tr = None if i == n - 1 else t.subtrees[i + 1]
             if tl and (not low(d, tl)):   # case 3a, borrow from left
                 t.subtrees[i].keys.insert(0, t.keys[i - 1])
                 t.keys[i - 1] = tl.keys.pop()
                 if not is_leaf(tl):
                     t.subtrees[i].subtrees.insert(0, tl.subtrees.pop())
-            if tr and (not low(d, tr)):  # case 3a, borrow from right
+            elif tr and (not low(d, tr)):  # case 3a, borrow from right
                 t.subtrees[i].keys.append(t.keys[i])
                 t.keys[i] = tr.keys.pop(0)
                 if not is_leaf(tr):
                     t.subtrees[i].subtrees.append(tr.subtrees.pop(0))
-                else:       # case 3b
-                    merge_subtrees(t, i - 1 if i > 0 else i)
+            else:       # case 3b
+                merge_subtrees(t, i if i + 1 < n else i - 1)
+                if i + 1 == n:
+                    i = i - 1
         delete(d, t.subtrees[i], x)
         if t.keys == []:    # shrink height
             t = t.subtrees[0]
@@ -234,13 +237,14 @@ def prop_lookup(xs):
 
 def prop_delete(xs):
     d = deg(xs)
-    t = fromlist(d, xs)
     ys = sample(xs, min(5, len(xs))) + sample(range(100), 5)
     for y in ys:
+        t = fromlist(d, xs)
         r = delete(d, t, y)
         zs = tolist(r)
+        assert is_btree(d, r, 0), f"violate B-tree: d = {d}, t={r}"
         if y in xs:
-            assert y not in zs, f"found {y} after delete t = {r}"
+            assert y not in zs, f"found {y} after delete:\nt = {r}\nbefore delete\nt = {t}"
         else:
             assert sorted(xs) == zs, f"y = {y}, t = {r}, \nxs = {sorted(xs)}\nzs = {zs}"
 
