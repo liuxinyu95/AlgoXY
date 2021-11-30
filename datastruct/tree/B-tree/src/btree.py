@@ -49,13 +49,6 @@ def full(d, t):
 def low(d, t):
     return len(t.keys) <= d - 1
 
-def merge_subtrees(t, i):
-    """merge t.subtrees[i], keys[i], t.subtrees[i+1]"""
-    t.subtrees[i].keys += [t.keys[i]] + t.subtrees[i + 1].keys
-    t.subtrees[i].subtrees += t.subtrees[i + 1].subtrees
-    t.keys.pop(i)
-    t.subtrees.pop(i + 1)
-
 def split(d, z, i):
     """split z.subtrees[i] at degree d"""
     x = z.subtrees[i]
@@ -99,56 +92,69 @@ def ordered_insert(lst, x):
         (lst[i - 1], lst[i]) = (lst[i], lst[i - 1])
         i = i - 1
 
-def B_tree_delete(tr, key):
-    def replace_key(tr, i, k):
-        tr.keys[i] = k
-        return k
-    i = len(tr.keys)
-    while i>0:
-        if key == tr.keys[i-1]:
-            if is_leaf(tr):  # case 1 in CLRS
-                tr.keys.remove(key)
-                #disk_write(tr)
-            else: # case 2 in CLRS
-                if can_remove(tr.subtrees[i-1]): # case 2a
-                    key = replace_key(tr, i-1, tr.subtrees[i-1].keys[-1])
-                    B_tree_delete(tr.subtrees[i-1], key)
-                elif can_remove(tr.subtrees[i]): # case 2b
-                    key = replace_key(tr, i-1, tr.subtrees[i].keys[0])
-                    B_tree_delete(tr.subtrees[i], key)
-                else: # case 2c
-                    merge_subtrees(tr, i-1)
-                    B_tree_delete(tr.subtrees[i-1], key)
-                    if tr.keys==[]: # tree shrinks in height
-                        tr = tr.subtrees[i-1]
-            return tr
-        elif key > tr.keys[i-1]:
+def delete(d, t, x):
+    if t.keys == []:
+        return t
+    for i in range(len(t.keys)):
+        if x <= t.keys[i]:
             break
+    if x == t.keys[i]:
+        if is_leaf(t):         # case 1
+            t.keys.pop(i)
         else:
-            i = i-1
-    # case 3
-    if is_leaf(tr):
-        return tr #key doesn't exist at all
-    if not can_remove(tr.subtrees[i]):
-        if i>0 and can_remove(tr.subtrees[i-1]): #left sibling
-            tr.subtrees[i].keys.insert(0, tr.keys[i-1])
-            tr.keys[i-1] = tr.subtrees[i-1].keys.pop()
-            if not is_leaf(tr.subtrees[i]):
-                tr.subtrees[i].subtrees.insert(0, tr.subtrees[i-1].subtrees.pop())
-        elif i<len(tr.subtrees) and can_remove(tr.subtrees[i+1]): #right sibling
-            tr.subtrees[i].keys.append(tr.keys[i])
-            tr.keys[i]=tr.subtrees[i+1].keys.pop(0)
-            if not is_leaf(tr.subtrees[i]):
-                tr.subtrees[i].subtrees.append(tr.subtrees[i+1].subtrees.pop(0))
-        else: # case 3b
-            if i>0:
-                merge_subtrees(tr, i-1)
-            else:
-                merge_subtrees(tr, i)
-    B_tree_delete(tr.subtrees[i], key)
-    if tr.keys==[]: # tree shrinks in height
-        tr = tr.subtrees[0]
-    return tr
+            tl = t.subtrees[i]
+            tr = t.subtrees[i + 1]
+            if not low(d, tl):    # case 2a
+                t.keys[i] = max_of(tl)
+                delete(d, tl, t.keys[i])
+            elif not low(d, tr):  # case 2b
+                t.keys[i] = min_of(tr)
+                delete(d, tr, t.keys[i])
+            else:              # case 2c
+                merge_subtrees(t, i)
+                delete(d, tl, x)
+                if t.keys == []:  # shrink height
+                    t = tl
+        return t
+    if not is_leaf(t):
+        if x > t.keys[-1]:
+            i = i + 1
+        if low(d, t.subtrees[i]):
+            tl = None if i == 0 else t.subtrees[i - 1]
+            tr = None if i == len(t.subtrees) - 1 else t.subtrees[i + 1]
+            if tl and (not low(d, tl)):   # case 3a, borrow from left
+                t.subtrees[i].keys.insert(0, t.keys[i - 1])
+                t.keys[i - 1] = tl.keys.pop()
+                if not is_leaf(tl):
+                    t.subtrees[i].subtrees.insert(0, tl.subtrees.pop())
+            if tr and (not low(d, tr)):  # case 3a, borrow from right
+                t.subtrees[i].keys.append(t.keys[i])
+                t.keys[i] = tr.keys.pop(0)
+                if not is_leaf(tr):
+                    t.subtrees[i].subtrees.append(tr.subtrees.pop(0))
+                else:       # case 3b
+                    merge_subtrees(t, i - 1 if i > 0 else i)
+        delete(d, t.subtrees[i], x)
+        if t.keys == []:    # shrink height
+            t = t.subtrees[0]
+    return t
+
+def merge_subtrees(t, i):
+    """merge t.subtrees[i], keys[i], t.subtrees[i+1]"""
+    t.subtrees[i].keys += [t.keys[i]] + t.subtrees[i + 1].keys
+    t.subtrees[i].subtrees += t.subtrees[i + 1].subtrees
+    t.keys.pop(i)
+    t.subtrees.pop(i + 1)
+
+def max_of(t):
+    while t.subtrees != []:
+        t = t.subtrees[-1]
+    return t.keys[-1]
+
+def min_of(t):
+    while t.subtrees != []:
+        t = t.subtrees[0]
+    return t.keys[0]
 
 def lookup(t, k):
     if t.keys == []:
@@ -226,13 +232,26 @@ def prop_lookup(xs):
         else:
             assert (r is None), f"y = {y}, r = {r}"
 
+def prop_delete(xs):
+    d = deg(xs)
+    t = fromlist(d, xs)
+    ys = sample(xs, min(5, len(xs))) + sample(range(100), 5)
+    for y in ys:
+        r = delete(d, t, y)
+        zs = tolist(r)
+        if y in xs:
+            assert y not in zs, f"found {y} after delete t = {r}"
+        else:
+            assert sorted(xs) == zs, f"y = {y}, t = {r}, \nxs = {sorted(xs)}\nzs = {zs}"
+
 def test(f):
     for _ in range(100):
         xs = sample(range(100), randint(0, 100))
         f(xs)
-    print(f"100 tests for {f} passed.\n")
+    print(f"100 tests for {f} passed.")
 
 if __name__ == "__main__":
     test(prop_order)
     test(prop_insert)
     test(prop_lookup)
+    test(prop_delete)
