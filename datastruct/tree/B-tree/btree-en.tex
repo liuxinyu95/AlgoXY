@@ -727,7 +727,7 @@ The other way is to merge the nodes before delete if there are too few keys. Con
 
 \textbf{Case 1}. If $x$ exists in node $t$, and $t$ is a leaf, we can directly remove $x$ from $t$. If $t$ is the singleton node in the tree (root), we needn't worry about too few keys.
 
-\textbf{Case 2}. If $x$ exits in node $t$, but $t$ is not a leaf. There are three sub-cases if $t$ contains insufficient keys ($d - 1$ keys include $x$):
+\textbf{Case 2}. If $x$ exits in node $t$, but $t$ is not a leaf. There are three sub-cases:
 
 \textbf{Case 2a}. As shown in figure \ref{fig:btree-del}, let the predecessor of $k_i = x$ be $k'$, where $k' = max(t_i)$. If $t_i$ has sufficient keys ($\geq d$), we replace $k_i$ with $k'$, then recursively delete $k'$ from $t_i$.
 
@@ -778,13 +778,67 @@ Merge pushes a key $k_i$ to the sub-tree. After that, if node $t$ become empty, 
   \label{fig:btree-del-merge-subtree}
 \end{figure}
 
-Before define the B-tree delete algorithm, we need provide some auxiliary
-functions. Function \textproc{Can-Del} tests if a node contains enough keys
-for deletion.
+Below \textproc{Delete} algorithm implements the `merge then delete' method:
 
 \begin{algorithmic}[1]
-\Function{Can-Del}{$T$}
-  \State \Return $|K(T)| \ge t$
+\Function{Delete}{$T, k$}
+  \If{$T$ is empty}
+    \State \Return $T$
+  \EndIf
+  \State $i \gets 1$, $n \gets |K(T)|$
+  \While{$i \leq n$ and $k > k_i(T)$}
+    \State $i \gets i + 1$
+  \EndWhile
+  \If{$k = k_i(T)$}
+    \If{$T$ is leaf} \Comment{case 1}
+      \State \Call{Remove}{$K(T), k$}
+    \Else \Comment{case 2}
+      \If{$|K(t_i(T))| \geq d$} \Comment{case 2a}
+        \State $k_i(T) \gets$ \Call{Max}{$t_i(T)$}
+        \State \Call{Delete}{$t_i(T), k_i(T)$}
+      \ElsIf{$|K(t_{i+1}(T))| \geq d$} \Comment{case 2b}
+        \State $k_i(T) \gets$ \Call{Min}{$t_{i+1}(T)$}
+        \State \Call{Delete}{$t_{i+1}(T), k_i(T)$}
+      \Else \Comment{case 2c}
+        \State \Call{Merge-At}{$T, i$}
+        \State \Call{Delete}{$t_i(T), k$}
+        \If{$K(T)$ is empty}
+          \State $T \gets t_i(T)$ \Comment{Shrinks height}
+        \EndIf
+      \EndIf
+    \EndIf
+    \State \Return $T$
+  \EndIf
+  \If{$T$ is not leaf}
+    \If{$k > k_n(T)$}
+      \State $i \gets i + 1$
+    \EndIf
+    \If{$|K(t_i(T))| < d$}  \Comment{case 3}
+      \If{$i > 1$ and $|K(t_{i-1}(T))| \geq d$} \Comment{case 3a: borrow from left}
+        \State \Call{Insert}{$K(t_i(T)), k_{i-1}(T)$}
+        \State $k_{i-1}(T) \gets$ \Call{Pop-Last}{$K(t_{i-1}(T))$}
+        \If{$t_i(T)$ is not leaf}
+          \State \textproc{Insert}($T(t_i(T))$, \Call{Pop-Back}{$T(t_{i-1}(T))$})
+        \EndIf
+      \ElsIf{$i \leq n$ and $|K(t_{i+1}(T))| \geq d$} \Comment{case 3a: borrow from right}
+        \State \Call{Append}{$K(t_i(T)), k_i(T)$}
+        \State $k_i(T) \gets$ \Call{Pop-First}{$K(t_{i+1}(T))$}
+        \If{$t_i(T)$ is not leaf}
+          \State \textproc{Append}($C(c_i(T))$, \Call{Pop-First}{$T(t_{i+1}(T))$})
+        \EndIf
+      \Else \Comment{case 3b}
+        \If{$i = n + 1$}
+          \State $i \gets i - 1$
+        \EndIf
+        \State \Call{Merge-At}{$T, i$}
+      \EndIf
+    \EndIf
+    \State \Call{Delete}{$t_i(T), k$}
+    \If{$K(T)$ is empty} \Comment {Shrinks height}
+      \State $T \gets t_1(T)$
+    \EndIf
+  \EndIf
+  \State \Return $T$
 \EndFunction
 \end{algorithmic}
 
@@ -806,72 +860,6 @@ Procedure \textproc{Merge-Children} merges the $i$-th child, the $i$-th key,
 and $i+1$-th child of node $T$ into a new child, and remove the
 $i$-th key and $i+1$-th child from $T$ after merging.
 
-With these functions defined, the B-tree deletion algorithm can be given by
-realizing the above 3 cases.
-
-\begin{algorithmic}[1]
-\Function{Delete}{$T, k$}
-  \State $i \gets 1$
-  \While{$i \leq |K(T)|$}
-    \If{$k = k_i(T)$}
-      \If{$T$ is leaf} \Comment{case 1}
-        \State \Call{Remove}{$K(T), k$}
-      \Else \Comment{case 2}
-        \If{\Call{Can-Del}{$c_i(T)$}} \Comment{case 2a}
-          \State $k_i(T) \gets$ \Call{Last-Key}{$c_i(T)$}
-          \State \Call{Delete}{$c_i(T), k_i(T)$}
-        \ElsIf{\Call{Can-Del}{$c_{i+1}(T)$}} \Comment{case 2b}
-          \State $k_i(T) \gets$ \Call{First-Key}{$c_{i+1}(T)$}
-          \State \Call{Delete}{$c_{i+1}(T), k_i(T)$}
-        \Else \Comment{case 2c}
-          \State \Call{Merge-Children}{$T, i$}
-          \State \Call{Delete}{$c_i(T), k$}
-          \If{$K(T) = NIL$}
-            \State $T \gets c_i(T)$ \Comment{Shrinks height}
-          \EndIf
-        \EndIf
-      \EndIf
-      \State \Return $T$
-    \ElsIf{$k < k_i(T)$}
-      \State Break
-    \Else
-      \State $i \gets i+1$
-    \EndIf
-  \EndWhile
-  \Statex
-  \If{$T$ is leaf}
-    \State \Return $T$ \Comment{$k$ doesn't exist in $T$.}
-  \EndIf
-  \If{$\lnot$ \Call{Can-Del}{$c_i(T)$}}  \Comment{case 3}
-    \If{$i>1 \land$ \Call{Can-Del}{$c_{i-1}(T)$}} \Comment{case 3a: left sibling}
-      \State \Call{Insert}{$K(c_i(T)), k_{i-1}(T)$}
-      \State $k_{i-1}(T) \gets$ \Call{Pop-Back}{$K(c_{i-1}(T))$}
-      \If{$c_i(T)$ isn't leaf}
-        \State $c \gets$ \Call{Pop-Back}{$C(c_{i-1}(T))$}
-        \State \Call{Insert}{$C(c_i(T)), c$}
-      \EndIf
-    \ElsIf{$i \leq |C(T)| \land$ \Call{Can-Del}{$c_{i_1}(T)$}} \Comment{case 3a: right sibling}
-      \State \Call{Append}{$K(c_i(T)), k_i(T)$}
-      \State $k_i(T) \gets$ \Call{Pop-Front}{$K(c_{i+1}(T))$}
-      \If{$c_i(T)$ isn't leaf}
-        \State $c \gets$ \Call{Pop-Front}{$C(c_{i+1}(T))$}
-        \State \Call{Append}{$C(c_i(T)), c$}
-      \EndIf
-    \Else \Comment{case 3b}
-      \If{$i>1$}
-        \State \Call{Merge-Children}{$T, i-1$}
-      \Else
-        \State \Call{Merge-Children}{$T, i$}
-      \EndIf
-    \EndIf
-  \EndIf
-  \State \Call{Delete}{$c_i(T), k$} \Comment {recursive delete}
-  \If{$K(T) = NIL$} \Comment {Shrinks height}
-    \State $T \gets c_1(T)$
-  \EndIf
-  \State \Return $T$
-\EndFunction
-\end{algorithmic}
 
 Figure \ref{fig:result-del1}, \ref{fig:result-del2}, and \ref{fig:result-del3}
 show the deleting process step by step. The nodes modified are shaded.
