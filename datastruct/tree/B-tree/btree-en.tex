@@ -814,13 +814,13 @@ Below \textproc{Delete} algorithm implements the `merge then delete' method:
       \State $i \gets i + 1$
     \EndIf
     \If{$|K(t_i(t))| < d$}  \Comment{case 3}
-      \If{$i > 1$ and $|K(t_{i-1}(t))| \geq d$} \Comment{case 3a: borrow from left}
+      \If{$i > 1$ and $|K(t_{i-1}(t))| \geq d$} \Comment{case 3a: left}
         \State \Call{Insert}{$K(t_i(t)), k_{i-1}(t)$}
         \State $k_{i-1}(t) \gets$ \Call{Pop-Last}{$K(t_{i-1}(t))$}
         \If{$t_i(t)$ is not leaf}
           \State \textproc{Insert}($T(t_i(t))$, \Call{Pop-Back}{$T(t_{i-1}(t))$})
         \EndIf
-      \ElsIf{$i \leq n$ and $|K(t_{i+1}(t))| \geq d$} \Comment{case 3a: borrow from right}
+      \ElsIf{$i \leq n$ and $|K(t_{i+1}(t))| \geq d$} \Comment{case 3a: right}
         \State \Call{Append}{$K(t_i(t)), k_i(t)$}
         \State $k_i(t) \gets$ \Call{Pop-First}{$K(t_{i+1}(t))$}
         \If{$t_i(t)$ is not leaf}
@@ -943,6 +943,7 @@ void orderedInsert([K] lst, K x) {
 }
 
 Bool isFull(BTree<K, deg> x) = length(x.keys) >= 2 * deg - 1
+Bool isLow(BTree<K, deg> x) = length(x.keys) <= deg - 1
 \end{lstlisting}
 
 Iterative look up:
@@ -961,6 +962,86 @@ Optional<(BTree<K, deg>, Int)> lookup(BTree<K, deg> tr, K key) {
             tr = tr.subTrees[i]
         }
     }
+}
+\end{lstlisting}
+
+Imperative merge before delete:
+
+\begin{lstlisting}[language = Bourbaki]
+BTree<K, deg> delete(BTree<K, deg> t, K x) {
+    if empty(t.keys) then return t
+    Int i = 0, n = length(t.keys)
+    while i < n and x > t.keys[i] { i = i + 1 }
+    if x == t.keys[i] {
+        if isLeaf(t) {         // case 1
+            removeAt(t.keys, i)
+        } else {
+            var tl = t.subtrees[i]
+            var tr = t.subtrees[i + 1]
+            if not low(tl) {         // case 2a
+                t.keys[i] = max(tl)
+                delete(tl, t.keys[i])
+            } else if not low(tr) {  // case 2b
+                t.keys[i] = min(tr)
+                delete(tr, t.keys[i])
+            } else {                 // case 2c
+                mergeSubtrees(t, i)
+                delete(d, tl, x)
+                if empty(t.keys) then t = tl  // shrink height
+            }
+        return t
+    }
+    if not isLeaf(t) {
+        if x > t.keys[n - 1] then i = i + 1
+        if low(t.subtrees[i]) {
+            var tl = if i == 0 then null else t.subtrees[i - 1]
+            var tr = if i == n then null else t.subtrees[i + 1]
+            if tl != null and (not low(tl)) {   // case 3a, left
+                insert(t.subtrees[i].keys, 0, t.keys[i - 1])
+                t.keys[i - 1] = popLast(tl.keys)
+                if not isLeaf(tl) {
+                    insert(t.subtrees[i].subtrees, 0, popLast(tl.subtrees))
+                }
+            } else if tr != null and (not low(tr)) {  // case 3a, right
+                append(t.subtrees[i].keys, t.keys[i])
+                t.keys[i] = popFirst(tr.keys)
+                if not isLeaf(tr) {
+                    append(t.subtrees[i].subtrees, popFirst(tr.subtrees))
+                }
+            } else {       // case 3b
+                mergeSubtrees(t, if i < n then i else (i - 1))
+                if i == n then i = i - 1
+            }
+        delete(t.subtrees[i], x)
+        if empty(t.keys) then t = t.subtrees[0]    // shrink height
+        }
+    }
+    return t
+}
+\end{lstlisting}
+
+merge sub-trees, find the min/max key from a B-tree.
+
+\begin{lstlisting}[language = Bourbaki]
+void mergeSubtrees(BTree<K, deg>, Int i) {
+    t.subtrees[i].keys += [t.keys[i]] + t.subtrees[i + 1].keys
+    t.subtrees[i].subtrees += t.subtrees[i + 1].subtrees
+    removeAt(t.keys, i)
+    removeAt(t.subtrees, i + 1)
+}
+
+K max(BTree<K, deg> t) {
+    while not empty(t.subtrees) {
+        t = last(t.subtrees)
+    }
+    return last(t.keys)
+}
+
+K min(BTree<K, deg> t) {
+    while not empty(t.subtrees) {
+        t = t.subtrees[0]
+    }
+    return t.keys[0]
 }
 \end{lstlisting}
 
