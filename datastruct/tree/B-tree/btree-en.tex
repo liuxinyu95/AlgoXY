@@ -122,22 +122,22 @@ The empty node is in the form of $(\nil, \nil)$ or \texttt{BTree [] []}. Instead
 \section{Insert}
 \label{btree-insertion} \index{B-tree!insert}
 
-The idea is similar to the binary search tree. While we need deal with multiple keys and sub-trees. When insert key $x$ to B-tree $t$, starting from the root, we examine the keys in the node to locate a position where all keys on the left are less than $x$, while the rest keys on the right are greater than $x$.\footnote{In fact, only it is sufficient to only support less-than and equality. See exercise \ref{ex:btree-leq}.} If the node is a leaf, and it is not full ($|keys(t)| < 2d-1$), we insert $x$ at this position. Otherwise, this position points to a sub-tree $t'$, we recursively insert $x$ to $t'$.
+The idea is similar to the binary search tree. While we need deal with multiple keys and sub-trees. When insert key $x$ to B-tree $t$, starting from the root, we examine the keys in the node to locate a position where all keys on the left are less than $x$, while the rest keys on the right are greater than $x$.\footnote{In fact, it is sufficient to only support less-than and equality. See exercise \ref{ex:btree-leq}.} If the node is a leaf, and it is not full ($|keys(t)| < 2d-1$), we insert $x$ at this position. Otherwise, this position points to a sub-tree $t'$, we recursively insert $x$ to $t'$.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.4]{img/btree-insert-example.png}
-  \caption{Insert 22 to a 2-3-4 tree. $22 > 20$, go to the right sub-tree; next as $22 < 26$, go to the first sub-tree; finally, $21 < 22 < 25$, the leaf is not full.}
+  \caption{Insert 22 to a 2-3-4 tree. $22 > 20$, go to the right sub-tree; next as $22 < 26$, go to the first sub-tree; finally, $21 < 22 < 25$, and the leaf is not full.}
   \label{fig:btree-insert-simple}
 \end{figure}
 
-As an example, consider the 2-3-4 tree in figure \ref{fig:btree-insert-simple}. when insert $x = 22$, because $20 < 22$, we next examine the sub-tree on the left, which contains 26, 38, 45. Since $22 < 26$, we next go to the first sub-tree containing 21 and 25. This is a leaf, and it is not full. Hence we insert 22 to this node.
+As an example, consider the 2-3-4 tree in figure \ref{fig:btree-insert-simple}. when insert $x = 22$, because $20 < 22$, we next examine the sub-tree on the right, which contains 26, 38, 45. Since $22 < 26$, we next go to the first sub-tree containing 21 and 25. This is a leaf, and it is not full. Hence we insert 22 to this node.
 
-However, if there are $2d - 1$ keys in the leaf, we will break the B-tree rules after insert $x$, as the node will be too 'full'. For the same B-tree in figure \ref{fig:btree-insert-simple}, we'll meet this issue when insert 18. There are 2 approaches to solve it.
+However, if there are $2d - 1$ keys in the leaf, we will break the B-tree rules after insert $x$, as the node will be too 'full'. For the same B-tree in figure \ref{fig:btree-insert-simple}, we'll meet this issue when insert 18. There are two approaches to solve it.
 
 \subsection{Insert then split}
 
-We can adopt the similar insert then fix method as for red-black tree. First, we insert the key to proper ordering position without considering the B-tree balance rules, then as the next step, if the new tree violates the balance rule, we perform a recursive bottom-up fixing by splitting the overly full nodes. We need define the function to test whether a given node exceeds the minimum degree constraint or not.
+We can adopt the similar `insert then fix' method for the red-black tree. First, we insert the key to the proper ordering position without considering the B-tree balance rules. As the next step, if the new tree violates the balance rules, we perform a recursive bottom-up fixing by splitting the overly full node. We need define the function to test whether a given node exceeds the minimum degree constraint or not.
 
 
 \be
@@ -160,7 +160,7 @@ When the node contains too many keys and sub-trees, we define $split$ function t
 split\ m\ (ks, ts) = ((ks_l, ts_l), k, (ks_r, ts_r))
 \ee
 
-We can reuse the list $splitAt$ function defined in chapter 1 (\autoref{eq:split-at}) to realize it.
+We reuse the list $splitAt$ function defined in chapter 1 (\autoref{eq:split-at}) to realize it.
 
 \[
 \begin{cases}
@@ -176,7 +176,7 @@ unsplit\ (ks_l, ts_l)\ k\ (ks_r, ts_r) = (ks_l \doubleplus [k] \doubleplus ks_r,
 \label{eq:btree-unsplit}
 \ee
 
-Below function first insert $x$ to the tree $t$, then call $fix$ to resume the B-tree balance rules with the given degree $d$.
+Below function first inserts $x$ to the tree $t$, then calls $fix$ to resume the B-tree balance rules with the given degree $d$.
 
 \be
 insert\ x\ (d, t) = fix\ (d, ins\ t)
@@ -202,7 +202,7 @@ Where $l = (ks_l, ts_l)$ and $r = (ks_r, ts_r)$. It further uses the list partit
 \[
 \begin{cases}
 (ks_l, ks_r) & = span\ (< x)\ ks \\
-(ts_l, (t':ts_r)) & = splitAt\ |ks_l| ts
+(ts_l, (t':ts_r)) & = splitAt\ |ks_l|\ ts
 \end{cases}
 \]
 
@@ -222,19 +222,19 @@ As such, we separate all the keys and sub-trees less than $x$ on the left as $l$
   \label{fig:recursive-insert}
 \end{figure}
 
-After insert $x$ to $t'$, it may contains too many keys over B-tree constraint. We define function $balance$ to recursively resume B-tree property by splitting sub-tree.
+After insert $x$ to $t'$, it may contains too many keys that violates B-tree rules. We define function $balance$ to recursively recover B-tree rules by splitting sub-tree.
 
 \be
 balance\ d\ (ks_l, ts_l)\ t\ (ks_r, ts_r) = \begin{cases}
   full\ d\ t: fix_f \\
-  otherwise: ((ks_l \doubleplus ks_r), (ts_l \doubleplus [t] \doubleplus ts_r))
+  otherwise: (ks_l \doubleplus ks_r, ts_l \doubleplus [t] \doubleplus ts_r)
   \end{cases}
 \ee
 
-where $fix_f$ splits sub-tree $t$ with degree $d$ as $(t_1, k, t_2) = split\ d\ t$, then combine to a new B-tree node:
+where $fix_f$ splits sub-tree $t$ with degree $d$ as $(t_1, k, t_2) = split\ d\ t$, then combine them to a new B-tree node:
 
 \be
-fix_f = ((ks_l \doubleplus [k] \doubleplus ks_r), (ts_l \doubleplus [t_1, t_2] \doubleplus ts_r))
+fix_f = (ks_l \doubleplus [k] \doubleplus ks_r, ts_l \doubleplus [t_1, t_2] \doubleplus ts_r)
 \ee
 
 The following example program implements $insert$ for B-tree.
@@ -277,7 +277,7 @@ Figure \ref{fig:btree-insert-fp} shows the example B-trees built by repeatedly i
 
 \subsection{Split before insertion}
 
-The second method is to split a node before insertion to prevent it becoming overly full. We can often see this method in imperative implementations. When perform top-down recursive insert, if we reach to a node with $2d - 1$ keys, we divide it into 3 parts as shown in figure \ref{fig:node-split}, such that each new node has $d - 1$ keys. They will be valid B-tree node after insertion. For node $x$, let $K(x)$ be the keys, $T(x)$ be the sub-trees. Denote the $i$-th key of $x$ as $k_i(x)$, the $j$-th sub-tree as $t_j(x)$. Below algorithm splits the $i$-th sub-tree of node $z$:
+The second method is to split a node before insertion to prevent it becoming overly full. We often see this method in imperative implementations. When perform top-down recursive insert, if we reach to a node with $2d - 1$ keys, we divide it into 3 parts as shown in figure \ref{fig:node-split}, such that each new node has $d - 1$ keys. They will be valid B-tree node after insertion. For node $x$, let $K(x)$ be the keys, $T(x)$ be the sub-trees. Denote the $i$-th key of $x$ as $k_i(x)$, the $j$-th sub-tree as $t_j(x)$. Below algorithm splits the $i$-th sub-tree of node $z$:
 
 \begin{algorithmic}[1]
 \Procedure{Split}{$z, i$}
