@@ -350,7 +350,7 @@ This algorithm is recursive. Exercise \ref{ex:btree-loop-insert} asks to elimina
 
 \subsection{Paired lists}
 
-When use a list to store ordered keys, we always start from the first key, and scan the list to find the insert position. If the keys are stored in array, we can improve it with binary search. Can we start somewhere in the node, go left or right depends on the order of keys? One idea is to separate the B-tree node into three parts: left $l$, a sub-tree $t'$, and right $r$. Where left and right are a list of pairs, each pair contains a key and a sub-tree: $(k_i, t_i)$. However, $l$ is reversed. In other words, $l$ and $r$ are head-to-head connected by $t'$ as a U-shape shown in figure \ref{fig:paired-lists}. We can move forward and backward both in constant time.
+When use list to store ordered keys, we always start from the first key, and scan the list to find the insert position. If the keys are stored in array, we can improve it with binary search. Can we start somewhere in the node, go left or right depending on the order of keys? One idea is to separate the B-tree node into three parts: left $l$, a sub-tree $t'$, and right $r$. Where left and right are lists of pairs, each pair contains a key and a sub-tree: $(k_i, t_i)$. However, $l$ is reversed. In other words, $l$ and $r$ are head-to-head connected by $t'$ as a U-shape shown in figure \ref{fig:paired-lists}. We can move forward and backward both in constant time.
 
 \begin{figure}[htbp]
   \centering
@@ -359,7 +359,7 @@ When use a list to store ordered keys, we always start from the first key, and s
   \label{fig:paired-lists}
 \end{figure}
 
-Below example program defines B-tree node in this way: it's either empty, or contains 3 parts: the left (key, sub-tree) list in reversed order, a sub-tree, and the right (key, sub-tree) list. We denoted the none empty node as $(l, t', r)$.
+Below example program defines B-tree node: it's either empty, or contains 3 parts: the left (key, sub-tree) list in reversed order, a sub-tree, and the right (key, sub-tree) list. We denoted the none empty node as $(l, t', r)$.
 
 \begin{Haskell}
 data BTree a = Empty
@@ -507,7 +507,7 @@ split d t@(BTree l _ _) | n < d = sp $ iterate stepR t !! (d - n)
 
 \begin{Exercise}
 \Question{Can we use $\leq$ to support duplicated keys in B-Tree?} \label{ex:btree-leq}
-\Question{For the split then insert algorithm, eliminate the recursion with loops.}
+\Question{For the `split then insert' algorithm, eliminate the recursion with loops.}
 \label{ex:btree-loop-insert}
 \Question{We use linear search among keys to find the proper insert position. Improve the imperative implementation with binary search. Is the big-O performance improved?}
 \label{ex:btree-binary-search}
@@ -517,7 +517,7 @@ split d t@(BTree l _ _) | n < d = sp $ iterate stepR t !! (d - n)
 \section{Look up}
 \index{B-tree!look up}
 
-We can extend the binary search tree look up method to multiple branches, and obtain the generic B-tree look up solution. When looking up the binary search tree, there are only two directions: left and right, while, there are multiple ways in B-tree. Consider look up $k$ in B-tree $t = (ks, ts)$, if it is a leaf ($tr$ is empty), then the problem becomes list look up; otherwise, we partition the $tree$ with $k$ into three parts: $l = (ks_l, ts_l), t', r = (ks_r, ts_r)$, where all keys in $l$ and sub-tree $t'$ are less then $k$, and the remaining ($\geq k$) are in $r$. If the first key in $ks_r$ equals $k$, then we find the answer; otherwise, we recursive look up in sub-tree $t'$.
+For look up, we can extend from the binary search tree to multiple branches, and obtain the generic B-tree look up solution. There are only two directions when look up the binary search tree: left and right, while, there are multiple ways in B-tree. Consider look up $k$ in B-tree $t = (ks, ts)$, if $t$ is a leaf ($ts$ is empty), then the problem becomes list look up; otherwise, we partition the $t$ with $k$ into three parts: $l = (ks_l, ts_l), t', r = (ks_r, ts_r)$, where all keys in $l$ and sub-tree $t'$ are less then $k$, and the remaining ($\geq k$) is in $r$. If the first key in $ks_r$ equals $k$, then we find the answer; otherwise, we recursive look up in sub-tree $t'$.
 
 \be
 \begin{array}{lcl}
@@ -541,7 +541,7 @@ Where $((ks_l, ts_l), t', (ks_r, ts_r)) = partition\ k\ t$, and
 \end{array}
 \]
 
-Below example program implements $lookup$.
+Below example program\footnote{\texttt{safeHd} is provided as \texttt{listToMaybe} in some library.} implements $lookup$.
 
 \begin{Haskell}
 lookup k t@(BTree ks []) = if k `elem` ks then Just t else Nothing
@@ -550,7 +550,7 @@ lookup k t = if (Just k) == safeHd ks then Just t
   (_, t', (ks, _)) = partition k t
 \end{Haskell}
 
-For the paired list implementation, the idea is similar. If the tree is not empty, we partition it with the predicate $< k$. Then check if the first key in the right part equals to $k$, or recursively look up the partitioned sub-tree:
+For the paired list implementation, the idea is similar. If the tree is not empty, we partition it with the predicate `$< k$'. Then check if the first key in the right part equals to $k$, or recursively look up the partitioned sub-tree:
 
 \be
 \begin{array}{lcl}
@@ -562,7 +562,7 @@ For the paired list implementation, the idea is similar. If the tree is not empt
 \end{array}
 \ee
 
-Where $(l, t, r) = partition (< k) t$ in the none empty case. \textit{safeFst} applies \textit{fst} function to a 'Maybe' value. Below example program utilizes \textit{fmap} to do this:
+Where $(l, t', r) = partition\ (< k)\ t$ for the none empty tree case. \textit{safeFst} applies \textit{fst} function to a `Maybe' value. Below example program utilizes \textit{fmap} to do this:
 
 \begin{Haskell}
 lookup x Empty = Nothing
@@ -571,7 +571,7 @@ lookup x t = let (l, t', r) = partition (< x) t in
   else lookup x t'
 \end{Haskell}
 
-For the imperative implementation, we start from the root $r$, find a position $i$ among the keys, such that $k_i(r) \leq k < k_{i+1}(r)$. If $k_i(r) = k$ then return the node $r$ together with $i$ as a pair; otherwise, move to sub-tree $t_i(r)$ to go on looking up. If $r$ is a leaf and $k$ is not in its keys, the return nothing. It means $k$ does not exit in the tree.
+For the imperative implementation, we start from the root $r$, find a position $i$ among the keys, such that $k_i(r) \leq k < k_{i+1}(r)$. If $k_i(r) = k$ then return the node $r$ and $i$ as a pair; otherwise, move to sub-tree $t_i(r)$ to go on looking up. If $r$ is a leaf and $k$ is not in the keys, the return nothing. It means $k$ does not exit in the tree.
 
 \begin{algorithmic}[1]
 \Function{Look-Up}{$r, k$}
