@@ -599,17 +599,17 @@ For the imperative implementation, we start from the root $r$, find a position $
 \section{Delete}
 \index{B-tree!delete}
 
-After delete a key, the number of keys may be too few to be valid B-tree node. Except the root, the number of keys should not be less than $d - 1$, where $d$ is the minimum degree. There are two methods symmetric to insert, we can either delete then fix, or merge before delete.
+After delete a key, the number of keys may be too few to be a valid B-tree node. Except the root, the number of keys should not be less than $d - 1$, where $d$ is the minimum degree. There are two methods symmetric to insert: we can either delete then fix, or merge before delete.
 
 \subsection{Delete and fix}
 
-We first expand the $delete$ algorithm for binary search tree to multiple branches, then fix the B-tree balance rules. The main delete program is defined with this two steps:
+We first extend the $delete$ algorithm for binary search tree to multiple branches, then fix the B-tree balance rules. The main delete program is defined with these two steps:
 
 \be
 delete\ x\ (d, t) = fix (d, del\ x\ t)
 \ee
 
-Where function $del$ is the one we expand to support multiple branches. If $t$ is a leaf, we merely delete $x$ from the keys; otherwise, we partition the tree with $x$ into 3 parts: $(l, t', r)$. Where all the keys in $l$ and sub-tree $t'$ are less than $x$, and the rest in $r$ are great than or equal ($\geq$) to $x$. When $r$ isn't empty, we pick the first key $k_0$ from it. If the key equals to $x$, ($k_0 = x$), we next replace it with the maximum key $k'$ of sub-tree $t'$ ($k' = max(t')$), and recursively delete $k'$ from $t'$ as shown in figure \ref{fig:btree-del}. Otherwise (either $r$ is empty, or $k_0 \neq x$), we recursively delete $x$ from sub-tree $t'$.
+Where function $del$ is the one we extend to support multiple branches. If $t$ is a leaf, we merely delete $x$ from the keys; otherwise, we partition the tree with $x$ into 3 parts: $(l, t', r)$. Where all the keys in $l$ and sub-tree $t'$ are less than $x$, and the rest in $r$ are great than or equal ($\geq$) to $x$. When $r$ isn't empty, we pick the first key $k_i$ from it. If the key equals to $x$, ($k_i = x$), we next replace it with the maximum key $k'$ of sub-tree $t'$ ($k' = max(t')$), and recursively delete $k'$ from $t'$ as shown in figure \ref{fig:btree-del}. Otherwise (either $r$ is empty, or $k_i \neq x$), we recursively delete $x$ from sub-tree $t'$.
 
 \begin{figure}[htbp]
   \centering
@@ -620,7 +620,7 @@ Where function $del$ is the one we expand to support multiple branches. If $t$ i
 
 \be
 \begin{array}{lcl}
-del\ x\ (ks, []) & = & (delete_L\ x\ ks, []) \\
+del\ x\ (ks, []) & = & (delete_l\ x\ ks, []) \\
 del\ x\ t & = & \begin{cases}
   \textit{Just}\ x = \textit{safeHd}\ ks': & balance\ d\ l\ (del\ k'\ t')\ (k':(tail\ ks'), ts') \\
   otherwise: & balance\ d\ l\ (del\ x\ t')\ (ks', ts') \\
@@ -628,7 +628,7 @@ del\ x\ t & = & \begin{cases}
 \end{array}
 \ee
 
-Where $(l, t', (ks', ts')) = partition\ x\ t$, are the 3 parts partitioned by $x$. On top of it, we extract maximum key $k'$ from $t'$. The $max$ function is defined as:
+Where $(l, t', (ks', ts')) = partition\ x\ t$, are the 3 parts partitioned by $x$. On top of it, we extract the maximum key $k'$ from $t'$. The $max$ function is defined as:
 
 \be
 \begin{array}{lcl}
@@ -637,17 +637,17 @@ Where $(l, t', (ks', ts')) = partition\ x\ t$, are the 3 parts partitioned by $x
 \end{array}
 \ee
 
-Function $last$ returns the last element from a list (\autoref{eq:list-last} in chapter 1). $delete_l$ is the list delete algorithm (\autoref{eq:list-delete} in chapter 1). $tail$ drops the first element from a list and returns the rest (\autoref{eq:list-head-tail}). We need modify the $balance$ function, which we defined for $insert$ before, with the additional logic to merge the node if it contains to less keys.
+Function $last$ returns the last element from a list (\autoref{eq:list-last} in chapter 1). $delete_l$ is the list delete algorithm (\autoref{eq:list-delete} in chapter 1). $tail$ drops the first element from a list and returns the rest (\autoref{eq:list-head-tail}). We need modify the $balance$ function, which we defined for $insert$ before, with the additional logic to merge the node if it contains too less keys.
 
 \be
 balance\ d\ (ks_l, ts_l)\ t\ (ks_r, ts_r) = \begin{cases}
   full\ d\ t: fix_f \\
   low\ d\ t: fix_l \\
-  otherwise: ((ks_l \doubleplus ks_r), (ts_l \doubleplus [t] \doubleplus ts_r))
+  otherwise: (ks_l \doubleplus ks_r, ts_l \doubleplus [t] \doubleplus ts_r)
   \end{cases}
 \ee
 
-If $t$ is overly low ($< d - 1$ keys), we call $fix_l$ to merge it with left part $(ks_l, ts_l)$ or right part $(ks_r, ts_r)$ depends on which side of keys is not empty. Use the left part for example: we extract the last element from $ks_l$ and $ts_l$ respectively, say $k_m$ and $t_m$. Then call $unsplit$ (defined in \autoref{eq:btree-unsplit}) to merge them with $t$ as $unsplit\ t_m\ k_m\ t$. It forms a new sub-tree with more keys. Finally we call balance again to build the result B-tree.
+If $t$ is overly low ($< d - 1$ keys), we call $fix_l$ to merge it with the left part $(ks_l, ts_l)$ or right part $(ks_r, ts_r)$ depends on which side of keys is not empty. Use the left part for example: we extract the last element from $ks_l$ and $ts_l$ respectively, say $k_m$ and $t_m$. Then call $unsplit$ (defined in \autoref{eq:btree-unsplit}) to merge them with $t$ as $unsplit\ t_m\ k_m\ t$. It forms a new sub-tree with more keys. Finally we call balance again to build the result B-tree.
 
 \be
 fix_l = \begin{cases}
@@ -702,7 +702,7 @@ balance d (ks1, ts1) t (ks2, ts2)
            | otherwise = t
 \end{Haskell}
 
-We leave the definition of $delete$ function for the 'paired list' implementation as an exercise. Figure \ref{fig:btree-del-before}, \ref{fig:btree-del-CJ}, and \ref{fig:btree-del-KN} give examples of delete.
+We leave the $delete$ function for the 'paired list' implementation as an exercise. Figure \ref{fig:btree-del-before}, \ref{fig:btree-del-CJ}, and \ref{fig:btree-del-KN} give examples of delete.
 
 \begin{figure}[htbp]
   \centering
