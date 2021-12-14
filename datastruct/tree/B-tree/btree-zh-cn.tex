@@ -133,189 +133,11 @@ data BTree a = BTree [a] [BTree a]
   \label{fig:btree-insert-simple}
 \end{figure}
 
-图\ref{fig:btree-insert-simple}描述了一个插入的例子。这里的B树为2-3-4树。当插入元素$x=22$时，由于它的比根节点保存的key大，所以接下来检查右侧节点中的26、38和45；因为$22 < 26$，所以接下来检查第一个子节点中的21和25。这是一个叶子节点，并且未满。因此22被插入到21和25中间。
+考虑向图\ref{fig:btree-insert-simple}中的2-3-4树插入元素$x = 22$。因为$20 < 22$，我们转向右侧的子树。它包含26、38、45。因为$22 < 26$，所以接下来转向第一棵子树。它包含21和25。这是一个未满的叶子节点，将22插入到21和25中间。
 
-但是，如果叶子节点中已经含有$2t-1$个key，它已经满了。我们就不能简单地将新key插入。对于图中的B树，插入18就会遇到这个问题。有两种方法可以解决它。
+但如果叶子节点中已经含有$2d - 1$个元素，插入$x$后就会因为过多的元素破坏B树的规则。例如向图\ref{fig:btree-insert-simple}插入18就会遇到这个问题。我们有两种解法。
 
-%=========================================================================
-%       Splitting
-%=========================================================================
-\subsection{分拆}
-\index{B树!分拆}
-\label{split}
-
-我们可以通过对节点分拆解决插入时的平衡问题。有两种分拆方法：一种是插入前预先将可能超限的节点进行分拆；另一种是先插入后再通过分拆节点修复平衡。
-
-\subsubsection{插入前预分拆}
-
-如果节点已满，我们可以在插入前预先对节点进行分拆。
-
-一个含有$t-1$个key的节点可以按照图\ref{fig:node-split}所示分拆为3个部分。左侧的部分包括前$t-1$个key和$t$个子树；右侧的部分包括剩下的$t-1$个key和$t$个子树。左右两侧都是合法的B树。中间的部分是第$t$个key。我们可以把它向上推入到父节点中。如果当前节点是根节点，则第$t$个key和分拆出的两个较小的子树将组成一个新的根节点。
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{分拆前}{\includegraphics[scale=0.5]{img/split-node-before.ps}} \\
-  \subcaptionbox{分拆后}{\includegraphics[scale=0.5]{img/split-node-after.ps}}
-  \caption{分拆节点}
-  \label{fig:node-split}
-\end{figure}
-
-给定节点$x$，记$K(x)$为节点中所有key的列表，$C(x)$为全部子树的列表。第$i$个key为$k_i(x)$，第$j$个子树为$c_j(x)$。下面的算法描述了如何分拆节点node中的第$i$个子树：
-
-\begin{algorithmic}[1]
-\Procedure{Split-Child}{$node, i$}
-  \State $x \gets c_i(node)$
-  \State $y \gets$ \Call{CREATE-NODE}{}
-  \State \Call{Insert}{$K(node), i, k_t(x)$}
-  \State \Call{Insert}{$C(node), i + 1, y$}
-  \State $K(y) \gets \{k_{t+1}(x), k_{t+2}(x), ..., k_{2t-1}(x)\}$
-  \State $K(x) \gets \{k_1(x), k_2(x), ..., k_{t-1}(x)\}$
-  \If{$y$ is not leaf}
-    \State $C(y) \gets \{c_{t+1}(x), c_{t+2}(x), ..., c_{2t}(x)\}$
-    \State $C(x) \gets \{c_1(x), c_2(x), ..., c_t(x)\}$
-  \EndIf
-\EndProcedure
-\end{algorithmic}
-
-下面的Python例子程序实现了子树分拆算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def split_child(node, i):
-    t = node.t
-    x = node.children[i]
-    y = BTree(t)
-    node.keys.insert(i, x.keys[t-1])
-    node.children.insert(i+1, y)
-    y.keys = x.keys[t:]
-    x.keys = x.keys[:t-1]
-    if not is_leaf(x):
-        y.children = x.children[t:]
-        x.children = x.children[:t]
-\end{lstlisting}
-
-其中函数\texttt{is\_leaf}判断一个节点是否是叶子节点。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def is_leaf(t):
-    return t.children == []
-\end{lstlisting}
-
-%=========================================================================
-%       Split before insertion
-%=========================================================================
-
-分拆后，有一个key被向上推入到父节点。而父节点有可能已经满了，这样就会违反B树的限制条件。
-
-为了解决这一问题，我们可以从根节点开始，沿着插入的路径检查每一个节点。如果路径上的任何节点已经满了，我们就将其分拆。由于我们已经检查过此节点的父节点，因此该父节点所含有的key一定少于$2t-1$。向它推入一个key不会破坏B树的性质。这一方法只需要自顶向下处理一次而无需任何回溯。
-
-如果根节点需要拆分，就会产生出一个新的根节点，它不含任何key，此前的根节点成为这个新节点的唯一的子节点。然后我们就可以按照上面的描述进行自顶向下地检查，并最终将新key插入。
-
-\begin{algorithmic}[1]
-\Function{Insert}{$T, k$}
-  \State $r \gets T$
-  \If{$r$ is full} \Comment{根节点root已满}
-    \State $s \gets$ \Call{CREATE-NODE}{}
-    \State $C(s) \gets \{r\}$
-    \State \Call{Split-Child}{$s, 1$}
-    \State $r \gets s$
-  \EndIf
-  \State \Return \Call{Insert-Nonfull}{$r, k$}
-\EndFunction
-\end{algorithmic}
-
-其中算法\textproc{Insert-Nonfull}假设传入的节点不满而不再做额外的检查。如果传入的节点为叶子节点，就根据待插入key的大小将其插入到合适位置；否则，算法就寻找可插入的子节点。如果子节点已满，就进行拆分。
-
-\begin{algorithmic}[1]
-\Function{Insert-Nonfull}{$T, k$}
-  \If{$T$ is leaf}
-    \State $i \gets 1$
-    \While{$i \leq |K(T)| \land k > k_i(T)$}
-      \State $i \gets i+1$
-    \EndWhile
-    \State \Call{Insert}{$K(T), i, k$}
-  \Else
-    \State $i \gets |K(T)|$
-    \While{$i>1 \land k < k_i(T)$}
-      \State $i \gets i-1$
-    \EndWhile
-    \If{$c_i(T)$ is full}
-      \State \Call{Split-Child}{$T, i$}
-      \If{$k > k_i(T)$}
-        \State $i \gets i+1$
-      \EndIf
-    \EndIf
-    \State \Call{Insert-Nonfull}{$c_i(T), k$}
-  \EndIf
-  \State \Return $T$
-\EndFunction
-\end{algorithmic}
-
-这一算法是递归的。B树的最小度数$t$通常根据磁盘结构来确定，即使很小的深度也能保存巨大数量的数据（例如$t=10$的时候，一棵深度为10的B树可以保存100亿数据）。在实现中，递归也可以被消除。这作为一道习题留给读者。
-
-图\ref{fig:btree-insert}描述了依次向一个空树插入G, M, P, X, A, C, D, E, J, K, N, O, R, S, T, U, V, Y, Z的结果。第一个结果是一棵2-3-4树（$t=2$），第二个结果中的最小度数$t=3$。我们可以看出两棵B树的异同。
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{2-3-4 tree.}{\includegraphics[scale=0.5]{img/btree-insert-2-3-4.ps}}\\
-  \subcaptionbox{$t=3$}{\includegraphics[scale=0.5]{img/btree-insert-3.ps}}
-  \caption{插入结果} \label{fig:btree-insert}
-\end{figure}
-
-下面的Python例子程序实现了这一算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def insert(tr, key):
-    root = tr
-    if is_full(root):
-        s = BTree(root.t)
-        s.children.insert(0, root)
-        split_child(s, 0)
-        root = s
-    return insert_nonfull(root, key)
-\end{lstlisting}
-
-其中向未满节点插入元素的实现如下所示：
-
-\begin{lstlisting}
-def insert_nonfull(tr, key):
-    if is_leaf(tr):
-        ordered_insert(tr.keys, key)
-    else:
-        i = len(tr.keys)
-        while i>0 and key < tr.keys[i-1]:
-            i = i-1
-        if is_full(tr.children[i]):
-            split_child(tr, i)
-            if key>tr.keys[i]:
-                i = i+1
-        insert_nonfull(tr.children[i], key)
-    return tr
-\end{lstlisting}
-
-这里，函数\texttt{ordered\_insert}用于将一个元素插入到已序列表中。函数\texttt{is\_full}用以检查一个节点是否含有$2t-1$个key。
-
-\begin{lstlisting}
-def ordered_insert(lst, x):
-    i = len(lst)
-    lst.append(x)
-    while i>0 and lst[i]<lst[i-1]:
-        (lst[i-1], lst[i]) = (lst[i], lst[i-1])
-        i=i-1
-
-def is_full(node):
-    return len(node.keys) >= 2 * node.t - 1
-\end{lstlisting}
-
-如果容器是用数组实现的，向末尾添加元素的效率要远高于向中间位置插入的效率。对于长度为$n$的数组，后者往往是线性时间$O(n)$的。函数\texttt{ordered\_insert}首先将新元素添加到当前容器的末尾，然后从最后一个元素向前检查相邻两个元素是否已序。如果大小颠倒，就进行交换操作。
-
-% ================================================================
-%               Insert and fix method
-% ================================================================
-
-\subsubsection{先插入再修复}
+\subsection{先插入再分拆}
 
 我们也可以利用和红黑树类似的方法来实现纯函数式的B树插入算法。当向红黑树插入时，首先按照普通的二叉搜索树将新key插入，然后递归地进行修复以恢复平衡性。B树可以看作二叉搜索树的扩展，每个节点含有多个key和子树。插入时，我们可以暂时不考虑节点是否已满，将新key插入后，再进行修复以满足最小度数的限制条件。
 
@@ -445,6 +267,175 @@ full tr = (length $ keys tr) > 2*(degree tr)-1
 \end{figure}
 
 和图\ref{fig:btree-insert}所示的命令式的插入结果相比较，我们可以看到它们的不同之处。它们都是满足B树性质的合法结果。
+
+\subsection{先插入再分拆}
+
+我们可以通过对节点分拆解决插入时的平衡问题。有两种分拆方法：一种是插入前预先将可能超限的节点进行分拆；另一种是先插入后再通过分拆节点修复平衡。
+
+\subsubsection{插入前预分拆}
+
+如果节点已满，我们可以在插入前预先对节点进行分拆。
+
+一个含有$t-1$个key的节点可以按照图\ref{fig:node-split}所示分拆为3个部分。左侧的部分包括前$t-1$个key和$t$个子树；右侧的部分包括剩下的$t-1$个key和$t$个子树。左右两侧都是合法的B树。中间的部分是第$t$个key。我们可以把它向上推入到父节点中。如果当前节点是根节点，则第$t$个key和分拆出的两个较小的子树将组成一个新的根节点。
+
+\begin{figure}[htbp]
+  \centering
+  \subcaptionbox{分拆前}{\includegraphics[scale=0.5]{img/split-node-before.ps}} \\
+  \subcaptionbox{分拆后}{\includegraphics[scale=0.5]{img/split-node-after.ps}}
+  \caption{分拆节点}
+  \label{fig:node-split}
+\end{figure}
+
+给定节点$x$，记$K(x)$为节点中所有key的列表，$C(x)$为全部子树的列表。第$i$个key为$k_i(x)$，第$j$个子树为$c_j(x)$。下面的算法描述了如何分拆节点node中的第$i$个子树：
+
+\begin{algorithmic}[1]
+\Procedure{Split-Child}{$node, i$}
+  \State $x \gets c_i(node)$
+  \State $y \gets$ \Call{CREATE-NODE}{}
+  \State \Call{Insert}{$K(node), i, k_t(x)$}
+  \State \Call{Insert}{$C(node), i + 1, y$}
+  \State $K(y) \gets \{k_{t+1}(x), k_{t+2}(x), ..., k_{2t-1}(x)\}$
+  \State $K(x) \gets \{k_1(x), k_2(x), ..., k_{t-1}(x)\}$
+  \If{$y$ is not leaf}
+    \State $C(y) \gets \{c_{t+1}(x), c_{t+2}(x), ..., c_{2t}(x)\}$
+    \State $C(x) \gets \{c_1(x), c_2(x), ..., c_t(x)\}$
+  \EndIf
+\EndProcedure
+\end{algorithmic}
+
+下面的Python例子程序实现了子树分拆算法。
+
+\lstset{language=Python}
+\begin{lstlisting}
+def split_child(node, i):
+    t = node.t
+    x = node.children[i]
+    y = BTree(t)
+    node.keys.insert(i, x.keys[t-1])
+    node.children.insert(i+1, y)
+    y.keys = x.keys[t:]
+    x.keys = x.keys[:t-1]
+    if not is_leaf(x):
+        y.children = x.children[t:]
+        x.children = x.children[:t]
+\end{lstlisting}
+
+其中函数\texttt{is\_leaf}判断一个节点是否是叶子节点。
+
+\lstset{language=Python}
+\begin{lstlisting}
+def is_leaf(t):
+    return t.children == []
+\end{lstlisting}
+
+\index{B树!分拆}
+\label{split}
+
+分拆后，有一个key被向上推入到父节点。而父节点有可能已经满了，这样就会违反B树的限制条件。
+
+为了解决这一问题，我们可以从根节点开始，沿着插入的路径检查每一个节点。如果路径上的任何节点已经满了，我们就将其分拆。由于我们已经检查过此节点的父节点，因此该父节点所含有的key一定少于$2t-1$。向它推入一个key不会破坏B树的性质。这一方法只需要自顶向下处理一次而无需任何回溯。
+
+如果根节点需要拆分，就会产生出一个新的根节点，它不含任何key，此前的根节点成为这个新节点的唯一的子节点。然后我们就可以按照上面的描述进行自顶向下地检查，并最终将新key插入。
+
+\begin{algorithmic}[1]
+\Function{Insert}{$T, k$}
+  \State $r \gets T$
+  \If{$r$ is full} \Comment{根节点root已满}
+    \State $s \gets$ \Call{CREATE-NODE}{}
+    \State $C(s) \gets \{r\}$
+    \State \Call{Split-Child}{$s, 1$}
+    \State $r \gets s$
+  \EndIf
+  \State \Return \Call{Insert-Nonfull}{$r, k$}
+\EndFunction
+\end{algorithmic}
+
+其中算法\textproc{Insert-Nonfull}假设传入的节点不满而不再做额外的检查。如果传入的节点为叶子节点，就根据待插入key的大小将其插入到合适位置；否则，算法就寻找可插入的子节点。如果子节点已满，就进行拆分。
+
+\begin{algorithmic}[1]
+\Function{Insert-Nonfull}{$T, k$}
+  \If{$T$ is leaf}
+    \State $i \gets 1$
+    \While{$i \leq |K(T)| \land k > k_i(T)$}
+      \State $i \gets i+1$
+    \EndWhile
+    \State \Call{Insert}{$K(T), i, k$}
+  \Else
+    \State $i \gets |K(T)|$
+    \While{$i>1 \land k < k_i(T)$}
+      \State $i \gets i-1$
+    \EndWhile
+    \If{$c_i(T)$ is full}
+      \State \Call{Split-Child}{$T, i$}
+      \If{$k > k_i(T)$}
+        \State $i \gets i+1$
+      \EndIf
+    \EndIf
+    \State \Call{Insert-Nonfull}{$c_i(T), k$}
+  \EndIf
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
+
+这一算法是递归的。B树的最小度数$t$通常根据磁盘结构来确定，即使很小的深度也能保存巨大数量的数据（例如$t=10$的时候，一棵深度为10的B树可以保存100亿数据）。在实现中，递归也可以被消除。这作为一道习题留给读者。
+
+图\ref{fig:btree-insert}描述了依次向一个空树插入G, M, P, X, A, C, D, E, J, K, N, O, R, S, T, U, V, Y, Z的结果。第一个结果是一棵2-3-4树（$t=2$），第二个结果中的最小度数$t=3$。我们可以看出两棵B树的异同。
+
+\begin{figure}[htbp]
+  \centering
+  \subcaptionbox{2-3-4 tree.}{\includegraphics[scale=0.5]{img/btree-insert-2-3-4.ps}}\\
+  \subcaptionbox{$t=3$}{\includegraphics[scale=0.5]{img/btree-insert-3.ps}}
+  \caption{插入结果} \label{fig:btree-insert}
+\end{figure}
+
+下面的Python例子程序实现了这一算法。
+
+\lstset{language=Python}
+\begin{lstlisting}
+def insert(tr, key):
+    root = tr
+    if is_full(root):
+        s = BTree(root.t)
+        s.children.insert(0, root)
+        split_child(s, 0)
+        root = s
+    return insert_nonfull(root, key)
+\end{lstlisting}
+
+其中向未满节点插入元素的实现如下所示：
+
+\begin{lstlisting}
+def insert_nonfull(tr, key):
+    if is_leaf(tr):
+        ordered_insert(tr.keys, key)
+    else:
+        i = len(tr.keys)
+        while i>0 and key < tr.keys[i-1]:
+            i = i-1
+        if is_full(tr.children[i]):
+            split_child(tr, i)
+            if key>tr.keys[i]:
+                i = i+1
+        insert_nonfull(tr.children[i], key)
+    return tr
+\end{lstlisting}
+
+这里，函数\texttt{ordered\_insert}用于将一个元素插入到已序列表中。函数\texttt{is\_full}用以检查一个节点是否含有$2t-1$个key。
+
+\begin{lstlisting}
+def ordered_insert(lst, x):
+    i = len(lst)
+    lst.append(x)
+    while i>0 and lst[i]<lst[i-1]:
+        (lst[i-1], lst[i]) = (lst[i], lst[i-1])
+        i=i-1
+
+def is_full(node):
+    return len(node.keys) >= 2 * node.t - 1
+\end{lstlisting}
+
+如果容器是用数组实现的，向末尾添加元素的效率要远高于向中间位置插入的效率。对于长度为$n$的数组，后者往往是线性时间$O(n)$的。函数\texttt{ordered\_insert}首先将新元素添加到当前容器的末尾，然后从最后一个元素向前检查相邻两个元素是否已序。如果大小颠倒，就进行交换操作。
+
 
 
 % ================================================================
