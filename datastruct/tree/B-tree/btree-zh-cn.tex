@@ -170,139 +170,115 @@ split\ m\ (ks, ts) = ((ks_l, ts_l), k, (ks_r, ts_r))
 \end{cases}
 \]
 
+对称地，我们可以定义$unsplit$函数，将三个部分合并成一个B树节点：
 
 \be
-insert(T, k) = fix(ins(T, k))
+unsplit\ (ks_l, ts_l)\ k\ (ks_r, ts_r) = (ks_l \doubleplus [k] \doubleplus ks_r, ts_l \doubleplus ts_r)
+\label{eq:btree-unsplit}
 \ee
 
-函数$ins(T, k)$从根节点开始遍历B树，找到合适的位置将$k$插入。此后再应用函数$fix$来恢复B树的性质。记B树为$T = (K, C, t)$，其中$K$代表全部的key，$C$代表子树，$t$代表最小度数。
-
-下面的Haskell例子代码定义了B树。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-data BTree a = Node{ keys :: [a]
-                   , children :: [BTree a]
-                   , degree :: Int} deriving (Eq)
-\end{lstlisting}
-
-根据这一B树的定义，我们可以给出如下的Haskell插入函数
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-insert tr x = fixRoot $ ins tr x
-\end{lstlisting} %$
-
-实现函数$ins(T, k)$时，我们要处理两种不同情况：如果$T$是叶子节点，$k$就直接被插入到节点中；否则$T$为分支节点，我们需要递归地将$k$插入到某个子节点中。
-
-图\ref{fig:recursive-insert}给出了分支节点的情况。算法首先定位到插入位置。对于某个key $k_i$，若待插入的key $k$满足$k_{i-1}<k<k_i$，就需要递归将$k$插入到子分支$c_i$中。
-
-待插入位置将节点分成了三个部分：左侧部分、子分支$c_i$、和右侧部分。
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{定位到待插入的子分支。}{\includegraphics[scale=0.5]{img/insert-before.ps}} \\
-  \subcaptionbox{递归插入。}{\includegraphics[scale=0.5]{img/insert-after.ps}}
-  \caption{向分支节点插入key} \label{fig:recursive-insert}
-\end{figure}
+下面的函数先将$x$插入树$t$，然后使用$fix$修复平衡，使得其成为度数为$d$的合法B树：
 
 \be
-ins(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (K' \cup \{k\} \cup K'', \phi, t) & C = \phi, (K', K'') = divide(K, k) \\
-  make((K', C_1), ins(c, k), (K'', C_2')) & (C_1, C_2) = split(|K'|, C)
-  \end{array}
-\right.
+insert\ x\ (d, t) = fix\ (d, ins\ t)
 \ee
 
-上式中的第一行处理叶子节点的情况。函数$divide(K, k)$将所有的key分成两部分，第一部分中的key都不大于$k$，第二部分中剩余的key都不小于$k$:
+在$ins$之后，如果根节点含有过多的元素，函数$fix$使用$split$将其分拆，并构建新的根节点。
+
+\be
+fix\ (d, t) = \begin{cases}
+  full\ d\ t : & (d, ([k], [l, r])), \text{where}\ (l, k, r) = split\ d\ t \\
+  otherwise  : & (d, t)
+\end{cases}
+\ee
+
+函数$ins$需要处理两种情况：对于叶子节点，我们可以重用第一章（\autoref{eq:list-ordered-insert}）定义的列表插入函数$insert$来处理；否则，我们需要找到合适的位置，递归地向子分枝插入。为此，我们定义函数$partition$：
+
+\be
+partition\ x\ (ks, ts) = (l, t', r)
+\ee
+
+其中$l = (ks_l, ts_l)$、$r = (ks_r, ts_r)$。它进一步使用第一章（\autoref{eq:span}）中定义的列表函数$span$进行划分：
 
 \[
-K = K' \cup K'' \land \forall k' \in K', k'' \in K'' \Rightarrow k' \leq k \leq k''
+\begin{cases}
+(ks_l, ks_r) & = span\ (< x)\ ks \\
+(ts_l, (t':ts_r)) & = splitAt\ |ks_l|\ ts
+\end{cases}
 \]
 
-第二行处理分支节点的情况。函数$split(n, C)$将所有的子树分成$C_1$和$C_2$两部分。其中$C_1$包含了前$n$棵子树；而$C_2$包含剩余的子树。$C_2$中的第一棵子树记为$c$，其余子树记为$C_2'$。
-
-此后，我们需要将$k$递归地插入到子树$c$中。函数$make$接受3个参数：其中第一个和第三个分别是一对key和子树的列表；第二个参数是一棵子树。它检查用传入的key和子树构造的B树节点是否会违反最小度数限制，如果违反，就进行适当的修复。
+这样，所有小于$x$的元素和所在的子分枝都在左侧$l$，所有大于$x$的都在右侧$r$。我们将最后一棵小于$x$的子分枝取出作为$t'$。接下来我们递归地将$x$插入到$t'$中，如图\ref{fig:recursive-insert}所示。
 
 \be
-make((K', C'), c, (K'', C'')) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  fixFull((K', C'), c, (K'', C'')) & full(c) \\
-  (K' \cup K'', C' \cup \{c\} \cup C'', t) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcll}
+  ins\ (ks, \nil) & = & (insert_L\ x\ ks, \nil) & \text{列表插入叶子节点}\\
+  ins\ (ks, ts)   & = & balance\ d\ l\ (ins\ t')\ r & \text{where}\ (l, t', r) = partition\ x\ t \\
+\end{array}
 \ee
-
-其中函数$full(c)$检查节点$c$是否已满。如果满，函数$fixFull$将节点$c$进行分拆，并且用分拆后推上来的key来构造一个新的B树节点。
-
-\be
-fixFull((K', C'), c, (K'', C'')) = (K' \cup \{k'\} \cup K'', C' \cup \{c_1, c_2\} \cup C'', t)
-\ee
-
-这里$(c_1, k', c_2) = split(c)$。在分拆中，前$t-1$个key和前$t$个子树被抽出构造一个新节点，后$t-1$个key和后$t$个子树被用于构造另一个新节点；第$t$个key $k'$被向上推入到key中。
-
-使用上述定义的函数，我们可以最终实现$fix(T)$以完成函数式的B树插入算法。它首先检查根节点是否含有过多的key，如果超过限制，就进行分拆。分拆的结果被用于构造一个新节点，因此树的高度会增加1。
-
-\be
-fix(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  c & T = (\phi, \{c\}, t) \\
-  (\{k'\}, \{c_1, c_2\}, t) & full(T), (c_1, k', c_2) = split(T) \\
-  T & otherwise
-  \end{array}
-\right.
-\ee
-
-下面的Haskell例子程序实现了B树的插入算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-import qualified Data.List as L
-
-ins (Node ks [] t) x = Node (L.insert x ks) [] t
-ins (Node ks cs t) x = make (ks', cs') (ins c x) (ks'', cs'')
-    where
-      (ks', ks'') = L.partition (<x) ks
-      (cs', (c:cs'')) = L.splitAt (length ks') cs
-
-fixRoot (Node [] [tr] _) = tr -- shrink height
-fixRoot tr = if full tr then Node [k] [c1, c2] (degree tr)
-             else tr
-    where
-      (c1, k, c2) = split tr
-
-make (ks', cs') c (ks'', cs'')
-    | full c = fixFull (ks', cs') c (ks'', cs'')
-    | otherwise = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
-
-fixFull (ks', cs') c (ks'', cs'') = Node (ks'++[k]++ks'')
-                                         (cs'++[c1,c2]++cs'') (degree c)
-    where
-      (c1, k, c2) = split c
-
-full tr = (length $ keys tr) > 2*(degree tr)-1
-\end{lstlisting}
-
-图\ref{fig:btree-insert-fp}给出了不断向空树中插入“GMPXACDEJKNORSTUVYZ”的两个不同结果。
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{2-3-4树的插入结果。}{\includegraphics[scale=0.5]{img/btree-insert-fp-234.ps}} \\
-  \subcaptionbox{最小度数$t = 3$的B树插入结果。}{\includegraphics[scale=0.5]{img/btree-insert-fp-3.ps}}
-    \caption{先插入再修复的结果} \label{fig:btree-insert-fp}
+  \includegraphics[scale=0.45]{img/partition.png}
+  \caption{用$x$划分节点}
+  \label{fig:recursive-insert}
 \end{figure}
 
-和图\ref{fig:btree-insert}所示的命令式的插入结果相比较，我们可以看到它们的不同之处。它们都是满足B树性质的合法结果。
+向$t'$插入$x$后，它可能包含来过多的元素，不再满足B树的平衡条件。我们定义函数$balance$来递归地进行分拆修复。
 
-\subsection{先插入再分拆}
+\be
+balance\ d\ (ks_l, ts_l)\ t\ (ks_r, ts_r) = \begin{cases}
+  full\ d\ t: fix_f \\
+  otherwise: (ks_l \doubleplus ks_r, ts_l \doubleplus [t] \doubleplus ts_r)
+  \end{cases}
+\ee
 
-我们可以通过对节点分拆解决插入时的平衡问题。有两种分拆方法：一种是插入前预先将可能超限的节点进行分拆；另一种是先插入后再通过分拆节点修复平衡。
+其中$fix_f$将度数为$d$的子分枝$t$分拆为$(t_1, k, t_2) = split\ d\ t$，然后构建一个新的B树节点：
 
-\subsubsection{插入前预分拆}
+\be
+fix_f = (ks_l \doubleplus [k] \doubleplus ks_r, ts_l \doubleplus [t_1, t_2] \doubleplus ts_r)
+\ee
+
+下面的例子程序实现了B树的插入算法：
+
+\begin{Haskell}
+partition x (BTree ks ts) = (l, t, r) where
+  l = (ks1, ts1)
+  r = (ks2, ts2)
+  (ks1, ks2) = span (< x) ks
+  (ts1, (t:ts2)) = splitAt (length ks1) ts
+
+split d (BTree ks ts) = (BTree ks1 ts1, k, BTree ks2 ts2) where
+  (ks1, k:ks2) = splitAt (d - 1) ks
+  (ts1, ts2) = splitAt d ts
+
+insert x (d, t) = fixRoot (d, ins t) where
+    ins (BTree ks []) = BTree (List.insert x ks) []
+    ins t = balance d l (ins t') r where (l, t', r) = partition x t
+
+fixRoot (d, t) | full d t  = let (t1, k, t2) = split d t in
+                               (d, BTree [k] [t1, t2])
+               | otherwise = (d, t)
+
+balance d (ks1, ts1) t (ks2, ts2)
+    | full d t  = fixFull
+    | otherwise = BTree (ks1 ++ ks2) (ts1 ++ [t] ++ ts2)
+  where
+    fixFull = let (t1, k, t2) = split d t in
+                BTree (ks1 ++ [k] ++ ks2) (ts1 ++ [t1, t2] ++ ts2)
+\end{Haskell}
+
+图\ref{fig:btree-insert-fp}给出了两棵B树的例子，它们都是依次将列表``GMPXACDEJKNORSTUVYZ''中的元素插入B树构造出来的。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.4]{img/btree-insert-fp.png}
+  \captionsetup{justification=centering}
+  \caption{依次将列表``GMPXACDEJKNORSTUVYZ''中的元素插入。\\
+上：$d = 2$（2-3-4树），下：$d = 3$}
+  \label{fig:btree-insert-fp}
+\end{figure}
+
+\subsection{先分拆再插入}
 
 如果节点已满，我们可以在插入前预先对节点进行分拆。
 
