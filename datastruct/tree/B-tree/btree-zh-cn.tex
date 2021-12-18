@@ -273,176 +273,248 @@ balance d (ks1, ts1) t (ks2, ts2)
   \centering
   \includegraphics[scale=0.4]{img/btree-insert-fp.png}
   \captionsetup{justification=centering}
-  \caption{依次将列表``GMPXACDEJKNORSTUVYZ''中的元素插入。\\
+  \caption{依次插入``GMPXACDEJKNORSTUVYZ''。\\
 上：$d = 2$（2-3-4树），下：$d = 3$}
   \label{fig:btree-insert-fp}
 \end{figure}
 
 \subsection{先分拆再插入}
 
-如果节点已满，我们可以在插入前预先对节点进行分拆。
-
-一个含有$t-1$个key的节点可以按照图\ref{fig:node-split}所示分拆为3个部分。左侧的部分包括前$t-1$个key和$t$个子树；右侧的部分包括剩下的$t-1$个key和$t$个子树。左右两侧都是合法的B树。中间的部分是第$t$个key。我们可以把它向上推入到父节点中。如果当前节点是根节点，则第$t$个key和分拆出的两个较小的子树将组成一个新的根节点。
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{分拆前}{\includegraphics[scale=0.5]{img/split-node-before.ps}} \\
-  \subcaptionbox{分拆后}{\includegraphics[scale=0.5]{img/split-node-after.ps}}
-  \caption{分拆节点}
-  \label{fig:node-split}
-\end{figure}
-
-给定节点$x$，记$K(x)$为节点中所有key的列表，$C(x)$为全部子树的列表。第$i$个key为$k_i(x)$，第$j$个子树为$c_j(x)$。下面的算法描述了如何分拆节点node中的第$i$个子树：
+第二种方法是在插入前先分拆节点以避免其含有过多元素。命令式实现常用这一方法。当自顶向下递归插入时，当遇到含有$2d - 1$个元素的节点时，我们将其分拆为三部分，如图\ref{fig:node-split}所示。每个新节点都只含有$d - 1$个元素，即使插入元素后也仍然是合法的B树节点。对于节点$x$，令$K(x)$表示它包含的元素，$T(x)$表示它包含的子分枝。记$x$中的第$i$个元素为$k_i(x)$，第$j$棵子分枝为$t_j(x)$。下面的算法在第$i$个位置对节点$z$进行分拆：
 
 \begin{algorithmic}[1]
-\Procedure{Split-Child}{$node, i$}
-  \State $x \gets c_i(node)$
-  \State $y \gets$ \Call{CREATE-NODE}{}
-  \State \Call{Insert}{$K(node), i, k_t(x)$}
-  \State \Call{Insert}{$C(node), i + 1, y$}
-  \State $K(y) \gets \{k_{t+1}(x), k_{t+2}(x), ..., k_{2t-1}(x)\}$
-  \State $K(x) \gets \{k_1(x), k_2(x), ..., k_{t-1}(x)\}$
-  \If{$y$ is not leaf}
-    \State $C(y) \gets \{c_{t+1}(x), c_{t+2}(x), ..., c_{2t}(x)\}$
-    \State $C(x) \gets \{c_1(x), c_2(x), ..., c_t(x)\}$
+\Procedure{Split}{$z, i$}
+  \State $d \gets$ \Call{Deg}{$z$}
+  \State $x \gets t_i(z)$
+  \State $y \gets$ \Call{Create-Node}{}
+  \State $K(y) \gets [k_{d + 1}(x), k_{d + 2}(x), ..., k_{2d - 1}(x)]$
+  \State $K(x) \gets [k_1(x), k_2(x), ..., k_{d-1}(x)]$
+  \If{$x$ is not leaf}
+    \State $T(y) \gets [t_{d + 1}(x), t_{d + 2}(x), ..., t_{2d}(x)]$
+    \State $T(x) \gets [t_1(x), t_2(x), ..., t_d(x)]$
   \EndIf
+  \State \Call{Insert-At}{$K(z), i, k_d(x)$}
+  \State \Call{Insert-At}{$T(z), i + 1, y$}
 \EndProcedure
 \end{algorithmic}
 
-下面的Python例子程序实现了子树分拆算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def split_child(node, i):
-    t = node.t
-    x = node.children[i]
-    y = BTree(t)
-    node.keys.insert(i, x.keys[t-1])
-    node.children.insert(i+1, y)
-    y.keys = x.keys[t:]
-    x.keys = x.keys[:t-1]
-    if not is_leaf(x):
-        y.children = x.children[t:]
-        x.children = x.children[:t]
-\end{lstlisting}
-
-其中函数\texttt{is\_leaf}判断一个节点是否是叶子节点。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def is_leaf(t):
-    return t.children == []
-\end{lstlisting}
-
-\index{B树!分拆}
-\label{split}
-
-分拆后，有一个key被向上推入到父节点。而父节点有可能已经满了，这样就会违反B树的限制条件。
-
-为了解决这一问题，我们可以从根节点开始，沿着插入的路径检查每一个节点。如果路径上的任何节点已经满了，我们就将其分拆。由于我们已经检查过此节点的父节点，因此该父节点所含有的key一定少于$2t-1$。向它推入一个key不会破坏B树的性质。这一方法只需要自顶向下处理一次而无需任何回溯。
-
-如果根节点需要拆分，就会产生出一个新的根节点，它不含任何key，此前的根节点成为这个新节点的唯一的子节点。然后我们就可以按照上面的描述进行自顶向下地检查，并最终将新key插入。
+分拆节点$x = t_i(z)$时，我们将第$d$个元素$k_d(x)$向上推入父节点$z$。如果$z$已经满了，推入元素后就会违反B树的规则。为此，我们需要从根节点起，自顶向下沿着插入的路径进行检查，分拆所有含有$2d - 1$个元素的节点。因为所有的父节点都这样被处理过，所以可以接受推上来的元素。这一方法只需要一轮自顶向下的处理，而无需回溯。如果根节点已满，则需要新建一个节点，并将原来的根节点作为它唯一的一棵子树。下面是插入算法的实现：
 
 \begin{algorithmic}[1]
-\Function{Insert}{$T, k$}
-  \State $r \gets T$
-  \If{$r$ is full} \Comment{根节点root已满}
+\Function{Insert}{$t, k$}
+  \State $r \gets t$
+  \If{$r$ is full} \Comment{根节点已满}
     \State $s \gets$ \Call{CREATE-NODE}{}
-    \State $C(s) \gets \{r\}$
-    \State \Call{Split-Child}{$s, 1$}
+    \State $T(s) \gets [ r ]$
+    \State \Call{Split}{$s, 1$}
     \State $r \gets s$
   \EndIf
   \State \Return \Call{Insert-Nonfull}{$r, k$}
 \EndFunction
 \end{algorithmic}
 
-其中算法\textproc{Insert-Nonfull}假设传入的节点不满而不再做额外的检查。如果传入的节点为叶子节点，就根据待插入key的大小将其插入到合适位置；否则，算法就寻找可插入的子节点。如果子节点已满，就进行拆分。
+其中算法\textproc{Insert-Nonfull}假设传入的节点$r$不满。如果$r$是叶子节点，我们将$k$按照其大小插入到相应的位置（练习\ref{ex:btree-binary-search}要求使用二分查找进行插入）。否则，我们找到一个位置，使得$k_i(r) < k < k_{i+1}(r)$，如果分枝$t_i(r)$满了，就进行分拆。然后继续向子分枝插入。
 
 \begin{algorithmic}[1]
-\Function{Insert-Nonfull}{$T, k$}
-  \If{$T$ is leaf}
+\Function{Insert-Nonfull}{$r, k$}
+  \State $n \gets |K(r)|$
+  \If{$r$ is leaf}
     \State $i \gets 1$
-    \While{$i \leq |K(T)| \land k > k_i(T)$}
-      \State $i \gets i+1$
+    \While{$i \leq n$ and $k > k_i(r)$}
+      \State $i \gets i + 1$
     \EndWhile
-    \State \Call{Insert}{$K(T), i, k$}
+    \State \Call{Insert-At}{$K(r), i, k$}
   \Else
-    \State $i \gets |K(T)|$
-    \While{$i>1 \land k < k_i(T)$}
-      \State $i \gets i-1$
+    \State $i \gets n$
+    \While{$i > 1$ and $k < k_i(r)$}
+      \State $i \gets i - 1$
     \EndWhile
-    \If{$c_i(T)$ is full}
-      \State \Call{Split-Child}{$T, i$}
-      \If{$k > k_i(T)$}
-        \State $i \gets i+1$
+    \If{$t_i(r)$ is full}
+      \State \Call{Split}{$r, i$}
+      \If{$k > k_i(r)$}
+        \State $i \gets i + 1$
       \EndIf
     \EndIf
-    \State \Call{Insert-Nonfull}{$c_i(T), k$}
+    \State \Call{Insert-Nonfull}{$t_i(r), k$}
   \EndIf
-  \State \Return $T$
+  \State \Return $r$
 \EndFunction
 \end{algorithmic}
 
-这一算法是递归的。B树的最小度数$t$通常根据磁盘结构来确定，即使很小的深度也能保存巨大数量的数据（例如$t=10$的时候，一棵深度为10的B树可以保存100亿数据）。在实现中，递归也可以被消除。这作为一道习题留给读者。
-
-图\ref{fig:btree-insert}描述了依次向一个空树插入G, M, P, X, A, C, D, E, J, K, N, O, R, S, T, U, V, Y, Z的结果。第一个结果是一棵2-3-4树（$t=2$），第二个结果中的最小度数$t=3$。我们可以看出两棵B树的异同。
+这一算法是递归的。练习\ref{ex:btree-loop-insert}要求使用循环消除递归。图\ref{fig:btree-insert}给出了依次插入``GMPXACDEJKNORSTUVYZ''时的结果。
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{2-3-4 tree.}{\includegraphics[scale=0.5]{img/btree-insert-2-3-4.ps}}\\
-  \subcaptionbox{$t=3$}{\includegraphics[scale=0.5]{img/btree-insert-3.ps}}
-  \caption{插入结果} \label{fig:btree-insert}
+  \includegraphics[scale=0.5]{img/btree-split-insert-example.png}
+  \caption{依次插入``GMPXACDEJKNORSTUVYZ''。上：$d = 2$（2-3-4树），下：$d = 3$}
+  \label{fig:btree-insert}
 \end{figure}
 
-下面的Python例子程序实现了这一算法。
+\subsection{Paired lists}
 
-\lstset{language=Python}
-\begin{lstlisting}
-def insert(tr, key):
-    root = tr
-    if is_full(root):
-        s = BTree(root.t)
-        s.children.insert(0, root)
-        split_child(s, 0)
-        root = s
-    return insert_nonfull(root, key)
-\end{lstlisting}
+When use list to store ordered keys, we always start from the first key, and scan the list to find the insert position. If the keys are stored in array, we can improve it with binary search. Can we start somewhere in the node, go left or right depending on the order of keys? One idea is to separate the B-tree node into three parts: left $l$, a sub-tree $t'$, and right $r$. Where left and right are lists of pairs, each pair contains a key and a sub-tree: $(k_i, t_i)$. However, $l$ is reversed. In other words, $l$ and $r$ are head-to-head connected by $t'$ as a U-shape shown in figure \ref{fig:paired-lists}. We can move forward and backward both in constant time.
 
-其中向未满节点插入元素的实现如下所示：
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.45]{img/paired-lists.png}
+  \caption{Define the B-tree node with a sub-tree and paired lists}
+  \label{fig:paired-lists}
+\end{figure}
 
-\begin{lstlisting}
-def insert_nonfull(tr, key):
-    if is_leaf(tr):
-        ordered_insert(tr.keys, key)
-    else:
-        i = len(tr.keys)
-        while i>0 and key < tr.keys[i-1]:
-            i = i-1
-        if is_full(tr.children[i]):
-            split_child(tr, i)
-            if key>tr.keys[i]:
-                i = i+1
-        insert_nonfull(tr.children[i], key)
-    return tr
-\end{lstlisting}
+Below example program defines B-tree node: it's either empty, or contains 3 parts: the left (key, sub-tree) list in reversed order, a sub-tree, and the right (key, sub-tree) list. We denoted the none empty node as $(l, t', r)$.
 
-这里，函数\texttt{ordered\_insert}用于将一个元素插入到已序列表中。函数\texttt{is\_full}用以检查一个节点是否含有$2t-1$个key。
+\begin{Haskell}
+data BTree a = Empty
+           | BTree [(a, BTree a)] (BTree a) [(a, BTree a)]
+\end{Haskell}
 
-\begin{lstlisting}
-def ordered_insert(lst, x):
-    i = len(lst)
-    lst.append(x)
-    while i>0 and lst[i]<lst[i-1]:
-        (lst[i-1], lst[i]) = (lst[i], lst[i-1])
-        i=i-1
+When move to right by a step, we take the first pair $(k, t)$ from $r$, then form another pair $(k, t')$ in front of $l$, and replace $t'$ with $t$. When move to left a step, it is symmetric. Both operations take constant time.
 
-def is_full(node):
-    return len(node.keys) >= 2 * node.t - 1
-\end{lstlisting}
+\be
+\begin{array}{lcl}
+  step_l\ ((k, t):l, t', r) & = & (l, t, (k, t'):r) \\
+  step_r\ (l, t', (k, t):r) & = & ((k, t'):l, t, r) \\
+\end{array}
+\ee
 
-如果容器是用数组实现的，向末尾添加元素的效率要远高于向中间位置插入的效率。对于长度为$n$的数组，后者往往是线性时间$O(n)$的。函数\texttt{ordered\_insert}首先将新元素添加到当前容器的末尾，然后从最后一个元素向前检查相邻两个元素是否已序。如果大小颠倒，就进行交换操作。
+With the left/right moves, we can implement a generic partition function $partition\ p\ t$, that separates the tree $t$ with a given predicate $p$ into 3 parts: left, middle, right: $(l, m, r)$, such that all sub-trees in $l$ and $m$ satisfy $p$, while the sub-trees in $r$ do not. Let the function $hd = fst \circ head$, which picks the first pair $(a, b)$ from a list, then extracts $a$ out.
 
+\be
+\begin{array}{lcl}
+  partition\ p\ ([], m, r) & = & \begin{cases}
+    p(hd(r)): & partition\ p\ (step_r\ t) \\
+    otherwise: & ([], m, r) \\
+  \end{cases} \\
+  partition\ p\ (l, m, []) & = & \begin{cases}
+    (not \circ p)(hd(l)): & partition\ p\ (step_l\ t) \\
+    otherwise: & (l, m, []) \\
+  \end{cases}\\
+  partition\ p\ (l, m, r) & = & \begin{cases}
+    p(hd(l))\ \text{and}\ (not \circ p)(hd(r)): & (l, m, r) \\
+    p(hd(r)): & partition\ p\ (step_r\ t) \\
+    (not \circ p)(hd(l)): & partition\ p\ (step_l\ t) \\
+  \end{cases}
+\end{array}
+\ee
 
+For example, $partition\ (<k)\ t$ moves all keys less than $k$ out of the right part of the tree $t$. Below example program implements the $partition$ function:
+
+\begin{Haskell}
+partition p t@(BTree [] m r)
+  | p (hd r) = partition p (stepR t)
+  | otherwise = ([], m, r)
+partition p t@(BTree l m [])
+  | (not . p) (hd l) = partition p (stepL t)
+  | otherwise = (l, m, [])
+partition p t@(BTree l m r)
+  | p (hd l) && (not . p) (hd r) = (l, m, r)
+  | p (hd r) = partition p (stepR t)
+  | (not . p) (hd l) = partition p (stepL t)
+\end{Haskell}
+
+We can also use $step_l/step_r$ to split a B-tree at position $d$ when it becomes overly full. Let $n = |l|$ be the number of keys/sub-trees of the left part. $f^n(x)$ means repeatedly apply function $f$ to $x$ for $n$ times.
+
+\be
+split\ d\ t = \begin{cases}
+  n < d: & sp(step_r^{d - n}(t)) \\
+  n > d: & sp(step_r^{n - d}(t)) \\
+  otherwise: & sp(t) \\
+  \end{cases}
+\ee
+
+Where $sp$ does the separation work as below:
+
+\be
+sp\ (l, t, (k, t'):r) = ((l, t, []), k, ([], t', r))
+\ee
+
+With $partition$ and $split$ defined, we can define B-tree insert algorithm for the paired lists implementation. Firstly, we need modify the low/full testing to count both left and right parts:
+
+\be
+\begin{array}{ll}
+  full\ d\ \nil & = False \\
+  full\ d\ (l, t', r) & = |l| + |r| > 2d - 1 \\
+\end{array}
+\ee
+and
+\be
+\begin{array}{ll}
+  low\  d\ \nil & = False \\
+  low\  d\ (l, t', r) & = |l| + |r| < d - 1 \\
+\end{array}
+\ee
+
+When insert key $x$ to B-tree $t$ of degree $d$, we do the recursive insertion, then fix the root if it gets overly full:
+
+\be
+insert\ x\ (d, t) = fix\ (d, ins\ t)
+\ee
+
+Where $fix$ splits the root at $d$ if needed:
+
+\be
+fix\ (d, t) = \begin{cases}
+  full\ d\ t: & (d, ([], t_1, [(k, t_2)]\ \text{where}\ (t_1, k, t_2) = split\ d\ t \\
+  otherwise: & (d, t)
+  \end{cases}
+\ee
+
+Function $ins$ need handle both $t = \nil$, and $t \neq \nil$ cases. For empty case, we create a singleton leaf; otherwise, we call $(l, t', r) = partition\ (< x)\ t$ to locate the position for recursive insert:
+
+\be
+\begin{array}{lcl}
+  ins\ \nil & = & ([], \nil, [(x, \nil)]) \\
+  ins\ t & = & \begin{cases}
+    t' = \nil: & balance\ d\ l\ \nil\ ((x, \nil):r) \\
+    t' \neq \nil: & balance\ d\ l\ (ins\ t')\ r \\
+  \end{cases}
+\end{array}
+\ee
+
+Function $balance$ examines if the sub-tree $t$ contains too many keys, and splits it.
+
+\be
+balance\ d\ l\ t\ r = \begin{cases}
+  full\ d\ t: & fixFull \\
+  otherwise: & (l, t, r)
+  \end{cases}
+\ee
+
+Where $fixFull = (l, t_1, ((k, t_2):r)$, and $(t_1, k, t_2) = split\ d\ t$. Below example program implements the insert algorithm:
+
+\begin{Haskell}
+insert x (d, t) = fixRoot (d, ins t) where
+  ins Empty = BTree [] Empty [(x, Empty)]
+  ins t = let (l, t', r) = partition (< x) t in
+    case t' of
+      Empty -> balance d l Empty ((x, Empty):r)
+      _     -> balance d l (ins t') r
+
+fixRoot (d, t) | full d t = let (t1, k, t2) = split d t in
+                   (d, BTree [] t1 [(k, t2)])
+               | otherwise = (d, t)
+
+balance d l t r | full d t = fixFull
+                | otherwise = BTree l t r
+  where
+    fixFull = let (t1, k, t2) = split d t in BTree l t1 ((k, t2):r)
+
+split d t@(BTree l _ _) | n < d = sp $ iterate stepR t !! (d - n)
+                        | n > d = sp $ iterate stepL t !! (n - d)
+                        | otherwise = sp t
+  where
+    n = length l
+    sp (BTree l t ((k, t'):r)) = (BTree l t [], k, BTree [] t' r)
+\end{Haskell}
+
+\begin{Exercise}
+\Question{Can we use $\leq$ to support duplicated keys in B-Tree?} \label{ex:btree-leq}
+\Question{For the `split then insert' algorithm, eliminate the recursion with loops.}
+\label{ex:btree-loop-insert}
+\Question{We use linear search among keys to find the proper insert position. Improve the imperative implementation with binary search. Is the big-O performance improved?}
+\label{ex:btree-binary-search}
+% No, is still linear, although the search speed up to O(\lg n), the insertion takes O(n) time to shift elements.
+\end{Exercise}
 
 % ================================================================
 %               Deletion
