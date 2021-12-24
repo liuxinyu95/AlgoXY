@@ -381,13 +381,13 @@ data BTree a = Empty
 
 \be
 \begin{array}{lcl}
-  partition\ p\ ([], m, r) & = & \begin{cases}
+  partition\ p\ (\nil, m, r) & = & \begin{cases}
     p(hd(r)): & partition\ p\ (step_r\ t) \\
-    otherwise: & ([], m, r) \\
+    otherwise: & (\nil, m, r) \\
   \end{cases} \\
-  partition\ p\ (l, m, []) & = & \begin{cases}
+  partition\ p\ (l, m, \nil) & = & \begin{cases}
     (not \circ p)(hd(l)): & partition\ p\ (step_l\ t) \\
-    otherwise: & (l, m, []) \\
+    otherwise: & (l, m, \nil) \\
   \end{cases}\\
   partition\ p\ (l, m, r) & = & \begin{cases}
     p(hd(l))\ \text{and}\ (not \circ p)(hd(r)): & (l, m, r) \\
@@ -397,7 +397,7 @@ data BTree a = Empty
 \end{array}
 \ee
 
-For example, $partition\ (<k)\ t$ moves all keys less than $k$ out of the right part of the tree $t$. Below example program implements the $partition$ function:
+例如$partition\ (<k)\ t$将$t$中所有不小于$k$的元素和分枝留在右侧。下面的例子程序实现了$partition$函数：
 
 \begin{Haskell}
 partition p t@(BTree [] m r)
@@ -412,7 +412,7 @@ partition p t@(BTree l m r)
   | (not . p) (hd l) = partition p (stepL t)
 \end{Haskell}
 
-We can also use $step_l/step_r$ to split a B-tree at position $d$ when it becomes overly full. Let $n = |l|$ be the number of keys/sub-trees of the left part. $f^n(x)$ means repeatedly apply function $f$ to $x$ for $n$ times.
+我们也可以利用$step_l/step_r$把含有过多元素的B树在位置$d$分开。令$n = |l|$表示左侧的“元素/子分枝”数量。$f^n(x)$表示对变量$x$重复应用函数$f$共$n$次。
 
 \be
 split\ d\ t = \begin{cases}
@@ -422,13 +422,13 @@ split\ d\ t = \begin{cases}
   \end{cases}
 \ee
 
-Where $sp$ does the separation work as below:
+其中$sp$进行如下的分拆：
 
 \be
-sp\ (l, t, (k, t'):r) = ((l, t, []), k, ([], t', r))
+sp\ (l, t, (k, t'):r) = ((l, t, \nil), k, (\nil, t', r))
 \ee
 
-With $partition$ and $split$ defined, we can define B-tree insert algorithm for the paired lists implementation. Firstly, we need modify the low/full testing to count both left and right parts:
+利用$partition$和$split$，对于列表对表示的B树，我们可以定义出插入算法。首先我们需要修改B树含有过多、过少元素的判断：
 
 \be
 \begin{array}{ll}
@@ -436,7 +436,7 @@ With $partition$ and $split$ defined, we can define B-tree insert algorithm for 
   full\ d\ (l, t', r) & = |l| + |r| > 2d - 1 \\
 \end{array}
 \ee
-and
+和
 \be
 \begin{array}{ll}
   low\  d\ \nil & = False \\
@@ -444,26 +444,26 @@ and
 \end{array}
 \ee
 
-When insert key $x$ to B-tree $t$ of degree $d$, we do the recursive insertion, then fix the root if it gets overly full:
+向度数为$d$的B树$t$插入元素$x$时，我们首先递归地插入，然后再修复元素过多的问题：
 
 \be
 insert\ x\ (d, t) = fix\ (d, ins\ t)
 \ee
 
-Where $fix$ splits the root at $d$ if needed:
+如果根节点含有过多元素，函数$fix$在位置$d$将其分拆：
 
 \be
 fix\ (d, t) = \begin{cases}
-  full\ d\ t: & (d, ([], t_1, [(k, t_2)]\ \text{where}\ (t_1, k, t_2) = split\ d\ t \\
+  full\ d\ t: & (d, (\nil, t_1, [(k, t_2)]\ \text{其中}\ (t_1, k, t_2) = split\ d\ t \\
   otherwise: & (d, t)
   \end{cases}
 \ee
 
-Function $ins$ need handle both $t = \nil$, and $t \neq \nil$ cases. For empty case, we create a singleton leaf; otherwise, we call $(l, t', r) = partition\ (< x)\ t$ to locate the position for recursive insert:
+函数$ins$需要处理$t = \nil$和$t \neq \nil$两种情况。对于空树，我们新建一个单独的叶子节点；否则调用$(l, t', r) = partition\ (< x)\ t$定位到递归插入的位置：
 
 \be
 \begin{array}{lcl}
-  ins\ \nil & = & ([], \nil, [(x, \nil)]) \\
+  ins\ \nil & = & (\nil, \nil, [(x, \nil)]) \\
   ins\ t & = & \begin{cases}
     t' = \nil: & balance\ d\ l\ \nil\ ((x, \nil):r) \\
     t' \neq \nil: & balance\ d\ l\ (ins\ t')\ r \\
@@ -471,7 +471,7 @@ Function $ins$ need handle both $t = \nil$, and $t \neq \nil$ cases. For empty c
 \end{array}
 \ee
 
-Function $balance$ examines if the sub-tree $t$ contains too many keys, and splits it.
+函数$balance$检查子分枝$t$是否包含过多元素并进行分拆。
 
 \be
 balance\ d\ l\ t\ r = \begin{cases}
@@ -480,7 +480,7 @@ balance\ d\ l\ t\ r = \begin{cases}
   \end{cases}
 \ee
 
-Where $fixFull = (l, t_1, ((k, t_2):r)$, and $(t_1, k, t_2) = split\ d\ t$. Below example program implements the insert algorithm:
+其中$fixFull = (l, t_1, ((k, t_2):r)$，$(t_1, k, t_2) = split\ d\ t$。下面的例子程序实现了插入算法：
 
 \begin{Haskell}
 insert x (d, t) = fixRoot (d, ins t) where
@@ -508,17 +508,98 @@ split d t@(BTree l _ _) | n < d = sp $ iterate stepR t !! (d - n)
 \end{Haskell}
 
 \begin{Exercise}
-\Question{Can we use $\leq$ to support duplicated keys in B-Tree?} \label{ex:btree-leq}
-\Question{For the `split then insert' algorithm, eliminate the recursion with loops.}
+\Question{我们是否可以用$\leq$使得B树可以含有重复元素？} \label{ex:btree-leq}
+\Question{使用循环消除“先分拆再插入”算法中的递归。}
 \label{ex:btree-loop-insert}
-\Question{We use linear search among keys to find the proper insert position. Improve the imperative implementation with binary search. Is the big-O performance improved?}
+\Question{我们使用线性查找获得元素插入的位置。请使用二分查找对命令式实现进行改进。算法复杂度会提升么？}
 \label{ex:btree-binary-search}
 % No, is still linear, although the search speed up to O(\lg n), the insertion takes O(n) time to shift elements.
 \end{Exercise}
 
-% ================================================================
-%               Deletion
-% ================================================================
+\section{查找}
+\index{B树!查找}
+
+我们可以将二叉搜索树的搜索算法进行抽象概括，从而获得B树的搜索算法。
+
+对于二叉树，每次只有两种选择，或者向左，或者向右。但是B树中存在多个选择。
+
+\begin{algorithmic}[1]
+\Function{Search}{$T, k$}
+  \Loop
+    \State $i \gets 1$
+    \While{$i \leq |K(T)| \land k > k_i(T)$}
+      \State $i \gets i+1$
+    \EndWhile
+    \If{$i \leq |K(T)| \land k = k_i(T)$}
+      \State \Return $(T, i)$
+    \EndIf
+    \If{$T$ is leaf}
+      \State \Return $NIL$ \Comment{$k$不存在}
+    \Else
+      \State $T \gets c_i(T)$
+    \EndIf
+  \EndLoop
+\EndFunction
+\end{algorithmic}
+
+从根节点开始，算法按照从小到大的顺序逐一检查每个key。如果发现匹配的key，就返回当前节点和key的索引作为结果。否则，如果找到某一位置$i$使得$k_i < k < k_{i+1}$，接下来就在子树$c_{i+1}$中搜索这一key。如果到达了某一叶子节点还没有找到key，就返回一个空值表示不存在。
+
+下面的Python例子程序实现了B树搜索算法。
+
+\lstset{language=Python}
+\begin{lstlisting}
+def B_tree_search(tr, key):
+    while True:
+        for i in range(len(tr.keys)):
+            if key <= tr.keys[i]:
+                break
+        if key == tr.keys[i]:
+            return (tr, i)
+        if tr.leaf:
+            return None
+        else:
+            if key > tr.keys[-1]:
+                i=i+1
+            tr = tr.children[i]
+\end{lstlisting}
+
+也可以用递归的方式实现B树搜索算法。当在B树$T = (K, C, t)$中搜索key $k$时，我们首先使用$k$将所有的key分成两部分。
+
+\[
+\begin{array}{l}
+K_1 = \{ k' | k' < k \} \\
+K_2 = \{ k' | k \leq k' \}
+\end{array}
+\]
+
+即$K_1$包含所有小于$k$的key；而$K_2$包含其余的部分。如果$K_2$的第一个元素恰好等于$k$，则搜索成功，否则我们需要递归地在子树$c_{|K_1|+1}$中搜索。
+
+\be
+search(T, k) = \left \{
+  \begin{array}
+  {r@{\quad:\quad}l}
+  (T, |K_1|+1) & k \in K_2 \\
+  \phi & C = \phi \\
+  search(c_{|K_1|+1}, k) & otherwise
+  \end{array}
+\right.
+\ee
+
+下面的Haskell例子程序实现了这一算法。
+
+\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+search :: (Ord a)=> BTree a -> a -> Maybe (BTree a, Int)
+search tr@(Node ks cs _) k
+    | matchFirst k $ drop len ks = Just (tr, len)
+    | otherwise = if null cs then Nothing
+                  else search (cs !! len) k
+    where
+      matchFirst x (y:_) = x==y
+      matchFirst x _ = False
+      len = length $ filter (<k) ks
+\end{lstlisting}
+
 \section{删除}
 \index{B树!删除}
 
@@ -975,93 +1056,6 @@ unsplit c1 k c2 = Node ((keys c1)++[k]++(keys c2))
   \caption{先删除再修复的结果（3）} \label{fig:result-del-fp3}
 \end{figure}
 
-
-% ================================================================
-%               Searching
-% ================================================================
-\section{搜索}
-\index{B树!搜索}
-
-我们可以将二叉搜索树的搜索算法进行抽象概括，从而获得B树的搜索算法。
-
-对于二叉树，每次只有两种选择，或者向左，或者向右。但是B树中存在多个选择。
-
-\begin{algorithmic}[1]
-\Function{Search}{$T, k$}
-  \Loop
-    \State $i \gets 1$
-    \While{$i \leq |K(T)| \land k > k_i(T)$}
-      \State $i \gets i+1$
-    \EndWhile
-    \If{$i \leq |K(T)| \land k = k_i(T)$}
-      \State \Return $(T, i)$
-    \EndIf
-    \If{$T$ is leaf}
-      \State \Return $NIL$ \Comment{$k$不存在}
-    \Else
-      \State $T \gets c_i(T)$
-    \EndIf
-  \EndLoop
-\EndFunction
-\end{algorithmic}
-
-从根节点开始，算法按照从小到大的顺序逐一检查每个key。如果发现匹配的key，就返回当前节点和key的索引作为结果。否则，如果找到某一位置$i$使得$k_i < k < k_{i+1}$，接下来就在子树$c_{i+1}$中搜索这一key。如果到达了某一叶子节点还没有找到key，就返回一个空值表示不存在。
-
-下面的Python例子程序实现了B树搜索算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def B_tree_search(tr, key):
-    while True:
-        for i in range(len(tr.keys)):
-            if key <= tr.keys[i]:
-                break
-        if key == tr.keys[i]:
-            return (tr, i)
-        if tr.leaf:
-            return None
-        else:
-            if key > tr.keys[-1]:
-                i=i+1
-            tr = tr.children[i]
-\end{lstlisting}
-
-也可以用递归的方式实现B树搜索算法。当在B树$T = (K, C, t)$中搜索key $k$时，我们首先使用$k$将所有的key分成两部分。
-
-\[
-\begin{array}{l}
-K_1 = \{ k' | k' < k \} \\
-K_2 = \{ k' | k \leq k' \}
-\end{array}
-\]
-
-即$K_1$包含所有小于$k$的key；而$K_2$包含其余的部分。如果$K_2$的第一个元素恰好等于$k$，则搜索成功，否则我们需要递归地在子树$c_{|K_1|+1}$中搜索。
-
-\be
-search(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (T, |K_1|+1) & k \in K_2 \\
-  \phi & C = \phi \\
-  search(c_{|K_1|+1}, k) & otherwise
-  \end{array}
-\right.
-\ee
-
-下面的Haskell例子程序实现了这一算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-search :: (Ord a)=> BTree a -> a -> Maybe (BTree a, Int)
-search tr@(Node ks cs _) k
-    | matchFirst k $ drop len ks = Just (tr, len)
-    | otherwise = if null cs then Nothing
-                  else search (cs !! len) k
-    where
-      matchFirst x (y:_) = x==y
-      matchFirst x _ = False
-      len = length $ filter (<k) ks
-\end{lstlisting}
 
 
 % ================================================================

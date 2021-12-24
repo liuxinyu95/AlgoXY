@@ -379,13 +379,13 @@ With the left/right moves, we can implement a generic partition function $partit
 
 \be
 \begin{array}{lcl}
-  partition\ p\ ([], m, r) & = & \begin{cases}
+  partition\ p\ (\nil, m, r) & = & \begin{cases}
     p(hd(r)): & partition\ p\ (step_r\ t) \\
-    otherwise: & ([], m, r) \\
+    otherwise: & (\nil, m, r) \\
   \end{cases} \\
-  partition\ p\ (l, m, []) & = & \begin{cases}
+  partition\ p\ (l, m, \nil) & = & \begin{cases}
     (not \circ p)(hd(l)): & partition\ p\ (step_l\ t) \\
-    otherwise: & (l, m, []) \\
+    otherwise: & (l, m, \nil) \\
   \end{cases}\\
   partition\ p\ (l, m, r) & = & \begin{cases}
     p(hd(l))\ \text{and}\ (not \circ p)(hd(r)): & (l, m, r) \\
@@ -395,7 +395,7 @@ With the left/right moves, we can implement a generic partition function $partit
 \end{array}
 \ee
 
-For example, $partition\ (<k)\ t$ moves all keys less than $k$ out of the right part of the tree $t$. Below example program implements the $partition$ function:
+For example, $partition\ (<k)\ t$ moves all keys and sub-trees in $t$ less than $k$ out of the right part. Below example program implements the $partition$ function:
 
 \begin{Haskell}
 partition p t@(BTree [] m r)
@@ -423,7 +423,7 @@ split\ d\ t = \begin{cases}
 Where $sp$ does the separation work as below:
 
 \be
-sp\ (l, t, (k, t'):r) = ((l, t, []), k, ([], t', r))
+sp\ (l, t, (k, t'):r) = ((l, t, \nil), k, (\nil, t', r))
 \ee
 
 With $partition$ and $split$ defined, we can define B-tree insert algorithm for the paired lists implementation. Firstly, we need modify the low/full testing to count both left and right parts:
@@ -452,7 +452,7 @@ Where $fix$ splits the root at $d$ if needed:
 
 \be
 fix\ (d, t) = \begin{cases}
-  full\ d\ t: & (d, ([], t_1, [(k, t_2)]\ \text{where}\ (t_1, k, t_2) = split\ d\ t \\
+  full\ d\ t: & (d, (\nil, t_1, [(k, t_2)]\ \text{where}\ (t_1, k, t_2) = split\ d\ t \\
   otherwise: & (d, t)
   \end{cases}
 \ee
@@ -461,7 +461,7 @@ Function $ins$ need handle both $t = \nil$, and $t \neq \nil$ cases. For empty c
 
 \be
 \begin{array}{lcl}
-  ins\ \nil & = & ([], \nil, [(x, \nil)]) \\
+  ins\ \nil & = & (\nil, \nil, [(x, \nil)]) \\
   ins\ t & = & \begin{cases}
     t' = \nil: & balance\ d\ l\ \nil\ ((x, \nil):r) \\
     t' \neq \nil: & balance\ d\ l\ (ins\ t')\ r \\
@@ -521,8 +521,8 @@ For look up, we can extend from the binary search tree to multiple branches, and
 
 \be
 \begin{array}{lcl}
-  lookup\ k\ (ks, []) & = & \begin{cases}
-    k \in ks: & \textit{Just}\ (ks, []) \\
+  lookup\ k\ (ks, \nil) & = & \begin{cases}
+    k \in ks: & \textit{Just}\ (ks, \nil) \\
     otherwise: & \textit{Nothing}
   \end{cases} \\
   lookup\ k\ (ks, ts) & = & \begin{cases}
@@ -620,7 +620,7 @@ Where function $del$ is the one we extend to support multiple branches. If $t$ i
 
 \be
 \begin{array}{lcl}
-del\ x\ (ks, []) & = & (delete_l\ x\ ks, []) \\
+del\ x\ (ks, \nil) & = & (delete_l\ x\ ks, \nil) \\
 del\ x\ t & = & \begin{cases}
   \textit{Just}\ x = \textit{safeHd}\ ks': & balance\ d\ l\ (del\ k'\ t')\ (k':(tail\ ks'), ts') \\
   otherwise: & balance\ d\ l\ (del\ x\ t')\ (ks', ts') \\
@@ -632,7 +632,7 @@ Where $(l, t', (ks', ts')) = partition\ x\ t$, are the 3 parts partitioned by $x
 
 \be
 \begin{array}{lcl}
-  max\ (ks, []) & = & last\ ks \\
+  max\ (ks, \nil) & = & last\ ks \\
   max\ (ks, ts) & = & max\ (last\ ts) \\
 \end{array}
 \ee
@@ -651,17 +651,17 @@ If $t$ is overly low ($< d - 1$ keys), we call $fix_l$ to merge it with the left
 
 \be
 fix_l = \begin{cases}
-  ks_l \neq []: & balance\ d\ (init\ ks_l, init\ ts_l)\ (unsplit\ t_m\ k_m\ t)\ (ks_r, ts_r) \\
-  ks_r \neq []: & balance\ d\ (ks_l, ts_l)\ (unsplit\ t\ k_1\ t_1)\ (tail\ ks_r, tail\ ts_r) \\
+  ks_l \neq \nil: & balance\ d\ (init\ ks_l, init\ ts_l)\ (unsplit\ t_m\ k_m\ t)\ (ks_r, ts_r) \\
+  ks_r \neq \nil: & balance\ d\ (ks_l, ts_l)\ (unsplit\ t\ k_1\ t_1)\ (tail\ ks_r, tail\ ts_r) \\
   otherwise: & t
   \end{cases}
 \ee
 
-The last case (otherwise) means $ks_l = ks_r = []$, both sides are empty. The tree is a singleton leaf hence need not fixing. $k_1$ and $t_1$ are the first element in $ks_r$ and $ts_r$ respectively. Finally, we need modify the $fix$ function defined for $insert$, add new logic for $delete$:
+The last case (otherwise) means $ks_l = ks_r = \nil$, both sides are empty. The tree is a singleton leaf hence need not fixing. $k_1$ and $t_1$ are the first element in $ks_r$ and $ts_r$ respectively. Finally, we need modify the $fix$ function defined for $insert$, add new logic for $delete$:
 
 \be
 \begin{array}{lcl}
-fix\ (d, ([], [t])) & = & (d, t) \\
+fix\ (d, (\nil, [t])) & = & (d, t) \\
 fix\ (d, t) & = & \begin{cases}
   full\ d\ t : & (d, ([k], [l, r])), \text{where}\ (l, k, r) = split\ d\ t \\
   otherwise  : & (d, t)
