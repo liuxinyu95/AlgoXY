@@ -519,24 +519,76 @@ split d t@(BTree l _ _) | n < d = sp $ iterate stepR t !! (d - n)
 \section{查找}
 \index{B树!查找}
 
-我们可以将二叉搜索树的搜索算法进行抽象概括，从而获得B树的搜索算法。
+我们可以将二叉搜索树的查找算法扩展到含有多个分枝的B树。二叉树查找只有左右两个方向，但B树有多个方向。考虑在B树$t = (ks ts)$中查找元素$k$，如果$t$是叶子节点（$ts$为空），则问题简化为列表查找；否则，我们用$k$将树$t$划分为三部分：$l = (ks_l, ts_l)$、$t'$、$r = (ks_r, ts_r)$，其中$l$和子分枝$t'$中的所有元素都小于$k$，而$r$中的所有元素大于等于$k$。如果$r$中的第一个元素$ks_r$等于$k$，我们就找到了结果；否则我们递归地在子分枝$t'$中查找。
 
-对于二叉树，每次只有两种选择，或者向左，或者向右。但是B树中存在多个选择。
+\be
+\begin{array}{lcl}
+  lookup\ k\ (ks, \nil) & = & \begin{cases}
+    k \in ks: & \textit{Just}\ (ks, \nil) \\
+    otherwise: & \textit{Nothing}
+  \end{cases} \\
+  lookup\ k\ (ks, ts) & = & \begin{cases}
+    \textit{Just}\ k = \textit{safeHd}\ ks_r: & \textit{Just}\ (ks, ts) \\
+    otherwise: & lookup\ k\ t' \\
+  \end{cases}\\
+\end{array}
+\ee
+
+其中$((ks_l, ts_l), t', (ks_r, ts_r)) = partition\ k\ t$。函数$safeHd$定义为：
+
+\[
+\begin{array}{lcl}
+  \textit{safeHd}\ [] & = & \textit{Nothing} \\
+  \textit{safeHd}\ (x:xs) & = & \textit{Just}\ x \\
+\end{array}
+\]
+
+下面的例子程序\footnote{\texttt{safeHd}在某些程序库中以\texttt{listToMaybe}提供}实现了查找算法。
+
+\begin{Haskell}
+lookup k t@(BTree ks []) = if k `elem` ks then Just t else Nothing
+lookup k t = if (Just k) == safeHd ks then Just t
+             else lookup k t'  where
+  (_, t', (ks, _)) = partition k t
+\end{Haskell}
+
+对于列表对实现，思路是类似的。如果树不为空，我们用条件“$< k$”进行划分。然后检查右侧部分的第一个元素是否等于$k$，否则再递归地进行查找：
+
+\be
+\begin{array}{lcl}
+  lookup\ k\ \nil & = & \textit{Nothing} \\
+  lookup\ k\ t & = & \begin{cases}
+    \textit{Just}\ k = \textit{safeFst}\ (\textit{safeHd}\ r): & \textit{Just}\ (l, t', r) \\
+    otherwise: & lookup\ k\ t' \\
+    \end{cases}
+\end{array}
+\ee
+
+其中$(l, t', r) = partition\ (< k)\ t$是对非空树的划分。\textit{safeFst}将函数\textit{fst}应用到“Maybe”的值上，下面的例子程序使用了\textit{fmap}来实现：
+
+\begin{Haskell}
+lookup x Empty = Nothing
+lookup x t = let (l, t', r) = partition (< x) t in
+  if (Just x) == fmap fst (safeHd r) then Just (BTree l t' r)
+  else lookup x t'
+\end{Haskell}
+
+对于命令式实现，我们从根节点$r$开始，找到位置$i$使得$k_i(r) \leq k < k_{i+1}(r)$。如果$k_i(r) = k$，则返回节点$r$和索引$i$组成的值对；否则，我们继续在子分枝$t_i(r)$中继续查找。如果$r$是叶子节点，并且$k$不在其中，则返回空结果。
 
 \begin{algorithmic}[1]
-\Function{Search}{$T, k$}
+\Function{Look-Up}{$r, k$}
   \Loop
-    \State $i \gets 1$
-    \While{$i \leq |K(T)| \land k > k_i(T)$}
-      \State $i \gets i+1$
+    \State $i \gets 1, n \gets |K(r)|$
+    \While{$i \leq n$ and $k > k_i(r)$}
+      \State $i \gets i + 1$
     \EndWhile
-    \If{$i \leq |K(T)| \land k = k_i(T)$}
-      \State \Return $(T, i)$
+    \If{$i \leq n$ and $k = k_i(r)$}
+      \State \Return $(r, i)$
     \EndIf
-    \If{$T$ is leaf}
-      \State \Return $NIL$ \Comment{$k$不存在}
+    \If{$r$ is leaf}
+      \State \Return Nothing \Comment{$k$不存在}
     \Else
-      \State $T \gets c_i(T)$
+      \State $r \gets t_i(r)$ \Comment{继续在第$i$棵分枝中查找}
     \EndIf
   \EndLoop
 \EndFunction
