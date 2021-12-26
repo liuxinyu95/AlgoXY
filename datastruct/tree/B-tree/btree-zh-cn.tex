@@ -588,81 +588,146 @@ lookup x t = let (l, t', r) = partition (< x) t in
     \If{$r$ is leaf}
       \State \Return Nothing \Comment{$k$不存在}
     \Else
-      \State $r \gets t_i(r)$ \Comment{继续在第$i$棵分枝中查找}
+      \State $r \gets t_i(r)$ \Comment{继续查找第$i$棵分枝}
     \EndIf
   \EndLoop
 \EndFunction
 \end{algorithmic}
 
-从根节点开始，算法按照从小到大的顺序逐一检查每个key。如果发现匹配的key，就返回当前节点和key的索引作为结果。否则，如果找到某一位置$i$使得$k_i < k < k_{i+1}$，接下来就在子树$c_{i+1}$中搜索这一key。如果到达了某一叶子节点还没有找到key，就返回一个空值表示不存在。
-
-下面的Python例子程序实现了B树搜索算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def B_tree_search(tr, key):
-    while True:
-        for i in range(len(tr.keys)):
-            if key <= tr.keys[i]:
-                break
-        if key == tr.keys[i]:
-            return (tr, i)
-        if tr.leaf:
-            return None
-        else:
-            if key > tr.keys[-1]:
-                i=i+1
-            tr = tr.children[i]
-\end{lstlisting}
-
-也可以用递归的方式实现B树搜索算法。当在B树$T = (K, C, t)$中搜索key $k$时，我们首先使用$k$将所有的key分成两部分。
-
-\[
-\begin{array}{l}
-K_1 = \{ k' | k' < k \} \\
-K_2 = \{ k' | k \leq k' \}
-\end{array}
-\]
-
-即$K_1$包含所有小于$k$的key；而$K_2$包含其余的部分。如果$K_2$的第一个元素恰好等于$k$，则搜索成功，否则我们需要递归地在子树$c_{|K_1|+1}$中搜索。
-
-\be
-search(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (T, |K_1|+1) & k \in K_2 \\
-  \phi & C = \phi \\
-  search(c_{|K_1|+1}, k) & otherwise
-  \end{array}
-\right.
-\ee
-
-下面的Haskell例子程序实现了这一算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-search :: (Ord a)=> BTree a -> a -> Maybe (BTree a, Int)
-search tr@(Node ks cs _) k
-    | matchFirst k $ drop len ks = Just (tr, len)
-    | otherwise = if null cs then Nothing
-                  else search (cs !! len) k
-    where
-      matchFirst x (y:_) = x==y
-      matchFirst x _ = False
-      len = length $ filter (<k) ks
-\end{lstlisting}
+\begin{Exercise}
+  \Question{使用二分查找改进命令式查找算法。}
+\end{Exercise}
 
 \section{删除}
 \index{B树!删除}
 
-最小度数为$t$的B树中，除根节点外，任何节点中的key都不能少于$t-1$个。从节点中删除一个key后，有可能会违反这一平衡性质。
+删除元素后，节点可能因为元素不足无法满足B树的要求。除根节点外，元素数不能小于$d - 1$，其中$d$是最小度数。对称于插入算法，我们也有两种解法：先删除再修复、先合并再删除。
 
-同插入操作一样，我们可以采用类似的策略：或者在删除前进行额外的准备工作，以保证节点含有足够多的key；或者在删除后对节点进行修复，以避免含有的key过少。
+\subsection{先删除再修复}
+
+我们首先扩展二叉搜索树的删除算法到支持多个分枝，然后再修复B树的平衡性。算法包含两步：
+
+\be
+delete\ x\ (d, t) = fix (d, del\ x\ t)
+\ee
+
+其中函数$del$是对多分枝扩展的删除操作。如果$t$是叶子节点，我们从节点中的元素中删除$x$；否则，我们用$x$将树划分为三部分：$(l, t', r)$。其中$l$和$t'$的所有元素小于$x$，而$r$中的其余元素大于等于（$\geq$）$x$。如果$r$不为空，我们取出其中的第一个元素$k_i$，若它等于$x$（即$k_i = x$），我们接下来用子分枝$t'$中的最大元素$k'$（即$k' = max(t')$）取代$k_i$。然后递归地从$t'$中删除$k'$，如图\ref{fig:btree-del}所示。否则（$r$为空或$k_i \neq x$），我们递归地从$t'$中删除$x$。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.45]{img/btree-del.png}
+  \caption{用$k' = max(t')$替换$k_i$，然后递归地从$t'$删除$k'$}
+  \label{fig:btree-del}
+\end{figure}
+
+\be
+\begin{array}{lcl}
+del\ x\ (ks, \nil) & = & (delete_l\ x\ ks, \nil) \\
+del\ x\ t & = & \begin{cases}
+  \textit{Just}\ x = \textit{safeHd}\ ks': & balance\ d\ l\ (del\ k'\ t')\ (k':(tail\ ks'), ts') \\
+  otherwise: & balance\ d\ l\ (del\ x\ t')\ (ks', ts') \\
+  \end{cases}
+\end{array}
+\ee
+
+Where $(l, t', (ks', ts')) = partition\ x\ t$, are the 3 parts partitioned by $x$. On top of it, we extract the maximum key $k'$ from $t'$. The $max$ function is defined as:
+
+\be
+\begin{array}{lcl}
+  max\ (ks, \nil) & = & last\ ks \\
+  max\ (ks, ts) & = & max\ (last\ ts) \\
+\end{array}
+\ee
+
+Function $last$ returns the last element from a list (\autoref{eq:list-last} in chapter 1). $delete_l$ is the list delete algorithm (\autoref{eq:list-delete} in chapter 1). $tail$ drops the first element from a list and returns the rest (\autoref{eq:list-head-tail}). We need modify the $balance$ function, which we defined for $insert$ before, with the additional logic to merge the node if it contains too less keys.
+
+\be
+balance\ d\ (ks_l, ts_l)\ t\ (ks_r, ts_r) = \begin{cases}
+  full\ d\ t: fix_f \\
+  low\ d\ t: fix_l \\
+  otherwise: (ks_l \doubleplus ks_r, ts_l \doubleplus [t] \doubleplus ts_r)
+  \end{cases}
+\ee
+
+If $t$ is overly low ($< d - 1$ keys), we call $fix_l$ to merge it with the left part $(ks_l, ts_l)$ or right part $(ks_r, ts_r)$ depends on which side of keys is not empty. Use the left part for example: we extract the last element from $ks_l$ and $ts_l$ respectively, say $k_m$ and $t_m$. Then call $unsplit$ (defined in \autoref{eq:btree-unsplit}) to merge them with $t$ as $unsplit\ t_m\ k_m\ t$. It forms a new sub-tree with more keys. Finally we call balance again to build the result B-tree.
+
+\be
+fix_l = \begin{cases}
+  ks_l \neq \nil: & balance\ d\ (init\ ks_l, init\ ts_l)\ (unsplit\ t_m\ k_m\ t)\ (ks_r, ts_r) \\
+  ks_r \neq \nil: & balance\ d\ (ks_l, ts_l)\ (unsplit\ t\ k_1\ t_1)\ (tail\ ks_r, tail\ ts_r) \\
+  otherwise: & t
+  \end{cases}
+\ee
+
+The last case (otherwise) means $ks_l = ks_r = \nil$, both sides are empty. The tree is a singleton leaf hence need not fixing. $k_1$ and $t_1$ are the first element in $ks_r$ and $ts_r$ respectively. Finally, we need modify the $fix$ function defined for $insert$, add new logic for $delete$:
+
+\be
+\begin{array}{lcl}
+fix\ (d, (\nil, [t])) & = & (d, t) \\
+fix\ (d, t) & = & \begin{cases}
+  full\ d\ t : & (d, ([k], [l, r])), \text{where}\ (l, k, r) = split\ d\ t \\
+  otherwise  : & (d, t)
+\end{cases}
+\end{array}
+\ee
+
+What we add is the first case. After delete, if the root contains nothing but a sub-tree, we can shrink the height, pull the single sub-tree as the new root. The following example program implements the $delete$ algorithm.
+
+\begin{Haskell}
+delete x (d, t) = fixRoot (d, del x t) where
+    del x (BTree ks []) = BTree (List.delete x ks) []
+    del x t = if (Just x) == safeHd ks' then
+                let k' = max t' in
+                   balance d l (del k' t') (k':(tail ks'), ts')
+              else balance d l (del x t') r
+      where
+        (l, t', r@(ks', ts')) = partition x t
+
+fixRoot (d, BTree [] [t]) = (d, t)
+fixRoot (d, t) | full d t  = let (t1, k, t2) = split d t in
+                               (d, BTree [k] [t1, t2])
+               | otherwise = (d, t)
+
+balance d (ks1, ts1) t (ks2, ts2)
+    | full d t  = fixFull
+    | low  d t  = fixLow
+    | otherwise = BTree (ks1 ++ ks2) (ts1 ++ [t] ++ ts2)
+  where
+    fixFull = let (t1, k, t2) = split d t in
+                BTree (ks1 ++ [k] ++ ks2) (ts1 ++ [t1, t2] ++ ts2)
+    fixLow | not $ null ks1 = balance d (init ks1, init ts1)
+                                      (unsplit (last ts1) (last ks1) t)
+                                      (ks2, ts2)
+           | not $ null ks2 = balance d (ks1, ts1)
+                                      (unsplit t (head ks2) (head ts2))
+                                      (tail ks2, tail ts2)
+           | otherwise = t
+\end{Haskell}
+
+We leave the $delete$ function for the 'paired list' implementation as an exercise. Figure \ref{fig:btree-del-before}, \ref{fig:btree-del-CJ}, and \ref{fig:btree-del-KN} give examples of delete.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.33]{img/btree-del-before.png}
+  \caption{Before delete}
+  \label{fig:btree-del-before}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.33]{img/btree-del-CJ.png}
+  \caption{Delete 'C', then delete 'J'}
+  \label{fig:btree-del-CJ}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.33]{img/btree-del-KN.png}
+  \caption{Delete 'K', then delete 'N'}
+  \label{fig:btree-del-KN}
+\end{figure}
 
 
-% ================================================================
-%               Merge before delete method
-% ================================================================
 \subsection{删除前预合并}
 
 我们先处理最简单的情况：如果待删除的key $k$所在的节点为一叶子节点$x$，我们可以直接将$k$从$x$中删除。如果$x$是根节点（树中的唯一节点），我们无需担心删除后含有的key过少。以上两种，我们称之为\underline{情况1}。
@@ -913,201 +978,6 @@ def B_tree_delete(tr, key):
         tr = tr.children[0]
     return tr
 \end{lstlisting}
-
-% ================================================================
-%               Delete and fix method
-% ================================================================
-
-\subsection{先删除再修复}
-
-删除前预合并算法比较复杂了，需要处理不同的情况，每种情况又含有若干子情况。
-
-我们也可以换一种思路来设计删除算法。即先删除，然后再进行必要的修复。这种策略和先插入再修复相类似。
-
-\be
-delete(T, k) = fix(del(T, k))
-\ee
-
-从B树删除一个key时，我们先从根节点开始，自顶向下定位到这个key所在的节点。
-
-如果这一节点是一个叶子节点，我们就删掉相应的key，然后检查节点种剩余的key是否太少以至于无法满足B树的平衡条件。
-
-如果这一节点是一个分支节点，删掉key后它就被分为两部分。我们合并它们。这一合并过程是递归的，如图\ref{fig:del-fp-merge}所示。
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.5]{img/btree-del-fp-merge.eps}
-  \caption{从分支节点种删除key。删除$k_i$后节点分成了两部分。递归将它们合并直到这两部分都是叶子节点。} \label{fig:del-fp-merge}
-\end{figure}
-
-合并时，如果待合并的两个节点不是叶子节点，我们将key合到一起，然后递归地将左侧部分的最后一个子树和右侧部分的第一个子树合并。否则，如果它们都是叶子节点，我们只需要将key合并到一起。
-
-到目前为止，待删除的key已经从树中去掉了。但是由此导致节点中key的减少可能会违反B树的平衡条件。我们需要从根节点开始，沿着删除时经过的路径进行修复。
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.5]{img/btree-del-fp-make.eps}
-  \caption{从节点$c_i$中删除key $k$后，结果为$c_i'$。修复时，我们用左侧部分、$c_i'$和右侧部分构造一个新节点。}
-  \label{fig:del-fp-make}
-\end{figure}
-
-经过递归删除，路径上的任何一个分支节点都被分成了三部分：左侧部分包含了所有不大于$k$的key，包括$k_1, k_2, ..., k_{i-1}$和子树$c_1, c_2, ..., c_{i-1}$；右侧部分包含了全部不小于$k$的key，包括$k_i, k_{i+1}, ..., k_{n+1}$和子树$c_{i+1}, c_{i+2}, ..., c_{n+1}$；$k$被递归地从子树$c_i$中删除，我们将结果记为$c_i'$。如图\ref{fig:del-fp-make}所示。
-
-此时，我们需要检查$c_i'$是否包含了足够多的key。如果不足（少于$t-1$个，注意这里和删除前预合并不同，后者判断是否少于$t$个），我们可以从左侧，或者右侧“借”来一对key和子树，这是分拆操作的逆向操作。图\ref{fig:del-fp-fixlow}描述了向左侧“借”一对key和子树的情形。
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.5]{img/btree-del-fp-fixlow.eps}
-  \caption{向左侧部分“借”一对key和子树，然后进行分拆的逆操作} \label{fig:del-fp-fixlow}
-\end{figure}
-
-如果左侧和右侧都为空，我们只需要把$c_i'$推向上层。
-
-记B树为$T=(K, C, t)$，其中$K$和$C$分别为key和子树。函数$del(T, k$)从树中删除key $k$。
-
-\be
-del(T, k) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (delete(K, k), \phi, t) & C = \phi \\
-  merge((K_1, C_1, t), (K_2, C_2, t)) & k_i = k \\
-  make((K_1', C_1'), del(c, k), (K_2', C_2')) & k \notin K
-  \end{array}
-\right.
-\ee
-
-如果没有任何子树$C = \phi$，说明$T$是一叶子节点。我们直接将$k$删除。否则，$T$为一个内部分支节点。如果$k \in K$，将$k$删除后所有的key和子树被分成了两部分：$(K_1, C_1)$和$(K_2, C_2)$。它们接下来被递归地合并。
-
-\[
-\begin{array}{l}
-K_1 = \{k_1, k_2, ..., k_{i-1}\} \\
-K_2 = \{k_{i+1}, k_{i+2}, ..., k_m\} \\
-C_1 = \{c_1, c_2, ..., c_i\} \\
-C_2 = \{c_{i+1}, c_{i+2}, ..., c_{m+1}\}
-\end{array}
-\]
-
-如果$k \notin K$，我们需要定位到一个子树$c$，然后递归地从这个子树中删除$k$。
-
-\[
-\begin{array}{l}
-(K_1', K_2') = (\{k' | k' \in K, k' < k \}, \{k' | k' \in K, k < k' \}) \\
-(C_1', \{c\} \cup C_2') = splitAt(|K_1'|, C)
-\end{array}
-\]
-
-递归合并函数被定义如下：当合并两棵树$T_1 = (K_1, C_1, t)$和$T_2 = (K_2, C_2, t)$时，如果它们都是叶子节点，我们将两组key连接到一起形成一个新的叶子节点。否则，我们将$C_1$中的最后一棵子树和$C_2$中的第一棵子树递归合并。然后调用$make$函数构造一棵新树。若$C_1$和$C_2$不为空，记$C_1$中的最后一棵子树为$c_{1, m}$，其余子树为$C_1'$；记$C_2$中的第一棵子树为$C_{2, 1}$，其余子树为$C_2'$。下面的公式定义了合并函数：
-
-\be
-merge(T_1, T_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (K_1 \cup K_2, \phi, t) & C_1 = C_2 = \phi \\
-  make((K_1, C_1'), merge(c_{1,m}, c_{2, 1}), (K_2, C_2')) & otherwise
-  \end{array}
-\right.
-\ee
-
-我们此前定义的$make$函数仅仅处理了由于插入造成节点中含有过多key的情况。我们可以对它进行修改，使得它能够处理由于删除造成key过少的情况。
-
-\be
-make((K', C'), c, (K'', C'')) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  fixFull((K', C'), c, (K'', C'')) & full(c) \\
-  fixLow((K', C'), c, (K'', C'')) & low(c) \\
-  (K' \cup K'', C' \cup \{c\} \cup C'', t) & otherwise
-  \end{array}
-\right.
-\ee
-
-其中$low(T)$检查节点$T$含有的key是否少于$t-1$。函数$fixLow(P_l, c, P_r)$接受三个参数：左侧的key和子树对$P_l$、一个子节点$c$、以及右侧的key和子树对$P_r$。如果左侧部分不为空，我们就从左侧“借”一对key和子树，然后进行逆分拆操作使得节点含有足够多的key，然后递归地调用$make$。否则，如果右侧不为空，我们就向右侧“借”一对key和子树。如果左右都为空，我们就将子节点直接返回作为结果。这种情况下，树的高度会减低。
-
-令左侧部分为$P_l = (K_l, C_l)$，如果$K_l$不为空，记最后一对key和子树分别为$k_{l, m}$和$c_{l, m}$。剩余的key和子树记为$K_l'$ and $C_l'$。同样，令右侧部分为$P_r = (K_r, C_r)$，如果$K_r$不为空，记第一对key和子树分别为$k_{r, 1}$和$c_{r, 1}$。剩余的key和子树记为$K_r'$ and $C_r'$。函数$fixLow$定义如下：
-
-\be
-fixLow(P_l, c, P_r) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  make((K_l', C_l'), unsplit(c_{l, m}, k_{l, m}, c), (K_r, C_r)) & K_l \neq \phi \\
-  make((K_r, C_r), unsplit(c, k_{r, 1}, c_{r, 1}), (K_r', C_r')) & K_r \neq \phi \\
-  c & otherwise
-  \end{array}
-\right.
-\ee
-
-函数$unsplit(T_1, k, T_2)$是分拆的逆操作，它用两个子树和一个key构造一棵新的B树。
-
-\be
-unsplit(T_1, k, T_2) = (K_1 \cup \{k\} \cup K_2, C_1 \cup C_2, t)
-\ee
-
-下面的Haskell例子程序实现了B树的删除算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-import qualified Data.List as L
-
-delete tr x = fixRoot $ del tr x
-
-del:: (Ord a) => BTree a -> a -> BTree a
-del (Node ks [] t) x = Node (L.delete x ks) [] t
-del (Node ks cs t) x =
-    case L.elemIndex x ks of
-      Just i -> merge (Node (take i ks) (take (i+1) cs) t)
-                      (Node (drop (i+1) ks) (drop (i+1) cs) t)
-      Nothing -> make (ks', cs') (del c x) (ks'', cs'')
-    where
-      (ks', ks'') = L.partition (<x) ks
-      (cs', (c:cs'')) = L.splitAt (length ks') cs
-
-merge (Node ks [] t) (Node ks' [] _) = Node (ks++ks') [] t
-merge (Node ks cs t) (Node ks' cs' _) = make (ks, init cs)
-                                             (merge (last cs) (head cs'))
-                                             (ks', tail cs')
-
-make (ks', cs') c (ks'', cs'')
-    | full c = fixFull (ks', cs') c (ks'', cs'')
-    | low c  = fixLow  (ks', cs') c (ks'', cs'')
-    | otherwise = Node (ks'++ks'') (cs'++[c]++cs'') (degree c)
-
-low tr = (length $ keys tr) < (degree tr)-1
-
-fixLow (ks'@(_:_), cs') c (ks'', cs'') = make (init ks', init cs')
-                                              (unsplit (last cs') (last ks') c)
-                                              (ks'', cs'')
-fixLow (ks', cs') c (ks''@(_:_), cs'') = make (ks', cs')
-                                              (unsplit c (head ks'') (head cs''))
-                                              (tail ks'', tail cs'')
-fixLow _ c _ = c
-
-unsplit c1 k c2 = Node ((keys c1)++[k]++(keys c2))
-                       ((children c1)++(children c2)) (degree c1)
-\end{lstlisting}
-
-使用先删除再修复的方法从同样的B树中依次删除同样的key，得到的结果和删除前预合并的有所不同，如图\ref{fig:result-del-fp1}、\ref{fig:result-del-fp2}和\ref{fig:result-del-fp3}。但是它们都是满足平衡条件的合法的B树。
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{删除前的B树}{\includegraphics[scale=0.5]{img/btree-del-fp-before.ps}}\\
-  \subcaptionbox{删除key ‘E’后}{\includegraphics[scale=0.5]{img/btree-del-fp-E.ps}}
-  \caption{先删除再修复的结果（1）} \label{fig:result-del-fp1}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{删除key ‘G’后}{\includegraphics[scale=0.5]{img/btree-del-fp-G.ps}} \\
-  \subcaptionbox{删除key ‘A’后}{\includegraphics[scale=0.5]{img/btree-del-fp-A.ps}}
-  \caption{先删除再修复的结果（2）} \label{fig:result-del-fp2}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{删除key ‘M’后}{\includegraphics[scale=0.5]{img/btree-del-fp-M.ps}} \\
-  \subcaptionbox{删除key ‘U’后}{\includegraphics[scale=0.5]{img/btree-del-fp-U.ps}}
-  \caption{先删除再修复的结果（3）} \label{fig:result-del-fp3}
-\end{figure}
-
 
 
 % ================================================================
