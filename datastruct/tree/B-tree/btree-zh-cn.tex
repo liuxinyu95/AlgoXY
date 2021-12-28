@@ -729,77 +729,62 @@ balance d (ks1, ts1) t (ks2, ts2)
 
 \subsection{先合并再删除}
 
-我们先处理最简单的情况：如果待删除的key $k$所在的节点为一叶子节点$x$，我们可以直接将$k$从$x$中删除。如果$x$是根节点（树中的唯一节点），我们无需担心删除后含有的key过少。以上两种，我们称之为\underline{情况1}。
+另一种方法是先把元素不足的节点合并，然后再删除。考虑从树$t$中删除元素$x$。我们先从最简单的情况入手。
 
-通常情况下，我们从根节点开始，自顶向下沿着一条路径定位到$k$所在的节点$x$。如果$x$是一分支节点，则有如下三种子情况：
+\textbf{情况1}：如果$x$存在于$t$的元素中，并且$t$是叶子节点。我们可以直接将$t$中的$x$删除。如果$t$是树中的唯一节点（根），则无需进一步修复。
 
-\begin{itemize}
-\item 子情况2a：如果$k$前面的子节点$y$含有足够多的key（多于$t$），我们用$y$中$k$的前驱元素$k'$替换掉$x$中的$k$，然后递归地在$y$中将$k'$删除。
+\textbf{情况2}：如果$x$存在于$t$的元素中，但$t$不是叶子节点。则存在三种子情况：
 
-其中，$k$的前驱元素就是子节点$y$中的最后一个key。
+\textbf{情况2a}：如图\ref{fig:btree-del}所示，令$k_i = x$的前驱元素为$k'$，其中$k' = max(t_i)$。如果$t_i$含有足够的元素（$\geq d$），我们用$k'$替换$k_i$，然后递归地从$t_i$中删除$k'$。
 
-图\ref{fig:btree-del-case2a}描述了这种情况。
-
-\begin{figure}[htbp]
-  \centering
-    \includegraphics[scale=0.5]{img/btree-del-case2a.eps}
-    \caption{使用前驱元素替换并递归进行删除} \label{fig:btree-del-case2a}
-\end{figure}
-
-\item 子情况2b：如果$y$含有的key不足，但是$k$的后继子节点$z$含有的key多于$t$，我们可以将$x$中的元素$k$用$z$中$k$的后继元素$k''$来替换，然后再递归地将$z$中的$k''$删除。
-
-其中，$k$的后继元素就是子节点$z$中的第一个key。
-
-图\ref{fig:btree-del-case2b}描述了这种情况。
+\textbf{情况2b}：如果$t_i$中的元素不足，但是子分枝$t_{i+1}$含有足够的元素（$\geq d$），对称地，我们用后继元素$k'' = min(t_{i+1})$替换$k_i$，然后递归地从$t_{i+1}$中删除$k''$。如图\ref{fig:btree-del-case2b}所示。
 
 \begin{figure}[htbp]
   \centering
-    \includegraphics[scale=0.5]{img/btree-del-case2b.eps}
-    \caption{使用后继元素替换并递归进行删除} \label{fig:btree-del-case2b}
+  \includegraphics[scale=0.5]{img/btree-del-case2b.png}
+  \caption{用$k'' = min(t_{i+1})$替换$k_i$，然后递归地从$t_{i+1}$中删除$k''$}
+  \label{fig:btree-del-case2b}
 \end{figure}
 
-\item 子情况2c：否则，如果$y$和$z$含有的key都不足，我们可以将$y$、$k$和$z$合并成一个新节点，它恰好含有$2t-1$个key，此后，我们就可以针对这个新节点进行递归删除。
-
-这里有一个特殊情况：如果合并后的节点不含有任何key，也就是说，$k$是$x$中的唯一key，而$y$和$z$是$x$仅有的两个子节点。这时我们需要将树的高度降低一层。
-\end{itemize}
-
-图\ref{fig:btree-del-case2c}描述了这种情况。
+\textbf{情况2c}：如果$t_i$和$t_{i=1}$的元素都不足（$|t_i| = |t_{i+1}| = d - 1$），我们将$t_i$、$x$、$t_{i+1}$合并成一个新节点。它含有$2d - 1$个元素，可以安全地从中删除。如图\ref{fig:btree-del-merge}所示。
 
 \begin{figure}[htbp]
   \centering
-    \includegraphics[scale=0.5]{img/btree-del-case2c.eps}
-    \caption{合并后再删除} \label{fig:btree-del-case2c}
+  \includegraphics[scale=0.65]{img/btree-del-merge.png}
+  \caption{先合并再删除}
+  \label{fig:btree-del-merge}
 \end{figure}
 
-还有一种情况，如果$k$不是节点$x$中的key，我们需要在$x$中找到一个子节点$c_i$，使得$k$在子树$c_i$中。在对$c_i$进行递归删除前，我们需要预先确定$c_i$至少含有$t$个key。如果含有的key不足，就需要进行如下的调整。
-
-\begin{itemize}
-\item 子情况3a：我们检查$c_i$的前后兄弟节点$c_{i-1}$和$c_{i+1}$。如果任何一个节点包含有足够的key（至少$t$个），我们就将$x$中的一个key向下移动到$c_i$中，并将含有足够多key的兄弟节点中的一个key向上移动到$x$中。同时，我们还需要将兄弟节点中相应的子节点移动到$c_i$中。
-
-这一操作使得$c_i$含有足够多的key以便进行后面的删除。接下来我们可以从$c_i$中递归删除$k$。
-
-图\ref{fig:btree-del-case3a}描述了这一情况。
+合并过程会将元素$k_i$推入子树。如果$t$因此变空（不再含有元素），说明$k_i$是$t$中的唯一元素，并且$t_i$、$t_{i+1}$是仅有的两棵子树。我们可以将树的高度缩减，如图\ref{fig:btree-del-shrink}所示。
 
 \begin{figure}[htbp]
   \centering
-    \includegraphics[scale=0.5]{img/btree-del-case3a.eps}
-    \caption{向右侧的兄弟节点“借”一个key}
-    \label{fig:btree-del-case3a}
+  \includegraphics[scale=0.65]{img/btree-del-shrink.png}
+  \caption{缩减}
+  \label{fig:btree-del-shrink}
 \end{figure}
 
-\item 子情况3b：如果左右两个兄弟节点含有的key都不足，我们可以将$c_i$，$x$中的一个key，和任一兄弟节点合并为一个新节点。然后针对这一节点执行删除操作。
-\end{itemize}
+\textbf{情况3}：如果$t$的元素中不包含$x$，我们需要递归地在某个子分枝$t_i$中删除$x$。如果$t_i$中的元素不足，我们需要处理两种子情况：
 
-图\ref{fig:btree-del-case3b}描述了这一情况。
+\textbf{情况3a}：如果$t_i$的两个相邻节点$t_{i-1}$、$t_{i+1}$中的任何一个含有足够的元素（$\geq d$），我们将$t$中的一个元素移到$t_i$，然后将相邻节点中的一个元素向上移入$t$，将相应的子分枝移入$t_i$。如图\ref{fig:btree-del-borrow}所示，$t_i$获得一个元素。接下来递归地从$t_i$中删除$x$。
 
 \begin{figure}[htbp]
   \centering
-    \includegraphics[scale=0.5]{img/btree-del-case3b.eps}
-    \caption{将$c_i$、$k$和$c_{i+1}$合并为一个新节点}
-    \label{fig:btree-del-case3b}
+  \includegraphics[scale=0.65]{img/btree-del-borrow.png}
+  \caption{从右侧移入一个元素}
+  \label{fig:btree-del-borrow}
 \end{figure}
 
-为了实现删除算法，我们需要先定义一些辅助函数。函数\textproc{Can-Del}检查一个节点是否含有足够多的key以执行删除操作。
+\textbf{情况3b}：如果两个相邻节点中的元素都不足（$|t_{i-1}| = |t_{i+1}| = d - 1$），我们将$t_i$，$t$中的一个元素，和任一相邻节点合并成一个新节点，如图\ref{fig:btree-del-merge-subtree}所示。然后从中递归地删除$x$。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.65]{img/btree-del-merge-subtree.png}
+  \caption{合并$t_i$、$k$、$t_{i+1}$}
+  \label{fig:btree-del-merge-subtree}
+\end{figure}
+
+下面的\textproc{Delete}实现来先合并再删除算法：
 
 \begin{algorithmic}[1]
 \Function{Can-Del}{$T$}
