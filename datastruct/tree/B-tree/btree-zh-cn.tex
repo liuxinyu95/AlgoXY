@@ -120,7 +120,7 @@ data BTree a = BTree [a] [BTree a]
 \section{插入}
 \index{B树!插入} \label{btree-insertion}
 
-插入的思路和二叉搜索树类似，只不过需要面对多个元素和分枝。当向B树$t$插入元素$x$时，我们从根节点开始，查找这样的位置：所有左侧的元素都小于$x$，而右侧的元素大于$x$\footnote{实际上，元素只需支持小于比较和等于比较。参见练习题\ref{ex:btree-leq}。}。如果是未满的叶子节点（$|keys(t)| < 2d - 1$），就将$x$插入到此位置。否则，这一位置会指向一棵子树$t'$，我们递归地将$x$插入到$t'$。
+插入的思路和二叉搜索树类似，只不过需要处理多个元素和分枝。当向B树$t$插入元素$x$时，我们从根节点开始，查找这样的位置\footnote{实际上，元素只需支持小于比较和等于比较。参见练习题\ref{ex:btree-leq}。}：所有左侧的元素都小于$x$，而右侧的元素大于$x$。如果是未满的叶子节点（$|keys(t)| < 2d - 1$），就将$x$插入到此位置。否则，这一位置会指向一棵子树$t'$，我们递归地将$x$插入到$t'$。
 
 \begin{figure}[htbp]
   \centering
@@ -131,11 +131,11 @@ data BTree a = BTree [a] [BTree a]
 
 考虑向图\ref{fig:btree-insert-simple}中的2-3-4树插入元素$x = 22$。因为$20 < 22$，我们转向右侧的子树。它包含26、38、45。因为$22 < 26$，所以接下来转向第一棵子树。它包含21和25。这是一个未满的叶子节点，将22插入到21和25中间。
 
-但如果叶子节点中已经含有$2d - 1$个元素，插入$x$后就会因为过多的元素破坏B树的规则。例如向图\ref{fig:btree-insert-simple}插入18就会遇到这个问题。我们有两种解法。
+但如果叶子节点已经含有$2d - 1$个元素，插入$x$后就会因为元素过多破坏B树的规则。例如向图\ref{fig:btree-insert-simple}插入18就会遇到这个问题。我们有两种解法：先插入再分拆，和先分拆再插入。
 
 \subsection{先插入再分拆}
 
-我们可以将红黑树中的“先插入再修复”方法扩展到B树。我们先不考虑B树的平衡性，将元素插入到适当的位置。接下来，如果树不再平衡了，我们自下而上对含有过多元素的节点进行分拆。首先我们需要定义函数，用以判断节点是否含有过多或过少的元素。
+我们可以将红黑树中的“先插入再修复”方法扩展到B树。先不考虑B树的平衡性，将元素插入到适当的位置。接下来，如果树不再平衡了，我们自下而上对含有过多元素的节点进行分拆。首先需要定义函数，用以判断节点是否含有过多或过少的元素。
 
 \be
 \begin{cases}
@@ -144,7 +144,7 @@ low\  d\ (ks, ts) & = |ks| < d - 1 \\
 \end{cases}
 \ee
 
-如果含有过多元素和分枝，我们定义$split$函数将其在位置$m$分拆为三部分，如图\ref{fig:node-spilt}所示：
+如果含有过多元素和分枝，我们定义$split$函数将其在位置$m$分拆为三部分，如图\ref{fig:node-split}所示：
 
 \begin{figure}[htbp]
   \centering
@@ -173,7 +173,7 @@ unsplit\ (ks_l, ts_l)\ k\ (ks_r, ts_r) = (ks_l \doubleplus [k] \doubleplus ks_r,
 \label{eq:btree-unsplit}
 \ee
 
-下面的函数先将$x$插入树$t$，然后使用$fix$修复平衡，使得其成为度数为$d$的合法B树：
+下面的函数先将$x$插入树$t$，然后使用$fix$修复平衡，使其成为度数为$d$的合法B树：
 
 \be
 insert\ x\ (d, t) = fix\ (d, ins\ t)
@@ -188,7 +188,7 @@ fix\ (d, t) = \begin{cases}
 \end{cases}
 \ee
 
-函数$ins$需要处理两种情况：对于叶子节点，我们可以重用第一章（\autoref{eq:list-ordered-insert}）定义的列表插入函数$insert$来处理；否则，我们需要找到合适的位置，递归地向子分枝插入。为此，我们定义函数$partition$：
+函数$ins$需要处理两种情况：对于叶子节点，我们可以重用第一章（\autoref{eq:list-ordered-insert}）定义的列表插入函数$insert$来处理；否则，我们需要找到合适的位置，递归地向子树插入。为此，我们定义函数$partition$：
 
 \be
 partition\ x\ (ks, ts) = (l, t', r)
@@ -203,12 +203,12 @@ partition\ x\ (ks, ts) = (l, t', r)
 \end{cases}
 \]
 
-这样，所有小于$x$的元素和所在的子分枝都在左侧$l$，所有大于$x$的都在右侧$r$。我们将最后一棵小于$x$的子分枝取出作为$t'$。接下来我们递归地将$x$插入到$t'$中，如图\ref{fig:recursive-insert}所示。
+这样，所有小于$x$的元素和所在的子分枝都在左侧$l$，所有大于$x$的都在右侧$r$。我们将最后一棵小于$x$的子树取出作为$t'$。接下来我们递归地将$x$插入到$t'$中，如图\ref{fig:recursive-insert}所示。
 
 \be
 \begin{array}{rcll}
-  ins\ (ks, \nil) & = & (insert_L\ x\ ks, \nil) & \text{列表插入叶子节点}\\
-  ins\ (ks, ts)   & = & balance\ d\ l\ (ins\ t')\ r & \text{where}\ (l, t', r) = partition\ x\ t \\
+  ins\ (ks, \nil) & = & (insert_L\ x\ ks, \nil) & \text{叶子节点，列表插入}\\
+  ins\ (ks, ts)   & = & balance\ d\ l\ (ins\ t')\ r & \text{其中}\ (l, t', r) = partition\ x\ t \\
 \end{array}
 \ee
 
@@ -219,7 +219,7 @@ partition\ x\ (ks, ts) = (l, t', r)
   \label{fig:recursive-insert}
 \end{figure}
 
-向$t'$插入$x$后，它可能包含来过多的元素，不再满足B树的平衡条件。我们定义函数$balance$来递归地进行分拆修复。
+向$t'$插入$x$后，它可能包含过多元素，不再满足B树平衡条件。我们定义函数$balance$递归地进行分拆修复。
 
 \be
 balance\ d\ (ks_l, ts_l)\ t\ (ks_r, ts_r) = \begin{cases}
@@ -263,7 +263,7 @@ balance d (ks1, ts1) t (ks2, ts2)
                 BTree (ks1 ++ [k] ++ ks2) (ts1 ++ [t1, t2] ++ ts2)
 \end{Haskell}
 
-图\ref{fig:btree-insert-fp}给出了两棵B树的例子，它们都是依次将列表``GMPXACDEJKNORSTUVYZ''中的元素插入B树构造出来的。
+图\ref{fig:btree-insert-fp}给出了两棵B树的例子，它们都是依次将``GMPXACDEJKNORSTUVYZ''中的元素插入B树构造出的。
 
 \begin{figure}[htbp]
   \centering
@@ -276,7 +276,7 @@ balance d (ks1, ts1) t (ks2, ts2)
 
 \subsection{先分拆再插入}
 
-第二种方法是在插入前先分拆节点以避免其含有过多元素。命令式实现常用这一方法。当自顶向下递归插入时，当遇到含有$2d - 1$个元素的节点时，我们将其分拆为三部分，如图\ref{fig:node-split}所示。每个新节点都只含有$d - 1$个元素，即使插入元素后也仍然是合法的B树节点。对于节点$x$，令$K(x)$表示它包含的元素，$T(x)$表示它包含的子分枝。记$x$中的第$i$个元素为$k_i(x)$，第$j$棵子分枝为$t_j(x)$。下面的算法在第$i$个位置对节点$z$进行分拆：
+第二种方法是在插入前先分拆节点以避免其含有过多元素。命令式实现常用这一方法。自顶向下递归插入时，当遇到含有$2d - 1$个元素的节点时，我们将其分拆为三部分，如图\ref{fig:node-split}所示。每个新节点都只含有$d - 1$个元素，即使插入元素后也仍然是合法的B树节点。对于节点$x$，令$K(x)$表示它包含的元素，$T(x)$表示它包含的子分枝。记$x$中的第$i$个元素为$k_i(x)$，第$j$棵子分枝为$t_j(x)$。下面的算法在第$i$个位置对节点$z$进行分拆：
 
 \begin{algorithmic}[1]
 \Procedure{Split}{$z, i$}
@@ -294,7 +294,7 @@ balance d (ks1, ts1) t (ks2, ts2)
 \EndProcedure
 \end{algorithmic}
 
-分拆节点$x = t_i(z)$时，我们将第$d$个元素$k_d(x)$向上推入父节点$z$。如果$z$已经满了，推入元素后就会违反B树的规则。为此，我们需要从根节点起，自顶向下沿着插入的路径进行检查，分拆所有含有$2d - 1$个元素的节点。因为所有的父节点都这样被处理过，所以可以接受推上来的元素。这一方法只需要一轮自顶向下的处理，而无需回溯。如果根节点已满，则需要新建一个节点，并将原来的根节点作为它唯一的一棵子树。下面是插入算法的实现：
+分拆节点$x = t_i(z)$时，我们将第$d$个元素$k_d(x)$向上推入父节点$z$。如果$z$已经满了，推入元素后就会违反B树规则。为此，我们需要从根节点起，自顶向下沿着插入的路径进行检查，分拆所有含有$2d - 1$个元素的节点。因为所有的父节点都这样被处理过，所以可以接受推上来的元素。这一方法只需要一轮自顶向下的处理，无需回溯。如果根节点已满，则需要新建一个节点，并将原来的根节点作为它的唯一子树。下面是插入算法的实现：
 
 \begin{algorithmic}[1]
 \Function{Insert}{$t, k$}
@@ -309,7 +309,7 @@ balance d (ks1, ts1) t (ks2, ts2)
 \EndFunction
 \end{algorithmic}
 
-其中算法\textproc{Insert-Nonfull}假设传入的节点$r$不满。如果$r$是叶子节点，我们将$k$按照其大小插入到相应的位置（练习\ref{ex:btree-binary-search}要求使用二分查找进行插入）。否则，我们找到一个位置，使得$k_i(r) < k < k_{i+1}(r)$，如果分枝$t_i(r)$满了，就进行分拆。然后继续向子分枝插入。
+其中算法\textproc{Insert-Nonfull}假设传入的节点$r$不满。如果$r$是叶子节点，我们按照$k$的大小将其插入到相应位置（练习\ref{ex:btree-binary-search}要求使用二分查找进行插入）。否则，我们找到一个位置，使得$k_i(r) < k < k_{i+1}(r)$，如果分枝$t_i(r)$满了，就进行分拆。然后继续向子分枝插入。
 
 \begin{algorithmic}[1]
 \Function{Insert-Nonfull}{$r, k$}
@@ -373,7 +373,7 @@ data BTree a = Empty
 \end{array}
 \ee
 
-利用左右移动，我们可以实现划分函数$partition\ p\ t$，根据条件$p$把B树$t$分成左中右三部分：$(l, m, r)$。所有$l$中的分枝和$m$都满足$p$，而$r$中的分枝不满足。定义函数$hd = fst \circ head$，它从列表中取出第一对值$(a, b)$，然后在获取$a$。
+利用左右移动，我们可以实现划分函数$partition\ p\ t$，根据条件$p$把B树$t$分成左中右三部分：$(l, m, r)$。所有$l$中的分枝和$m$都满足$p$，而$r$中的分枝不满足。定义函数$hd = fst \circ head$，它从列表中取出第一对值$(a, b)$，然后再获取$a$。
 
 \be
 \begin{array}{lcl}
@@ -408,7 +408,7 @@ partition p t@(BTree l m r)
   | (not . p) (hd l) = partition p (stepL t)
 \end{Haskell}
 
-我们也可以利用$step_l/step_r$把含有过多元素的B树在位置$d$分开。令$n = |l|$表示左侧的“元素/子分枝”数量。$f^n(x)$表示对变量$x$重复应用函数$f$共$n$次。
+我们也可以利用$step_l/step_r$把含有过多元素的节点在位置$d$拆分。令$n = |l|$表示左侧的“元素/子分枝”数量。$f^n(x)$表示对变量$x$重复应用函数$f$共$n$次。
 
 \be
 split\ d\ t = \begin{cases}
@@ -504,7 +504,7 @@ split d t@(BTree l _ _) | n < d = sp $ iterate stepR t !! (d - n)
 \end{Haskell}
 
 \begin{Exercise}
-\Question{我们是否可以用$\leq$使得B树可以含有重复元素？} \label{ex:btree-leq}
+\Question{我们是否可以用$\leq$使得B树含有重复元素？} \label{ex:btree-leq}
 \Question{使用循环消除“先分拆再插入”算法中的递归。}
 \label{ex:btree-loop-insert}
 \Question{我们使用线性查找获得元素插入的位置。请使用二分查找对命令式实现进行改进。算法复杂度会提升么？}
@@ -515,7 +515,7 @@ split d t@(BTree l _ _) | n < d = sp $ iterate stepR t !! (d - n)
 \section{查找}
 \index{B树!查找}
 
-我们可以将二叉搜索树的查找算法扩展到含有多个分枝的B树。二叉树查找只有左右两个方向，但B树有多个方向。考虑在B树$t = (ks ts)$中查找元素$k$，如果$t$是叶子节点（$ts$为空），则问题简化为列表查找；否则，我们用$k$将树$t$划分为三部分：$l = (ks_l, ts_l)$、$t'$、$r = (ks_r, ts_r)$，其中$l$和子分枝$t'$中的所有元素都小于$k$，而$r$中的所有元素大于等于$k$。如果$r$中的第一个元素$ks_r$等于$k$，我们就找到了结果；否则我们递归地在子分枝$t'$中查找。
+我们可以将二叉搜索树的查找算法扩展到含有多个分枝的B树。二叉树查找只有左右两个方向，但B树有多个方向。考虑在B树$t = (ks, ts)$中查找元素$k$，如果$t$是叶子节点（$ts$为空），则问题简化为列表查找；否则，我们用$k$将树$t$划分为三部分：$l = (ks_l, ts_l)$、$t'$、$r = (ks_r, ts_r)$，其中$l$和子分枝$t'$中的所有元素都小于$k$，而$r$中的所有元素大于等于$k$。如果$r$中的第一个元素$ks_r$等于$k$，我们就找到了结果；否则我们递归地在子分枝$t'$中查找。
 
 \be
 \begin{array}{lcl}
@@ -530,7 +530,7 @@ split d t@(BTree l _ _) | n < d = sp $ iterate stepR t !! (d - n)
 \end{array}
 \ee
 
-其中$((ks_l, ts_l), t', (ks_r, ts_r)) = partition\ k\ t$。函数$safeHd$定义为：
+其中$((ks_l, ts_l), t', (ks_r, ts_r)) = partition\ k\ t$。函数\textit{safeHd}定义为：
 
 \[
 \begin{array}{lcl}
@@ -601,13 +601,13 @@ lookup x t = let (l, t', r) = partition (< x) t in
 
 \subsection{先删除再修复}
 
-我们首先扩展二叉搜索树的删除算法到支持多个分枝，然后再修复B树的平衡性。算法包含两步：
+我们首先扩展二叉搜索树的删除算法到多个分枝，然后再修复B树的平衡性。算法包含两步：
 
 \be
 delete\ x\ (d, t) = fix (d, del\ x\ t)
 \ee
 
-其中函数$del$是对多分枝扩展的删除操作。如果$t$是叶子节点，我们从节点中的元素中删除$x$；否则，我们用$x$将树划分为三部分：$(l, t', r)$。其中$l$和$t'$的所有元素小于$x$，而$r$中的其余元素大于等于（$\geq$）$x$。如果$r$不为空，我们取出其中的第一个元素$k_i$，若它等于$x$（即$k_i = x$），我们接下来用子分枝$t'$中的最大元素$k'$（即$k' = max(t')$）取代$k_i$。然后递归地从$t'$中删除$k'$，如图\ref{fig:btree-del}所示。否则（$r$为空或$k_i \neq x$），我们递归地从$t'$中删除$x$。
+其中函数$del$是对多分枝扩展的删除操作。如果$t$是叶子节点，我们从节点元素中删除$x$；否则，我们用$x$将树划分为三部分：$(l, t', r)$。其中$l$和$t'$的所有元素小于$x$，而$r$中的其余元素大于等于（$\geq$）$x$。如果$r$不为空，我们取出其中的第一个元素$k_i$，若它等于$x$（即$k_i = x$），我们接下来用子分枝$t'$中的最大元素$k'$（即$k' = max(t')$）取代$k_i$。然后递归地从$t'$中删除$k'$，如图\ref{fig:btree-del}所示。否则（$r$为空或$k_i \neq x$），我们递归地从$t'$中删除$x$。
 
 \begin{figure}[htbp]
   \centering
@@ -742,7 +742,7 @@ balance d (ks1, ts1) t (ks2, ts2)
   \label{fig:btree-del-case2b}
 \end{figure}
 
-\textbf{情况2c}：如果$t_i$和$t_{i=1}$的元素都不足（$|t_i| = |t_{i+1}| = d - 1$），我们将$t_i$、$x$、$t_{i+1}$合并成一个新节点。它含有$2d - 1$个元素，可以安全地从中删除。如图\ref{fig:btree-del-merge}所示。
+\textbf{情况2c}：如果$t_i$和$t_{i+1}$的元素都不足（$|t_i| = |t_{i+1}| = d - 1$），我们将$t_i$、$x$、$t_{i+1}$合并成一个新节点。它含有$2d - 1$个元素，可以安全地从中删除。如图\ref{fig:btree-del-merge}所示。
 
 \begin{figure}[htbp]
   \centering
@@ -756,7 +756,7 @@ balance d (ks1, ts1) t (ks2, ts2)
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.65]{img/btree-del-shrink.png}
-  \caption{缩减}
+  \caption{缩减高度}
   \label{fig:btree-del-shrink}
 \end{figure}
 
@@ -780,7 +780,7 @@ balance d (ks1, ts1) t (ks2, ts2)
   \label{fig:btree-del-merge-subtree}
 \end{figure}
 
-下面的\textproc{Delete}实现来先合并再删除算法：
+下面的\textproc{Delete}函数实现了先合并再删除算法：
 
 \begin{algorithmic}[1]
 \Function{Delete}{$t, k$}
