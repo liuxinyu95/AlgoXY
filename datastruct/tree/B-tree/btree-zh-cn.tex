@@ -787,197 +787,270 @@ balance d (ks1, ts1) t (ks2, ts2)
 下面的\textproc{Delete}实现来先合并再删除算法：
 
 \begin{algorithmic}[1]
-\Function{Can-Del}{$T$}
-  \State \Return $|K(T)| \ge t$
+\Function{Delete}{$t, k$}
+  \If{$t$ is empty}
+    \State \Return $t$
+  \EndIf
+  \State $i \gets 1$, $n \gets |K(t)|$
+  \While{$i \leq n$ and $k > k_i(t)$}
+    \State $i \gets i + 1$
+  \EndWhile
+  \If{$k = k_i(t)$}
+    \If{$t$ is leaf} \Comment{情况1}
+      \State \Call{Remove}{$K(t), k$}
+    \Else \Comment{情况2}
+      \If{$|K(t_i(t))| \geq d$} \Comment{情况2a}
+        \State $k_i(t) \gets$ \Call{Max}{$t_i(t)$}
+        \State \Call{Delete}{$t_i(t), k_i(t)$}
+      \ElsIf{$|K(t_{i+1}(t))| \geq d$} \Comment{情况2b}
+        \State $k_i(t) \gets$ \Call{Min}{$t_{i+1}(t)$}
+        \State \Call{Delete}{$t_{i+1}(t), k_i(t)$}
+      \Else \Comment{情况2c}
+        \State \Call{Merge-At}{$t, i$}
+        \State \Call{Delete}{$t_i(t), k$}
+        \If{$K(T)$ is empty}
+          \State $t \gets t_i(t)$ \Comment{缩减高度}
+        \EndIf
+      \EndIf
+    \EndIf
+    \State \Return $t$
+  \EndIf
+  \If{$t$ is not leaf}
+    \If{$k > k_n(t)$}
+      \State $i \gets i + 1$
+    \EndIf
+    \If{$|K(t_i(t))| < d$}  \Comment{情况3}
+      \If{$i > 1$ and $|K(t_{i-1}(t))| \geq d$} \Comment{情况3a：左}
+        \State \Call{Insert}{$K(t_i(t)), k_{i-1}(t)$}
+        \State $k_{i-1}(t) \gets$ \Call{Pop-Last}{$K(t_{i-1}(t))$}
+        \If{$t_i(t)$ is not leaf}
+          \State \textproc{Insert}($T(t_i(t))$, \Call{Pop-Back}{$T(t_{i-1}(t))$})
+        \EndIf
+      \ElsIf{$i \leq n$ and $|K(t_{i+1}(t))| \geq d$} \Comment{情况3a：右}
+        \State \Call{Append}{$K(t_i(t)), k_i(t)$}
+        \State $k_i(t) \gets$ \Call{Pop-First}{$K(t_{i+1}(t))$}
+        \If{$t_i(t)$ is not leaf}
+          \State \textproc{Append}($T(t_i(t))$, \Call{Pop-First}{$T(t_{i+1}(t))$})
+        \EndIf
+      \Else \Comment{情况3b}
+        \If{$i = n + 1$}
+          \State $i \gets i - 1$
+        \EndIf
+        \State \Call{Merge-At}{$t, i$}
+      \EndIf
+    \EndIf
+    \State \Call{Delete}{$t_i(t), k$}
+    \If{$K(t)$ is empty} \Comment {缩减高度}
+      \State $t \gets t_1(t)$
+    \EndIf
+  \EndIf
+  \State \Return $t$
 \EndFunction
 \end{algorithmic}
 
-过程\textproc{Merge-Children}($T, i$)将子节点$c_i(T)$、key $k_i(T)$和子节点$c_{i+1}(T)$合并成一个新节点。
+其中\textproc{Merge-At}($t, i$)将分枝$t_i(t)$、元素$k_i(t)$、分枝$t_{i+1}(t)$合并成一个新分枝。
 
 \begin{algorithmic}[1]
-\Procedure{Merge-Children}{$T, i$} \Comment{将$c_i(T)$、$k_i(T)$和$c_{i+1}(T)$合并}
-  \State $x \gets c_i(T)$
-  \State $y \gets c_{i+1}(T)$
-  \State $K(x) \gets K(x) \cup \{k_i(T)\} \cup K(y)$
-  \State $C(x) \gets C(x) \cup C(y)$
-  \State \Call{Remove-At}{$K(T), i$}
-  \State \Call{Remove-At}{$C(T), i+1$}
+\Procedure{Merge-At}{$t, i$}
+  \State $x \gets t_i(t)$
+  \State $y \gets t_{i+1}(t)$
+  \State $K(x) \gets K(x) \doubleplus [k_i(t)] \doubleplus K(y)$
+  \State $T(x) \gets T(x) \doubleplus T(y)$
+  \State \Call{Remove-At}{$K(t), i$}
+  \State \Call{Remove-At}{$T(t), i+1$}
 \EndProcedure
 \end{algorithmic}
 
-这一过程从给定的树$T$中定位到第$i$个子节点和key，将它们和第$i+1$个节点合并，然后从$T$中将第$i$个key和第$i+1$个子节点删除。
+\begin{Exercise}
+  \Question{我们在本节中使用了前驱子分枝中的最大元素$k' = max(t')$替换要删除的元素$k$，然后递归地在$t'$中删除$k'$。还有一种对称的处理方法：用后继分枝中的最小元素来替换$k$。请实现这一方法}
+  \Question{实现列表对B树的删除算法。}
+\end{Exercise}
 
-使用上述函数，我们可以分别处理三种不同的情况，从而定义下面的B树删除算法。
-
-\begin{algorithmic}[1]
-\Function{Delete}{$T, k$}
-  \State $i \gets 1$
-  \While{$i \leq |K(T)|$}
-    \If{$k = k_i(T)$}
-      \If{$T$ is leaf} \Comment{情况1}
-        \State \Call{Remove}{$K(T), k$}
-      \Else \Comment{情况2}
-        \If{\Call{Can-Del}{$c_i(T)$}} \Comment{情况2a}
-          \State $k_i(T) \gets$ \Call{Last-Key}{$c_i(T)$}
-          \State \Call{Delete}{$c_i(T), k_i(T)$}
-        \ElsIf{\Call{Can-Del}{$c_{i+1}(T)$}} \Comment{情况2b}
-          \State $k_i(T) \gets$ \Call{First-Key}{$c_{i+1}(T)$}
-          \State \Call{Delete}{$c_{i+1}(T), k_i(T)$}
-        \Else \Comment{情况2c}
-          \State \Call{Merge-Children}{$T, i$}
-          \State \Call{Delete}{$c_i(T), k$}
-          \If{$K(T) = NIL$}
-            \State $T \gets c_i(T)$ \Comment{缩小高度}
-          \EndIf
-        \EndIf
-      \EndIf
-      \State \Return $T$
-    \ElsIf{$k < k_i(T)$}
-      \State Break
-    \Else
-      \State $i \gets i+1$
-    \EndIf
-  \EndWhile
-  \Statex
-  \If{$T$ is leaf}
-    \State \Return $T$ \Comment{$k$不在$T$中}
-  \EndIf
-  \If{$\lnot$ \Call{Can-Del}{$c_i(T)$}}  \Comment{情况3}
-    \If{$i>1 \land$ \Call{Can-Del}{$c_{i-1}(T)$}} \Comment{情况3a：左侧兄弟}
-      \State \Call{Insert}{$K(c_i(T)), k_{i-1}(T)$}
-      \State $k_{i-1}(T) \gets$ \Call{Pop-Back}{$K(c_{i-1}(T))$}
-      \If{$c_i(T)$ isn't leaf}
-        \State $c \gets$ \Call{Pop-Back}{$C(c_{i-1}(T))$}
-        \State \Call{Insert}{$C(c_i(T)), c$}
-      \EndIf
-    \ElsIf{$i \leq |C(T)| \land$ \Call{Can-Del}{$c_{i_1}(T)$}} \Comment{情况3a：右侧兄弟}
-      \State \Call{Append}{$K(c_i(T)), k_i(T)$}
-      \State $k_i(T) \gets$ \Call{Pop-Front}{$K(c_{i+1}(T))$}
-      \If{$c_i(T)$ isn't leaf}
-        \State $c \gets$ \Call{Pop-Front}{$C(c_{i+1}(T))$}
-        \State \Call{Append}{$C(c_i(T)), c$}
-      \EndIf
-    \Else \Comment{情况3b}
-      \If{$i>1$}
-        \State \Call{Merge-Children}{$T, i-1$}
-      \Else
-        \State \Call{Merge-Children}{$T, i$}
-      \EndIf
-    \EndIf
-  \EndIf
-  \State \Call{Delete}{$c_i(T), k$} \Comment {递归删除}
-  \If{$K(T) = NIL$} \Comment {缩小高度}
-    \State $T \gets c_1(T)$
-  \EndIf
-  \State \Return $T$
-\EndFunction
-\end{algorithmic}
-
-图\ref{fig:result-del1}、\ref{fig:result-del2}和\ref{fig:result-del3}描述了删除中的各个步骤，被改变的节点用灰色显示。
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{删除前的B树}{\includegraphics[scale=0.5]{img/btree-del-before.ps}} \\
-  \subcaptionbox{删除key ‘F’，情况1}{\includegraphics[scale=0.5]{img/btree-del-F.ps}}
-  \caption{B树删除的结果（1）} \label{fig:result-del1}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{删除key ‘M’后，子情况2a}{\includegraphics[scale=0.5]{img/btree-del-M.ps}} \\
-  \subcaptionbox{删除key ‘G’后，子情况2c}{\includegraphics[scale=0.5]{img/btree-del-G.ps}}
-  \caption{B树删除的结果（2）} \label{fig:result-del2}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{删除key ‘D’后，子情况3b，树的高度减少1}{\includegraphics[scale=0.5]{img/btree-del-D.ps}} \\
-  \subcaptionbox{删除key ‘B’后，子情况3a，向右侧兄弟节点”借“一个key}{\includegraphics[scale=0.5]{img/btree-del-B.ps}} \\
-  \subcaptionbox{删除key ‘U’后，子情况3a，向左侧兄弟节点“借”一个key}{\includegraphics[scale=0.5]{img/btree-del-U.ps}}
-  \caption{B树删除的结果（3）} \label{fig:result-del3}
-\end{figure}
-
-下面的Python例子程序实现了B树的删除算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def can_remove(tr):
-    return len(tr.keys) >= tr.t
-
-def replace_key(tr, i, k):
-    tr.keys[i] = k
-    return k
-
-def merge_children(tr, i):
-    tr.children[i].keys += [tr.keys[i]] + tr.children[i+1].keys
-    tr.children[i].children += tr.children[i+1].children
-    tr.keys.pop(i)
-    tr.children.pop(i+1)
-
-def B_tree_delete(tr, key):
-    i = len(tr.keys)
-    while i>0:
-        if key == tr.keys[i-1]:
-            if tr.leaf:  # 情况1
-                tr.keys.remove(key)
-            else: # 情况2
-                if tr.children[i-1].can_remove(): # 情况2a
-                    key = tr.replace_key(i-1, tr.children[i-1].keys[-1])
-                    B_tree_delete(tr.children[i-1], key)
-                elif tr.children[i].can_remove(): # 情况2b
-                    key = tr.replace_key(i-1, tr.children[i].keys[0])
-                    B_tree_delete(tr.children[i], key)
-                else: # 情况2c
-                    tr.merge_children(i-1)
-                    B_tree_delete(tr.children[i-1], key)
-                    if tr.keys==[]: # 缩减树的高度
-                        tr = tr.children[i-1]
-            return tr
-        elif key > tr.keys[i-1]:
-            break
-        else:
-            i = i-1
-    # 情况3
-    if tr.leaf:
-        return tr # key不存在
-    if not tr.children[i].can_remove():
-        # 情况3a
-        if i>0 and tr.children[i-1].can_remove(): # 左侧兄弟
-            tr.children[i].keys.insert(0, tr.keys[i-1])
-            tr.keys[i-1] = tr.children[i-1].keys.pop()
-            if not tr.children[i].leaf:
-                tr.children[i].children.insert(0, tr.children[i-1].children.pop())
-        elif i<len(tr.children) and tr.children[i+1].can_remove(): # 右侧兄弟
-            tr.children[i].keys.append(tr.keys[i])
-            tr.keys[i]=tr.children[i+1].keys.pop(0)
-            if not tr.children[i].leaf:
-                tr.children[i].children.append(tr.children[i+1].children.pop(0))
-        else: # 情况3b
-            if i>0:
-                tr.merge_children(i-1)
-            else:
-                tr.merge_children(i)
-    B_tree_delete(tr.children[i], key)
-    if tr.keys==[]: # 缩减树的高度
-        tr = tr.children[0]
-    return tr
-\end{lstlisting}
-
-
-% ================================================================
-%                 Short summary
-% ================================================================
 \section{小结}
 
-本章中，我们介绍了B树，它是二叉搜索树的一种扩展。我们跳过了有关磁盘访问的背景知识，读者可以参考\cite{CLRS}加以了解。我们给出了主要三种操作：插入、删除和查找的命令式和函数式算法。它们都从根节点向叶子节点进行查找，算法执行的时间和树的高度成正比。由于B树总是平衡的，因此对于含有$n$个元素的B树，这些操作的时间就可以保证是$O(\lg n)$的。
+B树将二叉搜索树扩展到多个分枝，并将分枝的数目限制在一个范围内。B树被用来控制磁盘访问（\cite{CLRS}，第18章）。B树节点的分枝不会过多、过少，平衡性得以保障。大多数的操作都和树的高度成比例，对于含有$n$个节点的B树，其性能为$O(\lg n)$。
 
-\begin{Exercise}
-\begin{itemize}
-\item 在插入时，我们需要找到合适的位置，使得左侧的key都小于待插入的元素，而右侧的key都大于它。实际上，元素只要支持小于和等于比较就可以了。请改动插入算法，放松这一限制。
-\item 我们假设B树中不存在待插入的元素。修改算法使得重复的元素保存在一链表中。
-\item 修改命令式B树算法，去除其中的递归调用。
-\end{itemize}
-\end{Exercise}
+\section{Appendix: Example programs}
+
+B树的定义：
+
+\begin{lstlisting}[language = Bourbaki]
+data BTree<K, Int deg> {
+    [K] keys
+    [BTree<K>] subStrees;
+}
+\end{lstlisting}
+
+分拆节点：
+
+\begin{lstlisting}[language = Bourbaki]
+void split(BTree<K, deg> z, Int i) {
+    var d = deg
+    var x = z.subTrees[i]
+    var y = BTree<K, deg>()
+    y.keys = x.keys[d ...]
+    x.keys = x.keys[ ... d - 1]
+    if not isLeaf(x) {
+      y.subTrees = x.subTrees[d ... ]
+      x.subTrees = x.subTrees[... d]
+    }
+    z.keys.insert(i, x.keys[d - 1])
+    z.subTrees.insert(i + 1, y)
+}
+
+Bool isLeaf(BTree<K, deg> t) = t.subTrees == []
+\end{lstlisting}
+
+插入：
+
+\begin{lstlisting}[language = Bourbaki]
+BTree<K, deg> insert(BTree<K, deg> tr, K key) {
+    var root = tr
+    if isFull(root) {
+        var s = BTree<K, deg>()
+        s.subTrees.insert(0, root)
+        split(s, 0)
+        root = s
+    }
+    return insertNonfull(root, key)
+}
+\end{lstlisting}
+
+插入到未满的节点。
+
+\begin{lstlisting}[language = Bourbaki]
+BTree<K, deg> insertNonfull(BTree<K, deg> tr, K key) {
+    if isLeaf(tr) {
+        orderedInsert(tr.keys, key)
+    } else {
+        Int i = length(tr.keys)
+        while i > 0 and key < tr.keys[i - 1] {
+            i = i - 1
+        }
+        if isFull(tr.subTrees[i]) {
+            split(tr, i)
+            if key > tr.keys[i] then i = i + 1
+        }
+        insertNonfull(tr.subTree[i], key)
+    }
+    return tr
+}
+\end{lstlisting}
+
+其中\texttt{orderedInsert}按序插入元素到列表中。
+
+\begin{lstlisting}[language = Bourbaki]
+void orderedInsert([K] lst, K x) {
+    Int i = length(lst)
+    lst.append(x)
+    while i > 0 and lst[i] < lst[i-1] {
+        (lst[i-1], lst[i]) = (lst[i], lst[i-1])
+        i = i - 1
+    }
+}
+
+Bool isFull(BTree<K, deg> x) = length(x.keys) >= 2 * deg - 1
+Bool isLow(BTree<K, deg> x) = length(x.keys) <= deg - 1
+\end{lstlisting}
+
+迭代查找：
+
+\begin{lstlisting}[language = Bourbaki]
+Optional<(BTree<K, deg>, Int)> lookup(BTree<K, deg> tr, K key) {
+    loop {
+        Int i = 0, n = length(tr.keys)
+        while i < n and key > tr.keys[i] {
+            i = i + 1
+        }
+        if i < n and key == tr.keys[i] then return Optional((tr, i))
+        if isLeaf(tr) {
+            return Optional.None
+        } else {
+            tr = tr.subTrees[i]
+        }
+    }
+}
+\end{lstlisting}
+
+命令式先合并再删除：
+
+\begin{lstlisting}[language = Bourbaki]
+BTree<K, deg> delete(BTree<K, deg> t, K x) {
+    if empty(t.keys) then return t
+    Int i = 0, n = length(t.keys)
+    while i < n and x > t.keys[i] { i = i + 1 }
+    if x == t.keys[i] {
+        if isLeaf(t) {         // case 1
+            removeAt(t.keys, i)
+        } else {
+            var tl = t.subtrees[i]
+            var tr = t.subtrees[i + 1]
+            if not low(tl) {         // case 2a
+                t.keys[i] = max(tl)
+                delete(tl, t.keys[i])
+            } else if not low(tr) {  // case 2b
+                t.keys[i] = min(tr)
+                delete(tr, t.keys[i])
+            } else {                 // case 2c
+                mergeSubtrees(t, i)
+                delete(d, tl, x)
+                if empty(t.keys) then t = tl  // shrink height
+            }
+        return t
+    }
+    if not isLeaf(t) {
+        if x > t.keys[n - 1] then i = i + 1
+        if low(t.subtrees[i]) {
+            var tl = if i == 0 then null else t.subtrees[i - 1]
+            var tr = if i == n then null else t.subtrees[i + 1]
+            if tl != null and (not low(tl)) {   // case 3a, left
+                insert(t.subtrees[i].keys, 0, t.keys[i - 1])
+                t.keys[i - 1] = popLast(tl.keys)
+                if not isLeaf(tl) {
+                    insert(t.subtrees[i].subtrees, 0, popLast(tl.subtrees))
+                }
+            } else if tr != null and (not low(tr)) {  // case 3a, right
+                append(t.subtrees[i].keys, t.keys[i])
+                t.keys[i] = popFirst(tr.keys)
+                if not isLeaf(tr) {
+                    append(t.subtrees[i].subtrees, popFirst(tr.subtrees))
+                }
+            } else {       // case 3b
+                mergeSubtrees(t, if i < n then i else (i - 1))
+                if i == n then i = i - 1
+            }
+        delete(t.subtrees[i], x)
+        if empty(t.keys) then t = t.subtrees[0]    // shrink height
+        }
+    }
+    return t
+}
+\end{lstlisting}
+
+合并子分枝，获取最大、最小元素。
+
+\begin{lstlisting}[language = Bourbaki]
+void mergeSubtrees(BTree<K, deg>, Int i) {
+    t.subtrees[i].keys += [t.keys[i]] + t.subtrees[i + 1].keys
+    t.subtrees[i].subtrees += t.subtrees[i + 1].subtrees
+    removeAt(t.keys, i)
+    removeAt(t.subtrees, i + 1)
+}
+
+K max(BTree<K, deg> t) {
+    while not empty(t.subtrees) {
+        t = last(t.subtrees)
+    }
+    return last(t.keys)
+}
+
+K min(BTree<K, deg> t) {
+    while not empty(t.subtrees) {
+        t = t.subtrees[0]
+    }
+    return t.keys[0]
+}
+\end{lstlisting}
 
 \ifx\wholebook\relax \else
 \begin{thebibliography}{99}
