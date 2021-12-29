@@ -19,7 +19,7 @@ module BTreeLR where
 -- Implement B-Tree with paired head-to-head lists.
 
 import Data.List (nub, sort, delete)
-import Test.QuickCheck
+import Test.QuickCheck    -- cabal install --lib QuickCheck
 import Data.Maybe (listToMaybe)
 
 data BTree a = Empty
