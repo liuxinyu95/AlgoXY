@@ -85,7 +85,7 @@ isDB _ = False
 -- Core function for delete, to solve the uniform black height violation.
 -- refer to CLRS
 fixDB::Color -> RBTree a -> a -> RBTree a -> RBTree a
--- the sibling is black, and has a red sub-tree (CLRS case 3, 4)
+-- Case 1: The sibling of the doubly-black nod is black, and it has a red sub-tree.
 fixDB color a@(Node BB _ _ _) x (Node B (Node R b y c) z d) = Node color (Node B (shiftBlack a) x b) y (Node B c z d)
 fixDB color BBEmpty x (Node B (Node R b y c) z d) = Node color (Node B Empty x b) y (Node B c z d)
 fixDB color a@(Node BB _ _ _) x (Node B b y (Node R c z d)) = Node color (Node B (shiftBlack a) x b) y (Node B c z d)
@@ -94,12 +94,13 @@ fixDB color (Node B a x (Node R b y c)) z d@(Node BB _ _ _) = Node color (Node B
 fixDB color (Node B a x (Node R b y c)) z BBEmpty = Node color (Node B a x b) y (Node B c z Empty)
 fixDB color (Node B (Node R a x b) y c) z d@(Node BB _ _ _) = Node color (Node B a x b) y (Node B c z (shiftBlack d))
 fixDB color (Node B (Node R a x b) y c) z BBEmpty = Node color (Node B a x b) y (Node B c z Empty)
--- the sibling is red (CLRS case 1)
+-- Case 2: The sibling of the doubly-black node is red
 fixDB B a@(Node BB _ _ _) x (Node R b y c) = fixDB B (fixDB R a x b) y c
 fixDB B a@BBEmpty x (Node R b y c) = fixDB B (fixDB R a x b) y c
 fixDB B (Node R a x b) y c@(Node BB _ _ _) = fixDB B a x (fixDB R b y c)
 fixDB B (Node R a x b) y c@BBEmpty = fixDB B a x (fixDB R b y c)
--- the sibling and its 2 children are all black, propagate the blackness up (CLRS case 2)
+-- Case 3: The sibling of the doubly-black node, and its two sub-trees are all black.
+--         Propagate the blackness up.
 fixDB color a@(Node BB _ _ _) x (Node B b y c) = shiftBlack (Node color (shiftBlack a) x (Node R b y c))
 fixDB color BBEmpty x (Node B b y c) = shiftBlack (Node color Empty x (Node R b y c))
 fixDB color (Node B a x b) y c@(Node BB _ _ _) = shiftBlack (Node color (Node R a x b) y (shiftBlack c))
