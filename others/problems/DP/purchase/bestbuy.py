@@ -45,21 +45,20 @@ def bestbuy(catalog, order):
         return (cost + catalog[s][p] + (0 if s in sellers else DELIVER_FEE), sellers + [s])
     print(catalog)
     tab = [(0, []) for _ in catalog]
-    for prod in order:
+    for i, prod in enumerate(order):
         print("buy", prod)
         min_sofar = tab[-1]
-        if min_sofar[0] >= INF:
+        if not min_sofar[1]
             return (INF, [])
         sel = None
-        for i, seller in enumerate(catalog):
+        for j, seller in enumerate(catalog):
             if prod in seller:
-                if sel is None:
-                    sel = i
-                    min_sofar = min(new_plan(min_sofar, prod, i), new_plan(tab[i], prod, i))
+                if len(min_sofar[1]) <= i:
+                    min_sofar = min(new_plan(min_sofar, prod, j), new_plan(tab[i], prod, j))
                 else:
-                    min_sofar = min(min_sofar, new_plan(tab[i], prod, i))
-            tab[i] = (INF,  []) if sel is None else min_sofar
-            print("tab[", i, "]:", tab[i])
+                    min_sofar = min(min_sofar, new_plan(tab[j], prod, j))
+            tab[i] = (INF,  []) if len(min_sofar[1]) <= i else min_sofar
+            print("tab[", j, "]:", tab[j])
         print("tab:", tab)
     return tab[-1]
 
