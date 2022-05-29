@@ -48,16 +48,15 @@ def bestbuy(catalog, order):
     for i, prod in enumerate(order):
         print("buy", prod)
         min_sofar = tab[-1]
-        if not min_sofar[1]
+        if min_sofar[0] >= INF:
             return (INF, [])
-        sel = None
         for j, seller in enumerate(catalog):
             if prod in seller:
                 if len(min_sofar[1]) <= i:
-                    min_sofar = min(new_plan(min_sofar, prod, j), new_plan(tab[i], prod, j))
+                    min_sofar = min(new_plan(min_sofar, prod, j), new_plan(tab[j], prod, j))
                 else:
                     min_sofar = min(min_sofar, new_plan(tab[j], prod, j))
-            tab[i] = (INF,  []) if len(min_sofar[1]) <= i else min_sofar
+            tab[j] = (INF,  []) if len(min_sofar[1]) <= i else min_sofar
             print("tab[", j, "]:", tab[j])
         print("tab:", tab)
     return tab[-1]
@@ -112,9 +111,9 @@ def test():
             order = random.sample(prods, m)
             (p1, s1) = bestbuy(catalog, order)
             (p2, s2) = findbest(catalog, order)
-            if p1 != costof(catalog, order, s1):
+            if p1 <= INF and p1 != costof(catalog, order, s1):
                 print("DP err, cost=", p1, "sellers:", s1)
-            if p2 != costof(catalog, order, s2):
+            if p2 <= INF and p2 != costof(catalog, order, s2):
                 print("DFS err, cost=", p2, "sellers:", s2)
             if p1 != p2:
                 print("order:", order)
@@ -144,5 +143,5 @@ ORDER = ['speaker', 'mouse', 'eraser', 'cover', 'notebook']
 # DFS: cost= 108 sellers: [3, 1, 1, 0, 0]
 
 if __name__ =="__main__":
-    #test()
-    print(bestbuy(CATALOG, ORDER))
+    test()
+    #print(bestbuy(CATALOG, ORDER))
