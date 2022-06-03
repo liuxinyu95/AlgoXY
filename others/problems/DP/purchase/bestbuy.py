@@ -130,7 +130,7 @@ def test():
         print(catalog)
         prods = prod_of(catalog)
         for _ in range(10): # happy case
-            m = min(6, random.randrange(1, len(prods)))
+            m = 1 if len(prods) == 1 else min(6, random.randrange(1, len(prods)))
             order = random.sample(prods, m)
             (p1, s1) = bestbuy(catalog, order)
             (p2, s2) = findbest(catalog, order)
