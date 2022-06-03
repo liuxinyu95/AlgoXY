@@ -38,6 +38,24 @@ DELIVER_FEE = 8
 # Buy m product: o[1], o[2], ..., o[m] from n sellers: s[1], s[2], ..., s[n]
 
 def bestbuy(catalog, order):
+    def update(os1, os2, seller):
+        delta = 0
+        plan = {}
+        for o in os2:
+            if o not in tab[os1]:
+                plan[o] = seller
+            else:
+                prev_seller = tab[os1][o]
+                if o not in catalog[seller]:
+                    plan[o] = prev_seller
+                else:
+                    d = catalog[prev_seller][o] - catalog[seller][o]
+                    if d > 0:
+                        delta = delta + d
+                    plan[o] = seller if d > 0 else prev_seller
+        if os1 == os2 and delta < DELIVER_FEE:
+            return tab[os1]
+        return plan
     print("catalog", catalog)
     print("order", order)
     tab = {}
@@ -50,28 +68,7 @@ def bestbuy(catalog, order):
         newtab = {}
         for objs in tab:
             newobjs = osi | objs # what we can buy additionally
-            if newobjs in tab:
-                delta = 0
-                plan = {}
-                for o, s in tab[newobjs].items():
-                    d = catalog[s][o] - (INF if o not in osi else seller[o])
-                    plan[o] = i if d > 0 else s
-                    if d > 0:
-                        delta = delta + d
-                if delta > DELIVER_FEE:
-                    tab[newobjs] = plan
-            else:
-                old_plan = tab[objs]
-                print("plan", tab[objs])
-                plan = {}
-                for o in newobjs:
-                    if o not in tab[objs]:
-                        plan[o] = i
-                    elif o not in seller:
-                        plan[o] = tab[objs][o]
-                    else:
-                        plan[o] = i if seller[o] < catalog[tab[objs][o]][o] else tab[objs][o]
-                newtab[newobjs] = plan
+            newtab[newobjs] = update(objs, newobjs, i)
         for objs in newtab:
             tab[objs] = newtab[objs]
         print("tab:", tab)
@@ -125,13 +122,16 @@ def test():
             prods = prods | set(s.keys())
         return prods
 
+    def gen_order(prods):
+        n = len(prods)
+        return random.sample(prods, 1 if n == 1 else min(6, random.randrange(1, n)))
+
     for _ in range(10):
         catalog = gen_catalog()
         print(catalog)
         prods = prod_of(catalog)
         for _ in range(10): # happy case
-            m = 1 if len(prods) == 1 else min(6, random.randrange(1, len(prods)))
-            order = random.sample(prods, m)
+            order = gen_order(prods)
             (p1, s1) = bestbuy(catalog, order)
             (p2, s2) = findbest(catalog, order)
             if p1 <= INF and p1 != costof(catalog, order, s1):
@@ -144,8 +144,7 @@ def test():
                 print("DP : cost=", p1, "sellers:", s1)
                 print("DFS: cost=", p2, "sellers:", s2)
         # negative case
-        m = 1 if len(prods) == 1 else min(6, random.randrange(1, len(prods)))
-        order = random.sample(prods, m) + ["null thing"]
+        order = gen_order(prods) + ["null thing"]
         (p1, s1) = bestbuy(catalog, order)
         (p2, s2) = findbest(catalog, order)
         if s1:
