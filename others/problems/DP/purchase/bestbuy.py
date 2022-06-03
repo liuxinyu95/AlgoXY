@@ -144,7 +144,7 @@ def test():
                 print("DP : cost=", p1, "sellers:", s1)
                 print("DFS: cost=", p2, "sellers:", s2)
         # negative case
-        m = min(6, random.randrange(1, len(prods)))
+        m = 1 if len(prods) == 1 else min(6, random.randrange(1, len(prods)))
         order = random.sample(prods, m) + ["null thing"]
         (p1, s1) = bestbuy(catalog, order)
         (p2, s2) = findbest(catalog, order)
