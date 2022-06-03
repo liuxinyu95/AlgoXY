@@ -38,48 +38,29 @@ DELIVER_FEE = 8
 # Buy m product: o[1], o[2], ..., o[m] from n sellers: s[1], s[2], ..., s[n]
 
 def bestbuy(catalog, order):
+    def cost(plan):
+        return len(set(plan.values())) * DELIVER_FEE + sum([catalog[s][o] for (o, s) in plan.items()])
     def update(os1, os2, seller):
-        delta = 0
         plan = {}
         for o in os2:
             if o not in tab[os1]:
                 plan[o] = seller
             else:
                 prev_seller = tab[os1][o]
-                if o not in catalog[seller]:
-                    plan[o] = prev_seller
-                else:
-                    d = catalog[prev_seller][o] - catalog[seller][o]
-                    if d > 0:
-                        delta = delta + d
-                    plan[o] = seller if d > 0 else prev_seller
-        if os1 == os2 and delta < DELIVER_FEE:
-            return tab[os1]
-        return plan
-    print("catalog", catalog)
-    print("order", order)
+                plan[o] = seller if o in catalog[seller] and catalog[seller][o] < catalog[prev_seller][o] else prev_seller
+        return plan if (os2 not in tab) or cost(plan) < cost(tab[os2]) else tab[os2]
     tab = {}
     os = frozenset(order)
     for i, seller in enumerate(catalog):
         osi = os & frozenset(seller.keys())   # what can buy from seller i.
-        print("seller", i, osi)
-        if osi not in tab:
-            tab[osi] = dict(zip(list(osi),  [i] * len(osi)))
-        newtab = {}
-        for objs in tab:
-            newobjs = osi | objs # what we can buy additionally
-            newtab[newobjs] = update(objs, newobjs, i)
-        for objs in newtab:
-            tab[objs] = newtab[objs]
-        print("tab:", tab)
-    if os in tab:
-        print("os",  os)
-        print("tab[os]", tab[os])
-        sellers = [tab[os][o] for o in order]
-        print("reordered to:", order, sellers)
-        return (costof(catalog, order, sellers), sellers)
-    else:
-        return (INF, [])
+        if osi:
+            if osi not in tab:
+                tab[osi] = dict(zip(list(osi),  [i] * len(osi)))
+            row = list(tab.keys())
+            for objs in row:
+                newobjs = osi | objs  # what we can buy additionally from seller i
+                tab[newobjs] = update(objs, newobjs, i)
+    return (cost(tab[os]), [tab[os][o] for o in order]) if os in tab else (INF, [])
 
 # Method 2, recursive DFS
 
@@ -139,10 +120,9 @@ def test():
             if p2 <= INF and p2 != costof(catalog, order, s2):
                 print("DFS err, cost=", p2, "sellers:", s2)
             if p1 != p2:
-                print("order:", order)
-                print("DP != DFS")
-                print("DP : cost=", p1, "sellers:", s1)
-                print("DFS: cost=", p2, "sellers:", s2)
+                print("err: DP != DFS, catalog:", catalog, "order:", order)
+                print("err: DP cost=", p1, "sellers:", s1)
+                print("err: DFS cost=", p2, "sellers:", s2)
         # negative case
         order = gen_order(prods) + ["null thing"]
         (p1, s1) = bestbuy(catalog, order)
@@ -154,14 +134,15 @@ def test():
     print("test done")
 
 # example case:
-CATALOG = [{'ear phone': 46, 'charger': 7},
-           {'tape': 37, 'touch pad': 9, 'charger': 45},
-           {'keyboard': 18, 'clip': 21},
-           {'eraser': 2, 'keyboard': 14, 'mouse': 47}]
+CATALOG = [{'post': 44, 'cable': 48},
+           {'speaker': 13},
+           {'cable': 49, 'speaker': 14, 'tape': 43}]
 
-ORDER =  ['keyboard', 'clip', 'mouse', 'charger']
-# DFS: cost= 113 sellers: [3, 2, 3, 0]
+ORDER =  ['speaker', 'cable']
+
+# err: DP cost= 77 sellers: [1, 0]
+# err: DFS cost= 71 sellers: [2, 2]
 
 if __name__ =="__main__":
-    test()
-    #print(bestbuy(CATALOG, ORDER))
+    #test()
+    print(bestbuy(CATALOG, ORDER))
