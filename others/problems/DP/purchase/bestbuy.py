@@ -36,30 +36,53 @@ DELIVER_FEE = 8
 # Method 1, Dynamic Programming
 #
 # Buy m product: o[1], o[2], ..., o[m] from n sellers: s[1], s[2], ..., s[n]
-#   DP table: tab[1..n].
-#   For each product o[i], tab[j] is the min cost to buy the first i products among the first j sellers.
 
 def bestbuy(catalog, order):
-    def new_plan(plan, p, s):
-        cost, sellers = plan
-        return (cost + catalog[s][p] + (0 if s in sellers else DELIVER_FEE), sellers + [s])
-    print(catalog)
-    tab = [(0, []) for _ in catalog]
-    for i, prod in enumerate(order):
-        print("buy", prod)
-        min_sofar = tab[-1]
-        if min_sofar[0] >= INF:
-            return (INF, [])
-        for j, seller in enumerate(catalog):
-            if prod in seller:
-                if len(min_sofar[1]) <= i:
-                    min_sofar = min(new_plan(min_sofar, prod, j), new_plan(tab[j], prod, j))
-                else:
-                    min_sofar = min(min_sofar, new_plan(tab[j], prod, j))
-            tab[j] = (INF,  []) if len(min_sofar[1]) <= i else min_sofar
-            print("tab[", j, "]:", tab[j])
+    print("catalog", catalog)
+    print("order", order)
+    tab = {}
+    os = frozenset(order)
+    for i, seller in enumerate(catalog):
+        osi = os & frozenset(seller.keys())   # what can buy from seller i.
+        print("seller", i, osi)
+        if osi not in tab:
+            tab[osi] = dict(zip(list(osi),  [i] * len(osi)))
+        newtab = {}
+        for objs in tab:
+            newobjs = osi | objs # what we can buy additionally
+            if newobjs in tab:
+                delta = 0
+                plan = {}
+                for o, s in tab[newobjs].items():
+                    d = catalog[s][o] - (INF if o not in osi else seller[o])
+                    plan[o] = i if d > 0 else s
+                    if d > 0:
+                        delta = delta + d
+                if delta > DELIVER_FEE:
+                    tab[newobjs] = plan
+            else:
+                old_plan = tab[objs]
+                print("plan", tab[objs])
+                plan = {}
+                for o in newobjs:
+                    if o not in tab[objs]:
+                        plan[o] = i
+                    elif o not in seller:
+                        plan[o] = tab[objs][o]
+                    else:
+                        plan[o] = i if seller[o] < catalog[tab[objs][o]][o] else tab[objs][o]
+                newtab[newobjs] = plan
+        for objs in newtab:
+            tab[objs] = newtab[objs]
         print("tab:", tab)
-    return tab[-1]
+    if os in tab:
+        print("os",  os)
+        print("tab[os]", tab[os])
+        sellers = [tab[os][o] for o in order]
+        print("reordered to:", order, sellers)
+        return (costof(catalog, order, sellers), sellers)
+    else:
+        return (INF, [])
 
 # Method 2, recursive DFS
 
@@ -131,16 +154,14 @@ def test():
             print("DFS negative case err:", (p2, s2))
     print("test done")
 
-# failed case:
-CATALOG = [{'notebook': 10, 'eraser': 14, 'cover': 11},
-           {'eraser': 10, 'mouse': 11, 'notebook': 26, 'charger': 49},
-           {'ink': 32, 'cover': 9},
-           {'speaker': 42}]
+# example case:
+CATALOG = [{'ear phone': 46, 'charger': 7},
+           {'tape': 37, 'touch pad': 9, 'charger': 45},
+           {'keyboard': 18, 'clip': 21},
+           {'eraser': 2, 'keyboard': 14, 'mouse': 47}]
 
-ORDER = ['speaker', 'mouse', 'eraser', 'cover', 'notebook']
-# DP != DFS
-# DP : cost= 114 sellers: [3, 1, 1, 2, 0]
-# DFS: cost= 108 sellers: [3, 1, 1, 0, 0]
+ORDER =  ['keyboard', 'clip', 'mouse', 'charger']
+# DFS: cost= 113 sellers: [3, 2, 3, 0]
 
 if __name__ =="__main__":
     test()
