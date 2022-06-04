@@ -37,6 +37,10 @@ DELIVER_FEE = 8
 # Method 1, Dynamic Programming
 #
 # Buy m product: o[1], o[2], ..., o[m] from n sellers: s[1], s[2], ..., s[n]
+#
+# Optimal sub-structure:
+#  solve(S, O) = min { D + price_of(s[n], os) + solve(S - {s[n]}, O - os)
+#                          | os in subsets({o | o in O, s[n] sell})}
 
 def bestbuy(catalog, order):
     tab = {frozenset([]):(0, {})}
