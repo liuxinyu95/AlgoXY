@@ -40,7 +40,7 @@ DELIVER_FEE = 8
 #
 # Optimal sub-structure:
 #  solve(S, O) = min { D + price_of(s[n], os) + solve(S - {s[n]}, O - os)
-#                          | os in subsets({o | o in O, s[n] sell})}
+#                          | os in subsets({o | o in O, s[n] sell o})}
 
 def bestbuy(catalog, order):
     tab = {frozenset([]):(0, {})}
