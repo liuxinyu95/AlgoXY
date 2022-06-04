@@ -43,7 +43,6 @@ def bestbuy(catalog, order):
     os = frozenset(order)
     for i, seller in enumerate(catalog):
         for osi in subsets(os & frozenset(seller.keys())):
-            print("osi", osi)
             if osi:
                 v = DELIVER_FEE + sum([seller[o] for o in osi])
                 sofar = list(tab.keys())
@@ -53,7 +52,6 @@ def bestbuy(catalog, order):
                         tab[osij] = min1st(tab[osij] if osij in tab else (INF, {}),
                                            merge(tab[osj], (v, dict(zip(osi, itertools.repeat(i))))))
 
-        print("tab:", tab)
     if os not in tab:
         return (INF, [])
     v, plan = tab[os]
@@ -118,7 +116,7 @@ def test():
 
     for _ in range(10):
         catalog = gen_catalog()
-        print(catalog)
+        #print(catalog)
         prods = prod_of(catalog)
         for _ in range(10): # happy case
             order = gen_order(prods)
