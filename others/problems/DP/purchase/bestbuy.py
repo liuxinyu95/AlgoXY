@@ -28,6 +28,7 @@ and a purchase list
 find the cheapest buy plan, each seller charges 8$ delivery fee
 """
 
+import itertools
 import random
 
 INF = 1000000
@@ -38,29 +39,37 @@ DELIVER_FEE = 8
 # Buy m product: o[1], o[2], ..., o[m] from n sellers: s[1], s[2], ..., s[n]
 
 def bestbuy(catalog, order):
-    def cost(plan):
-        return len(set(plan.values())) * DELIVER_FEE + sum([catalog[s][o] for (o, s) in plan.items()])
-    def update(os1, os2, seller):
-        plan = {}
-        for o in os2:
-            if o not in tab[os1]:
-                plan[o] = seller
-            else:
-                prev_seller = tab[os1][o]
-                plan[o] = seller if o in catalog[seller] and catalog[seller][o] < catalog[prev_seller][o] else prev_seller
-        return plan if (os2 not in tab) or cost(plan) < cost(tab[os2]) else tab[os2]
-    tab = {}
+    tab = {frozenset([]):(0, {})}
     os = frozenset(order)
     for i, seller in enumerate(catalog):
-        osi = os & frozenset(seller.keys())   # what can buy from seller i.
-        if osi:
-            if osi not in tab:
-                tab[osi] = dict(zip(list(osi),  [i] * len(osi)))
-            row = list(tab.keys())
-            for objs in row:
-                newobjs = osi | objs  # what we can buy additionally from seller i
-                tab[newobjs] = update(objs, newobjs, i)
-    return (cost(tab[os]), [tab[os][o] for o in order]) if os in tab else (INF, [])
+        for osi in subsets(os & frozenset(seller.keys())):
+            print("osi", osi)
+            if osi:
+                v = DELIVER_FEE + sum([seller[o] for o in osi])
+                sofar = list(tab.keys())
+                for osj in sofar:
+                    if osi.isdisjoint(osj):
+                        osij = frozenset(osi | osj)
+                        tab[osij] = min1st(tab[osij] if osij in tab else (INF, {}),
+                                           merge(tab[osj], (v, dict(zip(osi, itertools.repeat(i))))))
+
+        print("tab:", tab)
+    if os not in tab:
+        return (INF, [])
+    v, plan = tab[os]
+    return (v, [plan[o] for o in order])
+
+def subsets(s):
+    return itertools.chain(*[map(set, itertools.combinations(s, i)) for i in range(1 + len(s))])
+
+def merge(a, b):
+    d = a[1].copy()
+    for k, v in b[1].items():
+        d[k] = v
+    return (a[0] + b[0], d)  # return (a[0] + b[0], a[1] | b[1])  # available after 3.10
+
+def min1st(a, b):
+    return a if a[0] < b[0] else b
 
 # Method 2, recursive DFS
 
@@ -144,5 +153,5 @@ ORDER =  ['speaker', 'cable']
 # err: DFS cost= 71 sellers: [2, 2]
 
 if __name__ =="__main__":
-    #test()
-    print(bestbuy(CATALOG, ORDER))
+    test()
+    #print(bestbuy(CATALOG, ORDER))
