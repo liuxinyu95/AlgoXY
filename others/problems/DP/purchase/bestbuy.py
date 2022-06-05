@@ -57,8 +57,9 @@ def bestbuy(catalog, order):
                 for osj in sofar:
                     if osi.isdisjoint(osj):
                         osij = frozenset(osi | osj)
-                        tab[osij] = min1st(tab[osij] if osij in tab else (INF, {}),
-                                           merge(tab[osj], (v, dict(zip(osi, itertools.repeat(i))))))
+                        tab[osij] = min(tab[osij] if osij in tab else (INF, {}),
+                                        merge(tab[osj], (v, dict(zip(osi, itertools.repeat(i))))),
+                                        key = lambda p: p[0])
 
     if os not in tab:
         return (INF, [])
@@ -73,9 +74,6 @@ def merge(a, b):
     for k, v in b[1].items():
         d[k] = v
     return (a[0] + b[0], d)  # return (a[0] + b[0], a[1] | b[1])  # available after 3.10
-
-def min1st(a, b):
-    return a if a[0] < b[0] else b
 
 # Method 2, recursive DFS
 
