@@ -15,17 +15,20 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Given a seller product price catalog
+Given a seller, product, price catalog
 
 1: {A:20, B:15, C:22, ...}
 2: {B:10, C:25, ....}
 ....
 
-and a purchase list
+Each seller charge 8$ delivery fee. For a purchase list
 
 "A, B, C, ..."
 
-find the cheapest buy plan, each seller charges 8$ delivery fee
+find the cheapest buy plan, each seller charges 8$ delivery fee.
+
+Suppose the stock is unlimited, we can extend the purchase list
+to "A:3, B:10, C:1, ..." when buy multiple units for each product.
 """
 
 import itertools
@@ -36,20 +39,21 @@ DELIVER_FEE = 8
 
 # Method 1, Dynamic Programming
 #
-# Buy m product: o[1], o[2], ..., o[m] from n sellers: s[1], s[2], ..., s[n]
+# products O = { o[1], o[2], ..., o[m] }, sellers S = { s[1], s[2], ..., s[n] },
+# deliver fee: D
 #
 # Optimal sub-structure:
-#  solve(S, O) = min { D + price_of(s[n], os) + solve(S - {s[n]}, O - os)
-#                          | os in subsets({o | o in O, s[n] sell o})}
+#   solve(S, O) = min { D + price_of(s[n], os) + solve(S - {s[n]}, O - os)
+#                          | os in subsets({o | o in O, s[n] sell o}) }
 
 def bestbuy(catalog, order):
     tab = {frozenset([]):(0, {})}
     os = frozenset(order)
     for i, seller in enumerate(catalog):
+        sofar = list(tab.keys())
         for osi in subsets(os & frozenset(seller.keys())):
             if osi:
                 v = DELIVER_FEE + sum([seller[o] for o in osi])
-                sofar = list(tab.keys())
                 for osj in sofar:
                     if osi.isdisjoint(osj):
                         osij = frozenset(osi | osj)
