@@ -43,7 +43,7 @@
 \item \textbf{其它操作}（如合并两个堆）也保持堆的性质。
 \end{enumerate}
 
-我们称顶部保存最小元素的堆为\textbf{最小堆}，顶部保存最大元素的堆为\textbf{最大堆}。可以用树来实现堆。将最小（或最大）元素置于根节点。获取“堆顶”元素时，可以直接返回根节点中的数据。执行“弹出”操作时，将根节点删除，然后从子节点重新构建树。我们称使用二叉树实现的堆为\textbf{二叉堆}。本章介绍三种不同的二叉堆。
+我们称顶部保存最小元素的堆为\textbf{小顶堆}，顶部保存最大元素的堆为\textbf{大顶堆}。可以用树来实现堆。将最小（或最大）元素置于根节点。获取“堆顶”元素时，可以直接返回根节点中的数据。执行“弹出”操作时，将根节点删除，然后从子节点重新构建树。我们称使用二叉树实现的堆为\textbf{二叉堆}。本章介绍三种不同的二叉堆。
 
 \section{由数组实现的隐式二叉堆}
 \label{ibheap} \index{隐式二叉堆} \index{完全二叉树}
@@ -52,7 +52,7 @@
 
 \begin{figure}[htbp]
 \centering
-   \includegraphics[scale=0.5]{img/tree-array-map-tree}
+   \includegraphics[scale=0.45]{img/tree-array-map-tree}
    \includegraphics[scale=0.5]{img/binary-tree-in-array}
  \caption{完全二叉树到数组的映射} \label{fig:tree-array-map}
 \end{figure}
@@ -69,35 +69,26 @@ right(i)  & = 2i + 1 \\
 
 父节点和子树的访问可以通过位运算实现，见本章附录中的例子。
 
-
-% ================================================================
-%                 Heapify
-% ================================================================
-\subsection{Heapify}
+\subsection{堆调整}
 \index{二叉堆!Heapify}
 
-堆算法中最重要的部分就是维护堆的性质：即顶部元素为最小（或最大）元素。
-
-对于用数组表示的二叉堆，给定任何索引为$i$的节点，我们可以检查它的两个子节点是否都不小于父节点。如果不满足，我们可以通过不断交换、检查，使得父节点保存最小值\cite{CLRS}。注意：这里我们假设$i$的两棵子树都是合法的堆。
-
-下面的算法从给定的数组索引开始，迭代检查所有的子节点以保持最小堆性质。
+堆调整\footnote{Heapify，也译作堆化。}是维护堆性质的过程，使得堆顶元素为最小（或最大）。由于堆背后的数据模型是二叉树，我们可以利用树的递归特性，获得一个增强的堆性质：使得每棵子树的根节点都是最小（或最大）的。也就是说任何子树都代表一个子堆。简单起见，我们考虑小顶堆。对于用数组表示的二叉堆，任给数组下标$i$，我们检查$i$对应的所有子节点的值是否都不小于($\geq$)它。如果不满足则交换，使得父节点总保存最小值\cite{CLRS}，并对以$i$为根的所有子树递归重复这个过程。如下算法定义了堆调整过程：
 
 \begin{algorithmic}[1]
 \Function{Heapify}{$A, i$}
   \State $n \gets |A|$
   \Loop
-    \State $l \gets$ \Call{Left}{$i$}
-    \State $r \gets$ \Call{Right}{$i$}
-    \State $smallest \gets i$
-    \If{$l < n \land A[l] < A[i]$}
-      \State $smallest \gets l$
+    \State $s \gets i$ \Comment{$s$指向最小}
+    \State $l \gets$ \Call{Left}{$i$}, $r \gets$ \Call{Right}{$i$}
+    \If{$l \leq n$ 且 $A[l] < A[i]$}
+      \State $s \gets l$
     \EndIf
-    \If{$r < n \land A[r] < A[smallest]$}
-      \State $smallest \gets r$
+    \If{$r \leq n$ 且 $A[r] < A[s]$}
+      \State $s \gets r$
     \EndIf
-    \If{$smallest \neq i$}
-      \State \textproc{Exchange} $A[i] \leftrightarrow A[smallest]$
-      \State $i \gets smallest$
+    \If{$s \neq i$}
+      \State \textproc{Exchange} $A[i] \leftrightarrow A[s]$
+      \State $i \gets s$
     \Else
       \State \Return
     \EndIf
@@ -105,37 +96,7 @@ right(i)  & = 2i + 1 \\
 \EndFunction
 \end{algorithmic}
 
-算法接受一个数组$A$和一个索引$i$，$A[i]$的两个子节点都不应比它小。否则，我选出最小的元素保存在$A[i]$，并将较大的元素交换至子树，然后算法自顶向下检查并修复堆的性质直到叶子节点或者没有发现任何违反堆性质的情况。
-
-\textproc{Heapify}的时间复杂度为$O(\lg n)$，其中$n$是元素的总数。这是因为上述算法中的循环次数和完全二叉树的高度成正比。
-
-在具体的实现中，元素之间的比较运算可以用参数的形式传入，这样同一实现就即可以支持最小堆，也支持最大堆。下面的C例子程序实现了这一算法。
-
-\begin{lstlisting}
-typedef int (*Less)(Key, Key);
-int less(Key x, Key y) { return x < y; }
-int notless(Key x, Key y) { return !less(x, y); }
-
-void heapify(Key* a, int i, int n, Less lt) {
-    int l, r, m;
-    while (1) {
-        l = LEFT(i);
-        r = RIGHT(i);
-        m = i;
-        if (l < n && lt(a[l], a[i]))
-            m = l;
-        if (r < n && lt(a[r], a[m]))
-            m = r;
-        if (m != i) {
-            swap(a, i, m);
-            i = m;
-        } else
-            break;
-    }
-}
-\end{lstlisting}
-
-图\ref{fig:heapify}描述了\textproc{Heapify}从索引2开始，按照最大堆处理数组$\{16, 4, 10, 14, 7, 9, 3, 2, 8, 1\}$过程中的各个步骤。数组最终变换为$\{16, 14, 10, 8, 7, 9, 3, 2, 4, 1\}$。
+对于数组$A$和索引$i$，堆性质要求$A[i]$的子节点都不应比它小。否则，我选出最小的元素保存在$A[i]$，并将较大的元素交换至子树，然后自顶向下检查并调整堆，使得所有子树都满足堆性质。\textproc{Heapify}的时间复杂度为$O(\lg n)$，其中$n$是元素个数。这是因为算法中的循环次数和完全二叉树的高度成正比。图\ref{fig:heapify}描述了\textproc{Heapify}从索引2开始，按照最大堆处理数组\{16, 4, 10, 14, 7, 9, 3, 2, 8, 1\}过程中的各个步骤。数组最终变换为\{16, 14, 10, 8, 7, 9, 3, 2, 4, 1\}。
 
 \begin{figure}[htbp]
     \centering
@@ -1189,6 +1150,29 @@ Int left(Int i) = (i << 1) + 1
 Int right(Int i) = (i + 1) << 1
 \end{lstlisting}
 
+堆调整的例子实现，元素比较运算抽象为参数：
+
+\begin{lstlisting}[language = Bourbaki]
+void heapify([K] a, Int i, Less<K, K> lt) {
+    Int l, r, m
+    Int n = length(a)
+    loop {
+        m = i
+        l = left(i)
+        r = right(i)
+        if l < n and lt(a[l], a[i])
+            m = l
+        if r < n and lt(a[r], a[m])
+            m = r
+        if m != i {
+            swap(a, i, m);
+            i = m
+        } else {
+            break
+        }
+    }
+}
+\end{lstlisting}
 
 \ifx\wholebook\relax \else
 \begin{thebibliography}{99}
