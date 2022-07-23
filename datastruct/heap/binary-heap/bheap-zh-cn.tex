@@ -150,35 +150,24 @@ S = n (\frac{1}{4} + 2 \frac{1}{8} + 3 \frac{1}{16} + ...)
 
 \subsection{堆的基本操作}
 
-堆的通用定义要求我们提供一些基本操作使得用户可以获取或者改变数据。
+堆的基本操作包括获取顶部，弹出顶部，寻找最小（或最大）的前$k$个元素，减小小顶堆中某一元素（或增大大顶堆中某一元素），以及插入新元素。在用二叉树实现的堆中，根节点保存了顶部元素，它对应数组的第一个值：
 
-最重要的操作包括获取顶部元素（查找最小或最大元素），弹出顶部元素，寻找最小（或最大）的前$k$个元素，减小某一元素的值（此操作对应最小堆，最大堆的相应操作是增加某一元素的值），以及插入新元素。
-
-对于用完全二叉树实现的堆，大部分操作的复杂度在最差情况下都是$O(\lg n)$的。有些操作，例如获取顶部元素，仅仅需要常数时间$O(1)$。
-
-\subsubsection{获取顶部元素}
 \index{二叉堆!获取顶部元素}
-
-在用二叉树实现的堆中，根节点保存了最小（或最大）元素，它对应数组的第一个值。
-
 \begin{algorithmic}[1]
 \Function{Top}{$A$}
   \State \Return $A[1]$
 \EndFunction
 \end{algorithmic}
 
-这一简单操作是常数时间$O(1)$的。我们这里省略了对于空堆的错误处理。
+\subsubsection{弹出堆顶}
+\index{二叉堆!弹出} \index{二叉堆!pop}
 
-\subsubsection{弹出堆顶元素}
-\index{二叉堆!弹出}
-\index{二叉堆!pop}
-
-弹出操作比获取顶部元素要复杂一些。我们需要在移除顶部元素后，通过执行\textproc{Heapify}算法检查并恢复堆的性质。下面给出了一个简单的实现，但是它的性能较差。
+弹出堆顶后，数组剩余元素顺次向前移动，有可能不再满足堆性质，需要执行\textproc{Heapify}检查并调整：
 
 \begin{algorithmic}[1]
 \Function{Pop-Slow}{$A$}
   \State $x \gets$ \Call{Top}{$A$}
-  \State \Call{Remove}{$A$, 1}
+  \State \Call{Remove}{$A$, 1} \Comment{线性时间移动剩余元素}
   \If{$A$ is not empty}
     \State \Call{Heapify}{$A$, 1}
   \EndIf
@@ -186,16 +175,11 @@ S = n (\frac{1}{4} + 2 \frac{1}{8} + 3 \frac{1}{16} + ...)
 \EndFunction
 \end{algorithmic}
 
-这一算法首先用$x$记录下顶部元素，然后将数组中的第一个元素删除，数组的长度减一。如果此后数组不为空，就从新的第一个元素开始执行一次\textproc{Heapify}。
-
-从长度为$n$的数组中删除第一个元素需要线性时间$O(n)$。这是因为我们需要将所有剩余的元素依次向前移动一位。这一操作成为了整个算法的瓶颈，使得算法的复杂度升高了。
-
-为了解决这一问题，我们可以交换数组中的第一个和最后一个元素，然后将数组的长度减一。
+从长度为$n$的数组中删除第一个元素需要线性时间$O(n)$将剩余元素顺次向前移动一位。为了避免移动，我们可以将待移除的头部交换到数组的末尾，然后将数组的长度减一：
 
 \begin{algorithmic}[1]
 \Function{Pop}{$A$}
-  \State $x \gets$ \Call{Top}{$A$}
-  \State $n \gets$ \Call{Heap-Size}{$A$}
+  \State $x \gets A [1], n \gets |A|$
   \State \textproc{Exchange} $A[1] \leftrightarrow A[n]$
   \State \Call{Remove}{$A, n$}
   \If{$A$ is not empty}
@@ -205,43 +189,23 @@ S = n (\frac{1}{4} + 2 \frac{1}{8} + 3 \frac{1}{16} + ...)
 \EndFunction
 \end{algorithmic}
 
-从数组的末尾删除最后一个元素仅需要常数时间$O(1)$，而\textproc{Heapify}算法的时间是$O(\lg n)$的。这样整体上弹出操作算法的复杂度为对数时间$O(\lg n)$。下面的C例子程序实现了这一算法\footnote{此程序并未删除最后一个元素，而是复用数组的最后一个单元（cell）来存储弹出的结果。}。
+从数组的末尾删除元素仅需常数时间，这样弹出操作的时间复杂度就取决于\textproc{Heapify}，为$O(\lg n)$。
 
-\lstset{language=C}
-\begin{lstlisting}
-Key pop(Key* a, int n, Less lt) {
-    swap(a, 0, --n);
-    heapify(a, 0, n, lt);
-    return a[n];
-}
-\end{lstlisting}
-
-\subsubsection{寻找top $k$个元素}
+\subsubsection{Top-$k$}
 \index{二叉堆!top-k}
 
-使用pop，可以很方便地找出一组值中的前$k$大个（或前$k$小个）。我们可以构建一个最大堆，然后重复执行$k$次pop操作。
+连续使用pop，可以找出一组元素中的前$k$个最小（或最大）：
 
 \begin{algorithmic}[1]
 \Function{Top-k}{$A, k$}
-  \State $R \gets \phi$
+  \State $R \gets [\ ]$
   \State \Call{Build-Heap}{$A$}
-  \For{$i \gets 1$ to \textproc{Min}(k, |$A$|)}
+  \Loop \ \textproc{Min}(k, |$A$|) times \Comment{$k$超出长度则截断}
     \State \textproc{Append}($R$, \Call{Pop}{$A$})
-  \EndFor
+  \EndLoop
   \State \Return $R$
 \EndFunction
 \end{algorithmic}
-
-如果$k$超过了数组的长度，我们返回整个数组作为结果。因此上述实现中，我们使用最小值\textproc{Min}函数来决定循环的次数。
-
-下面的Python例子程序实现了top-$k$算法：
-
-\lstset{language=Python}
-\begin{lstlisting}
-def top_k(x, k, less_p = MIN_HEAP):
-    build_heap(x, less_p)
-    return [heap_pop(x, less_p) for _ in range(min(k, len(x)))]
-\end{lstlisting}
 
 \subsubsection{减小key值}
 \index{二叉堆!减小key值}
@@ -1126,10 +1090,8 @@ void heapify([K] a, Int i, Less<K> lt) {
         m = i
         l = left(i)
         r = right(i)
-        if l < n and lt(a[l], a[i])
-            m = l
-        if r < n and lt(a[r], a[m])
-            m = r
+        if l < n and lt(a[l], a[i]) then m = l
+        if r < n and lt(a[r], a[m]) then m = r
         if m != i {
             swap(a, i, m);
             i = m
@@ -1148,6 +1110,32 @@ void buildHeap([K] a, Less<K> lt) {
     for Int i = (n-1) / 2 downto 0 {
         heapify(a, i, lt)
     }
+}
+\end{lstlisting}
+
+弹出堆顶：
+
+\begin{lstlisting}[language = Bourbaki]
+K pop([K] a, Less<K> lt) {
+    var n = length(a)
+    t = a[n]
+    swap(a, 0, n - 1)
+    remove(a, n - 1)
+    if a != [] then heapify(a, 0, lt)
+    return t
+}
+\end{lstlisting}
+
+寻找top-$k$：
+
+\begin{lstlisting}[language = Bourbaki]
+[K] top_k([K] a, Int k, Less<K> lt) {
+    buildHeap(a, lt)
+    [K] r = []
+    loop min(k, length(a)) {
+        append(r, pop(a, lt))
+    }
+    return r
 }
 \end{lstlisting}
 
