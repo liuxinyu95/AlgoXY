@@ -312,52 +312,36 @@ merge(L, R) = \begin{cases}
 
 左右子树都不为空时，由于它们也都是堆，各自的根节点都保存了最小的元素。我们可以比较两棵子树的根，选择较小的一个作为合并后的根。令$L = (A, x, B)$、$R = (A', y, B')$，其中$A$、$A'$、$B$、$B'$都是子树。如果$x < y$，$x$就是新的根。我们可以保留$A$，然后递归地合并$B$和$R$；或者保留$B$，递归地合并$A$和$R$。新的堆可以为$(merge(A, R), x, B)$或$(A, x, merge(B, R))$之一。两个都可以，为了简单，我们可以总选择右子树进行合并。这样的堆称为\textbf{左偏堆}（{\em Leftist} heap）。
 
-\subsection{定义}
-\index{左偏堆}
+\subsection{左偏堆}
+\index{左偏堆} \index{左偏堆!秩} \index{左偏堆!S-值}
 
-使用左偏树实现的堆称为左偏堆。左偏树最早由C. A. Crane于1972年引入\cite{wiki-leftist-tree}。
-
-\subsubsection{Rank（S-值）}
-\index{左偏堆!rank}
-\index{左偏堆!S-值}
-
-左偏树中每个节点都定义了一个Rank值（或称$S$值）。Rank被定义为到达最近的外部节点的距离。其中外部节点指空节点NIL，例如叶子节点的子节点就是外部节点。
-
-如图\ref{fig:rank}所示，NIL的Rank被定义为0。考虑根节点4，最近的叶子节点为8，所以根节点的Rank为2。因为节点6和节点8都是叶子节点，所以它们的Rank为1。虽然节点5则左子树不为空，但是它的右子树是空节点，因此Rank值，也就是到达NIL的最短距离仍然为1。
+使用左偏树实现的堆称为左偏堆。左偏树最早由C. A. Crane于1972年引入\cite{wiki-leftist-tree}。树中每个节点都定义了一个秩，也称作$S$值。节点的秩是到最近的NIL节点的距离。而NIL节点的秩等于0。如图\ref{fig:rank}所示，距离根节点4最近的叶子节点为8，所以根节点的秩为2。节点6和8都是叶子，它们的秩为1。虽然节点5的左子树不为空，但是它的右子树为空，因此秩等于1。使用秩，我们可以定义合并策略如下，记左右子树的秩分别为$r_l$、$r_r$：
 
 \begin{figure}[htbp]
-   \begin{center}
-     \includegraphics[scale=0.5]{img/rank}
-     \caption{$rank(4) = 2$、$rank(6) = rank(8) = rank(5) = 1$} \label{fig:rank}
-   \end{center}
+  \centering
+  \includegraphics[scale=0.4]{img/rank}
+  \caption{$rank(4) = 2$、$rank(6) = rank(8) = rank(5) = 1$}
+  \label{fig:rank}
 \end{figure}
 
-\subsubsection{左偏性质}
+\begin{enumerate}
+\item 总是合并右子树；
+\item 若$r_l < r_r$，就交换左右子树。
+\end{enumerate}
 
-使用Rank，我们可以定义合并时的策略：
-
-\begin{itemize}
-\item 总是合并右侧子树。记新的右侧子树的Rank值为$r_r$；
-\item 比较左右子树的Rank值，记左子树的Rank值为$r_l$，如果$r_l < r_r$，就交换左右子树。
-\end{itemize}
-
-我们称上面的合并策略为“左偏性质”。概括来说，在一棵左偏树中，到某个外部节点的最短距离总是在右侧。
-
-左偏树总是趋向不平衡，但是它可以维护一条重要的性质，如下面的定理所述：
+我们称这样的合并策略为“左偏性质”。概括来说，在一棵左偏树中，到某个NIL的最短距离总在右侧。左偏树总是趋向不平衡，但是它可以维护一条重要的性质：
 
 \begin{theorem}
-若一棵左偏树$T$包含$n$个内部节点，从根节点到达最右侧的外部节点的路径上最多含有$\lfloor \log (n+1) \rfloor$个节点。
+若一棵左偏树$T$包含$n$个节点，从根节点到达最右侧NIL的路径上最多含有$\lfloor \log (n + 1) \rfloor$个节点。
 \end{theorem}
 
-我们这里省略了此定理的证明，读者可以参考\cite{brono-book}，\cite{TAOCP-bheap}来了解证明的过程。根据此定理，沿着这一路径进行操作的算法，都可以保证$O(\lg n)$的复杂度。
+我们这里省略了证明\cite{brono-book}, \cite{TAOCP-bheap}。根据此定理，沿着这一路径进行操作的算法，都可以保证$O(\lg n)$的复杂度。我们可以在二叉树的基础上增加一个秩来定义左偏树。记非空的左偏树为$(r, L, k, R)$，分别表示秩、左子树、元素值、右子树：
 
-我们可以在二叉树定义的基础上增加一个Rank值来定义左偏树。记非空的左偏树为$(r, k, L, R)$。下面的Haskell例子程序定义了左偏树。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
+\lstset{frame = single}
+\begin{Haskell}
 data LHeap a = E -- 空
-             | Node Int a (LHeap a) (LHeap a) -- Rank、元素、左、右子树
-\end{lstlisting}
+             | Node Int (LHeap a) a (LHeap a)
+\end{Haskell}
 
 我们定义空树的Rank为0，否则，我们通过读取新增加的变量$r$来获得Rank值。下面的$rank(H)$函数可以获取任一情况下的值。
 
