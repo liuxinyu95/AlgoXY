@@ -363,13 +363,13 @@ make(A, k, B) = \begin{cases}
   \end{cases}
 \ee
 
-传入两棵子树$A$、$B$和元素$k$。若$A$的秩较小，则用$B$作为左子树、$A$作为右子树。新节点的秩为$rank(A) + 1$；否则，若$B$的秩较小，就用$A$作为左子树，$B$作为右子树。新节点的秩为$rank(B) + 1$。给定两个左偏堆$H_1$和$H_2$，下面的函数定义了合并操作：
+传入两棵子树$A$、$B$和元素$k$。若$A$的秩较小，则用$B$作为左子树、$A$作为右子树。新节点的秩为$rank(A) + 1$；否则，若$B$的秩较小，就用$A$作为左子树，$B$作为右子树。新节点的秩为$rank(B) + 1$。给定两个左偏堆$H_1$和$H_2$，它们不空时分别记为$(r_1, L_1, K_1, R_1)$、$(r_2, L_2, k_2, R_2)$，下面的函数定义了合并操作：
 
 \be
 \begin{array}{rcl}
   \textit{merge}\ \nil\ H_2 & = & H_2 \\
   \textit{merge}\ H_1\ \nil & = & H_1 \\
-  \textit{merge}\ (r_1, L_1, k_1, R_1)\ (r_2, L_2, k_2, R_2) & = & \begin{cases}
+  \textit{merge}\ H_1\ H_2 & = & \begin{cases}
   k_1 < k_2 : & make(L_1, k_1, \textit{merge}\ R_1\ H_2)  \\
   \text{否则}: & make(L_2, k_2, \textit{merge}\ H_1\ R_2) \\
   \end{cases}
@@ -448,86 +448,47 @@ heapSort\ H & = & (top\ H) : (heapSort\ (pop\ H)) \\
 \subsection{斜堆}
 \label{skew-heap} \index{斜堆}
 
-左偏堆在某些情况下会产生很不平衡的结构。图\ref{fig:unbalanced-leftist-tree}给出了一个例子，依次将序列$\{16, 14, 10, 8, 7, 9, 3, 2, 4, 1\}$中的元素插入到左偏堆。
+左偏堆在某些情况下会产生不平衡的结构，如图\ref{fig:unbalanced-leftist-tree}所示。斜堆（skew heap）是一种自调整堆，它简化了左偏堆的实现并提高了平衡性\cite{wiki-skew-heap}、\cite{self-adjusting-heaps}。构造左偏堆时，若左侧的秩小于右侧，则交换左右子树。但是这一策略不能很好处理某一分支为叶子节点的情况：不管树有多大，它的秩总为1。斜堆简化了合并策略：每次都交换左右子树。
+
 
 \begin{figure}[htbp]
-   \begin{center}
-   	  \includegraphics[scale=0.3]{img/unbalanced-leftist-tree}
-    \caption{从序列$\{16, 14, 10, 8, 7, 9, 3, 2, 4, 1\}$构造的左偏堆很不平衡}
-    \label{fig:unbalanced-leftist-tree}
-   \end{center}
+  \centering
+  \includegraphics[scale=0.45]{img/unbalanced-leftist-tree}
+  \caption{从序列$[16, 14, 10, 8, 7, 9, 3, 2, 4, 1]$构造的左偏堆}
+  \label{fig:unbalanced-leftist-tree}
 \end{figure}
 
-Skew堆（或称\underline{自调整堆}）既简化了左偏堆的实现，又提高了平衡性\cite{wiki-skew-heap}、\cite{self-adjusting-heaps}。
+斜堆是由斜树（skew tree）实现的堆。斜树是一种特殊的二叉树。最小的元素保存在根节点，每棵子树也都是一棵斜树。它不保存秩，可以直接复用二叉树的定义。树或者为空，或记为$(L, k, R)$。
 
-在构造左偏堆的时候，如果左侧的Rank值小于右侧的，我们就交换左右子树。但是这一“比较―交换”的策略在merge时不能很好处理某一分支为叶子节点的情况。这是因为，不管这棵树有多大，它的Rank值总为1。一种“简单粗暴”的解决方式是，每次合并，我们都交换左右子树。这就是Skew堆的原理。
-
-\subsubsection{Skew堆的定义}
-
-Skew堆是由skew树实现的堆。Skew树是一种特殊的二叉树。最小的元素保存在根节点，每棵子树也都是一棵skew树。
-
-Skew树无需保存Rank值（或$S$值）。我们可以直接复用二叉树的定义。树或者为空，或者记为前序形式$(k, L, R)$。下面的Haskell例子代码定义了skew树。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
+\begin{Haskell}
 data SHeap a = E -- 空
-             | Node a (SHeap a) (SHeap a) -- 元素、左、右
-\end{lstlisting}
+             | Node (SHeap a) a (SHeap a)
+\end{Haskell}
 
 \subsubsection{合并}
-\index{Skew堆!合并}
-\index{Skew堆!插入}
-\index{Skew堆!top}
-\index{Skew堆!pop}
-\index{Skew堆!弹出}
+\index{斜堆!合并} \index{斜堆!插入} \index{斜堆!top} \index{斜堆!pop} \index{斜堆!弹出}
 
-合并算法被大幅度简化：当合并两棵非空skew树时，我们比较根节点，选择较小的作为新的根。然后把含有较大元素的树合并到某一子树上。最后再把左右子树交换。记两棵非空子树为：$H_1 = (k_1, L_1, R_1)$和$H_2 =(k_2, L_2, R_2)$。若$k_1 < k_2$，选择$k_1$作为新的根。我们既可以将$H_2$和$L_1$合并，也可以将$H_2$和$R_1$合并。不失一般性，我们合并到$R_1$上。然后交换左右子树，最后的结果为$(k_1, merge(R_1, H_2), L_1)$。考虑边界情况，最终的算法定义如下：
+当合并两棵非空斜树时，先比较根节点，选择较小的作为新的根。然后把含有较大元素的树合并到某一子树上。最后再把左右子树交换。令两棵非空子树为：$H_1 = (L_1, k_1, R_1)$、$H_2 =(L_2, k_2, R_2)$。若$k_1 < k_2$，选择$k_1$作为新的根。我们既可以将$H_2$和$L_1$合并，也可以将$H_2$和$R_1$合并。不失一般性，我们合并到$R_1$上。然后交换左右子树，最后的结果为$(merge(R_1, H_2), k_1, L_1)$。
 
 \be
-merge(H_1, H_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  H_1 & H_2 = \phi \\
-  H_2 & H_1 = \phi \\
-  (k_1, merge(R_1, H_2), L_1) & k_1 < k_2 \\
-  (k_2, merge(H_1, R_2), L_2) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+merge\ \nil\ H_2 & = & H_2 \\
+merge\ H_1\ \nil & = & H_1 \\
+merge\ H_1\ H_2\ & = & \begin{cases}
+  k_1 < k_2: & (merge(R_1, H_2), k_1, L_1) \\
+  \text{否则}: & (merge(H_1, R_2), k_2, L_2) \\
+\end{cases}
+\end{array}
 \ee
 
-其他的操作，包括插入，获取顶部元素和弹出都和左偏树一样通过调用merge来实现。唯一的不同是我们不再需要Rank了。
-
-下面的Haskell例子程序实现了skew堆。
-
-\lstset{language=Haskell}
-\begin{lstlisting}element, left, right
-merge E h = h
-merge h E = h
-merge h1@(Node x l r) h2@(Node y l' r') =
-    if x < y then Node x (merge r h2) l
-    else Node y (merge h1 r') l'
-
-insert h x = merge (Node x E E) h
-
-findMin (Node x _ _) = x
-
-deleteMin (Node _ l r) = merge l r
-\end{lstlisting}
-
-即使我们用skew堆处理已序序列，结果仍然是一棵较平衡的二叉树，如图\ref{fig:skew-tree}所示。
+其他的操作，包括插入，获取和弹出顶部都和左偏树一样通过合并来实现。即使用斜堆处理已序序列，结果仍然是一棵较平衡的二叉树，如图\ref{fig:skew-tree}所示。
 
 \begin{figure}[htbp]
-   \begin{center}
-   	  \includegraphics[scale=0.5]{img/skew-tree}
-    \caption{用已序序列$\{1, 2, ..., 10\}$构造的skew树仍然比较平衡}
-    \label{fig:skew-tree}
-   \end{center}
+  \centering
+  \includegraphics[scale=0.5]{img/skew-tree}
+  \caption{用已序序列$[1, 2, ..., 10]$构造的斜树}
+  \label{fig:skew-tree}
 \end{figure}
-
-
-% ================================================================
-%                 Splay Heap
-% ================================================================
 
 \section{伸展堆}
 \label{splayheap}
@@ -963,13 +924,6 @@ void heapSort([K] a, less<K> lt) {
 }
 \end{lstlisting}
 
-获取左偏树的秩：
-
-\begin{Haskell}
-rank E = 0
-rank (Node r _ _ _) = r
-\end{Haskell}
-
 左偏堆合并：
 
 \begin{Haskell}
@@ -983,25 +937,16 @@ makeNode x a b = if rank a < rank b then Node (rank a + 1) x b a
                  else Node (rank b + 1) x a b
 \end{Haskell}
 
-左偏堆的基本操作：
+斜堆：
 
 \begin{Haskell}
-insert x = merge (Node 1 E x E)
-
-top (Node _ _ x _) = x
-
-pop (Node _ l _ r) = merge l r
-
-fromList = foldr insert E
+merge E h = h
+merge h E = h
+merge h1@(Node x l r) h2@(Node y l' r') =
+    if x < y then Node x (merge r h2) l
+    else Node y (merge h1 r') l'
 \end{Haskell}
 
-左偏堆排序：
-
-\begin{Haskell}
-heapSort = hsort . fromList where
-    hsort E = []
-    hsort h = (top h) : (hsort $ pop h)
-\end{Haskell} %$
 
 \ifx\wholebook\relax \else
 \section{参考答案}
