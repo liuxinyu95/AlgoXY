@@ -494,34 +494,20 @@ merge\ H_1\ H_2\ & = & \begin{cases}
 \label{splayheap}
 \index{伸展堆}
 
-左偏堆和skew堆说明，使用二叉树完全可以实现堆这种数据结构。而且skew堆还给出了一种解决树平衡的方法。本节介绍的伸展堆给出了另外一种改善平衡性的方法。
-
-左偏堆和skew堆使用的树都不是二叉搜索树（BST）。如果我们将底层的数据结构换成二叉搜索树，最小（或最大）元素就不再保存于根节点。我们需要$O(\lg n)$时间来获取最小（或最大）元素。
-
-如果二叉搜索树不平衡，性能会大幅下降。最坏情况下，大部分操作都退化为$O(n)$。虽然我们可以用红黑树来实现二叉堆，但这太复杂了。伸展树提供了一种轻量级的实现，它的结果可以动态趋向平衡。
-
-
-% ================================================================
-%                 Definition
-% ================================================================
-\subsection{定义}
-
-伸展树采用类似于缓存（cache）的策略，它不断将当前正在访问的节点向top旋转，这样再次访问的时候就可以更快。我们将这样的操作称为“伸展（splay）”。对于不平衡的二叉搜索树，经过若干次伸展操作后，树会变得越来越平衡。大多数伸展树操作的均摊（amortized）性能都是$O(\lg n)$的。Daniel Dominic Sleator和Robert Endre Tarjan在1985年最早引入了伸展树\cite{wiki-splay-tree}\cite{self-adjusting-trees}。
+左偏堆和斜堆是直接用二叉树实现的堆。如果将二叉树换成二叉搜索树，则最小（或最大）元素就不再位于根节点。我们需要$O(\lg n)$时间来获取最小（或最大）元素。如果二叉搜索树不平衡，性能会下降。最坏情况下会退化为$O(n)$。尽管可以用红黑树来保持平衡，伸展树提供了一种轻量级的实现方法，使得树不断趋向平衡。伸展树采用类似于缓存的策略，它不断将正在访问的节点向根旋转，这样再次访问的时候就可以更快。我们将这样的操作称为“伸展（splay）”。对于不平衡的二叉搜索树，经过若干次伸展后，树会变得逐渐平衡。大多数伸展树操作的均摊性能是$O(\lg n)$的。Daniel Dominic Sleator和Robert Endre Tarjan在1985年最早引入了伸展树\cite{wiki-splay-tree}\cite{self-adjusting-trees}。
 
 \subsubsection{伸展操作}
 \index{伸展堆!splaying}
 
-有两种方法可以实现伸展操作。第一种需要处理较多的情况，但可以很容易地使用模式匹配（pattern matching）来实现；第二种具备统一的形式，但是实现较为复杂。
+有两种方法可以实现伸展操作。第一种利用模式匹配，但需要处理较多的情况；第二种具备统一的形式，但是实现较为复杂。记正在访问的节点为$X$，它的父节点为$P$，如果存在祖父节点，则记为$G$。伸展操作分为三个步骤，每个步骤有两个对称的情况，我们以每步中的一种情况举例说明。
 
-记当前正在访问的节点为$X$，它的父节点为$P$，如果存在祖父节点，则记为$G$。伸展操作分为三各步骤，每个步骤有两个对称的情况，为了节省篇幅，我们只给出每步中的一种情况。
-
-\begin{itemize}
+\begin{enumerate}
 \item \underline{Zig-zig}步骤，如图\ref{fig:zig-zig}所示，$X$和$P$都是左子树或者$X$和$P$都是右子树。我们通过两次旋转，将$X$变成根节点。
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{$X$和$P$都是左子树或者$X$和$P$都是右子树。}{\includegraphics[scale=0.4]{img/zig-zig-a}}
-  \subcaptionbox{$X$经过两次旋转后成为了根节点。}{\includegraphics[scale=0.4]{img/zig-zig-b}}
+  \subcaptionbox{$X$和$P$都是左子树或都是右子树。}{\includegraphics[scale=0.4]{img/zig-zig-a}}
+  \subcaptionbox{$X$经过两次旋转后成为根节点。}{\includegraphics[scale=0.4]{img/zig-zig-b}}
   \caption{Zig-zig情况} \label{fig:zig-zig}
 \end{figure}
 
@@ -543,50 +529,41 @@ merge\ H_1\ H_2\ & = & \begin{cases}
   \caption{Zig情况} \label{fig:zig}
 \end{figure}
 
-\end{itemize}
+\end{enumerate}
 
-虽然有6种不同的情况，但是它们可以很容易地用模式匹配来处理。记非空二叉树为$T=(L, k, R)$，当访问树中的节点$Y$时，伸展操作可以定义如下：
+共有6种不同的情况。记非空二叉树为$T=(L, k, R)$，当访问树中的元素$y$时，伸展操作定义如下：
 
 \be
-splay(T, X) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (a, X, (b, P, (c, G, d))) & T = (((a, X, b), P, c), G, d), X = Y \\
-  (((a, G, b), P, c), X, d) & T= (a, G, (b, P, (c, X, d))), X = Y \\
-  ((a, P, b), X, (c, G, d)) & T = (a, P, (b, X, c), G, d), X = Y \\
-  ((a, G, b), X, (c, P, d)) & T = (a, G, ((b, X, c), P, d)), X = Y \\
-  (a, X, (b, P, c)) & T = ((a, X, b), P, c), X = Y \\
-  ((a, P, b), X, c) & T = (a, P, (b, X, c)), X = Y \\
-  T &  otherwise
-  \end{array}
-\right.
+\begin{array}{rcll}
+splay\ (((a, x, b), p, c), g, d)\ y & = & \begin{cases}
+    x = y: & (a, x, (b, p, (c, g, d))) \\
+    \text{否则}: & T \\
+  \end{cases} & \text{zig-zig} \\
+splay\ (a, g, (b, p, (c, x, d)))\ y & = & \begin{cases}
+    x = y: & (((a, g, b), p, c), x, d) \\
+    \text{否则}: & T \\
+  \end{cases} & \text{zig-zig对称} \\
+splay\ (a, p, (b, x, c), g, d)\ y & = & \begin{cases}
+    x = y: & ((a, p, b), x, (c, g, d)) \\
+    \text{否则}: & T \\
+  \end{cases} & \text{zig-zag} \\
+splay\ (a, g, ((b, x, c), p, d))\ y & = & \begin{cases}
+    x = y: & ((a, g, b), x, (c, p, d)) \\
+    \text{否则}: & T \\
+  \end{cases} & \text{zig-zag对称} \\
+splay\ ((a, x, b), p, c)\ y & = & \begin{cases}
+    x = y: & (a, x, (b, p, c)) \\
+    \text{否则}: & T \\
+  \end{cases} & \text{zig} \\
+splay\ (a, p, (b, x, c))\ y & = & \begin{cases}
+    x = y: & ((a, p, b), x, c) \\
+    \text{否则}: & T \\
+  \end{cases} & \text{zig对称} \\
+splay\ T\ y & = & T & \text{其它} \\
+\end{array}
 \ee
 
 前两条子式处理“zig-zig”情况；接下来的两条子式处理“zig-zag”情况；最后两条子式处理“zig”情况。其他情况下，树都保持不变。
-
-下面的Haskell例子程序实现了伸展操作。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-data STree a = E -- 空
-             | Node (STree a) a (STree a) -- left, key, right
-
--- zig-zig
-splay t@(Node (Node (Node a x b) p c) g d) y =
-    if x == y then Node a x (Node b p (Node c g d)) else t
-splay t@(Node a g (Node b p (Node c x d))) y =
-    if x == y then Node (Node (Node a g b) p c) x d else t
--- zig-zag
-splay t@(Node (Node a p (Node b x c)) g d) y =
-    if x == y then Node (Node a p b) x (Node c g d) else t
-splay t@(Node a g (Node (Node b x c) p d)) y =
-    if x == y then Node (Node a g b) x (Node c p d) else t
--- zig
-splay t@(Node (Node a x b) p c) y = if x == y then Node a x (Node b p c) else t
-splay t@(Node a p (Node b x c)) y = if x == y then Node (Node a p b) x c else t
--- 否则
-splay t _ = t
-\end{lstlisting}
 
 每次插入新key时，我们就执行伸展操作来调整树的平衡性。如果树为空，结果为一个叶子节点；否则我们比较待插入的key和根节点，如果待插入的key较小，就将其递归插入左子树，然后执行伸展操作；否则将key插入右子树，再执行伸展操作。
 
@@ -937,7 +914,7 @@ makeNode x a b = if rank a < rank b then Node (rank a + 1) x b a
                  else Node (rank b + 1) x a b
 \end{Haskell}
 
-斜堆：
+斜堆合并：
 
 \begin{Haskell}
 merge E h = h
@@ -947,6 +924,25 @@ merge h1@(Node x l r) h2@(Node y l' r') =
     else Node y (merge h1 r') l'
 \end{Haskell}
 
+下面的Haskell例子程序实现了伸展操作。
+
+\begin{Haskell}
+-- zig-zig
+splay t@(Node (Node (Node a x b) p c) g d) y =
+    if x == y then Node a x (Node b p (Node c g d)) else t
+splay t@(Node a g (Node b p (Node c x d))) y =
+    if x == y then Node (Node (Node a g b) p c) x d else t
+-- zig-zag
+splay t@(Node (Node a p (Node b x c)) g d) y =
+    if x == y then Node (Node a p b) x (Node c g d) else t
+splay t@(Node a g (Node (Node b x c) p d)) y =
+    if x == y then Node (Node a g b) x (Node c p d) else t
+-- zig
+splay t@(Node (Node a x b) p c) y = if x == y then Node a x (Node b p c) else t
+splay t@(Node a p (Node b x c)) y = if x == y then Node (Node a p b) x c else t
+-- 否则
+splay t _ = t
+\end{Haskell}
 
 \ifx\wholebook\relax \else
 \section{参考答案}
