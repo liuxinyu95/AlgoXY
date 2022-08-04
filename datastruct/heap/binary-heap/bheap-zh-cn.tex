@@ -562,82 +562,47 @@ insert\ (L, x, R)\ y & = & \begin{cases}
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[scale=0.5]{img/splay-tree}
+  \includegraphics[scale=0.45]{img/splay-tree}
   \caption{从$[1, 2, ..., 10]$产生的伸展树。}
   \label{fig:splay-result}
 \end{figure}
 
-图\ref{fig:splay-result}给出了逐一插入$[1, 2, ..., 10]$的结果。伸展树产生了较平衡的结果。Okasaki发现了一条简单的伸展操作规则\cite{okasaki-book}：每次连续向左或者向右访问两次的时候，就旋转两个节点。
-
-根据这一规则，我们可以这样实现伸展：当访问节点$x$的时候（插入、查找或者删除时），如果连续向左侧或者右侧前进两次，我们就将树分割成两部分：$L$和$R$，其中$L$含有所有小于$x$的节点，$R$含有其余的节点。我们可以构建一棵新树（例如插入时），将$x$作为根，$L$和$R$分别作为左右子树。分割是递归的，它会对子树也进行伸展操作。
+图\ref{fig:splay-result}给出了逐一插入$[1, 2, ..., 10]$的结果。伸展树产生了较平衡的结果。Okasaki发现了一条简单的伸展操作规则\cite{okasaki-book}：每次连续向左或者向右访问两次的时候，就旋转节点。当访问节点$x$的时候，如果连续向左侧或者右侧前进两次，我们将树$T$分割成两部分：$L$和$R$，其中$L$中的所有元素小于$x$，$R$中的元素都大于$x$。然后以$x$为根，$L$、$R$为左右子树构建一棵新树。分割过程递归地对子树进行伸展操作。
 
 \be
-partition(T, p) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, \phi) & T = \phi \\
-  (T, \phi) & T = (L, k, R) \land R = \phi \\
-  ((L, k, L'), k', A, B) & \begin{array}{l} \\
-                             T = (L, k, (L', k', R')) \\
-                             k < p, k' < p \\
-                             (A, B) = partition(R', p)
-                           \end{array} \\
-  ((L, k, A), (B, k', R')) & \begin{array}{l} \\
-                               T = (L, K, (L', k', R')) \\
-                               k < p \leq k' \\
-                               (A, B) = partition(L', p) \\ \\
-                             \end{array} \\
-  (\phi, T) & T = (L, k, R) \land L = \phi \\
-  (A, (L', k', (R', k, R)) & \begin{array}{l} \\
-                               T = ((L', k', R'), k, R) \\
-                               p \leq k, p \leq k' \\
-                               (A, B) = partition(L', p)
-                             \end{array} \\
-  ((L', k', A), (B, k, R)) & \begin{array}{l} \\
-                               T = ((L', k', R'), k, R) \\
-                               k' \leq p \leq k \\
-                               (A, B) = partition(R', p)
-                             \end{array}
-  \end{array}
-  \right.
+\resizebox{\linewidth}{!}{\ensuremath{
+\begin{array}{l}
+\begin{array}{rcl}
+partition\ \nil\ y & = & (\nil, \nil) \\
+partition\ (L, x, R)\ y & = &  \\
+\end{array} \\
+\quad
+\begin{cases}
+  x < y & \begin{cases}
+      R = \nil & (T, \nil) \\
+      R = (L', x', R') & \begin{cases}
+          x' < y & (((L, x, L'), x', A), B) \\
+                  & \text{其中：}(A, B) = partition\ R'\ y \\
+          \text{否则} & ((L, x, A), (B, x', R')) \\
+                      & \text{其中：}(A, B) = partition\ L'\ y \\
+        \end{cases} \\
+    \end{cases} \\
+  \text{否则} & \begin{cases}
+      L = \nil & (\nil, T) \\
+      L = (L', x', R') & \begin{cases}
+         y < x' & (A, (L', x', (R', x, R))) \\
+                 & \text{其中：}(A, B) = partition\ L'\ y \\
+         \text{否则} & ((L', x', A), (B, x, R)) \\
+                 & \text{其中：}(A, B) = partition\ R'\ y \\
+      \end{cases} \\
+    \end{cases}
+  \end{cases} \\
+\end{array}
+}}
 \ee
 
-函数$partition(T, p)$接受一棵树$T$和一个基准值（pivot）$p$为参数。第一条子式处理边界条件。对空树进行分割的结果为一对空的左右子树。否则，记树为$(L, k, R)$，我们需要比较基准值$p$和根节点的值$k$。如果$k < p$，分为两种子情况。一种是$R$为空的简单情况，根据二叉搜索树的性质，所有的元素都小于$p$，因此结果为$(T, \phi)$。
+$partition$接受一棵树$T$和一个基准值$y$。如果树为空，结果为一对空的左右子树。否则，记树为$(L, x, R)$，我们比较基准值$y$和根节点的值$x$。如果$x < y$，分为两种子情况。一种是$R$为空的简单情况，根据二叉搜索树的性质，所有的元素都小于$y$，结果为$(T, \nil)$。否则，令$R = (L', x', R')$，我们递归地用基准值分割$R'$，将$R'$中所有小于$y$的元素放入树$A$，其余元素放入树$B$。结果为一对树，其中一棵为$((L, x, L'), x', A)$，另一棵为$B$。如果$x'$不小于基准值$y$，我们递归地用$y$分割$L'$得到结果$(A, B)$。最终的结果为一对树，一棵是$(L, x, A)$，另一棵是$(B, x', R')$。当$y \leq x$时，情况是对称的。
 
-否则，$R = (L', k', R')$，我们需要递归地用基准值分割$R'$，将$R'$中所有小于$p$的元素放入树$A$，其余元素放入树$B$。结果为一对树，其中一棵为$((L, k, L'), k', A)$，另一棵为$B$。
-
-如果右子树的key不小于基准值，我们递归地用基准值分割$L'$得到结果$(A, B)$。最终的结果为一对树，一棵是$(L, k, A)$，另一棵是$(B, k', R')$。当$p \leq k$时，情况是对称的，由最后的三条子式处理。
-
-下面的Haskell例子程序实现了分割算法。
-
-\begin{lstlisting}[style=Haskell]
-partition E _ = (E, E)
-partition t@(Node l x r) y
-    | x < y =
-        case r of
-          E -> (t, E)
-          Node l' x' r' ->
-              if x' < y then
-                  let (small, big) = partition r' y in
-                  (Node (Node l x l') x' small, big)
-              else
-                  let (small, big) = partition l' y in
-                  (Node l x small, Node big x' r')
-    | otherwise =
-        case l of
-          E -> (E, t)
-          Node l' x' r' ->
-              if y < x' then
-                  let (small, big) = partition l' y in
-                  (small, Node l' x' (Node r' x r))
-              else
-                  let (small, big) = partition r' y in
-                  (Node l' x' small, Node big x r)
-\end{lstlisting}
-
-% ================================================================
-%                 Basic heap operations
-% ================================================================
 \index{伸展堆!插入}
 我们可以用$partition$实现插入算法。当向一个伸展堆$T$插入一个新元素$k$时，我们先将堆分割为两棵子树$L$和$R$。其中$L$含有所有小于$k$的节点，而$R$含有剩余的部分。然后我们构建一棵新树，使用$k$作为根，$L$和$R$作为子树。
 
@@ -922,6 +887,33 @@ insert (Node l x r) y
     | x > y     = splay (Node (insert l y) x r) y
     | otherwise = splay (Node l x (insert r y)) y
 \end{Haskell}
+
+下面的Haskell例子程序实现了分割算法。
+
+\begin{lstlisting}[style=Haskell]
+partition E _ = (E, E)
+partition t@(Node l x r) y
+    | x < y =
+        case r of
+          E -> (t, E)
+          Node l' x' r' ->
+              if x' < y then
+                  let (small, big) = partition r' y in
+                  (Node (Node l x l') x' small, big)
+              else
+                  let (small, big) = partition l' y in
+                  (Node l x small, Node big x' r')
+    | otherwise =
+        case l of
+          E -> (E, t)
+          Node l' x' r' ->
+              if y < x' then
+                  let (small, big) = partition l' y in
+                  (small, Node l' x' (Node r' x r))
+              else
+                  let (small, big) = partition r' y in
+                  (Node l' x' small, Node big x r)
+\end{lstlisting}
 
 \ifx\wholebook\relax \else
 \section{参考答案}
