@@ -496,7 +496,7 @@ merge\ H_1\ H_2\ & = & \begin{cases}
 
 左偏堆和斜堆是直接用二叉树实现的堆。如果将二叉树换成二叉搜索树，则最小（或最大）元素就不再位于根节点。我们需要$O(\lg n)$时间来获取最小（或最大）元素。如果二叉搜索树不平衡，性能会下降。最坏情况下会退化为$O(n)$。尽管可以用红黑树来保持平衡，伸展树提供了一种轻量级的实现方法，使得树不断趋向平衡。伸展树采用类似于缓存的策略，它不断将正在访问的节点向根旋转，这样再次访问的时候就可以更快。我们将这样的操作称为“伸展（splay）”。对于不平衡的二叉搜索树，经过若干次伸展后，树会变得逐渐平衡。大多数伸展树操作的均摊性能是$O(\lg n)$的。Daniel Dominic Sleator和Robert Endre Tarjan在1985年最早引入了伸展树\cite{wiki-splay-tree}\cite{self-adjusting-trees}。
 
-\subsubsection{伸展操作}
+\subsection{伸展操作}
 \index{伸展堆!splaying}
 
 有两种方法可以实现伸展操作。第一种利用模式匹配，但需要处理较多的情况；第二种具备统一的形式，但是实现较为复杂。记正在访问的节点元素为$x$，它的父节点元素为$p$，如果存在祖父节点，其元素记为$g$。伸展操作分为三个步骤，每个步骤有两个对称的情况，我们以每步中的一种情况举例说明，如图\ref{fig:splay}所示。
@@ -607,121 +607,59 @@ $partition$接受一棵树$T$和一个基准值$y$。如果树为空，结果为
 我们可以用$partition$实现插入算法。当向一个伸展堆$T$插入一个新元素$k$时，我们先将堆分割为两棵子树$L$和$R$。其中$L$含有所有小于$k$的节点，而$R$含有剩余的部分。然后我们构建一棵新树，使用$k$作为根，$L$和$R$作为子树。
 
 \be
-insert(T, k) = (L, k, R), (L, R) = partition(T, k)
+insert\ T\ k = (L, k, R), \text{其中：} (L, R) = partition\ T\ k
 \ee
 
-对应的Haskell例子程序如下：
+\subsection{弹出顶部}
+\index{伸展堆!top} \index{伸展堆!pop} \index{伸展堆!弹出}
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-insert t x = Node small x big where (small, big) = partition t x
-\end{lstlisting}
-
-\subsubsection{获取和弹出顶部元素}
-\index{伸展堆!top}
-\index{伸展堆!pop}
-\index{伸展堆!弹出}
-
-由于伸展树本质上是二叉搜索树，最小的元素存储于最左侧的节点中。我们需要不断向左遍历以获取顶部元素。记非空的树为$T=(L, k, R)$，$top(T)$函数可以定义如下：
+由于伸展树本质上是二叉搜索树，最小的元素位于最左侧的节点。我们不断向左遍历以获取顶部元素。记非空的树为$T=(L, k, R)$，$top$函数可以定义如下：
 
 \be
-top(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  k & L = \phi \\
-  top(L) & otherwise
-  \end{array}
-  \right.
+\begin{array}{rcl}
+top\ (\nil, k, R) & = & k \\
+top\ (L, k, R) & = & top\ L \\
+\end{array}
 \ee
 
-这实际上就是二叉搜索树的$min(T)$算法。
-
-对于弹出操作，算法需要将最小元素删除。每当连续向左访问两次，就执行一次伸展操作。
+这实际上就是二叉搜索树的$min$函数。弹出顶部时，需要将最小元素删除。同时每当连续向左访问两次，就执行一次伸展操作。
 
 \be
-pop(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  R & T = (\phi, k, R) \\
-  (R', k, R) & T = ((\phi, k', R'), k, R) \\
-  (pop(L'), k', (R', k, R)) & T = ((L', k', R'), k, R)
-  \end{array}
-  \right.
+\begin{array}{rcl}
+pop\ (\nil, k, R) & = & R \\
+pop\ ((\nil, k', R'), k, R) & = & (R', k, R) \\
+pop\ ((L', k', R'), k, R) & = & (pop\ L', k', (R', k, R)) \\
+\end{array}
 \ee
 
-注意这里的第三条子式实际上执行了伸展操作，它并没有显式地调用$partition$函数，而是直接使用了二叉搜索树的性质。
+第三条子式实际上执行了伸展操作，它并没有显式地调用$partition$函数，而是直接使用了二叉搜索树的性质。伸展树在平衡时堆顶操作的时间复杂度是$O(\lg n)$。
 
-因为伸展树是平衡的，top和pop操作的性能都是$O(\lg n)$。
-
-下面的Haskell例子程序实现了top和pop操作。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-findMin (Node E x _) = x
-findMin (Node l x _) = findMin l
-
-deleteMin (Node E x r) = r
-deleteMin (Node (Node E x' r') x r) = Node r' x r
-deleteMin (Node (Node l' x' r') x r) = Node (deleteMin l') x' (Node r' x r)
-\end{lstlisting}
-
-\subsubsection{合并}
+\subsection{合并}
 \index{伸展堆!合并}
 
-合并是堆的一个重要操作，它被广泛用于图算法。通过使用$partition$函数，我们可以实现一个$O(\lg n)$时间的合并算法。
-
-当合并两棵伸展树时，如果它们都不为空，我们可以将第一棵树的根节点作为新的根，然后将其作为基准值分割第二棵树。此后，我们递归地将第一棵树的子树合并。算法定义如下：
+通过使用$partition$，我们可以实现$O(\lg n)$时间的合并算法。当合并两棵伸展树时，如果它们都不为空，我们可以将第一棵树的根节点作为新的根，然后将其作为基准值分割第二棵树。此后，我们递归地将第一棵树的子树合并。
 
 \be
-merge(T_1, T_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  T_2 & T_1 = \phi \\
-  (merge(L, A), k, merge(R, B)) & T_1 = (L, k, R), (A, B) = partition(T_2, k)
-  \end{array}
-  \right.
+\begin{array}{rcl}
+merge\ \nil\ T & = & T \\
+merge\ (L, x, R)\ T & = & ((merge\ L\ L')\ x\ (merge\ R\ R')) \\
+\end{array}
 \ee
 
-如果第一个堆为空，结果显然为第二个堆。否则，记第一个堆为$(L, k, R)$，我们使用$k$作为基准值分割$T_2$得到结果$(A, B)$，其中$A$包含$T_2$中所有小于$k$的节点，而$B$包含其余节点。我们接下来递归地将$A$和$L$合并为新的左子树，将$B$和$R$合并为右子树。
+其中：
 
-这一定义可以翻译为下面的Haskell例子程序。
+\[
+  (L', R') = partition\ T\ x
+\]
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-merge E t = t
-merge (Node l x r) t = Node (merge l l') x (merge r r')
-    where (l', r') = partition t x
-\end{lstlisting}
+如果第一个堆为空，结果为另一个堆。否则，记第一个堆为$(L, x, R)$，用$x$为基准值分割$T$得到结果$(L', R')$，其中$L'$包含$T$中所有小于$x$的元素，而$R'$包含其余元素。接下来递归地将$L$和$L'$合并为新的左子树，将$R$和$R'$合并为右子树。
 
-% ================================================================
-%                 Heap sort
-% ================================================================
-\subsection{堆排序}
-
-由于伸展堆的内部实现对于通用堆的接口完全透明，我们可以完全复用此前的堆排序定义。也就是说堆排序的算法也是通用的，它不依赖于底层的数据结构。
-
-% ================================================================
-%                 Short summary
-% ================================================================
 \section{小结}
 
-本章中，我们介绍了通用的二叉堆概念。只要保证堆的性质，我们可以使用任何形式的二叉树来实现堆。
+本章中，我们介绍了通用的二叉堆概念。只要满足堆的性质，可以使用各种形式的二叉树来实现。用数组作为存储结构适于命令式实现，它将一棵完全二叉树映射为数组。方便进行随机访问。我们还介绍了直接用二叉树实现的堆，适于函数式实现。大部分操作的时间复杂度可以达到$O(\lg n)$，有些操作的分摊时间复杂度是$O(1)$的。Okasaki在\cite{okasaki-book}中给出了详细分析。一个自然的想法是将二叉树扩展到多叉树，这样就会得到其它数据结构如二项式堆、斐波那契堆和配对堆。参见第十章。
 
-这样的定义并不仅限于使用基于数组的二叉堆，它也包含使用其他二叉树形式的堆如左偏堆、skew堆和伸展堆。基于数组的二叉堆易于用命令式的方式实现。它将一棵完全二叉树映射为数组的随机访问，我们很难找到和它直接对应的纯函数式实现。
-
-但是，我们可以通过使用显式的二叉树来实现纯函数式的二叉堆。大部分的操作在最坏情况下也可以达到$O(\lg n)$的性能。有些操作的分摊性能甚至可以达到$O(1)$。Okasaki在\cite{okasaki-book}中给出了这些数据结构的详细分析。
-
-我们仅在本章中给出了左偏堆、skew堆和伸展堆的纯函数式实现。它们也都支持命令式实现。
-
-人们很自然希望能将二叉树扩展到$k$叉树，这样就会得到其他重要的数据结构如二项式（Binomial）堆、斐波那契（Fibonacci）堆和配对（pairing）堆。我们将在后面的章节加以介绍。
-
-% ================================================================
-%                 Exercise
-% ================================================================
 \begin{Exercise}
-\begin{itemize}
-\item 用命令式的方式实现左偏堆、skew堆和伸展堆。
-\end{itemize}
+\Question{用命令式的方式实现左偏堆、斜堆、伸展堆。}
 \end{Exercise}
 
 \section{附录：例子程序}
@@ -888,9 +826,9 @@ insert (Node l x r) y
     | otherwise = splay (Node l x (insert r y)) y
 \end{Haskell}
 
-下面的Haskell例子程序实现了分割算法。
+伸展树的分割：
 
-\begin{lstlisting}[style=Haskell]
+\begin{Haskell}
 partition E _ = (E, E)
 partition t@(Node l x r) y
     | x < y =
@@ -913,7 +851,15 @@ partition t@(Node l x r) y
               else
                   let (small, big) = partition r' y in
                   (Node l' x' small, Node big x r)
-\end{lstlisting}
+\end{Haskell}
+
+伸展树合并：
+
+\begin{Haskell}
+merge E t = t
+merge (Node l x r) t = Node (merge l l') x (merge r r')
+    where (l', r') = partition t x
+\end{Haskell}
 
 \ifx\wholebook\relax \else
 \section{参考答案}
