@@ -178,7 +178,7 @@ After pop, the remaining elements in array shift ahead by one. However, after re
 
 It takes constant time to remove the last element from array, hence pop is also bound to $O(\lg n)$ time as same as \textproc{Heapify}.
 
-\subsubsection{Top-$k$}
+\subsubsection{Top-k}
 \index{Binary heap!top-k}
 
 We can obtain top $k$ elements by repeatedly applying pop.
@@ -197,197 +197,67 @@ We can obtain top $k$ elements by repeatedly applying pop.
 \subsubsection{Increase priority}
 \index{Binary heap!decrease key}
 
-Heap can be used to implement priority queue. It
-is important to support key modification in heap. One typical operation
-is to increase the priority of a tasks so that it can be performed
-earlier.
-
-Here we present the decrease key operation for a min-heap. The
-corresponding operation is increase key for max-heap.
-Figure \ref{fig:decrease-key-1} and \ref{fig:decrease-key-2} illustrate such a case for a max-heap.
-The key of the 9-th node is increased from 4 to 15.
+We can implement a priority queue with heap, to schedule tasks with priorities. Every time, we peek the high priority task to execute. To make an urgent task run earlier, we can increase its priority. It corresponds to decrease an element in a min-heap, as shown in \ref{fig:decrease-key-2}.
 
 \begin{figure}[htbp]
-    \centering
-    \subcaptionbox{The 9-th node with key 4 will be modified;}{\includegraphics[scale=0.5]{img/decrease-key-a}} \\
-    \subcaptionbox{The key is modified to 15, which is greater than its parent;}{\includegraphics[scale=0.5]{img/decrease-key-b}} \\
-    \subcaptionbox{According the max-heap property, 8 and 15 are swapped.}{\includegraphics[scale=0.5]{img/decrease-key-c}}
-    \caption{Example process when increase a key in a max-heap.} \label{fig:decrease-key-1}
+  \centering
+  \includegraphics[scale=0.4]{img/decrease-key}
+  \caption{Decrease 13 to 2. Exchange 2 and 9, then exchange with 3.}
+  \label{fig:decrease-key-2}
 \end{figure}
 
-\begin{figure}[htbp]
-    \centering
-    \subcaptionbox{Since 15 is greater than its parent 14, they are swapped. After that, because 15 is less than 16, the process terminates.}{\includegraphics[scale=0.5]{img/decrease-key-d}}
-    \caption{Example process when increase a key in a max-heap.} \label{fig:decrease-key-2}
-\end{figure}
-
-Once a key is decreased in a min-heap, it may make
-the node conflict with the heap property, that the key may be less
-than some ancestor. In order to maintain the
-invariant, the following auxiliary algorithm is defined to resume the heap
-property.
+The heap property may not be satisfied when decrease some element in a min-heap. Let the decreased element indexed at $i$ in the array, below function resumes the heap property bottom-up. It is bound to $O(\lg n)$ time.
 
 \begin{algorithmic}[1]
 \Function{Heap-Fix}{$A, i$}
-  \While{$i>1 \land A[i] < A[$ \Call{Parent}{$i$} $]$}
+  \While{$i>1$ and $A[i] < A[$ \Call{Parent}{$i$} $]$}
     \State \textproc{Exchange} $A[i] \leftrightarrow A[$ \Call{Parent}{$i$} $]$
     \State $i \gets$  \Call{Parent}{$i$}
   \EndWhile
 \EndFunction
 \end{algorithmic}
 
-This algorithm repeatedly compares the keys of parent node and
-current node. It swap the nodes if
-the parent contains the smaller key. This process is performed
-from the current node towards the root node till it finds that
-the parent node holds the smaller key.
-
-With this auxiliary algorithm, decrease key can be realized
-as below.
-
-\begin{algorithmic}[1]
-\Function{Decrease-Key}{$A, i, k$}
-  \If{$k < A[i]$}
-    \State $A[i] \gets k$
-    \State \Call{Heap-Fix}{$A, i$}
-  \EndIf
-\EndFunction
-\end{algorithmic}
-
-This algorithm is only triggered when the new key
-is less than the original key. The performance is bound to $O(\lg n)$.
-Below example ANSI C program implements the algorithm.
-
-\lstset{language=C}
-\begin{lstlisting}
-void heap_fix(Key* a, int i, Less lt) {
-    while (i > 0 && lt(a[i], a[PARENT(i)])) {
-        swap(a, i, PARENT(i));
-        i = PARENT(i);
-    }
-}
-
-void decrease_key(Key* a, int i, Key k, Less lt) {
-    if (lt(k, a[i])) {
-        a[i] = k;
-        heap_fix(a, i, lt);
-    }
-}
-\end{lstlisting}
-
 \subsubsection{Insertion}
-\index{Binary heap!insertion}
-\index{Binary heap!heap push}
+\index{Binary heap!insertion} \index{Binary heap!push}
 
-Insertion can be implemented by using \textproc{Decrease-Key} \cite{CLRS}.
-A new node with $\infty$ as key is created. According
-to the min-heap property, it should be the last element
-in the under ground array. After that, the key is decreased to
-the value to be inserted, and \textproc{Decrease-Key} is called
-to fix any violation to the heap property.
-
-Alternatively, we can reuse \textproc{Heap-Fix} to implement
-insertion. The new key is directly appended at the end of the array,
-and the \textproc{Heap-Fix} is applied to this new node.
+We can realize push with \textproc{Heap-Fix} \cite{CLRS}. Use min-heap for example, we append the new element $k$ to the tail of the array, then apply \textproc{Heap-Fix} to recover the heap property:
 
 \begin{algorithmic}[1]
-\Function{Heap-Push}{$A, k$}
+\Function{Push}{$A, k$}
   \State \Call{Append}{$A, k$}
   \State \Call{Heap-Fix}{$A, |A|$}
 \EndFunction
 \end{algorithmic}
 
-The following example Python program implements the heap insertion
-algorithm.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def heap_insert(x, key, less_p = MIN_HEAP):
-    i = len(x)
-    x.append(key)
-    heap_fix(x, i, less_p)
-\end{lstlisting}
-
-% ================================================================
-%                 Heap sort
-% ================================================================
 \subsection{Heap sort}
-\label{heap-sort}
-\index{Heap sort}
+\label{heap-sort} \index{Heap sort}
 
-Heap sort is interesting application of heap. According
-to the heap property, the min(max) element can be easily accessed
-by from the top of the heap. A straightforward way to sort a list
-of values is to build a heap from them, then continuously
-pop the smallest element till the heap is empty.
-
-The algorithm based on this idea can be defined like below.
+We can sort elements with heap. Build a min-heap from a collection of $n$ elements, the repeatedly pop the top element to obtain the ascending result. It takes $O(n)$ time to build the heap. The pop is bound to $O(\lg n)$ time, and runs for $n$ times. Therefore, the total time is bound to $O(n \lg n)$. The space is bound to $O(n)$ as we need another list to hold the result.
 
 \begin{algorithmic}[1]
 \Function{Heap-Sort}{$A$}
-  \State $R \gets \phi$
+  \State $R \gets [\ ]$
   \State \Call{Build-Heap}{$A$}
-  \While{$A \neq \phi$}
-    \State \textproc{Append}($R$, \Call{Heap-Pop}{$A$})
+  \While{$A \neq [\ ]$}
+    \State \textproc{Append}($R$, \Call{Pop}{$A$})
   \EndWhile
   \State \Return $R$
 \EndFunction
 \end{algorithmic}
 
-The following Python example program implements this definition.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def heap_sort(x, less_p = MIN_HEAP):
-    res = []
-    build_heap(x, less_p)
-    while x!=[]:
-        res.append(heap_pop(x, less_p))
-    return res
-\end{lstlisting}
-
-When sort $n$ elements, the \textproc{Build-Heap} is bound to $O(n)$.
-Since pop is $O(\lg n)$, and it
-is called $n$ times, so the overall sorting takes $O(n \lg n)$
-time to run. Because we use another list to hold the result,
-the space requirement is $O(n)$.
-
-Robert. W. Floyd found a fast implementation of heap sort.
-The idea is to build a max-heap instead of min-heap, so the first
-element is the biggest one. Then the biggest element is swapped
-with the last element in the array, so that it is in the right
-position after sorting. As the last element becomes the new top,
-it may violate the heap property. We can shrink the heap size
-by one and perform
-\textproc{Heapify} to resume the heap property.
-This process
-is repeated till there is only one element left in the heap.
+Robert. W. Floyd gave a fast implementation with max-heap. The top stores the maximum one. Every time, swap the head and the tail elements in the array. After that the maximum is stored to the expected position, and the previous tail becomes the new top. We next decrease the heap size by one, and apply \textproc{Heapify} to maintain the heap property. Repeat this till the heap size decrease to one. This algorithm needn't the additional space to store the result.
 
 \begin{algorithmic}[1]
 \Function{Heap-Sort}{$A$}
   \State \Call{Build-Max-Heap}{$A$}
-  \While{$|A| > 1$}
+  \State $n \gets |A|$
+  \While{$n > 1$}
     \State \textproc{Exchange} $A[1] \leftrightarrow A[n]$
-    \State $|A| \gets |A| - 1$
-    \State \Call{Heapify}{$A, 1$}
+    \State $n \gets n - 1$
+    \State \Call{Heapify}{$A[1...n], 1$}
   \EndWhile
 \EndFunction
 \end{algorithmic}
-
-This is in-place algorithm, it needn't any extra spaces to hold
-the result. The following ANSI C example code
-implements this algorithm.
-
-\lstset{language=C}
-\begin{lstlisting}
-void heap_sort(Key* a, int n) {
-    build_heap(a, n, notless);
-    while(n > 1) {
-        swap(a, 0, --n);
-        heapify(a, 0, n, notless);
-    }
-}
-\end{lstlisting}
 
 \begin{Exercise}
 \begin{itemize}
