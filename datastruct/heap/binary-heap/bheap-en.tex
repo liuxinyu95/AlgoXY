@@ -260,43 +260,35 @@ Robert. W. Floyd gave a fast implementation with max-heap. The top stores the ma
 \end{algorithmic}
 
 \begin{Exercise}
-\begin{itemize}
-\item Somebody considers one alternative to realize in-place heap sort. Take
-sorting the array in ascending order as example, the first step is to build
-the array as a minimum heap $A$, but not the maximum heap like the Floyd's method.
-After that the first element $a_1$ is in the correct place. Next, treat
-the rest $\{a_2, a_3, ..., a_n\}$ as a new heap, and perform
-\textproc{Heapify} to them from $a_2$ for these $n-1$ elements. Repeating this
-advance and \textproc{Heapify} step from left to right would sort the array.
-The following example ANSI C code illustrates this idea.
-Is this solution correct? If yes, prove it; if not, why?
-\lstset{language=C}
-\begin{lstlisting}
-void heap_sort(Key* a, int n) {
-    build_heap(a, n, less);
-    while(--n)
-        heapify(++a, 0, n, less);
+\Question{Consider another idea about in-place heap sort: Build a min-heap from the array $A$, the first element $a_1$ is in the right position. Treat the rest $[a_2, a_3, ..., a_n]$ as the new heap, and apply \textproc{Heapify} from $a_2$. Repeat this till the last element. Is this method correct?
+\begin{algorithmic}[1]
+\Function{Heap-Sort}{$A$}
+  \State \Call{Build-Heap}{$A$}
+  \For{$i = 1$ to $n - 1$}
+    \State \Call{Heapify}{$A[i ... n], 1$}
+  \EndFor
+\EndFunction
+\end{algorithmic}
 }
-\end{lstlisting}
 
-\item Because of the same reason, can we perform \textproc{Heapify} from
-left to right $k$ times to realize in-place top-$k$ algorithm like below
-ANSI C code?
-\lstset{language=C}
-\begin{lstlisting}
-int tops(int k, Key* a, int n, Less lt) {
-    build_heap(a, n, lt);
-    for (k = MIN(k, n) - 1; k; --k)
-        heapify(++a, 0, --n, lt);
-    return k;
+\Question{Similarly, can we apply \textproc{Heapify} $k$ times from left to right to get the top-$k$ elements?
+\begin{algorithmic}[1]
+\Function{Top-K}{$A, k$}
+  \State \Call{Build-Heap}{$A$}
+  \State $n \gets |A|$
+  \For {$i \gets 1$ to $min(k, n)$}
+    \State \Call{Heapify}{$A[i ... n], 1$}
+  \EndFor
+\EndFunction
+\end{algorithmic}
 }
-\end{lstlisting}
-\end{itemize}
 \end{Exercise}
 
-% ================================================================
-%                 Explicit binary heap
-% ================================================================
+\begin{Answer}
+\Question{No, it is not correct. The sub-array $[a_2, a_3, ..., a_n]$ can't map back to binary heap. It's insufficient to only apply \textproc{Heapify} from $a_2$, we need run \textproc{Build-Heap} to rebuild the heap.}
+\Question{For the same reason, it does not work.}
+\end{Answer}
+
 \section{Leftist heap and Skew heap, the explicit binary heaps}
 \label{ebheap}
 
@@ -1188,6 +1180,208 @@ in the following chapters.
 \end{itemize}
 \end{Exercise}
 
+\section{Appendix - example programs}
+
+For the complete binary tree represented by array, access parent, and sub-trees with bit-wise operation (index from 0):
+
+\begin{lstlisting}[language = Bourbaki]
+Int parent(Int i) = ((i + 1) >> 1) - 1
+
+Int left(Int i) = (i << 1) + 1
+
+Int right(Int i) = (i + 1) << 1
+\end{lstlisting}
+
+Heapify, parameterized the comparison:
+
+\begin{lstlisting}[language = Bourbaki]
+void heapify([K] a, Int i, Less<K> lt) {
+    Int l, r, m
+    Int n = length(a)
+    loop {
+        m = i
+        l = left(i)
+        r = right(i)
+        if l < n and lt(a[l], a[i]) then m = l
+        if r < n and lt(a[r], a[m]) then m = r
+        if m != i {
+            swap(a, i, m);
+            i = m
+        } else {
+            break
+        }
+    }
+}
+\end{lstlisting}
+
+Build the binary heap from array:
+
+\begin{lstlisting}[language = Bourbaki]
+void buildHeap([K] a, Less<K> lt) {
+    Int n = length(a)
+    for Int i = (n-1) / 2 downto 0 {
+        heapify(a, i, lt)
+    }
+}
+\end{lstlisting}
+
+Pop:
+
+\begin{lstlisting}[language = Bourbaki]
+K pop([K] a, Less<K> lt) {
+    var n = length(a)
+    t = a[n]
+    swap(a, 0, n - 1)
+    remove(a, n - 1)
+    if a != [] then heapify(a, 0, lt)
+    return t
+}
+\end{lstlisting}
+
+Obtain the top-$k$ elements:
+
+\begin{lstlisting}[language = Bourbaki]
+[K] topk([K] a, Int k, Less<K> lt) {
+    buildHeap(a, lt)
+    [K] r = []
+    loop min(k, length(a)) {
+        append(r, pop(a, lt))
+    }
+    return r
+}
+\end{lstlisting}
+
+Decrease the key in min-heap:
+
+\begin{lstlisting}[language = Bourbaki]
+void decreaseKey([K] a, Int i, K k, Less<K> lt) {
+    if lt(k, a[i]) {
+        a[i] = k
+        heapFix(a, i, lt)
+    }
+}
+
+void heapFix([K] a, Int i, Less<K> lt) {
+    while i > 0 and lt(a[i], a[parent(i)]) {
+        swap(a, i, parent(i))
+        i = parent(i)
+    }
+}
+\end{lstlisting}
+
+Push new element:
+
+\begin{lstlisting}[language = Bourbaki]
+void push([K] a, K k, less<K> lt) {
+    append(a, k)
+    heapFix(a, length(a) - 1, lt)
+}
+\end{lstlisting}
+
+Heap sort:
+
+\begin{lstlisting}[language = Bourbaki]
+void heapSort([K] a, less<K> lt) {
+    buildHeap(a, not . lt)
+    n = length(a)
+    while n > 1 {
+        swap(a, 0, n - 1)
+        n = n - 1
+        heapify(a[0 .. (n - 1)], 0, not . lt)
+    }
+}
+\end{lstlisting}
+
+Merge two leftist heaps:
+
+\begin{Haskell}
+merge E h = h
+merge h E = h
+merge h1@(Node _ x l r) h2@(Node _ y l' r') =
+    if x < y then makeNode x l (merge r h2)
+    else makeNode y l' (merge h1 r')
+
+makeNode x a b = if rank a < rank b then Node (rank a + 1) x b a
+                 else Node (rank b + 1) x a b
+\end{Haskell}
+
+Merge two skew heaps:
+
+\begin{Haskell}
+merge E h = h
+merge h E = h
+merge h1@(Node x l r) h2@(Node y l' r') =
+    if x < y then Node x (merge r h2) l
+    else Node y (merge h1 r') l'
+\end{Haskell}
+
+Splay operation:
+
+\begin{Haskell}
+-- zig-zig
+splay t@(Node (Node (Node a x b) p c) g d) y =
+    if x == y then Node a x (Node b p (Node c g d)) else t
+splay t@(Node a g (Node b p (Node c x d))) y =
+    if x == y then Node (Node (Node a g b) p c) x d else t
+-- zig-zag
+splay t@(Node (Node a p (Node b x c)) g d) y =
+    if x == y then Node (Node a p b) x (Node c g d) else t
+splay t@(Node a g (Node (Node b x c) p d)) y =
+    if x == y then Node (Node a g b) x (Node c p d) else t
+-- zig
+splay t@(Node (Node a x b) p c) y = if x == y then Node a x (Node b p c) else t
+splay t@(Node a p (Node b x c)) y = if x == y then Node (Node a p b) x c else t
+-- 否则
+splay t _ = t
+\end{Haskell}
+
+Insert new element to the splay heap:
+
+\begin{Haskell}
+insert E y = Node E y E
+insert (Node l x r) y
+    | x > y     = splay (Node (insert l y) x r) y
+    | otherwise = splay (Node l x (insert r y)) y
+\end{Haskell}
+
+Partition the splay tree:
+
+\begin{Haskell}
+partition E _ = (E, E)
+partition t@(Node l x r) y
+    | x < y =
+        case r of
+          E -> (t, E)
+          Node l' x' r' ->
+              if x' < y then
+                  let (small, big) = partition r' y in
+                  (Node (Node l x l') x' small, big)
+              else
+                  let (small, big) = partition l' y in
+                  (Node l x small, Node big x' r')
+    | otherwise =
+        case l of
+          E -> (E, t)
+          Node l' x' r' ->
+              if y < x' then
+                  let (small, big) = partition l' y in
+                  (small, Node l' x' (Node r' x r))
+              else
+                  let (small, big) = partition r' y in
+                  (Node l' x' small, Node big x r)
+\end{Haskell}
+
+Merge two splay trees:
+
+\begin{Haskell}
+merge E t = t
+merge (Node l x r) t = Node (merge l l') x (merge r r')
+    where (l', r') = partition t x
+\end{Haskell}
+
+\ifx\wholebook\relax \else
+\section{Answers}
+\shipoutAnswer
 
 \begin{thebibliography}{99}
 
