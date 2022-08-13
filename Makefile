@@ -1,3 +1,10 @@
+# force build:
+force-cn:
+	latexmk -cd -xelatex algoxy-zh-cn.tex
+
+force-en:
+	latexmk -cd -xelatex algoxy-en.tex
+
 all: cn en
 
 BOOK-CN := $(wildcard *-zh-cn.tex)
