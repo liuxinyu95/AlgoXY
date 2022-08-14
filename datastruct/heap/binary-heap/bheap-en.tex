@@ -354,72 +354,29 @@ rank\ (r, L, k, R) & = & r \\
 \subsubsection{Merge}
 \index{Leftist heap!merge}
 
-In order to realize `merge', we need develop the auxiliary algorithm
-to compare the ranks and swap the children if necessary.
+To merge two leftist heaps, we define a $make$ function. It compares the ranks of the sub-trees and swap them if necessary.
 
 \be
-mk(k, A, B) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (r_A + 1, k, B, A) & r_A < r_B \\
-  (r_B + 1, k, A, B) & otherwise
-  \end{array}
-\right.
+make(A, k, B) = \begin{cases}
+  rank(A) < rank(B) : & (rank(A) + 1, B, k, A) \\
+  \text{否则}: & (rank(B) + 1, A, k, B) \\
+  \end{cases}
 \ee
 
-This function takes three arguments, a key and two sub trees $A$, and $B$.
-if the rank of $A$ is smaller, it builds a bigger tree with $B$ as the left child,
-and $A$ as the right child. It increment the rank of $A$ by 1 as the
-rank of the new tree; Otherwise if $B$ holds the smaller rank, then $A$ is
-set as the left child, and $B$ becomes the right. The resulting rank
-is $r_b + 1$.
-
-The reason why rank need be increased by one is because there
-is a new key added on top of the tree. It causes the rank
-increasing.
-
-Denote the key, the left and right children for $H_1$ and $H_2$ as
-$k_1, L_1, R_1$, and $k_2, L_2, R_2$ respectively.
-The $merge(H_1, H_2)$ function can be completed by using this auxiliary
-tool as below
+It takes two sub-trees $A$ and $B$. If rank of $A$ is smaller, we let $B$ be the left sub-tree, and $A$ be the right. The rank of the new node is $rank(A) + 1$; otherwise if rank of $B$ is smaller, we let $A$ be the left sub-tree, and $B$ be the right. The rank of the new node is $rank(B) + 1$. Given two leftist heaps $H_1$ and $H_2$, if they are not empty, let them be $(r_1, L_1, K_1, R_1)$ and $(r_2, L_2, k_2, R_2)$ respectively. Below function defines merge:
 
 \be
-merge(H_1, H_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  H_2 & H_1 = \phi \\
-  H_1 & H_2 = \phi \\
-  mk(k_1, L_1, merge(R_1, H_2)) & k_1 < k_2 \\
-  mk(k_2, L_2, merge(H_1, R_2)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+  \textit{merge}\ \nil\ H_2 & = & H_2 \\
+  \textit{merge}\ H_1\ \nil & = & H_1 \\
+  \textit{merge}\ H_1\ H_2 & = & \begin{cases}
+  k_1 < k_2 : & make(L_1, k_1, \textit{merge}\ R_1\ H_2)  \\
+  \text{否则}: & make(L_2, k_2, \textit{merge}\ H_1\ R_2) \\
+  \end{cases}
+\end{array}
 \ee
 
-The $merge$ function is always recursively called on the right side,
-and the Leftist property is maintained. These facts ensure the performance
-being bound to $O(\lg n)$.
-
-The following Haskell example code implements the merge program.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-merge E h = h
-merge h E = h
-merge h1@(Node _ x l r) h2@(Node _ y l' r') =
-    if x < y then makeNode x l (merge r h2)
-    else makeNode y l' (merge h1 r')
-
-makeNode x a b = if rank a < rank b then Node (rank a + 1) x b a
-                 else Node (rank b + 1) x a b
-\end{lstlisting}
-
-\subsubsection{Merge operation in implicit binary heap by array}
-\index{Binary heap!merge}
-
-Implicit binary heap by array performs very fast in most cases, and
-it fits modern computer with cache technology well. However, merge
-is the algorithm bounds to $O(n)$ time. The typical realization is to
-concatenate two arrays together and make a heap for this array \cite{NIST}.
+We always apply $merge$ to the right sub-tree recursively, hence the leftist property is maintained, and it is bound to $O(\lg n)$ time.The binary heap implemented by array performs well in most cases, and it suitable for the modern cache technology. However, it takes $O(n)$ time for merge. We need concatenate two arrays, and rebuild the heap\cite{NIST}.
 
 \begin{algorithmic}[1]
 \Function{Merge-Heap}{$A, B$}
@@ -428,127 +385,63 @@ concatenate two arrays together and make a heap for this array \cite{NIST}.
 \EndFunction
 \end{algorithmic}
 
-% ================================================================
-%                 Basic heap operations
-% ================================================================
-\subsection{Basic heap operations}
-
-Most of the basic heap operations can be implemented with $merge$
-algorithm defined above.
+We can define most heap operations with $merge$.
 
 \subsubsection{Top and pop}
-\index{Leftist heap!top}
-\index{Leftist heap!pop}
-Because the smallest element is always held in root, it's trivial
-to find the minimum value. It's constant $O(1)$ operation. Below
-equation extracts the root from non-empty heap $H = (r, k, L, R)$.
-The error handling for empty case is skipped here.
+\index{Leftist heap!top} \index{Leftist heap!pop}
+
+We can access the top element in $O(1)$ time, assume the heap is not empty:
 
 \be
-top(H) = k
+top\ (r, L, k, R) = k
 \ee
 
-For pop operation, firstly, the top element is removed, then
-left and right children are merged to a new heap.
+After pop the root, we merge the left and right sub-trees as a new heap. Same as $merge$, pop is also bound to $O(\lg n)$ time.
 
 \be
-pop(H) = merge(L, R)
+pop\ (r, L, k, R) = merge\ L\ R
 \ee
 
-Because it calls $merge$ directly, the pop operation on Leftist heap is bound
-to $O(\lg n)$.
+\subsubsection{Insert}
+\index{Leftist heap!insert}
 
-\subsubsection{Insertion}
-\index{Leftist heap!insertion}
-
-To insert a new element, one solution is to create a single
-leaf node with the element, and then merge this leaf node to
-the existing Leftist tree.
+To insert a new element $k$, we build a singleton leaf of $k$, then merge it with the heap:
 
 \be
-insert(H, k) = merge(H, (1, k, \phi, \phi))
+insert\ k\ H = merge\ (1, \nil, k, \nil)\ H
 \ee
 
-It is $O(\lg n)$ algorithm since insertion also calls $merge$ directly.
-
-There is a convenient way to build the Leftist heap from
-a list. We can continuously insert the elements one by one
-to the empty heap. This can be realized by folding.
-
-\be
-build(L) = fold(insert, \phi, L)
-\ee
-
-Figure \ref{fig:leftist-tree} shows one example Leftist tree
-built in this way.
+Or write it in Curried form as $build = fold_r\ insert\ \nil$.
 
 \begin{figure}[htbp]
-   \begin{center}
-   	  \includegraphics[scale=0.5]{img/leftist-tree}
-    \caption{A Leftist tree built from list $\{9, 4, 16, 7, 10, 2, 14, 3, 8, 1\}$.}
-    \label{fig:leftist-tree}
-   \end{center}
+  \centering
+  \includegraphics[scale=0.5]{img/leftist-tree}
+  \caption{Build the leftist heap from $[9, 4, 16, 7, 10, 2, 14, 3, 8, 1]$.}
+  \label{fig:leftist-tree}
 \end{figure}
 
-The following example Haskell code gives reference implementation
-for the Leftist tree operations.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-insert h x = merge (Node 1 x E E) h
-
-findMin (Node _ x _ _) = x
-
-deleteMin (Node _ _ l r) = merge l r
-
-fromList = foldl insert E
-\end{lstlisting}
-
-% ================================================================
-%                 Heap sort
-% ================================================================
-\subsection{Heap sort by Leftist Heap}
+\subsubsection{Heap sort}
 \index{Leftist heap!heap sort}
 
-With all the basic operations defined, it's straightforward to
-implement heap sort. We can firstly turn the list into a Leftist
-heap, then continuously extract the minimum
-element from it.
+Given a list, we build a leftist heap from it, then repeatedly pop the minimum element from top to obtain the sorted result.
 
 \be
-sort(L) = heapSort(build(L))
+sort = heapSort \circ build
 \ee
+
+Where
 
 \be
-heapSort(H) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & H = \phi \\
-  \{top(H)\} \cup heapSort(pop(H)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+heapSort\ [\ ] & = & [\ ] \\
+heapSort\ H & = & (top\ H) : (heapSort\ (pop\ H)) \\
+\end{array}
 \ee
 
-Because pop is logarithm operation, and it is recursively called $n$ times,
-this algorithm takes $O(n \lg n)$ time in total. The following Haskell
-example program implements heap sort with Leftist tree.
+We call pop $n$ times, each takes $O(\lg n)$ time. The total time is bound to $O(n \lg n)$.
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-heapSort = hsort . fromList where
-    hsort E = []
-    hsort h = (findMin h):(hsort $ deleteMin h)
-\end{lstlisting} %$
-
-
-
-% ================================================================
-%                 Skew Heap
-% ================================================================
-
-\subsection{Skew heaps}
-\label{skew-heap}
-\index{Skew heap}
+\subsection{Skew heap}
+\label{skew-heap} \index{Skew heap}
 
 Leftist heap leads to quite unbalanced structure sometimes. Figure \ref{fig:unbalanced-leftist-tree}
 shows one example. The Leftist tree is built by folding on
