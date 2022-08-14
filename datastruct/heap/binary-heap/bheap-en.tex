@@ -292,159 +292,66 @@ Robert. W. Floyd gave a fast implementation with max-heap. The top stores the ma
 \section{Leftist heap and skew heap}
 \label{ebheap}
 
-Instead of using implicit binary tree by array, it is natural to
-consider why we can't use explicit binary tree to realize heap?
-
-There are some problems must be solved if we turn into explicit
-binary tree as the under ground data structure.
-
-The first problem is about the \textproc{Heap-Pop} or \textproc{Delete-Min} operation.
-Consider the binary tree is represented in form of left, key, and right as
-$(L, k, R)$, which is shown in figure \ref{fig:lvr}
+When implement the heap with a explicit binary tree, after pop the rot, there remain two sub-trees. Both are heaps as shown in figure \ref{fig:lvr}. How can we merge them to a new heap? To maintain the heap property, the new root must be the minimum for the remaining. We can give the first edge cases easily:
 
 \begin{figure}[htbp]
-    \centering
-    \includegraphics[scale=0.8]{img/lvr}
-    \caption{A binary tree, all elements in children are not less than $k$.} \label{fig:lvr}
+  \centering
+  \includegraphics[scale=0.5]{img/lvr}
+  \caption{Merge left and right sub-trees after pop.}
+  \label{fig:lvr}
 \end{figure}
-
-If $k$ is the top element, all elements in left and right children are not less
-than $k$ in a min-heap. After $k$ is popped, only left and right children are left.
-They have to be merged to a new tree. Since heap property should be maintained
-after merge, the new root is still the smallest element.
-
-Because both left and right children are binary trees conforming heap property,
-the two trivial cases can be defined immediately.
 
 \[
-merge(H_1, H_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  H_2 & H_1 = \phi \\
-  H_1 & H_2 = \phi \\
-  ? & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+merge(\nil, R) & = & R \\
+merge(L, \nil) & = & L \\
+merge(L, R) & = & ? \\
+\end{array}
 \]
 
-Where $\phi$ means empty heap.
+Both left and right sub-trees are heaps. When they are not empty, each root stores the minimum respectively. We can compare the two roots, and peek the smaller as the new root. Let $L = (A, x, B)$, $R = (A', y, B')$, where $A$, $A'$, $B$, $B'$ are sub-trees. If $x < y$, then $x$ is the new root. We keep $A$, and merge $B$ and $R$ recursively; alternatively, we can keep $B$, and merge $A$ and $R$. The new heap can be $(merge(A, R), x, B)$ or $(A, x, merge(B, R))$. Both are right. To simplify, we always merge the right sub-tree. This method generates {\em leftist heap}.
 
-If neither left nor right child is empty, because they all fit
-heap property, the top elements of them are all the minimum respectively.
-We can compare these two roots,
-and select the smaller as the new root of the merged heap.
+\subsection{Leftist heap}
+\index{Leftist heap} \index{Leftist heap!rank} \index{Leftist heap!S-value}
 
-For instance, let $L = (A, x, B)$ and $R = (A', y, B')$, where $A$, $A'$, $B$,
-and $B'$ are all sub trees. If $x < y$, $x$ will be the new root.
-We can either keep $A$, and recursively merge $B$ and $R$; or
-keep $B$, and merge $A$ and $R$, so the new heap can be one
-of the following.
-
-\begin{itemize}
-\item $(merge(A, R), x, B)$
-\item $(A, x, merge(B, R))$
-\end{itemize}
-
-Both are correct. One simplified solution is to only merge the right
-sub tree. {\em Leftist} tree provides a systematically approach based on this
-idea.
-
-% ================================================================
-%                 Definition
-% ================================================================
-\subsection{Definition}
-\index{Leftist heap}
-
-The heap implemented by Leftist tree is called Leftist heap. Leftist
-tree is first introduced by C. A. Crane in 1972\cite{wiki-leftist-tree}.
-
-\subsubsection{Rank (S-value)}
-\index{Leftist heap!rank}
-\index{Leftist heap!S-value}
-
-In Leftist tree, a rank value (or $S$ value) is defined for each node.
-Rank is the distance to the nearest external node. Where external node
-is the NIL concept extended from the leaf node.
-
-For example, in figure \ref{fig:rank}, the rank of NIL
-is defined 0, consider the root node 4, The nearest external node is
-the child of node 8. So the rank of root node 4 is 2. Because node
-6 and node 8 both only contain NIL, so their rank values are 1.
-Although node 5 has non-NIL left child, However, since the right
-child is NIL, so the rank value, which is the minimum distance
-to NIL is still 1.
+The leftist heap is implemented with leftist tree. C. A. Crane in 1972\cite{wiki-leftist-tree} developed leftist tree. He defined a rank for every node (also known as $S$-value) as the distance to the nearest NIL. The rank of NIL is 0. As shown in \ref{fig:rank}, The nearest leaf node to 4 is 8, the rank of 4 is 2; Both 4 and 8 are leaves, their ranks are 1. Although the left sub-tree of 5 is not empty, its right sub-tree is NIL, hence the rank is 1. We can define the merge method with rank as below. Let the ranks for left and right sub-trees be $r_l$, $r_r$ respectively:
 
 \begin{figure}[htbp]
-   \begin{center}
-     \includegraphics[scale=0.5]{img/rank}
-     \caption{$rank(4) = 2$, $rank(6) = rank(8) = rank(5) = 1$.} \label{fig:rank}
-   \end{center}
+  \centering
+  \includegraphics[scale=0.5]{img/rank}
+  \caption{$rank(4) = 2$, $rank(6) = rank(8) = rank(5) = 1$.}
+  \label{fig:rank}
 \end{figure}
 
-\subsubsection{Leftist property}
+\begin{enumerate}
+\item Always merge the right sub-tree;
+\item When $r_l < r_r$, exchange the left and right sub-trees.
+\end{enumerate}
 
-With rank defined, we can create a strategy when merging.
-
-\begin{itemize}
-\item Every time when merging, we always merge to right child; Denote the rank
-of the new right sub tree as $r_r$;
-\item Compare the ranks of the left and right children, if the rank of
-left sub tree is $r_l$ and $r_l < r_r$, we swap the left and the right children.
-\end{itemize}
-
-We call this `Leftist property'. In general, a Leftist tree always
-has the shortest path to some external node on the right.
-
-Leftist tree tends to be very unbalanced, However, it ensures important
-property as specified in the following theorem.
+We call above merge rules `leftist property'. Basically, a leftist tree always has the shortest path to some NIL on the right. It tends to be unbalanced, while maintain a critical constraint:
 
 \begin{theorem}
-If a Leftist tree $T$ contains $n$ internal nodes, the path from root to the
-rightmost external node contains at most $\lfloor \log (n+1) \rfloor$ nodes.
+For a leftist tree $T$ of $n$ nodes, the path from root to the rightmost NIL has at most $\lfloor \log (n + 1) \rfloor$ nodes.
 \end{theorem}
 
-We skip the proof here, readers can refer to \cite{brono-book} and \cite{TAOCP}
-for more information. With this theorem, algorithms operate along this path are
-all bound to $O(\lg n)$.
+We skip the proof \cite{brono-book} \cite{TAOCP}. With this theorem, algorithms process along this path are ensured bound to $O(\lg n)$ time. We can define the leftist tree by reusing binary tree plus an additional rank. Let the none empty leftist tree be $(r, L, k, R)$:
 
-We can reuse the binary tree definition, and augment with a rank field to
-define the Leftist tree, for example in form of $(r, k, L, R)$ for non-empty
-case. Below Haskell code defines the Leftist tree.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
+\lstset{frame = single}
+\begin{Haskell}
 data LHeap a = E -- Empty
-             | Node Int a (LHeap a) (LHeap a) -- rank, element, left, right
-\end{lstlisting}
+             | Node Int (LHeap a) a (LHeap a)
+\end{Haskell}
 
-For empty tree, the rank is defined as zero. Otherwise, it's the value
-of the augmented field. A $rank(H)$ function can be
-given to cover both cases.
+Function $rank$ returns the rank value:
 
 \be
-rank(H) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  0 & H = \phi \\
-  r & otherwise, H = (r, k, L, R)
-  \end{array}
-\right.
+\begin{array}{rcl}
+rank\ \nil & = & 0 \\
+rank\ (r, L, k, R) & = & r \\
+\end{array}
 \ee
 
-Here is the example Haskell rank function.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-rank E = 0
-rank (Node r _ _ _) = r
-\end{lstlisting}
-
-In the rest of this section, we denote $rank(H)$ as $r_H$
-
-% ================================================================
-%                 Merge
-% ================================================================
-\subsection{Merge}
+\subsubsection{Merge}
 \index{Leftist heap!merge}
 
 In order to realize `merge', we need develop the auxiliary algorithm
