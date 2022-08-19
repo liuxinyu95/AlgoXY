@@ -541,120 +541,57 @@ splay\ T\ y & = & T & \text{others} \\
 \end{array}
 \ee
 
-The first two clauses handle the 'zig-zig' cases; the next two
-clauses handle the 'zig-zag' cases; the last two clauses handle
-the zig cases. The tree aren't changed for all other situations.
-
-The following Haskell program implements this splay function.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-data STree a = E -- Empty
-             | Node (STree a) a (STree a) -- left, key, right
-
--- zig-zig
-splay t@(Node (Node (Node a x b) p c) g d) y =
-    if x == y then Node a x (Node b p (Node c g d)) else t
-splay t@(Node a g (Node b p (Node c x d))) y =
-    if x == y then Node (Node (Node a g b) p c) x d else t
--- zig-zag
-splay t@(Node (Node a p (Node b x c)) g d) y =
-    if x == y then Node (Node a p b) x (Node c g d) else t
-splay t@(Node a g (Node (Node b x c) p d)) y =
-    if x == y then Node (Node a g b) x (Node c p d) else t
--- zig
-splay t@(Node (Node a x b) p c) y = if x == y then Node a x (Node b p c) else t
-splay t@(Node a p (Node b x c)) y = if x == y then Node (Node a p b) x c else t
--- otherwise
-splay t _ = t
-\end{lstlisting}
-
-With splay operation defined, every time when insert a new key,
-we call the splay function to adjust the tree.
-If the tree is empty, the result is a leaf; otherwise we compare this key
-with the root, if it is less than the root, we recursively insert it into
-the left child, and perform splaying after that; else the key is inserted
-into the right child.
+The first two are 'zig-zig' cases; then two 'zig-zag' cases; then two zig cases. The tree keeps changed for all other cases. Every time when insert a new element, we trigger splay to adjust the balance. IF the tree is empty, the result is a singleton leaf; otherwise, we compare the new element and the root, then recursively insert to left (less than) or right (greater than) sub-tree and apply splay.
 
 \be
-insert(T, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, x, \phi) & T = \phi \\
-  splay((insert(L, x), k, R), x) & T = (L, k, R), x < k \\
-  splay(L, k, insert(R, x)) & otherwise
-  \end{array}
-  \right.
+\begin{array}{rcl}
+insert\ \nil\ y & = & (\nil, y, \nil) \\
+insert\ (L, x, R)\ y & = & \begin{cases}
+  y < x: & splay\ ((insert\ L\ y), x, R)\ y  \\
+  \text{otherwise}: & splay\ (L, x, (insert\ R\ y))\ y \\
+\end{cases}
+\end{array}
 \ee
-
-The following Haskell program implements this insertion algorithm.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-insert E y = Node E y E
-insert (Node l x r) y
-    | x > y     = splay (Node (insert l y) x r) y
-    | otherwise = splay (Node l x (insert r y)) y
-\end{lstlisting}
-
-Figure \ref{fig:splay-result} shows the result of using this function.
-It inserts the ordered elements $\{1, 2, ..., 10\}$
-one by one to the empty tree. This would build a very poor result
-which downgrade to linked-list with normal binary search tree.
-The splay method creates more balanced result.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[scale=0.5]{img/splay-tree}
-  \caption{Splaying helps improving the balance.}
+  \includegraphics[scale=0.45]{img/splay-tree}
+  \caption{Splay tree built from $[1, 2, ..., 10]$.}
   \label{fig:splay-result}
 \end{figure}
 
-Okasaki found a simple rule for Splaying \cite{okasaki-book}.
-Whenever we follow
-two left branches, or two right branches continuously, we rotate
-the two nodes.
-
-Based on this rule, splaying can be realized in such a way.
-When we access node for a key $x$ (can be during the process of
-inserting a node, or looking up a node, or deleting a node), if
-we traverse two left branches or two right branches, we
-partition the tree in two parts $L$ and $R$, where $L$ contains all
-nodes smaller than $x$, and $R$ contains all the rest.
-We can then create a new tree (for instance in insertion),
-with $x$ as the root, $L$ as the left child, and $R$ being the right child.
-The partition process is recursive, because it will splay
-its children as well.
+Figure \ref{fig:splay-result} gives the splay tree built from $[1, 2, ..., 10]$. It generates a well balanced tree. Okasaki found a simple rule for splaying \cite{okasaki-book}. Whenever we follow two left branches, or two right branches continuously, we rotate the two nodes. When access node of $x$, if move to left or right twice, then partition $T$ as $L$ and $R$, where $L$ contains all the elements less than $x$, while $R$ contains the remaining. Then we create a new tree with $x$ as the root, and $L$, $R$ as the left and right sub-trees. The partition process is recursively applied to sub-trees.
 
 \be
-partition(T, p) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, \phi) & T = \phi \\
-  (T, \phi) & T = (L, k, R) \land R = \phi \\
-  ((L, k, L'), k', A, B) & \begin{array}{l} \\
-                             T = (L, k, (L', k', R')) \\
-                             k < p, k' < p \\
-                             (A, B) = partition(R', p)
-                           \end{array} \\
-  ((L, k, A), (B, k', R')) & \begin{array}{l} \\
-                               T = (L, K, (L', k', R')) \\
-                               k < p \leq k' \\
-                               (A, B) = partition(L', p) \\ \\
-                             \end{array} \\
-  (\phi, T) & T = (L, k, R) \land L = \phi \\
-  (A, (L', k', (R', k, R)) & \begin{array}{l} \\
-                               T = ((L', k', R'), k, R) \\
-                               p \leq k, p \leq k' \\
-                               (A, B) = partition(L', p)
-                             \end{array} \\
-  ((L', k', A), (B, k, R)) & \begin{array}{l} \\
-                               T = ((L', k', R'), k, R) \\
-                               k' \leq p \leq k \\
-                               (A, B) = partition(R', p)
-                             \end{array}
-  \end{array}
-  \right.
+\resizebox{\linewidth}{!}{\ensuremath{
+\begin{array}{l}
+\begin{array}{rcl}
+partition\ \nil\ y & = & (\nil, \nil) \\
+partition\ (L, x, R)\ y & = &  \\
+\end{array} \\
+\quad
+\begin{cases}
+  x < y & \begin{cases}
+      R = \nil & (T, \nil) \\
+      R = (L', x', R') & \begin{cases}
+          x' < y & (((L, x, L'), x', A), B) \\
+                  & \text{where: }(A, B) = partition\ R'\ y \\
+          \text{otherwise} & ((L, x, A), (B, x', R')) \\
+                      & \text{where: }(A, B) = partition\ L'\ y \\
+        \end{cases} \\
+    \end{cases} \\
+  \text{otherwise} & \begin{cases}
+      L = \nil & (\nil, T) \\
+      L = (L', x', R') & \begin{cases}
+         y < x' & (A, (L', x', (R', x, R))) \\
+                 & \text{where: }(A, B) = partition\ L'\ y \\
+         \text{otherwise} & ((L', x', A), (B, x, R)) \\
+                 & \text{where: }(A, B) = partition\ R'\ y \\
+      \end{cases} \\
+    \end{cases}
+  \end{cases} \\
+\end{array}
+}}
 \ee
 
 Function $partition(T, p)$ takes a tree $T$, and a pivot $p$ as arguments.
