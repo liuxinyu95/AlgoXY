@@ -90,9 +90,7 @@ sort\ A & = & m : sort\ (A - [m]) \quad \text{其中}\ m = min\ A
 \EndFunction
 \end{algorithmic}
 
-记$A = \{a_1, a_2, ..., a_n\}$，任何时候，当我们处理第$i$个元素时，所有在$i$之前的部分$\{a_1, a_2, ..., a_{i-1}\}$都已经排好序了。我们找到$\{a_i, a_{i+1}, ..., a_n\}$中的最小元素，然后将其和$a_i$交换，这样第$i$个位置就保存了正确的元素。重复这一过程直到最后一个元素。
-
-图\ref{fig:in-place-ssort}描述了这一思路。
+令$A = [a_1, a_2, ..., a_n]$，当处理第$i$个元素时，$[a_1, a_2, ..., a_{i-1}]$都已排序。我们找到$[a_i, a_{i+1}, ..., a_n]$中的最小元素，将其和$a_i$交换，这样第$i$个位置就保存了正确的元素。重复这一过程直到最后一个元素。图\ref{fig:in-place-ssort}描述了这一思路。
 
 \begin{figure}[htbp]
   \centering
@@ -104,24 +102,14 @@ sort\ A & = & m : sort\ (A - [m]) \quad \text{其中}\ m = min\ A
     \draw (7, 0) rectangle (8, 1) node[pos=.5] {...};
     \draw[thick, <->] (x) edge[bend left=45] node [above] {交换} (min);
   \end{tikzpicture}
-  \caption{左侧部分为已序元素，不断从剩余元素中找到最小的存储到正确的位置}
+  \caption{左侧部分为已序元素，不断从剩余部分找到最小的交换到正确位置}
   \label{fig:in-place-ssort}
 \end{figure}
 
-% ================================================================
-% Find the minimum
-% ================================================================
 \section{查找最小元素}
 \index{选择排序!查找最小元素}
 
-我们尚未完全实现选择排序，如何查找最小（或最大）的元素仍然是一个黑盒子。小孩子们是如何找到最小或最大的一粒葡萄的？这对于计算机算法来说也是一个有趣的题目。
-
-虽然不够快，但是最简单的方法是对所有的元素进行一次扫描。存在几种不同的方法来实现扫描的过程。假设要选出最大的一粒葡萄。我们任选一颗，将它和另外一颗比较，然后留下较大的；此后我们再选另外一颗，和手里留下的这颗比较，并留下最大的。重复这一“选取―比较”的过程直到比较完所有的葡萄。
-
-实践一下，我们会发现，如果不对比较过的葡萄做记号，很快就会搞乱，我们会忘记哪些葡萄比较过了，哪些还没有。有两种方法可以解决这一问题，它们分别适合不同的数据结构。
-
-\subsection{标记}
-第一种方法是将葡萄标记上编号，例如：$\{1, 2, ..., n\}$，然后按照编号的顺序进行比较。先比较第一号葡萄和第二号葡萄，选择较大的留下；然后用第三号葡萄做比较……重复这一步骤直到第$n$号葡萄。标记方法很适合处理数组。
+有两种方法在一组元素中寻找最小值。一种是标记——比较，另一种是分而治之。首先将若干元素编号为$1, 2, ..., n$。比较编号为1，2的两个元素，选择较小的留下与编号为3的元素比较……重复这一步骤直到第$n$号元素。标记——比较方法适合处理数组。
 
 \begin{algorithmic}[1]
 \Function{Min}{$A$}
@@ -135,33 +123,11 @@ sort\ A & = & m : sort\ (A - [m]) \quad \text{其中}\ m = min\ A
 \EndFunction
 \end{algorithmic}
 
-使用\textproc{Min}函数，我们可以最终完成基本的选择排序（没有任何空间和时间上的优化）。
-
-上述查找最小元素的方法返回的是元素的值而非它的位置（葡萄的编号），如果要实现原地排序，还需要做一些调整。某些语言，如C++支持返回引用作为结果，因此可以直接实现元素的交换。
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-T& min(T* from, T* to) {
-    T* m;
-    for (m = from++; from != to; ++from)
-        if (*from < *m)
-            m = from;
-    return *m;
-}
-
-template<typename T>
-void ssort(T* xs, int n) {
-    for (int i = 0; i < n; ++i)
-        std::swap(xs[i], min(xs+i, xs+n));
-}
-\end{lstlisting}
-
-在不支持引用语意的环境中，可以返回元素的位置，而不是值作为结果。
+这一方法返回的是元素的值，要实现原地排序，我们需要返回元素的编号位置：
 
 \begin{algorithmic}[1]
-\Function{Min-At}{$A$}
-  \State $m \gets$ \Call{First-Index}{$A$}
+\Function{Min-At}{$A, i$}
+  \State $m \gets i$
   \For{$i \gets m + 1 $ to $|A|$}
     \If{$A[i] < A[m]$}
       \State $m \gets i$
@@ -171,28 +137,8 @@ void ssort(T* xs, int n) {
 \EndFunction
 \end{algorithmic}
 
-传入\textproc{Min-At}的数组实际是$A$的片断$A[i...]$，我们假设第一个元素$A[i]$是最小的一个，并且逐一检查元素$A[i+1], A[i+2], ...$。函数\textproc{First-Index}()用于从参数中获取索引$i$。
+\textproc{Min-At}查找片断$A[i...]$中最小元素的位置$m$。令$m$指向第一个元素$A[i]$，并逐一检查元素$A[i+1], A[i+2], ...$。
 
-下面的Python例子程序，根据这一思路实现了基本的原地选择排序算法。它直接将数组片断的信息传入，并使用最小元素的位置。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def ssort(xs):
-    n = len(xs)
-    for i in range(n):
-        m = min_at(xs, i, n)
-        (xs[i], xs[m]) = (xs[m], xs[i])
-    return xs
-
-def min_at(xs, i, n):
-    m = i;
-    for j in range(i+1, n):
-        if xs[j] < xs[m]:
-            m = j
-    return m
-\end{lstlisting}
-
-\subsection{分组}
 \index{选择排序!尾递归查找最小值}
 
 另外一种方法是将全部葡萄分成两部分：一组包含已经检查并比较过的所有葡萄，另外一组包含剩余未比较过的。记这两组葡萄为$A$和$B$、全部的元素（葡萄）为$L$。在开始的时候，我们尚未处理任何葡萄，因此$A$为空（$\phi$），$B$包含全部葡萄。我们可以从$B$中任选两颗葡萄进行比较，然后将较小的一颗放入$A$。此后我们不断从$B$中选择葡萄，和上次比较的获胜者（较大的一颗）对比直到$B$变成空。这时，最后的获胜者就是最小的元素，而$A$中包含$L - \{min(L)\}$，可以用于下一轮的最小值查找。
@@ -1045,7 +991,35 @@ sort'(T) = \left \{
 
 本章我们介绍了选择排序的进化过程。选择排序简单、直观，经常被用来教授编程中的多重循环。它的结构虽然简单，但是性能却是平方级别的。本章中，我们看到，选择排序不仅可以通过细微调整加以改进，而且还可以通过改变底层的数据结构，进化到锦标赛淘汰排序和堆排序，从而在本质上得到性能的提升。
 
+\section{附录：例子程序}
+
+逐一查找最小元素实现选择排序：
+
+\begin{lstlisting}[language = Bourbaki]
+[A] ssort([A] xs) {
+    Int n = length(xs)
+    for Int i = 0 to n - 1 {
+        Int m = minAt(xs, i)
+        swap(xs[i], xs[m])
+    }
+    return xs
+}
+
+Int minAt([A] xs, Int i):
+    Int m = i
+    Int n = length(xs)
+    for Int j = m + 1 to n - 1 {
+        if xs[j] < xs[m] then m = j
+    }
+    return m
+}
+\end{lstlisting}
+
+
 \ifx\wholebook\relax\else
+\section{参考答案}
+\shipoutAnswer
+
 \begin{thebibliography}{99}
 
 \bibitem{TAOCP}
