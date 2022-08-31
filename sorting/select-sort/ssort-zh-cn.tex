@@ -109,7 +109,7 @@ sort\ A & = & m : sort\ (A - [m]) \quad \text{其中}\ m = min\ A
 \section{查找最小元素}
 \index{选择排序!查找最小元素}
 
-有两种方法在一组元素中寻找最小值。一种是标记——比较，另一种是分组。首先将若干元素编号为$1, 2, ..., n$。比较编号为1，2的两个元素，选择较小的留下与编号为3的元素比较……重复这一步骤直到第$n$号元素。标记——比较方法适合处理数组。
+为了在一组元素中寻找最小值，我们既可以用比较——交换的方式，也可以用递归的方式。在比较——交换时，令元素编号为$1, 2, ..., n$。比较编号为1，2的两个元素，选择较小的留下与编号为3的元素比较……重复这一步骤直到第$n$号元素。这一方法适合处理数组。
 
 \begin{algorithmic}[1]
 \Function{Min-At}{$A, i$}
@@ -125,8 +125,20 @@ sort\ A & = & m : sort\ (A - [m]) \quad \text{其中}\ m = min\ A
 
 \textproc{Min-At}查找片断$A[i...]$中最小元素的位置$m$。令$m$指向第一个元素$A[i]$，并逐一检查元素$A[i+1], A[i+2], ...$。
 
-\index{选择排序!尾递归查找最小值}
-另外一种方法是将全部元素$L$分成两组：$A$、$B$。开始时$A$为空（$[\ ]$），$B$包含全部元素。我们从$B$中任选两个元素比较，将较大的放入$A$，而留下较小的记为$m$。此后不断从$B$中任取一个元素，和$m$对比直到$B$变成空。这时，$m$就是最小的元素，而$A$中包含$L - [m]$，可以用于下一轮的最小值查找。这一方法的不变关系为：在任何时候有：$L = A \doubleplus [m] \doubleplus B$，其中$m$为目前找到的最小值。这一方法无需对元素进行编号，适用于任何可被遍历的数据结构。
+\index{选择排序!递归查找最小元素}
+在一组元素$L$中递归查找时，如果$L$只含有一个元素，它就是最小元素。否则从$L$中取出一个元素$x$，然后在剩余部分中递归找到最小元素$y$。$x$、$y$中较小的一个就是最终的最小元素。
+
+\be
+\begin{array}{rcl}
+min\ [x] & = & (x, [\ ]) \\
+min\ (x:xs) & = & \begin{cases}
+  x < y: & (x, xs), \text{其中}: (y, ys) = min\ xs \\
+  \text{否则}: & (y,\ x:ys)
+\end{cases}
+\end{array}
+\ee
+
+可以进一步用尾递归优化。将全部元素分成两组：$A$、$B$。开始时$A$为空（$[\ ]$），$B$包含全部元素。我们从$B$中任选两个元素比较，将较大的放入$A$，而留下较小的记为$m$。此后不断从$B$中任取一个元素，和$m$对比直到$B$变成空。这时，$m$就是最小的元素。在任何时候有不变关系：$L = A \doubleplus [m] \doubleplus B$，其中$a \leq m \leq b, a \in A, b \in B$。
 
 \be
 min\ (x:xs) = min'\ [\ ]\ x\ xs
@@ -153,67 +165,31 @@ sort\ xs   & = & m : (sort\ xs'), \text{其中}: (m, xs') = min\ xs \\
 \end{array}
 \ee
 
-第一行处理边界情况，空序列的排序结果仍为空；第二行确保序列中至少含有一个元素，因此\texttt{extractMin}函数无需再做额外的模式匹配。
-
-有读者认为函数\texttt{min'}第二个子式应该实现如下：
-
-\begin{lstlisting}[style=Haskell]
-min' ys m (x:xs) = if m < x then min' ys ++ [x] m xs
-                            else min' ys ++ [m] x xs
-\end{lstlisting}
-
-否则函数会返回逆序的列表。但这里我们需要用“cons”\footnote{cons来自Lisp语言，表示将一个元素附加到一个链表的头部。详见附录A。}而不是追加。因为追加操作的复杂度是线性的，和序列$A$的长度成正比，而“cons”是常数时间$O(1)$的。我们并不需要保持待排序元素的顺序，因为排序过程本身就是对顺序的一种改变。
-
-当然，既保持元素的相对顺序\footnote{称为稳定排序(stable sort)}，又能高效地查找最小元素，而不退化成平方复杂度是可以实现的。下面的定义满足了这一限制：
-
-\be
-extractMin(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (l_1, \phi) & |L| = 1 \\
-  (l_1, L') & l_1 < m, (m, L'') = extractMin(L') \\
-  (m, {l_1} \cup L'') & otherwise
-  \end{array}
-\right.
-\ee
-
-如果$L$只含有一个元素（称为singleton），最小值就是这唯一的元素。否则记$l_1$为$L$中的第一个元素，除$l_1$以外的剩余元素为$L'$，即$L' = \{ l_2, l_3, ...\}$。算法递归地从$L'$中查找最小元素，结果记为$(m, L'')$，其中$m$是$L'$中的最小元素，而$L''$包含除$m$外的剩余元素。比较$l_1$和$m$以决定哪个是最终的最小值。
-
-下面的Haskell程序实现了这一版本的选择排序。
-
-\begin{lstlisting}[style=Haskell]
-sort [] = []
-sort xs = x : sort xs' where
-  (x, xs') = extractMin xs
-
-extractMin [x] = (x, [])
-extractMin (x:xs) = if x < m then (x, xs) else (m, x:xs') where
-  (m, xs') = extractMin xs
-\end{lstlisting}
-
-这里仅仅使用了“cons”操作，而无需“追加”操作。因为算法从右向左处理列表。但是这会有一些额外开销，程序通常需要使用堆栈来保存递归的环境。元素间的相对顺序通过递归来加以保证。读者可以参考附录中关于“尾递归”的内容。
-
 \subsection{选择排序的性能}
 
-无论是标记法，还是分组法都需要在每轮中检查所有未排好的元素以挑选出最小值；总共进行了$n$次挑选。因此处理时间为：$n + (n-1) + (n-2) + ... + 1$次比较，即$\frac{n(n+1)}{2}$。选择排序是平方时间$O(n^2)$的算法。
-
-和此前介绍的插入排序相比，选择排序在最好、最差和平均情况下的性能是相同的，而插入排序在最好情况下性能为线性时间$O(n)$（元素存储在一个链表中，并且顺序为逆序），最差情况下性能为平方时间$O(n^2)$。
-
-在接下来的部分，我们将分析为何选择排序的性能较差，并尝试逐步改进它。
+选择排序在每轮中检查所有未排好的元素以挑选出最小值；总共进行了$n$次挑选，$n + (n-1) + (n-2) + ... + 1$次比较，时间复杂度为$O(\dfrac{n(n+1)}{2}) = O(n^2)$。和插入排序相比，选择排序在最好、最差和平均情况下的性能是相同的，而插入排序在最好情况下性能为线性时间$O(n)$（元素存储在一个链表中，并且顺序为逆序），最差情况下性能为平方时间$O(n^2)$。
 
 \begin{Exercise}
-
-\begin{itemize}
-\item 选择一门编程语言实现基本的命令式选择排序（非原地排序版本）。和原地排序的算法进行对比，分析时间和空间上的效率。
-\end{itemize}
-
+\Question{下面的尾递归查找最小值实现有何问题？
+\[
+\begin{array}{rcl}
+min'\ as\ m\ [\ ] & = & (m, A) \\
+min'\ as\ m\ (b:bs) & = & \begin{cases}
+  b < m: & min'\ (as \doubleplus [m])\ b\ bs \\
+  \text{否则}: & min'\ (as \doubleplus [b])\ m\ bs \\
+\end{cases}
+\end{array}
+\]
+}
+\Question{实现非原地和原地的选择排序程序。}
 \end{Exercise}
 
-% ================================================================
-% Improvement 1
-% ================================================================
+\begin{Answer}
+\Question{这里需要用链接而不是追加。追加操作的复杂度是线性的，和序列的长度成正比，而链接是常数时间的。}
+\Question{实现非原地和原地的选择排序程序。TO-DO}
+\end{Answer}
 
-\section{细微改进}
+\section{改进}
 
 本节介绍针对选择排序的一些细微改进，首先我们通过参数化，将排序算法变得通用；然后对算法结构进行一些细微调整，使得它更为紧凑。最后我们介绍“鸡尾酒排序”将循环次数减半。
 
@@ -991,6 +967,20 @@ Int minAt([A] xs, Int i):
 }
 \end{lstlisting}
 
+递归实现的选择排序
+
+\begin{Haskell}
+sort [] = []
+sort xs = x : sort xs' where
+    (x, xs') = extractMin xs
+
+extractMin [x] = (x, [])
+extractMin (x:xs) = if x < m then (x, xs)
+                    else (m, x:xs')
+where
+    (m, xs') = extractMin xs
+\end{Haskell}
+
 尾递归实现的选择排序：
 \begin{Haskell}
 sort [] = []
@@ -998,9 +988,9 @@ sort xs = x : sort xs' where
   (x, xs') = extractMin xs
 
 extractMin (x:xs) = min' [] x xs where
-  min' ys m [] = (m, ys)
-  min' ys m (x:xs) = if m < x then min' (x:ys) m xs
-                              else min' (m:ys) x xs
+    min' ys m [] = (m, ys)
+    min' ys m (x:xs) = if m < x then min' (x:ys) m xs
+                                else min' (m:ys) x xs
 \end{Haskell}
 
 \ifx\wholebook\relax\else
