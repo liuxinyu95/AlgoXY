@@ -132,7 +132,7 @@ sort\ A & = & m : sort\ (A - [m]) \quad \text{其中}\ m = min\ A
 \begin{array}{rcl}
 min\ [x] & = & (x, [\ ]) \\
 min\ (x:xs) & = & \begin{cases}
-  x < y: & (x, xs), \text{其中}: (y, ys) = min\ xs \\
+  x < y: & (x, xs),\ \text{其中}:\ (y, ys) = min\ xs \\
   \text{否则}: & (y,\ x:ys)
 \end{cases}
 \end{array}
@@ -161,7 +161,7 @@ min'\ as\ m\ (b:bs) & = & \begin{cases}
 \be
 \begin{array}{rcl}
 sort\ [\ ] & = & [\ ] \\
-sort\ xs   & = & m : (sort\ xs'), \text{其中}: (m, xs') = min\ xs \\
+sort\ xs   & = & m : (sort\ xs'),\ \text{其中}:\ (m, xs') = min\ xs \\
 \end{array}
 \ee
 
@@ -191,85 +191,36 @@ min'\ as\ m\ (b:bs) & = & \begin{cases}
 
 \section{改进}
 
-本节介绍针对选择排序的一些细微改进，首先我们通过参数化，将排序算法变得通用；然后对算法结构进行一些细微调整，使得它更为紧凑。最后我们介绍“鸡尾酒排序”将循环次数减半。
-
-\subsection{比较方法参数化}
-\index{选择排序!比较方法参数化}
-
-在改进性能前，我们先将前面给出的选择排序算法变得更加通用，以便能处理各种排序条件。
-
-我们可以看到存在两种完全相反的排序需要：升序排序和降序排序。对于前者，需要不断查找最小元素；而对于后者，需要不断寻找最大元素。实际应用中，远非这两种情况，还存在各种各样的排序标准，例如按照尺寸、重量、年龄……进行排序。
-
-我们可以将具体的排序标准作为一个比较函数传入选择排序算法，如下：
+为了支持升序、降序、和不同的比较，我们可以将比较操作抽出作为参数$\lhd$。
 
 \be
-sort(c, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  {m} \cup sort(c, L'') & L \neq \phi, (m, L'') = extract(c, L')
-  \end{array}
-\right.
+\begin{array}{rcl}
+sortBy \lhd\ [\ ] & = & [] \\
+sortBy \lhd\ xs & = & m : sortBy\ \lhd\ xs',\ \text{其中}:\ (m, xs') = minBy\ \lhd\ xs \\
+\end{array}
 \ee
 
-其中$extract(c, L)$的定义为：
+“最小值”也相应地使用传入的$\lhd$进行比较：
 
 \be
-extract(c, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (l_1, \phi) & |L| = 1 \\
-  (l_1, L') & c(l_1, m), (m, L'') = extract(c, L') \\
-  (m, \{l_1\} \cup L'') & \lnot c(l_1, m)
-  \end{array}
-\right.
+\begin{array}{rcl}
+minBy\ \lhd\ [x] & = & (x, [\ ]) \\
+minBy\ \lhd\ (x:xs) & = & \begin{cases}
+  x \lhd y: & (x, xs),\ \text{其中}:\ (y, ys) = minBy\ xs \\
+  \text{否则}: & (y,\ x:ys)
+\end{cases}
+\end{array}
 \ee
 
-这里$c$是一个比较函数，它接受两个元素，将它们相比并决定哪个的顺序在前面。将“小于”操作$(<)$传入，就是我们此前给出的选择排序实现。
-
-有些环境需要传入全序（total ordering）的比较函数，也就是说比较结果为“小于”、“等于”或者“大于”中的一个。对于选择排序，并不需要这样强的限制，$c$只要检查“小于”是否满足即可。但是作为最低要求，比较函数必须满足严格弱序（strict weak ordering）\cite{wiki-sweak-order}：
+对于一组整数，传入小于号得到升序结果：$sortBy\ (<)\ [3, 1, 4, ...]$。这里要求比较$\lhd$操作满足严格弱序\cite{wiki-sweak-order}条件：
 
 \begin{itemize}
-\item 非自反性（Irreflexivity），对于任何$x$，$x < x$不成立；
-\item 非对称性（Asymmetric），对任何$x$和$y$，若$x < y$成立，则$y < x$不成立；
-\item 传递性（Transitivity）, 对任何$x$、$y$和$z$，若$x < y$且$y < z$，则$x < z$成立。
+\item 非自反性：对任何$x$，$x < x$不成立；
+\item 非对称性：对任何$x$、$y$，若$x < y$，则$y < x$不成立；
+\item 传递性：对任何$x$、$y$、$z$，若$x < y$且$y < z$，则$x < z$。
 \end{itemize}
 
-下面的Scheme/Lisp例子程序实现了参数化的选择排序。Scheme/Lisp的词法作用域（lexical scope）可以简化比较函数的传递。
-
-\lstset{language=Lisp}
-\begin{lstlisting}
-(define (sel-sort-by ltp? lst)
-  (define (ssort lst)
-    (if (null? lst)
-        lst
-        (let ((p (extract-min lst)))
-          (cons (car p) (ssort (cdr p))))))
-  (define (extract-min lst)
-    (if (null? (cdr lst))
-        lst
-        (let ((p (extract-min (cdr lst))))
-          (if (ltp? (car lst) (car p))
-              lst
-              (cons (car p) (cons (car lst) (cdr p)))))))
-  (ssort lst))
-\end{lstlisting}
-
-其中\texttt{ssort}和\texttt{extract-min}都是内部函数，它们都可以直接使用比较函数\texttt{ltp?}。将$<$传入就可以得到普通的升序排序结果。
-
-\lstset{language=Lisp}
-\begin{lstlisting}
-(sel-sort-by < '(3 1 2 4 5 10 9))
-;Value 16: (1 2 3 4 5 9 10)
-\end{lstlisting}
-
-在命令式实现中也可以将比较函数参数化，我们将其作为练习留给读者。
-
-简单起见，本章的后继部分我们仅仅考虑元素的升序排序，除非必要，我们不将比较函数作为参数传入。
-
-\subsection{细微调整}
-
-基本的命令式原地选择排序算法遍历了所有的元素，每次查找出最小的。我们可以把最小值的查找直接实现为一个内重循环，从而使程序变得更加紧凑。
+命令式原地选择排序遍历了所有的元素，可以把最小值查找实现为一个内重循环，从而使程序变得更加紧凑：
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A$}
@@ -285,9 +236,7 @@ extract(c, L) = \left \{
 \EndProcedure
 \end{algorithmic}
 
-进一步观察，我们需要将$n$个元素排序，当前$n-1$个元素排好后，最后剩下的一个元素，必然是第$n$大的。因此无需再进行一次最小值查找。这样外重循环的次数可以减少一次变成$n-1$。
-
-还有一处可以进行细微调整，如果第$i$大的元素恰好是$A[i]$，我们无需进行交换操作。最终实现可以调整为：
+当前$n-1$个元素排好后，最后剩下的一个元素，必然是第$n$大的。因此无需再进行一次最小值查找。这样外重循环的次数可以减少一次变成$n-1$。另外，如果第$i$大的元素恰好是$A[i]$，我们无需进行交换操作。这样可以进一步改进为：
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A$}
@@ -305,12 +254,10 @@ extract(c, L) = \left \{
 \EndProcedure
 \end{algorithmic}
 
-显然，上面这些调整都对整体的复杂度没有影响。
-
-\subsection{鸡尾酒排序（Cock-tail sort）}
+\subsection{鸡尾酒排序}
 \index{鸡尾酒排序}
 
-Knuth给出过一个另一种选择排序的实现\cite{TAOCP}。每次不是查找最小元素，而是最大元素，将其放在末尾位置。如下：
+高德纳给出了另一种选择排序的实现\cite{TAOCP}。每次不是查找最小元素，而是最大元素，将其放在末尾位置。如图\ref{fig:knuth-ssort}所示，任何时候，最右侧的元素都是已序的。算法扫描未排序元素，定位到其中的最大值，然后交换到未排序部分的末尾。
 
 \begin{algorithmic}[1]
 \Procedure{Sort'}{$A$}
@@ -326,8 +273,6 @@ Knuth给出过一个另一种选择排序的实现\cite{TAOCP}。每次不是查
 \EndProcedure
 \end{algorithmic}
 
-如图\ref{fig:knuth-ssort}所示，任何时候，最右侧的元素都是已序的。算法扫描未排序元素，定位到其中的最大值，然后交换到未排序部分的末尾。
-
 \begin{figure}[htbp]
   \centering
   \begin{tikzpicture}[scale=0.8]
@@ -342,11 +287,11 @@ Knuth给出过一个另一种选择排序的实现\cite{TAOCP}。每次不是查
   \label{fig:knuth-ssort}
 \end{figure}
 
-这一版本的实现说明，每次选择最大的元素也可以实现升序排序。进一步说，我们每次扫描可以同时查找最小值和最大值，分别将最小值放到开头，将最大值放到末尾。这样可以将排序性能略微提高（外重循环次数减半）。我们称这一算法为“鸡尾酒排序”。
+每次选择最大的元素也可以实现升序排序。进一步，每次扫描可以同时查找最小值和最大值，分别将最小值放到开头，将最大值放到末尾。这样可以将外重循环次数减半。这一算法称为“鸡尾酒排序”。如图\ref{fig:cock-tail-sort}所示，任何时候，左侧和右侧部分都包含了已序元素。算法扫描未排序的部分，定位到最小和最大的两个元素，然后分别将它们交换到开头和末尾。
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A$}
-  \For{$i \gets 1 $ to $\lfloor \frac{|A|}{2} \rfloor$}
+  \For{$i \gets 1 $ to $\lfloor \dfrac{|A|}{2} \rfloor$}
     \State $min \gets i$
     \State $max \gets |A| + 1 - i$
     \If{$A[max] < A[min]$}
@@ -365,8 +310,6 @@ Knuth给出过一个另一种选择排序的实现\cite{TAOCP}。每次不是查
   \EndFor
 \EndProcedure
 \end{algorithmic}
-
-图\ref{fig:cock-tail-sort}描述了这一算法，任何时候，左侧部分和右侧部分都包含了已序元素。较小的在左侧，较大的在右侧。算法扫描未排序的部分，定位到最小和最大的两个元素，然后分别将它们交换到未排序部分的开头和末尾。
 
 \begin{figure}[htbp]
   \centering
@@ -387,140 +330,67 @@ Knuth给出过一个另一种选择排序的实现\cite{TAOCP}。每次不是查
   \label{fig:cock-tail-sort}
 \end{figure}
 
+注意，在内重循环开始前，如果最右侧的元素小于最左侧的元素，需要将它们交换。这是因为我们的扫描范围不包括两端上的元素。也可以用递归的方式实现鸡尾酒排序：
 
-注意，在内重循环开始前，如果最右侧的元素小于最左侧的元素，需要将它们交换。这是因为我们的扫描范围不包括两端上的元素。另外一种方法是，在内重循环扫描前，我们将最小和最大元素同时初始化为第一个未排序元素。但是这会产生一个新问题：由于我们在内重循环扫描后要做两次交换操作，有可能第一次交换会改变我们刚刚找到的最大元素或最小元素的位置，这样第二次交换就会产生不正确的结果。我们把如何解决这一问题留给读者作为练习。
-
-下面的Python例子程序实现了鸡尾酒排序。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def cocktail_sort(xs):
-    n = len(xs)
-    for i in range(n / 2):
-        (mi, ma) = (i, n - 1 -i)
-        if xs[ma] < xs[mi]:
-            (xs[mi], xs[ma]) = (xs[ma], xs[mi])
-        for j in range(i+1, n - 1 - i):
-            if xs[j] < xs[mi]:
-                mi = j
-            if xs[ma] < xs[j]:
-                ma = j
-        (xs[i], xs[mi]) = (xs[mi], xs[i])
-        (xs[n - 1 - i], xs[ma]) = (xs[ma], xs[n - 1 - i])
-    return xs
-\end{lstlisting}
-
-鸡尾酒排序也可以用函数式的方式加以实现。一个直观的描述为：
-
-\begin{itemize}
-  \item 边界情况：若待排序的序列为空或者仅含有一个元素，则排序结果为原序列；
+\begin{enumerate}
+  \item 若待排序的序列为空或者仅含有一个元素，排序结果为原序列；
   \item 否则，找到最小和最大值，分别放到开头和结尾位置，然后递归地将剩余元素排序。
-\end{itemize}
-
-算法可以形式化为如下函数。
+\end{enumerate}
 
 \be
-sort(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  L & |L| \leq 1 \\
-  \{ l_{min} \} \cup sort(L'') \cup \{ l_{max} \} & otherwise
-  \end{array}
-\right.
-\ee
-
-其中，函数$select(L)$从序列$L$中抽取出最小值和最大值。
-
-\[
-(l_{min}, L'', l_{max}) = select(L)
-\]
-
-注意，最小值实际被直接链结到递归排序结果的前面。语意上是一个常数时间$O(1)$的“cons”操作（参考本书附录A）。但是最大值被追加到末尾，这一操作的代价较大，通常需要线性时间$O(n)$。我们稍后再优化它。
-
-函数$select(L)$扫描传入的序列查找最小值和最大值，它的定义为：
-
-\be
-select(L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (min(l_1, l_2), max(l_1, l_2)) & L = \{ l_1, l_2\} \\
-  (l_1, \{ l_{min}\} \cup L'', l_{max}) & l_1 < l_{min} \\
-  (l_{min}, \{l_{max}\} \cup L'', l_1) & l_{max} < l_1 \\
-  (l_{min}, \{l_1\} \cup L'', l_{max}) & otherwise
-  \end{array}
-\right.
-\ee
-
-其中$(l_{min}, L'', l_{max}) = select(L')$，$L'$是除去$l_1$外的剩余元素。如果序列中仅有两个元素，我们选择较小的最为最小值，较大的作为最大值。剩余序列为空。这是边界情况。否则，我们取出第一个元素$l_1$，然后递归地在剩余元素中抽取最小和最大值并和$l_1$做比较以决定最终的结果。
-
-注意所有情况下，我们都不需要做结果列表的追加操作。但是抽取过程需要扫描全部元素，因此性能是线性时间$O(n)$的。
-
-下面的Haskell例子程序实现了这一算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-csort [] = []
-csort [x] = [x]
-csort xs = mi : csort xs' ++ [ma] where
-  (mi, xs', ma) = extractMinMax xs
-
-extractMinMax [x, y] = (min x y, [], max x y)
-extractMinMax (x:xs) | x < mi = (x, mi:xs', ma)
-                     | ma < x = (mi, ma:xs', x)
-                     | otherwise = (mi, x:xs', ma)
-  where (mi, xs', ma) = extractMinMax xs
-\end{lstlisting}
-
-此前我们指出追加操作的性能开销较大。这一问题可以分两步解决。第一步是将鸡尾酒排序转换为尾递归。左侧包含较小的已序元素，记这一部分为$A$；右侧包含较大的已序元素，记这一部分为$B$。如图\ref{fig:cock-tail-sort}所示。我们用$A$和$B$作为累积器（accumulator），鸡尾酒排序的尾递归实现如下：
-
-\be
-sort'(A, L, B) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  A \cup L \cup B & L = \phi \lor |L| = 1 \\
-  sort'(A \cup \{ l_{min}\}, L'', \{ l_{max}\} \cup B) & otherwise
-  \end{array}
-\right.
-\ee
-
-其中$l_{min}$、$l_{max}$和$L''$的定义同上。排序开始时，我们传入空的$A$和$B$：
-
-\[
-sort(L) = sort'(\phi, L, \phi)
-\]
-
-先跳过边界情况，注意到追加操作仅仅发生在$A \cup \{l_{min} \}$；而$l_{max}$则直接被链结到$B$的前面。每次递归调用都会产生一次追加操作。为了消除它，我们可以将$A$保存为逆序$\overleftarrow{A}$，这样就可以将$l_{min}$链结到前面而不是执行一次耗时的追加。记$cons(x, L) = \{x\} \cup L$，$append(L, x) = L \cup \{x\}$，我们有如下等式：
-
-\be
-\begin{array}{rl}
-append(L, x) & = reverse(cons(x, reverse(L))) \\
-             & = reverse(cons(x, \overleftarrow{L}))
+\begin{array}{rcl}
+sort\ [\ ] & = & [\ ] \\
+sort\ [x] & = & [x] \\
+sort\ xs & = & a : (sort\ xs') \doubleplus [b], {其中}: (a, b, xs') = \textit{minMax}\ xs \\
 \end{array}
 \ee
 
-最后，我们执行一次反转操作将$\overleftarrow{A}$转换回$A$。根据这一思路，算法可进一步被改进如下：
+其中，函数\textit{minMax}从序列中抽取出最小值和最大值：
 
 \be
-sort'(A, L, B) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  reverse(A) \cup B & L = \phi \\
-  reverse(\{l_1\} \cup A) \cup B & |L| = 1 \\
-  sort'(\{l_{min}\} \cup A, L'', \{l_{max}\} \cup B)
-  \end{array}
-\right.
+\textit{minMax}\ (x:y:xs) = foldr\ sel (min\ x\ y, max\ x\ y, [\ ])\ xs
 \ee
 
-下面的Haskell例子程序实现了这一改进。
+我们选取头两个元素分别作为已找到的最小值$x_0$，最大值$x_1$，用$foldr$扫描序列，其中$sel$定义为：
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-csort' xs = cocktail [] xs [] where
-  cocktail as [] bs = reverse as ++ bs
-  cocktail as [x] bs = reverse (x:as) ++ bs
-  cocktail as xs bs = let (mi, xs', ma) = extractMinMax xs
-                      in cocktail (mi:as) xs' (ma:bs)
-\end{lstlisting}
+\[
+sel\ x\ (x_0, x_1, xs) = \begin{cases}
+  x < x_0: & (x, x_1, x_0 : xs) \\
+  x_1 < x: & (x_0, x, x_1 : xs) \\
+  \text{否则}: & (x_0, x_1, x : xs) \\
+\end{cases}
+\]
+
+尽管\textit{minMax}的时间性能是线性时间$O(n)$的，但$\doubleplus[b]$的代价较大。如图\ref{fig:cock-tail-sort}所示，令左侧$A$包含较小的已序元素；右侧$B$包含较大的已序元素。用$A$和$B$作为累积器，可以将鸡尾酒排序转换为尾递归的：
+
+\be
+\begin{array}{rcl}
+sort'\ A\ B\ [\ ] & = & A \doubleplus B \\
+sort'\ A\ B\ [x]  & = & A \doubleplus (x:B) \\
+sort'\ A\ B\ (x:xs) & = & sort'\ (A \doubleplus [x_0])\ xs'\ (x_1:B) \\
+\end{array}
+\ee
+
+其中：$(x_0, x_1, xs') = \textit{minMax}\ xs$，我们传入空的$A$、$B$启动排序：$sort = sort'\ [\ ]\ [\ ]$。追加操作仅仅发生在$A \doubleplus [x_0]$；而$x_1$则被链结到$B$的前面。每次递归都会产生一次追加操作。为了消除它，我们可以将$A$保存为逆序$\overleftarrow{A}$，这样就可以将$x_0$链结到前面而不是追加。我们有如下等价关系：
+
+\be
+\begin{array}{rcl}
+A' & = & A \doubleplus [x] \\
+   & = & reverse\ (x : reverse\ A) \\
+   & = & reverse\ (x : \overleftarrow{A}) \\
+   & = & \overleftarrow{ x : \overleftarrow{A}}
+\end{array}
+\ee
+
+最后执行一次反转操作将$\overleftarrow{A'}$转换回$A'$。根据这一思路，可进一步改进如下：
+
+\be
+\begin{array}{rcl}
+sort'\ A\ B\ [\ ] & = & (reverse\ A) \doubleplus B \\
+sort'\ A\ B\ [x]  & = & (reverse\ x:A) \doubleplus B \\
+sort'\ A\ B\ (x:xs) & = & sort'\ (x_0:A)\ xs'\ (x_1:B) \\
+\end{array}
+\ee
 
 \begin{Exercise}
   \begin{itemize}
@@ -992,6 +862,26 @@ extractMin (x:xs) = min' [] x xs where
     min' ys m (x:xs) = if m < x then min' (x:ys) m xs
                                 else min' (m:ys) x xs
 \end{Haskell}
+
+鸡尾酒排序：
+
+\begin{lstlisting}[language = Bourbaki]
+[A] cocktailSort([A] xs) {
+    Int n = length(xs)
+    for Int i = 0 to n / 2 {
+        var (mi, ma) = (i, n - 1 -i)
+        if xs[ma] < xs[mi] then swap(xs[mi], xs[ma])
+        for Int j = i + 1 to n - 1 - i {
+            if xs[j] < xs[mi] then mi = j
+            if xs[ma] < xs[j] then ma = j
+        }
+        swap(xs[i], xs[mi])
+        swap(xs[n - 1 - i], xs[ma])
+    }
+    return xs
+}
+\end{lstlisting}
+
 
 \ifx\wholebook\relax\else
 \section{参考答案}
