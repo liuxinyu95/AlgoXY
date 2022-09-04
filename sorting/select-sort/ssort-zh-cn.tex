@@ -478,173 +478,62 @@ sort'\ A\ B\ (x:xs) & = & sort'\ (x_0:A)\ xs'\ (x_1:B) \\
 \EndProcedure
 \end{algorithmic}
 
-\subsubsection{递归锦标赛排序}
-
-锦标赛淘汰法也可以用纯函数式的方式实现。我们会看到弹出操作中的两遍处理过程（第一遍自顶向下将冠军替换为$-\infty$；第二遍自底向上查找新的冠军）可以通过递归合并起来。于是不再需要存储父节点的引用。我们可以复用函数式的二叉树定义，如下面的例子Haskell代码所示：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-data Tr a = Empty | Br (Tr a) a (Tr a)
-\end{lstlisting}
-
-一棵二叉树或者为空，或者为一个分支节点，包含一个key和左右子树。每棵子树都是一棵二叉树。
-
-此前，我们使用一个较大的负整数来表示$-\infty$。但是这个方法是临时性的，有诸多不便。某些编程环境支持代数类型，这样就可以明确定义负无穷。例如下面的Haskell程序建立了无穷的定义\footnote{如果希望直接使用默认的\texttt{Ord}来比较大小，则需要按照负无穷、普通数字和正无穷的顺序来声明。当然，也可以将我们的类型声明为\texttt{Ord}的一个instance，然后给出大小比较的规则。这些是语言特有的性质，超出了本书的范围。读者可以参考其他Haskell资料}.。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-data Infinite a = NegInf | Only a | Inf deriving (Eq, Ord)
-\end{lstlisting}
-
-接下来的部分，我们使用$min()$函数来决定比赛的胜者，相应的锦标赛树选择最小的元素作为冠军。
-
-记函数$key(T)$返回树$T$根节点的key。函数$wrap(x)$将元素$x$装入一个叶子节点。函数$tree(l, k, r)$构造一个分支节点。其中$k$是key，$l$和$r$分别是左右分支。
-
-在淘汰过程中，我们比较两棵树，选择较小的key作为新节点的key，进行比较的两棵树作为左右子树。
+也可以用递归实现锦标赛排序。我们复用二叉树的定义。令一棵非空的树为$(l, k, r)$，其中$k$为元素，$l$、$r$是左右子树。定义$wrap\ x = (\nil, x, \nil)$构造一个叶子节点。这样就可以从$n$个元素列表$xs$构造出$n$棵只含一个节点的树：$ts = map\ wrap\ xs$。构造锦标赛树时，比较两棵树$t_1$、$t_2$，选择较大的元素作为新的根，并将$t_1$、$t_2$作为左右子树。
 
 \be
-branch(T_1, T_2) = tree(T_1, min(key(T_1), key(T_2)), T_2)
+merge\ t_1\ t_2 = (t_1, max\ k_1\ k_2, t_2)
 \ee
 
-对应的Haskell例子代码为：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-branch t1 t2 = Br t1 (min (key t1) (key t2)) t2
-\end{lstlisting}
-
-此前的锦标赛排序算法有一个限制。它要求待排序的元素个数必须是$2^m$，否则我们无法构造一棵完全二叉树。现在考虑如何克服这一问题。每次我们都选出两棵树，比较并且选择较大的。如果树的总数目为偶数，我们总能不断选出两棵。在真正的足球比赛中，如果某支球队因故缺席了比赛（例如航班延误），则会有一支球队没有对手。可以规定这支球队为胜者，直接进入接下来的比赛。我们完全可以使用类似的方法。
-
-首先将每个元素都装入叶子节点，然后开始构造锦标赛树。
+其中$k_1 = key\ t_1, k_2 = key\ t_2$，是两棵树根节点的元素。函数$build\ ts$不断取出两棵树进行合并，最终构造出锦标赛树。
 
 \be
-build(L) = build'(\{wrap(x) | x \in L\})
+\begin{array}{rcl}
+build\ [\ ] & = & \nil \\
+build\ [t]  & = & t \\
+build\ ts & = & build\ (\textit{pairs}\ ts) \\
+\end{array}
 \ee
 
-函数$build'(\mathbb{T})$中，如果列表$\mathbb{T}$中仅有一棵树，则此树就是最终结果。否则，它将每两棵树分成一组，然后决定胜者。如果有奇数棵树，就规定最后一棵树为胜者，可以进入下一轮比赛。然后我们递归调用这一构造算法。
+其中：
 
 \be
-build'(\mathbb{T}) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \mathbb{T} & |\mathbb{T}| \leq 1 \\
-  build'(pair(\mathbb{T})) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+\textit{pairs}\ (t_1:t_2:ts) & = & (merge\ t_1\ t_2) : \textit{pairs}\ ts \\
+\textit{pairs}\ ts & = & ts \\
+\end{array}
 \ee
 
-这一算法还能处理另外一种特殊情况：如果待排序的列表为空，则结果也为空。
-
-如果列表中至少有两棵树，记$\mathbb{T} = \{ T_1, T_2, ...\}$，而$\mathbb{T}'$表示除最初两棵树外的剩余树。函数$pair(\mathbb{T})$定义如下：
+为了从锦标赛树中取得冠军，我们检查左右子树，看哪一棵子树和根节点的元素相等。然后递归地从子树中取出冠军直到叶子节点。对叶子节点，我们将其中元素替换为$-\infty$。
 
 \be
-pair(\mathbb{T}) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ branch(T_1, T_2) \} \cup pair(\mathbb{T}') & |\mathbb{T}| \geq 2 \\
-  \mathbb{T} & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+pop\ (\nil, k, \nil) & = & (\nil, -\infty, \nil) \\
+pop\ (l, k, r) & = & \begin{cases}
+  k = key\ l: & (l', max\ (key\ l')\ (key\ r), r), \text{其中} l' = pop\ l \\
+  k = key\ r: & (l,  max\ (key\ l)\ (key\ r'), r'), \text{其中} r' = pop\ r \\
+\end{cases}
+\end{array}
 \ee
 
-下面的Haskell例子代码给出了构造锦标赛树的完整程序。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-fromList :: (Ord a) => [a] -> Tr (Infinite a)
-fromList = build . (map wrap) where
-  build [] = Empty
-  build [t] = t
-  build ts = build $ pair ts
-  pair (t1:t2:ts) = (branch t1 t2):pair ts
-  pair ts = ts
-\end{lstlisting} %$
-
-为了从锦标赛树中取得冠军（最小元素），我们检查左右子树，看哪一棵子树的key和根节点的key相等。然后递归地从子树中取出冠军直到到达叶子节点。记$T$的左子树为$L$，右子树为$R$，$K$为key，弹出算法可以定义如下：
+排序的过程不断从一棵锦标赛树弹出冠军（降序）：
 
 \be
-pop(T) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  tree(\phi, \infty, \phi) & L = \phi \land R = \phi \\
-  tree(L', min(key(L'), key(R)), R) & K = key(L), L' = pop(L) \\
-  tree(L, min(key(L), key(R')), R') & K = key(R), R' = pop(R)
-  \end{array}
-\right.
-\ee
-
-下面的Haskell例子代码实现了弹出算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-pop (Br Empty _ Empty) = Br Empty Inf Empty
-pop (Br l k r) | k == key l = let l' = pop l in Br l' (min (key l') (key r)) r
-               | k == key r = let r' = pop r in Br l (min (key l) (key r')) r'
-\end{lstlisting}
-
-注意这一算法仅仅将冠军元素删除而没有返回，因此有必要定义另外一个函数从根节点提取冠军元素。
-
-\be
-top(T) = key(T)
-\ee
-
-使用这些定义好的函数，锦标赛淘汰排序法可以形式化为下面的等式：
-
-\be
-sort(L) = sort'(build(L))
-\ee
-
-其中$sort'(T)$不断从锦标赛树中弹出最小的元素：
-
-\be
-sort'(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & T = \phi \lor key(T) = \infty \\
-  \{ top(T) \} \cup sort'(pop(T)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+sort\ \nil & = & [\ ] \\
+sort\ (l, -\infty, r) & = & [\ ]  \\
+sort\ t & = & (key\ t) : sort\ (pop\ t) \\
+\end{array}
 \label{eq:tsort}
 \ee
 
-下面的Haskell例子程序实现了完整的锦标赛淘汰排序算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-top = only . key
-
-tsort :: (Ord a) => [a] -> [a]
-tsort = sort' . fromList where
-    sort' Empty = []
-    sort' (Br _ Inf _) = []
-    sort' t = (top t) : (sort' $ pop t)
-\end{lstlisting} %$
-
-其中用以支持无穷类型的辅助函数\texttt{only}、\texttt{key}和\texttt{wrap}定义如下：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-only (Only x) = x
-key (Br _ k _ ) = k
-wrap x = Br Empty (Only x) Empty
-\end{lstlisting}
-
 \begin{Exercise}
-  \begin{itemize}
-    \item 实现命令式锦标赛淘汰法中的辅助函数\texttt{leaf()}、\texttt{branch}、\texttt{max()}、\texttt{isleaf()}和\texttt{release()}。
-    \item 在一门支持垃圾回收（GC）的语言中实现命令式的锦标赛淘汰法排序程序。
-    \item 为什么我们的锦标赛树淘汰法排序程序可以处理重复元素（元素的值相等）？如果相等元素的顺序经过排序后保持不变，我们称之为稳定排序。锦标赛树淘汰法排序是稳定排序么？
-    \item 设计一个命令式的锦标赛淘汰排序算法，满足下面的条件：
-      \begin{itemize}
-        \item 可以处理任意数目的元素；
-        \item 不使用硬编码（hard code）的大负数，可以处理任意值的元素。
-      \end{itemize}
-    \item 比较锦标赛树淘汰算法和二叉搜索树排序算法，分析它们的时间和空间效率。
-    \item 比较堆排序算法和二叉搜索树排序算法，分析它们的时间和空间效率。
-  \end{itemize}
+\Question{将递归的锦标赛排序实现为升序。}
+\Question{锦标赛树排序可以处理相等元素么？它是稳定排序么？}
+\Question{比较锦标赛树排序和二叉搜索树排序，它们的时间和空间效率如何。}
+\Question{比较堆排序和二叉搜索树排序，它们的时间和空间效率如何。}
 \end{Exercise}
 
-\subsection{使用堆排序进行最后的改进}
+\subsection{改进为堆排序}
 
 通过使用锦标赛树淘汰法，我们将基于选择的排序算法性能提高到$O(n \lg n)$。这已经达到了基于比较的排序算法的上限\cite{TAOCP}。但是，这里仍然有提高的空间。排序完成后，锦标赛树的所有节点都变成了负无穷，这棵完全二叉树不再含有任何有用的信息，但它却占据了很大空间。有没有办法在弹出后释放节点呢？
 
@@ -768,6 +657,37 @@ void sort([A] xs) {
     }
 }
 \end{lstlisting}
+
+递归的锦标赛排序（降序）：
+
+\begin{Haskell}
+data Tr a = Empty | Br (Tr a) a (Tr a)
+
+data Infinite a = NegInf | Only a | Inf deriving (Eq, Ord)
+
+key (Br _ k _ ) = k
+
+wrap x = Br Empty (Only x) Empty
+
+merge t1@(Br _ k1 _) t2@(Br _ k2 _) = Br t1 (max k1 k2) t2
+
+fromList = build . (map wrap) where
+  build [] = Empty
+  build [t] = t
+  build ts = build (pairs ts)
+  pairs (t1:t2:ts) = (merge t1 t2) : pair ts
+  pairs ts = ts
+
+pop (Br Empty _ Empty) = Br Empty NegInf Empty
+pop (Br l k r) | k == key l = let l' = pop l in Br l' (max (key l') (key r)) r
+               | k == key r = let r' = pop r in Br l (max (key l) (key r')) r'
+
+toList Empty = []
+toList (Br _ Inf _) = []
+toList t@(Br _ Only k _) = k : toList (pop t)
+
+sort = toList . fromList
+\end{Haskell}
 
 \ifx\wholebook\relax\else
 \section{参考答案}
