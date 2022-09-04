@@ -34,13 +34,7 @@
 
 \section{简介}
 \label{introduction} \index{选择排序}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.6]{img/grapes-1}
-  \caption{总挑出最小的葡萄}
-  \label{fig:eat-grapes}
-\end{figure}
+\lstset{frame = single}
 
 我们此前介绍了插入排序。本章介绍另一种直观的排序方法―选择排序。它在性能上不如快速排序和归并排序等分治算法。我们给出选择排序性能的简要分析，并且从不同的角度加以改进，最终演进到堆排序，从而达到基于比较的排序算法性能上限$O(n \lg n)$。选择排序的思想可以在日常生活中找到。观察孩子们吃葡萄时，会发现两种类型的吃法：一种属于“乐观型”，每次吃掉最大的一颗；另一种属于“悲观型”，每次总吃掉最小的一颗。第一种孩子实际上按照由大到小的顺序吃葡萄；第二种按照由小到大的顺序吃葡萄。实际上，孩子们把葡萄按照大小进行了选择排序。选择排序的算法描述为：
 
@@ -428,88 +422,36 @@ sort'\ A\ B\ (x:xs) & = & sort'\ (x_0:A)\ xs'\ (x_1:B) \\
 \end{figure}
 \captionsetup[subfigure]{labelformat=parens}
 
-图\ref{fig:tournament-tree-4}给出了这一排序的前几个步骤。我们可以复用二叉树的定义来表示锦标赛树，为了自底向上回溯，每个节点$x$需要指向它的父节点$p$。令\textproc{Parent}$(x)$获取$x$的父节点。
-
-\lstset{language=C}
-\begin{lstlisting}
-struct Node {
-    Key key;
-    struct Node *left, *right, *parent;
-};
-\end{lstlisting}
-
-假设待排序的元素有$2^m$个，其中$m$为某个自然数，为了构造锦标赛树，我们先将每个元素放入一个叶子节点中，这样就得到了一组二叉树的列表。每次从列表中取出两棵树，比较它们根节点的值，然后构造一棵较大的二叉树，树根为其中较大的值，参与比较的两棵树分别作为左右子树。重复这一步骤可以得到一组新的树，其中每棵树的高度增加了1。这样一轮过后，新得到的树的数目减半。持续同样的操作最终得到一棵锦标赛树。
+为了对一组元素排序，我们先从它们构造一棵锦标赛树，然后不断取出冠军，图\ref{fig:tournament-tree-4}给出了这一排序的前几个步骤。我们可以复用二叉树的定义来表示锦标赛树，为了方便自底向上回溯，每个节点需要指向它的父节点。元素数目$n$可能不是恰好$2^m$个。两两比较后，可能剩余元素没有“对手”，而“轮空”直接进入下一轮比赛。为了构造锦标赛树，我们从每个元素构造一棵单一叶子节点的树，这样就得到了$n$棵二叉树。然后我们每次取出两棵树$t_1$、$t_2$，构造出一棵更大的二叉树$t$。其中$t$的根为$max(key(t_1), key(t_2))$，左右子树为$t_1$、$t_2$。重复这一步骤可以得到一组新的树，每棵新树的高度增加了1，如有剩余则进入下一轮。这样一轮过后，树减半为$\lfloor \dfrac{n}{2} \rfloor$。持续同样的操作最终得到一棵锦标赛树。总时间复杂度为$O(n + \dfrac{n}{2} + \dfrac{n}{4} + ... ) = O(2n) = O(n)$。
 
 \begin{algorithmic}[1]
 \Function{Build-Tree}{$A$}
-  \State $T \gets \phi$
+  \State $T \gets [\ ]$
   \For{each $x \in A$}
-    \State $t \gets $ \Call{Create-Node}{}
-    \State \Call{Key}{$t$} $\gets x$
-    \State \Call{Append}{$T, t$}
+    \State \textproc{Append}($T$, \Call{Node}{NIL, $x$, NIL})
   \EndFor
   \While{$|T| > 1$}
-    \State $T' \gets \phi$
-    \For{every $t_1, t_2 \in$ T}
-      \State $t \gets $ \Call{Create-Node}{}
-      \State \Call{Key}{$t$} $\gets$ \textproc{Max}(\Call{Key}{$t_1$}, \Call{Key}{$t_2$})
-      \State \Call{Left}{$t$} $\gets t_1$
-      \State \Call{Right}{$t$} $\gets t_2$
-      \State \Call{Parent}{$t_1$} $\gets t$
-      \State \Call{Parent}{$t_2$} $\gets t$
-      \State \Call{Append}{$T', t$}
+    \State $T' \gets [\ ]$
+    \For{every $t_1, t_2 \in T$}
+      \State $k \gets$ \textproc{Max}(\Call{Key}{$t_1$}, \Call{Key}{$t_2$})
+      \State \textproc{Append}($T'$, \Call{Node}{$t_1$, $k$, $t_2$})
     \EndFor
+    \If{|T| is odd}
+      \State \textproc{Append}($T'$, \Call{Last}{$T$})
+    \EndIf
     \State $T \gets T'$
   \EndWhile
   \State \Return $T[1]$
 \EndFunction
 \end{algorithmic}
 
-设列表$A$的长度为$n$，算法先遍历列表构建树，这一步耗时是线性时间$n$，然后它不断取出一对树进行比较，这一步的时间正比于$n + \frac{n}{2} + \frac{n}{4} + ... + 2 = 2n$。因此整体性能为$O(n)$。
-
-下面的C程序实现了锦标赛树的构造算法。
-
-\lstset{language=C}
-\begin{lstlisting}
-struct Node* build(const Key* xs, int n) {
-    int i;
-    struct Node *t, **ts = (struct Node**) malloc(sizeof(struct Node*) * n);
-    for (i = 0; i < n; ++i)
-        ts[i] = leaf(xs[i]);
-    for (; n > 1; n /= 2)
-        for (i = 0; i < n; i += 2)
-            ts[i/2] = branch(max(ts[i]->key, ts[i+1]->key), ts[i], ts[i+1]);
-    t = ts[0];
-    free(ts);
-    return t;
-}
-\end{lstlisting}
-
-其中key的类型预先定义好，例如：
-
-\lstset{language=C}
-\begin{lstlisting}
-typedef int Key;
-\end{lstlisting}
-
-函数\texttt{leaf(x)}从值\texttt{x}构建一个叶子节点。节点的左右分支和父节点都为空。函数\texttt{branch(key, left, right)}创建一个分支节点，并且令左右子节点的父指针指向新建的分支节点。我们这里省略了\texttt{leaf}和\texttt{branch}函数的实现细节。读者可以作为练习，尝试实现上述算法。
-
-某些编程环境，例如Python提供了一次迭代两个元素的工具，例如：
-
-\lstset{language=Python}
-\begin{lstlisting}
-for x, y in zip(*[iter(ts)]*2):
-\end{lstlisting}
-
-我们略过这些语言细节，读者可以参考本书附带的代码。
-
-每次取出锦标赛树的根节点后，我们自顶向下将其替换为$-\infty$，然后在通过父指针向上回溯，找出新的最大值。
+每次取出锦标赛树的根节点后，我们自顶向下将其替换为$-\infty$，然后在通过父节点向上回溯，找出新的最大值。
 
 \begin{algorithmic}[1]
-\Function{Extract-Max}{$T$}
+\Function{Pop}{$T$}
   \State $m \gets$ \Call{Key}{$T$}
   \State \Call{Key}{$T$} $\gets -\infty$
-  \While{$\lnot$ \Call{Leaf?}{$T$}}  \Comment{自顶向下一轮}
+  \While{$T$ is not leaf}  \Comment{自顶向下将$m$替换为$-\infty$}
     \If{\textproc{Key}(\Call{Left}{$T$}) $ = m$}
       \State $T \gets$ \Call{Left}{$T$}
     \Else
@@ -517,71 +459,26 @@ for x, y in zip(*[iter(ts)]*2):
     \EndIf
     \State \Call{Key}{$T$} $\gets -\infty$
   \EndWhile
-  \While{\Call{Parent}{$T$} $\neq \phi$} \Comment{自底向上一轮}
+  \While{\Call{Parent}{$T$} $\neq$ NIL} \Comment{自底向上决出新冠军}
     \State $T \gets$ \Call{Parent}{$T$}
     \State \Call{Key}{$T$} $\gets$ \textproc{Max}(\textproc{Key}(\Call{Left}{$T$}), \textproc{Key}(\Call{Right}{$T$}))
   \EndWhile
-  \State \Return $m$
+  \State \Return $(m, T)$ \Comment{返回最大元素和更新的树}
 \EndFunction
 \end{algorithmic}
 
-这一算法返回最大元素，并更改锦标赛树。在真实的编程环境中，由于有限的字长，我们无法使用真正的$-\infty$。通常使用一个相对大的负数，它比锦标赛树中的任何元素都小。例如，若所有的元素都大于-65535，我们可以定义负无穷为：
-
-\lstset{language=C}
-\begin{lstlisting}
-#define N_INF -65535
-\end{lstlisting}
-
-下面的C例子程序实现了这一算法。
-
-\lstset{language=C}
-\begin{lstlisting}
-Key pop(struct Node* t) {
-    Key x = t->key;
-    t->key = N_INF;
-    while (!isleaf(t)) {
-        t = t->left->key == x ? t->left : t->right;
-        t->key = N_INF;
-    }
-    while (t->parent) {
-        t = t->parent;
-        t->key = max(t->left->key, t->right->key);
-    }
-    return x;
-}
-\end{lstlisting}
-
-\textproc{Extract-Max}的行为和某些数据结构的弹出操作非常类似。例如队列和堆，因此我们在上述代码中将其命名为\texttt{pop}。
-
-\textproc{Extract-Max}上下处理树两遍，首先自顶向下一遍，接着自底向上沿着“冠军之路”一遍。由于锦标赛树是平衡的，路径的长度，也就是树的高度为$O(\lg n)$，其中$n$是待排序元素的数目（也就是叶子节点的数目）。因此算法的性能为$O(\lg n)$。
-
-为了实现锦标赛淘汰排序算法，我们先从待排序元素构造一棵锦标赛树，然后不断取出最大值。如果我们希望按照单调递增的顺序排序，我们将第一个取出的元素放在最右侧，然后将后继取出的元素依次向左侧放；否则，如果是降序排序，我们不断将取出的元素追加到结果的末尾。下面的算法按照升序进行排序。
+\textproc{Pop}上下处理两遍，自顶向下一遍，接着自底向上沿着“冠军之路”一遍。由于锦标赛树是平衡的，路径的长度，也就是树的高度为$O(\lg n)$。时间复杂度为$O(\lg n)$。下面是锦标赛排序的实现。算法首先用$O(n)$时间构建一棵锦标赛树，然后执行$n$次弹出操作，逐一从树中取出最大值。每次弹出操作的性能为$O(\lg n)$，锦标赛排序的总时间复杂度为$O(n \lg n)$。
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A$}
   \State $T \gets$ \Call{Build-Tree}{$A$}
   \For{$i \gets |A|$ down to $1$}
-    \State $A[i] \gets$ \Call{Extract-Max}{$T$}
+    \State $(A[i], T) \gets$ \Call{Pop}{$T$}
   \EndFor
 \EndProcedure
 \end{algorithmic}
 
-下面的C例子程序实现了上述排序算法。
-
-\lstset{language=C}
-\begin{lstlisting}
-void tsort(Key* xs, int n) {
-    struct Node* t = build(xs, n);
-    while(n)
-        xs[--n] = pop(t);
-    release(t);
-}
-\end{lstlisting}
-
-算法首先使用$O(n)$时间构建一棵锦标赛树，然后执行$n$次弹出操作，逐一从树中取出剩余元素的最大值。因为每次弹出操作的性能为$O(\lg n)$，所以锦标赛淘汰排序算法的总体性能为$O(n \lg n)$。
-
-\subsubsection{锦标赛淘汰法的细节改进}
-\index{锦标赛淘汰法!显式无穷}
+\subsubsection{递归锦标赛排序}
 
 锦标赛淘汰法也可以用纯函数式的方式实现。我们会看到弹出操作中的两遍处理过程（第一遍自顶向下将冠军替换为$-\infty$；第二遍自底向上查找新的冠军）可以通过递归合并起来。于是不再需要存储父节点的引用。我们可以复用函数式的二叉树定义，如下面的例子Haskell代码所示：
 
@@ -773,50 +670,15 @@ sort'(T) = \left \{
 
 \section{附录：例子程序}
 
-逐一查找最小元素实现选择排序：
-
-\lstset{frame = single}
-\begin{lstlisting}[language = Bourbaki]
-[A] ssort([A] xs) {
-    Int n = length(xs)
-    for Int i = 0 to n - 1 {
-        Int m = minAt(xs, i)
-        swap(xs[i], xs[m])
-    }
-    return xs
-}
-
-Int minAt([A] xs, Int i):
-    Int m = i
-    Int n = length(xs)
-    for Int j = m + 1 to n - 1 {
-        if xs[j] < xs[m] then m = j
-    }
-    return m
-}
-\end{lstlisting}
-
-递归实现的选择排序
-
-\begin{Haskell}
-sort [] = []
-sort xs = x : sort xs' where
-    (x, xs') = extractMin xs
-
-extractMin [x] = (x, [])
-extractMin (x:xs) = if x < m then (x, xs)
-                    else (m, x:xs')
-where
-    (m, xs') = extractMin xs
-\end{Haskell}
-
 尾递归实现的选择排序：
 \begin{Haskell}
 sort [] = []
-sort xs = x : sort xs' where
-  (x, xs') = extractMin xs
+sort xs = x : sort xs'
+  where
+    (x, xs') = extractMin xs
 
-extractMin (x:xs) = min' [] x xs where
+extractMin (x:xs) = min' [] x xs
+  where
     min' ys m [] = (m, ys)
     min' ys m (x:xs) = if m < x then min' (x:ys) m xs
                                 else min' (m:ys) x xs
@@ -857,6 +719,55 @@ minMax (x:y:xs) = foldr sel (min x y, max x y, []) xs
                        | ma < x = (mi, x, ma:ys)
                        | otherwise = (mi, ma, x:ys)
 \end{Haskell}
+
+复用二叉树构造锦标赛树：
+
+\begin{lstlisting}[language = Bourbaki]
+Node<T> build([T] xs) {
+    [T] ts = []
+    for x in xs {
+        append(ts, Node(null, x, null))
+    }
+    while length(ts) >  1 {
+        [T] ts' = []
+        for l, r in ts {
+            append(ts', Node(l, max(l.key, r.key), r))
+        }
+        if odd(length(ts)) then append(ts', last(ts))
+        ts = ts'
+    }
+    return ts[0];
+}
+\end{lstlisting}
+
+从锦标赛树取出冠军：
+
+\begin{lstlisting}[language = Bourbaki]
+T pop(Node<T> t) {
+    T m = t.key
+    t.key = -INF
+    while not isLeaf(t) {
+        t = if t.left.key == m then t->left else t->right
+        t.key = -INF
+    }
+    while (t.parent != null) {
+        t = t.parent
+        t.key = max(t.left.key, t.right.key)
+    }
+    return (m, t);
+}
+\end{lstlisting}
+
+剪标赛树排序：
+
+\begin{lstlisting}[language = Bourbaki]
+void sort([A] xs) {
+    Node<T> t = build(xs)
+    for Int n = length(xs) - 1 downto 0 {
+        (xs[n], t) = pop(t)
+    }
+}
+\end{lstlisting}
 
 \ifx\wholebook\relax\else
 \section{参考答案}
