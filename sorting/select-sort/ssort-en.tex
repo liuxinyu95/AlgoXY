@@ -99,79 +99,14 @@ Let $A = [a_1, a_2, ..., a_n]$, when select the $i$-th smallest element, $[a_1, 
   \label{fig:in-place-ssort}
 \end{figure}
 
-% ================================================================
-% Find the minimum
-% ================================================================
-\section{Finding the minimum}
-\index{selection sort!minimum finding}
+\section{Find the minimum}
+\index{selection sort!min}
 
-We haven't completely realized the selection sort, because we take the operation
-of finding the minimum (or the maximum) element as a black box. It's a puzzle how does
-a kid locate the biggest or the smallest grape.
-And this is an interesting topic for computer algorithms.
+We can use the `compare and swap' method to find the minimum element. Label the elements with $1, 2, ..., n$. Compare the elements of number 1 and 2, pick the smaller and compare it with number 3, ... repeat till the last element of number $n$.
 
-The easiest but not so fast way to find the minimum in a collection is to perform
-a scan. There are several ways to interpret this scan process. Consider that
-we want to pick the biggest grape. We start from any grape, compare it with
-another one, and pick the bigger one; then we take a next grape and compare
-it with the one we selected so far, pick the bigger one and go on the take-and-compare
-process, until there are not any grapes we haven't compared.
-
-It's easy to get loss in real practice if we don't mark which grape has been
-compared. There are two ways to to solve this problem, which are suitable for
-different data-structures respectively.
-
-\subsection{Labeling}
-Method 1 is to label each grape with a number: $\{1, 2, ..., n\}$, and we systematically
-perform the comparison in the order of this sequence of labels. That we first
-compare grape number 1 and grape number 2, pick the bigger one; then we take grape
-number 3, and do the comparison, ... We repeat this process until arrive at
-grape number $n$. This is quite suitable for elements stored in an array.
-
-\begin{algorithmic}
-\Function{Min}{$A$}
-  \State $m \gets A[1]$
-  \For{$i \gets 2$ to $|A|$}
-    \If{$A[i] < m$}
-      \State $m \gets A[i]$
-    \EndIf
-  \EndFor
-  \State \Return $m$
-\EndFunction
-\end{algorithmic}
-
-With \textproc{Min} defined, we can complete the basic version of selection sort
-(or naive version without any optimization in terms of time and space).
-
-However, this algorithm returns the value of the minimum element instead of its
-location (or the label of the grape), which needs a bit tweaking for the in-place version.
-Some languages such as ISO C++, support returning the reference as result, so that the
-swap can be achieved directly as below.
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-T& min(T* from, T* to) {
-    T* m;
-    for (m = from++; from != to; ++from)
-        if (*from < *m)
-            m = from;
-    return *m;
-}
-
-template<typename T>
-void ssort(T* xs, int n) {
-    for (int i = 0; i < n; ++i)
-        std::swap(xs[i], min(xs+i, xs+n));
-}
-\end{lstlisting}
-
-In environments without reference semantics, the solution is to return the location
-of the minimum element instead of the value:
-
-\begin{algorithmic}
-\Function{Min-At}{$A$}
-  \State $m \gets$ \Call{First-Index}{$A$}
+\begin{algorithmic}[1]
+\Function{Min-At}{$A, i$}
+  \State $m \gets i$
   \For{$i \gets m + 1 $ to $|A|$}
     \If{$A[i] < A[m]$}
       \State $m \gets i$
@@ -181,179 +116,75 @@ of the minimum element instead of the value:
 \EndFunction
 \end{algorithmic}
 
-Note that since we pass $A[i...]$ to \textproc{Min-At} as the argument, we assume the first
-element $A[i]$ as the smallest one, and examine all elements $A[i+1], A[i+2], ...$ one by one.
-Function \textproc{First-Index}() is used to retrieve $i$ from the input parameter.
+The \textproc{Min-At} find the minimum $m$ from slice $A[i...]$. Let $m$ start pointing to $A[i]$, then scan $A[i+1], A[i+2], ...$.
 
-The following Python example program, for example, completes the basic in-place
-selection sort algorithm based on this idea. It explicitly passes the range information
-to the function of finding the minimum location.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def ssort(xs):
-    n = len(xs)
-    for i in range(n):
-        m = min_at(xs, i, n)
-        (xs[i], xs[m]) = (xs[m], xs[i])
-    return xs
-
-def min_at(xs, i, n):
-    m = i;
-    for j in range(i+1, n):
-        if xs[j] < xs[m]:
-            m = j
-    return m
-\end{lstlisting}
-
-\subsection{Grouping}
-\index{selection sort!tail-recursive call minimum finding}
-Another method is to group all grapes in two parts: the group we have examined, and the rest we
-haven't. We denote these two groups as $A$ and $B$; All the elements (grapes) as $L$.
-At the beginning, we haven't examine any grapes at all, thus $A$ is empty ($\phi$), and
-$B$ contains all grapes. We can select arbitrary two grapes from $B$, compare them, and
-put the loser (the smaller one for example) to $A$. After that, we repeat this process
-by continuously picking arbitrary grapes from $B$, and compare with the winner of the
-previous time until $B$ becomes empty. At this time being, the final winner is the
-minimum element. And $A$ turns to be $L - \{min(L)\}$, which can be used for the next
-time minimum finding.
-
-There is an invariant of this method, that at any time, we have $L = A \cup \{m\} \cup B$,
-where $m$ is the winner so far we hold.
-
-This approach doesn't need the collection of grapes being indexed (as being labeled
-in method 1). It's suitable for any traversable data structures, including linked-list
-etc. Suppose $b_1$ is an arbitrary element in $B$ if $B$ isn't empty, and $B'$ is
-the rest of elements with $b_1$ being removed,
-this method can be formalized as the below auxiliary function.
+\index{selection sort!tail-recursive min}
+We can also find the minimum from list of elements $L$ recursively. When $L$ is a singleton, the only element is the minimum; otherwise pick an element $x$ from $L$, then recursively find the minimum $y$ from the remaining, the smaller one between $x$ and $y$ is the minimum of $L$.
 
 \be
-min'(A, m, B) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (m, A) & B = \phi \\
-  min'(A \cup \{m\}, b_1, B') & b_1 < m \\
-  min'(A \cup \{b_1\}, m, B') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+min\ [x] & = & (x, [\ ]) \\
+min\ (x:xs) & = & \begin{cases}
+  x < y: & (x, xs),\ \text{where}\ (y, ys) = min\ xs \\
+  \text{otherwise}: & (y,\ x:ys)
+\end{cases}
+\end{array}
 \ee
 
-In order to pick the minimum element, we call this auxiliary function by passing
-an empty $A$, and use an arbitrary element (for instance, the first one)
-to initialize $m$:
+
+We can further improve it tail recursively. Divide the elements with two groups $A$ and $B$. $A$ is initialized empty ($[\ ]$), $B$ contains all elements. We pick two elements from $B$, compare and put the greater one to $A$, leave the smaller one as $m$. Then repeatedly pick element from $B$, compare with $m$ till $B$ becomes empty. Finally, $m$ is the minimum element. At any time, we have the invariant: $L = A \doubleplus [m] \doubleplus B$, where $a \leq m \leq b, a \in A, b \in B$.
 
 \be
-extractMin(L) = min'(\phi, l_1, L')
+min\ (x:xs) = min'\ [\ ]\ x\ xs
 \ee
 
-Where $L'$ is all elements in $L$ except for the first one $l_1$. The algorithm
-$extractMin$ doesn't not only find the minimum element, but also returns the
-updated collection which doesn't contain this minimum. Summarize this minimum
-extracting algorithm up to the basic selection sort definition, we can create
-a complete functional sorting program, for example as this Haskell code snippet.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-sort [] = []
-sort xs = x : sort xs' where
-  (x, xs') = extractMin xs
-
-extractMin (x:xs) = min' [] x xs where
-  min' ys m [] = (m, ys)
-  min' ys m (x:xs) = if m < x then min' (x:ys) m xs else min' (m:ys) x xs
-\end{lstlisting}
-
-The first line handles the trivial edge case that the sorting result for empty
-list is obvious empty; The second clause ensures that, there is at least one
-element, that's why the \texttt{extractMin} function needn't other pattern-matching.
-
-One may think the second clause of \texttt{min'} function should be written like below:
-
-\begin{lstlisting}
-min' ys m (x:xs) = if m < x then min' ys ++ [x] m xs
-                            else min' ys ++ [m] x xs
-\end{lstlisting}
-
-Or it will produce the updated list in reverse order. Actually, it's necessary to
-use `cons' instead of appending here. This is because appending is linear operation
-which is proportion to the length of part $A$, while `cons' is constant $O(1)$ time
-operation. In fact, we needn't keep the relative order of the list to be sorted,
-as it will be re-arranged anyway during sorting.
-
-It's quite possible to keep the relative order during sorting\footnote{known as stable sort.}, while ensure the
-performance of finding the minimum element not degrade to quadratic. The following
-equation defines a solution.
+Where:
 
 \be
-extractMin(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (l_1, \phi) & |L| = 1 \\
-  (l_1, L') & l_1 < m, (m, L'') = extractMin(L') \\
-  (m, {l_1} \cup L'') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+min'\ as\ m\ [\ ] & = & (m, A) \\
+min'\ as\ m\ (b:bs) & = & \begin{cases}
+  b < m: & min'\ (m:as)\ b\ bs \\
+  \text{otherwise}: & min'\ (b:as)\ m\ bs \\
+\end{cases}
+\end{array}
 \ee
 
-If $L$ is a singleton, the minimum is the only element it contains. Otherwise,
-denote $l_1$ as the first element in $L$, and $L'$ contains the rest elements except
-for $l_1$, that $L' = \{ l_2, l_3, ...\}$. The algorithm recursively finding
-the minimum element in $L'$, which yields the intermediate result as $(m, L'')$,
-that $m$ is the minimum element in $L'$, and $L''$ contains all rest elements
-except for $m$. Comparing $l_1$ with $m$, we can determine which of them is
-the final minimum result.
+Function $min$ return a pair: the minimum and the remaining elements. We can define selection sort as below:
 
-The following Haskell program implements this version of selection sort.
+\be
+\begin{array}{rcl}
+sort\ [\ ] & = & [\ ] \\
+sort\ xs   & = & m : (sort\ xs'),\ \text{where}\ (m, xs') = min\ xs \\
+\end{array}
+\ee
 
-\begin{lstlisting}
-sort [] = []
-sort xs = x : sort xs' where
-  (x, xs') = extractMin xs
+\subsection{Performance}
 
-extractMin [x] = (x, [])
-extractMin (x:xs) = if x < m then (x, xs) else (m, x:xs') where
-  (m, xs') = extractMin xs
-\end{lstlisting}
-
-Note that only `cons' operation is used, we needn't appending at all because
-the algorithm actually examines the list from right to left. However, it's not
-free, as this program need book-keeping the context (via call stack typically).
-The relative order is ensured by the nature of recursion. Please refer
-to the appendix about tail recursion call for detailed discussion.
-
-\subsection{performance of the basic selection sorting}
-
-Both the labeling method, and the grouping method need examine all the elements to
-pick the minimum in every round; and we totally pick up the minimum element $n$ times.
-Thus the performance is around $n + (n-1) + (n-2) + ... + 1$ times comparison, which is $\frac{n(n+1)}{2}$.
-Selection sort is a quadratic algorithm bound to $O(n^2)$ time.
-
-Compare to the insertion sort, which we introduced previously, selection sort
-performs same in its best case, worst case and average case. While insertion
-sort performs well in best case (that the list has been reverse ordered, and it is stored
-in linked-list) as $O(n)$, and the worst performance is $O(n^2)$.
-
-In the next sections, we'll examine, why selection sort performs poor, and try
-to improve it step by step.
+Selection sort need scan the unsorted elements to find the minimum for $n$ times. It compares $n + (n-1) + (n-2) + ... + 1$ times. The time bound is $O(\dfrac{n(n+1)}{2}) = O(n^2)$. Compare to the insertion sort, selection sort performs same in the best, worst, and average cases. While insertion sort performs best at $O(n)$ (the linked-list is in reversed ordered), and worst at $O(n^2)$.
 
 \begin{Exercise}
-
-\begin{itemize}
-\item Implement the basic imperative selection sort algorithm (the none in-place version)
-in your favorite programming language. Compare it with the in-place version, and analyze
-the time and space effectiveness.
-\end{itemize}
-
+\Question{What is the problem with below implementation of $min$?
+\[
+\begin{array}{rcl}
+min'\ as\ m\ [\ ] & = & (m, A) \\
+min'\ as\ m\ (b:bs) & = & \begin{cases}
+  b < m: & min'\ (as \doubleplus [m])\ b\ bs \\
+  \text{否则}: & min'\ (as \doubleplus [b])\ m\ bs \\
+\end{cases}
+\end{array}
+\]
+}
+\Question{Implement the selection sort for both in-placed and not.}
 \end{Exercise}
 
-% ================================================================
-% Improvement 1
-% ================================================================
+\begin{Answer}
+\Question{We should use link but not append. Appending is linear to the length of the list, while linking is constant time.}
+\Question{Implement the selection sort for both in-placed and not. TO-DO}
+\end{Answer}
 
-\section{Minor Improvement}
+\section{Improvement}
 
-\subsection{Parameterize the comparator}
-\index{selection sort!parameterize the comparator}
 Before any improvement in terms of performance, let's make the selection sort
 algorithm general enough to handle different sorting criteria.
 
