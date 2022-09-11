@@ -185,105 +185,38 @@ min'\ as\ m\ (b:bs) & = & \begin{cases}
 
 \section{Improvement}
 
-Before any improvement in terms of performance, let's make the selection sort
-algorithm general enough to handle different sorting criteria.
-
-We've seen two opposite examples so far, that one may need sort the elements
-in ascending order or descending order. For the former case, we need
-repeatedly finding the minimum, while for the later, we need find the maximum
-instead. They are just two special cases. In real world practice, one
-may want to sort things in varies criteria, e.g. in terms of size, weight,
-age, ...
-
-One solution to handle them all is to passing the criteria as a compare function
-to the basic selection sort algorithms. For example:
+To sort in ascending, descending, and varies of ordering, we abstract the comparison as $\lhd$.
 
 \be
-sort(c, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  {m} \cup sort(c, L'') & otherwise, (m, L'') = extract(c, L')
-  \end{array}
-\right.
+\begin{array}{rcl}
+sortBy \lhd\ [\ ] & = & [] \\
+sortBy \lhd\ xs & = & m : sortBy\ \lhd\ xs',\ \text{where}\ (m, xs') = minBy\ \lhd\ xs \\
+\end{array}
 \ee
 
-And the algorithm $extract(c, L)$ is defined as below.
+We also use $\lhd$ to find the 'minimum':
 
 \be
-extract(c, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (l_1, \phi) & |L| = 1 \\
-  (l_1, L') & c(l_1, m), (m, L'') = extract(c, L') \\
-  (m, \{l_1\} \cup L'') & \lnot c(l_1, m)
-  \end{array}
-\right.
+\begin{array}{rcl}
+minBy\ \lhd\ [x] & = & (x, [\ ]) \\
+minBy\ \lhd\ (x:xs) & = & \begin{cases}
+  x \lhd y: & (x, xs),\ \text{where}\ (y, ys) = minBy\ xs \\
+  \text{otherwise}: & (y,\ x:ys)
+\end{cases}
+\end{array}
 \ee
 
-Where $c$ is a comparator function, it takes two elements, compare them and
-returns the result of which one is preceding of the other.
-Passing `less than' operator $(<)$ turns this algorithm to be the version
-we introduced in previous section.
-
-Some environments require to pass the total ordering comparator, which
-returns result among `less than', 'equal', and 'greater than'. We needn't
-such strong condition here, that $c$ only tests if `less than' is satisfied.
-However, as the minimum requirement, the comparator should meet the
-strict weak ordering as following \cite{wiki-sweak-order}:
+For example, we pass the $<$ to sort a collection of numbers in ascending order: $sortBy\ (<)\ [3, 1, 4, ...]$. As the constraint, we need the comparison $\lhd$ satisfy the {\em strict weak order}\cite{wiki-sweak-order}.
 
 \begin{itemize}
-\item Irreflexivity, for all $x$, it's not the case that $x < x$;
-\item Asymmetric, For all $x$ and $y$, if $x < y$, then it's not the case $y < x$;
-\item Transitivity, For all $x$, $y$, and $z$, if $x < y$, and $y < z$, then $x < z$;
+\item Irreflexivity: for all $x$, $x < x$ is false;
+\item Asymmetry: for all $x$ and $y$, if $x < y$, then $y < x$ is false;
+\item Transitivity, for all $x$, $y$, and $z$, if $x < y$, and $y < z$, then $x < z$.
 \end{itemize}
 
-The following Scheme/Lisp program translates this generic selection sorting algorithm.
-The reason why we choose Scheme/Lisp here is because the lexical scope can simplify
-the needs to pass the `less than' comparator for every function calls.
+The in-place selection sort traverses all elements, we can find the minimum as an inner loop to make the implementation compact:
 
-\lstset{language=Lisp}
-\begin{lstlisting}
-(define (sel-sort-by ltp? lst)
-  (define (ssort lst)
-    (if (null? lst)
-        lst
-        (let ((p (extract-min lst)))
-          (cons (car p) (ssort (cdr p))))))
-  (define (extract-min lst)
-    (if (null? (cdr lst))
-        lst
-        (let ((p (extract-min (cdr lst))))
-          (if (ltp? (car lst) (car p))
-              lst
-              (cons (car p) (cons (car lst) (cdr p)))))))
-  (ssort lst))
-\end{lstlisting}
-
-Note that, both \texttt{ssort} and \texttt{extract-min} are inner functions, so that the
-`less than' comparator \texttt{ltp?} is available to them. Passing `$<$' to this function
-yields the normal sorting in ascending order:
-
-\lstset{language=Lisp}
-\begin{lstlisting}
-(sel-sort-by < '(3 1 2 4 5 10 9))
-;Value 16: (1 2 3 4 5 9 10)
-\end{lstlisting}
-
-It's possible to pass varies of comparator to imperative selection sort as well. This
-is left as an exercise to the reader.
-
-For the sake of brevity, we only consider sorting elements in ascending order in
-the rest of this chapter. And we'll not pass comparator as a parameter unless it's
-necessary.
-
-\subsection{Trivial fine tune}
-
-The basic in-place imperative selection sorting algorithm iterates all elements, and picking the
-minimum by traversing as well. It can be written in a compact way, that we
-inline the minimum finding part as an inner loop.
-
-\begin{algorithmic}
+\begin{algorithmic}[1]
 \Procedure{Sort}{$A$}
   \For{ $i \gets 1$ to $|A|$}
     \State $m \gets i$
@@ -297,15 +230,9 @@ inline the minimum finding part as an inner loop.
 \EndProcedure
 \end{algorithmic}
 
-Observe that, when we are sorting $n$ elements, after the first $n-1$ minimum ones are selected,
-the left only one, is definitely the $n$-th big element, so that we need NOT find the
-minimum if there is only one element in the list. This indicates that the outer loop can
-iterate to $n-1$ instead of $n$.
+After sort the first $n-1$ elements, the last one must be the maximum. We can save the last loop. Besides, we needn't swap if the $i$-th smallest is exactly $A[i]$.
 
-Another place we can fine tune, is that we needn't swap the elements if the $i$-th minimum one
-is just $A[i]$. The algorithm can be modified accordingly as below:
-
-\begin{algorithmic}
+\begin{algorithmic}[1]
 \Procedure{Sort}{$A$}
   \For{ $i \gets 1$ to $|A|-1$}
     \State $m \gets i$
@@ -321,15 +248,12 @@ is just $A[i]$. The algorithm can be modified accordingly as below:
 \EndProcedure
 \end{algorithmic}
 
-Definitely, these modifications won't affects the performance in terms of big-O.
-
 \subsection{Cock-tail sort}
 \index{Cock-tail sort}
-Knuth gave an alternative realization of selection sort in \cite{TAOCP}. Instead of selecting the
-minimum each time, we can select the maximum element, and put it to the last position. This method
-can be illustrated by the following algorithm.
 
-\begin{algorithmic}
+Knuth gives another selection sort implementation\cite{TAOCP}. Select the maximum, but not the minimum, and move it to the tail, as shown in figure \ref{fig:knuth-ssort}. At any time, the right most part is sorted. We scan the unsorted part, find the maximum and swap to the right.
+
+\begin{algorithmic}[1]
 \Procedure{Sort'}{$A$}
   \For{ $i \gets |A|$ down-to $2$}
     \State $m \gets i$
@@ -343,26 +267,25 @@ can be illustrated by the following algorithm.
 \EndProcedure
 \end{algorithmic}
 
-As shown in figure \ref{fig:knuth-ssort}, at any time, the elements on right most side
-are sorted. The algorithm scans all unsorted ones, and locate the maximum. Then, put
-it to the tail of the unsorted range by swapping.
-
 \begin{figure}[htbp]
   \centering
-  \includegraphics[scale=0.8]{img/knuth-ssort}
-  \caption{Select the maximum every time and put it to the end.}
+  \begin{tikzpicture}[scale=0.8]
+    \draw (5, 0) rectangle (6, 1) node[pos=.5] {...};
+    \draw (6, 0) rectangle (7, 1) node (max) [pos=.5] {$max$};
+    \draw (7, 0) rectangle (8, 1) node[pos=.5] {...};
+    \draw (8, 0) rectangle (9, 1) node (x) [pos=.5] {$x$};
+    \draw (10,0) rectangle (13.5,1) node[pos=.5] {... sorted ...};
+    \draw[thick, <->] (x) edge[bend right=45] node [above] {swap} (max);
+  \end{tikzpicture}
+  \caption{Select the maximum and swap to tail}
   \label{fig:knuth-ssort}
 \end{figure}
 
-This version reveals the fact that, selecting the maximum element can sort the element in
-ascending order as well. What's more, we can find both the minimum and the maximum elements
-in one pass of traversing, putting the minimum at the first location, while putting the
-maximum at the last position. This approach can speed up the sorting slightly (halve the
-times of the outer loop). This method is called 'cock-tail sort'.
+We obtain the ascending order as well. Further, we can pick both the minimum and maximum in one pass, swap the minimum to the head, and the maximum to the tail. We can halve the inner loop times. The method is called `cock-tail sort'.
 
-\begin{algorithmic}
+\begin{algorithmic}[1]
 \Procedure{Sort}{$A$}
-  \For{$i \gets 1 $ to $\lfloor \frac{|A|}{2} \rfloor$}
+  \For{$i \gets 1 $ to $\lfloor \dfrac{|A|}{2} \rfloor$}
     \State $min \gets i$
     \State $max \gets |A| + 1 - i$
     \If{$A[max] < A[min]$}
@@ -381,6 +304,25 @@ times of the outer loop). This method is called 'cock-tail sort'.
   \EndFor
 \EndProcedure
 \end{algorithmic}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[scale=0.8]
+    \draw (0,0) rectangle (3.5,1) node[pos=.5] {... sorted smaller ...};
+    \draw (4, 0) rectangle (5, 1) node (x) [pos=.5] {$x$};
+    \draw (5, 0) rectangle (6, 1) node[pos=.5] {...};
+    \draw (6, 0) rectangle (7, 1) node (max) [pos=.5] {$max$};
+    \draw (7, 0) rectangle (8, 1) node[pos=.5] {...};
+    \draw (8, 0) rectangle (9, 1) node (min) [pos=.5] {$min$};
+    \draw (9, 0) rectangle (10, 1) node[pos=.5] {...};
+    \draw (10, 0) rectangle (11, 1) node (y) [pos=.5] {$y$};
+    \draw (12,0) rectangle (15.5,1) node[pos=.5] {... sorted greater ...};
+    \draw[thick, <->] (x) edge[bend right=45] node [below] {swap} (min);
+    \draw[thick, <->] (y) edge[bend right=45] node [above] {swap} (max);
+  \end{tikzpicture}
+  \caption{Find the minimum and maximum, swap both to the right positions.}
+  \label{fig:cock-tail-sort}
+\end{figure}
 
 This algorithm can be illustrated as in figure \ref{fig:cock-tail-sort}, at any time, the left most and right most
 parts contain sorted elements so far. That the smaller sorted ones are on the left, while the bigger sorted ones
