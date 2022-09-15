@@ -324,192 +324,69 @@ We obtain the ascending order as well. Further, we can pick both the minimum and
   \label{fig:cock-tail-sort}
 \end{figure}
 
-This algorithm can be illustrated as in figure \ref{fig:cock-tail-sort}, at any time, the left most and right most
-parts contain sorted elements so far. That the smaller sorted ones are on the left, while the bigger sorted ones
-are on the right. The algorithm scans the unsorted ranges, located both the minimum and the maximum positions,
-then put them to the head and the tail position of the unsorted ranges by swapping.
+It's necessary to swap if the right most element less than the right most one before the inner loop. This is because the scan excludes them. We can also implement the cock-tail sort recursively:
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.7]{img/cock-tail-sort}
-  \caption{Select both the minimum and maximum in one pass, and put them to the proper positions.}
-  \label{fig:cock-tail-sort}
-\end{figure}
-
-Note that it's necessary to swap the left most and right most elements before the inner loop if they are
-not in correct order. This is because we scan the range excluding these two elements. Another method is to
-initialize the first element of the unsorted range as both the maximum and minimum before the inner loop.
-However, since we need two swapping operations after the scan, it's possible that the first swapping moves
-the maximum or the minimum from the position we just found, which leads the second swapping malfunctioned.
-How to solve this problem is left as exercise to the reader.
-
-The following Python example program implements this cock-tail sort algorithm.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def cocktail_sort(xs):
-    n = len(xs)
-    for i in range(n / 2):
-        (mi, ma) = (i, n - 1 -i)
-        if xs[ma] < xs[mi]:
-            (xs[mi], xs[ma]) = (xs[ma], xs[mi])
-        for j in range(i+1, n - 1 - i):
-            if xs[j] < xs[mi]:
-                mi = j
-            if xs[ma] < xs[j]:
-                ma = j
-        (xs[i], xs[mi]) = (xs[mi], xs[i])
-        (xs[n - 1 - i], xs[ma]) = (xs[ma], xs[n - 1 - i])
-    return xs
-\end{lstlisting}
-
-It's possible to realize cock-tail sort in functional approach as well. An intuitive recursive description
-can be given like this:
-
-\begin{itemize}
-  \item Trivial edge case: If the list is empty, or there is only one element in the list, the sorted result is obviously the origin list;
-  \item Otherwise, we select the minimum and the maximum, put them in the head and tail positions, then recursively sort the rest elements.
-\end{itemize}
-
-This algorithm description can be formalized by the following equation.
+\begin{enumerate}
+  \item If the list is empty or singleton, it's sorted;
+  \item Otherwise, we select the minimum and the maximum, move them  to the head and tail, then recursively sort the rest elements.
+\end{enumerate}
 
 \be
-sort(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  L & |L| \leq 1 \\
-  \{ l_{min} \} \cup sort(L'') \cup \{ l_{max} \} & otherwise
-  \end{array}
-\right.
-\ee
-
-Where the minimum and the maximum are extracted from $L$ by a function $select(L)$.
-
-\[
-(l_{min}, L'', l_{max}) = select(L)
-\]
-
-Note that, the minimum is actually linked to the front of the recursive sort result. Its semantic is a constant $O(1)$
-time `cons' (refer to the appendix of this book for detail). While the maximum is appending to the tail. This
-is typically a linear $O(n)$ time expensive operation. We'll optimize it later.
-
-Function $select(L)$ scans the whole list to find both the minimum and the maximum. It can be defined as below:
-
-\be
-select(L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (min(l_1, l_2), max(l_1, l_2)) & L = \{ l_1, l_2\} \\
-  (l_1, \{ l_{min}\} \cup L'', l_{max}) & l_1 < l_{min} \\
-  (l_{min}, \{l_{max}\} \cup L'', l_1) & l_{max} < l_1 \\
-  (l_{min}, \{l_1\} \cup L'', l_{max}) & otherwise
-  \end{array}
-\right.
-\ee
-
-Where $(l_{min}, L'', l_{max}) = select(L')$ and $L'$ is the rest of the list except for the first element $l_1$.
-If there are only two elements in the list, we pick the smaller as the minimum, and the bigger as the maximum.
-After extract them, the list becomes empty. This is the trivial edge case; Otherwise, we take the first element
-$l_1$ out, then recursively perform selection on the rest of the list. After that, we compare if $l_1$ is less
-then the minimum or greater than the maximum candidates, so that we can finalize the result.
-
-Note that for all the cases, there is no appending operation to form the result. However, since selection must
-scan all the element to determine the minimum and the maximum, it is bound to $O(n)$ linear time.
-
-The complete example Haskell program is given as the following.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-csort [] = []
-csort [x] = [x]
-csort xs = mi : csort xs' ++ [ma] where
-  (mi, xs', ma) = extractMinMax xs
-
-extractMinMax [x, y] = (min x y, [], max x y)
-extractMinMax (x:xs) | x < mi = (x, mi:xs', ma)
-                     | ma < x = (mi, ma:xs', x)
-                     | otherwise = (mi, x:xs', ma)
-  where (mi, xs', ma) = extractMinMax xs
-\end{lstlisting}
-
-We mentioned that the appending operation is expensive in this intuitive version. It can be improved.
-This can be achieved in two steps. The first step is to convert the cock-tail sort into tail-recursive
-call. Denote the sorted small ones as $A$, and sorted big ones as $B$ in figure \ref{fig:cock-tail-sort}.
-We use $A$ and $B$ as accumulators. The new cock-tail sort is defined as the following.
-
-\be
-sort'(A, L, B) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  A \cup L \cup B & L = \phi \lor |L| = 1 \\
-  sort'(A \cup \{ l_{min}\}, L'', \{ l_{max}\} \cup B) & otherwise
-  \end{array}
-\right.
-\ee
-
-Where $l_{min}$, $l_{max}$ and $L''$ are defined as same as before. And we start sorting by passing
-empty $A$ and $B$: $sort(L) = sort'(\phi, L, \phi)$.
-
-Besides the edge case, observing that the appending operation only happens on $A \cup \{l_{min} \}$; while
-$l_{max}$ is only linked to the head of $B$. This appending occurs in every recursive call. To eliminate
-it, we can store $A$ in reverse order as $\overleftarrow{A}$, so that $l_{max}$ can be `cons' to the
-head instead of appending. Denote $cons(x, L) = \{x\} \cup L$ and $append(L, x) = L \cup \{x\}$,
-we have the below equation.
-
-\be
-\begin{array}{rl}
-append(L, x) & = reverse(cons(x, reverse(L))) \\
-             & = reverse(cons(x, \overleftarrow{L}))
+\begin{array}{rcl}
+sort\ [\ ] & = & [\ ] \\
+sort\ [x] & = & [x] \\
+sort\ xs & = & a : (sort\ xs') \doubleplus [b], \text{where}\ (a, b, xs') = \textit{minMax}\ xs \\
 \end{array}
 \ee
 
-Finally, we perform a reverse to turn $\overleftarrow{A}$ back to $A$.
-Based on this idea, the algorithm can be improved one more step as the following.
+Where function \textit{minMax} extracts the minimum and maximum from a list:
 
 \be
-sort'(A, L, B) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  reverse(A) \cup B & L = \phi \\
-  reverse(\{l_1\} \cup A) \cup B & |L| = 1 \\
-  sort'(\{l_{min}\} \cup A, L'', \{l_{max}\} \cup B)
-  \end{array}
-\right.
+\textit{minMax}\ (x:y:xs) = foldr\ sel (min\ x\ y, max\ x\ y, [\ ])\ xs
 \ee
 
-This algorithm can be implemented by Haskell as below.
+We initialize the minimum as the first element $x_0$, and the maximum as the second element $x_1$, and process the list with $foldr$. Function $sel$ is defined as:
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-csort' xs = cocktail [] xs [] where
-  cocktail as [] bs = reverse as ++ bs
-  cocktail as [x] bs = reverse (x:as) ++ bs
-  cocktail as xs bs = let (mi, xs', ma) = extractMinMax xs
-                      in cocktail (mi:as) xs' (ma:bs)
-\end{lstlisting}
+\[
+sel\ x\ (x_0, x_1, xs) = \begin{cases}
+  x < x_0: & (x, x_1, x_0 : xs) \\
+  x_1 < x: & (x_0, x, x_1 : xs) \\
+  \text{otherwsie}: & (x_0, x_1, x : xs) \\
+\end{cases}
+\]
 
-\begin{Exercise}
-  \begin{itemize}
-    \item Realize the imperative basic selection sort algorithm, which can take a comparator as a parameter. Please try both dynamic typed language and static typed language. How to annotate the type of the comparator as general as possible in a static typed language?
-   \item Implement Knuth's version of selection sort in your favorite programming language.
-   \item An alternative to realize cock-tail sort is to assume the $i$-th element both the minimum and the maximum, after the inner loop, the minimum and maximum are found, then we can swap the the minimum to the $i$-th position, and
-the maximum to position $|A|+1-i$. Implement this solution in your favorite imperative language. Please note that
-there are several special edge cases should be handled correctly:
-    \begin{itemize}
-      \item $A = \{max, min, ...\}$;
-      \item $A = \{..., max, min\}$;
-      \item $A = \{max, ..., min\}$.
-    \end{itemize}
-    Please don't refer to the example source code along with this chapter before you try to solve this problem.
-    \item Realize the function $select(L)$ by folding.
-  \end{itemize}
-\end{Exercise}
+Although \textit{minMax} is bound to $O(n)$ time, $\doubleplus[b]$ is expensive. As shown in figure \ref{fig:cock-tail-sort}, let the left sorted part be $A$, the right sorted part be $B$. We can turn the cock-tail sort to tail recursive with $A$ and $B$ as the accumulators.
 
-% ================================================================
-% Improvement 2
-% ================================================================
+\be
+\begin{array}{rcl}
+sort'\ A\ B\ [\ ] & = & A \doubleplus B \\
+sort'\ A\ B\ [x]  & = & A \doubleplus (x:B) \\
+sort'\ A\ B\ (x:xs) & = & sort'\ (A \doubleplus [x_0])\ xs'\ (x_1:B) \\
+\end{array}
+\ee
 
-\section{Major improvement}
+Where $(x_0, x_1, xs') = \textit{minMax}\ xs$. We pass empty $A$ and $B$ to initialize sorting: $sort = sort'\ [\ ]\ [\ ]$. The append only happens to $A \doubleplus [x_0]$, while $x_1$ is linked before $B$. Every recursion performs an append operation. To eliminate it, we can maintain $A$ in reversed order: $\overleftarrow{A}$, hence $x_0$ is linked ahead but appended. We have the following equations:
+
+\be
+\begin{array}{rcl}
+A' & = & A \doubleplus [x] \\
+   & = & reverse\ (x : reverse\ A) \\
+   & = & reverse\ (x : \overleftarrow{A}) \\
+   & = & \overleftarrow{ x : \overleftarrow{A}}
+\end{array}
+\ee
+
+Finally, we reverse $\overleftarrow{A'}$ back to $A'$. We can improve the algorithm as below:
+
+\be
+\begin{array}{rcl}
+sort'\ A\ B\ [\ ] & = & (reverse\ A) \doubleplus B \\
+sort'\ A\ B\ [x]  & = & (reverse\ x:A) \doubleplus B \\
+sort'\ A\ B\ (x:xs) & = & sort'\ (x_0:A)\ xs'\ (x_1:B) \\
+\end{array}
+\ee
+
+\section{Further improvement}
 
 Although cock-tail sort halves the numbers of loop, the performance is still bound to quadratic time.
 It means that, the method we developed so far handles big data poorly compare to other divide and conquer
