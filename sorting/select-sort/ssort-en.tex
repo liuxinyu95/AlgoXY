@@ -403,165 +403,57 @@ are grouped into 8 pairs to play. There will be 8 winners, and 8 teams will be o
   \label{fig:tournament-tree-1}
 \end{figure}
 
-Imagine that every team has a number. The bigger the number, the stronger the team. Suppose
-that the stronger team always beats the team with smaller number, although this is not true
-in real world. But this simplification is fair enough for us to develop the tournament knock
-out solution. This maximum number which represents the champion is 16. Definitely, team with
-number 14 isn't the second best according to our rules. It should be 15, which is knocked
-out at the first round of comparison.
-
-The key question here is to find an effective way to locate the second maximum number in this
-tournament tree. After that, what we need is to apply the same method to select the third,
-the fourth, ..., to accomplish the selection based sort.
-
-One idea is to assign the champion a very small number (for instance, $-\infty$),
-so that it won't be selected next time, and the second best one, becomes the new champion.
-However, suppose there are $2^m$ teams for some natural number $m$, it still takes
-$2^{m-1} + 2^{m-2} + ... + 2 + 1 = 2^m$ times of comparison to determine the new
-champion. Which is as slow as the first time.
-
-Actually, we needn't perform a bottom-up comparison at all since the tournament tree
-stores plenty of ordering information. Observe that, the second best team must
-be beaten by the champion at sometime, or it will be the final winner. So we
-can track the path from the root of the tournament tree to the leaf of the
-champion, examine all the teams along with this path to find the second best team.
-
-In figure \ref{fig:tournament-tree-1}, this path is marked in gray color, the elements
-to be examined are $\{14, 13, 7, 15\}$. Based on this idea, we refine the algorithm
-like below.
+Assign every team a number to measure its strength. Suppose the team with greater number always beats the smaller one (this is obviously not true in real world). The champion number is 16. the runner-up is not 14, but 15, which is out in the first round. We need figure out a way to quickly identify the second greater number in the tournament tree. The apply it to select the 3rd, the 4th, ... to sort. We can mutate the champion to a very small number, i.e. $-\infty$, hence it won't be selected next time, and the previous runner-up will become the new champion. For $2^m$ teams, where $m$ is some natural number, it takes $2^{m-1} + 2^{m-2} + ... + 2 + 1 = 2^m - 1$ comparisons to determine the new champion. This is same as before. Actually, we needn't perform bottom-up comparisons because the tournament tree
+stores sufficient ordering information. The champion must beat the runner-up at sometime. We can locate the runner-up along the path from the root to the leaf of the champion. We grey the path in figure \ref{fig:tournament-tree-1} of $[14, 13, 7, 15]$. This method is defined as below:
 
 \begin{enumerate}
-\item Build a tournament tree from the elements to be sorted, so that the champion (the maximum) becomes the root;
-\item Extract the root from the tree, perform a top-down pass and replace the maximum with $-\infty$;
-\item Perform a bottom-up back-track along the path, determine the new champion and make it as the new root;
-\item Repeat step 2 until all elements have been extracted.
+\item Build a tournament tree with the maximum (the champion) at the root;
+\item Take the root, replace it with $-\infty$ along the path to leaf;
+\item Perform a bottom-up back-track along the path, find the new champion and store it in the root;
+\item Repeat step 2 to process all elements.
 \end{enumerate}
 
-Figure \ref{fig:tournament-tree-2}, \ref{fig:tournament-tree-3}, and \ref{fig:tournament-tree-4}
-show the steps of applying this strategy.
-
+\captionsetup[subfigure]{labelformat=empty, margin=10pt}
 \begin{figure}[htbp]
   \centering
-  \includegraphics[scale=0.6]{img/tournament-tree-2}
-  \caption{Extract 16, replace it with $-\infty$, 15 sifts up to root.}
-  \label{fig:tournament-tree-2}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.6]{img/tournament-tree-3}
-  \caption{Extract 15, replace it with $-\infty$, 14 sifts up to root.}
-  \label{fig:tournament-tree-3}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.6]{img/tournament-tree-4}
-  \caption{Extract 14, replace it with $-\infty$, 13 sifts up to root.}
+  \subcaptionbox{Take 16, replace with $-\infty$, 15 becomes the new root.}{\includegraphics[scale=0.28]{img/tournament-tree-2}} \\
+  \subcaptionbox{Take 15, replace with $-\infty$, 14 becomes the new root.}{\includegraphics[scale=0.28]{img/tournament-tree-3}} \\
+  \subcaptionbox{Take 14, replace with $-\infty$, 13 becomes the new root.}{\includegraphics[scale=0.28]{img/tournament-tree-4}}
+  \caption{The first 3 steps of tournament tree sort.}
   \label{fig:tournament-tree-4}
 \end{figure}
+\captionsetup[subfigure]{labelformat=parens}
 
-We can reuse the binary tree definition given in the first chapter of this book to represent
-tournament tree. In order to back-track from leaf to the root, every node should hold a reference
-to its parent (concept of pointer in some environment such as ANSI C):
+To sort a collection of elements, we build a tournament tree from them, repeatedly select the champion from it. Figure \ref{fig:tournament-tree-4} gives the first 3 steps. We can re-use the binary tree definition. To make back-track easy, we need the parent field in each node. When $n$ is not $2^m$ form some natural number $m$, there is remaining element without ``player'', and directly enters the next round of games. To build the tournament tree, we build $n$ singleton trees from every element. Then pick every two $t_1$, $t_2$ to create a bigger binary tree $t$. Where the root of $t$ is $max(key(t_1), key(t_2))$, the left and right sub-trees are $t_1$, $t_2$. Repeat to obtain a collection of new trees, each height increases by one. If there is remaining, then enters the next round. After this round, trees halve to $\lfloor \dfrac{n}{2} \rfloor$. Repeat this to obtain the final tournament tree. The process is bound to $O(n + \dfrac{n}{2} + \dfrac{n}{4} + ... ) = O(2n) = O(n)$ time.
 
-\lstset{language=C}
-\begin{lstlisting}
-struct Node {
-  Key key;
-  struct Node *left, *right, *parent;
-};
-\end{lstlisting}
-
-To build a tournament tree from a list of elements (suppose the number of elements are $2^m$ for some $m$),
-we can first wrap each element as a leaf, so that we obtain a list of binary trees. We take every two
-trees from this list, compare their keys, and form a new binary tree with the bigger key as the root;
-the two trees are set as the left and right children of this new binary tree. Repeat this operation
-to build a new list of trees. The height of each tree is increased by 1. Note that the size of the tree
-list halves after such a pass, so that we can keep reducing the list until there is only one tree left.
-And this tree is the finally built tournament tree.
-
-\begin{algorithmic}
+\begin{algorithmic}[1]
 \Function{Build-Tree}{$A$}
-  \State $T \gets \phi$
+  \State $T \gets [\ ]$
   \For{each $x \in A$}
-    \State $t \gets $ \Call{Create-Node}{}
-    \State \Call{Key}{$t$} $\gets x$
-    \State \Call{Append}{$T, t$}
+    \State \textproc{Append}($T$, \Call{Node}{NIL, $x$, NIL})
   \EndFor
   \While{$|T| > 1$}
-    \State $T' \gets \phi$
-    \For{every $t_1, t_2 \in$ T}
-      \State $t \gets $ \Call{Create-Node}{}
-      \State \Call{Key}{$t$} $\gets$ \textproc{Max}(\Call{Key}{$t_1$}, \Call{Key}{$t_2$})
-      \State \Call{Left}{$t$} $\gets t_1$
-      \State \Call{Right}{$t$} $\gets t_2$
-      \State \Call{Parent}{$t_1$} $\gets t$
-      \State \Call{Parent}{$t_2$} $\gets t$
-      \State \Call{Append}{$T', t$}
+    \State $T' \gets [\ ]$
+    \For{every $t_1, t_2 \in T$}
+      \State $k \gets$ \textproc{Max}(\Call{Key}{$t_1$}, \Call{Key}{$t_2$})
+      \State \textproc{Append}($T'$, \Call{Node}{$t_1$, $k$, $t_2$})
     \EndFor
+    \If{|T| is odd}
+      \State \textproc{Append}($T'$, \Call{Last}{$T$})
+    \EndIf
     \State $T \gets T'$
   \EndWhile
   \State \Return $T[1]$
 \EndFunction
 \end{algorithmic}
 
-Suppose the length of the list $A$ is $n$, this algorithm firstly traverses the list to build tree,
-which is linear to $n$ time. Then it repeatedly compares pairs, which loops proportion to
-$n + \frac{n}{2} + \frac{n}{4} + ... + 2 = 2n$. So the total performance is bound to $O(n)$ time.
+We replace the root with $-\infty$ top-down, then back-track through the parent field to find the new maximum.
 
-The following ANSI C program implements this tournament tree building algorithm.
-
-\lstset{language=C}
-\begin{lstlisting}
-struct Node* build(const Key* xs, int n) {
-    int i;
-    struct Node *t, **ts = (struct Node**) malloc(sizeof(struct Node*) * n);
-    for (i = 0; i < n; ++i)
-        ts[i] = leaf(xs[i]);
-    for (; n > 1; n /= 2)
-        for (i = 0; i < n; i += 2)
-            ts[i/2] = branch(max(ts[i]->key, ts[i+1]->key), ts[i], ts[i+1]);
-    t = ts[0];
-    free(ts);
-    return t;
-}
-\end{lstlisting}
-
-The type of key can be defined somewhere, for example:
-
-\lstset{language=C}
-\begin{lstlisting}
-typedef int Key;
-\end{lstlisting}
-
-Function \texttt{leaf(x)} creats a leaf node, with value \texttt{x} as key,
-and sets all its fields, left, right and parent to \texttt{NIL}.
-While function \texttt{branch(key, left, right)} creates a branch node, and links the new
-created node as parent of its two children if they are not empty. For the sake of
-brevity, we skip the detail of them. They are left as exercise to the reader, and
-the complete program can be downloaded along with this book.
-
-Some programming environments, such as Python provides tool to iterate every two elements
-at a time, for example:
-
-\lstset{language=Python}
-\begin{lstlisting}
-for x, y in zip(*[iter(ts)]*2):
-\end{lstlisting}
-
-We skip such language specific feature, readers can refer to the Python example program
-along with this book for details.
-
-When the maximum element is extracted from the tournament tree, we replace it with $-\infty$,
-and repeatedly replace all these values from the root to the leaf. Next, we back-track
-to root through the parent field, and determine the new maximum element.
-
-\begin{algorithmic}
-\Function{Extract-Max}{$T$}
+\begin{algorithmic}[1]
+\Function{Pop}{$T$}
   \State $m \gets$ \Call{Key}{$T$}
   \State \Call{Key}{$T$} $\gets -\infty$
-  \While{$\lnot$ \Call{Leaf?}{$T$}}  \Comment{The top down pass}
+  \While{$T$ is not leaf}  \Comment{top-down replace $m$ with $-\infty$.}
     \If{\textproc{Key}(\Call{Left}{$T$}) $ = m$}
       \State $T \gets$ \Call{Left}{$T$}
     \Else
@@ -569,58 +461,15 @@ to root through the parent field, and determine the new maximum element.
     \EndIf
     \State \Call{Key}{$T$} $\gets -\infty$
   \EndWhile
-  \While{\Call{Parent}{$T$} $\neq \phi$} \Comment{The bottom up pass}
+  \While{\Call{Parent}{$T$} $\neq$ NIL} \Comment{bottom-up to find the new maximum.}
     \State $T \gets$ \Call{Parent}{$T$}
     \State \Call{Key}{$T$} $\gets$ \textproc{Max}(\textproc{Key}(\Call{Left}{$T$}), \textproc{Key}(\Call{Right}{$T$}))
   \EndWhile
-  \State \Return $m$
+  \State \Return $(m, T)$ \Comment{the maximum and the new tree.}
 \EndFunction
 \end{algorithmic}
 
-This algorithm returns the extracted maximum element, and modifies the tournament tree in-place.
-Because we can't represent $-\infty$ in real program by limited length of word, one approach is to define
-a relative negative big number, which is less than all the elements in the tournament tree, for example,
-suppose all the elements are greater than -65535, we can define negative infinity as below:
-
-\lstset{language=C}
-\begin{lstlisting}
-#define N_INF -65535
-\end{lstlisting}
-
-We can implements this algorithm as the following ANSI C example program.
-
-\lstset{language=C}
-\begin{lstlisting}
-Key pop(struct Node* t) {
-    Key x = t->key;
-    t->key = N_INF;
-    while (!isleaf(t)) {
-        t = t->left->key == x ? t->left : t->right;
-        t->key = N_INF;
-    }
-    while (t->parent) {
-        t = t->parent;
-        t->key = max(t->left->key, t->right->key);
-    }
-    return x;
-}
-\end{lstlisting}
-
-The behavior of \textproc{Extract-Max} is quite similar to the pop operation for some data structures,
-such as queue, and heap, thus we name it as \texttt{pop} in this code snippet.
-
-Algorithm \textproc{Extract-Max} process the tree in two passes, one is top-down, then a bottom-up along
-the path that the `champion team wins the world cup'.
-Because the tournament tree is well balanced,
-the length of this path, which is the height of the tree, is bound to $O(\lg n)$,
-where $n$ is the number of the elements to be sorted (which are equal to the number of leaves).
-Thus the performance of this algorithm is $O(\lg n)$.
-
-It's possible to realize the tournament knock out sort now. We build a tournament tree from the elements
-to be sorted, then continuously extract the maximum. If we want to sort in monotonically increase order,
-we put the first extracted one to the right most, then insert the further extracted elements one by one
-to left; Otherwise if we want to sort in decrease order, we can just append the extracted elements
-to the result. Below is the algorithm sorts elements in ascending order.
+\textproc{Pop} process the tree in two passes, top-down, then bottom-up along the path of the champion. Because the tournament tree is balanced, the length of this path, i.e. height of the tree, is bound to $O(\lg n)$, where $n$ is the number of the elements. Below is the tournament tree sort. We first build the tree in $O(n)$ time, then pop the maximum for $n$ times, each pop takes $O(\lg n)$ time. The total time is bound to $O(n \lg n)$.
 
 \begin{algorithmic}
 \Procedure{Sort}{$A$}
@@ -630,22 +479,6 @@ to the result. Below is the algorithm sorts elements in ascending order.
   \EndFor
 \EndProcedure
 \end{algorithmic}
-
-Translating it to ANSI C example program is straightforward.
-
-\lstset{language=C}
-\begin{lstlisting}
-void tsort(Key* xs, int n) {
-    struct Node* t = build(xs, n);
-    while(n)
-        xs[--n] = pop(t);
-    release(t);
-}
-\end{lstlisting}
-
-This algorithm firstly takes $O(n)$ time to build the tournament tree, then performs $n$ pops to select
-the maximum elements so far left in the tree. Since each pop operation is bound to $O(\lg n)$, thus
-the total performance of tournament knock out sorting is $O(n \lg n)$.
 
 \subsubsection{Refine the tournament knock out}
 \index{Tounament knock out!explicit infinity}
