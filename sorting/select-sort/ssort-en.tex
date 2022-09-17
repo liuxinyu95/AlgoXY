@@ -480,240 +480,209 @@ We replace the root with $-\infty$ top-down, then back-track through the parent 
 \EndProcedure
 \end{algorithmic}
 
-\subsubsection{Refine the tournament knock out}
-\index{Tounament knock out!explicit infinity}
-It's possible to design the tournament knock out algorithm in purely functional approach. And we'll see
-that the two passes (first top-down replace the champion with $-\infty$, then bottom-up determine the
-new champion) in pop operation can be combined in recursive manner, so that we needn't the parent field
-any more. We can re-use the functional binary tree definition as the following example Haskell code.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-data Tr a = Empty | Br (Tr a) a (Tr a)
-\end{lstlisting}
-
-Thus a binary tree is either empty or a branch node contains a key, a left sub tree and a right sub tree.
-Both children are again binary trees.
-
-We've use hard coded big negative number to represents $-\infty$. However, this solution is ad-hoc, and
-it forces all elements to be sorted are greater than this pre-defined magic number. Some programming
-environments support algebraic type, so that we can define negative infinity explicitly. For instance,
-the below Haskell program setups the concept of infinity \footnote{The order of the definition of `NegInf',
-regular number, and `Inf' is significant if we want to derive the default, correct comparing behavior of `Ord'.
-Anyway, it's possible to specify the detailed order by make it as an instance of `Ord'. However, this is
-Language specific feature which is out of the scope of this book. Please refer to other textbook about Haskell.}.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-data Infinite a = NegInf | Only a | Inf deriving (Eq, Ord)
-\end{lstlisting}
-
-From now on, we switch back to use the $min()$ function to determine the winner, so that the tournament selects the minimum
-instead of the maximum as the champion.
-
-Denote function $key(T)$ returns the key of the tree rooted at $T$. Function $wrap(x)$ wraps the element
-$x$ into a leaf node. Function $tree(l, k, r)$ creates a branch node, with $k$ as the key, $l$ and $r$
-as the two children respectively.
-
-The knock out process, can be represented as comparing two trees, picking the smaller key as the new
-key, and setting these two trees as children:
+We can also implement tournament tree sort recursively. Reuse the binary search tree definition, let an none empty tree be $(l, k, r)$, where $k$ is the element, $l$, $r$ are the left and right sub-trees. Define $wrap\ x = (\nil, x, \nil)$ to create a leaf node. We can convert the $n$ elements to a list of $n$ single trees: $ts = map\ wrap\ xs$. For every pair of trees $t_1$, $t_2$, we merge them to a bigger tree, pick the greater element as the new root, and $t_1$, $t_2$ become the left and right sub-trees.
 
 \be
-branch(T_1, T_2) = tree(T_1, min(key(T_1), key(T_2)), T_2)
+merge\ t_1\ t_2 = (t_1, max\ k_1\ k_2, t_2)
 \ee
 
-This can be implemented in Haskell word by word:
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-branch t1 t2 = Br t1 (min (key t1) (key t2)) t2
-\end{lstlisting}
-
-There is limitation in our tournament sorting algorithm so far. It only accepts collection of elements
-with size of $2^m$, or we can't build a complete binary tree. This can be actually solved in the tree
-building process. Remind that we pick two trees every time, compare and pick the winner. This is perfect
-if there are always even number of trees. Considering a case in football match, that one team is absent
-for some reason (sever flight delay or whatever), so that there left one team without a challenger.
-One option is to make this team the winner, so that it will attend the further games. Actually, we can
-use the similar approach.
-
-To build the tournament tree from a list of elements, we wrap every element into a leaf, then start the
-building process.
+Where $k_1 = key\ t_1, k_2 = key\ t_2$ are the elements at root respectively. Define a function $build\ ts$ to repeatedly merge two trees, and build the final tournament tree.
 
 \be
-build(L) = build'(\{wrap(x) | x \in L\})
+\begin{array}{rcl}
+build\ [\ ] & = & \nil \\
+build\ [t]  & = & t \\
+build\ ts & = & build\ (\textit{pairs}\ ts) \\
+\end{array}
 \ee
 
-The $build'(\mathbb{T})$ function terminates when there is only one tree left in $\mathbb{T}$, which
-is the champion. This is the trivial edge case. Otherwise, it groups every two trees in a pair to determine
-the winners. When there are odd numbers of trees, it just makes the last tree as the winner to attend the
-next level of tournament and recursively repeats the building process.
+Where:
 
 \be
-build'(\mathbb{T}) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \mathbb{T} & |\mathbb{T}| \leq 1 \\
-  build'(pair(\mathbb{T})) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+\textit{pairs}\ (t_1:t_2:ts) & = & (merge\ t_1\ t_2) : \textit{pairs}\ ts \\
+\textit{pairs}\ ts & = & ts \\
+\end{array}
 \ee
 
-Note that this algorithm actually handles another special cases, that the list to be sort is empty.
-The result is obviously empty.
-
-Denote $\mathbb{T} = \{ T_1, T_2, ...\}$ if there are at least two trees, and $\mathbb{T}'$ represents
-the left trees by removing the first two. Function $pair(\mathbb{T})$ is defined as the following.
+When pop the champion, we examine the sub-trees to see which one holds the same element as the root. Then recursively pop the champion from the sub-tree till the leaf node. Then replace it with $-\infty$.
 
 \be
-pair(\mathbb{T}) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ branch(T_1, T_2) \} \cup pair(\mathbb{T}') & |\mathbb{T}| \geq 2 \\
-  \mathbb{T} & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+pop\ (\nil, k, \nil) & = & (\nil, -\infty, \nil) \\
+pop\ (l, k, r) & = & \begin{cases}
+  k = key\ l: & (l', max\ (key\ l')\ (key\ r), r), \text{where} l' = pop\ l \\
+  k = key\ r: & (l,  max\ (key\ l)\ (key\ r'), r'), \text{where} r' = pop\ r \\
+\end{cases}
+\end{array}
 \ee
 
-The complete tournament tree building algorithm can be implemented as the below example Haskell program.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-fromList :: (Ord a) => [a] -> Tr (Infinite a)
-fromList = build . (map wrap) where
-  build [] = Empty
-  build [t] = t
-  build ts = build $ pair ts
-  pair (t1:t2:ts) = (branch t1 t2):pair ts
-  pair ts = ts
-\end{lstlisting} %$
-
-When extracting the champion (the minimum) from the tournament tree, we need examine either the left child
-sub-tree or the right one has the same key as the root, and recursively extract on that tree until arrive at the leaf
-node. Denote the left sub-tree of $T$ as $L$, right sub-tree as $R$, and $K$ as its key. We can define this popping
-algorithm as the following.
+Then repeatedly pop from the tournament tree to sort (in descending order):
 
 \be
-pop(T) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  tree(\phi, \infty, \phi) & L = \phi \land R = \phi \\
-  tree(L', min(key(L'), key(R)), R) & K = key(L), L' = pop(L) \\
-  tree(L, min(key(L), key(R')), R') & K = key(R), R' = pop(R)
-  \end{array}
-\right.
-\ee
-
-It's straightforward to translate this algorithm into example Haskell code.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-pop (Br Empty _ Empty) = Br Empty Inf Empty
-pop (Br l k r) | k == key l = let l' = pop l in Br l' (min (key l') (key r)) r
-               | k == key r = let r' = pop r in Br l (min (key l) (key r')) r'
-\end{lstlisting}
-
-Note that this algorithm only removes the current champion without returning it. So it's necessary to
-define a function to get the champion at the root node.
-
-\be
-top(T) = key(T)
-\ee
-
-With these functions defined, tournament knock out sorting can be formalized by using them.
-
-\be
-sort(L) = sort'(build(L))
-\ee
-
-Where $sort'(T)$ continuously pops the minimum element to form a result tree
-
-\be
-sort'(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & T = \phi \lor key(T) = \infty \\
-  \{ top(T) \} \cup sort'(pop(T)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+sort\ \nil & = & [\ ] \\
+sort\ (l, -\infty, r) & = & [\ ]  \\
+sort\ t & = & (key\ t) : sort\ (pop\ t) \\
+\end{array}
 \label{eq:tsort}
 \ee
 
-The rest of the Haskell code is given below to complete the implementation.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-top = only . key
-
-tsort :: (Ord a) => [a] -> [a]
-tsort = sort' . fromList where
-    sort' Empty = []
-    sort' (Br _ Inf _) = []
-    sort' t = (top t) : (sort' $ pop t)
-\end{lstlisting} %$
-
-And the auxiliary function \texttt{only}, \texttt{key}, \texttt{wrap} accomplished with explicit infinity support are list
-as the following.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-only (Only x) = x
-key (Br _ k _ ) = k
-wrap x = Br Empty (Only x) Empty
-\end{lstlisting}
-
 \begin{Exercise}
-  \begin{itemize}
-    \item Implement the helper function \texttt{leaf()}, \texttt{branch}, \texttt{max()} \texttt{lsleaf()}, and \texttt{release()} to complete the imperative tournament tree program.
-    \item Implement the imperative tournament tree in a programming language support GC (garbage collection).
-    \item Why can our tournament tree knock out sort algorithm handle duplicated elements (elements with same value)? We say a sorting algorithm stable, if it keeps the original order of elements with same value. Is the tournament tree knock out sorting stable?
-    \item Design an imperative tournament tree knock out sort algorithm, which satisfies the following:
-      \begin{itemize}
-        \item Can handle arbitrary number of elements;
-        \item Without using hard coded negative infinity, so that it can take elements with any value.
-      \end{itemize}
-    \item Compare the tournament tree knock out sort algorithm and binary tree sort algorithm, analyze efficiency both in time and space.
-    \item Compare the heap sort algorithm and binary tree sort algorithm, and do same analysis for them.
-  \end{itemize}
+\Question{Implement the recursive tournament tree sort in ascending order.}
+\Question{When there are duplicated elements, how to sort it with tournament tree?}
+\Question{Compare the tournament tree sort and binary search tree sort in terms of space and time performance.}
+\Question{Compare heap sort and tournament tree sort in terms of space and time performance.}
 \end{Exercise}
 
-\subsection{Final improvement by using heap sort}
+\subsection{Heap sort}
 
-We manage improving the performance of selection based sorting to $O(n \lg n)$ by using tournament knock out.
-This is the limit of comparison based sort according to \cite{TAOCP}. However, there are still rooms for improvement.
-After sorting, there lefts a complete binary tree with all leaves and branches hold useless infinite values.
-This isn't space efficient at all. Can we release the nodes when popping?
-
-Another observation is that if there are $n$ elements to be sorted, we actually allocate about $2n$ tree nodes.
-$n$ for leaves and $n$ for branches. Is there any better way to halve the space usage?
-
-The final sorting structure described in equation \ref{eq:tsort} can be easily uniformed to a more general
-one if we treat the case that the tree is empty if its root holds infinity as key:
+We improve the selection based sort to $O(n \lg n)$ time through tournament tree. It is the upper limit of the comparison based sort\cite{TAOCP}. However, there are still rooms for improvement. After sort, The binary holds all $-\infty$, occupying $2n$ nodes for $n$ elements. It's there a way to release node after pop? Can we halve $2n$ nodes to $n$? Treat the tree as empty when the root element is $-\infty$, and rename $key$ to $top$, we can write (\ref{eq:tsort}) in a generic way:
 
 \be
-sort'(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & T = \phi\\
-  \{ top(T) \} \cup sort'(pop(T)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+sort\ \nil & = & [\ ] \\
+sort\ t & = & (top\ t) : sort\ (pop\ t) \\
+\end{array}
 \ee
 
-This is exactly as same as the one of heap sort we gave in previous chapter.
-Heap always keeps the minimum (or the maximum) on the top, and provides fast pop operation.
-The binary heap by implicit array encodes the tree structure in array index, so there aren't
-any extra spaces allocated except for the $n$ array cells. The functional heaps,
-such as leftist heap and splay heap allocate $n$ nodes as well. We'll introduce more
-heaps in next chapter which perform well in many aspects.
+This is exactly as same as the definition of heap sort. Heap always stores the minimum (or the maximum) on the top, and provides fast pop operation. The array implementation encodes the binary tree structure as indices, uses exactly $n$ cells to represent the heap. The functional heaps, like the leftist heap and splay heap use $n$ nodes as well. We'll give more well performed heaps in next chapter.
 
-\section{Short summary}
-In this chapter, we present the evolution process of selection based sort. selection
-sort is easy and commonly used as example to teach students about embedded looping.
-It has simple and straightforward structure, but the performance is quadratic.
-In this chapter, we do see that there exists ways to improve
-it not only by some fine tuning, but also fundamentally change the data
-structure, which leads to tournament knock out and heap sort.
+\section{Appendix - example programs}
+
+Tail recursive selection sort:
+\begin{Haskell}
+sort [] = []
+sort xs = x : sort xs'
+  where
+    (x, xs') = extractMin xs
+
+extractMin (x:xs) = min' [] x xs
+  where
+    min' ys m [] = (m, ys)
+    min' ys m (x:xs) = if m < x then min' (x:ys) m xs
+                                else min' (m:ys) x xs
+\end{Haskell}
+
+Cock-tail sort:
+
+\begin{lstlisting}[language = Bourbaki]
+[A] cocktailSort([A] xs) {
+    Int n = length(xs)
+    for Int i = 0 to n / 2 {
+        var (mi, ma) = (i, n - 1 -i)
+        if xs[ma] < xs[mi] then swap(xs[mi], xs[ma])
+        for Int j = i + 1 to n - 1 - i {
+            if xs[j] < xs[mi] then mi = j
+            if xs[ma] < xs[j] then ma = j
+        }
+        swap(xs[i], xs[mi])
+        swap(xs[n - 1 - i], xs[ma])
+    }
+    return xs
+}
+\end{lstlisting}
+
+Tail recursive cock-tail sort:
+
+\begin{Haskell}
+csort xs = cocktail [] [] xs
+  where
+    cocktail as bs []  = reverse as ++ bs
+    cocktail as bs [x] = reverse (x:as) ++ bs
+    cocktail as bs xs  = let (mi, ma, xs') = minMax xs
+                         in cocktail (mi:as) (ma:bs) xs'
+
+minMax (x:y:xs) = foldr sel (min x y, max x y, []) xs
+  where
+    sel x (mi, ma, ys) | x < mi = (x, ma, mi:ys)
+                       | ma < x = (mi, x, ma:ys)
+                       | otherwise = (mi, ma, x:ys)
+\end{Haskell}
+
+Build the tournament tree (reuse the binary tree structure):
+
+\begin{lstlisting}[language = Bourbaki]
+Node<T> build([T] xs) {
+    [T] ts = []
+    for x in xs {
+        append(ts, Node(null, x, null))
+    }
+    while length(ts) >  1 {
+        [T] ts' = []
+        for l, r in ts {
+            append(ts', Node(l, max(l.key, r.key), r))
+        }
+        if odd(length(ts)) then append(ts', last(ts))
+        ts = ts'
+    }
+    return ts[0];
+}
+\end{lstlisting}
+
+Pop from the tournament tree:
+
+\begin{lstlisting}[language = Bourbaki]
+T pop(Node<T> t) {
+    T m = t.key
+    t.key = -INF
+    while not isLeaf(t) {
+        t = if t.left.key == m then t->left else t->right
+        t.key = -INF
+    }
+    while (t.parent != null) {
+        t = t.parent
+        t.key = max(t.left.key, t.right.key)
+    }
+    return (m, t);
+}
+\end{lstlisting}
+
+Tournament tree sort:
+
+\begin{lstlisting}[language = Bourbaki]
+void sort([A] xs) {
+    Node<T> t = build(xs)
+    for Int n = length(xs) - 1 downto 0 {
+        (xs[n], t) = pop(t)
+    }
+}
+\end{lstlisting}
+
+Recursive tournament tree sort (descending order):
+
+\begin{Haskell}
+data Tr a = Empty | Br (Tr a) a (Tr a)
+
+data Infinite a = NegInf | Only a | Inf deriving (Eq, Ord)
+
+key (Br _ k _ ) = k
+
+wrap x = Br Empty (Only x) Empty
+
+merge t1@(Br _ k1 _) t2@(Br _ k2 _) = Br t1 (max k1 k2) t2
+
+fromList = build . (map wrap) where
+  build [] = Empty
+  build [t] = t
+  build ts = build (pairs ts)
+  pairs (t1:t2:ts) = (merge t1 t2) : pair ts
+  pairs ts = ts
+
+pop (Br Empty _ Empty) = Br Empty NegInf Empty
+pop (Br l k r) | k == key l = let l' = pop l in Br l' (max (key l') (key r)) r
+               | k == key r = let r' = pop r in Br l (max (key l) (key r')) r'
+
+toList Empty = []
+toList (Br _ Inf _) = []
+toList t@(Br _ Only k _) = k : toList (pop t)
+
+sort = toList . fromList
+\end{Haskell}
+
+\ifx\wholebook\relax\else
+\section{Answer}
+\shipoutAnswer
 
 \begin{thebibliography}{99}
 
