@@ -94,115 +94,55 @@
 \subsubsection{二项式堆}
 \label{Binomial heap} \index{二项式堆!定义}
 
-一个二项式堆包含一组二项式树（二项式树的森林），它满足如下性质：
+一个二项式堆包含一组二项式树（二项式树森林），它满足如下性质：
 
 \begin{enumerate}
 \item 每棵树都满足\textbf{堆性质}，对于小顶堆，任意节点元素都不小于（$\geq$）父节点元素；
 \item 堆中任何两棵二项式树的秩都不同。
 \end{enumerate}
 
-这一定义直接导致了一个重要的结果。对于含有$n$个元素的二项式堆，如果将$n$转换为二进制数$a_0, a_1, a_2, ..., a_m$，其中$a_0$是最低位（LSB），$a_m$是最高位（MSB）。对于任意$0 \leq i \leq m$，若$a_i=0$，则堆中不存在Rank为$i$的二项式树；若$a_i = 1$，则堆中一定含有一棵Rank为$i$的二项式树。
-
-例如，某个二项式堆含有5个元素，因为5的二进制为“（LSB）101(MSB）”，因此这个堆中含有两棵二项式树，一棵的Rank为0,另外一棵的Rank为2。
-
-图\ref{fig:bheap2}所示的二项式堆含有19个节点，因为19的二进制为“（LSB）11001(MSB）”，因此含有一棵$B_0$树、一棵$B_1$树和一棵$B_4$树。
+从性质2可以导出一个结果：含有$n$个元素的二项式堆，如果将$n$转换为二进制数$(a_m ... a_1 a_0)_2$，其中$a_0$是最低位（LSB），$a_m$是最高位（MSB）,若$a_i=0$，则堆中不存在秩为$i$的二项式树，若$a_i = 1$，则堆中一定含有一棵秩为$i$的树。例如，设二项式堆含有5个元素，5的二进制为101，堆中含有两棵二项式树，一棵秩为0、一棵秩为2。图\ref{fig:bheap2}中的二项式堆含有19个元素，$19 = (10011)_2$，含有一棵$B_0$树、一棵$B_1$树、一棵$B_4$树。
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.5]{img/bheap2}
-  \caption{含有19个元素的二项式堆} \label{fig:bheap2}
+  \caption{含有19个元素的二项式堆}
+  \label{fig:bheap2}
 \end{figure}
 
-\subsubsection{数据布局}
-\index{左侧孩子，右侧兄弟}
+我们将二项式树定义为多叉树，带有一个根节点元素$k$、秩$r$、和若干子树$ts$，记为$(r, k, ts)$。定义二项式堆为按照秩递增的二项式树的列表：
 
-在命令式环境中，有两种方法可以定义$K$叉树。一种是使用“左侧孩子，右侧兄弟”（left-child, right-sibling）的方法\cite{CLRS}。好处是这种定义和典型的二叉树结构一致。每个节点包含两个字段（field），左侧字段和右侧字段。我们使用左侧的字段指向节点的第一棵子树，用右侧字段指向此节点的兄弟节点。所有的兄弟节点被串联成一个单向链表。如图\ref{fig:lcrs}所示。
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.5]{img/lcrs}
-  \caption{“左侧孩子，右侧兄弟”的例子。$R$为根节点，它没有兄弟节点，因此它的右侧指向空$NIL$，$C_1, C_2, ..., C_n$为$R$的子节点。$R$的左侧链接到$C_1$，其他$C_1$的兄弟节点依次向右链接起来。$C_2', ..., C_m'$为$C_1$的子节点。} \label{fig:lcrs}
-\end{figure}
-
-另外一种方法是使用容器类数据结构，如使用数组或者链表来存储节点的所有子树。
-
-因为二项式树的Rank很重要，我们将其也定义为一个字段。
-
-下面的Python例子程序，使用“左侧孩子，右侧兄弟”方法，定义了二项式树：
-
-\lstset{language=Python}
-\begin{lstlisting}
-class BinomialTree:
-    def __init__(self, x = None):
-        self.rank = 0
-        self.key = x
-        self.parent = None
-        self.child = None
-        self.sibling = None
-\end{lstlisting}
-
-当使用一个元素key来构造树时，我们创建一个叶子节点，其Rank为0，其他字段都为空。
-
-下面的例子程序使用列表来存储子节点，相应的定义如下：
-
-\begin{lstlisting}
-class BinomialTree:
-    def __init__(self, x = None):
-        self.rank = 0
-        self.key = x
-        self.parent = None
-        self.children = []
-\end{lstlisting}
-
-在纯函数式环境中，例如Haskell，我们可以将二项式树定义如下：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
+\lstset{frame=single}
+\begin{Haskell}
 data BiTree a = Node { rank :: Int
                      , root :: a
                      , children :: [BiTree a]}
-\end{lstlisting}
 
-而二项式堆被定义为二项式树的列表（森林），其中的树按照Rank单调递增排序。并且符合一个额外的限制：没有任何两棵树的Rank相等。
-
-\begin{lstlisting}[style=Haskell]
 type BiHeap a = [BiTree a]
-\end{lstlisting}
+\end{Haskell}
 
-% ================================================================
-%                 Basic heap operation
-% ================================================================
-\subsection{基本的堆操作}
+\index{左侧孩子，右侧兄弟}
+有一种叫做“左侧孩子，右侧兄弟”\cite{CLRS}的方法，可以复用二叉树的结构来定义$k$叉树。每个节点包含左侧和右侧部分：左侧部分指向节点的第一棵子树，右侧部分指向兄弟节点。所有兄弟节点组成一个链表，如图\ref{fig:lcrs}所示。也可以直接利用数组或列表来表示一个节点的子树。
 
-本节我们介绍二项式堆的基本的操作，包括树的链接，插入新元素，堆的合并，以及访问和弹出堆顶元素。
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.5]{img/left-child-right-sibling}
+  \caption{$R$为根节点，$T_1, T_2, ..., T_m$为$R$的子树。$R$的左侧为$T_1$，右侧为空。$T_{11}, ..., T_{1p}$为$T_1$的子树。$T_1$的左侧是子树$T_{11}$，右侧是兄弟节点$T_2$。$T_2$的左侧是子树$T_{21}$，右侧是兄弟节点。}
+  \label{fig:lcrs}
+\end{figure}
 
 \subsubsection{树的链接}
 \index{二项式堆!链接}
 
-为了实现基本的堆操作如弹出、插入，我们需要先实现将两棵Rank一样的树链接成一棵较大的树。根据二项式树的定义，以及根必须保存最小值的堆性质，需要先比较两棵树的根节点，选取较小的一个作为新的根，然后将另一棵树插入到其他子树的前面，如图\ref{fig:link-xy}所示。设函数$Key(T)$、$Children(T)$和$Rank(T)$分别访问树的key，子树和Rank。
+我们定义链接操作从两棵二项式树$B_n$构造出$B_{n+1}$。比较两棵树的根节点元素，选择较小的作为新的根，然后将另一棵置于其它子树前面，如图\ref{fig:link-xy}所示。
 
 \be
-link(T_1, T_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  node(r+1, x, \{ T_2 \} \cup C_1) & x < y \\
-  node(r+1, y, \{ T_1 \} \cup C_2) & otherwise
-  \end{array}
-\right .
+link\ (r, x, ts)\ (r, y, ts') = \begin{cases}
+  x < y: & (r + 1, x, (r, t, ts') : ts) \\
+  \text{否则}: & (r + 1, y, (r, x, ts): ts') \\
+  \end{cases}
 \label{eq:link}
 \ee
-
-其中
-
-\[
-  \begin{array}{l}
-  x = Key(T_1) \\
-  y = Key(T_2) \\
-  r = Rank(T_1) = Rank(T_2) \\
-  C_1 = Children(T_1) \\
-  C_2 = Children(T_2)
-  \end{array}
-\]
 
 \begin{figure}[htbp]
   \centering
@@ -1865,9 +1805,19 @@ delete(H, x) = \left \{
 
 到本章为止，我们介绍了一些最基本的基于树的数据结构。还有大量和树有关的内容有待我们去了解和探索。从下一章开始，我们将介绍通用的序列数据结构，包括数组和队列。
 
-% ================================================================
-%                 Appendix
-% ================================================================
+\section{附录：例子程序}
+
+多叉树的定义：
+
+\begin{lstlisting}[language = Bourbaki]
+data Node<K> {
+    Int rank
+    K key
+    Node<K> parent
+    [Node<K>] subTrees
+}
+\end{lstlisting}
+
 
 \ifx\wholebook\relax \else
 \section{参考答案}
