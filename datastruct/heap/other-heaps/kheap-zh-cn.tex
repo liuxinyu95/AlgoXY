@@ -59,7 +59,7 @@
 
 有多种方法可以产生一系列二项式系数，其中一种是使用递归。帕斯卡三角形中第一行为1，任何一行的两端为1，其它数字是上一行中左上和右上数字之和。
 
-\subsubsection{二项式树}
+\subsection{二项式树}
 \label{Binomial tree} \index{二项式树}
 
 二项式树递归定义如下。一棵二项式树是一棵多叉树，并带有一个整数的秩（rank）。记秩为0的二项式树为$B_0$，秩为$n$的二项式树为$B_n$。
@@ -91,9 +91,7 @@
 
 观察这些二项式树，可以发现$B_n$中每行的节点数目恰好是二项式系数。例如$B_4$第0层有1个节点（根节点），第1层有4个节点，第2层有6个节点，第3层有4个节点，第4层有1个节点。它们恰好是帕斯卡三角形的第4行（从第0行开始）：1、4、6、4、1。这就是二项式树名字的由来。进一步我们可以得知二项式树$B_n$中含有$2^n$个元素。
 
-\subsubsection{二项式堆}
-\label{Binomial heap} \index{二项式堆!定义}
-
+\index{二项式堆!定义}
 一个二项式堆包含一组二项式树（二项式树森林），它满足如下性质：
 
 \begin{enumerate}
@@ -114,9 +112,7 @@
 
 \lstset{frame=single}
 \begin{Haskell}
-data BiTree a = Node { rank :: Int
-                     , root :: a
-                     , children :: [BiTree a]}
+data BiTree a = Node Int a [BiTree a]
 
 type BiHeap a = [BiTree a]
 \end{Haskell}
@@ -131,7 +127,7 @@ type BiHeap a = [BiTree a]
   \label{fig:lcrs}
 \end{figure}
 
-\subsubsection{树的链接}
+\subsection{树的链接}
 \index{二项式堆!链接}
 
 我们定义链接操作从两棵二项式树$B_n$构造出$B_{n+1}$。比较两棵树的根节点元素，选择较小的作为新的根，然后将另一棵置于其它子树前面，如图\ref{fig:link-xy}所示。
@@ -147,71 +143,37 @@ link\ (r, x, ts)\ (r, y, ts') = \begin{cases}
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.5]{img/link-bitree-xy}
-  \caption{如果$x < y$，将$y$作为$x$的第一个子树插入。} \label{fig:link-xy}
+  \caption{如果$x < y$，将$y$作为$x$的第一棵子树。}
+  \label{fig:link-xy}
 \end{figure}
 
-如果$\cup$是一个常数时间操作，则链接操作的性能也为$O(1)$。下面的Haskell例子程序实现了链接。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-link t1@(Node r x c1) t2@(Node _ y c2) =
-    if x<y then Node (r+1) x (t2:c1)
-    else Node (r+1) y (t1:c2)
-\end{lstlisting}
-
-链接操作也可以用命令式的方式实现。如果使用“左侧孩子，右侧兄弟”的布局，只需要将key较大的树链接到另一棵树的左侧字段，然后将子树链接到key较大的树的右侧字段。如图\ref{fig:link-lcrs}所示。
+使用“左侧孩子，右侧兄弟”的实现如下。如图\ref{fig:link-lcrs}所示。
 
 \begin{algorithmic}[1]
-\Function{Link}{$T_1, T_2$}
-  \If{\Call{Key}{$T_2$} $<$ \Call{Key}{$T_1$}}
-    \State Exchange $T_1 \leftrightarrow T_2$
+\Function{Link}{$x, u$}
+  \If{\Call{Key}{$y$} $<$ \Call{Key}{$x$}}
+    \State Exchange $x \leftrightarrow y$
   \EndIf
-  \State \Call{Sibling}{$T_2$} $\gets$ \Call{Child}{$T_1$}
-  \State \Call{Child}{$T_1$} $\gets T_2$
-  \State \Call{Parent}{$T_2$} $\gets T_1$
-  \State \Call{Rank}{$T_1$} $\gets$ \Call{Rank}{$T_1$} + 1
-  \State \Return $T_1$
+  \State \Call{Sibling}{$y$} $\gets$ \Call{Sub-Trees}{$T_1$}
+  \State \Call{Sub-Trees}{$x$} $\gets y$
+  \State \Call{Parent}{$y$} $\gets x$
+  \State \Call{Rank}{$x$} $\gets$ \Call{Rank}{$y$} + 1
+  \State \Return $x$
 \EndFunction
 \end{algorithmic}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.5]{img/link-bitree-lcrs}
-  \caption{若$x < y$，将$y$链接到$x$的左侧，将$x$的子树链接到$y$的右侧。} \label{fig:link-lcrs}
+  \caption{若$x < y$，将$y$链接到$x$左侧，将$x$的子树链接到$y$的右侧。}
+  \label{fig:link-lcrs}
 \end{figure}
-
-如果使用容器来存储节点的子树，相应的算法如下：
-
-\begin{algorithmic}[1]
-\Function{Link'}{$T_1, T_2$}
-  \If{\Call{Key}{$T_2$} $<$ \Call{Key}{$T_1$}}
-    \State Exchange $T_1 \leftrightarrow T_2$
-  \EndIf
-  \State \Call{Parent}{$T_2$} $\gets T_1$
-  \State \textproc{Insert-Before}(\Call{Children}{$T_1$}, $T_2$)
-  \State \Call{Rank}{$T_1$} $\gets$ \Call{Rank}{$T_1$} + 1
-  \State \Return $T_1$
-\EndFunction
-\end{algorithmic}
-
-上述两个算法都易于实现。这里我们给出了\textproc{Link'}的Python例子程序。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def link(t1, t2):
-    if t2.key < t1.key:
-        (t1, t2) = (t2, t1)
-    t2.parent = t1
-    t1.children.insert(0, t2)
-    t1.rank = t1.rank + 1
-    return t1
-\end{lstlisting}
 
 \begin{Exercise}
 \Question{编程产生帕斯卡三角形}
 \Question{证明二项式树$B_n$中第$i$行的节点数为$\binom{n}{i}$。}
 \Question{证明二项式树$B_n$中含有$2^n$个节点。}
-\Question{选择一门语言，用“左侧孩子，右侧兄弟”的布局实现二项式树的链接程序。}
+\Question{用容器保存子树，实现二项式树的链接程序。}
 \end{Exercise}
 
 \begin{Answer}
@@ -249,14 +211,24 @@ pascal = gen [1] where
 \]
 \end{proof}
 }
+\Question{用容器保存子树，实现二项式树的链接程序。
+
+\begin{algorithmic}[1]
+\Function{Link'}{$T_1, T_2$}
+  \If{\Call{Key}{$T_2$} $<$ \Call{Key}{$T_1$}}
+    \State Exchange $T_1 \leftrightarrow T_2$
+  \EndIf
+  \State \Call{Parent}{$T_2$} $\gets T_1$
+  \State \textproc{Insert}(\Call{Sub-Trees}{$T_1$}, 1, $T_2$)
+  \State \Call{Rank}{$T_1$} $\gets$ \Call{Rank}{$T_2$} + 1
+  \State \Return $T_1$
+\EndFunction
+\end{algorithmic}
+}
 \end{Answer}
 
-\subsubsection*{}
-
-如果使用“左侧孩子，右侧兄弟”的实现，链接可以在常数时间完成，但是如果使用容器来存储子树，则性能依赖于容器的具体实现。如果容器是基于数组的，链接操作的时间和子树的数目成正比；而如果使用链表，则为常数时间。本章中，我们认为这一时间是常数的。
-
-\subsubsection{插入新元素（push）}
-\index{二项式堆!插入}
+\subsection{插入新元素}
+\index{二项式堆!插入} \index{二项式堆!push}
 
 如果森林中的二项式树的Rank是单调增的，通过使用$link$函数，我们可以定义一个辅助函数用于向堆中插入一棵新树。
 这棵新树的Rank不大于森林中的任何树。
@@ -379,7 +351,7 @@ def insert(h, x):
 %     Binomial heap merge
 % =================================
 
-\subsubsection{堆合并}
+\subsection{堆合并}
 \index{二项式树!合并}
 
 合并两个二项式堆等价于合并两个二项式树的森林。根据定义，合并后的森林中没有Rank相同的树，并且树按照Rank单调递增的顺序排列。合并过程的思想和归并排序类似。在每次迭代中，我们从两个森林中各取出第一棵树，比较它们的Rank，将较小的一棵树放入结果堆中；如果Rank相等，我们将它们链接起来成为一棵新树，然后递归将它插入到剩余树的合并结果中。
@@ -560,7 +532,7 @@ def merge(ts1, ts2):
 
 \end{Exercise}
 
-\subsubsection{弹出}
+\subsection{弹出}
 \index{二项式堆!弹出}
 
 在二项式堆的森林中，每棵二项式树都符合堆性质，根节点保存了树中的最小元素。但是这些根节点元素间的大小关系是任意的。为了获取堆中的最小元素，我们需要从全部树根中找到最小元素。因为堆中有$\lg n$棵树，所以获取最小值的复杂度为$O(\lg n)$。
@@ -707,7 +679,7 @@ heapSort = hsort . fromList where
 \end{itemize}
 \end{Exercise}
 
-\subsubsection{其他}
+\subsection{其它}
 此前我们给出的二项式堆的插入、合并的性能都是$O(\lg n)$。这一结论是针对\underline{最坏}情况的。这些操作的分摊复杂度为$O(1)$。我们这里略去了分摊复杂度的证明。
 
 % ================================================================
@@ -1807,17 +1779,30 @@ delete(H, x) = \left \{
 
 \section{附录：例子程序}
 
-多叉树的定义：
+多叉树的定义（左侧孩子，右侧兄弟）：
 
 \begin{lstlisting}[language = Bourbaki]
 data Node<K> {
     Int rank
     K key
     Node<K> parent
-    [Node<K>] subTrees
+    Node<K> subTrees
+    Node<K> sibling
 }
 \end{lstlisting}
 
+二项式树链接：
+
+\begin{lstlisting}[language = Bourbaki]
+Node<K> link(Node<K> t1, Node<K> t2) {
+    if t2.key < t1.key then (t1, t2) = (t2, t1)
+    t2.sibling = t1.subTrees
+    t1.subTrees = t2
+    t2.parent = t1
+    t1.rank = t1.rank + 1
+    return t1
+}
+\end{lstlisting}
 
 \ifx\wholebook\relax \else
 \section{参考答案}
