@@ -227,44 +227,30 @@ pascal = gen [1] where
 \subsection{插入}
 \index{二项式堆!插入} \index{二项式堆!push}
 
-我们令堆中二项式树按照递增的秩排列，并在插入新树时保持这个顺序。
+我们令堆中二项式树按照秩递增排列，并在插入新树时保持秩的顺序：
 
 \be
 \begin{array}{rcl}
-insert\ [\ ]\ t & = & [t] \\
-insert\ (t':ts)\ t & = & \begin{cases}
+ins\ t\ [\ ] & = & [t] \\
+ins\ t\ (t':ts) & = & \begin{cases}
   rank\ t < rank\ t': & t:t':ts \\
-  \text{否则}: & t' : (insert\ ts\ t) \\
+  rank\ t' < rank\ t: & t' : ins\ t\ ts \\
+  \text{否则}: & ins\ (link\ t\ t')\ ts  \\
 \end{cases}
 \end{array}
 \ee
 
-如果堆为空，则新树为森林中唯一的一棵；否则，我们比较新树和森林中第一棵树的Rank，如果相等，就将它们链接成一棵更大的树（Rank加1），然后递归地插入到森林中；如果不等，根据限制条件，新树的Rank必然是最小的，我们将它插入到森林中所有树的前面。
-
-根据此前给出的二项式堆的性质，如果元素总数为$n$，森林中最多有$O(\lg n)$棵二项式树。函数$insertT$最多执行$O(\lg n)$次常数时间的链接操作。因此$insertT$的性能为$O(\lg n)$\footnote{观察这一操作和两个二进制数的加法，它们有很多相似性。可以引出一个有趣的题目：“numeric representation”\cite{okasaki-book}。}。
-
-相应的Haskell例子程序如下：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-insertTree [] t = [t]
-insertTree ts@(t':ts') t = if rank t < rank t' then t:ts
-                           else insertTree ts' (link t t')
-\end{lstlisting}
-
-使用这一辅助函数，我们可以实现堆的插入算法。先将待插入元素装入一个叶子节点，然后将它插入到二项式堆中。
+其中$rank\ (r, k, ts) = r$，获取一棵二项式树的秩。如果堆为空$[\ ]$，则新树$t$成为堆中唯一的树；否则，我们比较$t$和堆中第一棵树$t'$的秩。如果$t$的秩较小，则$t$成为第一棵树；如果$t'$的秩较小，我们递归地将$t$插入到剩余的树中；如果秩相等，就将$t$、$t'$链接成一棵更大的树，然后递归地插入到剩余的树中。如果有$n$个元素，堆中最多有$O(\lg n)$棵二项式树。$ins$最多执行$O(\lg n)$次常数时间的链接。其时间复杂度为$O(\lg n)$\footnote{这一过程和两个二进制数的加法相似。可以引出一个有趣的题目：“numeric representation”\cite{okasaki-book}。}。使用$ins$，我们可以定义二项式堆的插入算法。先将待插入元素$x$放入一棵只有一个叶子节点树中，然后再插入到堆中：
 
 \be
-insert(H, x) = insertT(H, node(0, x, \phi))
+insert\ x = ins\ (0, x, [\ ])
 \ee
 
-我们可以连续将若干元素通过folding插入到堆中，下面的Haskell例子程序定义了一个辅助函数\texttt{fromList}。
+我们可以利用叠加操作连续将若干元素插入到堆中：
 
-\begin{lstlisting}[style=Haskell]
-fromList = foldl insert []
-\end{lstlisting}
-
-因为将元素放入叶子节点只需要常数时间，主要的工作由$insertT$完成，所以二项式堆的插入操作性能为$O(\lg n)$。
+\be
+\textit{fromList} = foldr\ insert\ [\ ]
+\ee
 
 插入算法也可以用命令式的方式定义。
 
