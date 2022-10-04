@@ -50,13 +50,12 @@ def link(t1, t2):
     return t1
 
 def insert_tree(h, t):
-    h1 = prev = BinomialTree(None)
+    h1 = prev = BinomialTree()
     while h and h.rank <= t.rank:
         t1 = h
         h = h.sibling
         if t.rank == t1.rank:
             t = link(t, t1)
-            t.sibling = None
         else:
             prev.sibling = t1
             prev = t1

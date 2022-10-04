@@ -256,66 +256,24 @@ insert\ x = ins\ (0, x, [\ ])
 
 \begin{algorithmic}[1]
 \Function{Insert-Tree}{$T, H$}
-  \While{$H \neq$ NIL 且 \call{Rank}{$T$} = \Call{Rank}{$H$}}
-    \State $(T_1, H) \gets$ \Call{Extract-First}{$H$}
-    \State $T \gets $ \Call{Link}{$T, T_1$}
+  \State $\perp \gets p \gets$ \Call{Node}{$0$, NIL, NIL}
+  \While{$H \neq$ NIL 且 \Call{Rank}{$H$} $\leq$ \Call{Rank}{$T$}}
+    \State $T_1 \gets H$
+    \State $H \gets $ \Call{Sibling}{$H$}
+    \If{\Call{Rank}{$T$} = \Call{Rank}{$T_1$}}
+      \State $T \gets$ \Call{Link}{$T, T_1$}
+    \Else
+      \State \Call{Sibling}{$p$} $\gets T_1$
+      \State $p \gets T_1$
+    \EndIf
   \EndWhile
+  \State \Call{Sibling}{$p$} $\gets T$
   \State \Call{Sibling}{$T$} $\gets H$
-  \State \Return $T$
+  \State $H \gets$ \Call{Sibling}{$\perp$}
+  \State \Call{Sibling}{$\perp$} $\gets$ NIL
+  \State \Return $H$
 \EndFunction
 \end{algorithmic}
-
-其中\textproc{Extract-First}从堆中取出第一课树：
-
-\begin{algorithmic}[1]
-\Function{Extract-First}{$H$}
-  \State $T \gets$ NIL
-  \if $H \neq$ NIL
-    \State $T \gets H$
-    \State $H \gets$ \Call{Sibling}{$H$}
-    \State \Call{Sibling}{$T$} $\gets$ NIL
-  \EndIf
-  \State \Return $(T, H)$
-\EndFunction
-\end{algorithmic}
-
-只要待插入的树$T$和堆中第一棵树$H$秩相等，就不断将$T$和$H$链接成一棵较大的树。否则将$T$。
-
-不断将堆中第一棵树和待插入的树链接到一起。此后，它将剩余的树作为兄弟链接到末尾，然后将新的链表返回。
-
-使用\textproc{Insert-Tree}或\textproc{Insert-Tree$'$}中的任何一个，都可以实现二项式堆的插入算法。
-
-\begin{algorithm}
-\caption{命令式插入算法}
-\label{alg:bheap-insert}
-\begin{algorithmic}[1]
-\Function{Insert}{$H, x$}
-  \State \Return \textproc{Insert-Tree}($H$, \Call{Node}{$0, x, \phi$})
-\EndFunction
-\end{algorithmic}
-\end{algorithm}
-
-下面的Python程序使用内置的列表实现了上述算法，使用“左侧孩子，右侧兄弟”的实现留给读者作为练习。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def insert_tree(ts, t):
-    while ts !=[] and t.rank == ts[0].rank:
-        t = link(t, ts.pop(0))
-    ts.insert(0, t)
-    return ts
-
-def insert(h, x):
-    return insert_tree(h, BinomialTree(x))
-\end{lstlisting}
-
-\begin{Exercise}
-选择一门命令式编程语言，利用“左侧孩子，右侧兄弟”的布局实现二项式堆的插入算法。
-\end{Exercise}
-
-% =================================
-%     Binomial heap merge
-% =================================
 
 \subsection{堆合并}
 \index{二项式树!合并}
@@ -1754,6 +1712,12 @@ data Node<K> {
     Node<K> parent
     Node<K> subTrees
     Node<K> sibling
+
+    Node(K x) {
+        key = x
+        rank = 0
+        parent = subTrees = sibling = null
+    }
 }
 \end{lstlisting}
 
@@ -1768,6 +1732,31 @@ Node<K> link(Node<K> t1, Node<K> t2) {
     t1.rank = t1.rank + 1
     return t1
 }
+\end{lstlisting}
+
+二项式堆插入：
+
+\begin{lstlisting}[language = Bourbaki]
+Node<K> insertTree(Node<K> t, Node<K> h) {
+    h1 = prev = Node()
+    while h != null and h.rank <= t.rank {
+        t1 = h
+        h = h.sibling
+        if t.rank == t1.rank {
+            t = link(t, t1)
+        } else {
+            prev.sibling = t1
+            prev = t1
+        }
+    }
+    prev.sibling = t
+    t.sibling = h
+    h = h1.sibling
+    h1.sibling = null
+    return h
+}
+
+Node<K> insert(K x, Node<K> h) = insertTree(Node(x), h)
 \end{lstlisting}
 
 \ifx\wholebook\relax \else
