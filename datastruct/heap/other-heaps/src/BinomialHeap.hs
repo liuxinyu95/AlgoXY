@@ -46,16 +46,13 @@ insertTree t ts@(t':ts') | rank t < rank t' = t:ts
 
 insert x = insertTree (Node 0 x [])
 
-merge:: (Ord a) => BiHeap a -> BiHeap a -> BiHeap a
 merge ts1 [] = ts1
 merge [] ts2 = ts2
 merge ts1@(t1:ts1') ts2@(t2:ts2')
     | rank t1 < rank t2 = t1:(merge ts1' ts2)
     | rank t1 > rank t2 = t2:(merge ts1 ts2')
-    | otherwise = insertTree (link t1 t2) (merge ts1' ts2')
-
-
--- Auxiliary function for deleting
+--    | otherwise = insertTree (link t1 t2) (merge ts1' ts2')
+    | otherwise = merge (insertTree (link t1 t2) ts1') ts2'
 
 extractMin :: (Ord a) => BiHeap a -> (BiTree a, BiHeap a)
 extractMin [t] = (t, [])

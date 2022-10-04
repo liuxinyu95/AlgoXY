@@ -278,83 +278,27 @@ insert\ x = ins\ (0, x, [\ ])
 \subsection{堆合并}
 \index{二项式树!合并}
 
-合并两个二项式堆等价于合并两个二项式树的森林。根据定义，合并后的森林中没有Rank相同的树，并且树按照Rank单调递增的顺序排列。合并过程的思想和归并排序类似。在每次迭代中，我们从两个森林中各取出第一棵树，比较它们的Rank，将较小的一棵树放入结果堆中；如果Rank相等，我们将它们链接起来成为一棵新树，然后递归将它插入到剩余树的合并结果中。
-
-图\ref{fig:merge-bheaps}描述了这一算法。它和\cite{CLRS}中介绍的实现并不相同。
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{选择Rank较小的树放入结果中。}{
-  \begin{tikzpicture}[scale=0.8,
-    decision/.style={diamond, draw, aspect=3, text badly centered, inner sep=3pt}
-    ]
-    \draw (2, 5) rectangle (3, 6) node (t1) [pos=.5] {$t_1$}
-          (3, 5) rectangle (4, 6) node [pos=.5] {...};
-    \draw (5, 5) rectangle (6, 6) node (t2) [pos=.5] {$t_2$}
-          (6, 5) rectangle (7, 6) node [pos=.5] {...};
-    \node[decision] (compare) at (3.5, 3) {$Rank(t_1) < Rank(t_2) ?$};
-    \draw[thick, ->] (t1) edge [bend right] (compare)
-                     (t2) edge [bend left] (compare);
-    \draw (0, 0) rectangle (1, 1) node [pos=.5] {$T_1$}
-          (1, 0) rectangle (2, 1) node [pos=.5] {$T_2$}
-          (2, 0) rectangle (3, 1) node [pos=.5] {...}
-          (3, 0) rectangle (4, 1) node (Ti) [pos=.5] {$T_i$}
-          (4, 0) rectangle (5, 1) node [pos=.5] {...};
-    \draw[thick, ->] (compare) edge node [right] {选择较小的} (Ti);
-  \end{tikzpicture}} \\
-  \subcaptionbox{若两棵树的Rank相同，将它们链接成一棵新树，然后递归地将它插入的剩余树的合并结果中。}{
-  \begin{tikzpicture}[scale=0.8,
-    decision/.style={diamond, draw, aspect=3, text badly centered, inner sep=3pt}
-    ]
-    \draw (4, 5) rectangle (5, 6) node (t1)  [pos=.5] {$t_1$}
-          (5, 5) rectangle (6, 6) node (ts1) [pos=.5] {...};
-    \draw (7, 5) rectangle (8, 6) node (t2)  [pos=.5] {$t_2$}
-          (8, 5) rectangle (9, 6) node (ts2) [pos=.5] {...};
-    \node[decision] (compare) at (5.5, 3) {$Rank(t_1) = Rank(t_2)$};
-    \draw[thick, ->] (t1) edge [bend right] (compare)
-                     (t2) edge [bend left] (compare);
-    \draw (0, 0) rectangle (1, 1) node [pos=.5] {$T_1$}
-          (1, 0) rectangle (2, 1) node [pos=.5] {$T_2$}
-          (2, 0) rectangle (3, 1) node [pos=.5] {...};
-    \draw (4, 0.5) node{$+$};
-    \draw (5, 0) rectangle (6, 1) node (Ti) [pos=.5] {$T_i$}
-          (8, 0) rectangle (12, 1) node (mergeTs) [pos=.5] {剩余树的合并结果};
-    \draw[thick, ->] (compare) edge node [left] {$link(t_1, t_2)$} (Ti)
-                 (Ti) edge node [above] {$insert$} (mergeTs)
-                 (ts1) edge [bend right] (mergeTs)
-                 (ts2) edge [bend left] (mergeTs);
-  \end{tikzpicture}} \\
-  \caption{堆合并} \label{fig:merge-bheaps}
-\end{figure}
-
-可以将合并算法形式化为一个函数。若两个堆不为空，分别记它们为：$H_1 = \{ T_1, T_2, ... \}$、$H_2 = \{ T'_1, T'_2, ...\}$。并且令$H'_1 = \{ T_2, T_3, ... \}$、$H'_2 = \{ T'_2, T'_3, ... \}$。
+合并两个二项式堆相当于合并两个二项式树森林。合并结果中没有秩相同的树，并且按照秩递增。合并过程和归并排序类似。每次从两个堆中各取出第一棵树，比较它们的秩，将较小的一棵放入结果中。如果两棵树的秩相等，我们将它们链接成为一棵较大的树，然后递归插入到合并结果中。
 
 \be
-merge(H_1, H_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  H_1 & H_2 = \phi \\
-  H_2 & H_1 = \phi \\
-  \{ T_1 \} \cup merge(H'_1, H_2) & Rank(T_1) < Rank(T'_1) \\
-  \{ T'_1 \} \cup merge(H_1, H'_2) & Rank(T_1) > Rank(T'_1) \\
-  insertT(merge(H'_1, H'_2), link(T_1, T'_1)) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+merge\ ts_1\ [\ ] & = & ts_1 \\
+merge\ [\ ]\ ts_2 & = & ts_2 \\
+merge\ (t_1:ts_1)\ (t_2:ts_2) & = & \begin{cases}
+  rank\ t_1 < rank\ t_2: & t_1 : (merge\ ts_1\ (t_2:ts_2)) \\
+  rank\ t_2 < rank\ t_1: & t_2 : (merge\ (t_1:ts_1)\ ts_2) \\
+  \text{否则}: & ins\ (link\ t_1\ t_2)\ (merge\ ts_1\ ts_2) \\
+  \end{cases}
+\end{array}
 \ee
 
-为了分析合并操作的性能，设堆$H_1$中有$m_1$棵树，堆$H_2$中有$m_2$棵树。合并后的结果中最多有$m_1 + m_2$棵树。如果没有Rank相同的树，则合并操作的时间为$O(m_1 + m_2)$。如果存在Rank相同的树需要链接，最多需要调用$insertT$的次数为$O(m_1 + m_2)$。考虑$m_1 = 1 + \lfloor \lg n_1 \rfloor$，$m_2 = 1 + \lfloor \lg n_2 \rfloor$，其中$n_1$和$n_2$是两个堆各自的节点数目，且$\lfloor \lg n_1 \rfloor + \lfloor \lg n_2 \rfloor \leq 2 \lfloor \lg n \rfloor$，其中$n = n_1 + n_2$为总节点数。最终的合并性能为$O(\lg n)$。
+当$t_1$、$t_2$秩相同时，我们也可以将链接后的树插入回任意一个堆，然后递归合并：
 
-下面的Haskell例子程序实现了合并算法。
+\[
+merge\ (ins\ (link\ t_1\ t_2)\ ts_1)\ ts_2
+\]
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-merge ts1 [] = ts1
-merge [] ts2 = ts2
-merge ts1@(t1:ts1') ts2@(t2:ts2')
-    | rank t1 < rank t2 = t1:(merge ts1' ts2)
-    | rank t1 > rank t2 = t2:(merge ts1 ts2')
-    | otherwise = insertTree (merge ts1' ts2') (link t1 t2)
-\end{lstlisting}
+设堆$H_1$中有$m_1$棵树，堆$H_2$中有$m_2$棵树。合并后的结果中最多有$m_1 + m_2$棵树。如果没有秩相同的树，则合并时间为$O(m_1 + m_2)$。如果存在秩相同的树，最多需要调用$O(m_1 + m_2)$次$ins$。考虑$m_1 = 1 + \lfloor \lg n_1 \rfloor$，$m_2 = 1 + \lfloor \lg n_2 \rfloor$，其中$n_1$和$n_2$是两个堆各自的元素数，且$\lfloor \lg n_1 \rfloor + \lfloor \lg n_2 \rfloor \leq 2 \lfloor \lg n \rfloor$，其中$n = n_1 + n_2$。最终合并的复杂度为$O(\lg n)$。
 
 合并算法也可以用命令式的方式实现，如Algorithm \ref{alg:bheap-merge}。
 
