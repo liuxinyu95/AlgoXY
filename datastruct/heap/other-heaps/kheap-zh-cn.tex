@@ -150,7 +150,7 @@ link\ (r, x, ts)\ (r, y, ts') = \begin{cases}
 使用“左侧孩子，右侧兄弟”的实现如下。如图\ref{fig:link-lcrs}所示。链接操作可以在常数时间内完成。
 
 \begin{algorithmic}[1]
-\Function{Link}{$x, u$}
+\Function{Link}{$x, y$}
   \If{\Call{Key}{$y$} $<$ \Call{Key}{$x$}}
     \State Exchange $x \leftrightarrow y$
   \EndIf
@@ -240,55 +240,48 @@ ins\ t\ (t':ts) & = & \begin{cases}
 \end{array}
 \ee
 
-其中$rank\ (r, k, ts) = r$，获取一棵二项式树的秩。如果堆为空$[\ ]$，则新树$t$成为堆中唯一的树；否则，我们比较$t$和堆中第一棵树$t'$的秩。如果$t$的秩较小，则$t$成为第一棵树；如果$t'$的秩较小，我们递归地将$t$插入到剩余的树中；如果秩相等，就将$t$、$t'$链接成一棵更大的树，然后递归地插入到剩余的树中。如果有$n$个元素，堆中最多有$O(\lg n)$棵二项式树。$ins$最多执行$O(\lg n)$次常数时间的链接。其时间复杂度为$O(\lg n)$\footnote{这一过程和两个二进制数的加法相似。可以引出一个有趣的题目：“numeric representation”\cite{okasaki-book}。}。使用$ins$，我们可以定义二项式堆的插入算法。先将待插入元素$x$放入一棵只有一个叶子节点树中，然后再插入到堆中：
+其中$rank\ (r, k, ts) = r$，获取一棵二项式树的秩。如果堆为空$[\ ]$，则新树$t$成为堆中唯一的树；否则，我们比较$t$和堆中第一棵树$t'$的秩。如果$t$的秩较小，则$t$成为第一棵树；如果$t'$的秩较小，我们递归地将$t$插入到剩余的树中；如果秩相等，就将$t$、$t'$链接成一棵更大的树，然后递归地插入到剩余的树中。如果有$n$个元素，堆中最多有$O(\lg n)$棵二项式树。$ins$最多执行$O(\lg n)$次常数时间的链接。其时间复杂度为$O(\lg n)$\footnote{这一过程和两个二进制数的加法相似，可以引出一类问题：数值表示（numeric representation）\cite{okasaki-book}。}。使用$ins$，我们可以定义二项式堆的插入算法。先将待插入元素$x$放入一棵只有一个叶子节点树中，然后再插入到堆中：
 
 \be
 insert\ x = ins\ (0, x, [\ ])
 \ee
 
-我们可以利用叠加操作连续将若干元素插入到堆中：
+这一定义是克里化的。我们可以利用叠加操作将若干元素插入到堆中：
 
 \be
 \textit{fromList} = foldr\ insert\ [\ ]
 \ee
 
-插入算法也可以用命令式的方式定义。
+对应的“左侧孩子，右侧兄弟”实现如下：\label{alg:insert-tree}
 
-\begin{algorithm}
-\caption{使用“左侧孩子，右侧兄弟”的实现插入一棵新树}
-\label{alg:insert-tree}
 \begin{algorithmic}[1]
-\Function{Insert-Tree}{$H, T$}
-  \While{$H \neq \phi \land $ \textproc{Rank}(\Call{Head}{$H$}) = \Call{Rank}{$T$}}
-    \State $(T_1, H) \gets$ \Call{Extract-Head}{$H$}
+\Function{Insert-Tree}{$T, H$}
+  \While{$H \neq$ NIL 且 \call{Rank}{$T$} = \Call{Rank}{$H$}}
+    \State $(T_1, H) \gets$ \Call{Extract-First}{$H$}
     \State $T \gets $ \Call{Link}{$T, T_1$}
   \EndWhile
   \State \Call{Sibling}{$T$} $\gets H$
   \State \Return $T$
 \EndFunction
 \end{algorithmic}
-\end{algorithm}
 
-如果Rank相等，算法Algorithm \ref{alg:insert-tree}不断将堆中第一棵树和待插入的树链接到一起。此后，它将剩余的树作为兄弟链接到末尾，然后将新的链表返回。
+其中\textproc{Extract-First}从堆中取出第一课树：
 
-如果使用容器来存储子树，则算法定义为Algorithm \ref{alg:insert-tree1}。
-
-\begin{algorithm}
-\caption{插入一棵新树，使用容器来存储子树}
-\label{alg:insert-tree1}
 \begin{algorithmic}[1]
-\Function{Insert-Tree$'$}{$H, T$}
-  \While{$H \neq \phi \land $ \Call{Rank}{$H[0]$} = \Call{Rank}{$T$}}
-    \State $T_1 \gets$ \Call{Pop}{$H$}
-    \State $T \gets $ \Call{Link}{$T, T_1$}
-  \EndWhile
-  \State \Call{Head-Insert}{$H, T$}
-  \State \Return $H$
+\Function{Extract-First}{$H$}
+  \State $T \gets$ NIL
+  \if $H \neq$ NIL
+    \State $T \gets H$
+    \State $H \gets$ \Call{Sibling}{$H$}
+    \State \Call{Sibling}{$T$} $\gets$ NIL
+  \EndIf
+  \State \Return $(T, H)$
 \EndFunction
 \end{algorithmic}
-\end{algorithm}
 
-其中函数\textproc{Pop}将森林中的第一棵树$T_1 = H[0]$取出。函数\textproc{Head-Insert}将新树添加到堆中所有树的前面。
+只要待插入的树$T$和堆中第一棵树$H$秩相等，就不断将$T$和$H$链接成一棵较大的树。否则将$T$。
+
+不断将堆中第一棵树和待插入的树链接到一起。此后，它将剩余的树作为兄弟链接到末尾，然后将新的链表返回。
 
 使用\textproc{Insert-Tree}或\textproc{Insert-Tree$'$}中的任何一个，都可以实现二项式堆的插入算法。
 

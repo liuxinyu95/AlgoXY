@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# binomialheap.py, binomial heap 
+# binomialheap.py, binomial heap
 # Copyright (C) 2011, Liu Xinyu (liuxinyu95@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify
@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from functools import reduce
 import random # for testing only
 
 # Assume the heap is min-heap
@@ -38,7 +39,7 @@ def extract_first(h):
         t.sibling = None
     return (t, h)
 
-# Implicit condition that the rank of the two trees are same       
+# Implicit condition that the rank of the two trees are same
 def link(t1, t2):
     if t2.key < t1.key:
         (t1, t2) = (t2, t1)
@@ -48,16 +49,22 @@ def link(t1, t2):
     t1.rank = t1.rank + 1
     return t1
 
-# Insert a tree to the proper position in the heap
-# So that the trees are in monotonically increase order by rank
-# Implicit condition: the rank of tree is lower or equal to the
-# first tree in the heap
 def insert_tree(h, t):
-    while h is not None and t.rank == h.rank:
-        (t1, h) = extract_first(h)
-        t = link(t, t1)
+    h1 = prev = BinomialTree(None)
+    while h and h.rank <= t.rank:
+        t1 = h
+        h = h.sibling
+        if t.rank == t1.rank:
+            t = link(t, t1)
+            t.sibling = None
+        else:
+            prev.sibling = t1
+            prev = t1
+    prev.sibling = t
     t.sibling = h
-    return t
+    h = h1.sibling
+    h1.sibling = None
+    return h
 
 # Insertion
 def insert(h, x):
@@ -142,7 +149,7 @@ def remove_min_tree(h):
     else:
         head = min_t.sibling
     min_t.sibling = None
-    return (min_t, head)    
+    return (min_t, head)
 
 # Assume h is not empty
 def find_min(h):
@@ -174,7 +181,7 @@ def decrease_key(x, k):
 # function delete_node(h, x)
 #   decrease_key(x, -infinity)
 #   (_, h) = extract_min(h)
-#   return 
+#   return
 
 # helper function
 def from_list(lst):
@@ -190,12 +197,12 @@ def heap_sort(lst):
 
 def to_string(h):
     s = ""
-    while h is not None:
+    while h:
         s = s+ "(" + str(h.key)+", "+to_string(h.child)+"), "
         h = h.sibling
     return s
 
-# Auxiliary function to find a node contains specified 
+# Auxiliary function to find a node contains specified
 # key in the heap. This is an inefficent function only
 # for verification purpose
 def find_key(h, k):
@@ -214,37 +221,37 @@ def decrease_key_from(h, k1, k2):
 
 class TestHeap:
     def __init__(self):
-        print "Binomial heap testing"
+        print("Binomial heap testing")
 
     def run(self):
-        #self.test_insert()
-        #self.test_extract_min()
+        self.test_insert()
+        self.test_extract_min()
         self.test_heap_sort()
         self.test_random_sort()
         self.test_heap_decrease_key()
 
     def __assert(self, p):
         if p:
-            print "OK"
+            print("OK")
         else:
-            print "Fail!"
+            print("Fail!")
 
     def test_insert(self):
         l = [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
-        print to_string(from_list(l))
+        print("insert", l, "=", to_string(from_list(l)))
 
     def test_extract_min(self):
         l = [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
         h = from_list(l)
         (t, h) = extract_min(h)
-        print "t=", t
-        print "h=", to_string(h)
+        print("t=", t)
+        print("h=", to_string(h))
 
     def test_heap_sort(self):
         # CLRS Figure 6.4
         l = [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
         res = heap_sort(l)
-        print res
+        print(res)
         self.__assert(res == [1, 2, 3, 4, 7, 8, 9, 10, 14, 16])
 
     def test_random_sort(self):
@@ -252,8 +259,8 @@ class TestHeap:
         for i in range(100):
             lst = random.sample(range(n), random.randint(1, n))
             assert(heap_sort(lst) == sorted(lst))
-        print "OK"
-        
+        print("OK")
+
     def test_heap_decrease_key(self):
         n = 1000
         for i in range(100):
@@ -268,7 +275,7 @@ class TestHeap:
                 res.append(e)
             lst[lst.index(x)] = y
             assert(res == sorted(lst))
-        print "OK"
+        print("OK")
 
 if __name__ == "__main__":
     TestHeap().run()
