@@ -269,9 +269,13 @@ insert\ x = ins\ (0, x, [\ ])
   \EndWhile
   \State \Call{Sibling}{$p$} $\gets T$
   \State \Call{Sibling}{$T$} $\gets H$
-  \State $H \gets$ \Call{Sibling}{$\perp$}
-  \State \Call{Sibling}{$\perp$} $\gets$ NIL
-  \State \Return $H$
+  \State \Return \Call{Remove-First}{$\perp$}
+\EndFunction
+\Statex
+\Function{Remove-First}{$H$}
+  \State $n \gets$ \Call{Sibling}{$H$}
+  \State \Call{Sibling}{$H$} $\gets$ NIL
+  \State \Return $n$
 \EndFunction
 \end{algorithmic}
 
@@ -298,107 +302,37 @@ merge\ (t_1:ts_1)\ (t_2:ts_2) & = & \begin{cases}
 merge\ (ins\ (link\ t_1\ t_2)\ ts_1)\ ts_2
 \]
 
-设堆$H_1$中有$m_1$棵树，堆$H_2$中有$m_2$棵树。合并后的结果中最多有$m_1 + m_2$棵树。如果没有秩相同的树，则合并时间为$O(m_1 + m_2)$。如果存在秩相同的树，最多需要调用$O(m_1 + m_2)$次$ins$。考虑$m_1 = 1 + \lfloor \lg n_1 \rfloor$，$m_2 = 1 + \lfloor \lg n_2 \rfloor$，其中$n_1$和$n_2$是两个堆各自的元素数，且$\lfloor \lg n_1 \rfloor + \lfloor \lg n_2 \rfloor \leq 2 \lfloor \lg n \rfloor$，其中$n = n_1 + n_2$。最终合并的复杂度为$O(\lg n)$。
+用这种方式可以消除递归，用迭代的方式实现堆合并：
 
-合并算法也可以用命令式的方式实现，如Algorithm \ref{alg:bheap-merge}。
-
-\begin{algorithm}
-\caption{命令式合并两个堆}
-\label{alg:bheap-merge}
 \begin{algorithmic}[1]
 \Function{Merge}{$H_1, H_2$}
-  \If{$H_1 = \phi$}
-    \State \Return $H_2$
-  \EndIf
-  \If{$H_2 = \phi$}
-    \State \Return $H_1$
-  \EndIf
-  \State $H \gets \phi$
-  \While{$H_1 \neq \phi \land H_2 \neq \phi$}
-    \State $T \gets \phi$
+  \State $H \gets p \gets$ \Call{Node}{0, NIL, NIL}
+  \While{$H_1 \neq$ NIL 且 $H_2 \neq$ NIL}
     \If{\Call{Rank}{$H_1$} $<$ \Call{Rank}{$H_2$}}
-      \State $(T, H_1) \gets $ \Call{Extract-Head}{$H_1$}
+      \State \Call{Sibling}{$p$} $\gets H_1$
+      \State $p \gets$ \Call{Sibling}{$p$}
+      \State $H_1 \gets$ \Call{Sibling}{$H_1$}
     \ElsIf{\Call{Rank}{$H_2$} $<$ \Call{Rank}{$H_1$}}
-      \State $(T, H_2) \gets $ \Call{Extract-Head}{$H_2$}
-    \Else \Comment{Rank相等}
-      \State $(T_1, H_1) \gets $ \Call{Extract-Head}{$H_1$}
-      \State $(T_2, H_2) \gets $ \Call{Extract-Head}{$H_2$}
-      \State $T \gets $ \Call{Link}{$T_1, T_2$}
+      \State \Call{Sibling}{$p$} $\gets H_2$
+      \State $p \gets$ \Call{Sibling}{$p$}
+      \State $H_2 \gets$ \Call{Sibling}{$H_2$}
+    \Else \Comment{秩相等}
+      \State $T_1 \gets H_1, T_2 \gets H_2$
+      \State $H_1 \gets$ \Call{Sibling}{$H_1$}, $H_2 \gets$ \Call{Sibling}{$H_2$}
+      \State $H_1 \gets $ \textproc{Insert-Tree}(\Call{Link}{$T_1, T_2$}, $H_1$)
     \EndIf
-    \State \Call{Append-Tree}{$H, T$}
   \EndWhile
-  \If{$H_1 \neq \phi$}
-    \State \Call{Append-Trees}{$H, H_1$}
+  \If{$H_1 \neq$ NIL}
+    \State \Call{Sibling}{$p$} $\gets H_1$
   \EndIf
-  \If{$H_2 \neq \phi$}
-    \State \Call{Append-Trees}{$H, H_2$}
+  \If{$H_2 \neq$ NIL}
+    \State \Call{Sibling}{$p$} $\gets H_2$
   \EndIf
-  \State \Return $H$
-\EndFunction
-\end{algorithmic}
-\end{algorithm}
-
-两个堆都含有Rank单调递增的二项式树。每次迭代，我们选出Rank最小的树并追加到结果堆中。如果两个堆中的第一棵树的Rank相等，我们先把它们链接成一棵新树。考虑\textproc{Append-Tree}过程。根据我们的合并策略，新树的Rank不能比结果堆中的任何一棵小，但是它有可能和结果树中的最后一棵相等。链接操作可能会引起这样的情况，因为它会将树的Rank增加1。此时我们需要把新树和结果堆中的最后一棵树链接起来。下面的算法中，函数\textproc{Last}($H$)给出堆中最后一棵树，函数\textproc{Append}($H, T$)仅仅将一棵新树追加到森林的末尾。
-
-\begin{algorithmic}[1]
-\Function{Append-Tree}{$H, T$}
-  \If{$H \neq \phi \land$ \Call{Rank}{$T$} $=$ \textproc{Rank}(\Call{Last}{$H$})}
-    \State \Call{Last}{$H$} $\gets$ \textproc{Link}($T$, \Call{Last}{$H$})
-  \Else
-    \State \Call{Append}{$H, T$}
-  \EndIf
+  \State \Return \Call{Remove-First}{$H$}
 \EndFunction
 \end{algorithmic}
 
-\textproc{Append-Trees}不断调用上述函数，逐一将一个堆中的树追加到另一堆中。
-
-\begin{algorithmic}[1]
-\Function{Append-Trees}{$H_1, H_2$}
-  \For{each $T \in H_2$}
-    \State $H_1 \gets $ \Call{Append-Tree}{$H_1, T$}
-  \EndFor
-\EndFunction
-\end{algorithmic}
-
-下面的Python例子程序实现了合并算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def append_tree(ts, t):
-    if ts != [] and ts[-1].rank == t.rank:
-        ts[-1] = link(ts[-1], t)
-    else:
-        ts.append(t)
-    return ts
-
-def append_trees(ts1, ts2):
-    return reduce(append_tree, ts2, ts1)
-
-def merge(ts1, ts2):
-    if ts1 == []:
-        return ts2
-    if ts2 == []:
-        return ts1
-    ts = []
-    while ts1 != [] and ts2 != []:
-        t = None
-        if ts1[0].rank < ts2[0].rank:
-            t = ts1.pop(0)
-        elif ts2[0].rank < ts1[0].rank:
-            t = ts2.pop(0)
-        else:
-            t = link(ts1.pop(0), ts2.pop(0))
-        ts = append_tree(ts, t)
-    ts = append_trees(ts, ts1)
-    ts = append_trees(ts, ts2)
-    return ts
-\end{lstlisting}
-
-\begin{Exercise}
-
-例子程序使用了容器来存储子树。选择一门语言，实现“左侧孩子，右侧兄弟”方式堆的合并。
-
-\end{Exercise}
+设堆$H_1$中有$m_1$棵树，堆$H_2$中有$m_2$棵树。合并后的结果中最多有$m_1 + m_2$棵树。如果没有秩相同的树，则合并时间为$O(m_1 + m_2)$。如果存在秩相同的树，最多需要调用$O(m_1 + m_2)$次$ins$。考虑$m_1 = 1 + \lfloor \lg n_1 \rfloor$，$m_2 = 1 + \lfloor \lg n_2 \rfloor$，其中$n_1$和$n_2$是两个堆各自的元素数，且$\lfloor \lg n_1 \rfloor + \lfloor \lg n_2 \rfloor \leq 2 \lfloor \lg n \rfloor$，其中$n = n_1 + n_2$。最终合并的复杂度为$O(\lg n)$。
 
 \subsection{弹出}
 \index{二项式堆!弹出}
