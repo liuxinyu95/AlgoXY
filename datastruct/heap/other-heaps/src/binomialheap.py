@@ -26,7 +26,7 @@ class BinomialTree:
         self.rank = 0
         self.key = x
         self.parent = None
-        self.child = None
+        self.subtrees = None
         self.sibling = None
 
 def remove_first(h):
@@ -38,8 +38,8 @@ def link(t1, t2):
     assert(t1.rank == t2.rank)
     if t2.key < t1.key:
         (t1, t2) = (t2, t1)
-    t2.sibling = t1.child
-    t1.child = t2
+    t2.sibling = t1.subtrees
+    t1.subtrees = t2
     t2.parent = t1
     t1.rank = t1.rank + 1
     return t1
@@ -93,7 +93,7 @@ def reverse(h):
 
 # Extract the minimum binomial tree from the heap
 # returns (min tree, rest trees)
-def remove_min_tree(h):
+def extract_min(h):
     head = h
     (prev_min, min_t) = (None, None)
     prev = None
@@ -110,20 +110,18 @@ def remove_min_tree(h):
     min_t.sibling = None
     return (min_t, head)
 
-# Assume h is not empty
-def find_min(h):
-    min_t = None
+def top(h):
+    m = None
     while h:
-        if min_t is None or h.key < min_t.key:
-            min_t = h
+        m = min(m, h.key) if m else h.key
         h = h.sibling
-    return min_t.key
+    return m
 
-# Extract the min element, returns the (min, heap')
-def extract_min(h):
-    (min_t, h) = remove_min_tree(h)
-    h = merge(h, reverse(min_t.child))
-    min_t.child = None
+# Extract the min element, returns the (min, h')
+def pop(h):
+    (min_t, h) = extract_min(h)
+    h = merge(h, reverse(min_t.subtrees))
+    min_t.subtrees = None
     return (min_t.key, h)
 
 def decrease_key(x, k):
@@ -138,7 +136,7 @@ def decrease_key(x, k):
 # A reference implementation for delete node:
 # function delete_node(h, x)
 #   decrease_key(x, -infinity)
-#   (_, h) = extract_min(h)
+#   (_, h) = pop(h)
 #   return
 
 def from_list(xs):
@@ -151,14 +149,14 @@ def heap_sort(lst):
     h = from_list(lst)
     res = []
     while h:
-        (x, h) = extract_min(h)
+        (x, h) = pop(h)
         res.append(x)
     return res
 
 def to_string(h):
     s = ""
     while h:
-        s = s+ "(" + str(h.key)+", "+to_string(h.child)+"), "
+        s = s+ "(" + str(h.key)+", "+to_string(h.subtrees)+"), "
         h = h.sibling
     return s
 
@@ -170,7 +168,7 @@ def find_key(h, k):
         if h.key == k:
             return h
         else:
-            n = find_key(h.child, k)
+            n = find_key(h.subtrees, k)
             if n:
                 return n
         h = h.sibling
@@ -204,7 +202,7 @@ class TestHeap:
         print("text extract min")
         l = [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
         h = from_list(l)
-        (t, h) = extract_min(h)
+        (t, h) = pop(h)
         print("t=", t)
         print("h=", to_string(h))
 
@@ -233,7 +231,7 @@ class TestHeap:
             decrease_key_from(h, x, y)
             res = []
             while h:
-                (e, h) = extract_min(h)
+                (e, h) = pop(h)
                 res.append(e)
             lst[lst.index(x)] = y
             assert(res == sorted(lst))

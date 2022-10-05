@@ -21,12 +21,13 @@
 module BinomialHeap where
 
 import Test.QuickCheck
+import Data.Function (on)
 import qualified Data.List as L -- for verification purpose only
 
 -- Definition
 
 data BiTree a = Node { rank :: Int
-                     , root :: a
+                     , key :: a
                      , children :: [BiTree a]} deriving (Eq, Show)
 
 -- Implicit property: ranks are in monotonically increase order
@@ -54,15 +55,14 @@ merge ts1@(t1:ts1') ts2@(t2:ts2')
 --    | otherwise = insertTree (link t1 t2) (merge ts1' ts2')
     | otherwise = merge (insertTree (link t1 t2) ts1') ts2'
 
-extractMin :: (Ord a) => BiHeap a -> (BiTree a, BiHeap a)
 extractMin [t] = (t, [])
-extractMin (t:ts) = if root t < root t' then (t, ts)
+extractMin (t:ts) = if key t < key t' then (t, ts)
                     else (t', t:ts')
     where
       (t', ts') = extractMin ts
 
 findMin :: (Ord a) => BiHeap a -> a
-findMin = root . fst. extractMin
+findMin = key . (L.minimumBy (compare `on` key))
 
 deleteMin :: (Ord a) => BiHeap a -> BiHeap a
 deleteMin h = merge (reverse $ children t) ts where

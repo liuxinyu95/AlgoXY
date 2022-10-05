@@ -337,152 +337,108 @@ merge\ (ins\ (link\ t_1\ t_2)\ ts_1)\ ts_2
 \subsection{弹出}
 \index{二项式堆!弹出}
 
-二项式堆中，每棵树的根节点保存了树中的最小元素。但根节点元素间的大小关系是任意的。为了获取堆中的最小元素，需要在全部根节点中查找。因为堆中有$\lg n$棵树，所以获取最小值的时间复杂度为$O(\lg n)$。但是弹出操作不仅找出最小元素，还需要将其删除并保持堆性质。设堆中的二项式树为$B_i, B_j, ..., B_p, ..., B_m$。设$B_p$的根节点为堆中最小元素。将其删除后会产生$p$棵子二项式树，秩为$p-1, p-2, ..., 0$。我们可以将$p$棵子树逆序，形成一个新二项式堆$H_p$。除去$B_p$的树也构成一个二项式堆$H' = H - [B_p]$。将$H_p$和$H'$合并就可以得到最终结果，如图\ref{fig:bheap-del-min}所示。
+二项式堆中，每棵树的根节点保存了树中的最小元素。但根节点元素间的大小关系是任意的。为了获取堆中的最小元素，需要在全部根节点中查找。因为堆中有$\lg n$棵树，所以获取最小值的时间复杂度为$O(\lg n)$。但是弹出操作不仅找出最小元素，还需要将其删除并保持堆性质。设堆中的二项式树为$B_i, B_j, ..., B_p, ..., B_m$。设$B_p$的根节点为堆中最小元素。将其删除后会产生$p$棵子二项式树，秩为$p-1, p-2, ..., 0$。我们可以将$p$棵子树逆序，形成一个新二项式堆$H_p$。除去$B_p$的树也构成一个二项式堆$H' = H - [B_p]$。将$H_p$和$H'$合并就可以得到最终结果，如图\ref{fig:bheap-del-min}所示。我们首先定义从堆中寻找最小元素的操作：
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[scale=0.5]{img/bheap-pop}
+  \includegraphics[scale=0.4]{img/bheap-pop}
   \caption{二项式堆的弹出操作}
   \label{fig:bheap-del-min}
 \end{figure}
 
-为了实现弹出算法，我们需要先定义一个函数，可以从森林中取出根节点最小的树。
-
 \be
-extractMin(H) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (T, \phi) & \text{H只含有一个元素，形如} \{ T \} \\
-  (T_1, H') & Root(T_1) < Root(T') \\
-  (T', \{T_1\} \cup H'') & otherwise
-  \end{array}
-\right .
+top\ (t:ts) = foldr\ f\ (key\ t)\ ts
 \ee
 
 其中
 
 \[
-  \begin{array}{lr}
-  H = \{ T_1, T_2, ...\} & \text{非空的森林；} \\
-  H' = \{ T_2, T_3, ...\} & \text{去除第一棵树的森林；} \\
-  (T', H'') = extractMin(H')
-  \end{array}
+f\ (r, x, ts)\ y = min\ x\ y
 \]
 
-此函数的结果为一对值，第一部分是根节点最小的树，第二部分是森林中剩余的其他树。
-函数逐一检查并比较森林中的每棵树，因此它的性能为$O(\lg n)$。
-
-相应的Haskell例子程序如下：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-extractMin [t] = (t, [])
-extractMin (t:ts) = if root t < root t' then (t, ts)
-                    else (t', t:ts')
-    where
-      (t', ts') = extractMin ts
-\end{lstlisting}
-
-调用使用这一函数，就可以获得堆顶元素：
-
-\begin{lstlisting}[style=Haskell]
-findMin = root . fst . extractMin
-\end{lstlisting}
-
-当然，也可以仅遍历森林中的所有树，找出最小的根节点而不将树删除。下面的命令式算法使用“左侧孩子，右侧兄弟”的布局实现了最小值的查找。
+这相当于遍历堆中的所有树，找出根节中存储的最小值：
 
 \begin{algorithmic}[1]
-\Function{Find-Minimum}{$H$}
-  \State $T \gets $ \Call{Head}{$H$}
-  \State $min \gets \infty$
-  \While{$T \ne \phi$}
-    \If{\Call{Key}{$T$}$ < min$}
-      \State $min \gets $ \Call{Key}{$T$}
-    \EndIf
-    \State $T \gets $ \Call{Sibling}{$T$}
+\Function{Top}{$H$}
+  \State $m \gets \infty$
+  \While{$H \neq$ NIL}
+    \State $m \gets$ \textproc{Min}($m$, \Call{Key}{$H$})
+    \State $H \gets $ \Call{Sibling}{$H$}
   \EndWhile
-  \State \Return $min$
+  \State \Return $m$
 \EndFunction
 \end{algorithmic}
 
-如果使用容器来存储子树，就需要在二项式树的列表中寻找根节点最小的一棵。下面的Python例子程序给出了这种情况的实现。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def find_min(ts):
-    min_t = min(ts, key=lambda t: t.key)
-    return min_t.key
-\end{lstlisting}
-
-接下来需要使用$extractMin$来定义从堆中删除最小元素的函数。
+为了实现弹出，我们需要从堆中分离出最小元素所在的树：
 
 \be
-delteMin(H) = merge(reverse(Children(T)), H')
+\begin{array}{rcl}
+min'\ [t] & = & (t, [\ ]) \\
+min'\ (t:ts) & = & \begin{cases}
+  key\ t < key\ t': & (t, ts), \text{其中}: (t', ts') = min'\ ts \\
+  \text{否则}: & (t', t:ts')
+  \end{cases}
+\end{array}
 \ee
 
-其中
+其中$key\ (r, k, ts) = k$获取二项式树中的根节点元素。$min'$的结果为一对值：最小元素所在的树，和其它的树。接下来就可以定义弹出操作：
 
-\[
-  (T, H') = extractMin(H)
-\]
+\be
+pop\ H = (k, merge\ (reverse\ ts)\ H'), \text{其中}: ((r, k, ts), H') = min'\ H
+\ee
 
-我们在此略过了相应的Haskell例子代码。
+对应的迭代实现为：
 
-为了给出命令式的实现，我们需要额外实现列表反转等操作。我们将其留给读者作为练习。下面的伪代码描述了命令式的弹出算法。
+\begin{algorithmic}[1]
+\Function{Pop}{$H$}
+  \State $(T_m, H) \gets$ \Call{Extract-Min}{$H$}
+  \State $H \gets$ \textproc{Merge}($H$, \textproc{Reverse}(\Call{Sub-Trees}{$T_m$}))
+  \State \Call{Sub-Trees}{$T_m$}
+  \State \Return (\Call{Key}{$T_m$}, $H$)
+\EndFunction
+\end{algorithmic}
+
+其中反转操作的实现见第一章，\textproc{Extract-Min}的迭代实现如下：
 
 \begin{algorithmic}[1]
 \Function{Extract-Min}{$H$}
-  \State $(T_{min}, H) \gets$ \Call{Extract-Min-Tree}{$H$}
-  \State $H \gets$ \textproc{Merge}($H$, \textproc{Reverse}(\Call{Children}{$T_{min}$}))
-  \State \Return (\Call{Key}{$T_{min}$}, $H$)
+  \State $H' \gets H, p \gets$ NIL
+  \State $T_m \gets T_p \gets$ NIL
+  \While{$H \neq$ NIL}
+    \If{$T_m =$ NIL 或 \Call{Key}{$H$} $<$ \Call{Key}{$T_m$}}
+      \State $T_m \gets H$
+      \State $T_p \gets p$
+    \EndIf
+    \State $p \gets H$
+    \State $H \gets $ \Call{Sibling}{$H$}
+  \EndWhile
+  \If{$T_p \neq$ NIL}
+    \State \Call{Sibling}{$T_p$} $\gets$ \Call{Sibling}{$T_m$}
+  \Else
+    \State $H' \gets$ \Call{Sibling}{$T_m$}
+  \EndIf
+  \State \Call{Sibling}{$T_m$} $\gets$ NIL
+  \State \Return $(T_m, H')$
 \EndFunction
 \end{algorithmic}
 
-使用弹出操作可以实现堆排序。首先从待排序元素构建一个二项式堆，然后不断从中弹出最小元素直到堆变为空。
+使用弹出操作可以实现堆排序。首先从待排序元素构建一个二项式堆，然后不断从中弹出最小元素。
 
 \be
-sort(xs) = heapSort(fromList(xs))
+sort  = heapSort \circ fromList
 \ee
 
-其中的$heapSort$实现如下：
+其中$heapSort$实现如下：
 
 \be
-heapSort(H) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & H = \phi \\
-  \{ findMin(H)  \} \cup heapSort(deleteMin(H)) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+  heapSort\ [\ ] & = & [\ ] \\
+  heapSort\ H & = & k : (heapSort\ H'), \text{其中}: (k, H') = pop\ H
+\end{array}
 \ee
 
-下面的Haskell例子程序实现了堆排序。
+二项式堆的插入、合并的时间复杂度在最坏情况下是$O(\lg n)$。他们的分摊复杂度为常数时间，我们这里略去了分摊复杂度的证明。
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-heapSort = hsort . fromList where
-    hsort [] = []
-    hsort h = (findMin h):(hsort $ deleteMin h)
-\end{lstlisting} %$
-
-其中$fromList$函数可以通过folding来定义。也可以用命令式的方法实现二项式堆排序，读者可以参考前面binary堆的相关章节。
-
-\begin{Exercise}
-\begin{itemize}
-\item 选择一门编程语言，用“左侧孩子，右侧兄弟”的方法实现从二项式堆中取得最小元素的操作。
-
-\item 实现命令式的\textproc{Extract-Min-Tree}()算法。
-
-\item 使用“左侧孩子，右侧兄弟”的方法，将一棵树的所有子树逆序相当于实现单向链表的反转。选择一门编程语言，实现单向链表的反转。
-\end{itemize}
-\end{Exercise}
-
-\subsection{其它}
-此前我们给出的二项式堆的插入、合并的性能都是$O(\lg n)$。这一结论是针对\underline{最坏}情况的。这些操作的分摊复杂度为$O(1)$。我们这里略去了分摊复杂度的证明。
-
-% ================================================================
-%                 Fibonacci heaps
-% ================================================================
 \section{斐波那契堆}
 \label{fib-heap} \index{斐波那契堆}
 
@@ -1612,9 +1568,10 @@ Node<K> link(Node<K> t1, Node<K> t2) {
 
 \begin{lstlisting}[language = Bourbaki]
 Node<K> insertTree(Node<K> t, Node<K> h) {
-    h1 = prev = Node()
+    var h1 = Node()
+    var prev = h1
     while h != null and h.rank <= t.rank {
-        t1 = h
+        var t1 = h
         h = h.sibling
         if t.rank == t1.rank {
             t = link(t, t1)
@@ -1629,7 +1586,7 @@ Node<K> insertTree(Node<K> t, Node<K> h) {
 }
 
 Node<K> removeFirst(Node<K> h) {
-    next = h.sibling
+    var next = h.sibling
     h.sibling = null
     return next
 }
@@ -1641,7 +1598,8 @@ Node<K> insert(K x, Node<K> h) = insertTree(Node(x), h)
 
 \begin{lstlisting}[language = Bourbaki]
 Node<K> merge(h1, h2) {
-    h = prev = Node()
+    var h = Node()
+    var prev = h
     while h1 != null and h2 != null {
         if h1.rank < h2.rank {
             prev.sibling = h1
@@ -1652,13 +1610,57 @@ Node<K> merge(h1, h2) {
             prev = prev.sibling
             h2 = h2.sibling
         } else {
-            (t1, t2) = (h1, h2)
+            var (t1, t2) = (h1, h2)
             (h1, h2) = (h1.sibling, h2.sibling)
             h1 = insertTree(link(t1, t2), h1)
     }
     if h1 != null then prev.sibling = h1
     if h2 != null then prev.sibling = h2
     return removeFirst(h)
+}
+\end{lstlisting}
+
+二项式堆的弹出
+
+\begin{lstlisting}[language = Bourbaki]
+Node<K> reverse(Node<K> h) {
+    Node<K> prev = null
+    while h != null {
+        var x = h
+        h = h.sibling
+        x.sibling = prev
+        prev = x
+    }
+    return prev
+}
+
+(Node<K>, Node<K>) extractMin(Node<K> h) {
+    var head = h
+    Node<K> tp = null
+    Node<K> tm = null
+    Node<K> prev = null
+    while h != null {
+        if tm == null or h.key < tm.key {
+            tm = h
+            tp = prev
+        }
+        prev = h
+        h = h.sibling
+    }
+    if tp != null {
+        tp.sibling = tm.sibling
+    } else {
+        head = tm.sibling
+    }
+    tm.sibling = null
+    return (tm, head)
+}
+
+(K, Node<K>) pop(Node<K> h) {
+    var (tm, h) = extractMin(h)
+    h = merge(h, reverse(tm.subtrees))
+    tm.subtrees = null
+    return (tm.key, h)
 }
 \end{lstlisting}
 
