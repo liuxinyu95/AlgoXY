@@ -24,18 +24,13 @@ import Test.QuickCheck
 import Data.Function (on)
 import qualified Data.List as L -- for verification purpose only
 
--- Definition
-
 data BiTree a = Node { rank :: Int
                      , key :: a
-                     , children :: [BiTree a]} deriving (Eq, Show)
+                     , subTrees :: [BiTree a]} deriving (Eq, Show)
 
--- Implicit property: ranks are in monotonically increase order
-type BiHeap a = [BiTree a]
-
+type BiHeap a = [BiTree a]  -- ascending by rank
 
 -- Link two trees with SAME rank R to a new tree of rank R+1
-link :: (Ord a) => BiTree a -> BiTree a -> BiTree a
 link t1@(Node r x c1) t2@(Node _ y c2) =
     if x < y then Node (r+1) x (t2:c1)
     else Node (r+1) y (t1:c2)
@@ -55,18 +50,15 @@ merge ts1@(t1:ts1') ts2@(t2:ts2')
 --    | otherwise = insertTree (link t1 t2) (merge ts1' ts2')
     | otherwise = merge (insertTree (link t1 t2) ts1') ts2'
 
-extractMin [t] = (t, [])
-extractMin (t:ts) = if key t < key t' then (t, ts)
-                    else (t', t:ts')
-    where
-      (t', ts') = extractMin ts
+top :: (Ord a) => BiHeap a -> a
+top = key . (L.minimumBy (compare `on` key))
 
-findMin :: (Ord a) => BiHeap a -> a
-findMin = key . (L.minimumBy (compare `on` key))
-
-deleteMin :: (Ord a) => BiHeap a -> BiHeap a
-deleteMin h = merge (reverse $ children t) ts where
+pop h = merge (reverse $ subTrees t) ts where
     (t, ts) = extractMin h
+    extractMin [t] = (t, [])
+    extractMin (t:ts) = if key t < key t' then (t, ts)
+                        else (t', t:ts') where
+        (t', ts') = extractMin ts
 
 -- Helper functions
 
@@ -76,7 +68,7 @@ fromList = foldr insert []
 heapSort :: (Ord a) => [a] -> [a]
 heapSort = hsort . fromList where
     hsort [] = []
-    hsort h = (findMin h):(hsort $ deleteMin h)
+    hsort h = (top h):(hsort $ pop h)
 
 -- test
 
