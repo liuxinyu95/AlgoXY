@@ -26,7 +26,7 @@ import qualified Data.List as L -- for verification purpose only.
 -- Definition
 
 -- Since Fibonacci Heap can be achieved by applying lazy strategy
--- to Binomial heap. We use the same definition of tree as the 
+-- to Binomial heap. We use the same definition of tree as the
 -- Binomial heap. That each tree contains:
 --   a rank (size of the tree)
 --   the root value (the element)
@@ -47,25 +47,15 @@ data FibHeap a = E | FH { size :: Int
                         , minTree :: BiTree a
                         , trees :: [BiTree a]} deriving (Eq, Show)
 
--- Auxiliary functions
-
-
--- Singleton creates a leaf node and put it as the only tree in the heap
-
-singleton :: a -> FibHeap a
 singleton x = FH 1 (Node 1 x []) []
 
--- Link 2 trees with SAME rank R to a new tree of rank R+1
-
 link :: (Ord a) => BiTree a -> BiTree a -> BiTree a
-link t1@(Node r x c1) t2@(Node _ y c2)  
+link t1@(Node r x c1) t2@(Node _ y c2)
     | x<y = Node (r+1) x (t2:c1)
     | otherwise = Node (r+1) y (t1:c2)
 
--- Insertion, runs in O(1) time.
-
-insert :: (Ord a) => FibHeap a -> a -> FibHeap a
-insert h x = merge h (singleton x)
+insert :: (Ord a) => a -> FibHeap a -> FibHeap a
+insert = merge . singleton  -- O(1)
 
 -- Merge, runs in O(1) time.
 
@@ -75,7 +65,7 @@ insert h x = merge h (singleton x)
 merge:: (Ord a) => FibHeap a -> FibHeap a -> FibHeap a
 merge h E = h
 merge E h = h
-merge h1@(FH sz1 minTr1 ts1) h2@(FH sz2 minTr2 ts2) 
+merge h1@(FH sz1 minTr1 ts1) h2@(FH sz2 minTr2 ts2)
     | root minTr1 < root minTr2 = FH (sz1+sz2) minTr1 (minTr2:ts2++ts1)
     | otherwise = FH (sz1+sz2) minTr2 (minTr1:ts1++ts2)
 
@@ -122,7 +112,7 @@ deleteMin h@(FH sz minTr ts) = FH (sz-1) minTr' ts' where
 -- The ideal way is to insert and delete randomly, so that the amortized
 -- performance dominate.
 fromList :: (Ord a) => [a] -> FibHeap a
-fromList = foldl insert E
+fromList = foldr insert E
 
 -- This testing has the same problem with fromList, as it actually
 -- first create a linked-list, then during deleteMin, it start merge
@@ -136,4 +126,3 @@ heapSort = hsort . fromList where
 
 prop_sort :: [Int] -> Bool
 prop_sort xs = heapSort xs == L.sort xs
-

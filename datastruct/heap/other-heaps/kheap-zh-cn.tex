@@ -442,18 +442,7 @@ sort  = heapSort \circ fromList
 \section{斐波那契堆}
 \label{fib-heap} \index{斐波那契堆}
 
-“斐波那契堆”的命名很有趣，实际上斐波那契堆的结构和斐波那契数列无关。斐波那契堆的作者Michael L. Fredman和Robert E. Tarjan在证明这种堆的时间性能时使用了斐波那契数列的性质，于是他们决定给这种堆命名为“斐波那契堆”\cite{CLRS}。
-
-% ================================================================
-%                 Definition
-% ================================================================
-\subsection{定义}
-
-斐波那契堆本质上是一个惰性二项式堆。但是这并不意味着二项式堆在支持惰性求值的环境下（例如Haskell）自动就成为斐波那契堆。惰性环境仅仅对于实现提供了便利。例如\cite{hackage-fibq}中给出了一个简洁的实现。
-
-斐波那契堆在理论上具有良好的性能。除弹出之外所有的操作分摊性能都达到了常数时间$O(1)$。本节中，我们给出的实现和常见的实现\cite{CLRS}有所不同。主要思想来自于Okasaki的工作\cite{okasaki-fibh}。
-
-首先我们对比一下二项式堆和斐波那契堆的性能（确切的说，是我们希望斐波那契堆达到的性能目标）。
+二项式堆的名字来自二项式展开，斐波那契堆的名字来自斐波那契数列\footnote{Michael L. Fredman和Robert E. Tarjan在证明这种堆的时间复杂度时使用了斐波那契数列的性质，他们于是给这种堆命名为“斐波那契堆”\cite{CLRS}。}。斐波那契堆本质上是一个惰性二项式堆。但这并不意味着二项式堆在支持惰性求值的环境下自动就成为了斐波那契堆。惰性环境仅提供了实现上的便利\cite{hackage-fibq}。除弹出操作外，斐波那契堆所有操作的分摊复杂度都可以达到常数时间\cite{okasaki-fibh}。
 
 \begin{table}[htbp]
 \centering
@@ -463,31 +452,14 @@ sort  = heapSort \circ fromList
   \hline
   插入 & $O(\lg n)$ & $O(1)$ \\
   合并 & $O(\lg n)$ & $O(1)$ \\
-  top & $O(\lg n)$ & $O(1)$ \\
+  获取堆顶 & $O(\lg n)$ & $O(1)$ \\
   弹出 & $O(\lg n)$ & 分摊 $O(\lg n)$ \\
   \hline
 \end{tabular}
-\caption{斐波那契堆的性能目标}
+\caption{斐波那契堆和二项式堆的（分摊）复杂度对比}
 \end{table}
 
-在二项式堆中，插入一个新元素时，哪里是瓶颈呢？新元素$x$被放入只有一个叶子节点的树中，然后这棵树被插入到森林中。
-
-在此期间，树按照Rank的单调递增顺序插入，如果Rank相等，则进行链接，然后再递归，因此性能为$O(\lg n)$。
-
-使用惰性策略，我们可以将按照Rank的顺序插入和链接等操作推迟进行。仅仅将只有一个叶子节点的树放入森林中。这样带来的问题是，当获取最小元素时，性能会变得很差。这是因为我们需要检查森林中的所有树，而树的总数不只是$O(\lg n)$。
-
-为了在常数时间获得堆顶元素，我们需要记录哪一棵树的根节点保存了最小元素。
-
-根据这一思路，我们可以在二项式堆的基础上给出斐波那契堆定义。如下面的Haskell例子程序所示，我们复用二项式树的定义：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-data BiTree a = Node { rank :: Int
-                     , root :: a
-                     , children :: [BiTree a]}
-\end{lstlisting}
-
-斐波那契堆要么为空，要么是一个二项式树的森林，其中含有最小元素的树被单独保存。
+向二项式堆插入新元素$x$时，我们将$x$放入只有一个叶子节点的树中，然后插入到森林中。树按照秩递增的顺序插入，如果秩相等，则进行链接，然后递归插入。时间复杂度为$O(\lg n)$。使用惰性策略，我们将按秩有序插入和链接等操作推迟进行。将$x$所在的树直接加入森林中。为了快速获得堆顶元素，我们需要记录哪一棵树的根节点保存了最小元素。一个斐波那契堆或者为空$\nil$，或者是若干二项式树的森林，记为$(n, t_m, ts)$。其中含有最小元素的树被单独记录为$t_m$，堆中元素个数记录为$n$，其余二项式树的列表为$ts$。下面的例子程序定义了斐波那契堆：
 
 \begin{lstlisting}[style=Haskell]
 data FibHeap a = E | FH { size :: Int
@@ -495,95 +467,43 @@ data FibHeap a = E | FH { size :: Int
                         , trees :: [BiTree a]}
 \end{lstlisting}
 
-方便起见，我们将堆中元素的个数也记录下来。
-
-斐波那契堆也可以用命令式的方式定义，如下面的C语言例子代码。
-
-\lstset{language=C}
-\begin{lstlisting}
-struct node {
-    Key key;
-    struct node *next, *prev, *parent, *children;
-    int degree; //即Rank
-
-    int mark;
-};
-
-struct FibHeap {
-    struct node *roots;
-    struct node *minTr;
-    int n; //节点的个数
-};
-\end{lstlisting}
-
-上面的代码中，Key可以是任何可比较大小的类型，简单起见我们假设类型为整数。
-
-\lstset{language=C}
-\begin{lstlisting}
-typedef int Key;
-\end{lstlisting}
-
-我们在命令式实现中，使用循环双向链表\cite{CLRS}。这样可以简化很多操作并提供快速的性能。我们增加了两个额外的字段。一个是\texttt{degree}（即Rank），定义为一个节点中子树的数目；标志$mark$仅用于减小元素值的操作。我们稍后会对$mark$的作用加以介绍。
-
-
-% ================================================================
-%          Basic Heap operations
-% ================================================================
-\subsection{基本堆操作}
-
-由于斐波那契堆本质上是惰性的二项式堆，我们将复用很多二项式堆的算法。
-
-\subsubsection{插入新元素}
+\subsubsection{插入}
 \index{斐波那契堆!插入}
 
-可以认为二项式堆的插入算法是一种特殊的合并操作，其中一个堆仅含有一棵一个叶节点的树。
+我们将插入定义为一种特殊的合并操作，其中一个堆仅含有一棵一个叶节点的树：
+
+\[
+insert\ x\ H = merge\ (singleton\ x)\ H
+\]
+
+或写成克里化的形式：
 
 \be
-insert(H, x) = merge(H, singleton(x))
+insert = merge \circ singleton
 \label{eq:fib-insert}
 \ee
 
-其中$singleton$是一个辅助函数，它构建出仅含有一个元素的树。
+其中$singleton$从$x$构建仅含有一个元素的树：
 
 \[
-singleton(x) = FibHeap(1, node(1, x, \phi), \phi)
+singleton\ x = (1, (1, x, [\ ]), [\ ])
 \]
-
-函数$FibHeap()$接受3个参数，一个是大小（size），因为只有一个元素，所以值为1，一棵特殊的树，树根存有堆中的最小元素，以及森林中剩余二项式树的列表。函数$node()$和以前的含意一样，它从一个Rank值，一个元素，和一组子树列表构建一棵二项式树。
 
 插入操作也可以实现为向森林中追加一个新节点，然后更新存有最小元素的树。
 
 \begin{algorithmic}[1]
-\Function{Insert}{$H, k$}
-  \State $x \gets$ \Call{Singleton}{$k$} \Comment{将$x$装入一节点}
-  \State append $x$ to root list of $H$
-  \If{$T_{min}(H) = NIL \lor k <$ \Call{Key}{$T_{min}(H)$} }
-    \State $T_{min}(H) \gets x$
+\Function{Insert}{$k, H$}
+  \State $x \gets$ \Call{Singleton}{$k$} \Comment{将$x$装入一棵树}
+  \State \textproc{Append}($x$, \Call{Trees}{$H$})
+  \State $T_m \gets$ \Call{Min-Tree}{$H$}
+  \If{$T_m = $ NIL \text{或} $k <$ \Call{Key}{$T_m$}}
+    \State \Call{Min-Tree}{$H$} $\gets x$
   \EndIf
-  \State \Call{n}{$H$} $\gets$ \Call{n}{$H$}+1
+  \State \Call{Size}{$H$} $\gets$ \Call{Size}{$H$} + 1
 \EndFunction
 \end{algorithmic}
 
-其中函数$T_{min}()$返回存有最小元素的树。
-
-下面的C语言例子代码实现了这一插入算法。
-
-\lstset{language=C}
-\begin{lstlisting}
-struct FibHeap* insert_node(struct FibHeap* h, struct node* x) {
-    h = add_tree(h, x);
-    if(h->minTr == NULL || x->key < h->minTr->key)
-        h->minTr = x;
-    h->n++;
-    return h;
-}
-\end{lstlisting}
-
-\begin{Exercise}
-选择一门命令式编程语言，实现完整的插入算法。这也是循环双向链表操作的一道习题。
-\end{Exercise}
-
-\subsubsection{堆合并}
+\subsubsection{合并}
 \index{斐波那契堆!合并}
 
 和二项式堆不同，我们在合并时并不立即进行链接操作，而是推迟到以后。这样仅仅将两个堆中的树放到一起，然后选出新的含有最小元素的树记录下来。
@@ -1706,6 +1626,23 @@ pop h = merge (reverse $ subTrees t) ts where
                         else (t', t:ts') where
         (t', ts') = extractMin ts
 \end{Haskell}
+
+斐波那契树的定义：
+
+\begin{lstlisting}[language = Bourbaki]
+Data node<K> {
+    K key
+    Node<k> next, prev, parent, subTrees
+    int rank
+    int mark
+}
+
+Data FibHeap<K> {
+    Node<K> roots
+    Node<K> minTree
+    int n
+}
+\end{lstlisting}
 
 \ifx\wholebook\relax \else
 \section{参考答案}
