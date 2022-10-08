@@ -55,17 +55,13 @@ findMin = key . minTree
 
 -- deleting, Amortized O(lg N) time
 
--- Auxiliary function
-
--- Consolidate unordered Binomial trees by melding all trees in same rank
 --  O(lg N) time
-
 consolidate :: (Ord a) => [BiTree a] -> [BiTree a]
-consolidate = foldl meld [] where
-    meld [] t = [t]
-    meld (t':ts) t | rank t == rank t' = meld ts (link t t')
-                   | rank t <  rank t' = t:t':ts
-                   | otherwise = t' : meld ts t
+consolidate = foldr melt [] where
+    melt t [] = [t]
+    melt t (t':ts) | rank t == rank t' = melt (link t t') ts
+                   | rank t <  rank t' = t : t' : ts
+                   | otherwise = t' : melt t ts
 
 -- Find the tree which contains the minimum element.
 -- Returns the minimum element tree and the left trees as a pair

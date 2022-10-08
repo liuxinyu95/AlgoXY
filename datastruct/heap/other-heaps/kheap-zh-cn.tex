@@ -543,7 +543,7 @@ Data FibHeap<K> {
 
 \begin{algorithmic}[1]
 \Function{Merge}{$H_1, H_2$}
-  \State $H \gets$ NIL
+  \State $H \gets$ \Call{Fib-Heap}{}
   \State \Call{Trees}{$H$} $\gets$ \textproc{Concat}(\Call{Trees}{$H_1$}, \Call{Trees}{$H_2$})
   \If{\textproc{Key}(\Call{Min-Tree}{$H_1$}) $<$ \textproc{Key}(\Call{Min-Tree}{$H_2$})}
     \State \Call{Min-Tree}{$H$} $\gets$ \Call{Min-Tree}{$H_1$}
@@ -568,97 +568,67 @@ Data FibHeap<K> {
 \subsection{弹出}
 \index{斐波那契堆!弹出} \index{斐波那契堆!删除最小元素}
 
-弹出操作是斐波那契堆中最复杂的。由于在合并操作中推迟了树的链接，我们需要在其他地方将其“补偿”回来。插入，合并和top都已经定义好了，弹出操作是唯一剩下可以进行“补偿”的地方。
-
-通过使用辅助数组，存在一个特别简洁的树归并（tree consolidatitoin）算法\cite{CLRS}。我们稍后在命令式的实现中会介绍它。
-
-为了实现纯函数式的树归并算法，我们先考虑这样一道关于数字的题目：
-
-给定若干数字，例如$\{2, 1, 1, 4, 8, 1, 1, 2, 4\}$，我们希望不断将值相同的两个数字相加，直到没有任何相等的数。这个例子的最终结果为$\{8, 16\}$。
-
-这个问题的解法为：
-
-\be
-consolidate(L) = fold(meld, \phi, L)
-\ee
-
-其中$fold()$遍历列表的所有元素，逐一针对每个元素和中间结果应用一个函数。它也称为\underline{reducing}操作。读者可以参考本书的附录A，以及二叉搜索树一章。
-
-$L=\{x_1, x_2, ..., x_n\}$代表要处理的数字；记$L'=\{x_2, x_3, ..., x_n\}$代表除第一个数字以外的剩余数字。函数$meld()$可定义如下：
-
-\be
-meld(L, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ x \} & L = \phi \\
-  meld(L', x+x_1) & x = x_1 \\
-  \{ x \} \cup L & x < x_1 \\
-  \{ x_1 \} \cup meld(L', x) & otherwise
-  \end{array}
-\right .
-\ee
-
-$consolidate()$函数维护一个有序的结果列表$L$，列表中仅包含不同的数字。$L$初始化为空$\phi$。算法逐一处理每个元素$x$。它首先检查$L$中的第一个元素是否等于$x$，如果相等就加到一起（结果为$2x$），然后接着判断$2x$是否和$L$中的下一个元素相等。不断重复这一过程直到相加后的元素和表中第一个元素不等，或者表变为空。表\ref{tb:num-consolidate}描述了归并序列$\{2, 1, 1, 4, 8, 1, 1, 2, 4\}$的步骤。第一列表示每次“扫描”的数字；第二列是中间结果。被扫描的数字和结果列表中的第一个元素相比较。如果相等，就用两个括号围起来；最后一列是归并的结果，每个结果都用于下一步的处理。
-
-下面的Haskell例子程序首先了这一数字归并的过程。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-consolidate = foldl meld [] where
-    meld [] x = [x]
-    meld (x':xs) x | x == x' = meld xs (x+x')
-                   | x < x'  = x:x':xs
-                   | otherwise = x': meld xs x
-\end{lstlisting}
-
-我们稍后会分析归并过程的性能。
+我们在合并时推迟了树的链接，接下来需要在弹出时将其“补偿”回来。我们定义这一过程为树的归并。首先考虑这样一个问题：给定若干2的整数次幂，如：$[2, 1, 1, 4, 8, 1, 1, 2, 4]$，我们不断将值相同的两个数字相加，直到没有任何相等的数。这个例子的最终结果为$[8, 16]$。表\ref{tb:num-consolidate}给出了归并的步骤。第一列表示每次“扫描”到的数字；第二列是中间结果。被扫描的数字和结果列表中的第一个元素相比较。如果相等，就用两个括号围起来；最后一列是归并的结果，每个结果都用于下一步的处理。这个数的归并的过程可以用叠加来实现：
 
 \begin{table}[htbp]
 \centering
-\begin{tabular}{r | l | l }
+\begin{tabular}{| r | l | l |}
   \hline
   数字 & 中间结果 & 结果 \\
   \hline
   2 & 2 & 2 \\
+  \hline
   1 & 1, 2 & 1, 2 \\
+  \hline
   1 & (1+1), 2 & 4 \\
+  \hline
   4 & (4+4) & 8 \\
+  \hline
   8 & (8+8) & 16 \\
+  \hline
   1 & 1, 16 & 1, 16 \\
+  \hline
   1 & (1+1), 16 & 2, 16 \\
+  \hline
   2 & (2+2), 16 & 4, 16 \\
+  \hline
   4 & (4+4), 16 & 8, 16 \\
   \hline
 \end{tabular}
 \caption{归并数字的步骤} \label{tb:num-consolidate}
 \end{table}
 
-树的归并过程非常类似，唯一的区别是使用Rank。我们需要略微修改$meld()$函数，使得它对Rank进行比较并将Rank相同的树链接起来。
-
 \be
-meld(L, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ x \} & L = \phi \\
-  meld(L', link(x, x_1)) & rank(x) = rank(x_1) \\
-  \{ x \} \cup L & rank(x) < rank(x_1) \\
-  \{ x_1 \} \cup meld(L', x) & otherwise
-  \end{array}
-\right .
+consolidate = foldr\ melt\ [\ ]
 \ee
 
-最终的树归并Haskell例子程序如下：
+其中$melt$定义为：
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-consolidate = foldl meld [] where
-    meld [] t = [t]
-    meld (t':ts) t | rank t == rank t' = meld ts (link t t')
-                   | rank t <  rank t' = t:t':ts
-                   | otherwise = t' : meld ts t
-\end{lstlisting}
+\be
+\begin{array}{rcl}
+  melt\ x\ [\ ] & = & x \\
+  melt\ x\ (x':xs) & = & \begin{cases}
+    x = x': & melt\ 2x\ xs \\
+    x < x': & x : x' : xs \\
+    x > x': & x' : melt\ x\ xs \\
+  \end{cases}
+\end{array}
+\ee
 
-图\ref{fig:fib-meld-b}给出了斐波那契堆中树归并过程的各个步骤。和表\ref{tb:num-consolidate}相比可以看出他们之间的相似性。
+用类似的方法可以实现树的归并。我们需要比较树的秩，并把秩相同的树链接起来：
+
+\be
+\begin{array}{rcl}
+  melt\ t\ [\ ] & = & [t] \\
+  melt\ t\ (t':ts) & = & \begin{cases}
+    rank\ t = rank\ t': & melt\ (link\ t\ t')\ ts \\
+    rank\ t < rank\ t': & t : t' : ts \\
+    rank\ t > rank\ t': & t' : melt\ t\ ts \\
+  \end{cases}
+\end{array}
+\ee
+
+图\ref{fig:fib-meld-b}给出了斐波那契堆树归并过程的步骤，和表\ref{tb:num-consolidate}对比可以看出它们是相似的。
 
 \captionsetup[subfigure]{labelformat=empty, margin=10pt}
 \begin{figure}[htbp]
@@ -1636,6 +1606,16 @@ Node<K> concat(Node<K> first1, Node<K> first2) {
   return first1
 }
 \end{lstlisting}
+
+斐波那契树归并：
+
+\begin{Haskell}
+consolidate = foldr melt [] where
+    melt t [] = [t]
+    meld t (t':ts) | rank t == rank t' = meld (link t t') ts
+                   | rank t <  rank t' = t : t' : ts
+                   | otherwise = t' : meld t ts
+\end{Haskell}
 
 \ifx\wholebook\relax \else
 \section{参考答案}
