@@ -23,25 +23,9 @@ module FibonacciHeap where
 import Test.QuickCheck
 import qualified Data.List as L -- for verification purpose only.
 
--- Definition
-
--- Since Fibonacci Heap can be achieved by applying lazy strategy
--- to Binomial heap. We use the same definition of tree as the
--- Binomial heap. That each tree contains:
---   a rank (size of the tree)
---   the root value (the element)
---   and the children (all sub trees)
-
 data BiTree a = Node { rank :: Int
-                     , root :: a
-                     , children :: [BiTree a]} deriving (Eq, Show)
-
--- Different with Binomial heap, Fibonacci heap is consist of
--- unordered binomial trees. Thus in order to access the
--- minimum value in O(1) time, we keep the record of the tree
--- which holds the minimum value out off the other children trees.
--- We also record the size of the heap, which is the sum of all ranks
--- of children and minimum tree.
+                     , key :: a
+                     , subTrees :: [BiTree a]} deriving (Eq, Show)
 
 data FibHeap a = E | FH { size :: Int
                         , minTree :: BiTree a
@@ -57,22 +41,17 @@ link t1@(Node r x c1) t2@(Node _ y c2)
 insert :: (Ord a) => a -> FibHeap a -> FibHeap a
 insert = merge . singleton  -- O(1)
 
--- Merge, runs in O(1) time.
-
--- Different from Binomial heap, we don't consolidate the sub trees
--- with the same rank, we delay it later when performing delete-Minimum.
-
-merge:: (Ord a) => FibHeap a -> FibHeap a -> FibHeap a
+-- ++ is O(\lg n1) or O(\g n2) time.
 merge h E = h
 merge E h = h
 merge h1@(FH sz1 minTr1 ts1) h2@(FH sz2 minTr2 ts2)
-    | root minTr1 < root minTr2 = FH (sz1+sz2) minTr1 (minTr2:ts2++ts1)
-    | otherwise = FH (sz1+sz2) minTr2 (minTr1:ts1++ts2)
+    | key minTr1 < key minTr2 = FH (sz1 + sz2) minTr1 (minTr2 : ts2 ++ ts1)
+    | otherwise = FH (sz1 + sz2) minTr2 (minTr1 : ts1 ++ ts2)
 
 -- Find Minimum element in O(1) time
 
 findMin :: (Ord a) => FibHeap a -> a
-findMin = root . minTree
+findMin = key . minTree
 
 -- deleting, Amortized O(lg N) time
 
@@ -94,7 +73,7 @@ consolidate = foldl meld [] where
 
 extractMin :: (Ord a) => [BiTree a] -> (BiTree a, [BiTree a])
 extractMin [t] = (t, [])
-extractMin (t:ts) = if root t < root t' then (t, ts)
+extractMin (t:ts) = if key t < key t' then (t, ts)
                         else (t', t:ts')
     where
       (t', ts') = extractMin ts
@@ -104,7 +83,7 @@ extractMin (t:ts) = if root t < root t' then (t, ts)
 deleteMin :: (Ord a) => FibHeap a -> FibHeap a
 deleteMin (FH _ (Node _ x []) []) = E
 deleteMin h@(FH sz minTr ts) = FH (sz-1) minTr' ts' where
-    (minTr', ts') = extractMin $ consolidate (children minTr ++ ts)
+    (minTr', ts') = extractMin $ consolidate (subTrees minTr ++ ts)
 
 -- Helper functions
 

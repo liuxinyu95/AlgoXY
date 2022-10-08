@@ -467,7 +467,9 @@ data FibHeap a = E | FH { size :: Int
                         , trees :: [BiTree a]}
 \end{lstlisting}
 
-\subsubsection{插入}
+这样就可以用常数时间获取堆顶元素：$top\ H = key\ \textit{minTree}\ H$。
+
+\subsection{插入}
 \index{斐波那契堆!插入}
 
 我们将插入定义为一种特殊的合并操作，其中一个堆仅含有一棵一个叶节点的树：
@@ -493,8 +495,8 @@ singleton\ x = (1, (1, x, [\ ]), [\ ])
 
 \begin{algorithmic}[1]
 \Function{Insert}{$k, H$}
-  \State $x \gets$ \Call{Singleton}{$k$} \Comment{将$x$装入一棵树}
-  \State \textproc{Append}($x$, \Call{Trees}{$H$})
+  \State $x \gets$ \Call{Singleton}{$k$} \Comment{将$k$装入一棵树}
+  \State \textproc{Add}($x$, \Call{Trees}{$H$})
   \State $T_m \gets$ \Call{Min-Tree}{$H$}
   \If{$T_m = $ NIL \text{或} $k <$ \Call{Key}{$T_m$}}
     \State \Call{Min-Tree}{$H$} $\gets x$
@@ -503,86 +505,67 @@ singleton\ x = (1, (1, x, [\ ]), [\ ])
 \EndFunction
 \end{algorithmic}
 
-\subsubsection{合并}
+其中\textproc{Trees}($H$)获取堆$H$中所有树的列表，\textproc{Min-Tree}($H$)记录了$H$中最小元素所在的树。
+
+\subsection{合并}
 \index{斐波那契堆!合并}
 
-和二项式堆不同，我们在合并时并不立即进行链接操作，而是推迟到以后。这样仅仅将两个堆中的树放到一起，然后选出新的含有最小元素的树记录下来。
+和二项式堆不同，我们在合并时将链接操作推迟到将来，仅仅将两个堆中的树放到一起，然后比较出新的含有最小元素的树。
 
 \be
-merge(H_1, H_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  H_1 & H_2 = \phi \\
-  H_2 & H_1 = \phi \\
-  FibHeap(s_1 + s_2, {T_1}_{min}, \{ {T_2}_{min} \} \cup \mathbb{T}_1 \cup \mathbb{T}_2) & root({T_1}_{min}) < root({T_2}_{min}) \\
-  FibHeap(s_1 + s_2, {T_2}_{min}, \{ {T_1}_{min} \} \cup \mathbb{T}_1 \cup \mathbb{T}_2) & otherwise \\
-  \end{array}
-\right .
+\begin{array}{rcl}
+merge\ h\ \nil & = & h \\
+merge\ \nil\ h & = & h \\
+merge\ (n, t_m, ts)\ (n', t_m', ts') & = & \begin{cases}
+  key\ t_m < key\ t_m': & (n + n', t_m, t_m' : ts \doubleplus ts') \\
+  \text{否则}: & (n + n', t_m', t_m : ts \doubleplus ts') \\
+  \end{cases}
+\end{array}
 \ee
 
-其中$s_1$和$s_2$分别时两个堆$H_1$和$H_2$的大小；${T_1}_{min}$和${T_2}_{min}$分别是两个堆中存有最小的元素的树。$\mathbb{T}_1 = \{{T_1}_1, {T_1}_2, ...\}$是堆$H_1$的森林中其余的树；而$\mathbb{T}_2$的含意类似，它包含堆$H_2$中森林里剩余的树。函数$root(T)$返回一棵二项式树的根节点元素。
+当两个堆都不为空时，这一实现中的$\doubleplus$操作和其中一个堆中树的棵数成正比。如果使用双向链表，则可以把堆合并操作提高到常数时间。下面的例子程序使用双向链表定义了斐波那契堆：
 
-只要$\cup$操作的性能为常数时间，合并算法的性能就是常数时间。下面的Haskell例子程序实现了合并操作。
+\begin{lstlisting}[language = Bourbaki]
+Data Node<K> {
+    K key
+    Int rank
+    Node<k> next, prev, parent, subTrees
+}
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-merge h E = h
-merge E h = h
-merge h1@(FH sz1 minTr1 ts1) h2@(FH sz2 minTr2 ts2)
-    | root minTr1 < root minTr2 = FH (sz1+sz2) minTr1 (minTr2:ts2++ts1)
-    | otherwise = FH (sz1+sz2) minTr2 (minTr1:ts1++ts2)
-\end{lstlisting}
-
-命令式的合并操作可以实现为将两个堆的树连接成一个更大的列表。
-
-\begin{algorithmic}[1]
-\Function{Merge}{$H_1, H_2$}
-  \State $H \gets \Phi$
-  \State \Call{Root}{$H$} $\gets$ \textproc{Concat}(\Call{Root}{$H_1$}, \Call{Root}{$H_2$})
-  \If{\Call{Key}{$T_{min}(H_1)$} $<$ \Call{Key}{$T_{min}(H_2)$}}
-    \State $T_{min}(H) \gets T_{min}(H_1)$
-  \Else
-    \State $T_{min}(H) \gets T_{min}(H_2)$
-  \EndIf
-  \Call{n}{$H$} = \Call{n}{$H_1$} + \Call{n}{$H_2$}
-  \State \Return $H$
-\EndFunction
-\end{algorithmic}
-
-这一函数假设$H_1$和$H_2$都不空。处理堆为空的情况也很容易加入，如下面的C例子代码所示：
-
-\lstset{language=C}
-\begin{lstlisting}
-struct FibHeap* merge(struct FibHeap* h1, struct FibHeap* h2) {
-    struct FibHeap* h;
-    if(is_empty(h1))
-        return h2;
-    if(is_empty(h2))
-        return h1;
-    h = empty();
-    h->roots = concat(h1->roots, h2->roots);
-    if(h1->minTr->key < h2->minTr->key)
-        h->minTr = h1->minTr;
-    else
-        h->minTr = h2->minTr;
-    h->n = h1->n + h2->n;
-    free(h1);
-    free(h2);
-    return h;
+Data FibHeap<K> {
+    Node<K> trees
+    Node<K> minTree
+    Int size
 }
 \end{lstlisting}
 
-使用$merge$函数，可以实现常数时间$O(1)$的插入算法。下面给出了常数时间$O(1)$的获取顶部元素的操作。
+这样就可以实现常数时间的合并操作：
 
-\be
-top(H) = root(T_{min})
-\ee
+\begin{algorithmic}[1]
+\Function{Merge}{$H_1, H_2$}
+  \State $H \gets$ NIL
+  \State \Call{Trees}{$H$} $\gets$ \textproc{Concat}(\Call{Trees}{$H_1$}, \Call{Trees}{$H_2$})
+  \If{\textproc{Key}(\Call{Min-Tree}{$H_1$}) $<$ \textproc{Key}(\Call{Min-Tree}{$H_2$})}
+    \State \Call{Min-Tree}{$H$} $\gets$ \Call{Min-Tree}{$H_1$}
+  \Else
+    \State \Call{Min-Tree}{$H$} $\gets$ \Call{Min-Tree}{$H_2$}
+  \EndIf
+  \Call{Size}{$H$} = \Call{Size}{$H_1$} + \Call{Size}{$H_2$}
+  \State \Return $H$
+\EndFunction
+\Statex
+\Function{Concat}{$s_1, s_2$}
+  \State $e_1 \gets$ \Call{Prev}{$s_1$}
+  \State $e_2 \gets$ \Call{Prev}{$s_2$}
+  \State \Call{Next}{$e_1$} $\gets s_2$
+  \State \Call{Prev}{$s_2$} $\gets e_1$
+  \State \Call{Next}{$e_2$} $\gets s_1$
+  \State \Call{Prev}{$s_1$} $\gets e_2$
+  \State \Return $s_1$
+\EndFunction
+\end{algorithmic}
 
-\begin{Exercise}
-选择一门命令式语言，实现循环双向链表的连接。
-\end{Exercise}
-
-\subsubsection{弹出（删除最小元素）}
+\subsection{弹出}
 \index{斐波那契堆!弹出} \index{斐波那契堆!删除最小元素}
 
 弹出操作是斐波那契堆中最复杂的。由于在合并操作中推迟了树的链接，我们需要在其他地方将其“补偿”回来。插入，合并和top都已经定义好了，弹出操作是唯一剩下可以进行“补偿”的地方。
@@ -1627,20 +1610,30 @@ pop h = merge (reverse $ subTrees t) ts where
         (t', ts') = extractMin ts
 \end{Haskell}
 
-斐波那契树的定义：
+使用双向链表合并斐波那契堆：
 
 \begin{lstlisting}[language = Bourbaki]
-Data node<K> {
-    K key
-    Node<k> next, prev, parent, subTrees
-    int rank
-    int mark
+FibHeap<K> merge(FibHeap<K> h1, FibHeap<K> h2) {
+    if isEmpty(h1) then return h2
+    if isEmpty(h2) then return h1
+    FibHeap<K> h = FiboHeap()
+    h.trees = concat(h1.trees, h2.trees)
+    h.minTree = if h1.minTree.key < h2.minTree.key
+                then h1.minTree else h2.minTree
+    h.size = h1.size + h2.size
+    return h
 }
 
-Data FibHeap<K> {
-    Node<K> roots
-    Node<K> minTree
-    int n
+bool isEmpty(FibHeap<K> h) = (h == null or h.trees == null)
+
+Node<K> concat(Node<K> first1, Node<K> first2) {
+  var last1 = first1.prev
+  var last2 = first2.prev
+  last1.next = first2
+  first2.prev = last1
+  last2.next = first1
+  first1.prev = last2
+  return first1
 }
 \end{lstlisting}
 
