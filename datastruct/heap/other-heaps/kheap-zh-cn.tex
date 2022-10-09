@@ -646,7 +646,51 @@ consolidate = foldr\ melt\ [\ ]
 \end{figure}
 \captionsetup[subfigure]{labelformat=parens}
 
-将堆中所有二项式树归并后，斐波那契堆就变成了二项式堆。此时堆中的树合并为$O(\lg n)$棵。我们需要额外扫描一遍所有树的根节点，找到存有最小元素的树。我们可以复用(\ref{eq:extract-min-bitree})定义的$min'$分离出堆顶元素所在的树。
+我们也可以使用一个辅助数组$A$来进行归并。$A[i]$保存秩为$i$的树。在遍历堆中的树时，如果遇到另一棵秩为$i$的树，我们就将它们链接起来得到一棵秩为$i+1$的树。然后将$A[i]$清空，并接着检查$A[i+1]$是否为空，若不为空，就再次进行链接。遍历完成后，$A$中就保存了归并后的结果。
+
+\begin{algorithmic}[1]
+\Function{Consolidate}{$H$}
+  \State $R \gets $ \textproc{Max-Rank}(\Call{Size}{$H$})
+  \State $A \gets$ [NIL, NIL, ..., NIL] \Comment{共$R$个}
+  \For{each $T$ in \Call{Trees}{$H$}}
+    \State $r \gets $ \Call{Rank}{$T$}
+    \While{$A[r] \neq$ NIL}
+      \State $T' \gets A[r]$
+      \State $T \gets $ \Call{Link}{$T, T'$}
+      \State $A[r] \gets$ NIL
+      \State $r \gets r + 1$
+    \EndWhile
+    \State $A[r] \gets T$
+  \EndFor
+  \State $T_m \gets$ NIL
+  \For{each $T$ in $A$}
+    \If{$T \neq$ NIL}
+      \State append $T$ to \Call{Trees}{$H$}
+      \If{$T_m = NIL$ or \Call{Key}{$T$} $<$ \Call{Key}{$T_m$}}
+        \State $T_m \gets T$
+      \EndIf
+    \EndIf
+  \EndFor
+  \State \Call{Min-Tree}{$H$} $\gets T_m$
+\EndFunction
+\end{algorithmic}
+
+%% 用上述算法处理图\ref{fig:fib-meld-a}中所示的斐波那契堆，各个步骤中的数组$A$如图\ref{fig:fib-cons-c}所示。
+
+%% \captionsetup[subfigure]{labelformat=empty, margin=10pt}
+%% \begin{figure}[htbp]
+%%   \centering
+%%   \subcaptionbox{第1、2步}{\includegraphics[scale=0.35]{img/fib-cons-02}}
+%%   \subcaptionbox{第3步，因为$A_0 \neq NIL$，‘d’先被链接到‘c’，然后$A_0$被清除为NIL。接下来，由于$A_1 \neq NIL$，‘c’被链接到‘a’，新的树被存入$A_2$。}{\hspace{0.1\textwidth}\includegraphics[scale=0.35]{img/fib-cons-03}\hspace{0.1\textwidth}}
+%%   \subcaptionbox{第4步}{\includegraphics[scale=0.35]{img/fib-cons-04}} \\
+%%   \subcaptionbox{第5步}{\includegraphics[scale=0.35]{img/fib-cons-05}}
+%%   \subcaptionbox{第6步}{\includegraphics[scale=0.35]{img/fib-cons-06}} \\
+%%   \subcaptionbox{第7、8步，因为$A_0 \neq NIL$，‘r’被链接到‘q’，新树存入$A_1$（$A_0$清空）；接着‘s’链接到‘q’，并存入$A_2$（$A_1$清空）。}{\includegraphics[scale=0.35]{img/fib-cons-07}}
+%%   \caption{树归并的步骤} \label{fig:fib-cons-c}
+%% \end{figure}
+%% \captionsetup[subfigure]{labelformat=parens}
+
+将堆中所有二项式树归并后，斐波那契堆就变成了二项式堆。此时堆中的树合并为$O(\lg n)$棵。\textproc{Max-Rank}($n$)返回$n$个元素的堆中最大可能的秩。根据二项式堆的结论，我们推测它一个大致上限为$R \leq 1 + \log_2 n$。我们稍后给出$R$的更准确的估计。我们需要额外扫描一遍所有树的根节点，找到存有最小元素的树。我们可以复用(\ref{eq:extract-min-bitree})定义的$min'$分离出堆顶元素所在的树。
 
 \be
 \begin{array}{rcl}
@@ -671,106 +715,16 @@ consolidate = foldr\ melt\ [\ ]
 \EndFunction
 \end{algorithmic}
 
-算法\textproc{Consolidate}使用一个辅助数组$A$来进行归并。$A[i]$被定义为保存Rank（degree）为$i$的树。在遍历森林中的树时，如果发现另外一棵Rank为$i$的树，我们就将它们链接起来得到一棵Rank为$i+1$的树。然后将$A[i]$清除，并接着检查$A[i+1]$是否为空，若不为空，就进行后继的链接。当遍历完森林中的树后，数组$A$中就保存有最终归并后的结果。我们可以从$A$构造出斐波那契堆。
+我们使用“势能方法”分析弹出算法的分摊性能。回忆物理学中重力势能的定义：
 
-\begin{algorithmic}[1]
-\Function{Consolidate}{$H$}
-  \State $D \gets $ \textproc{Max-Degree}(\Call{n}{$H$})
-  \For{$i \gets 0$ to $D$}
-    \State $A[i] \gets NIL$
-  \EndFor
-  \For{each $x \in$ root list of $H$}
-    \State remove $x$ from root list of $H$
-    \State $d \gets $ \Call{Degree}{$x$}
-    \While{$A[d] \neq NIL$}\
-      \State $y \gets A[d]$
-      \State $x \gets $ \Call{Link}{$x, y$}
-      \State $A[d] \gets NIL$
-      \State $d \gets d + 1$
-    \EndWhile
-    \State $A[d] \gets x$
-  \EndFor
-  \State $T_{min}(H) \gets NIL$ \Comment{此时root列表为空（NIL）}
-  \For{$i \gets 0$ to $D$}
-    \If{$A[i] \neq NIL$}
-      \State append $A[i]$ to root list of $H$.
-      \If{$T_{min} = NIL \lor$ \Call{Key}{$A[i]$} $<$ \Call{Key}{$T_{min}(H)$}}
-        \State $T_{min}(H) \gets A[i]$
-      \EndIf
-    \EndIf
-  \EndFor
-\EndFunction
-\end{algorithmic}
+\be
+E = m g h
+\ee
 
-这里唯一没有确定的算法是\textproc{Max-Degree}，它可以确定斐波那契堆中任何节点的degree上限。我们将在最后一节中给出它的实现。
-
-用上述算法处理图\ref{fig:fib-meld-a}中所示的斐波那契堆，各个步骤中的数组$A$如图\ref{fig:fib-cons-c}所示。
-
-\captionsetup[subfigure]{labelformat=empty, margin=10pt}
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{第1、2步}{\includegraphics[scale=0.35]{img/fib-cons-02}}
-  \subcaptionbox{第3步，因为$A_0 \neq NIL$，‘d’先被链接到‘c’，然后$A_0$被清除为NIL。接下来，由于$A_1 \neq NIL$，‘c’被链接到‘a’，新的树被存入$A_2$。}{\hspace{0.1\textwidth}\includegraphics[scale=0.35]{img/fib-cons-03}\hspace{0.1\textwidth}}
-  \subcaptionbox{第4步}{\includegraphics[scale=0.35]{img/fib-cons-04}} \\
-  \subcaptionbox{第5步}{\includegraphics[scale=0.35]{img/fib-cons-05}}
-  \subcaptionbox{第6步}{\includegraphics[scale=0.35]{img/fib-cons-06}} \\
-  \subcaptionbox{第7、8步，因为$A_0 \neq NIL$，‘r’被链接到‘q’，新树存入$A_1$（$A_0$清空）；接着‘s’链接到‘q’，并存入$A_2$（$A_1$清空）。}{\includegraphics[scale=0.35]{img/fib-cons-07}}
-  \caption{树归并的步骤} \label{fig:fib-cons-c}
-\end{figure}
-\captionsetup[subfigure]{labelformat=parens}
-
-下面的C语言例子程序实现了上述算法。
-
-\lstset{language=C}
-\begin{lstlisting}
-void consolidate(struct FibHeap* h) {
-    if(!h->roots)
-        return;
-    int D = max_degree(h->n)+1;
-    struct node *x, *y;
-    struct node** a = (struct node**)malloc(sizeof(struct node*)*(D+1));
-    int i, d;
-    for(i=0; i<=D; ++i)
-        a[i] = NULL;
-    while(h->roots) {
-        x = h->roots;
-        h->roots = remove_node(h->roots, x);
-        d= x->degree;
-        while(a[d]) {
-            y = a[d];  //存在和x的degree相等的另一节点。
-            x = link(x, y);
-            a[d++] = NULL;
-        }
-        a[d] = x;
-    }
-    h->minTr = h->roots = NULL;
-    for(i=0; i<=D; ++i)
-        if(a[i]) {
-            h->roots = append(h->roots, a[i]);
-            if(h->minTr == NULL || a[i]->key < h->minTr->key)
-                h->minTr = a[i];
-        }
-    free(a);
-}
-\end{lstlisting}
-
-\begin{Exercise}
-选择一门命令式编程语言，实现循环双向链表的节点删除程序。
-\end{Exercise}
-
-\subsection{弹出操作的性能分析}
-
-为了分析弹出算法的分摊性能，需要使用“势方法（potential method）”。读者可以参考\cite{CLRS}了解这一方法的严格定义。这里我们仅仅给出一个直观的描述。
-
-回忆物理学中关于重力势能的定义：
-\[
-E = M \cdot g \cdot h
-\]
-
-假设一个复杂的操作过程，将质量为$M$的物体上下移动，最终物体静止在了高为$h'$的位置。如果这一过程中的摩擦阻力做功$W_f$，则做功的总和为：
+如图\ref{fig:potential-energy}所示，假设一个复杂的操作过程，将质量为$m$的物体上下移动，最终物体静止在了高为$h'$的位置。如果这一过程中的摩擦阻力做功$W_f$，则做功的总和为：
 
 \[
-W = M \cdot g \cdot (h' - h) + W_f
+W = m g (h' - h) + W_f
 \]
 
 \begin{figure}[htbp]
@@ -779,8 +733,6 @@ W = M \cdot g \cdot (h' - h) + W_f
   \caption{重力势能}
   \label{fig:potential-energy}
 \end{figure}
-
-图\ref{fig:potential-energy}描述了这一概念。
 
 我们用同样的方法来考虑斐波那契堆的弹出操作，为了计算总消耗，我们首先定义删除最小元素前的势为$\Phi(H)$。这个势是由迄今为止的插入和合并操作累积的。经过树的归并操作，我们得到了新的堆$H'$，由此计算新的势$\Phi(H')$。两个势$\Phi(H')$和$\Phi(H)$的差再加上树归并算法消耗的部分就可以给出弹出操作的分摊复杂度。
 
@@ -1595,6 +1547,40 @@ consolidate = foldr melt [] where
                    | rank t <  rank t' = t : t' : ts
                    | otherwise = t' : meld t ts
 \end{Haskell}
+
+使用辅助数组进行归并：
+
+\begin{lstlisting}[language = C]
+void consolidate(struct FibHeap* h) {
+    if(!h->roots)
+        return;
+    int D = max_degree(h->n)+1;
+    struct node *x, *y;
+    struct node** a = (struct node**)malloc(sizeof(struct node*)*(D+1));
+    int i, d;
+    for(i=0; i<=D; ++i)
+        a[i] = NULL;
+    while(h->roots) {
+        x = h->roots;
+        h->roots = remove_node(h->roots, x);
+        d= x->degree;
+        while(a[d]) {
+            y = a[d];  //存在和x的degree相等的另一节点。
+            x = link(x, y);
+            a[d++] = NULL;
+        }
+        a[d] = x;
+    }
+    h->minTr = h->roots = NULL;
+    for(i=0; i<=D; ++i)
+        if(a[i]) {
+            h->roots = append(h->roots, a[i]);
+            if(h->minTr == NULL || a[i]->key < h->minTr->key)
+                h->minTr = a[i];
+        }
+    free(a);
+}
+\end{lstlisting}
 
 斐波那契堆的弹出：
 
