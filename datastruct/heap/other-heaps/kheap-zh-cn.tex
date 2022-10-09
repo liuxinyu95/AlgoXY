@@ -569,7 +569,7 @@ Data FibHeap<K> {
 \subsection{弹出}
 \index{斐波那契堆!弹出} \index{斐波那契堆!删除最小元素}
 
-我们在合并时推迟了树的链接，接下来需要在弹出时将其“补偿”回来。我们定义这一过程为树的归并。首先考虑这样一个问题：给定若干2的整数次幂，如：$[2, 1, 1, 4, 8, 1, 1, 2, 4]$，我们不断将值相同的两个数字相加，直到没有任何相等的数。这个例子的最终结果为$[8, 16]$。表\ref{tb:num-consolidate}给出了归并的步骤。第一列表示每次“扫描”到的数字；第二列是中间结果。被扫描的数字和结果列表中的第一个元素相比较。如果相等，就用两个括号围起来；最后一列是归并的结果，每个结果都用于下一步的处理。这个数的归并的过程可以用叠加来实现：
+我们在合并时推迟了树的链接，接下来需要在弹出时将其“补偿”回来。我们定义这一过程为树的归并。首先考虑这样一个问题：给定若干2的整数次幂，如：$L = [2, 1, 1, 4, 8, 1, 1, 2, 4]$，我们不断将值相同的两个数字相加，直到没有任何相等的数。这个例子的最终结果为$[8, 16]$。表\ref{tb:num-consolidate}给出了归并的步骤。第一列表示每次“扫描”到的数字；第二列是中间结果。被扫描的数字和结果列表中的第一个元素相比较。如果相等，就用两个括号围起来；最后一列是归并的结果，每个结果都用于下一步的处理。这个数的归并的过程可以用叠加来实现：
 
 \begin{table}[htbp]
 \centering
@@ -616,7 +616,7 @@ consolidate = foldr\ melt\ [\ ]
 \end{array}
 \ee
 
-用类似的方法可以实现树的归并。我们需要比较秩，并把秩相同的树链接起来：
+令$n = sum\ L$，为所有数字的和，$consolidate$相当于把$n$表示为二进制数，如果第$i$位上的数字是1，则最终列表中包含$2^i$这个数（$i$从0开始）。例如$sum [2, 1, 1, 4, 8, 1, 1, 2, 4] = 24$，写成二进制是11000，第3和第4位上是1，所以最终列表中包含$2^3= 8, 2^4 = 16$。用类似的方法可以实现树的归并。我们需要比较秩，并把秩相同的树链接起来：
 
 \be
 \begin{array}{rcl}
@@ -655,23 +655,19 @@ consolidate = foldr\ melt\ [\ ]
 \end{array}
 \ee
 
-其中$(t_m, ts') = min'\ consolidate\ (ts_m \doubleplus ts)$
-
-命令式实现的主要部分是类似的。我们将$T_{min}$的所有子树切下来，添加到森林中，然后执行树的归并操作将Rank相同的树链接到一起，直到所有树的Rank都不同。
+其中$(t_m, ts') = min'\ consolidate\ (ts_m \doubleplus ts)$。注意到$\doubleplus$的时间复杂度是$O(|ts_m|)$，和最小值所在的树中的子树棵数成正比。对应的命令式实现如下：
 
 \begin{algorithmic}[1]
-\Function{Delete-Min}{$H$}
-  \State $x \gets T_{min}(H)$
-  \If{$x \neq NIL$}
-    \For{each $y \in $ \Call{Children}{$x$}}
-      \State append $y$ to root list of $H$
-      \State \Call{Parent}{$y$} $\gets NIL$
-    \EndFor
-    \State remove $x$ from root list of $H$
-    \State \Call{n}{$H$} $\gets$ \Call{n}{$H$} - 1
-    \State \Call{Consolidate}{$H$}
-  \EndIf
-  \State \Return $x$
+\Function{Pop}{$H$}
+  \State $T_m \gets $ \Call{Min-Tree}{$H$}
+  \For{each $T$ in \Call{Sub-Trees}{$T_m$}}
+    \State append $T$ to \Call{Trees}{$H$}
+    \State \Call{Parent}{$T$} $\gets$ NIL
+  \EndFor
+  \State remove $T_m$ from \Call{Trees}{$H$}
+  \State \Call{Size}{$H$} $\gets$ \Call{Size}{$H$} - 1
+  \State \Call{Consolidate}{$H$}
+  \State \Return (\Call{Key}{$T_m$}, $H$)
 \EndFunction
 \end{algorithmic}
 
