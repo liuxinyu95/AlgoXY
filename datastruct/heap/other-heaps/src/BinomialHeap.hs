@@ -55,10 +55,11 @@ top = key . (L.minimumBy (compare `on` key))
 
 pop h = merge (reverse $ subTrees t) ts where
     (t, ts) = extractMin h
-    extractMin [t] = (t, [])
-    extractMin (t:ts) = if key t < key t' then (t, ts)
-                        else (t', t:ts') where
-        (t', ts') = extractMin ts
+
+extractMin [t] = (t, [])
+extractMin (t:ts) = if key t < key t' then (t, ts)
+                    else (t', t:ts') where
+    (t', ts') = extractMin ts
 
 -- Helper functions
 

@@ -379,6 +379,7 @@ min'\ (t:ts) & = & \begin{cases}
   \text{否则}: & (t', t:ts')
   \end{cases}
 \end{array}
+\label{eq:extract-min-bitree}
 \ee
 
 其中$key\ (r, k, ts) = k$获取二项式树中的根节点元素。$min'$的结果为一对值：最小元素所在的树，和其它的树。接下来就可以定义弹出操作：
@@ -615,7 +616,7 @@ consolidate = foldr\ melt\ [\ ]
 \end{array}
 \ee
 
-用类似的方法可以实现树的归并。我们需要比较树的秩，并把秩相同的树链接起来：
+用类似的方法可以实现树的归并。我们需要比较秩，并把秩相同的树链接起来：
 
 \be
 \begin{array}{rcl}
@@ -628,52 +629,33 @@ consolidate = foldr\ melt\ [\ ]
 \end{array}
 \ee
 
-图\ref{fig:fib-meld-b}给出了斐波那契堆树归并过程的步骤，和表\ref{tb:num-consolidate}对比可以看出它们是相似的。
+图\ref{fig:fib-melt-b}给出了斐波那契堆树归并过程的步骤，和表\ref{tb:num-consolidate}对比可以看出它们是相似的。
 
 \captionsetup[subfigure]{labelformat=empty, margin=10pt}
 \begin{figure}[htbp]
   \centering
   \subcaptionbox{归并前}{\includegraphics[scale=0.35]{img/fib-meld-01}} \\
   \subcaptionbox{第1、2步}{\includegraphics[scale=0.35]{img/fib-meld-02}\hspace{0.1\textwidth}}
-  \subcaptionbox{第3步，‘d’先链接到‘c’，然后链接到‘a’。}{ \hspace{0.1\textwidth} \includegraphics[scale=0.35]{img/fib-meld-03} \hspace{0.1\textwidth}}
+  \subcaptionbox{第3步，d先链接到c，然后链接到a。}{ \hspace{0.1\textwidth} \includegraphics[scale=0.35]{img/fib-meld-03} \hspace{0.1\textwidth}}
   \subcaptionbox{第4步}{\includegraphics[scale=0.35]{img/fib-meld-04}}\\
   \subcaptionbox{第5步}{\includegraphics[scale=0.35]{img/fib-meld-05}}
   \subcaptionbox{第6步}{\includegraphics[scale=0.35]{img/fib-meld-06}} \\
-  \subcaptionbox{第7、8步，‘r’先链接到‘q’，然后‘s’链接到‘q’。}{\includegraphics[scale=0.35]{img/fib-meld-07}}
-  \caption{树归并的步骤} \label{fig:fib-meld-b}
+  \subcaptionbox{第7、8步，r先链接到q，然后s链接到q。}{\includegraphics[scale=0.35]{img/fib-meld-07}}
+  \caption{树归并的步骤}
+  \label{fig:fib-melt-b}
 \end{figure}
 \captionsetup[subfigure]{labelformat=parens}
 
-将斐波那契堆中的所有二项式树，包括存有最小元素的特殊树归并后，结果变成了二项式堆。同时我们失去了记录有最小元素的特殊树。这样就没法在常数时间$O(1)$内获得堆顶元素了。
-
-为此，需要再执行一轮$O(\lg n)$的搜索，重新找到存有最小元素的树。我们可以复用前面定义的$extractMin()$函数。
-
-使用上面定义好的各个辅助函数，可以给出弹出操作的最终实现。记$T_{min}$为存有堆中最小元素的特殊树；$\mathbb{T}$为森林中除特殊树以外的剩余树，$s$代表堆的大小，函数$children()$返回一棵二项式树中除根以外的所有子树。
+将堆中所有二项式树归并后，斐波那契堆就变成了二项式堆。此时堆中的树合并为$O(\lg n)$棵。我们需要额外扫描一遍所有树的根节点，找到存有最小元素的树。我们可以复用(\ref{eq:extract-min-bitree})定义的$min'$分离出堆顶元素所在的树。
 
 \be
-deleteMin(H) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & \mathbb{T} = \phi \land children(T_{min})=\phi \\
-  FibHeap(s-1, T'_{min}, \mathbb{T}') & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+  pop\ (1, (0, x, [\ ]), [\ ]) & = & (x, [\ ]) \\
+  pop\ (n, (r, x, ts_m), ts) & = & (x, (n - 1, t_m, ts')) \\
+\end{array}
 \ee
 
-其中
-
-\[
-  (T'_{min}, \mathbb{T}') = extractMin(consolidate(children(T_{min}) \cup \mathbb{T}))
-\]
-
-下面的Haskell例子程序实现了弹出操作。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-deleteMin (FH _ (Node _ x []) []) = E
-deleteMin h@(FH sz minTr ts) = FH (sz-1) minTr' ts' where
-    (minTr', ts') = extractMin $ consolidate (children minTr ++ ts)
-\end{lstlisting} %$
+其中$(t_m, ts') = min'\ consolidate\ (ts_m \doubleplus ts)$
 
 命令式实现的主要部分是类似的。我们将$T_{min}$的所有子树切下来，添加到森林中，然后执行树的归并操作将Rank相同的树链接到一起，直到所有树的Rank都不同。
 
@@ -1574,10 +1556,11 @@ Node<K> reverse(Node<K> h) {
 \begin{Haskell}
 pop h = merge (reverse $ subTrees t) ts where
     (t, ts) = extractMin h
-    extractMin [t] = (t, [])
-    extractMin (t:ts) = if key t < key t' then (t, ts)
-                        else (t', t:ts') where
-        (t', ts') = extractMin ts
+
+extractMin [t] = (t, [])
+extractMin (t:ts) = if key t < key t' then (t, ts)
+                    else (t', t:ts') where
+    (t', ts') = extractMin ts
 \end{Haskell}
 
 使用双向链表合并斐波那契堆：
@@ -1616,6 +1599,15 @@ consolidate = foldr melt [] where
                    | rank t <  rank t' = t : t' : ts
                    | otherwise = t' : meld t ts
 \end{Haskell}
+
+斐波那契堆的弹出：
+
+\begin{Haskell}
+pop (FH _ (Node _ x []) []) = (x, E)
+pop (FH sz (Node _ x tsm) ts) = (x, FH (sz - 1) tm ts') where
+    (tm, ts') = extractMin $ consolidate (tsm ++ ts)
+\end{Haskell} %$
+
 
 \ifx\wholebook\relax \else
 \section{参考答案}

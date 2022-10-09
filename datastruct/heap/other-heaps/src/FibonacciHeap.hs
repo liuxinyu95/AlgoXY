@@ -20,12 +20,9 @@
 
 module FibonacciHeap where
 
+import BinomialHeap (BiTree(..), link, extractMin)
 import Test.QuickCheck
-import qualified Data.List as L -- for verification purpose only.
-
-data BiTree a = Node { rank :: Int
-                     , key :: a
-                     , subTrees :: [BiTree a]} deriving (Eq, Show)
+import qualified Data.List as L
 
 data FibHeap a = E | FH { size :: Int
                         , minTree :: BiTree a
@@ -33,29 +30,22 @@ data FibHeap a = E | FH { size :: Int
 
 singleton x = FH 1 (Node 1 x []) []
 
-link :: (Ord a) => BiTree a -> BiTree a -> BiTree a
-link t1@(Node r x c1) t2@(Node _ y c2)
-    | x<y = Node (r+1) x (t2:c1)
-    | otherwise = Node (r+1) y (t1:c2)
-
 insert :: (Ord a) => a -> FibHeap a -> FibHeap a
 insert = merge . singleton  -- O(1)
 
--- ++ is O(\lg n1) or O(\g n2) time.
+-- ++ is O(\lg n1) or O(\lg n2) time.
 merge h E = h
 merge E h = h
 merge h1@(FH sz1 minTr1 ts1) h2@(FH sz2 minTr2 ts2)
     | key minTr1 < key minTr2 = FH (sz1 + sz2) minTr1 (minTr2 : ts2 ++ ts1)
     | otherwise = FH (sz1 + sz2) minTr2 (minTr1 : ts1 ++ ts2)
 
--- Find Minimum element in O(1) time
+top :: (Ord a) => FibHeap a -> a
+top = key . minTree
 
-findMin :: (Ord a) => FibHeap a -> a
-findMin = key . minTree
+-- deleting, Amortized O(lg n) time
 
--- deleting, Amortized O(lg N) time
-
---  O(lg N) time
+--  O(lg n) time
 consolidate :: (Ord a) => [BiTree a] -> [BiTree a]
 consolidate = foldr melt [] where
     melt t [] = [t]
@@ -63,41 +53,23 @@ consolidate = foldr melt [] where
                    | rank t <  rank t' = t : t' : ts
                    | otherwise = t' : melt t ts
 
--- Find the tree which contains the minimum element.
--- Returns the minimum element tree and the left trees as a pair
---   O(lg N) time
+pop (FH _ (Node _ x []) []) = (x, E)
+pop (FH sz (Node _ x tsm) ts) = (x, FH (sz-1) tm ts') where
+    (tm, ts') = extractMin $ consolidate (tsm ++ ts)
 
-extractMin :: (Ord a) => [BiTree a] -> (BiTree a, [BiTree a])
-extractMin [t] = (t, [])
-extractMin (t:ts) = if key t < key t' then (t, ts)
-                        else (t', t:ts')
-    where
-      (t', ts') = extractMin ts
-
--- delete function
-
-deleteMin :: (Ord a) => FibHeap a -> FibHeap a
-deleteMin (FH _ (Node _ x []) []) = E
-deleteMin h@(FH sz minTr ts) = FH (sz-1) minTr' ts' where
-    (minTr', ts') = extractMin $ consolidate (subTrees minTr ++ ts)
-
--- Helper functions
-
--- This function performs badly because it actually create a linked-list
--- The ideal way is to insert and delete randomly, so that the amortized
--- performance dominate.
+-- This function performs poor because it actually creates a
+-- linked-list due to lazy consolidation. Ideally, insert/delete
+-- happen randomly to secure the amortized performance
 fromList :: (Ord a) => [a] -> FibHeap a
 fromList = foldr insert E
 
--- This testing has the same problem with fromList, as it actually
--- first create a linked-list, then during deleteMin, it start merge
--- them to Binomial heap, the first consolidation takes very long time.
+-- Same call out as fromList, the first consolidation triggered
+-- by pop restructures all nodes to a binomial heap.
 heapSort :: (Ord a) => [a] -> [a]
 heapSort = hsort . fromList where
     hsort E = []
-    hsort h = (findMin h):(hsort $ deleteMin h)
+    hsort h = x :(hsort h') where (x, h') = pop h
 
 -- test
-
 prop_sort :: [Int] -> Bool
 prop_sort xs = heapSort xs == L.sort xs
