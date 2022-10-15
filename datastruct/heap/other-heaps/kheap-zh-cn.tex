@@ -661,6 +661,7 @@ consolidate = foldr\ melt\ [\ ]
     \State $A[r] \gets T$
   \EndFor
   \State $T_m \gets$ NIL
+  \State \Call{Trees}{$H$} $\gets$ NIL
   \For{each $T$ in $A$}
     \If{$T \neq$ NIL}
       \State append $T$ to \Call{Trees}{$H$}
@@ -749,149 +750,90 @@ T & = & T_c + \Phi(H') -\Phi(H) \\
 \end{array}
 \ee
 
-如果只执行过插入、合并、弹出操作，可以确保斐波那契堆中的所有树都为二项式树。因此可以很容易地估计出$R(n)$的上限为$O(\lg n)$。但是，接下来的一节中我们会介绍，存在一种操作会破坏树为二项式树的约定。
+插入、合并、弹出操作可以确保斐波那契堆中的所有树都为二项式树，此时$R(n)$的上限为$O(\lg n)$。
 
-\begin{Exercise}
-为何树归并操作的时间和它处理的树的数目成比例？
-\end{Exercise}
-
-\subsection{减小key}
+\subsection{提升优先级}
 \index{斐波那契堆!减小key}
 
-还有一种特殊的堆操作，它只在命令式的环境下存在。这个操作就是将某个节点的值减小。减小节点的值对于某些图算法，例如最小生成树算法和Dijkstra算法非常重要\cite{CLRS}，而且我们需要这一操作的分摊性能达到常数时间$O(1)$。
+提升优先级是堆的一个实际应用。用堆管理若干任务，某个任务需要提前执行，为此我们希望将代表其优先级的数值减小，使得任务更接近堆顶。某些图算法，例如最小生成树算法和Dijkstra算法都依赖这一操作\cite{CLRS}。并且我们需要其分摊性能达到常数时间。令$x$指向堆$H$中的某个节点，我们希望将它的值减小为$k$。如图\ref{fig:cut-fib-tree}，若节点$x$的值小于父节点$y$，将子树$x$切下并添加到堆（森林）中。尽管这样可以使得每棵树的父节点仍然存有最小值，但切除节点后的树不再是二项式树。如果失去了很多子树，就无法保证合并操作的性能。为了解决这一问题，我们给斐波那契堆增加一个限制条件：
 
-但是我们无法定义一个高效的函数$Decrease(H, k, k')$，使得它先定位到key等于$k$的节点，然后将$k$替换为$k'$，最后再恢复堆性质。这是由于如果没有指向目标节点的引用，定位一个节点的时间为$O(n)$。
-
-在命令式的环境中，我们可以定义算法\textproc{Decrease-Key}($H, x, k$)。其中$x$是堆$H$中一个节点的引用，我们希望将它的值减小到$k$。使用$x$，我们无需再执行查找操作，因此有可能给出分摊复杂度为常数时间$O(1)$的算法。
+\begin{center}当一个节点第二次失去了某个子节点时，立即将它切下并添加到堆（森林）中。
+\end{center}
 
 \begin{figure}[htbp]
   \centering
-  \setlength{\unitlength}{1cm}
-  \begin{picture}(12, 7)
-    \put(0, 0){\includegraphics[scale=0.7]{img/cut-fib-tree}}
-    \put(6.7, 3){\line(1, 1){0.5}}
-    \put(6.7, 3.5){\line(1, -1){0.5}}
-  \end{picture}
-  \caption{$x<y$，将子树$x$从其父节点上切下，然后添加到森林中。} \label{fig:cut-fib-tree}
+  \includegraphics[scale=0.5]{img/fib-cut-past}
+  \caption{若$key\ x < key\ y$，将$x$切下，然后添加到堆中。}
+  \label{fig:cut-fib-tree}
 \end{figure}
 
-图\ref{fig:cut-fib-tree}描述了这一情况。将节点$x$的值减小后，它小于$y$，我们将$x$从其父节点$y$切下，然后将根为$x$的树“粘贴”到森林中。
-
-虽然我们恢复了堆性质使得父节点的值小于所有的子树，但是由于切除了某些子树，它不再是一棵二项式树了。如果一棵树被切除了很多子树，就无法保证合并操作的性能了。为了避免这一问题，斐波那契堆增加了另外一个限制条件：
-
-“如果一个节点失去了它的第二个子节点，它被立即从父节点切下，然后添加到森林中。”
-
-最终的\textproc{Decrease-Key}算法实现如下：
-
 \begin{algorithmic}[1]
-\Function{Decrease-Key}{$H, x, k$}
+\Function{Decrease}{$H, x, k$}
   \State \Call{Key}{$x$} $\gets k$
   \State $p \gets $ \Call{Parent}{$x$}
-  \If{$p \neq NIL \land k < $ \Call{Key}{$p$}}
+  \If{$p \neq$ NIL and $k < $ \Call{Key}{$p$}}
     \State \Call{Cut}{$H, x$}
-    \State \Call{Cascading-Cut}{$H, p$}
+    \State \Call{Cascade-Cut}{$H, p$} \Comment{回溯切除}
   \EndIf
-  \If{$k <$ \Call{Key}{$T_{min}(H)$}}
-    \State $T_{min}(H) \gets x$
+  \If{$k <$ \Call{Top}{$H$}}
+    \State \Call{Min-Tree}{$H$} $\gets x$
   \EndIf
 \EndFunction
 \end{algorithmic}
 
-其中函数\textproc{Cascading-Cut}使用一个标记来记录它是否失去第二个子节点。当节点失去第一个子节点时被加上这个标记。在函数\textproc{Cut}中清除这一标记。
+\textproc{Cascade-Cut}使用一个标记来记录它此前是否失去过子节点。并在\textproc{Cut}中清除这一标记。
 
 \begin{algorithmic}[1]
 \Function{Cut}{$H, x$}
   \State $p \gets $ \Call{Parent}{$x$}
   \State remove $x$ from $p$
-  \State \Call{Degree}{$p$} $\gets$ \Call{Degree}{$p$} - 1
-  \State add $x$ to root list of $H$
-  \State \Call{Parent}{$x$} $\gets NIL$
-  \State \Call{Mark}{$x$} $\gets FALSE$
+  \State \Call{Rank}{$p$} $\gets$ \Call{Rank}{$p$} - 1
+  \State add $x$ to \Call{Trees}{$H$}
+  \State \Call{Parent}{$x$} $\gets$ NIL
+  \State \Call{Mark}{$x$} $\gets$ False
 \EndFunction
 \end{algorithmic}
 
-在级联切除（cascading cut）过程中，若节点$x$被标记了，说明它已经失去了一个子节点。我们递归对其父节点执行切除和级联切除直到达到根节点。
+回溯切除时，若节点$x$被标记了，说明它此前已经失去了子节点。我们需要继续回溯切除，直到根节点。
 
 \begin{algorithmic}[1]
-\Function{Cascading-Cut}{$H, x$}
+\Function{Cascade-Cut}{$H, x$}
   \State $p \gets $ \Call{Parent}{$x$}
-  \If{$p \neq NIL$}
-    \If{\Call{Mark}{$x$} $= FALSE$}
-      \State \Call{Mark}{$x$} $\gets TRUE$
+  \If{$p \neq$ NIL}
+    \If{\Call{Mark}{$x$} $= $ False}
+      \State \Call{Mark}{$x$} $\gets$ True
     \Else
       \State \Call{Cut}{$H, x$}
-      \State \Call{Cascading-Cut}{$H, p$}
+      \State \Call{Cascade-Cut}{$H, p$}
     \EndIf
   \EndIf
 \EndFunction
 \end{algorithmic}
 
-下面的C语言例子程序实现了减小key的算法。
-
-\lstset{language=C}
-\begin{lstlisting}
-void decrease_key(struct FibHeap* h, struct node* x, Key k) {
-    struct node* p = x->parent;
-    x->key = k;
-    if(p && k < p->key) {
-        cut(h, x);
-        cascading_cut(h, p);
-    }
-    if(k < h->minTr->key)
-        h->minTr = x;
-}
-
-void cut(struct FibHeap* h, struct node* x) {
-    struct node* p = x->parent;
-    p->children = remove_node(p->children, x);
-    p->degree--;
-    h->roots = append(h->roots, x);
-    x->parent = NULL;
-    x->mark = 0;
-}
-
-void cascading_cut(struct FibHeap* h, struct node* x) {
-    struct node* p = x->parent;
-    if(p) {
-        if(!x->mark)
-            x->mark = 1;
-        else {
-            cut(h, x);
-            cascading_cut(h, p);
-        }
-    }
-}
-\end{lstlisting}
-
 \begin{Exercise}
-证明\textproc{Decrease-Key}算法的分摊复杂度为常数时间$O(1)$。
+证明\textproc{Decrease-Key}的分摊复杂度为常数时间$O(1)$。
 \end{Exercise}
 
-\subsection{斐波那契堆名字的由来}
+\subsection{斐波那契堆的命名}
 
-最后，我们来解释为什么这个数据结构的名字叫作“斐波那契堆”。
-
-我们还剩下一个算法没有给出实现―\textproc{Max-Degree}($n$)。它用来给出含有$n$个节点的斐波那契堆中任意节点degree的上限。我们将用斐波那契数列的性质来给出证明，并最终实现\textproc{Max-Degree}算法。
+我们尚未给出\textproc{Max-Rank}($n$)的实现。它定义了$n$个节点的斐波那契堆中所有树的秩的上限。
 
 \begin{lemma}
 \label{lemma:Fib-degree}
-堆斐波那契堆中的任何节点$x$，记$k = degree(x)$，$|x| = size(x)$，存在以下关系：
+对于斐波那契堆中的任何树$x$，令$k = rank\ x$表示秩，$|x|$表示树的大小。存在以下关系：
 
 \be
   |x| \geq F_{k+2}
 \ee
 
-其中$F_k$为斐波那契数列：
+其中$F_k$为斐波那契数列中的第$k$项：
 
 \[
-F_k = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  0 & k = 0 \\
-  1 & k = 1 \\
-  F_{k-1} + F_{k-2} & k \geq 2
-  \end{array}
-\right.
+\begin{array}{rcl}
+F_0 & = & 0 \\
+F_1 & = & 1 \\
+F_k & = & F_{k-1} + F_{k-2} \\
+\end{array}
 \]
 \end{lemma}
 
@@ -1334,11 +1276,13 @@ data Node<K> {
     Node<K> parent
     Node<K> subTrees
     Node<K> sibling
+    Bool mark
 
     Node(K x) {
         key = x
         rank = 0
         parent = subTrees = sibling = null
+        mark = false
     }
 }
 \end{lstlisting}
@@ -1506,7 +1450,7 @@ extractMin (t:ts) = if key t < key t' then (t, ts)
 FibHeap<K> merge(FibHeap<K> h1, FibHeap<K> h2) {
     if isEmpty(h1) then return h2
     if isEmpty(h2) then return h1
-    FibHeap<K> h = FiboHeap()
+    FibHeap<K> h = FibHeap<K>()
     h.trees = concat(h1.trees, h2.trees)
     h.minTree = if h1.minTree.key < h2.minTree.key
                 then h1.minTree else h2.minTree
@@ -1539,35 +1483,28 @@ consolidate = foldr melt [] where
 
 使用辅助数组进行归并：
 
-\begin{lstlisting}[language = C]
-void consolidate(struct FibHeap* h) {
-    if(!h->roots)
-        return;
-    int D = max_degree(h->n)+1;
-    struct node *x, *y;
-    struct node** a = (struct node**)malloc(sizeof(struct node*)*(D+1));
-    int i, d;
-    for(i=0; i<=D; ++i)
-        a[i] = NULL;
-    while(h->roots) {
-        x = h->roots;
-        h->roots = remove_node(h->roots, x);
-        d= x->degree;
-        while(a[d]) {
-            y = a[d];  //存在和x的degree相等的另一节点。
-            x = link(x, y);
-            a[d++] = NULL;
+\begin{lstlisting}[language = Bourbaki]
+void consolidate(FibHeap<K> h) {
+    Int R = maxRank(h.size) + 1
+    Node<K>[R] a = [null, ...]
+    while h.trees != null {
+        var x = h.trees
+        h.trees = remove(h.trees, x)
+        Int r = x.rank
+        while a[r] != null {
+            var y = a[r]
+            x = link(x, y)
+            a[r] = null
+            r = r + 1
         }
-        a[d] = x;
+        a[r] = x
     }
-    h->minTr = h->roots = NULL;
-    for(i=0; i<=D; ++i)
-        if(a[i]) {
-            h->roots = append(h->roots, a[i]);
-            if(h->minTr == NULL || a[i]->key < h->minTr->key)
-                h->minTr = a[i];
-        }
-    free(a);
+    h.minTr = null
+    h.trees = null
+    for var t in a if t != null {
+        h.trees = append(h.trees, t)
+        if h.minTr == null or t.key < h.minTr.key then h.minTr = t
+    }
 }
 \end{lstlisting}
 
@@ -1579,6 +1516,39 @@ pop (FH sz (Node _ x tsm) ts) = (x, FH (sz - 1) tm ts') where
     (tm, ts') = extractMin $ consolidate (tsm ++ ts)
 \end{Haskell} %$
 
+提升优先级：
+
+\begin{lstlisting}[language = Bourbaki]
+void decrease(FibHeap<K> h, Node<K> x, K k) {
+    var p = x.parent
+    x.key = k
+    if p != null and k < p.key {
+        cut(h, x)
+        cascadeCut(h, p)
+    }
+    if k < h.minTr.key then h.minTr = x
+}
+
+void cut(FibHeap<K> h, Node<K> x) {
+    var p = x.parent
+    p.subTrees = remove(p.subTrees, x)
+    p.rank = p.rank - 1
+    h.trees = append(h.trees, x)
+    x.parent = null
+    x.mark = false
+}
+
+void cascadeCut(FibHeap<K> h, Node<K> x) {
+    var p = x.parent
+    if p == null then return
+    if x.mark {
+        cut(h, x)
+        cascadeCut(h, p)
+    } else {
+        x.mark = true
+    }
+}
+\end{lstlisting}
 
 \ifx\wholebook\relax \else
 \section{参考答案}
