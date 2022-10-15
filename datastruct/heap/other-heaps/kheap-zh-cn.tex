@@ -753,7 +753,7 @@ T & = & T_c + \Phi(H') -\Phi(H) \\
 插入、合并、弹出操作可以确保斐波那契堆中的所有树都为二项式树，此时$R(n)$的上限为$O(\lg n)$。
 
 \subsection{提升优先级}
-\index{斐波那契堆!减小key}
+\index{斐波那契堆!提升优先级}
 
 提升优先级是堆的一个实际应用。用堆管理若干任务，某个任务需要提前执行，为此我们希望将代表其优先级的数值减小，使得任务更接近堆顶。某些图算法，例如最小生成树算法和Dijkstra算法都依赖这一操作\cite{CLRS}。并且我们需要其分摊性能达到常数时间。令$x$指向堆$H$中的某个节点，我们希望将它的值减小为$k$。如图\ref{fig:cut-fib-tree}，若节点$x$的值小于父节点$y$，将子树$x$切下并添加到堆（森林）中。尽管这样可以使得每棵树的父节点仍然存有最小值，但切除节点后的树不再是二项式树。如果失去了很多子树，就无法保证合并操作的性能。为了解决这一问题，我们给斐波那契堆增加一个限制条件：
 
@@ -914,99 +914,39 @@ n \geq |x| \geq F_k+2
 \section{配对堆}
 \label{pairing-heap} \index{配对堆}
 
-虽然斐波那契堆在理论上有着优异的性能，但是它的实现复杂。人们发现斐波那契堆复杂度中big-O后面的常数较大，它的理论意义要大于实际意义。
+斐波那契堆的实现较为复杂。本节介绍配对堆。它实现简单、性能优异。大部分操作，包括插入、获取堆顶、合并都是常数时间复杂度，人们猜测它的弹出操作的分摊复杂度为$O(\lg n)$\cite{pairing-heap}\cite{okasaki-book}。
 
-本节中，我们介绍另外一种堆―配对（pairing）堆。它是已知性能最好的堆。大部分操作，包括插入、获取顶部元素、合并都是常数时间$O(1)$的，人们猜测它的弹出操作的分摊复杂度为$O(\lg n)$\cite{pairing-heap}\cite{okasaki-book}。到作者书写本章为止的15年内，这一猜想还没有得到证明。尽管有大量的试验数据支持它的分摊复杂度为$O(\lg n)$。
-
-除了性能优异，配对堆还很简单。存在简洁的命令式和函数式实现。
-
-% ================================================================
-%                 Definition
-% ================================================================
 \subsection{定义}
 \index{配对堆!定义}
 
-二项式堆和斐波那契堆都由森林来实现。而配对堆本质上是一棵$K$叉树。最小元素保存于树根，其余元素存储于子树中。
+配对堆实现为一棵多叉树。最小元素保存于树根。一个配对堆要么为空$\nil$，要么是一棵$k$叉树，包含一个根节点和一组子树，记为$(x, ts)$。多叉树也可用“左侧孩子，右侧兄弟”方法进行定义。
 
-下面的Haskell程序定义了配对堆。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
+\begin{Haskell}
 data PHeap a = E | Node a [PHeap a]
-\end{lstlisting}
+\end{Haskell}
 
-这是一个递归定义，一个配对堆要么为空，要么是一棵$K$叉树，包含一个根节点和一组子树。
-
-下面的C语言例子程序，也给出了配对堆的定义。简单起见，我们仅仅讨论最小堆，并且假设key的类型为整数\footnote{可以将key的类型抽象为C++的模板参数，读者可以参考本书附带的例子程序。}。我们使用单向链表表示的“左侧孩子，右侧兄弟”定义（二叉树表示法\cite{CLRS}）。
-
-\lstset{language=C}
-\begin{lstlisting}
-typedef int Key;
-
-struct node {
-    Key key;
-    struct node *next, *children, *parent;
-};
-\end{lstlisting}
-
-其中的父节点字段仅在减小key值的操作中用到，其他情况下可以忽略。我们稍后会加以解释。
-
-
-% ================================================================
-%          Basic Heap operations
-% ================================================================
-\subsection{基本堆操作}
-
-我们首先介绍堆的合并操作，合并操作可以用以实现插入。获取顶部元素相对简单。而弹出操作则较为复杂。
-
-\subsubsection{合并、插入、和获取顶部元素}
+\subsection{合并、插入、获取堆顶}
 \index{配对堆!插入} \index{配对堆!top}
-\index{配对堆!查找最小元素}
 
-合并操作的思想和二项式堆的链接相似。当我们合并两个配对堆时，存在两种情况：
+合并两个配对堆时，存在两种情况：
 
-\begin{itemize}
-\item 简单情况：其中一个堆为空，我们只要返回另一堆作为合并的结果；
-
-\item 否则，我们比较两个堆的根节点元素，令根节点较大的一个作为另一个的新子树。
-\end{itemize}
-
-令$H_1$和$H_2$分别代表两个堆，$x$和$y$为各自的根节点元素。函数$Children()$返回一棵$K$叉树的子树，$Node()$从一个根节点元素和一组子树构造一棵$K$叉树。
+\begin{enumerate}
+\item 任何一个堆为$\nil$，结果为另一个堆；
+\item 否则，比较两个堆的根节点，把较大的一个作为另一个的新子树。
+\end{enumerate}
 
 \be
-merge(H_1, H_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  H_1 & H_2 = \phi \\
-  H_2 & H_1 = \phi \\
-  Node(x, \{H_2\} \cup Children(H_1)) & x < y \\
-  Node(y, \{H_1\} \cup Children(H_2)) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+merge\ \nil\ h_2 & = & h_2 \\
+merge\ h_1\ \nil & = & h_1 \\
+merge\ (x, ts_1)\ (y, ts_2) & = & \begin{cases}
+  x < y: & (x, (y, ts_2) : ts_1) \\
+  \text{否则}: & (y, (x, ts1) : ts_2) \\
+  \end{cases}
+\end{array}
 \ee
 
-其中
-
-\[
-\begin{array}{l}
-x = Root(H_1) \\
-y = Root(H_2)
-\end{array}
-\]
-
-显然合并算法的性能为常数时间$O(1)$\footnote{假设$\cup$操作的性能为常数时间。对于单向链表的“cons”来说，这一点成立。}。
-
-下面的Haskell例子程序给出了$merge$操作。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-merge h E = h
-merge E h = h
-merge h1@(Node x hs1) h2@(Node y hs2) =
-    if x < y then Node x (h2:hs1) else Node y (h1:hs2)
-\end{lstlisting}
-
-也可以用命令式的方式实现合并操作。使用“左侧孩子，右侧兄弟”方法，我们可以把根节点元素较大的堆，利用链表操作链接到另一个堆的子树前面变成第一棵子树。这一常数时间的操作可以描述如下：
+合并的性能为常数时间。使用“左侧孩子，右侧兄弟”方法，我们把根节点较大的堆链接到另一个堆的子树前：
 
 \begin{algorithmic}[1]
 \Function{Merge}{$H_1, H_2$}
@@ -1019,225 +959,108 @@ merge h1@(Node x hs1) h2@(Node y hs2) =
   \If{\Call{Key}{$H_2$} $<$ \Call{Key}{$H_1$}}
     \State \Call{Exchange}{$H_1 \leftrightarrow H_2$}
   \EndIf
-  \State Insert $H_2$ in front of \Call{Children}{$H_1$}
+  \State \Call{Sub-Trees}{$H_1$} $\gets$ \textproc{Link}($H_2$, \Call{Sub-Trees}{$H_1$})
   \State \Call{Parent}{$H_2$} $\gets H_1$
   \State \Return $H_1$
 \EndFunction
 \end{algorithmic}
 
-在这一过程中，我们也更新了指向父节点的字段。相应的C语言例子代码如下：
+使用合并函数，可以像斐波那契堆一样实现插入操作，如式(\ref{eq:fib-insert})。堆顶元素可以从根节点获取：$top\ (x, ts) = x$。插入和获取堆顶的复杂度都是常数时间。
 
-\lstset{language=C}
-\begin{lstlisting}
-struct node* merge(struct node* h1, struct node* h2) {
-    if (h1 == NULL)
-        return h2;
-    if (h2 == NULL)
-        return h1;
-    if (h2->key < h1->key)
-        swap(&h1, &h2);
-    h2->next = h1->children;
-    h1->children = h2;
-    h2->parent = h1;
-    h1->next = NULL; /*Break previous link if any*/
-    return h1;
-}
-\end{lstlisting}
+\subsection{提升优先级}
+\index{配对堆!提升优先级}
 
-其中swap函数和斐波那契堆中的定义类似。
-
-使用合并函数，可以像斐波那契堆的式(\ref{eq:fib-insert})一样实现插入操作。这一操作的性能为常数时间$O(1)$。因为最小的元素总是保存在根节点，所以可以通过根来获取顶部元素。
-
-\be
-top(H) = Root(H)
-\ee
-
-获取顶部元素的性能也是常数时间$O(1)$的。
-
-\subsubsection{减小节点的值}
-\index{配对堆!减小key}
-
-同斐波那契堆一样，减小节点的值仅在命令式环境下有意义。这一问题的解比斐波那契堆要简单。节点的值减小后，我们将它为根的子树从父节点上切下，然后合并到堆中。唯一特殊的情况是，如果是根节点，我们可以直接改变值而无需做任何额外操作。
-
-下面的算法描述了将节点$x$的值减小到$k$的操作。
+节点的值减小后，我们将以它为根的子树切下，然后合并到堆中。如果是根节点，我们可以直接减小元素的值。
 
 \begin{algorithmic}[1]
-\Function{Decrease-Key}{$H, x, k$}
+\Function{Decrease}{$H, x, k$}
   \State \Call{Key}{$x$} $\gets k$
-  \If{\Call{Parent}{$x$} $\neq$ NIL}
-    \State Remove $x$ from \textproc{Children}(\Call{Parent}{$x$})
-    \Call{Parent}{$x$} $\gets$ NIL
+  \State $p \gets$ \Call{Parent}{$x$}
+  \If{$p \neq$ NIL}
+    \State Remove $x$ from \Call{Sub-Trees}{$p$}
+    \State \Call{Parent}{$x$} $\gets$ NIL
     \State \Return \Call{Merge}{$H, x$}
   \EndIf
   \State \Return $H$
 \EndFunction
 \end{algorithmic}
 
-下面的C语言例子程序实现了这一算法。
-
-\lstset{language=C}
-\begin{lstlisting}
-struct node* decrease_key(struct node* h, struct node* x, Key key) {
-    x->key = key; /* Assume key <= x->key */
-    if(x->parent) {
-        x->parent->children = remove_node(x->parent->children, x);
-        x->parent = NULL;
-        return merge(h, x);
-    }
-    return h;
-}
-\end{lstlisting}
-
-\begin{Exercise}
-选择一门语言，实现从父节点将子树切下的操作。考虑如何保证减小key操作的总体性能为常数时间$O(1)$？仅仅使用“左侧孩子，右侧兄弟”就够了么？
-\end{Exercise}
-
-\subsubsection{弹出}
+\subsection{弹出}
 \index{配对堆!pop} \index{配对堆!弹出}
-\index{配对堆!删除最小元素}
 
-因为最小元素总是保存在根节点，弹出操作将其删除后，会剩下一系列子树。这些子树可以合并成一棵较大的树。
+弹出堆顶的根节点后，我们将剩下的子树可以合并成一棵较大的树：
 
 \be
-  pop(H) = mergePairs(Children(H))
+pop\ (x, ts) = \textit{consolidate}\ ts
 \ee
 
-配对堆使用一种特殊的合并策略，它先从左向右，两两成对地将子树合并。然后从右向左将子树对合并的结果再次合并成一棵树。配对堆的名字就来自这一合并过程。
-
-图\ref{fig:merge-pairs}和\ref{fig:merge-right}描述了这一成对合并的过程。
+我们先从左向右，两两成对地将子树合并。然后再从右向左合并合并成一棵树。配对堆的名字就来自这一合并过程。如图\ref{fig:merge-pairs}和\ref{fig:merge-right}所示。合并过程和自底向上的归并排序\cite{okasaki-book}类似。
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{弹出前的配对堆}{\includegraphics[scale=0.5]{img/pairing-hp}} \\
-  \subcaptionbox{根节点2被删除，剩余9棵子树}{\includegraphics[scale=0.5]{img/pairs}} \\
-  \subcaptionbox{每两棵树成对合并，因为有奇数棵树，所以最后一棵无需合并。}{\includegraphics[scale=0.5]{img/pairs-merge}} \\
+  \subcaptionbox{弹出前的配对堆}{\includegraphics[scale=0.4]{img/pairing-hp}} \\
+  \subcaptionbox{根节点2被删除，剩余9棵子树}{\includegraphics[scale=0.4]{img/pairs}} \\
+  \subcaptionbox{每两棵树成对合并，因为有奇数棵树，所以最后一棵无需合并。}{\includegraphics[scale=0.4]{img/pairs-merge}} \\
   \caption{删除根节点，将子树成对合并} \label{fig:merge-pairs}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{将根节点为9和6的两棵树合并}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/right-merge-1}\hspace{0.2\textwidth}}
-  \subcaptionbox{将根节点为7的树合并到当前结果中}{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/right-merge-2}\hspace{0.1\textwidth}} \\
-  \subcaptionbox{将根节点为3的树合并到结果中}{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/right-merge-3}\hspace{0.1\textwidth}}
-  \subcaptionbox{将根节点为4的树合并到结果中}{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/right-merge-4}\hspace{0.1\textwidth}}
+  \subcaptionbox{将根节点为9和6的两棵树合并}{\hspace{0.2\textwidth}\includegraphics[scale=0.4]{img/right-merge-1}\hspace{0.2\textwidth}}
+  \subcaptionbox{将根节点为7的树合并到当前结果中}{\hspace{0.1\textwidth}\includegraphics[scale=0.4]{img/right-merge-2}\hspace{0.1\textwidth}} \\
+  \subcaptionbox{将根节点为3的树合并到结果中}{\hspace{0.1\textwidth}\includegraphics[scale=0.4]{img/right-merge-3}\hspace{0.1\textwidth}}
+  \subcaptionbox{将根节点为4的树合并到结果中}{\hspace{0.1\textwidth}\includegraphics[scale=0.4]{img/right-merge-4}\hspace{0.1\textwidth}}
   \caption{从右向左合并的步骤} \label{fig:merge-right}
 \end{figure}
 
-递归地成对合并过程和自底向上的归并排序\cite{okasaki-book}类似。记配对堆的全部子树为$A$，它是一个子树的列表$\{ T_1, T_2, T_3, ..., T_m\}$。$mergePairs()$函数定义如下：
-
 \be
-mergePairs(A) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \Phi & A = \Phi \\
-  T_1 & A = \{ T_1 \} \\
-  merge(merge(T_1, T_2), mergePairs(A')) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+\textit{consolidate}\ [\ ] & = & \nil \\
+\textit{consolidate}\ [t] & = & t \\
+\textit{consolidate}\ (t_1 : t_2 : ts) & = & merge\ (merge\ t_1\ t_2)\ (consolidate\ ts)
+\end{array}
 \ee
 
-其中
-
-\[
-A' = \{ T_3, T_4, ..., T_m\}
-\]
-
-是除去前两棵树外剩余的子树。
-
-下面的Haskell例子程序实现了这一算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-deleteMin (Node _ hs) = mergePairs hs where
-    mergePairs [] = E
-    mergePairs [h] = h
-    mergePairs (h1:h2:hs) = merge (merge h1 h2) (mergePairs hs)
-\end{lstlisting}
-
-弹出操作也可以按照过程描述如下：
+对应“左侧孩子，右侧兄弟”的实现如下：
 
 \begin{algorithmic}[1]
 \Function{Pop}{$H$}
-  \State $L \gets NIL$
-  \For{every 2 trees $T_x$, $T_y \in$ \Call{Children}{$H$} from left to right}
-    \State Extract $x$, and $y$ from \Call{Children}{$H$}
+  \State $L \gets$ NIL
+  \For{every $T_x$, $T_y$ in \Call{Sub-Trees}{$H$}}
     \State $T \gets $ \Call{Merge}{$T_x, T_y$}
-    \State Insert $T$ at the beginning of $L$
+    \State $L \gets$ \Call{Link}{$T, L$}
   \EndFor
-  \State $H \gets $ \Call{Children}{$H$} \Comment{$H$ is either $NIL$ or one tree.}
-  \For{$\forall T \in L$ from left to right}
+  \State $H \gets$ NIL
+  \For{$T$ in $L$}
     \State $H \gets $ \Call{Merge}{$H, T$}
   \EndFor
   \State \Return $H$
 \EndFunction
 \end{algorithmic}
 
-其中$L$被初始化为一个空的链表，然后算法从左向右每次成对迭代$K$叉树中的两棵子树，进行合并。结果被插入到$L$的头部。因为在链表的前方插入，所以再次遍历链表$L$时，实际是按照从右向左的顺序。堆$H$中可能含有奇数棵子树，这种情况下，成对合并后会剩余一棵。处理办法是从这一棵树开始进行从右向左的合并。
+我们从左向右每次成对迭代两棵子树$T_x$、$T_y$合并成$T$，然后链接到$L$的前面。这样再次遍历$L$时，实际是按照从右向左的顺序。堆中可能含有奇数棵子树，这种情况下，最后一次$T_y =$ NIL，成对合并后$T = T_x$。
 
-下面的C语言例子程序实现了弹出算法。
-
-\lstset{language=C}
-\begin{lstlisting}
-struct node* pop(struct node* h) {
-    struct node *x, *y, *lst = NULL;
-    while ((x = h->children) != NULL) {
-        if ((h->children = y = x->next) != NULL)
-            h->children = h->children->next;
-        lst = push_front(lst, merge(x, y));
-    }
-    x = NULL;
-    while((y = lst) != NULL) {
-        lst = lst->next;
-        x = merge(x, y);
-    }
-    free(h);
-    return x;
-}
-\end{lstlisting}
-
-人们猜想配对堆的弹出操作的分摊性能为$O(\lg n)$\cite{pairing-heap}。
-
-\begin{Exercise}
-选择一门语言，实现在链表的头部插入一棵树。
-\end{Exercise}
-
-\subsubsection{删除节点}
+\subsection{删除}
 \index{配对堆!删除}
 
-我们没有在二项式堆和斐波那契堆提到删除操作。删除可以实现为先将节点的值减小为负无穷（$-\infty$），然后再执行一次弹出操作。这里我们介绍另外一种删除方法。
-
-我们需要定义函数$delete(H, x)$，其中$x$是配对堆$H$中的某一节点\footnote{具体来说，$x$是某一节点的引用}。
-
-若$x$为根节点，我们只需要执行一次弹出操作。否则，我们将$x$从$H$中切下，然后对$x$执行一次弹出操作，再将弹出结果合并回$H$。如下：
+为了删除某个节点$x$，我们可以先将节点的值减小为$-\infty$，然后再执行一次弹出操作。本节介绍另外一种删除方法。若$x$为根节点，我们只需要执行一次弹出操作。否则，我们将$x$从堆$H$中切下，然后对$x$执行一次弹出操作，再将结果合并回$H$：
 
 \be
-delete(H, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  pop(H) & x \quad \text{is root of} \quad H \\
-  merge(cut(H, x), pop(x)) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+delete\ h\ h & = & pop\ h \\
+delete\ h\ x & = & merge\ (cut\ h\ x)\ (pop\ x)
+\end{array}
 \ee
 
-因为删除算法调用弹出操作，因此人们猜想它的分摊性能也是对数时间$O(\lg n)$。
+因为删除算法调用弹出操作，我们猜想它的分摊性能也是对数时间$O(\lg n)$。
 
 \begin{Exercise}
-\begin{itemize}
-\item 选择一门语言，实现命令式的删除算法。
-
-\item 考虑如何完整实现纯函数式的删除算法。
-\end{itemize}
+实现配对堆的删除。
 \end{Exercise}
 
-% ================================================================
-%                 Short summary
-% ================================================================
 \section{小结}
 
-本章中，我们将堆的实现从二叉树扩展到了更加丰富的数据结构。二项式堆和斐波那契堆使用$K$叉树的森林作为底层数据结构，而配对堆使用一棵$K$叉树来存储数据。通过将某些费时的操作延迟进行，可以获得总体上优异的分摊性能。这一点很具有启发性。虽然斐波那契堆在理论上具有良好的性能，但是实现较为复杂，最近的一些教科书往往会跳过不讲。本章介绍的配对堆具备简单的实现，并且在实际应用中性能表现很好。
-
-到本章为止，我们介绍了一些最基本的基于树的数据结构。还有大量和树有关的内容有待我们去了解和探索。从下一章开始，我们将介绍通用的序列数据结构，包括数组和队列。
+本章中，我们将堆的实现从二叉树扩展到了更加丰富的数据结构。二项式堆和斐波那契堆使用多叉树森林作为底层数据结构，而配对堆实现为一棵多叉树。通过将某些耗时的操作延迟进行，可以获得总体上优异的分摊性能。这一点很具有启发性。
 
 \section{附录：例子程序}
 
@@ -1247,9 +1070,7 @@ delete(H, x) = \left \{
 data Node<K> {
     Int rank
     K key
-    Node<K> parent
-    Node<K> subTrees
-    Node<K> sibling
+    Node<K> parent, subTrees, sibling,
     Bool mark
 
     Node(K x) {
@@ -1304,7 +1125,7 @@ Node<K> removeFirst(Node<K> h) {
 Node<K> insert(K x, Node<K> h) = insertTree(Node(x), h)
 \end{lstlisting}
 
-二项式堆插入的Haskell例子程序：
+二项式堆插入的递归实现：
 
 \begin{Haskell}
 data BiTree a = Node { rank :: Int
