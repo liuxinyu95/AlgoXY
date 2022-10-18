@@ -129,83 +129,82 @@ There is a method called `left-child, right-sibling'\cite{CLRS}, that can reuse 
 \subsection{Link}
 \index{Binomial Heap!Link}
 
-Before dive into the basic heap operations such as pop and insert,
-We'll first realize how to link two binomial trees with same rank into a
-bigger one. According to the definition of binomial tree and heap
-property that the root always contains the minimum key, we firstly
-compare the two root values, select the smaller one as the new
-root, and insert the other tree as the first child in front of
-all other children. Suppose function $Key(T)$, $Children(T)$, and
-$Rank(T)$ access the key, children and rank of a binomial tree
-respectively.
+To link two $B_n$ trees to a $B_{n+1}$ tree, we compare the two root elements, choose the smaller one as the root, and put the other tree ahead of other sub-trees as shown in figure \ref{fig:link-xy}.
 
 \be
-link(T_1, T_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  node(r+1, x, \{ T_2 \} \cup C_1) & x < y \\
-  node(r+1, y, \{ T_1 \} \cup C_2) & otherwise
-  \end{array}
-\right .
+link\ (r, x, ts)\ (r, y, ts') = \begin{cases}
+  x < y: & (r + 1, x, (r, t, ts') : ts) \\
+  \text{otherwise}: & (r + 1, y, (r, x, ts): ts') \\
+  \end{cases}
 \label{eq:link}
 \ee
-
-Where
-
-\[
-  \begin{array}{l}
-  x = Key(T_1) \\
-  y = Key(T_2) \\
-  r = Rank(T_1) = Rank(T_2) \\
-  C_1 = Children(T_1) \\
-  C_2 = Children(T_2)
-  \end{array}
-\]
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.5]{img/link-bitree-xy}
-  \caption{Suppose $x < y$, insert $y$ as the first child of $x$.} \label{fig:link-xy}
+  \caption{If $x < y$, link $y$ as the first sub-tree of $x$.}
+  \label{fig:link-xy}
 \end{figure}
 
-Note that the link operation is bound to $O(1)$ time if the $\cup$ is
-a constant time operation. It's easy
-to translate the link function to Haskell program as the following.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-link t1@(Node r x c1) t2@(Node _ y c2) =
-    if x<y then Node (r+1) x (t2:c1)
-    else Node (r+1) y (t1:c2)
-\end{lstlisting}
-
-It's possible to realize the link operation in imperative way.
-If we use `left child, right sibling' approach, we just link
-the tree which has the bigger key to the left side of the other's
-key, and link the children of it to the right side as sibling.
-Figure \ref{fig:link-lcrs} shows the result of one case.
+We can implement link with `left child, right sibling' method as below. Link operation is bound to constant time.
 
 \begin{algorithmic}[1]
-\Function{Link}{$T_1, T_2$}
-  \If{\Call{Key}{$T_2$} $<$ \Call{Key}{$T_1$}}
-    \State Exchange $T_1 \leftrightarrow T_2$
+\Function{Link}{$x, y$}
+  \If{\Call{Key}{$y$} $<$ \Call{Key}{$x$}}
+    \State Exchange $x \leftrightarrow y$
   \EndIf
-  \State \Call{Sibling}{$T_2$} $\gets$ \Call{Child}{$T_1$}
-  \State \Call{Child}{$T_1$} $\gets T_2$
-  \State \Call{Parent}{$T_2$} $\gets T_1$
-  \State \Call{Rank}{$T_1$} $\gets$ \Call{Rank}{$T_1$} + 1
-  \State \Return $T_1$
+  \State \Call{Sibling}{$y$} $\gets$ \Call{Sub-Trees}{$T_1$}
+  \State \Call{Sub-Trees}{$x$} $\gets y$
+  \State \Call{Parent}{$y$} $\gets x$
+  \State \Call{Rank}{$x$} $\gets$ \Call{Rank}{$y$} + 1
+  \State \Return $x$
 \EndFunction
 \end{algorithmic}
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.5]{img/link-bitree-lcrs}
-  \caption{Suppose $x < y$, link $y$ to the left side of $x$ and link the original children of $x$ to the right side of $y$.} \label{fig:link-lcrs}
-\end{figure}
+\begin{Exercise}
+\Question{Write a program to generate Pascal's triangle.}
+\Question{Prove that the $i$-th row in tree $B_n$ has $\binom{n}{i}$ nodes.}
+\Question{Prove there are $2^n$ elements in $B_n$ tree.}
+\Question{Use a container to store sub-trees, how to implement link? How to secure the operation is in constant time?}
+\end{Exercise}
 
-And if we use a container to manage all children of a node, the
-algorithm is like below.
+\begin{Answer}
+\Question{Write a program to generate Pascal's triangle.
+\begin{Haskell}[frame=single]
+pascal = gen [1] where
+  gen cs (x:y:xs) = gen ((x + y) : cs) (y:xs)
+  gen cs _ = 1 : cs
+\end{Haskell}
+}
+\Question{Prove that the $i$-th row in tree $B_n$ has $\binom{n}{i}$ nodes.
+\begin{proof}
+Use induction. There is only a root node for $B_0$. Assume every row in $B_n$ is binomial number. Tree $B_{n+1}$ is composed from two $B_n$ trees. The 0-th row contains root: $1 = \binom{n+1}{0}$. The $i$-th row has two parts: one from the $(i-1)$-th row of the left most sub-tree $B_n$, the other from the $i$-th row of the other $B_n$ tree. In total:
+
+\[
+\begin{array}{rcl}
+\binom{n}{i-1} + \binom{n}{i} & = & \dfrac{n!}{(i-1)!(n-i+1)!} + \dfrac{n!}{i!(n-i)!} \\
+ & = & \dfrac{n!}{(i-1)!(n-i)!}(\dfrac{1}{i} - \dfrac{1}{n-i+1}) \\
+ & = & \dfrac{n!}{(i-1)!(n-i)!}\dfrac{n+1}{i(n-i+1)} \\
+ & = & \dfrac{(n+1)!}{i!(n-i+1)!} \\
+ & = & \binom{n+1}{i} \\
+\end{array}
+\]
+\end{proof}
+}
+\Question{Prove there are $2^n$ elements in $B_n$ tree.
+\begin{proof}
+From previous exercise, sum all rows of $B_n$ tree:
+\[
+\begin{array}{cll}
+  & \binom{n}{0} + \binom{n}{1} + ... + \binom{n}{n} & \text{各行相加} \\
+= & (1 + 1)^n & \text{令二项式} (a + b)^n \text{中}a = b = 1 \\
+= & 2^n & \\
+\end{array}
+\]
+\end{proof}
+}
+\Question{Use a container to store sub-trees, how to implement link? How to secure the operation is in constant time?
+If store all sub-trees in an array, we need linear time to insert a new tree ahead of all sub-trees:
 
 \begin{algorithmic}[1]
 \Function{Link'}{$T_1, T_2$}
@@ -213,41 +212,19 @@ algorithm is like below.
     \State Exchange $T_1 \leftrightarrow T_2$
   \EndIf
   \State \Call{Parent}{$T_2$} $\gets T_1$
-  \State \textproc{Insert-Before}(\Call{Children}{$T_1$}, $T_2$)
-  \State \Call{Rank}{$T_1$} $\gets$ \Call{Rank}{$T_1$} + 1
+  \State \textproc{Insert}(\Call{Sub-Trees}{$T_1$}, 1, $T_2$)
+  \State \Call{Rank}{$T_1$} $\gets$ \Call{Rank}{$T_2$} + 1
   \State \Return $T_1$
 \EndFunction
 \end{algorithmic}
 
-It's easy to translate both algorithms to real program. Here we only show the Python program of \textproc{Link'} for illustration purpose \footnote{The C and C++ programs are also available along with this book}.
+We can store the sub-trees in reversed order, it's need constant time to append the new tree on tail.
+}
+\end{Answer}
 
-\lstset{language=Python}
-\begin{lstlisting}
-def link(t1, t2):
-    if t2.key < t1.key:
-        (t1, t2) = (t2, t1)
-    t2.parent = t1
-    t1.children.insert(0, t2)
-    t1.rank = t1.rank + 1
-    return t1
-\end{lstlisting}
+\subsubsection{Insert}
+\index{Binomial heap!insert} \index{Binomial heap!push}
 
-\begin{Exercise}
-Implement the tree-linking program in your favorite language with left-child, right-sibling method.
-\end{Exercise}
-
-\subsubsection*{}
-We mentioned linking is a constant time algorithm and it is true
-when using left-child,
-right-sibling approach, However, if we use container to manage the
-children, the performance depends on the concrete implementation of
-the container. If it is plain array,
-the linking time will be proportion to the number of children. In this
-chapter, we assume the time is constant. This is true if the container
-is implemented in linked-list.
-
-\subsubsection{Insert a new element to the heap (push)}
-\index{Binomial heap!insertion}
 As the rank of binomial trees in a forest is monotonically increasing,
 by using the $link$ function defined above, it's possible to define an
 auxiliary function, so that we can insert a new tree, with rank no bigger
