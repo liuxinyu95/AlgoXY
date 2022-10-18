@@ -87,7 +87,7 @@ Figure \ref{fig:bitree-forms} gives examples of $B_0$ to $B_4$.
   \label{fig:bitree-forms}
 \end{figure}
 
-We can find the number of nodes in every row in $B_n$ is a binomial coefficient. For example in $B_4$, there is a node (root) in level 0, 4 nodes in level 1, 6 nodes in level 2, 4 nodes in level 3, and a node in level 4. They are exactly same as the 4-th row (start from 0) of Pascal's triangle: 1, 4, 6, 4, 1. This is the reason why we name it binomial tree. We can further know there are $2^n$ elements in a $B_n$ tree.
+We can find the number of nodes in every row in $B_n$ is a binomial coefficient. For example in $B_4$, there is a node (root) in level 0, 4 nodes in level 1, 6 nodes in level 2, 4 nodes in level 3, and a node in level 4. They are exactly same as the 4th row (start from 0) of Pascal's triangle: 1, 4, 6, 4, 1. This is the reason why we name it binomial tree. We can further know there are $2^n$ elements in a $B_n$ tree.
 
 \label{Binomial heap} \index{Binomial heap!definition}
 
@@ -98,94 +98,36 @@ A binomial heap is a set of binomial trees (a forest) that satisfies the followi
 \item Every tree has unique rank. i.e. any two trees have different ranks.
 \end{enumerate}
 
-This definition leads to an important result that for a binomial heap contains $n$ elements, and if convert $n$ to binary format yields $a_0, a_1, a_2, ..., a_m$, where $a_0$ is the LSB and $a_m$ is the MSB, then for each $0 \leq i \leq m$, if $a_i=0$, there is no binomial tree of rank $i$ and if $a_i = 1$, there must be a binomial tree of rank $i$.
-
-For example, if a binomial heap contains 5 element, as 5 is `(LSB)101(MSB)', then there are 2 binomial trees in this heap, one tree has rank 0, the other has rank 2.
-
-Figure \ref{fig:bheap2} shows a binomial heap which have 19 nodes, as 19 is `(LSB)11001(MSB)' in binary format, so there is a $B_0$ tree, a $B_1$ tree and a $B_4$ tree.
+From the 2nd rule, for a binomial heap of $n$ elements, convert $n$ to its binary format $(a_m ... a_1, a_0)_2$, where $a_0$ is the least significant bit (LSB) and $a_m$ is the most significant bit (MSB). If if $a_i=0$, there is no tree of rank $i$; if $a_i = 1$, there is a tree of rank $i$. For example, consider a binomial heap of 5 elements. As 5 is 101 in binary, there are 2 binomial trees, one is $B_0$, the other is $B_2$. The binomial heap in figure \ref{fig:bheap2} has 19 elements, 19 is $(10011)_2$. There is a $B_0$, a $B_1$, and a $B_4$.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.5]{img/bheap2}
-  \caption{A binomial heap with 19 elements} \label{fig:bheap2}
+  \caption{A binomial heap with 19 elements}
+  \label{fig:bheap2}
 \end{figure}
 
-\subsubsection{Data layout}
+We define the binomial tree as $(r, k, ts)$, where $r$ is the rank, $k$ is the element in the root, and $ts$ is the list of sub-trees ordered by rank.
+
+\lstset{frame=single}
+\begin{Haskell}
+data BiTree a = Node Int a [BiTree a]
+
+type BiHeap a = [BiTree a]
+\end{Haskell}
+
 \index{left child, right sibling}
-There are two ways to define K-ary trees imperatively. One is by using
-`left-child, right-sibling' approach\cite{CLRS}. It is compatible with
-the typical binary tree structure. For each node, it has two fields,
-left field and right field. We use the left field to point to the first
-child of this node, and use the right field to point to the sibling
-node of this node. All siblings are represented as a single directional
-linked list. Figure \ref{fig:lcrs} shows an example tree represented in this way.
+There is a method called `left-child, right-sibling'\cite{CLRS}, that can reuse the binary tree data structure to define multi-ways tree. Every node has the left and right part. the left references to the first sub-tree; the right references to its sibling. All siblings form a list as shown in figure \ref{fig:lcrs}. Alternatively, we can use an array or a list to represent the sub-trees.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[scale=0.5]{img/lcrs}
-  \caption{Example tree represented in `left-child, right-sibling' way. $R$ is the root node, it has no sibling, so it right side is pointed to $NIL$. $C_1, C_2, ..., C_n$ are children of $R$. $C_1$ is linked from the left side of $R$, other siblings of $C_1$ are linked one next to each other on the right side of $C_1$. $C_2', ..., C_m'$ are children of $C_1$.} \label{fig:lcrs}
+  \includegraphics[scale=0.5]{img/left-child-right-sibling}
+  \caption{$R$ is the root, $T_1, T_2, ..., T_m$ are sub-trees of $R$. The left of $R$ is $T_1$, the right is NIL. $T_{11}, ..., T_{1p}$ are sub-trees of $T_1$. The left of $T_1$ is $T_{11}$, the right is its sibling $T_2$. The left of $T_2$ is $T_{21}$, the left is sibling.}
+  \label{fig:lcrs}
 \end{figure}
 
-The other way is to use the library defined collection container, such
-as array or list to represent all children of a node.
-
-Since the rank of a tree plays very important role, we also defined
-it as a field.
-
-For `left-child, right-sibling' method, we defined the binomial tree
-as the following.\footnote{C programs are also provided along with this book.}
-
-\lstset{language=Python}
-\begin{lstlisting}
-class BinomialTree:
-    def __init__(self, x = None):
-        self.rank = 0
-        self.key = x
-        self.parent = None
-        self.child = None
-        self.sibling = None
-\end{lstlisting}
-
-When initialize a tree with a key, we create a leaf node, set its rank
-as zero and all other fields are set as NIL.
-
-It quite nature to utilize pre-defined list to represent multiple children
-as below.
-
-\begin{lstlisting}
-class BinomialTree:
-    def __init__(self, x = None):
-        self.rank = 0
-        self.key = x
-        self.parent = None
-        self.children = []
-\end{lstlisting}
-
-For purely functional settings, such as in Haskell language, binomial tree
-are defined as the following.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-data BiTree a = Node { rank :: Int
-                     , root :: a
-                     , children :: [BiTree a]}
-\end{lstlisting}
-
-While binomial heap are defined as a list of binomial trees (a forest) with
-ranks in monotonically increase order. And as another implicit constraint,
-there are no two binomial trees have the same rank.
-
-\begin{lstlisting}
-type BiHeap a = [BiTree a]
-\end{lstlisting}
-
-% ================================================================
-%                 Basic heap operation
-% ================================================================
-\subsection{Basic heap operations}
-
-\subsubsection{Linking trees}
-\index{Binomial Heap!Linking}
+\subsection{Link}
+\index{Binomial Heap!Link}
 
 Before dive into the basic heap operations such as pop and insert,
 We'll first realize how to link two binomial trees with same rank into a
