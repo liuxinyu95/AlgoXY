@@ -277,186 +277,64 @@ Below is the implementation with 'left child, right sibling' method: \label{alg:
 \EndFunction
 \end{algorithmic}
 
-
 \subsection{Merge}
 \index{Binomial tree!merge}
 
-When merge two binomial heaps, we actually try to merge two forests
-of binomial trees. According to the definition, there can't be
-two trees with the same rank and the ranks are in monotonically increasing
-order. Our strategy is very similar to merge sort. That in every iteration,
-we take the first tree from each forest, compare their ranks,
-and pick the smaller one to the result heap; if the ranks are
-equal, we then perform linking to get a new tree, and recursively
-insert this new tree to the result of merging the rest trees.
-
-Figure \ref{fig:merge-bheaps} illustrates the idea of this algorithm. This
-method is different from the one given in \cite{CLRS}.
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{Pick the tree with smaller rank to the result.}{\includegraphics[scale=0.7]{img/bheap-merge-1}} \\
-  \subcaptionbox{If two trees have same rank, link them to a new tree, and recursively insert it to the merge result of the rest.}{\includegraphics[scale=0.7]{img/bheap-merge-2}}
-  \caption{Merge two heaps.} \label{fig:merge-bheaps}
-\end{figure}
-
-We can formalize this idea with a function. For non-empty cases, we
-denote the two heaps as $H_1 = \{ T_1, T_2, ... \}$ and $H_2 = \{ T'_1, T'_2, ...\}$. Let $H'_1 = \{ T_2, T_3, ... \}$ and $H'_2 = \{ T'_2, T'_3, ... \}$.
+When merge two binomial heaps, we actually merge two lists of binomial trees. Every tree has unique rank in merged result, and the ranks are in ascending order. The tree merge process is similar to merge sort. Every time, we pick the first tree from each heap, compare their ranks, put the smaller one to the result. If the two trees have the same rank, we link them to a bigger one, and recursively insert to the merge result.
 
 \be
-merge(H_1, H_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  H_1 & H_2 = \phi \\
-  H_2 & H_1 = \phi \\
-  \{ T_1 \} \cup merge(H'_1, H_2) & Rank(T_1) < Rank(T'_1) \\
-  \{ T'_1 \} \cup merge(H_1, H'_2) & Rank(T_1) > Rank(T'_1) \\
-  insertT(merge(H'_1, H'_2), link(T_1, T'_1)) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+merge\ ts_1\ [\ ] & = & ts_1 \\
+merge\ [\ ]\ ts_2 & = & ts_2 \\
+merge\ (t_1:ts_1)\ (t_2:ts_2) & = & \begin{cases}
+  rank\ t_1 < rank\ t_2: & t_1 : (merge\ ts_1\ (t_2:ts_2)) \\
+  rank\ t_2 < rank\ t_1: & t_2 : (merge\ (t_1:ts_1)\ ts_2) \\
+  \text{otherwise}: & ins\ (link\ t_1\ t_2)\ (merge\ ts_1\ ts_2) \\
+  \end{cases}
+\end{array}
 \ee
 
-To analysis the performance of merge, suppose there are $m_1$ trees in
-$H_1$, and $m_2$ trees in $H_2$. There are at most $m_1 + m_2$ trees in
-the merged result. If there are no two trees have the same rank, the
-merge operation is bound to $O(m_1 + m_2)$. While if there need linking
-for the trees with same rank, $insertT$ performs at most $O(m_1+m_2)$
-time. Consider the fact that $m_1 = 1 + \lfloor \lg n_1 \rfloor$ and
-$m_2 = 1 + \lfloor \lg n_2 \rfloor$, where
-$n_1$, $n_2$ are the numbers of nodes in each heap, and
-$\lfloor \lg n_1 \rfloor + \lfloor \lg n_2 \rfloor \leq 2 \lfloor \lg n \rfloor$, where $n = n_1 + n_2$, is the total number of nodes.
-the final performance of merging is $O(\lg n)$.
+Alternatively, when $t_1$ and $t_2$ have the same rank, we can insert the linked tree back to either heap, and recursively merge:
 
-Translating this algorithm to Haskell yields the following program.
+\[
+merge\ (ins\ (link\ t_1\ t_2)\ ts_1)\ ts_2
+\]
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-merge ts1 [] = ts1
-merge [] ts2 = ts2
-merge ts1@(t1:ts1') ts2@(t2:ts2')
-    | rank t1 < rank t2 = t1:(merge ts1' ts2)
-    | rank t1 > rank t2 = t2:(merge ts1 ts2')
-    | otherwise = insertTree (merge ts1' ts2') (link t1 t2)
-\end{lstlisting}
+We can also eliminate recursion, and implement iterative merge:
 
-Merge algorithm can also be described in imperative way as shown
-in algorithm \ref{alg:bheap-merge}.
-
-\begin{algorithm}
-\caption{imperative merge two binomial heaps}
-\label{alg:bheap-merge}
 \begin{algorithmic}[1]
 \Function{Merge}{$H_1, H_2$}
-  \If{$H_1 = \phi$}
-    \State \Return $H_2$
-  \EndIf
-  \If{$H_2 = \phi$}
-    \State \Return $H_1$
-  \EndIf
-  \State $H \gets \phi$
-  \While{$H_1 \neq \phi \land H_2 \neq \phi$}
-    \State $T \gets \phi$
+  \State $H \gets p \gets$ \Call{Node}{0, NIL, NIL}
+  \While{$H_1 \neq$ NIL and $H_2 \neq$ NIL}
     \If{\Call{Rank}{$H_1$} $<$ \Call{Rank}{$H_2$}}
-      \State $(T, H_1) \gets $ \Call{Extract-Head}{$H_1$}
+      \State \Call{Sibling}{$p$} $\gets H_1$
+      \State $p \gets$ \Call{Sibling}{$p$}
+      \State $H_1 \gets$ \Call{Sibling}{$H_1$}
     \ElsIf{\Call{Rank}{$H_2$} $<$ \Call{Rank}{$H_1$}}
-      \State $(T, H_2) \gets $ \Call{Extract-Head}{$H_2$}
-    \Else \Comment{Equal rank}
-      \State $(T_1, H_1) \gets $ \Call{Extract-Head}{$H_1$}
-      \State $(T_2, H_2) \gets $ \Call{Extract-Head}{$H_2$}
-      \State $T \gets $ \Call{Link}{$T_1, T_2$}
+      \State \Call{Sibling}{$p$} $\gets H_2$
+      \State $p \gets$ \Call{Sibling}{$p$}
+      \State $H_2 \gets$ \Call{Sibling}{$H_2$}
+    \Else \Comment{same rank}
+      \State $T_1 \gets H_1, T_2 \gets H_2$
+      \State $H_1 \gets$ \Call{Sibling}{$H_1$}, $H_2 \gets$ \Call{Sibling}{$H_2$}
+      \State $H_1 \gets $ \textproc{Insert-Tree}(\Call{Link}{$T_1, T_2$}, $H_1$)
     \EndIf
-    \State \Call{Append-Tree}{$H, T$}
   \EndWhile
-  \If{$H_1 \neq \phi$}
-    \State \Call{Append-Trees}{$H, H_1$}
+  \If{$H_1 \neq$ NIL}
+    \State \Call{Sibling}{$p$} $\gets H_1$
   \EndIf
-  \If{$H_2 \neq \phi$}
-    \State \Call{Append-Trees}{$H, H_2$}
+  \If{$H_2 \neq$ NIL}
+    \State \Call{Sibling}{$p$} $\gets H_2$
   \EndIf
-  \State \Return $H$
-\EndFunction
-\end{algorithmic}
-\end{algorithm}
-
-Since both heaps contain binomial trees with rank in monotonically
-increasing order. Each iteration, we pick the tree with smallest
-rank and append it to the result heap. If both trees have same rank
-we perform linking first. Consider the \textproc{Append-Tree} algorithm,
-The rank of the new tree to be appended, can't be less than
-any other trees in the result heap according to our merge strategy,
-however, it might be equal to the rank of the last tree in the
-result heap. This can happen if the last tree appended are the
-result of linking, which will increase the rank by one. In this
-case, we must link the new tree to be inserted with the last tree.
-In below algorithm, suppose function \textproc{Last}($H$) refers
-to the last tree in a heap, and \textproc{Append}($H, T$) just
-appends a new tree at the end of a forest.
-
-\begin{algorithmic}[1]
-\Function{Append-Tree}{$H, T$}
-  \If{$H \neq \phi \land$ \Call{Rank}{$T$} $=$ \textproc{Rank}(\Call{Last}{$H$})}
-    \State \Call{Last}{$H$} $\gets$ \textproc{Link}($T$, \Call{Last}{$H$})
-  \Else
-    \State \Call{Append}{$H, T$}
-  \EndIf
+  \State \Return \Call{Remove-First}{$H$}
 \EndFunction
 \end{algorithmic}
 
-Function \textproc{Append-Trees} repeatedly call this function, so
-that it can append all trees in a heap to the other heap.
-
-\begin{algorithmic}[1]
-\Function{Append-Trees}{$H_1, H_2$}
-  \For{each $T \in H_2$}
-    \State $H_1 \gets $ \Call{Append-Tree}{$H_1, T$}
-  \EndFor
-\EndFunction
-\end{algorithmic}
-
-The following Python program translates the merge algorithm.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def append_tree(ts, t):
-    if ts != [] and ts[-1].rank == t.rank:
-        ts[-1] = link(ts[-1], t)
-    else:
-        ts.append(t)
-    return ts
-
-def append_trees(ts1, ts2):
-    return reduce(append_tree, ts2, ts1)
-
-def merge(ts1, ts2):
-    if ts1 == []:
-        return ts2
-    if ts2 == []:
-        return ts1
-    ts = []
-    while ts1 != [] and ts2 != []:
-        t = None
-        if ts1[0].rank < ts2[0].rank:
-            t = ts1.pop(0)
-        elif ts2[0].rank < ts1[0].rank:
-            t = ts2.pop(0)
-        else:
-            t = link(ts1.pop(0), ts2.pop(0))
-        ts = append_tree(ts, t)
-    ts = append_trees(ts, ts1)
-    ts = append_trees(ts, ts2)
-    return ts
-\end{lstlisting}
-
-\begin{Exercise}
-
-The program given above uses a container to manage sub-trees.
-Implement the merge algorithm in your favorite imperative programming
-language with `left-child, right-sibling' approach.
-
-\end{Exercise}
+If there are $m_1$ trees in $H_1$, $m_2$ trees in $H_2$. There are at most $m_1 + m_2$ trees after merge. The merge is bound to $O(m_1 + m_2)$ time if all trees have different ranks. If there exist trees of the same rank, we call $ins$ up to $O(m_1 + m_2)$ times. Consider $m_1 = 1 + \lfloor \lg n_1 \rfloor$ and $m_2 = 1 + \lfloor \lg n_2 \rfloor$, where $n_1$, $n_2$ are the numbers of elements in each heap, and $\lfloor \lg n_1 \rfloor + \lfloor \lg n_2 \rfloor \leq 2 \lfloor \lg n \rfloor$, where $n = n_1 + n_2$. The final performance of merge is $O(\lg n)$.
 
 \subsubsection{Pop}
 \index{Binomial heap!pop}
+
 Among the forest which forms the binomial heap, each binomial tree
 conforms to heap property that the root contains the minimum element
 in that tree. However, the order relationship of these roots can be
