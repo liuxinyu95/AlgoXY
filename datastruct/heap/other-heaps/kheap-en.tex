@@ -225,161 +225,62 @@ We can store the sub-trees in reversed order, it's need constant time to append 
 \subsubsection{Insert}
 \index{Binomial heap!insert} \index{Binomial heap!push}
 
-As the rank of binomial trees in a forest is monotonically increasing,
-by using the $link$ function defined above, it's possible to define an
-auxiliary function, so that we can insert a new tree, with rank no bigger
-than the smallest one, to the heap which is a forest actually.
-
-Denote the non-empty heap as $H = \{T_1, T_2, ..., T_n\}$, we define
+When insert a new tree, we keep the trees in binomial heap ordered by rank (ascending):
 
 \be
-insertT(H, T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ T \} & H = \phi \\
-  \{ T \} \cup H & Rank(T) < Rank(T_1) \\
-  insertT(H', link(T, T_1)) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+ins\ t\ [\ ] & = & [t] \\
+ins\ t\ (t':ts) & = & \begin{cases}
+  rank\ t < rank\ t': & t:t':ts \\
+  rank\ t' < rank\ t: & t' : ins\ t\ ts \\
+  \text{otherwise}: & ins\ (link\ t\ t')\ ts  \\
+\end{cases}
+\end{array}
 \ee
 
-where
-
-\[
-  H' = \{ T_2, T_3, ..., T_n\}
-\]
-
-The idea is that for the empty heap, we set the new tree as the only
-element to create a singleton forest; otherwise, we compare the ranks
-of the new tree and the first tree in the forest, if they are same,
-we link them together, and recursively insert the linked result (a tree
-with rank increased by one) to the rest of the forest; If they are
-not same, since the pre-condition constraints the rank of the new
-tree, it must be the smallest, we put this new tree in front of
-all the other trees in the forest.
-
-From the binomial properties mentioned above, there are at most
-$O(\lg n)$ binomial trees in the forest, where $n$ is the total
-number of nodes. Thus function $insertT$ performs at most $O(\lg n)$
-times linking, which are all constant time operation. So the
-performance of $insertT$ is $O(\lg n)$.
-\footnote{There is interesting observation by comparing this
-operation with adding two binary numbers. Which will lead to
-topic of {\em numeric representation}\cite{okasaki-book}.}
-
-The relative Haskell program is given as below.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-insertTree [] t = [t]
-insertTree ts@(t':ts') t = if rank t < rank t' then t:ts
-                           else insertTree ts' (link t t')
-\end{lstlisting}
-
-With this auxiliary function, it's easy to realize the insertion.
-We can wrap the new element to be inserted as the only leaf of a tree,
-then insert this tree to the binomial heap.
+Where $rank\ (r, k, ts) = r$ gives the rank of a tree. For empty heap $[\ ]$, it becomes a single list of the new tree $t$; otherwise, we compare the rank of $t$ with the first tree $t'$, if $t$ has less rank, then it becomes the new first one; if $t'$ has less rank, we recursively insert $t$ to the rest trees; if they have the same rank, then link $t$ and $t'$ to a bigger tree, and recursively insert to the rest. For $n$ elements, there are at most $O(\lg n)$ binomial trees in the heap. $ins$ links $O(\lg n)$ time at most, as linking is bound to constant time, the overall performance is bound to $O(\lg n)$\footnote{It's similar to adding two binary numbers. A more generic topic is {\em numeric representation}\cite{okasaki-book}.}. We can define insert for binomial heap with $ins$. First wrap the new element $x$ in a singleton tree, then insert the tree to the heap:
 
 \be
-insert(H, x) = insertT(H, node(0, x, \phi))
+insert\ x = ins\ (0, x, [\ ])
 \ee
 
-And we can continuously build a heap from a series of elements by folding.
-For example the following Haskell define a helper function 'fromList'.
+This is a Curried definition, we can further insert a list of elements to the heap by using fold:
 
-\begin{lstlisting}
-fromList = foldl insert []
-\end{lstlisting}
+\be
+\textit{fromList} = foldr\ insert\ [\ ]
+\ee
 
-Since wrapping an element as a singleton tree takes $O(1)$ time,
-the real work is done in $insertT$, the performance of binomial
-heap insertion is bound to $O(\lg n)$.
+Below is the implementation with 'left child, right sibling' method: \label{alg:insert-tree}
 
-The insertion algorithm can also be realized with imperative approach.
-
-\begin{algorithm}
-\caption{Insert a tree with 'left-child-right-sibling' method.}
-\label{alg:insert-tree}
 \begin{algorithmic}[1]
-\Function{Insert-Tree}{$H, T$}
-  \While{$H \neq \phi \land $ \textproc{Rank}(\Call{Head}{$H$}) = \Call{Rank}{$T$}}
-    \State $(T_1, H) \gets$ \Call{Extract-Head}{$H$}
-    \State $T \gets $ \Call{Link}{$T, T_1$}
+\Function{Insert-Tree}{$T, H$}
+  \State $\perp \gets p \gets$ \Call{Node}{$0$, NIL, NIL}
+  \While{$H \neq$ NIL 且 \Call{Rank}{$H$} $\leq$ \Call{Rank}{$T$}}
+    \State $T_1 \gets H$
+    \State $H \gets $ \Call{Sibling}{$H$}
+    \If{\Call{Rank}{$T$} = \Call{Rank}{$T_1$}}
+      \State $T \gets$ \Call{Link}{$T, T_1$}
+    \Else
+      \State \Call{Sibling}{$p$} $\gets T_1$
+      \State $p \gets T_1$
+    \EndIf
   \EndWhile
+  \State \Call{Sibling}{$p$} $\gets T$
   \State \Call{Sibling}{$T$} $\gets H$
-  \State \Return $T$
+  \State \Return \Call{Remove-First}{$\perp$}
+\EndFunction
+\Statex
+\Function{Remove-First}{$H$}
+  \State $n \gets$ \Call{Sibling}{$H$}
+  \State \Call{Sibling}{$H$} $\gets$ NIL
+  \State \Return $n$
 \EndFunction
 \end{algorithmic}
-\end{algorithm}
 
-Algorithm \ref{alg:insert-tree} continuously linking the first tree
-in a heap with the new tree to be inserted if they have the same rank.
-After that, it puts the linked-list of the rest trees as the sibling,
-and returns the new linked-list.
 
-If using a container to manage the children of a node, the algorithm
-can be given in Algorithm \ref{alg:insert-tree1}.
-
-\begin{algorithm}
-\caption{Insert a tree with children managed by a container.}
-\label{alg:insert-tree1}
-\begin{algorithmic}[1]
-\Function{Insert-Tree'}{$H, T$}
-  \While{$H \neq \phi \land $ \Call{Rank}{$H[0]$} = \Call{Rank}{$T$}}
-    \State $T_1 \gets$ \Call{Pop}{$H$}
-    \State $T \gets $ \Call{Link}{$T, T_1$}
-  \EndWhile
-  \State \Call{Head-Insert}{$H, T$}
-  \State \Return $H$
-\EndFunction
-\end{algorithmic}
-\end{algorithm}
-
-In this algorithm, function \textproc{Pop} removes the first tree
-$T_1 = H[0]$ from the forest. And function \textproc{Head-Insert},
-insert a new tree before any other trees in the heap, so that it
-becomes the first element in the forest.
-
-With either \textproc{Insert-Tree} or \textproc{Insert-Tree'} defined.
-Realize the binomial heap insertion is trivial.
-
-\begin{algorithm}
-\caption{Imperative insert algorithm}
-\label{alg:bheap-insert}
-\begin{algorithmic}[1]
-\Function{Insert}{$H, x$}
-  \State \Return \textproc{Insert-Tree}($H$, \Call{Node}{$0, x, \phi$})
-\EndFunction
-\end{algorithmic}
-\end{algorithm}
-
-The following python program implement the insert algorithm by using
-a container to manage sub-trees. the `left-child, right-sibling' program
-is left as an exercise.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def insert_tree(ts, t):
-    while ts !=[] and t.rank == ts[0].rank:
-        t = link(t, ts.pop(0))
-    ts.insert(0, t)
-    return ts
-
-def insert(h, x):
-    return insert_tree(h, BinomialTree(x))
-\end{lstlisting}
-
-\begin{Exercise}
-Write the insertion program in your favorite imperative programming
-language by using the `left-child, right-sibling' approach.
-\end{Exercise}
-
-% =================================
-%     Binomial heap merge
-% =================================
-
-\subsubsection{Merge two heaps}
+\subsection{Merge}
 \index{Binomial tree!merge}
+
 When merge two binomial heaps, we actually try to merge two forests
 of binomial trees. According to the definition, there can't be
 two trees with the same rank and the ranks are in monotonically increasing
