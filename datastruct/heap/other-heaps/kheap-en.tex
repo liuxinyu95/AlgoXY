@@ -335,204 +335,109 @@ If there are $m_1$ trees in $H_1$, $m_2$ trees in $H_2$. There are at most $m_1 
 \subsubsection{Pop}
 \index{Binomial heap!pop}
 
-Among the forest which forms the binomial heap, each binomial tree
-conforms to heap property that the root contains the minimum element
-in that tree. However, the order relationship of these roots can be
-arbitrary. To find the minimum element in the heap, we can select the
-smallest root of these trees. Since there are $\lg n$ binomial trees,
-this approach takes $O(\lg n)$ time.
-
-However, after we locate the minimum element (which is also know as
-the top element of a heap), we need remove it from the heap and keep
-the binomial property to accomplish heap-pop operation.
-Suppose the forest forms the binomial heap consists trees of
-$B_i, B_j, ..., B_p, ..., B_m$, where $B_k$ is a binomial tree of
-rank $k$, and the minimum element is the root of $B_p$. If we
-delete it, there will be $p$ children left, which are all
-binomial trees with ranks $p-1, p-2, ..., 0$.
-
-One tool at hand is that we have defined $O(\lg n)$ merge function.
-A possible approach is to reverse the $p$ children, so that their
-ranks change to monotonically increasing order, and forms a binomial
-heap $H_p$. The rest of trees is still a binomial
-heap, we represent it as $H' = H - B_p$. Merging $H_p$ and $H'$ given
-the final result of pop. Figure \ref{fig:bheap-del-min} illustrates
-this idea.
+Although every tree has the minimal element in its root, we don't know which tree holds the overall minimum in the heap. We need locate it from all trees. As there are $O(\lg n)$ trees, it takes $O(\lg n)$ time to find the top element. For pop, we need further remove the top element and maintain heap property. Let the trees be $B_i, B_j, ..., B_p, ..., B_m$ in the heap, and the minimum is in the root of $B_p$. After remove the top, there leave $p$ sub binomial trees with ranks of $p-1, p-2, ..., 0$. We can reverse them to form a new binomial heap $H_p$. The other trees without $B_p$ also form a binomial heap $H' = H - [B_p]$. We merge $H_p$ and $H'$ to get the final result as shown in figure \ref{fig:bheap-del-min}. Below is the definition to access the minimal element in the heap.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[scale=0.5]{img/bheap-pop}
-  \caption{Pop the minimum element from a binomial heap.}
+  \includegraphics[scale=0.4]{img/bheap-pop}
+  \caption{Binomial heap pop.}
   \label{fig:bheap-del-min}
 \end{figure}
 
-In order to realize this algorithm, we first need to define an
-auxiliary function, which can extract the tree contains the minimum
-element at root from the forest.
-
 \be
-extractMin(H) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (T, \phi) & \text{H is a singleton as } \{ T \} \\
-  (T_1, H') & Root(T_1) < Root(T') \\
-  (T', \{T_1\} \cup H'') & otherwise
-  \end{array}
-\right .
+top\ (t:ts) = foldr\ f\ (key\ t)\ ts
 \ee
 
-where
-
 \[
-  \begin{array}{lr}
-  H = \{ T_1, T_2, ...\} & \text{for the non-empty forest case;} \\
-  H' = \{ T_2, T_3, ...\} & \text{is the forest without the first tree;} \\
-  (T', H'') = extractMin(H')
-  \end{array}
+f\ (r, x, ts)\ y = min\ x\ y
 \]
 
-The result of this function is a tuple. The first part is the
-tree which has the minimum element at root, the second part is
-the rest of the trees after remove the first part from the forest.
-
-This function examine each of the trees in the forest thus is bound
-to $O(\lg n)$ time.
-
-The relative Haskell program can be give respectively.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-extractMin [t] = (t, [])
-extractMin (t:ts) = if root t < root t' then (t, ts)
-                    else (t', t:ts')
-    where
-      (t', ts') = extractMin ts
-\end{lstlisting}
-
-With this function defined, to return the minimum element is trivial.
-
-\begin{lstlisting}
-findMin = root . fst . extractMin
-\end{lstlisting}
-
-Of course, it's possible to just traverse forest and pick the
-minimum root without remove the tree for this purpose. Below
-imperative algorithm describes it with `left child, right sibling'
-approach.
+It's means to traverse all trees and find the which root has the minimum.
 
 \begin{algorithmic}[1]
-\Function{Find-Minimum}{$H$}
-  \State $T \gets $ \Call{Head}{$H$}
-  \State $min \gets \infty$
-  \While{$T \ne \phi$}
-    \If{\Call{Key}{$T$}$ < min$}
-      \State $min \gets $ \Call{Key}{$T$}
-    \EndIf
-    \State $T \gets $ \Call{Sibling}{$T$}
+\Function{Top}{$H$}
+  \State $m \gets \infty$
+  \While{$H \neq$ NIL}
+    \State $m \gets$ \textproc{Min}($m$, \Call{Key}{$H$})
+    \State $H \gets $ \Call{Sibling}{$H$}
   \EndWhile
-  \State \Return $min$
+  \State \Return $m$
 \EndFunction
 \end{algorithmic}
 
-While if we manage the children with collection containers, the link
-list traversing is abstracted as to find the minimum element among the list.
-The following Python program shows about this situation.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def find_min(ts):
-    min_t = min(ts, key=lambda t: t.key)
-    return min_t.key
-\end{lstlisting}
-
-Next we define the function to delete the minimum element from
-the heap by using $extractMin$.
+To support pop, we need extract the tree containing the minimum out:
 
 \be
-delteMin(H) = merge(reverse(Children(T)), H')
+\begin{array}{rcl}
+min'\ [t] & = & (t, [\ ]) \\
+min'\ (t:ts) & = & \begin{cases}
+  key\ t < key\ t': & (t, ts), \text{其中}: (t', ts') = min'\ ts \\
+  \text{否则}: & (t', t:ts')
+  \end{cases}
+\end{array}
+\label{eq:extract-min-bitree}
 \ee
 
-where
+Where $key\ (r, k, ts) = k$ accesses the root element, the result of $min'$ is a pair: the tree containing the minimum and the remaining trees. We next define $pop$ with it:
 
-\[
-  (T, H') = extractMin(H)
-\]
+\be
+pop\ H = (k, merge\ (reverse\ ts)\ H'), \text{其中}: ((r, k, ts), H') = min'\ H
+\ee
 
-Translate the formula to Haskell program is trivial and we'll skip
-it.
+The iterative implementation is as below:
 
-To realize the algorithm in procedural way takes extra efforts
-including list reversing etc. We left these details as exercise to the
-reader. The following pseudo code illustrate the imperative
-pop algorithm
+\begin{algorithmic}[1]
+\Function{Pop}{$H$}
+  \State $(T_m, H) \gets$ \Call{Extract-Min}{$H$}
+  \State $H \gets$ \textproc{Merge}($H$, \textproc{Reverse}(\Call{Sub-Trees}{$T_m$}))
+  \State \Call{Sub-Trees}{$T_m$}
+  \State \Return (\Call{Key}{$T_m$}, $H$)
+\EndFunction
+\end{algorithmic}
+
+Where the list reverse is defined in chapter 1, \textproc{Extract-Min} is implemented as below:
 
 \begin{algorithmic}[1]
 \Function{Extract-Min}{$H$}
-  \State $(T_{min}, H) \gets$ \Call{Extract-Min-Tree}{$H$}
-  \State $H \gets$ \textproc{Merge}($H$, \textproc{Reverse}(\Call{Children}{$T_{min}$}))
-  \State \Return (\Call{Key}{$T_{min}$}, $H$)
+  \State $H' \gets H, p \gets$ NIL
+  \State $T_m \gets T_p \gets$ NIL
+  \While{$H \neq$ NIL}
+    \If{$T_m =$ NIL or \Call{Key}{$H$} $<$ \Call{Key}{$T_m$}}
+      \State $T_m \gets H$
+      \State $T_p \gets p$
+    \EndIf
+    \State $p \gets H$
+    \State $H \gets $ \Call{Sibling}{$H$}
+  \EndWhile
+  \If{$T_p \neq$ NIL}
+    \State \Call{Sibling}{$T_p$} $\gets$ \Call{Sibling}{$T_m$}
+  \Else
+    \State $H' \gets$ \Call{Sibling}{$T_m$}
+  \EndIf
+  \State \Call{Sibling}{$T_m$} $\gets$ NIL
+  \State \Return $(T_m, H')$
 \EndFunction
 \end{algorithmic}
 
-With pop operation defined, we can realize heap sort by creating
-a binomial heap from a series of numbers, than keep popping the
-smallest number from the heap till it becomes empty.
+We can implement heap sort with $pop$. First build a binomial heap from a list of elements, then repeatedly pop the smallest element.
 
 \be
-sort(xs) = heapSort(fromList(xs))
+sort  = heapSort \circ fromList
 \ee
 
-And the real work is done in function $heapSort$.
+Where $heapSort$ is defined as:
 
 \be
-heapSort(H) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & H = \phi \\
-  \{ findMin(H)  \} \cup heapSort(deleteMin(H)) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+  heapSort\ [\ ] & = & [\ ] \\
+  heapSort\ H & = & k : (heapSort\ H'), \text{where}: (k, H') = pop\ H
+\end{array}
 \ee
 
-Translate to Haskell yields the following program.
+Binomial heap insert and merge are bound to $O(\lg n)$ time in worst case, their amortized performance are constant time, we skip the proof.
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-heapSort = hsort . fromList where
-    hsort [] = []
-    hsort h = (findMin h):(hsort $ deleteMin h)
-\end{lstlisting} %$
-
-Function fromList can be defined by folding. Heap sort can
-also be expressed in procedural way respectively. Please refer to
-previous chapter about binary heap for detail.
-
-\begin{Exercise}
-\begin{itemize}
-\item Write the program to return the minimum element from a
-binomial heap in your favorite imperative programming language
-with 'left-child, right-sibling' approach.
-
-\item Realize the \textproc{Extract-Min-Tree}() Algorithm.
-
-\item For 'left-child, right-sibling' approach, reversing all
-children of a tree is actually reversing a single-direct linked-list.
-Write a program to reverse such linked-list in your favorite
-imperative programming language.
-\end{itemize}
-\end{Exercise}
-
-\subsubsection{More words about binomial heap}
-As what we have shown that insertion and merge are bound to $O(\lg n)$
-time. The results are all ensure for the {\em worst case}. The
-amortized performance are $O(1)$. We skip the proof for this
-fact.
-
-% ================================================================
-%                 Fibonacci heaps
-% ================================================================
-\section{Fibonacci Heaps}
-\label{fib-heap} \index{Fibonacci Heap}
+\section{Fibonacci heap}
+\label{fib-heap} \index{Fibonacci heap}
 
 It's interesting that why the name is given as `Fibonacci heap'.
 In fact, there is no direct connection from the structure design
