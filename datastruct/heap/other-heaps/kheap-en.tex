@@ -439,195 +439,75 @@ Binomial heap insert and merge are bound to $O(\lg n)$ time in worst case, their
 \section{Fibonacci heap}
 \label{fib-heap} \index{Fibonacci heap}
 
-It's interesting that why the name is given as `Fibonacci heap'.
-In fact, there is no direct connection from the structure design
-to Fibonacci series. The inventors of `Fibonacci heap', Michael L.
-Fredman and Robert E. Tarjan, utilized the property of Fibonacci series
-to prove the performance time bound, so they decided to use Fibonacci
-to name this data structure.\cite{CLRS}
+Binomial heap is named from binomial theorem, Fibonacci heap is named after Fibonacci numbers\footnote{Michael L. Fredman and Robert E. Tarjan, used Fibonacci numbers to prove the performance time bound, they decided to use Fibonacci to name this data structure.\cite{CLRS}}. Fibonacci heap is essentially a `lazy' binomial heap. It delays some operation. However, it does not mean the binomial heap turns to be Fibonacci heap automatically in lazy evaluation environment. Such environment only makes the implementation easy\cite{hackage-fibq}. All operations except for pop are bound to amortized constant time\cite{okasaki-fibh}.
 
-% ================================================================
-%                 Definition
-% ================================================================
-\subsection{Definition}
-
-Fibonacci heap is essentially a lazy evaluated binomial heap. Note
-that, it doesn't mean implementing binomial heap in lazy evaluation
-settings, for instance Haskell, brings Fibonacci heap automatically.
-However, lazy evaluation setting does help in realization. For example
-in \cite{hackage-fibq}, presents a elegant implementation.
-
-Fibonacci heap has excellent performance theoretically. All operations
-except for pop are bound to amortized $O(1)$ time. In this section,
-we'll give an algorithm different from some popular textbook\cite{CLRS}.
-Most of the ideas present here are based on Okasaki's work\cite{okasaki-fibh}.
-
-Let's review and compare the performance of binomial heap and Fibonacci
-heap (more precisely, the performance goal of Fibonacci heap).
-
-% \begin{table}
-% \caption{Performance goal of Fibonacci heap}
-\begin{tabular}{l | c | r}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{| l | c | r |}
   \hline
   operation & Binomial heap & Fibonacci heap \\
   \hline
   insertion & $O(\lg n)$ & $O(1)$ \\
+  \hline
   merge & $O(\lg n)$ & $O(1)$ \\
+  \hline
   top & $O(\lg n)$ & $O(1)$ \\
+  \hline
   pop & $O(\lg n)$ & amortized $O(\lg n)$ \\
   \hline
 \end{tabular}
-% \end{table}
+\caption{Performance of Fibonacci heap and binomial heap}
+\end{table}
 
-Consider where is the bottleneck of inserting a new element $x$ to
-binomial heap. We actually wrap $x$ as a singleton leaf and insert
-this tree into the heap which is actually a forest.
+When insert new element $x$ to a binomial heap, we wrap $x$ to a single tree, then insert to the forest. We keep the rank ordering, if two ranks are same, we link them, and recursively insert. The performance is bound to $O(\lg n)$ time. Taking lazy strategy, we delay the ordered (by rank) insert and link later. Put the single tree of $x$ directly to the forest. To access the top element in constant time, we need record which tree has the minimum in its root. A Fibonacci heap is either empty $\nil$, or a forest of trees denoted as $(n, t_m, ts)$. Where $t_m$ is the tree holds the minimal element, $n$ is the number of elements in the heap, and $ts$ is the rest trees. Below example program defines Fibonacci heap (reused the definition of binomial tree).
 
-During this operation, we inserted the tree in
-monotonically increasing order of rank, and once the rank is equal,
-recursively linking and inserting will happen, which lead to the
-$O(\lg n)$ time.
-
-As the lazy strategy, we can postpone the ordered-rank insertion and
-merging operations. On the contrary, we just put the singleton
-leaf to the forest. The problem is that when we try to find the
-minimum element, for example the top operation, the performance
-will be bad, because we need check all trees in the forest, and
-there aren't only $O(\lg n)$ trees.
-
-In order to locate the top element in constant time, we must remember
-where is the tree contains the minimum element as root.
-
-Based on this idea, we can reuse the definition of binomial tree
-and give the definition of Fibonacci heap as the following Haskell
-program for example.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-data BiTree a = Node { rank :: Int
-                     , root :: a
-                     , children :: [BiTree a]}
-\end{lstlisting}
-
-The Fibonacci heap is either empty or a forest of binomial trees with
-the minimum element stored in a special one explicitly.
-
-\begin{lstlisting}
+\begin{lstlisting}[style=Haskell]
 data FibHeap a = E | FH { size :: Int
                         , minTree :: BiTree a
                         , trees :: [BiTree a]}
 \end{lstlisting}
 
-For convenient purpose, we also add a size field to record how many
-elements are there in a heap.
+We can access the top element in constant time: $top\ H = key\ \textit{minTree}\ H$.
 
-The data layout can also be defined in imperative way as the following
-ANSI C code.
-
-\lstset{language=C}
-\begin{lstlisting}
-struct node{
-  Key key;
-  struct node *next, *prev, *parent, *children;
-  int degree; /* As known as rank */
-  int mark;
-};
-
-struct FibHeap{
-  struct node *roots;
-  struct node *minTr;
-  int n; /* number of nodes */
-};
-\end{lstlisting}
-
-For generality, Key can be a customized type, we use integer for illustration
-purpose.
-
-\lstset{language=C}
-\begin{lstlisting}
-typedef int Key;
-\end{lstlisting}
-
-In this chapter, we use the circular doubly linked-list for imperative
-settings to realize the Fibonacci Heap as described in \cite{CLRS}.
-It makes many operations easy and fast. Note that, there are two extra
-fields added. A $degree$, also known as $rank$ for a node is the number
-of children of this node; Flag $mark$ is used only in decreasing key
-operation. It will be explained in detail in later section.
-
-
-% ================================================================
-%          Basic Heap operations
-% ================================================================
-\subsection{Basic heap operations}
-As we mentioned that Fibonacci heap is essentially binomial heap
-implemented in a lazy evaluation strategy, we'll reuse many algorithms
-defined for binomial heap.
-
-\subsubsection{Insert a new element to the heap}
+\subsection{Insert}
 \index{Fibonacci Heap!insert}
-Recall the insertion algorithm of binomial tree. It can be treated
-as a special case of merge operation, that one heap contains only
-a singleton tree.
+
+We define insert as a special case of merge: one heap contains a singleton tree:
+
+\[
+insert\ x\ H = merge\ (singleton\ x)\ H
+\]
+
+Or simplified in Curried form:
 
 \be
-insert(H, x) = merge(H, singleton(x))
+insert = merge \circ singleton
 \label{eq:fib-insert}
 \ee
 
-where singleton is an auxiliary function to wrap an element to a
-one-leaf-tree.
-
 \[
-singleton(x) = FibHeap(1, node(1, x, \phi), \phi)
+singleton\ x = (1, (1, x, [\ ]), [\ ])
 \]
 
-Note that function $FibHeap()$ accepts three parameters, a
-size value, which is 1 for this one-leaf-tree, a special tree
-which contains the minimum element as root, and a list of other
-binomial trees in the forest. The meaning of function $node()$ is
-as same as before, that it creates a binomial tree from a rank,
-an element, and a list of children.
-
-Insertion can also be realized directly by appending the new node
-to the forest and updated the record of the tree which contains the
-minimum element.
+We can also implement insert as add a tree to the forest, then update the reference to the tree holds the minimum.
 
 \begin{algorithmic}[1]
-\Function{Insert}{$H, k$}
-  \State $x \gets$ \Call{Singleton}{$k$} \Comment{Wrap $x$ to a node}
-  \State append $x$ to root list of $H$
-  \If{$T_{min}(H) = NIL \lor k <$ \Call{Key}{$T_{min}(H)$} }
-    \State $T_{min}(H) \gets x$
+\Function{Insert}{$k, H$}
+  \State $x \gets$ \Call{Singleton}{$k$} \Comment{wrap $k$ to a tree}
+  \State \textproc{Add}($x$, \Call{Trees}{$H$})
+  \State $T_m \gets$ \Call{Min-Tree}{$H$}
+  \If{$T_m = $ NIL or $k <$ \Call{Key}{$T_m$}}
+    \State \Call{Min-Tree}{$H$} $\gets x$
   \EndIf
-  \State \Call{n}{$H$} $\gets$ \Call{n}{$H$}+1
+  \State \Call{Size}{$H$} $\gets$ \Call{Size}{$H$} + 1
 \EndFunction
 \end{algorithmic}
 
-Where function $T_{min}()$ returns the tree which contains the minimum
-element at root.
+Where \textproc{Trees}($H$) access the list of trees in $H$, \textproc{Min-Tree}($H$) returns the tree that holds the minimal element.
 
-The following C source snippet is a translation for this algorithm.
-
-\lstset{language=C}
-\begin{lstlisting}
-struct FibHeap* insert_node(struct FibHeap* h, struct node* x){
-  h = add_tree(h, x);
-  if(h->minTr == NULL || x->key < h->minTr->key)
-    h->minTr = x;
-  h->n++;
-  return h;
-}
-\end{lstlisting}
-
-\begin{Exercise}
-Implement the insert algorithm in your favorite imperative programming
-language completely. This is also an exercise to circular doubly linked list
-manipulation.
-\end{Exercise}
-
-\subsubsection{Merge two heaps}
+\subsubsection{Merge}
 \index{Fibonacci Heap!merge}
+
 Different with the merging algorithm of binomial heap, we post-pone
 the linking operations later. The idea is to just put all binomial
 trees from each heap together, and choose one special tree which
