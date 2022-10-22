@@ -508,441 +508,210 @@ Where \textproc{Trees}($H$) access the list of trees in $H$, \textproc{Min-Tree}
 \subsubsection{Merge}
 \index{Fibonacci Heap!merge}
 
-Different with the merging algorithm of binomial heap, we post-pone
-the linking operations later. The idea is to just put all binomial
-trees from each heap together, and choose one special tree which
-record the minimum element for the result heap.
+Different from binomial heap, we delay the link operation, but only put the trees from two heaps together, and pick the new top element.
 
 \be
-merge(H_1, H_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  H_1 & H_2 = \phi \\
-  H_2 & H_1 = \phi \\
-  FibHeap(s_1 + s_2, {T_1}_{min}, \{ {T_2}_{min} \} \cup \mathbb{T}_1 \cup \mathbb{T}_2) & root({T_1}_{min}) < root({T_2}_{min}) \\
-  FibHeap(s_1 + s_2, {T_2}_{min}, \{ {T_1}_{min} \} \cup \mathbb{T}_1 \cup \mathbb{T}_2) & otherwise \\
-  \end{array}
-\right .
+\begin{array}{rcl}
+merge\ h\ \nil & = & h \\
+merge\ \nil\ h & = & h \\
+merge\ (n, t_m, ts)\ (n', t_m', ts') & = & \begin{cases}
+  key\ t_m < key\ t_m': & (n + n', t_m, t_m' : ts \doubleplus ts') \\
+  \text{otherwise}: & (n + n', t_m', t_m : ts \doubleplus ts') \\
+  \end{cases}
+\end{array}
 \ee
 
-where $s_1$ and $s_2$ are the size of $H_1$ and $H_2$; ${T_1}_{min}$ and
-${T_2}_{min}$ are the special trees with minimum element as root in $H_1$
-and $H_2$ respectively; $\mathbb{T}_1 = \{{T_1}_1, {T_1}_2, ...\}$ is
-a forest contains all other binomial trees in $H_1$; while $\mathbb{T}_2$
-has the same meaning as $\mathbb{T}_1$ except that it represents the
-forest in $H_2$. Function $root(T)$ return the root element of a binomial
-tree.
+When neither tree is empty, the $\doubleplus$ takes time that is proportion to the number of trees in one heap. We can improve it to constant time with doubly linked-list to store trees as shown in below example program.
 
-Note that as long as the $\cup$ operation takes constant time, these
-$merge$ algorithm is bound to $O(1)$. The following Haskell program
-is the translation of this algorithm.
+\begin{lstlisting}[language = Bourbaki]
+data Node<K> {
+    K key
+    Int rank
+    Node<k> next, prev, parent, subTrees
+}
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-merge h E = h
-merge E h = h
-merge h1@(FH sz1 minTr1 ts1) h2@(FH sz2 minTr2 ts2)
-    | root minTr1 < root minTr2 = FH (sz1+sz2) minTr1 (minTr2:ts2++ts1)
-    | otherwise = FH (sz1+sz2) minTr2 (minTr1:ts1++ts2)
+data FibHeap<K> {
+    Int size
+    Node<K> minTree, trees
+}
 \end{lstlisting}
-
-Merge algorithm can also be realized imperatively by concatenating
-the root lists of the two heaps.
 
 \begin{algorithmic}[1]
 \Function{Merge}{$H_1, H_2$}
-  \State $H \gets \Phi$
-  \State \Call{Root}{$H$} $\gets$ \textproc{Concat}(\Call{Root}{$H_1$}, \Call{Root}{$H_2$})
-  \If{\Call{Key}{$T_{min}(H_1)$} $<$ \Call{Key}{$T_{min}(H_2)$}}
-    \State $T_{min}(H) \gets T_{min}(H_1)$
+  \State $H \gets$ \Call{Fib-Heap}{}
+  \State \Call{Trees}{$H$} $\gets$ \textproc{Concat}(\Call{Trees}{$H_1$}, \Call{Trees}{$H_2$})
+  \If{\textproc{Key}(\Call{Min-Tree}{$H_1$}) $<$ \textproc{Key}(\Call{Min-Tree}{$H_2$})}
+    \State \Call{Min-Tree}{$H$} $\gets$ \Call{Min-Tree}{$H_1$}
   \Else
-    \State $T_{min}(H) \gets T_{min}(H_2)$
+    \State \Call{Min-Tree}{$H$} $\gets$ \Call{Min-Tree}{$H_2$}
   \EndIf
-  \Call{n}{$H$} = \Call{n}{$H_1$} + \Call{n}{$H_2$}
+  \Call{Size}{$H$} = \Call{Size}{$H_1$} + \Call{Size}{$H_2$}
   \State \Return $H$
+\EndFunction
+\Statex
+\Function{Concat}{$s_1, s_2$}
+  \State $e_1 \gets$ \Call{Prev}{$s_1$}
+  \State $e_2 \gets$ \Call{Prev}{$s_2$}
+  \State \Call{Next}{$e_1$} $\gets s_2$
+  \State \Call{Prev}{$s_2$} $\gets e_1$
+  \State \Call{Next}{$e_2$} $\gets s_1$
+  \State \Call{Prev}{$s_1$} $\gets e_2$
+  \State \Return $s_1$
 \EndFunction
 \end{algorithmic}
 
-This function assumes neither $H_1$, nor $H_2$ is empty. And it's easy
-to add handling to these special cases as the following ANSI C program.
-
-\lstset{language=C}
-\begin{lstlisting}
-struct FibHeap* merge(struct FibHeap* h1, struct FibHeap* h2){
-  struct FibHeap* h;
-  if(is_empty(h1))
-    return h2;
-  if(is_empty(h2))
-    return h1;
-  h = empty();
-  h->roots = concat(h1->roots, h2->roots);
-  if(h1->minTr->key < h2->minTr->key)
-    h->minTr = h1->minTr;
-  else
-    h->minTr = h2->minTr;
-  h->n = h1->n + h2->n;
-  free(h1);
-  free(h2);
-  return h;
-}
-\end{lstlisting}
-
-With $merge$ function defined, the $O(1)$ insertion algorithm is realized
-as well. And we can also give the $O(1)$ time top function as below.
-
-\be
-top(H) = root(T_{min})
-\ee
-
-\begin{Exercise}
-Implement the circular doubly linked list concatenation function in
-your favorite imperative programming language.
-\end{Exercise}
-
-\subsubsection{Extract the minimum element from the heap (pop)}
+\subsubsection{Pop}
 \index{Fibonacci Heap!pop} \index{Fibonacci Heap!delete min}
 
-The pop operation is the most complex
-one in Fibonacci heap. Since we postpone the tree consolidation
-in merge algorithm. We have to compensate it somewhere. Pop is
-the only place left as we have defined, insert, merge, top already.
+As the link operation is delayed to future during merge, we need `compensate' it during pop. We define it as tree consolidation. Consider another problem: given a list of numbers of $2^m$ ($m$ is natural numbers), for e.g., $L = [2, 1, 1, 4, 8, 1, 1, 2, 4]$, we repeatedly sum the two equal numbers until all numbers are unique. The result is $[8, 16]$. This process is shown in table \ref{tb:num-consolidate}. The first column gives the number we are `scanning'; the second is the middle step, i.e. compare current number and the first number in result list, add them when equal; the last column is the merge result, which inputs to the next step. The consolidation process can be defined with fold:
 
-There is an elegant procedural algorithm to do the tree consolidation
-by using an auxiliary array\cite{CLRS}. We'll show it later in imperative
-approach section.
-
-In order to realize the purely functional consolidation algorithm,
-let's first consider a similar number puzzle.
-
-Given a list of numbers, such as $\{2, 1, 1, 4, 8, 1, 1, 2, 4\}$, we want
-to add any two values if they are same. And repeat this procedure till
-all numbers are unique. The result of the example list should be
-$\{8, 16\}$ for instance.
-
-One solution to this problem will as the following.
-
-\be
-consolidate(L) = fold(meld, \phi, L)
-\ee
-
-Where $fold()$ function is defined to iterate all elements from a list,
-applying a specified function to the intermediate result and each
-element. it is sometimes called as {\em reducing}. Please refer to Appendix A and the
-chapter of binary search tree for it.
-
-$L=\{x_1, x_2, ..., x_n\}$, denotes a list of numbers; and we'll use
-$L'=\{x_2, x_3, ..., x_n\}$ to represent the rest of the list with the
-first element removed. Function $meld()$ is defined as below.
-
-\be
-meld(L, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ x \} & L = \phi \\
-  meld(L', x+x_1) & x = x_1 \\
-  \{ x \} \cup L & x < x_1 \\
-  \{ x_1 \} \cup meld(L', x) & otherwise
-  \end{array}
-\right .
-\ee
-
-The $consolidate()$ function works as the follows. It maintains an
-ordered result list $L$, contains only unique numbers, which is
-initialized from an empty list $\phi$. Each time it process an
-element $x$, it firstly check if the first element in $L$ is equal
-to $x$, if so, it will add them together (which yields $2x$),
-and repeatedly check if $2x$ is equal to the next element in $L$.
-This process won't stop until either the element to be melt is
-not equal to the head element in the rest of the list, or the
-list becomes empty. Table \ref{tb:num-consolidate} illustrates
-the process of consolidating number sequence $\{2, 1, 1, 4, 8, 1, 1, 2, 4\}$.
-Column one lists the number 'scanned' one by one; Column two
-shows the intermediate result, typically the new scanned number
-is compared with the first number in result list. If they
-are equal, they are enclosed in a pair of parentheses; The
-last column is the result of meld, and it will be used as the
-input to next step processing.
-
-The Haskell program can be give accordingly.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-consolidate = foldl meld [] where
-    meld [] x = [x]
-    meld (x':xs) x | x == x' = meld xs (x+x')
-                   | x < x'  = x:x':xs
-                   | otherwise = x': meld xs x
-\end{lstlisting}
-
-We'll analyze the performance of consolidation as a part of
-pop operation in later section.
-
-\begin{table}
-\caption{Steps of consolidate numbers} \label{tb:num-consolidate}
+\begin{table}[htbp]
 \centering
-\begin{tabular}{r | l | l }
+\begin{tabular}{| r | l | l |}
   \hline
-  number & intermediate result & result \\
+  number & compare, add & result \\
   \hline
   2 & 2 & 2 \\
+  \hline
   1 & 1, 2 & 1, 2 \\
+  \hline
   1 & (1+1), 2 & 4 \\
+  \hline
   4 & (4+4) & 8 \\
+  \hline
   8 & (8+8) & 16 \\
+  \hline
   1 & 1, 16 & 1, 16 \\
+  \hline
   1 & (1+1), 16 & 2, 16 \\
+  \hline
   2 & (2+2), 16 & 4, 16 \\
+  \hline
   4 & (4+4), 16 & 8, 16 \\
   \hline
 \end{tabular}
+\caption{Consolidation steps.}
+\label{tb:num-consolidate}
 \end{table}
 
-The tree consolidation is very similar to this algorithm except
-it performs based on rank. The only thing we need to do is to
-modify $meld()$ function a bit, so that it compare on ranks and
-do linking instead of adding.
-
 \be
-meld(L, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ x \} & L = \phi \\
-  meld(L', link(x, x_1)) & rank(x) = rank(x_1) \\
-  \{ x \} \cup L & rank(x) < rank(x_1) \\
-  \{ x_1 \} \cup meld(L', x) & otherwise
-  \end{array}
-\right .
+consolidate = foldr\ melt\ [\ ]
 \ee
 
-The final consolidate Haskell program changes to the below version.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-consolidate = foldl meld [] where
-    meld [] t = [t]
-    meld (t':ts) t | rank t == rank t' = meld ts (link t t')
-                   | rank t <  rank t' = t:t':ts
-                   | otherwise = t' : meld ts t
-\end{lstlisting}
-
-Figure \ref{fig:fib-meld-a} and \ref{fig:fib-meld-b} show the steps of
-consolidation when processing a Fibonacci Heap contains different ranks
-of trees. Comparing with table \ref{tb:num-consolidate} reveals the similarity.
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{Before consolidation}{\includegraphics[scale=0.5]{img/fib-meld-01}} \\
-  \subcaptionbox{Step 1, 2}{\includegraphics[scale=0.5]{img/fib-meld-02}\hspace{0.1\textwidth}}
-  \subcaptionbox{Step 3, 'd' is firstly linked to 'c', then repeatedly linked to 'a'.}{ \hspace{0.1\textwidth} \includegraphics[scale=0.5]{img/fib-meld-03} \hspace{0.1\textwidth}}
-  \subcaptionbox{Step 4}{\includegraphics[scale=0.5]{img/fib-meld-04}}
-  \caption{Steps of consolidation} \label{fig:fib-meld-a}
-\end{figure}
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{Step 5}{\includegraphics[scale=0.5]{img/fib-meld-05}}
-  \subcaptionbox{Step 6}{\includegraphics[scale=0.5]{img/fib-meld-06}} \\
-  \subcaptionbox{Step 7, 8, 'r' is firstly linked to 'q', then 's' is linked to 'q'.}{\includegraphics[scale=0.5]{img/fib-meld-07}}
-  \caption{Steps of consolidation} \label{fig:fib-meld-b}
-\end{figure}
-
-After we merge all binomial trees, including the special tree
-record for the minimum element in root, in a Fibonacci heap, the heap
-becomes a Binomial heap. And we lost the special tree, which gives
-us the ability to return the top element in $O(1)$ time.
-
-It's necessary to perform a $O(\lg n)$ time search to resume the
-special tree. We can reuse the function $extractMin()$ defined for
-Binomial heap.
-
-It's time to give the final pop function for Fibonacci heap as all
-the sub problems have been solved. Let $T_{min}$ denote the special
-tree in the heap to record the minimum element in root; $\mathbb{T}$
-denote the forest contains all the other trees except for the
-special tree, $s$ represents the size of a heap, and function
-$children()$ returns all sub trees except the root of a binomial
-tree.
+Where $melt$ is defined as below:
 
 \be
-deleteMin(H) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & \mathbb{T} = \phi \land children(T_{min})=\phi \\
-  FibHeap(s-1, T'_{min}, \mathbb{T}') & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+  melt\ x\ [\ ] & = & x \\
+  melt\ x\ (x':xs) & = & \begin{cases}
+    x = x': & melt\ 2x\ xs \\
+    x < x': & x : x' : xs \\
+    x > x': & x' : melt\ x\ xs \\
+  \end{cases}
+\end{array}
 \ee
 
-Where
+Let $n = sum\ L$, the sum of all numbers. $consolidate$ actually represent $n$ in binary format. If the $i$-th bit is 1, then the result contains $2^i$ ($i$ starts from 0). For e.g., $sum [2, 1, 1, 4, 8, 1, 1, 2, 4] = 24$. It's 11000 in binary, the 3rd and 4th bit are 1, hence the result contains $2^3= 8, 2^4 = 16$. We can consolidate trees in similar way: compare the rank, and link the trees:
 
-\[
-  (T'_{min}, \mathbb{T}') = extractMin(consolidate(children(T_{min}) \cup \mathbb{T}))
-\]
+\be
+\begin{array}{rcl}
+  melt\ t\ [\ ] & = & [t] \\
+  melt\ t\ (t':ts) & = & \begin{cases}
+    rank\ t = rank\ t': & melt\ (link\ t\ t')\ ts \\
+    rank\ t < rank\ t': & t : t' : ts \\
+    rank\ t > rank\ t': & t' : melt\ t\ ts \\
+  \end{cases}
+\end{array}
+\ee
 
-Translate to Haskell yields the below program.
+Figure \ref{fig:fib-meld-b} gives the consolidation steps. It is similar to number consolidation when compare with table \ref{tb:num-consolidate}. We can use an auxiliary array $A$ to do the consolidation. $A[i]$ stores the tree of rank $i$. We traverse the trees in the heap. If meet another tree of rank $i$, we link them together to obtain a bigger tree of rank $i+1$, clean $A[i]$, and next check whether $A[i + 1]$ is empty or not. If there is a tree of rank $i + 1$, then link them together again. Array $A$ stores the final consolidation result after traverse.
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-deleteMin (FH _ (Node _ x []) []) = E
-deleteMin h@(FH sz minTr ts) = FH (sz-1) minTr' ts' where
-    (minTr', ts') = extractMin $ consolidate (children minTr ++ ts)
-\end{lstlisting} %$
-
-The main part of the imperative realization is similar. We cut all children of
-$T_{min}$ and append them to root list, then perform consolidation to merge
-all trees with the same rank until all trees are unique in term of rank.
-
-\begin{algorithmic}[1]
-\Function{Delete-Min}{$H$}
-  \State $x \gets T_{min}(H)$
-  \If{$x \neq NIL$}
-    \For{each $y \in $ \Call{Children}{$x$}}
-      \State append $y$ to root list of $H$
-      \State \Call{Parent}{$y$} $\gets NIL$
-    \EndFor
-    \State remove $x$ from root list of $H$
-    \State \Call{n}{$H$} $\gets$ \Call{n}{$H$} - 1
-    \State \Call{Consolidate}{$H$}
-  \EndIf
-  \State \Return $x$
-\EndFunction
-\end{algorithmic}
-
-Algorithm \textproc{Consolidate} utilizes an auxiliary array $A$ to do the
-merge job. Array $A[i]$ is defined to store the tree with rank (degree) $i$.
-During the traverse of root list, if we meet another tree of rank $i$, we
-link them together to get a new tree of rank $i+1$. Next we clean $A[i]$,
-and check if $A[i+1]$ is empty and perform further linking if necessary.
-After we finish traversing all roots, array $A$ stores all result trees
-and we can re-construct the heap from it.
+\captionsetup[subfigure]{labelformat=empty, margin=10pt}
+\begin{figure}[htbp]
+  \centering
+  \subcaptionbox{Before}{\includegraphics[scale=0.35]{img/fib-meld-01}} \\
+  \subcaptionbox{Step 1, 2}{\includegraphics[scale=0.35]{img/fib-meld-02}\hspace{0.1\textwidth}}
+  \subcaptionbox{Step 3, link $d$ and $c$, then link $a$.}{ \hspace{0.1\textwidth} \includegraphics[scale=0.35]{img/fib-meld-03} \hspace{0.1\textwidth}}
+  \subcaptionbox{Step 4}{\includegraphics[scale=0.35]{img/fib-meld-04}}
+  \subcaptionbox{Step 5}{\includegraphics[scale=0.35]{img/fib-meld-05}}
+  \subcaptionbox{Step 6}{\includegraphics[scale=0.35]{img/fib-meld-06}} \\
+  \subcaptionbox{Step 7, 8, link $r$ and $q$, then link $s$ and $q$.}{\hspace{0.1\textwidth}\includegraphics[scale=0.35]{img/fib-meld-07}\hspace{0.1\textwidth}}
+  \caption{Consolidation}
+  \label{fig:fib-meld-b}
+\end{figure}
+\captionsetup[subfigure]{labelformat=parens}
 
 \begin{algorithmic}[1]
 \Function{Consolidate}{$H$}
-  \State $D \gets $ \textproc{Max-Degree}(\Call{n}{$H$})
-  \For{$i \gets 0$ to $D$}
-    \State $A[i] \gets NIL$
-  \EndFor
-  \For{each $x \in$ root list of $H$}
-    \State remove $x$ from root list of $H$
-    \State $d \gets $ \Call{Degree}{$x$}
-    \While{$A[d] \neq NIL$}\
-      \State $y \gets A[d]$
-      \State $x \gets $ \Call{Link}{$x, y$}
-      \State $A[d] \gets NIL$
-      \State $d \gets d + 1$
+  \State $R \gets $ \textproc{Max-Rank}(\Call{Size}{$H$})
+  \State $A \gets$ [NIL, NIL, ..., NIL] \Comment{total $R$ cells}
+  \For{each $T$ in \Call{Trees}{$H$}}
+    \State $r \gets $ \Call{Rank}{$T$}
+    \While{$A[r] \neq$ NIL}
+      \State $T' \gets A[r]$
+      \State $T \gets $ \Call{Link}{$T, T'$}
+      \State $A[r] \gets$ NIL
+      \State $r \gets r + 1$
     \EndWhile
-    \State $A[d] \gets x$
+    \State $A[r] \gets T$
   \EndFor
-  \State $T_{min}(H) \gets NIL$ \Comment{root list is NIL at the time}
-  \For{$i \gets 0$ to $D$}
-    \If{$A[i] \neq NIL$}
-      \State append $A[i]$ to root list of $H$.
-      \If{$T_{min} = NIL \lor$ \Call{Key}{$A[i]$} $<$ \Call{Key}{$T_{min}(H)$}}
-        \State $T_{min}(H) \gets A[i]$
+  \State $T_m \gets$ NIL
+  \State \Call{Trees}{$H$} $\gets$ NIL
+  \For{each $T$ in $A$}
+    \If{$T \neq$ NIL}
+      \State append $T$ to \Call{Trees}{$H$}
+      \If{$T_m = NIL$ or \Call{Key}{$T$} $<$ \Call{Key}{$T_m$}}
+        \State $T_m \gets T$
       \EndIf
     \EndIf
   \EndFor
+  \State \Call{Min-Tree}{$H$} $\gets T_m$
 \EndFunction
 \end{algorithmic}
 
-The only unclear sub algorithm is \textproc{Max-Degree}, which can determine
-the upper bound of the degree of any node in a Fibonacci Heap. We'll delay
-the realization of it to the last sub section.
+It becomes a binomial heap after consolidation. There are $O(\lg n)$ trees. \textproc{Max-Rank}($n$) returns the upper limit of rank $R$ in a heap of $n$ elements. From the binomial tree result, the biggest tree $B_R$ has $2^R$ elements. We have $2^R \leq n < 2^{R+1}$, we estimate the rough upper limit is $R \leq \log_2 n$. We'll give more accurate estimation of $R$ in later section. We need additionally scan all trees, find the minimal root element. We can reuse $min'$ defined in (\ref{eq:extract-min-bitree}) to extract the min-tree.
 
-Feed a Fibonacci Heap shown in Figure \ref{fig:fib-meld-a} to the above algorithm,
-Figure \ref{fig:fib-cons-a}, \ref{fig:fib-cons-b} and \ref{fig:fib-cons-c}
-show the result trees stored in auxiliary array $A$ in every steps.
+\be
+\begin{array}{rcl}
+  pop\ (1, (0, x, [\ ]), [\ ]) & = & (x, [\ ]) \\
+  pop\ (n, (r, x, ts_m), ts) & = & (x, (n - 1, t_m, ts')) \\
+\end{array}
+\ee
 
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{Step 1, 2}{\includegraphics[scale=0.5]{img/fib-cons-02}}
-  \subcaptionbox{Step 3, Since $A_0 \neq NIL$, 'd' is firstly linked to 'c', and clear $A_0$ to $NIL$. Again, as $A_1 \neq NIL$, 'c' is linked to 'a' and the new tree is stored in $A_2$.}{\includegraphics[scale=0.5]{img/fib-cons-03}}
-  \subcaptionbox{Step 4}{\includegraphics[scale=0.5]{img/fib-cons-04}}
-  \caption{Steps of consolidation} \label{fig:fib-cons-a}
-\end{figure}
+Where $(t_m, ts') = min'\ consolidate\ (ts_m \doubleplus ts)$. It takes $O(|ts_m|)$ time for $\doubleplus$ to concatenate trees. The corresponding iterative implementation is as below:
 
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{Step 5}{\includegraphics[scale=0.5]{img/fib-cons-05}} \\
-  \subcaptionbox{Step 6}{\includegraphics[scale=0.5]{img/fib-cons-06}}
-  \caption{Steps of consolidation} \label{fig:fib-cons-b}
-\end{figure}
+\begin{algorithmic}[1]
+\Function{Pop}{$H$}
+  \State $T_m \gets $ \Call{Min-Tree}{$H$}
+  \For{each $T$ in \Call{Sub-Trees}{$T_m$}}
+    \State append $T$ to \Call{Trees}{$H$}
+    \State \Call{Parent}{$T$} $\gets$ NIL
+  \EndFor
+  \State remove $T_m$ from \Call{Trees}{$H$}
+  \State \Call{Size}{$H$} $\gets$ \Call{Size}{$H$} - 1
+  \State \Call{Consolidate}{$H$}
+  \State \Return (\Call{Key}{$T_m$}, $H$)
+\EndFunction
+\end{algorithmic}
 
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{Step 7, 8, Since $A_0 \neq NIL$, 'r' is firstly linked to 'q', and the new tree is stored in $A_1$ ($A_0$ is cleared); then 's' is linked to 'q', and stored in $A_2$ ($A_1$ is cleared).}{\includegraphics[scale=0.5]{img/fib-cons-07}}
-  \caption{Steps of consolidation} \label{fig:fib-cons-c}
-\end{figure}
+We use the `potential' method to evaluate the amortized performance. The gravity potential energy in physics is defined as:
 
-
-Translate the above algorithm to ANSI C yields the below program.
-
-\lstset{language = C}
-\begin{lstlisting}
-void consolidate(struct FibHeap* h){
-  if(!h->roots)
-    return;
-  int D = max_degree(h->n)+1;
-  struct node *x, *y;
-  struct node** a = (struct node**)malloc(sizeof(struct node*)*(D+1));
-  int i, d;
-  for(i=0; i<=D; ++i)
-    a[i] = NULL;
-  while(h->roots){
-    x = h->roots;
-    h->roots = remove_node(h->roots, x);
-    d= x->degree;
-    while(a[d]){
-      y = a[d];  /* Another node has the same degree as x */
-      x = link(x, y);
-      a[d++] = NULL;
-    }
-    a[d] = x;
-  }
-  h->minTr = h->roots = NULL;
-  for(i=0; i<=D; ++i)
-    if(a[i]){
-      h->roots = append(h->roots, a[i]);
-      if(h->minTr == NULL || a[i]->key < h->minTr->key)
-	h->minTr = a[i];
-    }
-  free(a);
-}
-\end{lstlisting}
-
-\begin{Exercise}
-Implement the remove function for circular doubly linked list in your favorite
-imperative programming language.
-\end{Exercise}
-
-\subsection{Running time of pop}
-
-In order to analyze the amortize performance of pop,
-we adopt potential method. Reader can refer to \cite{CLRS} for a formal
-definition. In this chapter, we only give a intuitive illustration.
-
-Remind the gravity potential energy, which is defined as
 \[
-E = M \cdot g \cdot h
+E = m g h
 \]
 
-Suppose there is a complex process, which moves the object with mass $M$
-up and down, and finally the object stop at height $h'$. And if there
-exists friction resistance $W_f$, We say
-the process works the following power.
+As shown in figure \ref{fig:potential-energy}, consider some process, that moves an object of mass $m$ up and down, and finally stops at height $h'$. Let the friction resistance be $W_f$, the process works the following power:
 
 \[
-W = M \cdot g \cdot (h' - h) + W_f
+W = m g (h' - h) + W_f
 \]
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[scale=0.5]{img/potential-energy}
+  \includegraphics[scale=0.35]{img/potential-energy}
   \caption{Gravity potential energy.}
   \label{fig:potential-energy}
 \end{figure}
-
-Figure \ref{fig:potential-energy} illustrated this concept.
 
 We treat the Fibonacci heap pop operation in a similar
 way, in order to evaluate the cost, we firstly define the potential
