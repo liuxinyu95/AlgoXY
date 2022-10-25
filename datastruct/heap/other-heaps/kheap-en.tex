@@ -757,226 +757,139 @@ We can use heap to manage tasks with priority. When need prioritize a task, we d
 \EndFunction
 \end{algorithmic}
 
-Where function \textproc{Cascading-Cut} uses the mark to determine
-if the node is losing the second child. the node is marked after
-it losses the first child. And the mark is cleared in \textproc{Cut}
-function.
+Where function \textproc{Cascade-Cut} uses a mark to record whether a node lost sub-tree before. The mark is cleared later in \textproc{Cut} function.
 
 \begin{algorithmic}[1]
 \Function{Cut}{$H, x$}
   \State $p \gets $ \Call{Parent}{$x$}
   \State remove $x$ from $p$
-  \State \Call{Degree}{$p$} $\gets$ \Call{Degree}{$p$} - 1
-  \State add $x$ to root list of $H$
-  \State \Call{Parent}{$x$} $\gets NIL$
-  \State \Call{Mark}{$x$} $\gets FALSE$
+  \State \Call{Rank}{$p$} $\gets$ \Call{Rank}{$p$} - 1
+  \State add $x$ to \Call{Trees}{$H$}
+  \State \Call{Parent}{$x$} $\gets$ NIL
+  \State \Call{Mark}{$x$} $\gets$ False
 \EndFunction
 \end{algorithmic}
 
-During cascading cut process, if $x$ is marked, which means it has
-already lost one child. We recursively performs cut and cascading cut
-on its parent till reach to root.
+During cascade cut, if node $x$ is marked, it has lost some sub-tree before. We need recursively cut along the parent till root.
 
 \begin{algorithmic}[1]
-\Function{Cascading-Cut}{$H, x$}
+\Function{Cascade-Cut}{$H, x$}
   \State $p \gets $ \Call{Parent}{$x$}
-  \If{$p \neq NIL$}
-    \If{\Call{Mark}{$x$} $= FALSE$}
-      \State \Call{Mark}{$x$} $\gets TRUE$
+  \If{$p \neq$ NIL}
+    \If{\Call{Mark}{$x$} $= $ False}
+      \State \Call{Mark}{$x$} $\gets$ True
     \Else
       \State \Call{Cut}{$H, x$}
-      \State \Call{Cascading-Cut}{$H, p$}
+      \State \Call{Cascade-Cut}{$H, p$}
     \EndIf
   \EndIf
 \EndFunction
 \end{algorithmic}
 
-The relevant ANSI C decreasing key program is given as the following.
-
-\lstset{language=C}
-\begin{lstlisting}
-void decrease_key(struct FibHeap* h, struct node* x, Key k){
-  struct node* p = x->parent;
-  x->key = k;
-  if(p && k < p->key){
-    cut(h, x);
-    cascading_cut(h, p);
-  }
-  if(k < h->minTr->key)
-    h->minTr = x;
-}
-
-void cut(struct FibHeap* h, struct node* x){
-  struct node* p = x->parent;
-  p->children = remove_node(p->children, x);
-  p->degree--;
-  h->roots = append(h->roots, x);
-  x->parent = NULL;
-  x->mark = 0;
-}
-
-void cascading_cut(struct FibHeap* h, struct node* x){
-  struct node* p = x->parent;
-  if(p){
-    if(!x->mark)
-      x->mark = 1;
-    else{
-      cut(h, x);
-      cascading_cut(h, p);
-    }
-  }
-}
-\end{lstlisting}
-
 \begin{Exercise}
-Prove that \textproc{Decrease-Key} algorithm is amortized $O(1)$ time.
+Prove \textproc{Decrease} is bound to amortized $O(1)$ time.
 \end{Exercise}
 
-\subsection{The name of Fibonacci Heap}
-It's time to reveal the reason why the data structure is named
-as 'Fibonacci Heap'.
+\subsection{The name of Fibonacci heap}
 
-There is only one undefined algorithm so far, \textproc{Max-Degree}($n$).
-Which can determine the upper bound of degree for any node in a $n$ nodes
-Fibonacci Heap. We'll give the proof by using Fibonacci series and
-finally realize \textproc{Max-Degree} algorithm.
+We are yet to implement \textproc{Max-Rank}($n$). It defines the upper bound of tree rank for a Fibonacci heap of $n$ elements.
 
 \begin{lemma}
 \label{lemma:Fib-degree}
-For any node $x$ in a Fibonacci Heap, denote $k = degree(x)$, and
-$|x| = size(x)$, then
+For any tree $x$ in a Fibonacci Heap, let $k = rank(x)$, and $|x| = size(x)$, then
+
 \be
   |x| \geq F_{k+2}
 \ee
 
-Where $F_k$ is Fibonacci series defined as the following.
+Where $F_k$ is the $k$-th Fibonacci number:
+
 \[
-F_k = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  0 & k = 0 \\
-  1 & k = 1 \\
-  F_{k-1} + F_{k-2} & k \geq 2
-  \end{array}
-\right.
+\begin{array}{rcl}
+F_0 & = & 0 \\
+F_1 & = & 1 \\
+F_k & = & F_{k-1} + F_{k-2} \\
+\end{array}
 \]
 \end{lemma}
 
 \begin{proof}
-Consider all $k$ children of node $x$, we denote them as $y_1, y_2, ..., y_k$
-in the order of time when they were linked to $x$. Where $y_1$ is the
-oldest, and $y_k$ is the youngest.
-
-Obviously, $|y_i| \geq 0$. When we link $y_i$ to $x$, children $y_1, y_2, ..., y_{i-1}$ have already been there. And algorithm \textproc{Link} only links
-nodes with the same degree. Which indicates at that time, we have
+For tree $x$, let its $k$ sub-trees be $y_1, y_2, ..., y_k$, ordered by the time when they are linked to $x$. Where $y_1$ is the first, and $y_k$ is the latest. Obviously, $|y_i| \geq 0$. When link $y_i$ to $x$, there have already been sub-trees of $y_1, y_2, ..., y_{i-1}$. Because we only link nodes of the same rank, by that time we have:
 
 \[
-  degree(y_i) = degree(x) = i - 1
+  rank(y_i) = rank(x) = i - 1
 \]
 
-After that, node $y_i$ can at most
-lost 1 child, (due to the decreasing key operation) otherwise, if it
-will be immediately cut off and append to root list after the second
-child loss. Thus we conclude
+After that, $y_i$ can lost additional sub-tree at most, (through the \textproc{Decrease}). Once loss the second sub-tree, it will be cut off then add to the forest. For any $i = 2, 3, ..., k$, we have:
 
 \[
-degree(y_i) \geq i-2
+rank(y_i) \geq i-2
 \]
 
-For any $i = 2, 3, ..., k$.
-
-Let $s_k$ be the {\em minimum possible size} of node $x$, where
-$degree(x) = k$. For trivial cases, $s_0 = 1$, $s_1 = 2$, and we have
+Let $s_k$ be the {\em minimum possible size} of tree $x$, where $k = rank(x)$. It starts from $s_0 = 1$, $s_1 = 2$. i.e. there is at least a node in tree of rank 0, at least two nodes in tree of rank 1, at least $k$ nodes in tree of rank $k$.
 
 \bea*{rcl}
 |x| & \geq & s_k \\
-    & =   & 2 + \sum_{i=2}^{k} s_{degree(y_i)} \qquad \\
-    & \geq & 2 + \sum_{i=2}^{k} s_{i-2}
+    & =   & 2 + s_{rank(y_2)} + s_{rank(y_3)} + ... + s_{rank(y_k)} \\
+    & \geq & 2 + s_0 + s_1 + ... + s_{k-2} \\
 \eea*
 
-We next show that $s_k > F_{k+2}$. This can be proved by induction.
-For trivial cases, we have $s_0 = 1 \geq F_2 = 1$, and $s_1 = 2 \geq F_3 = 2$.
-For induction case $k \geq 2$. We have
+The last row holds because $rank(y_i) \geq i - 2$, and $s_k$ is monotonic, hence $s_{rank(y_i)} \geq s_{i-2}$. We next show that $s_k > F_{k+2}$. Apply induction. For edge case, $s_0 = 1 \geq F_2 = 1$, and $s_1 = 2 \geq F_3 = 2$; For induction case $k \geq 2$.
 
-\bea*{rcl}
-|x| & \geq & s_k \\
-    & \geq & 2 + \sum_{i=2}^{k} s_{i-2} \\
-    & \geq & 2 + \sum_{i=2}^{k} F_i \\
-    & =    & 1 +  \sum_{i=0}^{k} F_i \\
+\bea*{rcll}
+|x| & \geq & s_k & \\
+    & \geq & 2 + s_0 + s_1 + ... + s_{k-2} & \\
+    & \geq & 2 + F_2 + F_3 + ... + F_k & \text{induction hypothesis}\\
+    & =    & 1 + F_0 + F_1 + F_2 + ... + F_k & \text{from} F_0 = 0, F_1 = 1 \\
 \eea*
 
-At this point, we need prove that
+Next, we prove:
 
 \be
 F_{k+2} = 1 +  \sum_{i=0}^{k} F_i
 \ee
 
-This can also be proved by using induction:
+Use induction again:
+
 \begin{itemize}
-\item Trivial case, $F_2 = 1 + F_0 = 2$
-\item Induction case,
-\bea*{rcl}
-  F_{k+2} & = & F_{k+1} + F_k \\
-         & = & 1 + \sum_{i=0}^{k-1}F_i + F_k \\
-         & = & 1 + \sum_{i=0}^{k} F_i
+\item Edge case, $F_2 = 1 + F_0 = 2$
+\item Induction case, suppose it's true for $k+1$.
+\bea*{rcll}
+  F_{k+2} & = & F_{k+1} + F_k & \\
+         & = & (1 + \displaystyle \sum_{i=0}^{k-1}F_i) + F_k & \text{induction hypothesis} \\
+         & = & 1 + \displaystyle \sum_{i=0}^{k} F_i & \\
 \eea*
 \end{itemize}
 
-Summarize all above we have the final result.
+Wrap up to the final result:
 \be
-n \geq |x| \geq F_k+2
+n \geq |x| \geq F_{k+2}
 \ee
 \end{proof}
 
-Recall the result of AVL tree, that $F_k \geq \phi^k$, where
-$\phi = \frac{1+\sqrt{5}}{2}$ is the golden ratio. We also proved
-that pop operation is amortized $O(\lg n)$ algorithm.
-
-Based on this result. We can define Function $MaxDegree$ as the following.
+For Fibonacci sequence, $F_k \geq \phi^k$, where $\phi = \dfrac{1+\sqrt{5}}{2}$ is the golden ratio. We prove that pop is amortized $O(\lg n)$ algorithm. We can define $maxRank$ as:
 
 \be
-  MaxDegree(n) = 1 + \lfloor \log_{\phi} n \rfloor
+  MaxRank(n) = 1 + \lfloor \log_{\phi} n \rfloor
 \ee
 
-The imperative \textproc{Max-Degree} algorithm can also be realized by
-using Fibonacci sequences.
+We can also implement \textproc{Max-Degree} from Fibonacci numbers:
 
 \begin{algorithmic}[1]
-\Function{Max-Degree}{$n$}
-  \State $F_0 \gets 0$
-  \State $F_1 \gets 1$
+\Function{Max-Rank}{$n$}
+  \State $F_0 \gets 0, F_1 \gets 1$
   \State $k \gets 2$
   \Repeat
     \State $F_k \gets F_{k_1} + F_{k_2}$
-    \State $k \gets k+1$
+    \State $k \gets k + 1$
   \Until{$F_k < n$}
-  \State \Return $k-2$
+  \State \Return $k - 2$
 \EndFunction
 \end{algorithmic}
 
-Translate the algorithm to ANSI C given the following program.
-
-\lstset{language=C}
-\begin{lstlisting}
-int max_degree(int n){
-  int k, F;
-  int F2 = 0;
-  int F1 = 1;
-  for(F=F1+F2, k=2; F<n; ++k){
-    F2 = F1;
-    F1 = F;
-    F = F1 + F2;
-  }
-  return k-2;
-}
-\end{lstlisting}
-
-% ================================================================
-%                 Pairing Heaps
-% ================================================================
-
 \section{Pairing Heaps}
 \label{pairing-heap} \index{Pairing heap}
+
 Although Fibonacci Heaps provide excellent performance theoretically,
 it is complex to realize. People find that the constant behind the
 big-O is big. Actually, Fibonacci Heap is more significant in theory
