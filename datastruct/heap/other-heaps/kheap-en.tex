@@ -890,134 +890,40 @@ We can also implement \textproc{Max-Degree} from Fibonacci numbers:
 \section{Pairing Heaps}
 \label{pairing-heap} \index{Pairing heap}
 
-Although Fibonacci Heaps provide excellent performance theoretically,
-it is complex to realize. People find that the constant behind the
-big-O is big. Actually, Fibonacci Heap is more significant in theory
-than in practice.
+It's complex to implement Fibonacci heap. Pairing heap provides another option. It's easy to implement, and the performance is good. Most operations, like insert, top, merge are bound to constant time. the pop is conjectured to be amortized $O(\lg n)$ time\cite{pairing-heap}\cite{okasaki-book}.
 
-In this section, we'll introduce another solution, Pairing heap,
-which is one of the best heaps ever known in terms of performance.
-Most operations including insertion, finding minimum element (top),
-merging are all bounds to $O(1)$ time, while deleting minimum element (pop)
-is conjectured to amortized $O(\lg n)$ time \cite{pairing-heap}
-\cite{okasaki-book}. Note that this is still
-a conjecture for 15 years by the time I write this chapter. Nobody has been
-proven it although there are much experimental data support the
-$O(\lg n)$ amortized result.
-
-Besides that, pairing heap is simple. There exist both elegant
-imperative and functional implementations.
-
-% ================================================================
-%                 Definition
-% ================================================================
 \subsection{Definition}
 \index{Pairing heap!definition}
 
-Both Binomial Heaps and Fibonacci Heaps are realized with forest.
-While a pairing heaps is essentially a K-ary tree. The minimum element
-is stored at root. All other elements are stored in sub trees.
+A pairing heap is a multi-way tree. The root holds the minimum. A pairing heap is either empty $\nil$, or a $k$-ary tree, consists of a root and multiple sub-trees, denoted as $(x, ts)$. We can also use `left child, right sibling' way to define the tree.
 
-The following Haskell program defines pairing heap.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
+\begin{Haskell}
 data PHeap a = E | Node a [PHeap a]
-\end{lstlisting}
+\end{Haskell}
 
-This is a recursive definition, that a pairing heap is either empty
-or a K-ary tree, which is consist of a root node, and a list of sub trees.
-
-Pairing heap can also be defined in procedural languages, for example
-ANSI C as below. For illustration purpose, all heaps we mentioned later
-are minimum-heap, and we assume the type of key is integer \footnote{We
-can parametrize the key type with C++ template, but this is beyond
-our scope, please refer to the example programs along with
-this book}. We use same linked-list based left-child, right-sibling
-approach (aka, binary tree representation\cite{CLRS}).
-
-\lstset{language=C}
-\begin{lstlisting}
-typedef int Key;
-
-struct node{
-  Key key;
-  struct node *next, *children, *parent;
-};
-\end{lstlisting}
-
-Note that the parent field does only make sense for decreasing key
-operation, which will be explained later on. we can omit it for the
-time being.
-
-
-% ================================================================
-%          Basic Heap operations
-% ================================================================
-\subsection{Basic heap operations}
-In this section, we first give the merging operation for pairing
-heap, which can be used to realize insertion. Merging, insertion,
-and finding the minimum element are relative trivial compare to
-the extracting minimum element operation.
-
-\subsubsection{Merge, insert, and find the minimum element (top)}
+\subsection{Merge, insert, and top}
 \index{Pairing heap!insert} \index{Pairing heap!top}
-\index{Pairing heap!find min}
-The idea of merging is similar to the linking algorithm we shown
-previously for Binomial heap. When we merge two pairing heaps, there
-are two cases.
 
-\begin{itemize}
-\item Trivial case, one heap is empty, we simply return the other
-heap as the result;
+There are two cases when merge two heaps:
 
-\item Otherwise, we compare the root element of the two heaps, make
-the heap with bigger root element as a new children of the other.
-\end{itemize}
-
-Let $H_1$, and $H_2$ denote the two heaps, $x$ and $y$ be the root
-element of $H_1$ and $H_2$ respectively. Function $Children()$
-returns the children of a K-ary tree. Function $Node()$ can
-construct a K-ary tree from a root element and a list of children.
+\begin{enumerate}
+\item Either heap is $\nil$, the result is the other heap;
+\item Otherwise, compare the two roots, turn the greater one as the new sub-tree of the other.
+\end{enumerate}
 
 \be
-merge(H_1, H_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  H_1 & H_2 = \phi \\
-  H_2 & H_1 = \phi \\
-  Node(x, \{H_2\} \cup Children(H_1)) & x < y \\
-  Node(y, \{H_1\} \cup Children(H_2)) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+merge\ \nil\ h_2 & = & h_2 \\
+merge\ h_1\ \nil & = & h_1 \\
+merge\ (x, ts_1)\ (y, ts_2) & = & \begin{cases}
+  x < y: & (x, (y, ts_2) : ts_1) \\
+  \text{otherwise}: & (y, (x, ts1) : ts_2) \\
+  \end{cases}
+\end{array}
 \ee
 
-Where
-\[
-\begin{array}{l}
-x = Root(H_1) \\
-y = Root(H_2)
-\end{array}
-\]
-
-It's obviously that merging algorithm is bound to $O(1)$ time
-\footnote{Assume $\cup$ is constant time operation, this is true
-for linked-list settings, including 'cons' like operation in
-functional programming languages.}.
-The $merge$ equation can be translated to the following Haskell program.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-merge h E = h
-merge E h = h
-merge h1@(Node x hs1) h2@(Node y hs2) =
-    if x < y then Node x (h2:hs1) else Node y (h1:hs2)
-\end{lstlisting}
-
-Merge can also be realized imperatively. With left-child, right
-sibling approach, we can just link the heap, which is in fact a
-K-ary tree, with larger key as the first new child of the other.
-This is constant time operation as described below.
+$merge$ is bound to constant time. With the `left-child, right
+sibling' method, we link the heap with greater root as the first sub-tree of the other.
 
 \begin{algorithmic}[1]
 \Function{Merge}{$H_1, H_2$}
@@ -1030,45 +936,16 @@ This is constant time operation as described below.
   \If{\Call{Key}{$H_2$} $<$ \Call{Key}{$H_1$}}
     \State \Call{Exchange}{$H_1 \leftrightarrow H_2$}
   \EndIf
-  \State Insert $H_2$ in front of \Call{Children}{$H_1$}
+  \State \Call{Sub-Trees}{$H_1$} $\gets$ \textproc{Link}($H_2$, \Call{Sub-Trees}{$H_1$})
   \State \Call{Parent}{$H_2$} $\gets H_1$
   \State \Return $H_1$
 \EndFunction
 \end{algorithmic}
 
-Note that we also update the parent field accordingly. The ANSI C
-example program is given as the following.
+Similar to Fibonacci heap, we implement insert with merge as (\ref{eq:fib-insert}). We access the top element from the root: $top\ (x, ts) = x$. Both operations are bound to constant time.
 
-\lstset{language=C}
-\begin{lstlisting}
-struct node* merge(struct node* h1, struct node* h2) {
-  if (h1 == NULL)
-    return h2;
-  if (h2 == NULL)
-    return h1;
-  if (h2->key < h1->key)
-    swap(&h1, &h2);
-  h2->next = h1->children;
-  h1->children = h2;
-  h2->parent = h1;
-  h1->next = NULL; /*Break previous link if any*/
-  return h1;
-}
-\end{lstlisting}
 
-Where function swap() is defined in a similar way as Fibonacci Heap.
-
-With merge defined, insertion can be realized as same as Fibonacci Heap
-in Equation \ref{eq:fib-insert}. Definitely it's $O(1)$ time operation.
-As the minimum element is always stored in root, finding it is trivial.
-
-\be
-top(H) = Root(H)
-\ee
-
-Same as the other two above operations, it's bound to $O(1)$ time.
-
-\subsubsection{Decrease key of a node}
+\subsection{Increase priority}
 \index{Pairing heap!decrease key}
 There is another operation, to decrease key of a given node,
 which only makes sense in imperative settings as we explained in Fibonacci
