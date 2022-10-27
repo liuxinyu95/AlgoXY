@@ -944,243 +944,107 @@ sibling' method, we link the heap with greater root as the first sub-tree of the
 
 Similar to Fibonacci heap, we implement insert with merge as (\ref{eq:fib-insert}). We access the top element from the root: $top\ (x, ts) = x$. Both operations are bound to constant time.
 
-
 \subsection{Increase priority}
 \index{Pairing heap!decrease key}
-There is another operation, to decrease key of a given node,
-which only makes sense in imperative settings as we explained in Fibonacci
-Heap section.
 
-The solution is simple, that we can cut the node with the new smaller
-key from it's parent along with all its children. Then merge it again
-to the heap. The only special case is that if the given node is the
-root, then we can directly set the new key without doing anything else.
-
-The following algorithm describes this procedure for a given node $x$, with
-new key $k$.
+When decrease the value in a node, we cut the sub-tree rooted with this node, then merge it back to the heap. If the node is the root, we can directly decrease its value.
 
 \begin{algorithmic}[1]
-\Function{Decrease-Key}{$H, x, k$}
+\Function{Decrease}{$H, x, k$}
   \State \Call{Key}{$x$} $\gets k$
-  \If{\Call{Parent}{$x$} $\neq$ NIL}
-    \State Remove $x$ from \textproc{Children}(\Call{Parent}{$x$})
-    \Call{Parent}{$x$} $\gets$ NIL
+  \State $p \gets$ \Call{Parent}{$x$}
+  \If{$p \neq$ NIL}
+    \State Remove $x$ from \Call{Sub-Trees}{$p$}
+    \State \Call{Parent}{$x$} $\gets$ NIL
     \State \Return \Call{Merge}{$H, x$}
   \EndIf
   \State \Return $H$
 \EndFunction
 \end{algorithmic}
 
-The following ANSI C program translates this algorithm.
+\subsection{Pop}
+\index{Pairing heap!pop}
 
-\lstset{language=C}
-\begin{lstlisting}
-struct node* decrease_key(struct node* h, struct node* x, Key key) {
-  x->key = key; /* Assume key <= x->key */
-  if(x->parent) {
-    x->parent->children = remove_node(x->parent->children, x);
-    x->parent = NULL;
-    return merge(h, x);
-  }
-  return h;
-}
-\end{lstlisting}
-
-\begin{Exercise}
-Implement the program of removing a node from the children of its
-parent in your favorite imperative programming language. Consider
-how can we ensure the overall performance of decreasing key is
-O(1) time? Is left-child, right sibling approach enough?
-\end{Exercise}
-
-\subsubsection{Delete the minimum element from the heap (pop)}
-\index{Pairing heap!pop} \index{Pairing heap!delete min}
-Since the minimum element is always stored at root, after delete it
-during popping, the rest things left are all sub-trees. These trees
-can be merged to one big tree.
+After pop the root, we consolidate the remaining sub-trees to a tree:
 
 \be
-  pop(H) = mergePairs(Children(H))
+pop\ (x, ts) = \textit{consolidate}\ ts
 \ee
 
-Pairing Heap uses a special approach that it merges every two sub-trees
-from left to right in pair. Then
-merge these paired results from right to left which forms a final
-result tree. The name of `Pairing Heap' comes from the characteristic
-of this pair-merging.
-
-Figure \ref{fig:merge-pairs} and \ref{fig:merge-right} illustrate the procedure of pair-merging.
+We firstly merge every two sub-trees from left to right, then merge these paired results from right to left to a tree. This explains the why we name it `paring heap'. Figure \ref{fig:merge-pairs} and \ref{fig:merge-right} show the paired merge.
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{A pairing heap before pop.}{\includegraphics[scale=0.5]{img/pairing-hp}} \\
-  \subcaptionbox{After root element 2 being removed, there are 9 sub-trees left.}{\includegraphics[scale=0.5]{img/pairs}} \\
-  \subcaptionbox{Merge every two trees in pair, note that there are odd number trees, so the last one needn't merge.}{\includegraphics[scale=0.5]{img/pairs-merge}} \\
-  \caption{Remove the root element, and merge children in pairs.} \label{fig:merge-pairs}
+  \subcaptionbox{Before pop.}{\includegraphics[scale=0.4]{img/pairing-hp}} \\
+  \subcaptionbox{Pop 2, there are 9 sub-trees.}{\includegraphics[scale=0.4]{img/pairs}} \\
+  \subcaptionbox{Merge with pairs, leave the last tree.}{\includegraphics[scale=0.4]{img/pairs-merge}} \\
+  \caption{Pop the root, merge sub-trees in pairs.}
+  \label{fig:merge-pairs}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{Merge tree with 9, and tree with root 6.}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/right-merge-1}\hspace{0.2\textwidth}}
-  \subcaptionbox{Merge tree with root 7 to the result.}{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/right-merge-2}\hspace{0.1\textwidth}} \\
-  \subcaptionbox{Merge tree with root 3 to the result.}{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/right-merge-3}\hspace{0.1\textwidth}}
-  \subcaptionbox{Merge tree with root 4 to the result.}{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/right-merge-4}\hspace{0.1\textwidth}}
-  \caption{Steps of merge from right to left.} \label{fig:merge-right}
+  \subcaptionbox{Merge 9 and 6.}{\hspace{0.2\textwidth}\includegraphics[scale=0.4]{img/right-merge-1}\hspace{0.2\textwidth}}
+  \subcaptionbox{Merge 7.}{\hspace{0.1\textwidth}\includegraphics[scale=0.4]{img/right-merge-2}\hspace{0.1\textwidth}} \\
+  \subcaptionbox{Merge 3.}{\hspace{0.1\textwidth}\includegraphics[scale=0.4]{img/right-merge-3}\hspace{0.1\textwidth}}
+  \subcaptionbox{Merge 4.}{\hspace{0.1\textwidth}\includegraphics[scale=0.4]{img/right-merge-4}\hspace{0.1\textwidth}}
+  \caption{Merge from right to left.}
+  \label{fig:merge-right}
 \end{figure}
 
-The recursive pair-merging solution is quite similar to the bottom up
-merge sort\cite{okasaki-book}. Denote the children of a pairing
-heap as $A$, which is a list of trees of $\{ T_1, T_2, T_3, ..., T_m\}$
-for example. The $mergePairs()$ function can be given as below.
-
 \be
-mergePairs(A) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \Phi & A = \Phi \\
-  T_1 & A = \{ T_1 \} \\
-  merge(merge(T_1, T_2), mergePairs(A')) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+\textit{consolidate}\ [\ ] & = & \nil \\
+\textit{consolidate}\ [t] & = & t \\
+\textit{consolidate}\ (t_1 : t_2 : ts) & = & merge\ (merge\ t_1\ t_2)\ (consolidate\ ts)
+\end{array}
 \ee
 
-where
-
-\[
-A' = \{ T_3, T_4, ..., T_m\}
-\]
-
-is the rest of the children without the first two trees.
-
-The relative Haskell program of popping is given as the following.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-deleteMin (Node _ hs) = mergePairs hs where
-    mergePairs [] = E
-    mergePairs [h] = h
-    mergePairs (h1:h2:hs) = merge (merge h1 h2) (mergePairs hs)
-\end{lstlisting}
-
-The popping operation can also be explained in the following
-procedural algorithm.
+The corresponding `left child, right sibling' implementation is as below:
 
 \begin{algorithmic}[1]
 \Function{Pop}{$H$}
-  \State $L \gets NIL$
-  \For{every 2 trees $T_x$, $T_y \in$ \Call{Children}{$H$} from left to right}
-    \State Extract $x$, and $y$ from \Call{Children}{$H$}
+  \State $L \gets$ NIL
+  \For{every $T_x$, $T_y$ in \Call{Sub-Trees}{$H$}}
     \State $T \gets $ \Call{Merge}{$T_x, T_y$}
-    \State Insert $T$ at the beginning of $L$
+    \State $L \gets$ \Call{Link}{$T, L$}
   \EndFor
-  \State $H \gets $ \Call{Children}{$H$} \Comment{$H$ is either $NIL$ or one tree.}
-  \For{$\forall T \in L$ from left to right}
+  \State $H \gets$ NIL
+  \For{$T$ in $L$}
     \State $H \gets $ \Call{Merge}{$H, T$}
   \EndFor
   \State \Return $H$
 \EndFunction
 \end{algorithmic}
 
-Note that $L$ is initialized as an empty linked-list, then the algorithm
-iterates every two trees in pair in the children of the K-ary tree, from
-left to right, and performs merging, the result is inserted at the beginning
-of $L$. Because we insert to front end, so when we traverse $L$ later on,
-we actually process from right to left. There may be odd number of sub-trees
-in $H$, in that case, it will leave one tree after pair-merging. We
-handle it by start the right to left merging from this left tree.
+We iterate to merge $T_x$, $T_y$ to $T$, and link ahead of $L$. When loop on $L$ the second time, we actually traversed from right to left. When there are odd number of sub-trees, $T_y = $ NIL at last, hence $T = T_x$ in this case.
 
-Below is the ANSI C program to this algorithm.
-
-\lstset{language=C}
-\begin{lstlisting}
-struct node* pop(struct node* h) {
-  struct node *x, *y, *lst = NULL;
-  while ((x = h->children) != NULL) {
-    if ((h->children = y = x->next) != NULL)
-      h->children = h->children->next;
-    lst = push_front(lst, merge(x, y));
-  }
-  x = NULL;
-  while((y = lst) != NULL) {
-    lst = lst->next;
-    x = merge(x, y);
-  }
-  free(h);
-  return x;
-}
-\end{lstlisting}
-
-The pairing heap pop operation is conjectured to be amortized $O(\lg n)$
-time \cite{pairing-heap}.
-
-\begin{Exercise}
-Write a program to insert a tree at the beginning of a linked-list
-in your favorite imperative programming language.
-\end{Exercise}
-
-\subsubsection{Delete a node}
+\subsubsection{Delete}
 \index{Pairing heap!delete}
-We didn't mention delete in Binomial heap or Fibonacci Heap. Deletion
-can be realized by first decreasing key to minus infinity ($-\infty$), then
-performing pop. In this section, we present another solution for
-delete node.
 
-The algorithm is to define the function $delete(H, x)$, where $x$ is
-a node in a pairing heap $H$ \footnote{Here the semantic of $x$ is a
-reference to a node.}.
+To delete a node $x$, we can first decrease the value in $x$ to $-\infty$, then followed with a pop. There is an alternative method. If $x$ is the root, we pop it; otherwise, we cut $x$ off $H$, then apply pop to $x$, and merge $x$ back to $H$:
 
-If $x$ is root, we can just perform a pop operation. Otherwise, we
-can cut $x$ from $H$, perform a pop on $x$, and then merge the pop
-result back to $H$. This can be described as the following.
+\begin{algorithmic}[1]
+\Function{Delete}{$H, x$}
+  \If{$H = x$}
+    \State \Call{Pop}{$H$}
+  \Else
+    \State $H \gets$ \Call{Cut}{$H, x$}
+    \State $x \gets$ \Call{Pop}{$x$}
+    \State \Call{Merge}{$H, x$}
+  \EndIf
+\EndFunction
+\end{algorithmic}
 
-\be
-delete(H, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  pop(H) & x \quad \text{is root of} \quad H \\
-  merge(cut(H, x), pop(x)) & otherwise
-  \end{array}
-\right .
-\ee
-
-As delete algorithm uses pop, the performance is conjectured to be
-amortized $O(\lg n)$ time.
+As delete is implemented with pop, the performance is conjectured to be amortized $O(\lg n)$ time.
 
 \begin{Exercise}
-\begin{itemize}
-\item Write procedural pseudo code for delete algorithm.
-
-\item Write the delete operation in your favorite imperative programming
-language
-
-\item Consider how to realize delete in purely functional setting.
-\end{itemize}
+Implement delete for paring heap.
 \end{Exercise}
 
-% ================================================================
-%                 Short summary
-% ================================================================
 \section{Notes and short summary}
 
-In this chapter, we extend the heap implementation from binary tree to
-more generic approach. Binomial heap and Fibonacci heap use Forest of
-K-ary trees as under ground data structure, while Pairing heap use
-a K-ary tree to represent heap. It's a good point to post pone some
-expensive operation, so that the over all amortized performance is
-ensured. Although Fibonacci Heap gives good performance in theory, the
-implementation is a bit complex. It was removed in some latest textbooks.
-We also present pairing heap, which is easy to realize and have good
-performance in practice.
-
-The elementary tree based data structures are all introduced in this
-book. There are still many tree based data structures which we can't
-covers them all and skip here. We encourage the reader to refer to
-other textbooks about them. From next chapter, we'll introduce generic
-sequence data structures, array and queue.
-
-% ================================================================
-%                 Appendix
-% ================================================================
+In this chapter, we extend the heap from binary tree based implementation to more data structures. Binomial heap and Fibonacci heap use forest of multi-way trees, pairing heap use a single multi-way tree.It's a common practice to post pone some expensive operation, and obtain better amortized performance.
 
 \begin{thebibliography}{99}
 
