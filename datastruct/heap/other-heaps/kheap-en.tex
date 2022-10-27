@@ -1042,9 +1042,296 @@ As delete is implemented with pop, the performance is conjectured to be amortize
 Implement delete for paring heap.
 \end{Exercise}
 
-\section{Notes and short summary}
+\section{Summary}
 
 In this chapter, we extend the heap from binary tree based implementation to more data structures. Binomial heap and Fibonacci heap use forest of multi-way trees, pairing heap use a single multi-way tree.It's a common practice to post pone some expensive operation, and obtain better amortized performance.
+
+\section{Appendix - example programs}
+
+Definition of multi-way tree (left child, right sibling):
+
+\begin{lstlisting}[language = Bourbaki]
+data Node<K> {
+    Int rank
+    K key
+    Node<K> parent, subTrees, sibling,
+    Bool mark
+
+    Node(K x) {
+        key = x
+        rank = 0
+        parent = subTrees = sibling = null
+        mark = false
+    }
+}
+\end{lstlisting}
+
+Link binomial trees:
+
+\begin{lstlisting}[language = Bourbaki]
+Node<K> link(Node<K> t1, Node<K> t2) {
+    if t2.key < t1.key then (t1, t2) = (t2, t1)
+    t2.sibling = t1.subTrees
+    t1.subTrees = t2
+    t2.parent = t1
+    t1.rank = t1.rank + 1
+    return t1
+}
+\end{lstlisting}
+
+Binomial heap insert:
+
+\begin{lstlisting}[language = Bourbaki]
+Node<K> insert(K x, Node<K> h) = insertTree(Node(x), h)
+
+Node<K> insertTree(Node<K> t, Node<K> h) {
+    var h1 = Node()
+    var prev = h1
+    while h != null and h.rank <= t.rank {
+        var t1 = h
+        h = h.sibling
+        if t.rank == t1.rank {
+            t = link(t, t1)
+        } else {
+            prev.sibling = t1
+            prev = t1
+        }
+    }
+    prev.sibling = t
+    t.sibling = h
+    return removeFirst(h1)
+}
+
+Node<K> removeFirst(Node<K> h) {
+    var next = h.sibling
+    h.sibling = null
+    return next
+}
+\end{lstlisting}
+
+Binomial heap recursive insert:
+
+\begin{Haskell}
+data BiTree a = Node { rank :: Int
+                     , key :: a
+                     , subTrees :: [BiTree a]}
+
+type BiHeap a = [BiTree a]
+
+link t1@(Node r x c1) t2@(Node _ y c2) =
+    if x < y then Node (r + 1) x (t2:c1)
+    else Node (r + 1) y (t1:c2)
+
+insertTree t [] = [t]
+insertTree t ts@(t':ts') | rank t < rank t' = t:ts
+                         | rank t > rank t' = t' : insertTree t ts'
+                         | otherwise = insertTree (link t t') ts'
+
+insert x = insertTree (Node 0 x [])
+\end{Haskell}
+
+Binomial heap merge:
+
+\begin{lstlisting}[language = Bourbaki]
+Node<K> merge(h1, h2) {
+    var h = Node()
+    var prev = h
+    while h1 != null and h2 != null {
+        if h1.rank < h2.rank {
+            prev.sibling = h1
+            prev = prev.sibling
+            h1 = h1.sibling
+        } else if h2.rank < h1.rank {
+            prev.sibling = h2
+            prev = prev.sibling
+            h2 = h2.sibling
+        } else {
+            var (t1, t2) = (h1, h2)
+            (h1, h2) = (h1.sibling, h2.sibling)
+            h1 = insertTree(link(t1, t2), h1)
+    }
+    if h1 != null then prev.sibling = h1
+    if h2 != null then prev.sibling = h2
+    return removeFirst(h)
+}
+\end{lstlisting}
+
+Binomial heap recursive merge:
+
+\begin{Haskell}
+merge ts1 [] = ts1
+merge [] ts2 = ts2
+merge ts1@(t1:ts1') ts2@(t2:ts2')
+    | rank t1 < rank t2 = t1:(merge ts1' ts2)
+    | rank t1 > rank t2 = t2:(merge ts1 ts2')
+    | otherwise = insertTree (link t1 t2) (merge ts1' ts2')
+\end{Haskell}
+
+Binomial tree pop:
+
+\begin{lstlisting}[language = Bourbaki]
+Node<K> reverse(Node<K> h) {
+    Node<K> prev = null
+    while h != null {
+        var x = h
+        h = h.sibling
+        x.sibling = prev
+        prev = x
+    }
+    return prev
+}
+
+(Node<K>, Node<K>) extractMin(Node<K> h) {
+    var head = h
+    Node<K> tp = null
+    Node<K> tm = null
+    Node<K> prev = null
+    while h != null {
+        if tm == null or h.key < tm.key {
+            tm = h
+            tp = prev
+        }
+        prev = h
+        h = h.sibling
+    }
+    if tp != null {
+        tp.sibling = tm.sibling
+    } else {
+        head = tm.sibling
+    }
+    tm.sibling = null
+    return (tm, head)
+}
+
+(K, Node<K>) pop(Node<K> h) {
+    var (tm, h) = extractMin(h)
+    h = merge(h, reverse(tm.subtrees))
+    tm.subtrees = null
+    return (tm.key, h)
+}
+\end{lstlisting}
+
+Binomial heap recursive pop:
+
+\begin{Haskell}
+pop h = merge (reverse $ subTrees t) ts where
+    (t, ts) = extractMin h
+
+extractMin [t] = (t, [])
+extractMin (t:ts) = if key t < key t' then (t, ts)
+                    else (t', t:ts') where
+    (t', ts') = extractMin ts
+\end{Haskell}
+
+Merge Fibonacci heaps with bidirectional linked list:
+
+\begin{lstlisting}[language = Bourbaki]
+FibHeap<K> merge(FibHeap<K> h1, FibHeap<K> h2) {
+    if isEmpty(h1) then return h2
+    if isEmpty(h2) then return h1
+    FibHeap<K> h = FibHeap<K>()
+    h.trees = concat(h1.trees, h2.trees)
+    h.minTree = if h1.minTree.key < h2.minTree.key
+                then h1.minTree else h2.minTree
+    h.size = h1.size + h2.size
+    return h
+}
+
+bool isEmpty(FibHeap<K> h) = (h == null or h.trees == null)
+
+Node<K> concat(Node<K> first1, Node<K> first2) {
+  var last1 = first1.prev
+  var last2 = first2.prev
+  last1.next = first2
+  first2.prev = last1
+  last2.next = first1
+  first1.prev = last2
+  return first1
+}
+\end{lstlisting}
+
+Consolidate trees in Fibonacci heap:
+
+\begin{Haskell}
+consolidate = foldr melt [] where
+    melt t [] = [t]
+    meld t (t':ts) | rank t == rank t' = meld (link t t') ts
+                   | rank t <  rank t' = t : t' : ts
+                   | otherwise = t' : meld t ts
+\end{Haskell}
+
+Consolidate trees with auxiliary array:
+
+\begin{lstlisting}[language = Bourbaki]
+void consolidate(FibHeap<K> h) {
+    Int R = maxRank(h.size) + 1
+    Node<K>[R] a = [null, ...]
+    while h.trees != null {
+        var x = h.trees
+        h.trees = remove(h.trees, x)
+        Int r = x.rank
+        while a[r] != null {
+            var y = a[r]
+            x = link(x, y)
+            a[r] = null
+            r = r + 1
+        }
+        a[r] = x
+    }
+    h.minTr = null
+    h.trees = null
+    for var t in a if t != null {
+        h.trees = append(h.trees, t)
+        if h.minTr == null or t.key < h.minTr.key then h.minTr = t
+    }
+}
+\end{lstlisting}
+
+Fibonacci heap pop:
+
+\begin{Haskell}
+pop (FH _ (Node _ x []) []) = (x, E)
+pop (FH sz (Node _ x tsm) ts) = (x, FH (sz - 1) tm ts') where
+    (tm, ts') = extractMin $ consolidate (tsm ++ ts)
+\end{Haskell} %$
+
+Decrease value in Fibonacci heap:
+
+\begin{lstlisting}[language = Bourbaki]
+void decrease(FibHeap<K> h, Node<K> x, K k) {
+    var p = x.parent
+    x.key = k
+    if p != null and k < p.key {
+        cut(h, x)
+        cascadeCut(h, p)
+    }
+    if k < h.minTr.key then h.minTr = x
+}
+
+void cut(FibHeap<K> h, Node<K> x) {
+    var p = x.parent
+    p.subTrees = remove(p.subTrees, x)
+    p.rank = p.rank - 1
+    h.trees = append(h.trees, x)
+    x.parent = null
+    x.mark = false
+}
+
+void cascadeCut(FibHeap<K> h, Node<K> x) {
+    var p = x.parent
+    if p == null then return
+    if x.mark {
+        cut(h, x)
+        cascadeCut(h, p)
+    } else {
+        x.mark = true
+    }
+}
+\end{lstlisting}
+
+\ifx\wholebook\relax \else
+\section{参考答案}
+\shipoutAnswer
 
 \begin{thebibliography}{99}
 
