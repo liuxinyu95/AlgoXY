@@ -1,20 +1,19 @@
 \ifx\wholebook\relax \else
-% ------------------------
+\documentclass[b5paper]{ctexart}
+\usepackage[nomarginpar
+  %, margin=.5in
+]{geometry}
 
-\documentclass{ctexart}
+\addtolength{\oddsidemargin}{-0.05in}
+\addtolength{\evensidemargin}{-0.05in}
+\addtolength{\textwidth}{0.1in}
 \usepackage[cn]{../../../prelude}
 
 \setcounter{page}{1}
 
 \begin{document}
 
-%--------------------------
-
-% ================================================================
-%                 COVER PAGE
-% ================================================================
-
-\title{并不简单的队列}
+\title{队列}
 
 \author{刘新宇
 \thanks{{\bfseries 刘新宇 } \newline
@@ -24,123 +23,83 @@
 \maketitle
 \fi
 
-\markboth{队列}{初等算法}
+\markboth{队列}{基本算法}
 
 \ifx\wholebook\relax
-\chapter{并不简单的队列}
+\chapter{队列}
 \numberwithin{Exercise}{chapter}
 \fi
 
-% ================================================================
-%                 Introduction
-% ================================================================
 \section{简介}
 \label{introduction}
 
-队列是一种看起来比较简单的数据结构。它提供了FIFO（先进先出）处理数据的机制。有多种方法可以实现队列，包括使用单向或双向链表，使用循环缓冲区（ring buffer）等。但是，在满足队列性质的条件下（尤其是性能限制条件），实现一个纯函数式队列却并不简单。
+队列提供了先进先出（FIFO）的机制。可以用多种方法实现队列，例如单向、双向链表，循环缓冲区等，Okasaki给出了16种不同的实现方法\cite{okasaki-book}。队列需要满足下面的两条基本要求：
 
-本章中，我们介绍实现队列的多种策略。队列是一种先进先出的数据结构，并且满足如下的性能限制：
+\begin{enumerate}
+\item 可以在常数时间内向末尾添加元素；
+\item 可以在常数时间内从头部获取或删除元素。
+\end{enumerate}
 
-\begin{itemize}
-\item 可以在常数时间$O(1)$内向末尾添加元素；
-\item 可以在常数时间$O(1)$内从头部获取或删除元素。
-\end{itemize}
+可以用双向链表直观地实现队列。我们略去这个简单的实现，而关注如何用其它基本数据结构，如列表、数组实现队列。
 
-这两条性质必须被满足。有时还会增加一些目标，例如能够动态分配内存。
-
-显然，双向链表可以很容易地实现队列。但是还存在更加简单的方案，队列可以由单向链表或者普通数组实现。我们这里要提出的问题是：如何实现一个纯函数式的队列？
-
-我们将首先解释典型的单向链表和循环缓冲区实现的队列；然后我们给出一个简单直观的函数式实现，但是这一解法的性能只在分摊的意义下能达到常数时间。我们还将介绍实时（或最坏情况下）性能达到常数时间的实现方法。最后，我们介绍一种依赖于惰性求值的实时队列。
-
-大部分函数式实现来自Chris Okasaki的工作\cite{okasaki-book}，他给出了16种不同的纯函数式队列。
-
-% ================================================================
-%                 Imperative queue
-% ================================================================
-\section{单向列表和循环缓冲区实现的队列}
-
-本节我们分别介绍用单项链表实现的队列，和用循环缓冲区实现的队列。它们是典型的命令式队列。
-
-\subsection{单向链表实现}
+\subsection{列表实现}
 \index{队列!单向链表实现}
 
-使用单向链表，可以很容易地在链表的头部以常数时间$O(1)$插入或删除元素。但是为了保证先进先出，只能在链表头部执行一种操作，而在链表的尾部执行相反的另一种操作。
+我们可以用常数时间在列表头部插入、删除元素。但为了先进先出，我们只能在头部执行一种操作，而在尾部执行另一种操作。我们需要$O(n)$时间遍历整个列表以到达尾部，其中$n$是列表长度。这样就无法达到性能要求。为了解决这个问题，可以一个变量记录尾部位置。并用一个额外的节点$S$简化空队列的处理，如图\ref{fig:empty-list}所示。
 
-对于单向链表，为了在尾部执行操作，我们需要遍历整个链表以到达尾部。遍历需要$O(n)$时间，其中$n$是链表长度。这样就无法达到队列的性能要求。
+\lstset{frame = single}
+\begin{lstlisting}[language = Bourbaki]
+data Node<K> {
+  Key key
+  Node next
+}
 
-为了解决这个问题，我们需要一个额外的记录来快速访问链表的尾部。使用一个sentinel可以简化边界的处理。下面的C语言例子程序使用单向链表实现了队列\footnote{使用C++模板可以抽象元素的类型。简单起见，C语言例子程序种假设元素为整数。}。
-
-\lstset{language=C}
-\begin{lstlisting}
-typedef int Key;
-
-struct Node {
-  Key key;
-  struct Node* next;
-};
-
-struct Queue {
-  struct Node *head, *tail;
-};
+data Queue {
+  Node head, tail
+}
 \end{lstlisting}
-
-图\ref{fig:empty-list}描述了一个空链表。头部和尾部都指向空的sentinel节点。
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[scale=1.0]{img/empty-list}
-  \caption{空队列，头部和尾部都指向sentinel节点} \label{fig:empty-list}
+  \includegraphics[scale=0.6]{img/empty-list}
+  \caption{空队列，头、尾都指向$S$}
+  \label{fig:empty-list}
 \end{figure}
 
-我们将队列的接口抽象如下：
+我们定义队列的基本操作为：
 
 \begin{algorithmic}
 \Function{Empty}{}
   \Comment{创建一个空队列}
 \EndFunction
 \Function{Empty?}{$Q$}
-  \Comment{检查一个队列$Q$是否为空}
+  \Comment{检查队列$Q$是否为空}
 \EndFunction
 \Function{Enqueue}{$Q, x$}
-  \Comment{将新元素$x$加入队列$Q$（入队）}
+  \Comment{新元素$x$入队}
 \EndFunction
 \Function{Dequeue}{$Q$}
-  \Comment{从队列$Q$删除一个元素（出队）}
+  \Comment{出队}
 \EndFunction
 \Function{Head}{$Q$}
-  \Comment{按照先进先出顺序获取队列$Q$中的下一个元素}
+  \Comment{获取头部元素}
 \EndFunction
 \end{algorithmic}
 
-注意\textproc{Dequeue}和\textproc{Head}的区别。\textproc{Head}仅仅按照FIFO的顺序获取下一个元素而不会将元素删除，而\textproc{Dequeue}会执行删除操作。
+\textproc{Head}仅按照FIFO的顺序获取下一个元素而不会将元素删除，而\textproc{Dequeue}会执行删除操作。这些操作也分别称作\textit{push}、\textit{pop}、\textit{front}\footnote{enqueue也称作snoc, append, push back；dequeue也称作pop, pop front。}。使用列表时，我们选择在头部加入元素、从尾部删除元素以简化实现。
 
-某些编程语言，如Haskell和大多数面向对象的语言，可以通过某种形式保证上述接口。下面的Haskell例子代码定义了抽象队列。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-class Queue q where
-    empty :: q a
-    isEmpty :: q a -> Bool
-    push :: q a -> a -> q a     -- 或命名为：snoc、append、push\_back
-    pop :: q a -> q a           -- 或命名为：tail、pop\_front
-    front :: q a -> a           -- 或命名为：head
-\end{lstlisting}
-
-为了保证\textproc{Enqueue}和\textproc{Dequeue}可以在常数时间内完成，我们在头部加入元素，从尾部删除元素\footnote{也可以在尾部加入，从头部删除，但是相应的操作会变复杂。}。
-
-\begin{algorithmic}
+\begin{algorithmic}[1]
 \Function{Enqueue}{$Q, x$}
-  \State $p \gets $ \Call{Create-New-Node}{}
-  \State \Call{Key}{$p$} $\gets x$
-  \State \Call{Next}{$p$} $\gets NIL$
+  \State $p \gets $ \Call{Node}{$x$}
+  \State \Call{Next}{$p$} $\gets$ NIL
   \State \textproc{Next}(\Call{Tail}{$Q$}) $\gets p$
   \State \Call{Tail}{$Q$} $\gets p$
 \EndFunction
 \end{algorithmic}
 
-因为使用sentinel节点，所以至少存在一个节点（空队列中有一个sentinel节点）。因此上述算法在追加新节点$p$时，无需检查尾部是否有效。
+队列至少有一个节点（空队列中有$S$节点），因此无需检查尾部是否为NIL。
 
-\begin{algorithmic}
+\begin{algorithmic}[1]
 \Function{Dequeue}{$Q$}
   \State $x \gets $ \Call{Head}{$Q$}
   \State \textproc{Next}(\Call{Head}{$Q$}) $\gets$ \Call{Next}{$x$}
@@ -151,53 +110,19 @@ class Queue q where
 \EndFunction
 \end{algorithmic}
 
-因为我们总是保证sentinel节点在所有其他节点的前面，函数\textproc{Head}实际返回sentinel的下一个节点。
-
-图\ref{fig:list-queue}描述了\textproc{Enqueue}和\textproc{Dequeue}使用sentinel节点工作的情形。
+$S$节点在所有其它节点的前面，\textproc{Head}实际返回$S$的下一个节点，如图\ref{fig:list-queue}所示。我们可以把这一实现扩展到并发环境。在头部和尾部各使用一把并发锁。$S$节点可以在队列空时避免死锁\cite{PODC96}、\cite{SutterDDJ}。
 
 \begin{figure}[htbp]
- \centering
- \subcaptionbox{执行\textproc{Enqueue}前}{\includegraphics[scale=0.7]{img/enq-list-before}} \\
- \subcaptionbox{执行\textproc{Enqueue}后}{\includegraphics[scale=0.7]{img/enq-list-after}} \\
- \subcaptionbox{执行\textproc{Dequeue}前}{\includegraphics[scale=0.7]{img/deq-list-before}} \\
- \subcaptionbox{执行\textproc{Dequeue}后}{\includegraphics[scale=0.7]{img/deq-list-after}} \\
- \caption{单向链表实现队列的\textproc{Enqueue}和\textproc{Dequeue}操作} \label{fig:list-queue}
+  \centering
+  \subcaptionbox{\textproc{Enqueue}前}{\includegraphics[scale=0.7]{img/enq-list-before}} \\
+  \subcaptionbox{\textproc{Enqueue}后}{\includegraphics[scale=0.7]{img/enq-list-after}} \\
+  \subcaptionbox{\textproc{Dequeue}前}{\includegraphics[scale=0.7]{img/deq-list-before}} \\
+  \subcaptionbox{\textproc{Dequeue}后}{\includegraphics[scale=0.7]{img/deq-list-after}} \\
+  \caption{列表实现的\textproc{Enqueue}、\textproc{Dequeue}}
+  \label{fig:list-queue}
 \end{figure}
 
-下面的C语言例子程序实现了入队和出队算法。
-
-\begin{lstlisting}
-struct Queue* enqueue(struct Queue* q, Key x) {
-    struct Node* p = (struct Node*)malloc(sizeof(struct Node));
-    p->key = x;
-    p->next = NULL;
-    q->tail->next = p;
-    q->tail = p;
-    return q;
-}
-
-Key dequeue(struct Queue* q) {
-    struct Node* p = head(q); //获取sentinel的下一个节点。
-    Key x = key(p);
-    q->head->next = p->next;
-    if(q->tail == p)
-        q->tail = q->head;
-    free(p);
-    return x;
-}
-\end{lstlisting}
-
-这一方案简单、稳健。可以很容易地扩展到并发环境（例如多核）。我们可以在头部和尾部各使用一把锁。sentinel节点可以帮助我们在队列为空时避免死锁\cite{PODC96}、\cite{SutterDDJ}。
-
-\begin{Exercise}
-\begin{itemize}
-\item 使用单向链表，实现\textproc{Empty?}和\textproc{Head}操作。
-
-\item 选择一门命令式语言，用单向链表实现队列。注意提供初始化和释放队列的函数。
-\end{itemize}
-\end{Exercise}
-
-\subsection{循环缓冲区实现}
+\subsection{循环缓冲区}
 \index{队列!循环缓冲区}
 
 另外一种方法是使用数组来实现一个循环缓冲区（也称ring buffer）。和单向链表正相反，空间足够的情况下，数组支持在尾部进行常数时间的追加操作。如果空间不足，数组已满，我们需要重新申请空间。但是从数组头部删除元素的性能较差，为线性时间$O(n)$。这是因为需要将剩余的全部元素向前移动（shift）一个单元以添补删除第一个元素后的空位。
@@ -1252,9 +1177,26 @@ Chris Okasaki对纯函数式队列进行了集中的研究，给出了许多有�
 \end{itemize}
 \end{Exercise}
 
-% ================================================================
-%                 Appendix
-% ================================================================
+\section{附录：例子程序}
+
+列表实现的入队、出队：
+
+\begin{lstlisting}[language = Bourbaki]
+Queue<K> enqueue(Queue<K> q, K x) {
+    var p = Node(x)
+    p.next = null
+    q.tail.next = p
+    q.tail = p
+    return q
+}
+
+K dequeue(Queue<K> q) {
+    var p = q.head.next   //the next of S
+    q.head.next = p.next
+    if q.tail == p then q.tail = q.head //empty
+    return p.key
+}
+\end{lstlisting}
 
 \ifx\wholebook\relax \else
 
