@@ -125,9 +125,14 @@ $S$节点在所有其它节点的前面，\textproc{Head}实际返回$S$的下�
 \subsection{循环缓冲区}
 \index{队列!循环缓冲区}
 
-另外一种方法是使用数组来实现一个循环缓冲区（也称ring buffer）。和单向链表正相反，空间足够的情况下，数组支持在尾部进行常数时间的追加操作。如果空间不足，数组已满，我们需要重新申请空间。但是从数组头部删除元素的性能较差，为线性时间$O(n)$。这是因为需要将剩余的全部元素向前移动（shift）一个单元以添补删除第一个元素后的空位。
+和列表相反，我们可以在常数时间将元素添加到数组末尾，但需要线性时间$O(n)$从头部删除。这是因为要将全部剩余元素依次向前移动。为了达到队列的性能要求，我们可以把数组的头尾连接起来，做成一个环，叫做循环缓冲区，如图如图\ref{fig:circular-buffer}、\ref{fig:circular-buffer-queue}所示。这样用数组的头部坐标head，队列长度count，和数组大小size，就可以完全表述队列。count等于0时队列为空。利用模运算简化入队、出队的实现。
 
-循环缓冲区的思路如图\ref{fig:circular-buffer-queue}和\ref{fig:circular-buffer}所示。
+\begin{figure}[htbp]
+ \centering
+ \includegraphics[scale=0.3]{img/ring-buffer}
+ \caption{循环缓冲区}
+ \label{fig:circular-buffer}
+\end{figure}
 
 \begin{figure}[htbp]
  \centering
@@ -209,101 +214,35 @@ $S$节点在所有其它节点的前面，\textproc{Head}实际返回$S$的下�
  \caption{使用循环缓冲区实现队列} \label{fig:circular-buffer-queue}
 \end{figure}
 
-\begin{figure}[htbp]
- \centering
- \includegraphics[scale=0.5]{img/ring-buffer}
- \caption{循环缓冲区} \label{fig:circular-buffer}
-\end{figure}
-
-下面的C语言例子程序使用循环缓冲区实现了队列，它规定了缓冲区的最大容量，而没有使用动态分配内存。
-
-\lstset{language=C}
-\begin{lstlisting}
-struct QueueBuf{
-    Key* buf;
-    int head, cnt, size;
-};
-\end{lstlisting}
-
-在队列初始化时，传入队列的容量参数。
-
-\begin{lstlisting}
-struct QueueBuf* createQ(int max){
-    struct QueueBuf* q = (struct QueueBuf*)malloc(sizeof(struct QueueBuf));
-    q->buf = (Key*)malloc(sizeof(Key)*max);
-    q->size = max;
-    q->head = q->cnt = 0;
-    return q;
-}
-\end{lstlisting}
-
-可以使用一个变量来记录队列中存储的元素个数，并用来判断队列是否为空，或者是否已满。
-
-\begin{algorithmic}
-\Function{Empty?}{$Q$}
-  \State \Return \Call{Count}{$Q$} = 0
-\EndFunction
-\end{algorithmic}
-
-实现入队\textproc{Enqueue}和\textproc{Dequeue}出队操作的最简单方法是使用模运算。
-
-\begin{algorithmic}
+\begin{algorithmic}[1]
 \Function{Enqueue}{$Q, x$}
-  \If{$\lnot$ \Call{Full?}{$Q$}}
+  \If{not \Call{Full?}{$Q$}}
     \State \Call{Count}{$Q$} $\gets$ \Call{Count}{$Q$} + 1
-    \State tail $\gets $ (\Call{Head}{$Q$} + \Call{Count}{$Q$}) $\mod$ \Call{Size}{$Q$}
-    \State \Call{Buffer}{$Q$}[tail] $\gets x$
+    \State tail $\gets $ (\Call{Head}{$Q$} + \Call{Count}{$Q$}) $\bmod$ \Call{Size}{$Q$}
+    \State \Call{Buf}{$Q$}[tail] $\gets x$
   \EndIf
 \EndFunction
 \end{algorithmic}
 
-\begin{algorithmic}
-\Function{Head}{$Q$}
-  \If{$\lnot$ \Call{Empty?}{$Q$}}
-    \State \Return \Call{Buffer}{$Q$}[\Call{Head}{$Q$}]
-  \EndIf
-\EndFunction
-\end{algorithmic}
-
-\begin{algorithmic}
+\begin{algorithmic}[1]
 \Function{Dequeue}{$Q$}
-  \If{$\lnot$ \Call{Empty?}{$Q$}}
-    \State \Call{Head}{$Q$} $\gets $ (\Call{Head}{$Q$} + 1) $\mod$ \Call{Size}{$Q$}
+  \State $x \gets$ NIL
+  \If{not \Call{Empty?}{$Q$}}
+    \State $h \gets$ \Call{Head}{$Q$}
+    \State $x \gets$ \Call{Buf}{$Q$}[$h$]
+    \State \Call{Head}{$Q$} $\gets $ (h + 1) $\bmod$ \Call{Size}{$Q$}
     \State \Call{Count}{$Q$} $\gets$ \Call{Count}{$Q$} - 1
   \EndIf
+  \State \Return $x$
 \EndFunction
 \end{algorithmic}
 
-但取模运算在某些环境下很慢，可以通过一些调整避免取模运算，如下面的C语言例子程序所示：
-
-\begin{lstlisting}
-void enQ(struct QueueBuf* q, Key x){
-    if(!fullQ(q)){
-        q->buf[offset(q->head + q->cnt, q->size)] = x;
-        q->cnt++;
-    }
-}
-
-Key headQ(struct Queue* q) {
-    return q->buf[q->head];  //假设队列不为空。
-}
-
-Key deQ(struct QueueBuf* q){
-    Key x = headQ(q);
-    q->head = offset(++q->head, q->size);
-    q->cnt--;
-    return x;
-}
-\end{lstlisting}
-
 \begin{Exercise}
-循环缓冲区的队列在初始化时规定了最大的容量，如果使用头、尾两个指针，而不使用Count变量，如何检测队列是否为空？是否已满？请考虑两种情况：头部在尾部前面，和头部在尾部后面。
+循环缓冲区在初始化时规定了最大的容量，如果使用头、尾两个指针，而不使用Count，如何检测队列是否为空？是否已满？（考虑两种情况：头部在尾部前面，和头部在尾部后面）。
 \end{Exercise}
 
-% ================================================================
-%                 the 1st version
-% ================================================================
-\section{纯函数式实现}
+\subsection{双列表队列}
+\index{队列!双列表队列}
 
 仅仅使用一个列表无法满足队列的性能限制。大多数的函数式环境使用单向链表来实现列表，列表的头部操作性能为常数时间，而在尾部需要线性时间$O(n)$，其中$n$为列表长度。因此入队或者出队中必然有一个操作的性能无法达到要求，如图\ref{fig:linked-list-queue}所示。
 
@@ -313,11 +252,6 @@ Key deQ(struct QueueBuf* q){
   \subcaptionbox{\textproc{EnQueue}为线性时间。}{\includegraphics[scale=0.5]{img/list-queue-tail}}
   \caption{使用列表，\textproc{DeQueue}和\textproc{EnQueue}无法同时达到常数时间} \label{fig:linked-list-queue}
 \end{figure}
-
-在纯函数式环境下，我们不能使用变量来记录列表的尾部。因此必须找到一种巧妙的方法，才能实现纯函数式队列。
-
-\subsection{双列表队列}
-\index{队列!双列表队列}
 
 Chris Okasaki在\cite{okasaki-book}中给出了一个简单直观的函数式实现。思路是使用两个链表来表示一个队列。两个链表“尾对尾”接在一起。形状类似一个马蹄形磁铁，如图\ref{fig:horseshoe-magnet}所示。
 
@@ -1182,7 +1116,7 @@ Chris Okasaki对纯函数式队列进行了集中的研究，给出了许多有�
 列表实现的入队、出队：
 
 \begin{lstlisting}[language = Bourbaki]
-Queue<K> enqueue(Queue<K> q, K x) {
+Queue<K> enQ(Queue<K> q, K x) {
     var p = Node(x)
     p.next = null
     q.tail.next = p
@@ -1190,11 +1124,51 @@ Queue<K> enqueue(Queue<K> q, K x) {
     return q
 }
 
-K dequeue(Queue<K> q) {
+K deQ(Queue<K> q) {
     var p = q.head.next   //the next of S
     q.head.next = p.next
     if q.tail == p then q.tail = q.head //empty
     return p.key
+}
+\end{lstlisting}
+
+循环缓冲区的定义：
+
+\begin{lstlisting}[language = Bourbaki]
+data Queue<K> {
+    K buf[]
+    int head, cnt, size
+
+    Queue(int max) {
+        buf = Array<K>(max)
+        size = max
+        head = cnt = 0
+    }
+}
+\end{lstlisting}
+
+使用循环缓冲区的入队、出队：
+
+\begin{lstlisting}
+N offset(N i, N size) = if i < size then i else i - size
+
+void enQ(Queue<K> q, K x) {
+    if q.cnt < q.size {
+        q.buf[offset(q.head + q.cnt, q.size)] = x;
+        q.cnt = q.cnt + 1
+    }
+}
+
+K head(Queue<K> q) = if q.cnt == 0 then null else q.buf[q.head]
+
+K deQ(Queue<K> q) {
+    K x = null
+    if q.cnt > 0 {
+        x = head(q)
+        q.head = offset(q->head + 1, q->size);
+        q.cnt = q.cnt -1
+    }
+    return x
 }
 \end{lstlisting}
 
