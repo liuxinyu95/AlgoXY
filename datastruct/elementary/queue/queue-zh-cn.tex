@@ -351,182 +351,73 @@ pop\ (x:f, r)   & = \textit{balance}\ f\ r \\
 \end{cases}
 \ee
 
-% ================================================================
-%                 Realtime Queue
-% ================================================================
 \section{实时队列}
 \index{队列!实时队列}
 
-改善平衡性后虽然可以避免最差情况，但是反转rear列表的的性能仍然是$O(n)$的，其中$n = |R|$。尽管分摊性能为常数时间，但如果rear列表很长，某次操作的性能仍然会很差。在某些实时系统中，我们必须保证在最坏情况下的性能也达到要求。
-
-根据前面的分析，计算的瓶颈在$ F \cup reverse(R)$，当$|R| > |F|$时会发生这一操作。考虑$|F|$和$|R|$都是整数，发生这一操作时，我们有：
+在平衡队列的实现中，列表连接、反转的性能仍然是线性时间的。在实时系统中，需要进一步改进。性能瓶颈出现在$f \doubleplus reverse r$中。此时$m > n$，违反了平衡规则。由于$m$、$n$都是整数，我们进一步知道：$m = n + 1$。$\doubleplus$的复杂度是$O(n)$，反转操作的复杂度是$O(m)$，总复杂度是$O(n + m)$，和队列中元素个数成正比。我们可以将这一操作分派到各次出、入队中去。首先分析一下尾递归的反转操作：
 
 \be
-  |R| = |F| + 1
+reverse\ = reverse'\ [\ ]
 \ee
 
-$F$和$reverse(R)$的结果都是单向链表，连接它们耗时$O(|F|)$，此外还需要$O(|R|)$时间反转rear列表，因此总时间为$O(n)$，其中$n = |F| + |R|$。也就是说，和队列中的元素个数成正比。
-
-为了实现实时队列，我们不能一次性计算$ F \cup reverse(R)$。解决策略是将这一耗时的计算分派到各次入队和出队操作中去。这样虽然单次的入队和出队需要做的事情多了，但是可以避免最坏情况下性能退化为线性时间。
-
-\subsection{逐步反转}
-\index{队列!逐步反转}
-
-我们首先分析一下典型的函数式反转算法。
+这一定义是克里化的，其中：
 
 \be
-  reverse(X) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & X = \phi \\
-  reverse(X') \cup \{ x_1 \} & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+\textit{reverse}'\ a\ [\ ] & = & a \\
+\textit{reverse}'\ a\ (x:xs) & = & \textit{reverse}'\ (x:a)\ xs \\
+\end{array}
 \ee
 
-其中$X' = tail(X) = \{ x_2, x_3, ...\}$。
-
-若列表为空，则反转结果也是一个空列表。否则，我们取出第一个元素$x_1$，将剩余元素$\{x_2, x_3, ..., x_n \}$反转为$\{x_n, x_{n-1}, .., x_3, x_2 \}$，然后再将$x_1$追加到末尾。
-
-但是，这一算法的性能不佳，追加元素到末尾用时和列表长度成正比。因此这一反转操作的性能为$O(n^2)$。
-
-另外一种实现方式是使用\underline{尾递归}：
+可以很容易地将尾递归\cite{wiki-tail-call}\cite{recursion}定义转换为逐步计算。整体过程相当于一系列的状态转换。我们定义一个状态机，包含两种状态：反转状态$S_r$表示正在进行反转（未完成）；完成状态$S_f$表示反转已经结束（完成）。接下来我们利用状态机调度调度（slow-down）反转计算：
 
 \be
-  reverse(X) = reverse'(X, \phi)
+\begin{array}{rcl}
+step\ S_r\ a\ [\ ] & = & (S_f, a) \\
+step\ S_r\ a\ (x:xs) & = & (S_r, (x:a), xs) \\
+\end{array}
 \ee
 
-其中
-
-\be
- reverse'(X, A) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  A & X = \phi \\
-  reverse'(X', \{ x_1 \} \cup A) & otherwise
-  \end{array}
-\right .
-\ee
-
-我们称$A$为\underline{累积器}（accumulator），它不断累积中间结果。任何时候，当调用$reverse'(X, A)$时，$X$包含尚未反转的元素，$A$包含迄今为止反转完的元素。当第$i$次调用$reverse'()$时，$X$和$A$分别包含如下内容：
+每一步，我们先检查当前的状态，如果为$S_r$（反转中），但是列表中已没有剩余元素需要反转，就将状态变为完成$S_f$；否则，我们取出列表中的第一个元素$x$，将其链结到$a$的前面。接下来我们不再进行递归，这一步计算到此结束。当前的状态和反转的中间结果被保存下来，供以后再次调用$step$时使用。例如：
 
 \[
-  \begin{array}{r@{\quad}l}
-  X = \{x_i, x_{i+1}, ..., x_n \} & A = \{ x_{i-1}, x_{i-2}, ... x_1 \}
-  \end{array}
-\]
-
-每次递归，如果不是边界情况，我们用常数时间从$X$取出第一个元素；然后将其链结到$A$的前面，这一步同样仅耗时常数时间$O(1)$。同样的操作重复$n$次，因此这一反转算法是线性时间$O(n)$的。
-
-尾递归\cite{wiki-tail-call}\cite {recursion}算法可以很容易从一次性计算改为逐步计算。整体过程相当于一系列的状态转换。我们定义一个状态机，包含两种状态：反转状态$S_r$表示正在进行反转（未完成）；完成状态$S_f$表示反转已经结束（完成）。下面的Haskell例子程序将状态定义为类型。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-data State a = | Reverse [a] [a]
-               | Done [a]
-\end{lstlisting}
-
-使用这两种状态，我们可以调度（slow-down）函数$reverse'(X, A)$的计算：
-
-\be
-  step(S, X, A) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (S_f, A) & S = S_r \land X = \phi \\
-  (S_r, X', \{ x_1 \} \cup A) & S = S_r \land X \neq \phi \\
-  \end{array}
-\right .
-\ee
-
-每一步，我们先检查当前的状态，如果状态为$S_r$（反转中），但是$X$中已没有剩余元素需要反转，就将状态变换为完成$S_f$；否则，我们取出$X$中的第一个元素，将其链结到$A$的前面，接下来与之前不同，我们不再进行递归调用，这一步计算到此结束。当前的状态，以及反转的中间步骤结果$X$和$A$被保存下来，我们可以在以后的任何时候使用这些内容，再调用$step$函数继续反转。
-
-下面是逐步反转的一个例子：
-
-\[
-\begin{array}{lcl}
-step(S_r, \text{``hello''}, \phi) & = & (S_r, \text{``ello''}, \text{``h''}) \\
-step(S_r, \text{``ello''}, \text{``h''}) & = & (S_r, \text{``llo''}, \text{``eh''}) \\
+\begin{array}{rcl}
+step\ S_r\ \text{``hello''}\ [\ ] & = & (S_r, \text{``ello''}, \text{``h''}) \\
+step\ S_r\ \text{``ello''}\ \text{``h''} & = & (S_r, \text{``llo''}, \text{``eh''}) \\
 ... & & \\
-step(S_r, \text{``o''}, \text{``lleh''}) & = & (S_r, \phi, \text{``olleh''}) \\
-step(S_r, \phi, \text{``olleh''}) & = & (S_f, \text{``olleh''})
+step\ S_r\ \text{``o''}\ \text{``lleh''} & = & (S_r, [\ ], \text{``olleh''}) \\
+step\ S_r\ [\ ]\ \text{``olleh''} & = & (S_f, \text{``olleh''})
 \end{array}
 \]
 
-下面的Haskell代码描述了同样的例子：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-step $ Reverse "hello" [] = Reverse "ello" "h"
-step $ Reverse "ello" "h" = Reverse "llo" "eh"
-...
-step $ Reverse "o" "lleh" = Reverse [] "olleh"
-step $ Reverse [] "olleh" = Done "olleh"
-\end{lstlisting}
-
-现在我们可以将反转计算逐步分散到入队和出队操作中。但是这仅解决了一半问题。我们需要逐步分解$ F \cup reverse(R)$计算。因此接下来需要调度（slow-down）列表的连接操作$F \cup ...$。连接操作的复杂度为$O(|F|)$。同样，我们的目标是将它分散到入队和出队操作中去。
-
-\subsection{逐步连接}
-\index{队列!逐步连接}
-
-实现列表的逐步连接要比逐步反转难度更大。我们可以利用逐步反转的结果。这里有一个小技巧：为了实现$X \cup Y$，我们可以先将$X$反转为$\overleftarrow{X}$，然后逐一将$\overleftarrow{X}$中的元素取出，放到$Y$的前面。这和我们前面实现的$reverse'$类似。
+现在我们可以将反转计算逐步分派到出、入队中。但是这仅解决了一半问题。我们需要逐步分解、调度$\doubleplus$。实现逐步连接的难度更大。我们利用逐步反转的结果，并使用一个技巧：为了实现$X \doubleplus Y$，我们可以先将$X$反转为$\overleftarrow{X}$，然后逐一将$\overleftarrow{X}$中的元素取出，放到$Y$的前面。这和$\textit{reverse}'$类似。
 
 \be
   \begin{array}{rcl}
-    X \cup Y & \equiv & reverse(reverse(X)) \cup Y \\
-             & \equiv & reverse'(reverse(X), \phi) \cup Y \\
-             & \equiv & reverse'(reverse(X), Y) \\
-             & \equiv & reverse'(\overleftarrow{X}, Y)
+    X \doubleplus Y & = & (reverse\ reverse\ X) \doubleplus Y \\
+             & = & (reverse'\ [\ ]\ (reverse\ X)) \doubleplus Y \\
+             & = & reverse'\ Y\ (reverse\ X) \\
+             & = & reverse'\ Y\ \overleftarrow{X}
   \end{array}
 \ee
 
-这一事实表明，我们可以增加另一个状态来控制$step()$函数，在$R$反转后，逐步操作$\overleftarrow{F}$实现连接。
-
-整个操作被分解为两个阶段：
+这一事实表明，我们可以增加另一个状态来控制$step$，在$r$反转后，逐步操作$\overleftarrow{f}$实现连接。三种状态为：反转$S_r$、连接$S_c$、完成$S_f$。整个操作被分解为两个阶段：
 
 \begin{enumerate}
-\item 同时反转$F$和$R$，逐步得到$\overleftarrow{F} = reverse(F)$和$\overleftarrow{R} = reverse(R)$；
-\item 逐步从$\overleftarrow{F}$取出元素，链接到$\overleftarrow{R}$前面。
+\item 同时反转$f$和$r$，逐步得到$\overleftarrow{f}$和$\overleftarrow{r}$；
+\item 逐步从$\overleftarrow{f}$取出元素，链接到$\overleftarrow{r}$前面。
 \end{enumerate}
 
-为此我们定义三种状态：$S_r$代表反转；$S_c$代表连接；$S_f$代表完成。
-
-下面的Haskell例子程序定义了这三种状态。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-data State a = Reverse [a] [a] [a] [a]
-             | Concat [a] [a]
-             | Done [a]
-\end{lstlisting}
-
-由于我们同时反转$F$和$R$，因此反转状态变量带有一对列表和一对累积器。
-
-状态转换按照两个阶段策略进行定义。记$F = \{ f_1, f_2, ... \}$、$F' = tail(F) = \{f_2, f_3, ... \}$、
-$R = \{ r_1, r_2, ... \}$、$R' = tail(R) = \{ r_2, r_3, ... \}$。一个状态$\mathcal{S}$包含它的类型$S$，可以是$S_r$、$S_c$和$S_f$的一种。同时状态$\mathcal{S}$中还包含必要的参数，如$F$、$\overleftarrow{F}$、$X$、$A$等作为中间结果。状态不同，包含的参数也有所不同。
-
 \be
-  next(\mathcal{S}) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (S_r, F', \{ f_1 \} \cup \overleftarrow{F}, R', \{ r_1 \} \cup \overleftarrow{R}) & S = S_r \land F \neq \phi \land R \neq \phi \\
-  (S_c, \overleftarrow{F}, \{ r_1 \} \cup \overleftarrow{R}) & S = S_r \land F = \phi \land R = \{ r_1 \} \\
-  (S_f, A) & S = S_c \land X = \phi \\
-  (S_c, X', \{ x_1 \} \cup A) & S = S_c \land X \neq \phi
-  \end{array}
-\right .
+\begin{array}{rcll}
+next\ (S_r, n, x:f, f', y:r, r') & = & (S_r, n + 1, f, x:f', r, y:r') & \text{同时反转}f, r\\
+next\ (S_r, n, [\ ], f', [y], r') & = & (S_c, n, f', y:r') & \text{反转结束、转入连接}\\
+next\ (S_c, 0, a, [\ ]) & = & (S_f, a) & \text{连接结束}\\
+next\ (S_c, n, a, x:f') & = & (S_c, n - 1, x:a, f') & \text{逐步连接}\\
+\end{array}
 \ee
 
-相应的Haskell程序如下：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-next (Reverse n (x:f) f' (y:r) r') = Reverse (n + 1) f (x:f') r (y:r')
-next (Reverse n [] f' [y] r') = Concat n f' (y:r')
-next (Concat 0 _ acc) = Done acc
-next (Concat n (x:f') acc) = Concat (n - 1) f' (x:acc)
-\end{lstlisting}
-
-接下来我们需要将这些递进的步骤分配到每个出队和入队操作中以实现一个实时$O(1)$的纯函数式队列。
+接下来我们需要将这些递进的步骤分配到每个出、入队操作中以实现一个实时队列。
 
 \subsection{汇总}
 
