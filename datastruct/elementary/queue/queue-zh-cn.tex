@@ -320,85 +320,36 @@ pop\ (x:f, r)   & = \textit{balance}\ f\ r \\
 \section{平衡队列}
 \index{队列!平衡队列}
 
-虽然双列表队列的入队和出队操作的分摊复杂度为常数时间$O(1)$，但是在最坏情况下的性能很差。例如front列表中只有一个元素，然后我们将$n$个元素连续加入队列，这里$n$是一个很大的整数。此时执行一次出队操作就会进入最坏情况。
-
-根据规则，全部$n$个元素都加入了rear列表。执行一次弹出操作后，front列表变为空。于是开始反转rear列表，这一操作是线性时间$O(n)$的，和rear列表的长度成比例。某些场合下，当$n$很大时，这一时间消耗太大，无法满足要求。
-
-造成这一最坏情况的原因是由于front和rear列表极不平衡。我们可以修改队列的设计来改进平衡性。例如加入一条平衡限制：
+虽然双列表队列的分摊复杂度为常数时间，但最坏情况下的性能是线性的。例如$f$中有一个元素，此后连续将$n$个元素加入队列，此时执行出队的复杂度为$O(n)$。这一问题的原因是$f$和$r$的长度不平衡。为了改进平衡性，我们加入一条规则，要求$r$的长度不大于$f$的长度，否则就反转列表。
 
 \be
-  | R | \leq | F |
+  |r| \leq |f|
 \label{eq:balance-invariant}
 \ee
 
-其中$R = Rear(Q)$，$F = Front(Q)$分别是队列中的前后两个列表。记号$|L|$表示列表$L$的长度。这一条件保证了rear列表的长度不大于front列表。当条件不满足时，就执行反转操作。
-
-使用这一限制条件，需要频繁获取列表的长度。由于列表本质上是单向链表，因此需要线性时间来得到长度。我们可以将列表的长度缓存起来，并在增减元素时更新长度。这样就可以在常数时间获得列表长度。
-
-下面的Haskell例子代码在双列表队列的基础上增加了长度缓存信息。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-data BalanceQueue a = BQ [a] Int [a] Int
-\end{lstlisting}
-
-只要保持式(\ref{eq:balance-invariant})一直得到满足，就可以通过检查front列表的长度来判断队列是否为空：
+每次操作都需要检查长度，但这需要线性时间。为此我们将长度记录下来，并在出入队时更新。这样双列表队列就表示为$(f, n, r, m)$，其中$n = |f|$，$m = |r|$，分别是两个列表的长度。根据平衡规则(\ref{eq:balance-invariant})，我们可以检查$f$的长度来判断队列是否为空：
 
 \be
-  F = \phi \Leftrightarrow |F| = 0
+  Q = \phi \iff n = 0
 \ee
 
-本节余下的部分中，我们一律认为可以在常数时间内获得列表$L$的长度$|L|$。
-
-入队和出队操作基本和以前一样，我们需要额外传入列表的长度信息，检查平衡条件，如有必要就执行反转操作。
+我们更新出、入队的定义为：
 
 \be
-  push(Q, x) = balance(F, |F|, \{ x \} \cup R, |R| + 1)
+\begin{cases}
+  push\ x\ (f, n, r, m) & = \textit{balance}\ (f, n,  x:r, m + 1) \\
+  pop\ (x:f, n, r, m) & = \textit{balance}\ (f, n - 1, r, m) \\
+\end{cases}
 \ee
+
+其中\textit{balance}定义为：
 
 \be
-  pop(Q) = balance(tail(F), |F|-1, R, |R|)
+\textit{balance}\ (f, n, r, m) = \begin{cases}
+  m \leq n: & (f, n, r, m) \\
+  \text{否则}: & (f \doubleplus reverse\ r, m + n, [\ ], 0)\\
+\end{cases}
 \ee
-
-其中函数$balance()$定义如下：
-
-\be
-  balance(F, |F|, R, |R|) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  Queue(F, |F|, R, |R|) & |R| \leq |F| \\
-  Queue(F \cup reverse(R), |F| + |R|, \phi, 0) & otherwise
-  \end{array}
-\right .
-\ee
-
-这里函数$Queue()$接受四个参数：front列表和缓存的长度；rear列表和长度。这些信息用以构造一个双列表队列。
-
-下面的Haskell例子程序实现了平衡双列表队列。程序使用了Haskell的类型系统来保证实现符合抽象队列的定义。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-instance Queue BalanceQueue where
-    empty = BQ [] 0 [] 0
-
-    isEmpty (BQ _ lenf _ _) = lenf == 0
-
-    -- Amortized O(1) time push
-    push (BQ f lenf r lenr) x = balance f lenf (x:r) (lenr + 1)
-
-    -- Amortized O(1) time pop
-    pop (BQ (_:f) lenf r lenr) = balance f (lenf - 1) r lenr
-
-    front (BQ (x:_) _ _ _) = x
-
-balance f lenf r lenr
-    | lenr <= lenf = BQ f lenf r lenr
-    | otherwise = BQ (f ++ (reverse r)) (lenf + lenr) [] 0
-\end{lstlisting}
-
-\begin{Exercise}
-选择一门命令式语言，实现平衡双数组队列。
-\end{Exercise}
 
 % ================================================================
 %                 Realtime Queue
