@@ -42,9 +42,13 @@ data RealtimeQueue a = RTQ [a] Int (State a) [a] Int
 -- Skip the empty error for pop and front
 instance Queue RealtimeQueue where
     empty = RTQ [] 0 Empty [] 0
+
     isEmpty (RTQ _ n _ _ _) = n == 0
+
     push x (RTQ f n s r m) = balance f n s (x:r) (m + 1)     -- O(1)
+
     pop (RTQ (_:f) n s r m) = balance f (n - 1) (abort s) r m   -- O(1)
+
     front (RTQ (x:_) _ _ _ _) = x
 
 balance f n s r m
@@ -67,8 +71,8 @@ next (Concat 0 acc _) = Done acc
 next (Concat n acc (x:f')) = Concat (n-1) (x:acc) f'
 next s = s
 
--- Abort unnecessary appending as the element is popped
-abort (Concat 0 (_:acc) _) = Done acc -- cancelled 1 elem
+-- Abort unnecessary append as the element is popped
+abort (Concat 0 (_:acc) _) = Done acc -- rollback 1 elem
 abort (Concat n acc f') = Concat (n - 1) acc f'
 abort (Reverse n f' f r' r) = Reverse (n - 1) f' f r' r
 abort s = s

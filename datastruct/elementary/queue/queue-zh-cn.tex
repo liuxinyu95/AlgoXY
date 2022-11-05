@@ -411,7 +411,7 @@ step\ S_r\ [\ ]\ \text{``olleh''} & = & (S_f, \text{``olleh''})
 \be
 \begin{array}{rcll}
 next\ (S_r, f', x:f, r', y:r) & = & (S_r, x:f', f, y:r', r) & \text{同时反转}f, r\\
-next\ (S_r, f', [\ ], r', [y]) & = & (S_c, f', y:r') & \text{反转结束、转入连接}\\
+next\ (S_r, f', [\ ], r', [y]) & = & next\ (S_c, f', y:r') & \text{反转结束、转入连接}\\
 next\ (S_c, a, [\ ]) & = & (S_f, a) & \text{连接结束}\\
 next\ (S_c, a, x:f') & = & (S_c, x:a, f') & \text{逐步连接}\\
 \end{array}
@@ -451,7 +451,7 @@ next\ (S_c, a, x:f') & = & (S_c, x:a, f') & \text{逐步连接}\\
 \be
 \begin{array}{rcll}
 next\ (S_r, n, f', x:f, r', y:r) & = & (S_r, n + 1, x:f', f, y:r', r) & \text{同时反转}f, r\\
-next\ (S_r, n, f', [\ ], r', [y]) & = & (S_c, n, f', y:r') & \text{反转结束、转入连接}\\
+next\ (S_r, n, f', [\ ], r', [y]) & = & next\ (S_c, n, f', y:r') & \text{反转结束、转入连接}\\
 next\ (S_c, 0, a, f) & = & (S_f, a) & \text{连接结束}\\
 next\ (S_c, n, a, x:f') & = & (S_c, n - 1, x:a, f') & \text{逐步连接}\\
 next\ S_0 & = & S_0 & \text{空闲状态} \\
@@ -467,127 +467,46 @@ next\ S_0 & = & S_0 & \text{空闲状态} \\
 \end{cases}
 \ee
 
-其中$abort$在出队时递减计数器，这样将来可以少连接一个元素。我们称其为撤销操作。$balance$检查平衡规则，若不满足则启动$f \doubleplus reverse\ r$逐步恢复平衡；否则执行一步尚未完成的递进计算：
+其中$abort$在出队时递减计数器，这样将来可以少连接一个元素。我们稍后定义这一撤销操作。$balance$检查平衡规则，若不满足则启动$f \doubleplus reverse\ r$逐步恢复平衡；否则执行一步尚未完成的递进计算：
 
 \be
 balance\ f\ n\ S\ r\ m = \begin{cases}
   m \leq n: & step\ f\ n\ S\ r\ m \\
-  \text{否则}: & step\ f\ (n + m)\ (S_r, 0, [\ ], f, [\ ], r)\ [\ ]\ 0 \\
+  \text{否则}: & step\ f\ (n + m)\ (next\ (S_r, 0, [\ ], f, [\ ], r))\ [\ ]\ 0 \\
 \end{cases}
 \ee
 
-函数$step()$将状态机转换到下一个状态，全部递进计算结束后，状态转换到空闲状态$S_0$。
+其中$step$将状态机转换到下一个状态，全部递进计算结束后，状态转换到空闲状态$S_0$。
 
 \be
-  step(F, |F|, \mathcal{S}, R, |R|) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  Queue(F', |F|, S_0, R, |R|) &  S' = S_f \\
-  Queue(F, |F|, \mathcal{S}', R, |R|) & otherwise
-  \end{array}
-  \right .
+step\ f\ n\ S\ r\ m = queue\ (next\ S)
 \ee
 
-其中，$\mathcal{S}' = next(\mathcal{S})$，是下一个转换到的状态；$F' = F \cup reverse(R)$是递进计算出的新front列表。真正的状态转换函数$next()$的实现如下。和前面的定义不同，我们增加了一个计数器$n$来记录还剩余多少个元素需要连接。
+其中：
 
 \be
-  next(\mathcal{S}) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (S_r, n+1, F', \{ f_1 \} \cup \overleftarrow{F}, R', \{ r_1 \} \cup \overleftarrow{R}) &
-      S = S_r \land F \neq \phi \\
-  (S_c, n, \overleftarrow{F}, \{ r_1 \} \cup \overleftarrow{R}) &
-      S = S_r \land F = \phi \\
-  (S_f, A) & S = S_c \land n = 0 \\
-  (S_c, n-1, X', \{ x_1 \} \cup A) & S = S_c \land n \neq 0 \\
-  \mathcal{S} & otherwise
-  \end{array}
-\right .
+\begin{array}{rcll}
+queue\ (S_f, f') & = & (f', n, S_0, r, m) & \text{用逐步计算结果}f'\text{替换}f \\
+queue\ S' & = & (f, n, S', r, m) & \\
+\end{array}
 \ee
 
-相应的Haskell例子程序如下：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-next (Reverse n (x:f) f' (y:r) r') = Reverse (n+1) f (x:f') r (y:r')
-next (Reverse n [] f' [y] r') = Concat n f' (y:r')
-next (Concat 0 _ acc) = Done acc
-next (Concat n (x:f') acc) = Concat (n-1) f' (x:acc)
-next s = s
-\end{lstlisting}
-
-函数$abort()$用于指示状态机，由于发生了出队操作，可以少连接一个元素。
+我们还需要实现$abort$函数，指示状态机，由于发生了出队操作，可以少连接一个元素。
 
 \be
-  abort(\mathcal{S}) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (S_f, A') & S = S_c \land n = 0 \\
-  (S_c, n-1, X' A) & S = S_c \land n \neq 0 \\
-  (S_r, n-1, F, \overleftarrow{F}, R, \overleftarrow{R}) & S = S_r \\
-  \mathcal{S} & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+abort\ (S_c, 0, (x:a), f') & = & (S_f, a) \\
+abort\ (S_c, n, a, f') & = & (S_c, n - 1, a, f') \\
+abort\ (S_r, n, f' f, r' r) & = & (S_r, n - 1, f', f, r', r) \\
+abort\ S & = & S
+\end{array}
 \ee
-
-注意当$n = 0$的时候，我们实际上撤销了上一个链接元素的操作，因此返回$A'$而不是$A$作为结果（作为练习，我们请读者来回答这样做的原因）。
-
-下面的Haskell例子程序实现了abort函数。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-abort (Concat 0 _ (_:acc)) = Done acc      -- 注意：我们回滚（rollback）了一个元素
-abort (Concat n f' acc) = Concat (n-1) f' acc
-abort (Reverse n f f' r r') = Reverse (n-1) f f' r r'
-abort s = s
-\end{lstlisting}
-
-我们已经接近最终的结果了。但是仍有一个隐藏的问题必须解决：如果将一个元素$x$放入一个空队列，结果会是：
-
-\[
-  Queue(\phi, 1, (S_c, 0, \phi, \{ x \}), \phi, 0)
-\]
-
-若此时立即进行出队操作，就会发生错误！虽然上一次$F \cup reverse(R)$的计算已经结束，但是front列表却为空。这是因为还需要额外一步才能从状态$(S_c, 0, \phi, A)$转换到$(S_f, A)$。因此需要进一步调整函数$step()$中的$\mathcal{S}'$如下：
-
-\be
-  \mathcal{S}' = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  next(next(\mathcal{S})) & F = \phi \\
-  next(\mathcal{S}) & otherwise
-  \end{array}
-\right .
-\ee
-
-下面的Haskell例子程序体现了这一修改：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-step f lenf s r lenr =
-    case s' of
-      Done f' -> RTQ f' lenf Empty r lenr
-      s' -> RTQ f lenf s' r lenr
-    where s' = if null f then next $ next s else next s
-\end{lstlisting} %$
-
-注意这一算法和Chris Okasaki在\cite{okasaki-book}给出的有所不同。Okasaki的算法每次出队、入队执行两步递进计算，而本章中的算法每次只执行一次。因此计算性能的分布更加均匀。
 
 \begin{Exercise}
-\begin{itemize}
-\item 在$abort()$函数中，当$n = 0$时，为什么需要回滚一个元素？
-
-\item 考虑实时队列的对称实现。选择一门命令式语言，用双数组实现实时队列。
-
-\item 在脚注中，我们提到，使用就地修改的双数组来实现实时队列时，当开始递进计算反转时，不能一次性复制数组，否则就会将性能降低到线性时间复杂度。请实现一个惰性复制（lazy copy），使得每步反转时我们仅复制一个元素。
-
-\end{itemize}
+\Question{在$abort$函数中，当$n = 0$时，当$n = 0$时，我们实际上撤销了上一个链接元素的操作，去掉了$x$而返回$a$作为结果。为什么需要回滚一个元素？}
+\Question{使用双数组实现实时队列。注意：当开始递进反转时，不能一次性复制数组，否则就会将性能降低到线性时间。请实现一个惰性复制，使得每步反转时仅复制一个元素。}
 \end{Exercise}
 
-
-% ================================================================
-%                 Lazy Real-time queue
-% ================================================================
 \section{惰性实时队列}
 \index{队列!惰性实时队列}
 
@@ -857,6 +776,43 @@ K deQ(Queue<K> q) {
     return x
 }
 \end{lstlisting}
+
+实时队列
+
+\begin{Haskell}
+data State a = Empty
+             | Reverse Int [a] [a] [a] [a] -- n, acc f, f, acc r, r
+             | Concat Int [a] [a]          -- n, acc, reversed f
+             | Done [a]  -- f' = f ++ reverse r
+
+-- f, n = length f, state, r, m = length r
+data RealtimeQueue a = RTQ [a] Int (State a) [a] Int
+
+push x (RTQ f n s r m) = balance f n s (x:r) (m + 1)
+
+pop (RTQ (_:f) n s r m) = balance f (n - 1) (abort s) r m
+
+top (RTQ (x:_) _ _ _ _) = x
+
+balance f n s r m
+    | m <= n =  step f n s r m
+    | otherwise = step f (m + n) (next (Reverse 0 [] f [] r)) [] 0
+
+step f n s r m = queue (next s) where
+  queue (Done f') = RTQ f' n Empty r m
+  queue s' = RTQ f n s' r m
+
+next (Reverse n f' (x:f) r' (y:r)) = Reverse (n + 1) (x:f') f (y:r') r
+next (Reverse n f' [] r' [y]) = next $ Concat n (y:r') f'
+next (Concat 0 acc _) = Done acc
+next (Concat n acc (x:f')) = Concat (n-1) (x:acc) f'
+next s = s
+
+abort (Concat 0 (_:acc) _) = Done acc -- rollback 1 elem
+abort (Concat n acc f') = Concat (n - 1) acc f'
+abort (Reverse n f' f r' r) = Reverse (n - 1) f' f r' r
+abort s = s
+\end{Haskell}
 
 \ifx\wholebook\relax \else
 \section{参考答案}

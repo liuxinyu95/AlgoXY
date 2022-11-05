@@ -41,7 +41,7 @@ instance Queue PairQueue where
     isEmpty (Q f _) = null f
 
     -- Amortized O(1) time push
-    push (Q f r) x = balance f (x:r)
+    push x (Q f r) = balance f (x:r)
 
     -- Amortized O(1) time pop
     pop (Q [] _) = error "Empty"

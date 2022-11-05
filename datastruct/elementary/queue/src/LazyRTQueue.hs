@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 
--- Realtime O(1) Queue based on Hood-Melville Queue in [1]. 
+-- Realtime O(1) Queue based on Hood-Melville Queue in [1].
 
 module LazyRTQueue where
 
@@ -37,14 +37,14 @@ instance Queue LazyRTQueue where
     isEmpty (LQ f _ _) = null f
 
     -- O(1) time push
-    push (LQ f r rot) x = balance f (x:r) rot
+    push x (LQ f r rot) = balance f (x:r) rot
 
     -- O(1) time pop
     pop (LQ (_:f) r rot) = balance f r rot
 
     front (LQ (x:_) _ _) = x
 
-balance f r [] = let f' = rotate f r [] in LQ f' [] f' 
+balance f r [] = let f' = rotate f r [] in LQ f' [] f'
 balance f r (_:rot) = LQ f r rot
 
 rotate [] [y] acc = y:acc
@@ -53,7 +53,7 @@ rotate (x:xs) (y:ys) acc = x : rotate xs ys (y:acc)
 -- test
 
 fromList :: [a] -> LazyRTQueue a
-fromList = foldl push (empty::LazyRTQueue a)
+fromList = foldr push (empty::LazyRTQueue a)
 
 prop_queue :: [Int] -> Bool
 prop_queue xs = proc xs (empty::(LazyRTQueue Int)) == proc' xs []

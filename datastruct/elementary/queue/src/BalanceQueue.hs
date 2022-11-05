@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 
--- Balanced Batched Queue based on Banker's Queue and Physicist's Queue in [1]. 
+-- Balanced Batched Queue based on Banker's Queue and Physicist's Queue in [1].
 
 module BalanceQueue where
 
@@ -40,14 +40,14 @@ instance Queue BalanceQueue where
     isEmpty (BQ _ lenf _ _) = lenf == 0
 
     -- Amortized O(1) time push
-    push (BQ f lenf r lenr) x = balance f lenf (x:r) (lenr + 1)
+    push x (BQ f lenf r lenr) = balance f lenf (x:r) (lenr + 1)
 
     -- Amortized O(1) time pop
     pop (BQ (_:f) lenf r lenr) = balance f (lenf - 1) r lenr
 
     front (BQ (x:_) _ _ _) = x
 
-balance f lenf r lenr 
+balance f lenf r lenr
     | lenr <= lenf = BQ f lenf r lenr
     | otherwise = BQ (f ++ reverse r) (lenf + lenr) [] 0
 
