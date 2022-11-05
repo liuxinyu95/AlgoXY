@@ -24,15 +24,15 @@ module Queue where
 class Queue q where
     empty :: q a
     isEmpty :: q a -> Bool
-    push :: q a -> a -> q a -- aka 'snoc' or append, or push_back
-    pop :: q a -> q a -- aka 'tail' or pop_front
-    front :: q a -> a -- aka 'head'
+    push :: a -> q a -> q a -- 'snoc' or append, or push_back
+    pop :: q a -> q a -- 'tail' or pop_front
+    front :: q a -> a -- 'head'
 
 -- test
 
 proc :: (Queue q)=>[Int] -> q Int -> [Int]
 proc [] _ = []
-proc (x:xs) q | even x = proc xs (push q x)
+proc (x:xs) q | even x = proc xs (push x q)
               | isEmpty q = proc xs q
               | otherwise = front q : proc xs (pop q)
 
@@ -41,4 +41,3 @@ proc' [] _ = []
 proc' (x:xs) lst | even x = proc' xs (lst ++ [x])
                  | null lst = proc' xs lst
                  | otherwise = head lst : proc' xs (tail lst)
-

@@ -467,36 +467,14 @@ next\ S_0 & = & S_0 & \text{空闲状态} \\
 \end{cases}
 \ee
 
-最大的变化在于$abort()$函数。根据前面的分析，在出队时我们递减计数器，这样将来可以少连接一个元素。我们将其定义为撤销操作。我们稍后介绍它的具体实现。
-
-相应的Haskell出队和入队操作可以由下面的例子程序给出。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-push (RTQ f lenf s r lenr) x = balance f lenf s (x:r) (lenr + 1)
-pop (RTQ (_:f) lenf s r lenr) = balance f (lenf - 1) (abort s) r lenr
-\end{lstlisting}
-
-函数$balance()$首先检查平衡invariant，如果违反了，我们需要启动$F \cup reverse(R)$的逐步计算来恢复平衡；否则，我们仅仅执行一步尚未完成的递进计算。
+其中$abort$在出队时递减计数器，这样将来可以少连接一个元素。我们称其为撤销操作。$balance$检查平衡规则，若不满足则启动$f \doubleplus reverse\ r$逐步恢复平衡；否则执行一步尚未完成的递进计算：
 
 \be
-  balance(F, |F|, \mathcal{S}, R, |R|) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  step(F, |F|, \mathcal{S}, R, |R|) & |R| \leq |F| \\
-  step(F, |F| + |R|, (S_r, 0, F, \phi, R, \phi) \phi, 0) & otherwise
-  \end{array}
-\right .
+balance\ f\ n\ S\ r\ m = \begin{cases}
+  m \leq n: & step\ f\ n\ S\ r\ m \\
+  \text{否则}: & step\ f\ (n + m)\ (S_r, 0, [\ ], f, [\ ], r)\ [\ ]\ 0 \\
+\end{cases}
 \ee
-
-相应的Haskell例子程序如下：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-balance f lenf s r lenr
-    | lenr <= lenf =  step f lenf s r lenr
-    | otherwise = step f (lenf + lenr) (Reverse 0 f [] r []) [] 0
-\end{lstlisting}
 
 函数$step()$将状态机转换到下一个状态，全部递进计算结束后，状态转换到空闲状态$S_0$。
 

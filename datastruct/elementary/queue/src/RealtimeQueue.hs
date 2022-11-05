@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 
--- Realtime O(1) Queue based on Hood-Melville Queue in [1]. 
+-- Realtime O(1) Queue based on Hood-Melville Queue in [1].
 
 module RealtimeQueue where
 
@@ -24,67 +24,58 @@ import Queue
 import Test.QuickCheck
 
 -- Definition
---   A Queue is consist with two linked-list, front list and rear list.
---   Add new element in tail, while extract element from head
+--   A Queue is consist of a front list f and a rear list r.
+--   Add new element to tail, extract from head
 
 --   State for increamental realization for f ++ reverse r
---      field n: number of elements left in f
-data State a = Empty 
-             | Reverse Int [a] [a] [a] [a] -- n, f', acc_f' r, acc_r
-             | Concat Int [a] [a]          -- n, rev_f', acc
-             | Done [a] -- result: f ++ reverse r
-               deriving (Show, Eq)
+--   n: number of elements remaining in f
+data State a = Empty
+             | Reverse Int [a] [a] [a] [a] -- n, acc_f, f, acc_r, r
+             | Concat Int [a] [a]          -- n, acc, rev_f
+             | Done [a]  -- f' = f ++ reverse r
+             deriving (Show, Eq)
 
--- front, length of front, on-goint reverse state, rear, length of reverse
+-- f, n = length f, state, r, m = length r
 data RealtimeQueue a = RTQ [a] Int (State a) [a] Int
                      deriving (Show, Eq)
 
--- we skip the empty error for pop and front
+-- Skip the empty error for pop and front
 instance Queue RealtimeQueue where
     empty = RTQ [] 0 Empty [] 0
-
-    isEmpty (RTQ _ lenf _ _ _) = lenf == 0
-
-    -- O(1) time push
-    push (RTQ f lenf s r lenr) x = balance f lenf s (x:r) (lenr + 1)
-
-    -- O(1) time pop
-    pop (RTQ (_:f) lenf s r lenr) = balance f (lenf - 1) (abort s) r lenr
-
+    isEmpty (RTQ _ n _ _ _) = n == 0
+    push x (RTQ f n s r m) = balance f n s (x:r) (m + 1)     -- O(1)
+    pop (RTQ (_:f) n s r m) = balance f (n - 1) (abort s) r m   -- O(1)
     front (RTQ (x:_) _ _ _ _) = x
 
-balance f lenf s r lenr 
-    | lenr <= lenf =  step f lenf s r lenr
-    | otherwise = step f (lenf + lenr) (Reverse 0 f [] r []) [] 0
+balance f n s r m
+    | m <= n =  step f n s r m
+    | otherwise = step f (m + n) (next (Reverse 0 [] f [] r)) [] 0
 
--- execute f ++ reverse r step by step
-step f lenf s r lenr =
-    case s' of 
-      Done f' -> RTQ f' lenf Empty r lenr
-      s' -> RTQ f lenf s' r lenr
-    where s' = if null f then next $ next s else next s
+-- stepped f ++ reverse r
+step f n s r m = queue (next s) where
+  queue (Done f') = RTQ f' n Empty r m
+  queue s' = RTQ f n s' r m
 
--- realize of f ++ reverse r based on 2 increamental approaches
---  1. reverse xs = reverse' xs [] where
---        reverse' [] acc = acc
---        reverse' (x:xs) acc = reverse' xs (x:acc)
---  2. xs ++ ys = reverse' (reverse xs) ys
-next (Reverse n (x:f) f' (y:r) r') = Reverse (n+1) f (x:f') r (y:r')
-next (Reverse n [] f' [y] r') = Concat n f' (y:r')
-next (Concat 0 _ acc) = Done acc
-next (Concat n (x:f') acc) = Concat (n-1) f' (x:acc)
+-- Two stages f ++ reverse r
+--  1. reverse xs = reverse' [] xs where
+--        reverse' acc [] = acc
+--        reverse' acc (x:xs) = reverse' (x:acc) xs
+--  2. xs ++ ys = reverse' ys (reverse xs)
+next (Reverse n f' (x:f) r' (y:r)) = Reverse (n + 1) (x:f') f (y:r') r
+next (Reverse n f' [] r' [y]) = next $ Concat n (y:r') f'
+next (Concat 0 acc _) = Done acc
+next (Concat n acc (x:f')) = Concat (n-1) (x:acc) f'
 next s = s
 
 -- Abort unnecessary appending as the element is popped
-abort (Concat 0 _ (_:acc)) = Done acc -- Note! we rollback 1 elem
-abort (Concat n f' acc) = Concat (n-1) f' acc
-abort (Reverse n f f' r r') = Reverse (n-1) f f' r r'
+abort (Concat 0 (_:acc) _) = Done acc -- cancelled 1 elem
+abort (Concat n acc f') = Concat (n - 1) acc f'
+abort (Reverse n f' f r' r) = Reverse (n - 1) f' f r' r
 abort s = s
 
 -- test
-
 fromList :: [a] -> RealtimeQueue a
-fromList = foldl push (empty::RealtimeQueue a)
+fromList = foldr push (empty::RealtimeQueue a)
 
 prop_queue :: [Int] -> Bool
 prop_queue xs = proc xs (empty::(RealtimeQueue Int)) == proc' xs []
