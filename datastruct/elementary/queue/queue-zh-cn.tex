@@ -510,14 +510,14 @@ abort\ S & = & S
 \section{惰性实时队列}
 \index{队列!惰性实时队列}
 
-实时队列的关键在于将耗时的$f \doubleplus reverse r$计算分解。利用惰性求值可以得到一个简化的实现。假设函数$rotate$可以逐步计算$f \doubleplus reverse r$。也就是说，使用一个累积器$a$，下面的两个函数等价：
+实时队列的关键在于将耗时的$f \doubleplus reverse\ r$计算分解。利用惰性求值可以得到一个简化的实现。假设函数$rotate$可以逐步计算$f \doubleplus reverse\ r$。也就是说，使用一个累积器$a$，下面的两个函数等价：
 
 \be
   rotate\ xs\ ys\ a = xs \doubleplus (reverse\ ys) \doubleplus a
   \label{eq:rot-def}
 \ee
 
-我们将$xs$初始化为$f$列表，$ys$初始化为$r$列表，$a$初始化为空$[\ ]$。当平衡条件不满足$|f| + 1 = |r|$时开始进行轮转。在轮转过程中，我们始终保持$|xs| + 1 = |ys|$成立。为了推导轮转的实现，我们先考虑最简单的情况：
+我们将$xs$初始化为$f$列表，$ys$初始化为$r$列表，$a$初始化为空$[\ ]$。为了实现轮转，我们先考虑边界情况：
 
 \be
   rotate\ [\ ]\ [y]\ a = y \cons a
@@ -526,11 +526,12 @@ abort\ S & = & S
 递归情况为：
 
 \be
-  \begin{array}{rcll}
-  rotate\ (x \cons xs)\ (y \cons ys)\ a & = & (x \cons xs) \doubleplus (reverse\ (y \cons ys)) \doubleplus a & \text{定义(\ref{eq:rot-def})} \\
-  & = & x : (xs \doubleplus reverse\ (y \cons ys)) \doubleplus a) & \text{连接的结合性} \\
-  & = &  x : (xs \doubleplus reverse\ ys \doubleplus (y \cons a)) & \text{反转的性质和连接的结合性} \\
-  & = & x : (rotate\ xs\ ys\ (y \cons a)） & \text{反向用定义(\ref{eq:rot-def})}
+  \begin{array}{cll}
+  & rotate\ (x \cons xs)\ (y \cons ys)\ a & \\
+  = & (x \cons xs) \doubleplus (reverse\ (y \cons ys)) \doubleplus a & \text{定义(\ref{eq:rot-def})} \\
+  = & x : (xs \doubleplus reverse\ (y \cons ys)) \doubleplus a) & \text{连接的结合性} \\
+  = &  x : (xs \doubleplus reverse\ ys \doubleplus (y \cons a)) & \text{反转的性质和连接的结合性} \\
+  = & x : rotate\ xs\ ys\ (y \cons a) & \text{反向用定义(\ref{eq:rot-def})}
   \end{array}
 \ee
 
@@ -539,7 +540,7 @@ abort\ S & = & S
 \be
 \begin{array}{rcl}
 rotate\ [\ ]\ [y]\ a & = & y \cons a \\
-rotate\ (x \cons xs)\ (y \cons ys)\ a & = & x : (rotate\ xs\ ys\ (y \cons a)) \\
+rotate\ (x \cons xs)\ (y \cons ys)\ a & = & x : rotate\ xs\ ys\ (y \cons a) \\
 \end{array}
 \ee
 
@@ -548,11 +549,11 @@ rotate\ (x \cons xs)\ (y \cons ys)\ a & = & x : (rotate\ xs\ ys\ (y \cons a)) \\
 \be
 \begin{cases}
 push\ x\ (f, r, rot) & = balance\ f\ (x \cons r)\ rot \\
-pop\ ((x \cons f), r, rot) & = balance\ f\ r\ rot \\
+pop\ (x \cons f, r, rot) & = balance\ f\ r\ rot \\
 \end{cases}
 \ee
 
-其中每次$balance$操作都会向前推进一次轮转计算，当轮转结束时，我们开始另一轮轮转：
+每次$balance$操作都会向前推进一次轮转计算，当轮转结束时，我们开始新一轮计算：
 
 \be
 \begin{array}{rcll}
@@ -561,24 +562,13 @@ balance\ f\ r\ (x \cons rot) & = & (f, r, rot) & \text{推进轮转}\\
 \end{array}
 \ee
 
-\section{小结}
-
-在第一章的开头，我们曾经说过队列并不像想象中的那么简单。我们此前给出了许多数据结构和算法的命令式实现和函数式实现，函数式的方法通常会更加简洁和直观。但是，还存在许多领域，需要更多的研究工作来寻找相应的函数式解法。队列是一个非常重要的题目，它是很多纯函数式数据结构的基础。
-
-Chris Okasaki对纯函数式队列进行了集中的研究，给出了许多有益的讨论\cite{okasaki-book}。通过解决纯函数式队列，我们可以使用类似的方法实现双向队列（dequeue），同时在队列头部和尾部高效地进行操作。再前进一步，还可以实现序列（sequence)数据结构，支持快速地连接（concatenate），并最终实现随机访问（random access）以模拟命令式环境中的数组。我们将在下一章解释这些细节。
-
-虽然我们没有提到优先队列（priority queue），但它可以很容易地用前面章节中给出的堆（heap）来实现。
-
 \begin{Exercise}
-\begin{itemize}
-\item 使用纯函数的方法，实现双向队列，在头部尾部都支持常数时间$O(1)$的元素添加和删除。
-\item 选择一门命令式编程语言，利用数组给出双向队列的对称实现。
-\end{itemize}
+如何实现双向队列，在头部尾部都支持常数时间的元素添加和删除。
 \end{Exercise}
 
 \section{附录：例子程序}
 
-列表实现的入队、出队：
+列表实现的出、入队：
 
 \begin{lstlisting}[language = Bourbaki]
 Queue<K> enQ(Queue<K> q, K x) {
@@ -612,7 +602,7 @@ data Queue<K> {
 }
 \end{lstlisting}
 
-使用循环缓冲区的入队、出队：
+使用循环缓冲区的出、入队：
 
 \begin{lstlisting}
 N offset(N i, N size) = if i < size then i else i - size
@@ -680,8 +670,6 @@ abort s = s
 data LazyRTQueue a = LQ [a] [a] [a] -- front, rear, f ++ reverse r
 
 empty = LQ [] [] []
-
-isEmpty (LQ f _ _) = null f
 
 push (LQ f r rot) x = balance f (x:r) rot
 
