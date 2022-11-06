@@ -495,7 +495,7 @@ queue\ S' & = & (f, n, S', r, m) & \\
 
 \be
 \begin{array}{rcl}
-abort\ (S_c, 0, (x:a), f') & = & (S_f, a) \\
+abort\ (S_c, 0, (x \cons a), f') & = & (S_f, a) \\
 abort\ (S_c, n, a, f') & = & (S_c, n - 1, a, f') \\
 abort\ (S_r, n, f' f, r' r) & = & (S_r, n - 1, f', f, r', r) \\
 abort\ S & = & S
@@ -510,197 +510,57 @@ abort\ S & = & S
 \section{惰性实时队列}
 \index{队列!惰性实时队列}
 
-实现实时队列的关键在于将耗时的$F \cup reverse(R)$计算分解。惰性求值对于这类问题很有帮助。本节中，我们通过惰性求值来寻找更加简洁的方法。
-
-假设存在一个函数$rotate()$可以逐步计算$F \cup reverse(R)$。也就是说，使用一个累积器$A$，下面的两个函数等价
+实时队列的关键在于将耗时的$f \doubleplus reverse r$计算分解。利用惰性求值可以得到一个简化的实现。假设函数$rotate$可以逐步计算$f \doubleplus reverse r$。也就是说，使用一个累积器$a$，下面的两个函数等价：
 
 \be
-  rotate(X, Y, A) \equiv X \cup reverse(Y) \cup A
+  rotate\ xs\ ys\ a = xs \doubleplus (reverse\ ys) \doubleplus a
   \label{eq:rot-def}
 \ee
 
-其中，我们将$X$初始化为front列表$F$，$Y$初始化为rear列表$R$，$A$初始化为空$\phi$。
-
-开始进行轮转（rotate）的条件和前面一样，即$|F| + 1 = |R|$。在轮转过程中，我们始终保持$|X| + 1 = |Y|$作为一个不变式成立。
-
-下面我们来推导轮转的实现，显然，最简单的情况如下：
+我们将$xs$初始化为$f$列表，$ys$初始化为$r$列表，$a$初始化为空$[\ ]$。当平衡条件不满足$|f| + 1 = |r|$时开始进行轮转。在轮转过程中，我们始终保持$|xs| + 1 = |ys|$成立。为了推导轮转的实现，我们先考虑最简单的情况：
 
 \be
-  rotate(\phi, \{ y_1 \}, A) = \{ y_1 \} \cup A
+  rotate\ [\ ]\ [y]\ a = y \cons a
 \ee
 
-记$X = \{ x_1, x_2, ... \}$、$Y = \{ y_1, y_2, ...\}$；而$X' = \{ x_2, x_3, ...  \}$、$Y' = \{ y_2, y_3, ...\}$是$X$和$Y$除去第一个元素以外的剩余元素。递归情况可以推导如下：
+递归情况为：
 
 \be
   \begin{array}{rcll}
-  rotate( X, Y, A ) & \equiv & X \cup reverse(Y) \cup A & \mbox{根据定义(}\ref{eq:rot-def} \mbox{的定义} \\
-  & \equiv & \{ x_1 \} \cup (X' \cup reverse(Y) \cup A) & \cup \mbox{操作的结合性} \\
-  & \equiv & \{ x_1 \} \cup (X' \cup reverse(Y') \cup (\{ y_1 \} \cup A)) & \mbox{reverse的性质和}  \cup \mbox{的结合性} \\
-  & \equiv & \{ x_1 \} \cup rotate(X', Y', \{ y_1 \} \cup A) & \mbox{根据定义(} \ref{eq:rot-def} \mbox{)}
+  rotate\ (x \cons xs)\ (y \cons ys)\ a & = & (x \cons xs) \doubleplus (reverse\ (y \cons ys)) \doubleplus a & \text{定义(\ref{eq:rot-def})} \\
+  & = & x : (xs \doubleplus reverse\ (y \cons ys)) \doubleplus a) & \text{连接的结合性} \\
+  & = &  x : (xs \doubleplus reverse\ ys \doubleplus (y \cons a)) & \text{反转的性质和连接的结合性} \\
+  & = & x : (rotate\ xs\ ys\ (y \cons a)） & \text{反向用定义(\ref{eq:rot-def})}
   \end{array}
 \ee
 
-归纳上面的两种情况，可以得到最终的轮转算法。
+归纳上面的两种情况，可以得到最终的轮转算法：
 
 \be
-rotate(X, Y, A) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ y_1 \} \cup A & X = \phi \\
-  \{ x_1 \} \cup rotate(X', Y', \{ y_1 \} \cup A) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+rotate\ [\ ]\ [y]\ a & = & y \cons a \\
+rotate\ (x \cons xs)\ (y \cons ys)\ a & = & x : (rotate\ xs\ ys\ (y \cons a)) \\
+\end{array}
 \ee
 
-如果我们惰性执行$\cup$操作，而不是立即进行链接，也就是说，当出队和入队时才执行$\cup$，就可以将$rotate$计算自然分摊到出、入队中。
-
-根据这一思路，我们修改双列表队列的定义，将front列表变成一个惰性列表，然后将它放入一个流（stream）中\cite{SICP}。当某个出、入队操作，造成队列的平衡被破坏，此时有$|F| + 1 = |R|$，为了恢复平衡，我们开始进行惰性轮转计算。这一惰性计算被作为新的front列表$F'$，而新的rear列表为空$\phi$。我们同时维护一个$F'$的副本作为流。
-
-此后，每当进行出、入队操作，我们就强制流执行一个$\cup$操作。这样流就向前执行一步$ \{ x \} \cup F''$，其中$F'' = tail(F')$。我们丢掉$x$，然后用$F''$替换$F'$作为新的流。
-
-当全部流被计算完毕，就可以开始计算另一个轮转。
-
-为了更好地描述这一思路，我们使用Scheme/Lisp给出例子程序。这样可以明确地控制惰性计算。
-
-\lstset{language=Lisp}
-\begin{lstlisting}
-(define (cons-stream a b) (cons a (delay b)))
-
-(define stream-car car)
-
-(define (stream-cdr s) (cdr (force s)))
-\end{lstlisting}
-
-函数\texttt{cons-stream}从一个元素$x$和列表$L$构造一个惰性列表。它并不对列表$L$求值，求值被推迟到\texttt{stream-cdr}中进行。延迟求值可以通过lambda演算来实现\cite{SICP}。
-
-下面的例子程序给出了惰性双列表队列的定义。
-
-\lstset{language=Lisp}
-\begin{lstlisting}
-(define (make-queue f r s)
-  (list f r s))
-
-(define (front-lst q) (car q))
-
-(define (rear-lst q) (cadr q))
-
-(define (rots q) (caddr q))
-\end{lstlisting}
-
-一个队列包含三个部分：一个front列表，一个rear列表和一个代表计算$F \cup reverse(R)$的流。对于空队列，这三个部分全部是null。
-
-\begin{lstlisting}
-(define empty (make-queue '() '() '()))
-\end{lstlisting}
-
-注意，其中的front列表实际上是一个惰性流，因此需要使用流相关的操作。例如下面的函数通过检查front流来判断队列是否为空。
-
-\begin{lstlisting}
-(define (empty? q) (stream-null? (front-lst q)))
-\end{lstlisting}
-
-入队函数和上一节所介绍的基本相同。我们将新加入的元素放到rear列表前面，然后检查平衡条件，如果不满足就需要恢复平衡。
+在惰性执行环境中，(:)操作会推迟到出、入队时才执行，这样就将$rotate$计算自然分摊了。为此我们修改双列表的定义为$(f, r, rot)$，其中$rot$表示正在进行的的轮转计算$f \doubleplus reverse\ r$，它初始为空$[\ ]$。
 
 \be
-push(Q, x) = balance(\mathcal{F}, \{ x \} \cup R, \mathcal{R}_s)
+\begin{cases}
+push\ x\ (f, r, rot) & = balance\ f\ (x \cons r)\ rot \\
+pop\ ((x \cons f), r, rot) & = balance\ f\ r\ rot \\
+\end{cases}
 \ee
 
-其中$\mathcal{F}$是表示front列表的惰性流；$\mathcal{R}_s$是表示轮转计算的流。相应的Scheme/Lisp例子程序如下：
-
-\begin{lstlisting}
-(define (push q x)
-  (balance (front-lst q) (cons x (rear q)) (rots q)))
-\end{lstlisting}
-
-出队操作和此前相比有一些不同，由于front列表实际是一个惰性流，我们需要进行强制求值，其余部分保持不变。
+其中每次$balance$操作都会向前推进一次轮转计算，当轮转结束时，我们开始另一轮轮转：
 
 \be
-pop(Q) = balance(\mathcal{F}', R, \mathcal{R}_s)
+\begin{array}{rcll}
+balance\ f\ r\ [\ ] & = & (f', [\ ], f') & \text{其中}: f' = rotate\ f\ r\ [\ ] \\
+balance\ f\ r\ (x \cons rot) & = & (f, r, rot) & \text{推进轮转}\\
+\end{array}
 \ee
 
-其中$\mathcal{F}'$强制对$\mathcal{F}$进行一次求值，相应的Scheme/Lisp例子程序如下：
-
-\begin{lstlisting}
-(define (pop q)
-  (balance (stream-cdr (front-lst q)) (rear q) (rots q)))
-\end{lstlisting}
-
-为了节省篇幅，我们省略了错误处理（例如对空队列进行出队操作的错误等）。
-
-通过从front流中提取元素可以获得队列的头部元素。
-
-\begin{lstlisting}
-(define (front q) (stream-car (front-lst q)))
-\end{lstlisting}
-
-平衡函数首先检查代表轮转计算的流，如果已经耗尽，就开始一次新的轮转计算；否则它强制对惰性流进行一次求值，消耗掉其中的一个元素。
-
-\be
-balance(Q) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  Queue(\mathcal{F}', \phi, \mathcal{F}') & \mathcal{R}_s = \phi \\
-  Queue(\mathcal{F}, R, \mathcal{R}_s') & otherwise
-  \end{array}
-\right .
-\ee
-
-这里$\mathcal{F}'$被定义来开始一次新的轮转：
-
-\be
-  \mathcal{F}' = rotate(F, R, \phi)
-\ee
-
-相应的Scheme/Lisp例子程序如下：
-
-\begin{lstlisting}
-(define (balance f r s)
-  (if (stream-null? s)
-      (let ((newf (rotate f r '())))
-    (make-queue newf '() newf))
-      (make-queue f r (stream-cdr s))))
-\end{lstlisting}
-
-分步递进的轮转函数可以根据我们上面的分析给出实现，如下面的Scheme/Lisp例子代码：
-
-\begin{lstlisting}
-(define (rotate xs ys acc)
-  (if (stream-null? xs)
-      (cons-stream (car ys) acc)
-      (cons-stream (stream-car xs)
-           (rotate (stream-cdr xs) (cdr ys)
-               (cons-stream (car ys) acc)))))
-\end{lstlisting}
-
-在Scheme/Lisp中，我们可以明确地控制惰性求值。在默认使用惰性求值的编程环境中，例如Haskell，相应的实现可以非常简洁。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-data LazyRTQueue a = LQ [a] [a] [a] -- front, rear, f ++ reverse r
-
-instance Queue LazyRTQueue where
-    empty = LQ [] [] []
-
-    isEmpty (LQ f _ _) = null f
-
-    -- O(1) time push
-    push (LQ f r rot) x = balance f (x:r) rot
-
-    -- O(1) time pop
-    pop (LQ (_:f) r rot) = balance f r rot
-
-    front (LQ (x:_) _ _) = x
-
-balance f r [] = let f' = rotate f r [] in LQ f' [] f'
-balance f r (_:rot) = LQ f r rot
-
-rotate [] [y] acc = y:acc
-rotate (x:xs) (y:ys) acc = x : rotate xs ys (y:acc)
-\end{lstlisting}
-
-% ================================================================
-%                 Short summary
-% ================================================================
 \section{小结}
 
 在第一章的开头，我们曾经说过队列并不像想象中的那么简单。我们此前给出了许多数据结构和算法的命令式实现和函数式实现，函数式的方法通常会更加简洁和直观。但是，还存在许多领域，需要更多的研究工作来寻找相应的函数式解法。队列是一个非常重要的题目，它是很多纯函数式数据结构的基础。
@@ -812,6 +672,28 @@ abort (Concat 0 (_:acc) _) = Done acc -- rollback 1 elem
 abort (Concat n acc f') = Concat (n - 1) acc f'
 abort (Reverse n f' f r' r) = Reverse (n - 1) f' f r' r
 abort s = s
+\end{Haskell}
+
+惰性实时队列：
+
+\begin{Haskell}
+data LazyRTQueue a = LQ [a] [a] [a] -- front, rear, f ++ reverse r
+
+empty = LQ [] [] []
+
+isEmpty (LQ f _ _) = null f
+
+push (LQ f r rot) x = balance f (x:r) rot
+
+pop (LQ (_:f) r rot) = balance f r rot
+
+top (LQ (x:_) _ _) = x
+
+balance f r [] = let f' = rotate f r [] in LQ f' [] f'
+balance f r (_:rot) = LQ f r rot
+
+rotate [] [y] acc = y:acc
+rotate (x:xs) (y:ys) acc = x : rotate xs ys (y:acc)
 \end{Haskell}
 
 \ifx\wholebook\relax \else
