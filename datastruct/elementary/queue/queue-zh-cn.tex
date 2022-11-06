@@ -235,12 +235,12 @@ $S$节点在所有其它节点的前面，\textproc{Head}实际返回$S$的下�
 
 \be
 \begin{cases}
-push\ x\ (f, r) & = (f, x:r) \\
-pop\ (x:f, r)   & = (f, r) \\
+push\ x\ (f, r) & = (f, x \cons r) \\
+pop\ (x \cons f, r)   & = (f, r) \\
 \end{cases}
 \ee
 
-经过一系列出队操作后，$f$可能为空，而$r$中还有元素。为了能继续出队，我们将$r$反转后替换掉$f$：$([\ ], r) \mapsto (reverse\ r, [\ ])$。为此每次出入队后，需要执行一次平衡检查和调整：
+经过一系列出队操作后，$f$可能为空，而$r$中还有元素。为了能继续出队，我们将$r$反转后替换掉$f$，即：$([\ ], r) \mapsto (reverse\ r, [\ ])$。为此每次出入队后，需要执行一次平衡检查和调整：
 
 \be
 \begin{array}{rcl}
@@ -253,8 +253,8 @@ pop\ (x:f, r)   & = (f, r) \\
 
 \be
 \begin{cases}
-push\ x\ (f, r) & = \textit{balance}\ f\ (x:r) \\
-pop\ (x:f, r)   & = \textit{balance}\ f\ r \\
+push\ x\ (f, r) & = \textit{balance}\ f\ (x \cons r) \\
+pop\ (x \cons f, r)   & = \textit{balance}\ f\ r \\
 \end{cases}
 \ee
 
@@ -337,8 +337,8 @@ pop\ (x:f, r)   & = \textit{balance}\ f\ r \\
 
 \be
 \begin{cases}
-  push\ x\ (f, n, r, m) & = \textit{balance}\ (f, n,  x:r, m + 1) \\
-  pop\ (x:f, n, r, m) & = \textit{balance}\ (f, n - 1, r, m) \\
+  push\ x\ (f, n, r, m) & = \textit{balance}\ (f, n,  x \cons r, m + 1) \\
+  pop\ (x \cons f, n, r, m) & = \textit{balance}\ (f, n - 1, r, m) \\
 \end{cases}
 \ee
 
@@ -365,7 +365,7 @@ reverse\ = reverse'\ [\ ]
 \be
 \begin{array}{rcl}
 \textit{reverse}'\ a\ [\ ] & = & a \\
-\textit{reverse}'\ a\ (x:xs) & = & \textit{reverse}'\ (x:a)\ xs \\
+\textit{reverse}'\ a\ (x \cons xs) & = & \textit{reverse}'\ (x \cons a)\ xs \\
 \end{array}
 \ee
 
@@ -374,7 +374,7 @@ reverse\ = reverse'\ [\ ]
 \be
 \begin{array}{rcl}
 step\ S_r\ a\ [\ ] & = & (S_f, a) \\
-step\ S_r\ a\ (x:xs) & = & (S_r, (x:a), xs) \\
+step\ S_r\ a\ (x \cons xs) & = & (S_r, (x \cons a), xs) \\
 \end{array}
 \ee
 
@@ -390,14 +390,14 @@ step\ S_r\ [\ ]\ \text{``olleh''} & = & (S_f, \text{``olleh''})
 \end{array}
 \]
 
-现在我们可以将反转计算逐步分派到出、入队中。但是这仅解决了一半问题。我们需要逐步分解、调度$\doubleplus$。实现逐步连接的难度更大。我们利用逐步反转的结果，并使用一个技巧：为了实现$X \doubleplus Y$，我们可以先将$X$反转为$\overleftarrow{X}$，然后逐一将$\overleftarrow{X}$中的元素取出，放到$Y$的前面。这和$\textit{reverse}'$类似。
+现在我们可以将反转计算逐步分派到出、入队中。但是这仅解决了一半问题。我们需要逐步分解、调度$\doubleplus$。实现逐步连接的难度更大。我们利用逐步反转的结果，并使用一个技巧：为了实现$xs \doubleplus ys$，我们可以先将$xs$反转为$\overleftarrow{xs}$，然后逐一将$\overleftarrow{xs}$中的元素取出，放到$ys$的前面。这和$\textit{reverse}'$类似。
 
 \be
   \begin{array}{rcl}
-    X \doubleplus Y & = & (reverse\ reverse\ X) \doubleplus Y \\
-             & = & (reverse'\ [\ ]\ (reverse\ X)) \doubleplus Y \\
-             & = & reverse'\ Y\ (reverse\ X) \\
-             & = & reverse'\ Y\ \overleftarrow{X}
+    xs \doubleplus ys & = & (reverse\ reverse\ xs) \doubleplus ys \\
+             & = & (reverse'\ [\ ]\ (reverse\ xs)) \doubleplus ys \\
+             & = & reverse'\ ys\ (reverse\ xs) \\
+             & = & reverse'\ ys\ \overleftarrow{xs}
   \end{array}
 \ee
 
@@ -410,10 +410,10 @@ step\ S_r\ [\ ]\ \text{``olleh''} & = & (S_f, \text{``olleh''})
 
 \be
 \begin{array}{rcll}
-next\ (S_r, f', x:f, r', y:r) & = & (S_r, x:f', f, y:r', r) & \text{同时反转}f, r\\
-next\ (S_r, f', [\ ], r', [y]) & = & next\ (S_c, f', y:r') & \text{反转结束、转入连接}\\
+next\ (S_r, f', x \cons f, r', y \cons r) & = & (S_r, x \cons f', f, y \cons r', r) & \text{同时反转}f, r\\
+next\ (S_r, f', [\ ], r', [y]) & = & next\ (S_c, f', y \cons r') & \text{反转结束、转入连接}\\
 next\ (S_c, a, [\ ]) & = & (S_f, a) & \text{连接结束}\\
-next\ (S_c, a, x:f') & = & (S_c, x:a, f') & \text{逐步连接}\\
+next\ (S_c, a, x \cons f') & = & (S_c, x \cons a, f') & \text{逐步连接}\\
 \end{array}
 \ee
 
@@ -450,10 +450,10 @@ next\ (S_c, a, x:f') & = & (S_c, x:a, f') & \text{逐步连接}\\
 
 \be
 \begin{array}{rcll}
-next\ (S_r, n, f', x:f, r', y:r) & = & (S_r, n + 1, x:f', f, y:r', r) & \text{同时反转}f, r\\
-next\ (S_r, n, f', [\ ], r', [y]) & = & next\ (S_c, n, f', y:r') & \text{反转结束、转入连接}\\
+next\ (S_r, n, f', x \cons f, r', y \cons r) & = & (S_r, n + 1, x \cons f', f, y \cons r', r) & \text{同时反转}f, r\\
+next\ (S_r, n, f', [\ ], r', [y]) & = & next\ (S_c, n, f', y \cons r') & \text{反转结束、转入连接}\\
 next\ (S_c, 0, a, f) & = & (S_f, a) & \text{连接结束}\\
-next\ (S_c, n, a, x:f') & = & (S_c, n - 1, x:a, f') & \text{逐步连接}\\
+next\ (S_c, n, a, x \cons f') & = & (S_c, n - 1, x \cons a, f') & \text{逐步连接}\\
 next\ S_0 & = & S_0 & \text{空闲状态} \\
 \end{array}
 \ee
@@ -462,8 +462,8 @@ next\ S_0 & = & S_0 & \text{空闲状态} \\
 
 \be
 \begin{cases}
-  push\ x\ (f, n, S, r, m) & = balance\ f\ n\ S\ (x:r)\ (m + 1) \\
-  pop\ (x:f, n, S, r, m) & = balance\ f\ (n - 1)\ (abort\ S)\ r\ m \\
+  push\ x\ (f, n, S, r, m) & = balance\ f\ n\ S\ (x \cons r)\ (m + 1) \\
+  pop\ (x \cons f, n, S, r, m) & = balance\ f\ (n - 1)\ (abort\ S)\ r\ m \\
 \end{cases}
 \ee
 
