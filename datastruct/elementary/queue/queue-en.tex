@@ -42,7 +42,7 @@ Queue supports first-in, first-out (FIFO). There are many ways to implement queu
 
 It's easy to realize queue with doubly linked list. We skip this implementation, and focus on using other basic data structures, like (singly) linked list or array.
 
-\section{Linked-list implementation}
+\section{Linked-list queue}
 \index{Queue!linked-list}
 
 We can insert or remove element from the head of a linked list. However, to support FIFO, we have to do one operation in head, and the other in tail. We need $O(n)$ time traverse to reach the tail, where $n$ is the length. To achieve the constant time performance goal, we use an extra variable to record the tail position, and apply a sentinel node $S$ to simplify the empty queue case handling, as shown in figure \ref{fig:empty-list}.
@@ -99,7 +99,7 @@ As the $S$ node is ahead of all other nodes, \textproc{Head} actually returns th
   \label{fig:list-queue}
 \end{figure}
 
-\subsection{Circular buffer}
+\section{Circular buffer}
 \index{Queue!Circular buffer}
 
 Symmetrically, we can append element to the tail of array, but it takes linear time $O(n)$ to remove element from head. This is because we need shift all elements one cell ahead. The idea of circular buffer is to reuse the free cells before the first valid element after we remove elements from head, as shown figure \ref{fig:circular-buffer-queue}, and \ref{fig:circular-buffer}. We can use the head index, the length count, and the size of the array to define a queue. It's empty when the count is 0, it's full when count = size, we can also simplify the enqueue/dequeue implementation with modular operation.
@@ -216,257 +216,107 @@ Symmetrically, we can append element to the tail of array, but it takes linear t
 \end{algorithmic}
 
 \begin{Exercise}
-The circular buffer is allocated with a maximum size parameter. Can we
-test the queue is empty or full with only head and tail pointers?
-Note that the head can be either before or after the tail.
+The circular buffer is allocated with a predefined size. We can use two references head and tail instead of count. How to determine if a circular buffer queue is full or empty? (the head can be either ahead of tail or behind it.)
 \end{Exercise}
 
-% ================================================================
-%                 the 1st version
-% ================================================================
-\section{Purely functional solution}
-
-\subsection{Paired-list queue}
+\section{Paired-list queue}
 \index{Queue!Paired-list queue}
 
-We can't just use a list to implement queue, or we can't satisfy abstract
-queue properties. This is because singly linked-list, which
-is the back-end data structure in most functional settings, performs
-well on head in constant $O(1)$ time, while it performs in linear $O(n)$
-time on tail, where $n$ is the length of the list. Either dequeue or enqueue
-will perform proportion to the number of elements stored in the list
-as shown in figure \ref{fig:linked-list-queue}.
+We can access list head in constant time, but need linear time to access the tail. We can connect two lists `tail to tail' to implement queue, as shown in figure \ref{fig:horseshoe-magnet}. We define such queue as $(f, r)$, where $f$ is the front list, and $r$ is the rear list. The empty list is $([\ ], [\ ])$. We push new element to the head of $r$, and pop from the tail of $f$. Both are constant time.
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{\textproc{DeQueue} performs poorly.}{\includegraphics[scale=0.5]{img/list-queue-head}} \\
-  \subcaptionbox{\textproc{EnQueue} performs poorly.}{\includegraphics[scale=0.5]{img/list-queue-tail}}
-  \caption{\textproc{DeQueue} and \textproc{EnQueue} can't perform both in constant $O(1)$ time with a list.} \label{fig:linked-list-queue}
+  \includegraphics[scale=0.6]{img/paired-listq}
+  \caption{paired-list queue.}
+  \label{fig:horseshoe-magnet}
 \end{figure}
 
-We neither can add a pointer to record the tail position of the list
-as what we have done in the imperative settings like in the ANSI C program,
-because of the nature of purely functional.
-
-Chris Okasaki mentioned a simple and straightforward functional solution
-in \cite{okasaki-book}. The idea is to maintain two linked-lists as a queue,
-and concatenate these two lists in a tail-to-tail manner. The shape of the queue
-looks like a horseshoe magnet as shown in figure \ref{fig:horseshoe-magnet}.
-
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{a horseshoe magnet.}{\includegraphics[scale=0.5]{img/horseshoe-magnet}} \\
-  \subcaptionbox{concatenate two lists tail-to-tail.}{\includegraphics[scale=0.5]{img/front-rear-queue}}
-  \caption{A queue with front and rear list shapes like a horseshoe magnet.} \label{fig:horseshoe-magnet}
-\end{figure}
-
-With this setup, we push new element to the head of the rear list, which is
-ensure to be $O(1)$ constant time; on the other hand, we pop element from
-the head of the front list, which is also $O(1)$ constant time.
-So that the abstract queue properties can be satisfied.
-
-The definition of such paired-list queue can be expressed in the following
-Haskell code.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-type Queue a = ([a], [a])
-
-empty = ([], [])
-\end{lstlisting}
-
-Suppose function $front(Q)$ and $rear(Q)$ return the front and rear
-list in such setup, and $Queue(F, R)$ create a paired-list queue from
-two lists $F$ and $R$.
-The \textproc{EnQueue} (push) and \textproc{DeQueue} (pop) operations can
-be easily realized based on this setup.
-
 \be
-push(Q, x) = Queue(front(Q), \{ x \} \cup rear(Q))
+\begin{cases}
+push\ x\ (f, r) & = (f, x \cons r) \\
+pop\ (x \cons f, r)   & = (f, r) \\
+\end{cases}
 \ee
 
-\be
-pop(Q) = Queue(tail(front(Q)), rear(Q))
-\ee
-
-where if a list $X =  \{ x_1, x_2, ..., x_n \}$,
-function $tail(X) = \{ x_2, x_3, ..., x_n \}$ returns the rest of the list
-without the first element.
-
-However, we must next solve the problem that after several pop operations,
-the front
-list becomes empty, while there are still elements in rear list. One method
-is to rebuild the queue by reversing the rear list, and use it to replace front
-list.
-
-Hence a balance operation will be execute after popping. Let's denote the
-front and rear list of a queue $Q$ as $F = front(Q)$, and $R = fear(Q)$.
+$f$ may become empty after a series of pops, while $r$ still contains elements. To continue pop, we reverse $r$ to replace $f$, i.e., $([\ ], r) \mapsto (reverse\ r, [\ ])$. We need check and adjust balance after every push/pop:
 
 \be
-balance(F, R) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  Queue(reverse(R), \phi) & F = \phi \\
-  Q & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+\textit{balance}\ [\ ]\ r & = & (\textit{reverse}\ r, [\ ]) \\
+\textit{balance}\ f\ r & = & (f, r) \\
+\end{array}
 \ee
 
-Thus if front list isn't empty, we do nothing, while when the front
-list becomes empty, we use the reversed rear list as the new front list,
-and the new rear list is empty.
-
-The new enqueue and dequeue algorithms are updated as below.
+Although the time is bound to linear time when reverse $r$, the amortised performance is constant time. We adjust the push/pop as below:
 
 \be
-push(Q, x) = balance(F, \{ x \} \cup R)
+\begin{cases}
+push\ x\ (f, r) & = \textit{balance}\ f\ (x \cons r) \\
+pop\ (x \cons f, r)   & = \textit{balance}\ f\ r \\
+\end{cases}
 \ee
 
-\be
-pop(Q) = balance(tail(F), R)
-\ee
-
-Sum up the above algorithms and translate them to Haskell yields the following
-program.
-
-\begin{lstlisting}
-balance :: Queue a -> Queue a
-balance ([], r) = (reverse r, [])
-balance q = q
-
-push :: Queue a -> a -> Queue a
-push (f, r) x = balance (f, x:r)
-
-pop :: Queue a -> Queue a
-pop ([], _) = error "Empty"
-pop (_:f, r) =  balance (f, r)
-\end{lstlisting}
-
-Although we only touch the heads of front list and rear list, the
-overall performance can't be kept always as $O(1)$. Actually, the performance
-of this algorithm is amortized $O(1)$. This is because the reverse operation
-takes time proportion to the length of the rear list. it's bound $O(n)$
-time, where $N = |R|$. We left the prove of amortized performance as
-an exercise to the reader.
-
-\subsection{Paired-array queue - a symmetric implementation}
 \index{Queue!Paired-array queue}
 
-There is an interesting implementation which is symmetric to the paired-list
-queue. In some old programming languages, such as legacy version of BASIC,
-There is array supported, but there is no pointers, nor records to represent
-linked-list. Although we can use another array to store indexes so that we
-can represent linked-list with implicit array, there is another option to
-realized amortized $O(1)$ queue.
+There is a symmetric implementation with a pair of arrays. Table \ref{tab:array-list-comp} shows the symmetric between list and array. We connect two arrays head to head to form a queue, as shown in figure \ref{fig:horseshoe-array}. When array $R$ becomes empty, we reverse array $F$ to replace $R$.
 
-Compare the performance of array and linked-list. Below table reveals some
-facts (Suppose both contain $n$ elements).
-
+\begin{table}[htbp]
+\centering
 \begin{tabular}{l | c | r}
   \hline
-  operation & Array & Linked-list \\
+  operation & array & list \\
   \hline
-  insert on head & $O(n)$ & $O(1)$ \\
-  insert on tail & $O(1)$ & $O(n)$ \\
-  remove on head & $O(n)$ & $O(1)$ \\
-  remove on tail & $O(1)$ & $O(n)$ \\
+  insert to head & $O(n)$ & $O(1)$ \\
+  append to tail & $O(1)$ & $O(n)$ \\
+  remove from head & $O(n)$ & $O(1)$ \\
+  remove from tail & $O(1)$ & $O(n)$ \\
   \hline
 \end{tabular}
-
-Note that linked-list performs in constant time on head, but in linear time on tail;
-while array performs in constant time on tail (suppose there is enough memory spaces, and
-omit the memory reallocation for simplification), but in linear time on head.
-This is because we need do shifting when prepare or eliminate an empty cell in array.
-(see chapter 'the evolution of insertion sort' for detail.)
-
-The above table shows an interesting characteristic, that we can exploit it and provide
-a solution mimic to the paired-list queue: We concatenate two arrays, head-to-head, to
-make a horseshoe shape queue like in figure \ref{fig:horseshoe-array}.
+\caption{array and list}
+\label{tab:array-list-comp}
+\end{table}
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{a horseshoe magnet.}{\includegraphics[scale=0.5]{img/horseshoe-magnet}}
-  \subcaptionbox{concatenate two arrays head-to-head.}{\includegraphics[scale=0.5]{img/front-rear-array-queue}}
-  \caption{A queue with front and rear arrays shapes like a horseshoe magnet.} \label{fig:horseshoe-array}
+  \includegraphics[scale=0.6]{img/paired-arrayq}
+  \caption{paired-array queue.}
+  \label{fig:horseshoe-array}
 \end{figure}
 
-We can define such paired-array queue like the following Python code \footnote{Legacy Basic
-code is not presented here. And we actually use list but not array in Python to illustrate the idea.
-ANSI C and ISO C++ programs are provides along with this chapter, they show more
-in a purely array manner.}
+\begin{Exercise}
+\Question{Why need balance check and adjustment after push?}
+\Question{Prove the amortized performance of paired-list queue is constant time.}
+\Question{Implement the paired-array queue.}
+\end{Exercise}
 
-\lstset{language=Python}
-\begin{lstlisting}
-class Queue:
-    def __init__(self):
-        self.front = []
-        self.rear = []
+\begin{Answer}
+\Question{Why need balance check and adjustment after push?
 
-def is_empty(q):
-    return q.front == [] and q.rear == []
-\end{lstlisting}
+Consider the case, first $push\ a\ ([\ ], [\ ])$, then $pop$.
+}
+\Question{Prove the amortized performance of paired-list queue is constant time.}
+\Question{Implement the paired-array queue.
 
-The relative \textproc{Push}() and \textproc{Pop}() algorithm only manipulate
-on the tail of the arrays.
-
-\begin{algorithmic}
+\begin{algorithmic}[1]
 \Function{Push}{$Q, x$}
-  \State \textproc{Append}(\Call{Rear}{$Q$}, $x$)
+  \State \textproc{Append}(\Call{Front}{$Q$}, $x$)
 \EndFunction
-\end{algorithmic}
-
-Here we assume that the \textproc{Append}() algorithm append element $x$ to
-the end of the array, and handle the necessary memory allocation etc. Actually,
-there are multiple memory handling approaches. For example, besides the
-dynamic re-allocation, we can initialize the array with enough space, and just
-report error if it's full.
-
-\begin{algorithmic}
+\Statex
 \Function{Pop}{$Q$}
-  \If{\Call{Front}{$Q$} $= \phi$}
-    \State \Call{Front}{$Q$} $\gets$ \textproc{Reverse}(\Call{Rear}{$Q$})
-    \State \Call{Rear}{$Q$} $\gets \phi$
+  \If{\Call{Rear}{$Q$} $= [\ ]$}
+    \State \Call{Rear}{$Q$} $\gets$ \textproc{Reverse}(\Call{Front}{$Q$})
+    \State \Call{Front}{$Q$} $\gets [\ ]$
   \EndIf
-  \State $n \gets$ \textproc{Length}(\Call{Front}{$Q$})
-  \State $x \gets$ \Call{Front}{$Q$}[n]
-  \State \textproc{Length}(\Call{Front}{$Q$}) $\gets n - 1$
+  \State $n \gets$ \textproc{Length}(\Call{Rear}{$Q$})
+  \State $x \gets$ \Call{Rear}{$Q$}[n]
+  \State \textproc{Length}(\Call{Rear}{$Q$}) $\gets n - 1$
   \State \Return $x$
 \EndFunction
 \end{algorithmic}
+}
+\end{Answer}
 
-For simplification and pure illustration purpose, the array isn't shrunk
-explicitly after elements removed. So test if front array is empty ($\phi$)
-can be realized as check if the length of the array is zero. We omit all
-these details here.
-
-The enqueue and dequeue algorithms can be translated to Python programs
-straightforwardly.
-
-\begin{lstlisting}
-def push(q, x):
-    q.rear.append(x)
-
-def pop(q):
-    if q.front == []:
-        q.rear.reverse()
-        (q.front, q.rear) = (q.rear, [])
-    return q.front.pop()
-\end{lstlisting}
-
-Similar to the paired-list queue, the performance is amortized $O(1)$
-because the reverse procedure takes linear time.
-
-\begin{Exercise}
-\begin{itemize}
-\item Prove that the amortized performance of paired-list queue is $O(1)$.
-\item Prove that the amortized performance of paired-array queue is $O(1)$.
-\end{itemize}
-\end{Exercise}
-
-% ================================================================
-%                 Balanced Queue
-% ================================================================
-\section{A small improvement, Balanced Queue}
+\section{Balance Queue}
 \index{Queue!Balance Queue}
 
 Although paired-list queue is amortized $O(1)$ for popping and pushing,
@@ -576,11 +426,8 @@ Write the symmetric balance improvement solution for paired-array queue
 in your favorite imperative programming language.
 \end{Exercise}
 
-% ================================================================
-%                 Realtime Queue
-% ================================================================
-\section{One more step improvement, Real-time Queue}
-\index{Queue!Real-time Queue}
+\section{Real-time queue}
+\index{Queue!Real-time queue}
 
 Although the extremely worst case can be avoided by improving the balancing
 as what has been presented in previous section, the performance
