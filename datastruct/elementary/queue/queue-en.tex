@@ -319,229 +319,62 @@ Consider the case, first $push\ a\ ([\ ], [\ ])$, then $pop$.
 \section{Balance Queue}
 \index{Queue!Balance Queue}
 
-Although paired-list queue is amortized $O(1)$ for popping and pushing,
-the solution we proposed in previous section performs poor in the worst case.
-For example, there is one element in the front list, and we push $n$ elements
-continuously to the queue, here $n$ is a big number. After that executing
-a pop operation will cause the worst case.
-
-According to the strategy we used so far, all the $n$ elements are added
-to the rear list. The front list turns to be empty after a pop operation.
-So the algorithm starts to reverse the rear list. This reversing procedure
-is bound to $O(n)$ time, which is proportion to the length of the rear
-list. Sometimes, it can't be
-acceptable for a very big $n$.
-
-The reason why this worst case happens is because the front and rear lists
-are extremely unbalanced. We can improve our paired-list queue design
-by making them more balanced. One option is to add a balancing constraint.
+Although paired-list queue performs in amortized constant time, it is linear time in worse case. For e.g., there is an element in $f$, then repeat pushing $n$ elements. Now it takes $O(n)$ time to pop. The lengths of $f$ and $r$ are unbalance in this case. To solve it, we add another rule: keep the length of $r$ is not greater than $f$, otherwise we reverse.
 
 \be
-  | R | \leq | F |
+  |r| \leq |f|
 \label{eq:balance-invariant}
 \ee
 
-Where $R = Rear(Q)$, $F = Front(Q)$, and $|L|$ is the length of list $L$.
-This constraint ensure the length
-of the rear list is less than the length of the front list. So that the reverse
-procedure will be executed once the rear list grows longer than
-the front list.
-
-Here we need frequently access the length information of a list. However,
-calculate the length takes linear time for singly linked-list. We can
-record the length to a variable and update it as adding and removing elements.
-This approach enables us to get the length information in constant time.
-
-Below example shows the modified paired-list queue definition which is augmented
-with length fields.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-data BalanceQueue a = BQ [a] Int [a] Int
-\end{lstlisting}
-
-As we keep the invariant as specified in (\ref{eq:balance-invariant}), we
-can easily tell if a queue is empty by testing the length of the front list.
+We check the lengths in every push/pop, however, it takes linear time to compute length. We can record the length in a variable, and update it during push/pop. Denote the paired-list queue as $(f, n, r, m)$, where $n = |f|$, $m = |r|$. From the balance rule (\ref{eq:balance-invariant}), we can check the length of $f$ to test if a queue is empty:
 
 \be
-  F = \phi \Leftrightarrow |F| = 0
+  Q = \phi \iff n = 0
 \ee
 
-In the rest part of this section, we suppose the length of a list $L$, can
-be retrieved as $|L|$ in constant time.
-
-Push and pop are almost as same as before except that we check the balance
-invariant by passing length information and performs reversing accordingly.
+The definition of push/pop change to:
 
 \be
-  push(Q, x) = balance(F, |F|, \{ x \} \cup R, |R| + 1)
+\begin{cases}
+  push\ x\ (f, n, r, m) & = \textit{balance}\ (f, n,  x \cons r, m + 1) \\
+  pop\ (x \cons f, n, r, m) & = \textit{balance}\ (f, n - 1, r, m) \\
+\end{cases}
 \ee
+
+Where \textit{balance} is defined as:
 
 \be
-  pop(Q) = balance(tail(F), |F|-1, R, |R|)
+\textit{balance}\ (f, n, r, m) = \begin{cases}
+  m \leq n: & (f, n, r, m) \\
+  \text{otherwise}: & (f \doubleplus reverse\ r, m + n, [\ ], 0)\\
+\end{cases}
 \ee
-
-Where function $balance()$ is defined as the following.
-
-\be
-  balance(F, |F|, R, |R|) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  Queue(F, |F|, R, |R|) & |R| \leq |F| \\
-  Queue(F \cup reverse(R), |F| + |R|, \phi, 0) & otherwise
-  \end{array}
-\right .
-\ee
-
-Note that the function $Queue()$ takes four parameters, the front list along
-with its length (recorded), and the rear list along with its length, and
-forms a paired-list queue augmented with length fields.
-
-We can easily translate the equations to Haskell program. And we can
-enforce the abstract queue interface by making the implementation
-an instance of the Queue type class.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-instance Queue BalanceQueue where
-    empty = BQ [] 0 [] 0
-
-    isEmpty (BQ _ lenf _ _) = lenf == 0
-
-    -- Amortized O(1) time push
-    push (BQ f lenf r lenr) x = balance f lenf (x:r) (lenr + 1)
-
-    -- Amortized O(1) time pop
-    pop (BQ (_:f) lenf r lenr) = balance f (lenf - 1) r lenr
-
-    front (BQ (x:_) _ _ _) = x
-
-balance f lenf r lenr
-    | lenr <= lenf = BQ f lenf r lenr
-    | otherwise = BQ (f ++ (reverse r)) (lenf + lenr) [] 0
-\end{lstlisting}
-
-\begin{Exercise}
-Write the symmetric balance improvement solution for paired-array queue
-in your favorite imperative programming language.
-\end{Exercise}
 
 \section{Real-time queue}
 \index{Queue!Real-time queue}
 
-Although the extremely worst case can be avoided by improving the balancing
-as what has been presented in previous section, the performance
-of reversing rear list is still bound to $O(n)$, where $N = |R|$.
-So if the rear list is very long, the instant performance is still
-unacceptable poor even if the amortized time is $O(1)$. It is particularly
-important in some real-time system to ensure the worst case performance.
-
-As we have analyzed, the bottleneck is the computation of $ F \cup reverse(R)$.
-This happens when $|R| > |F|$. Considering that $|F|$ and $|R|$ are
-all integers, so this computation happens when
+It still takes linear time to reverse, concatenate lists in balanced queue. A real-time queue need guarantee constant time in every push/pop operation. The performance bottleneck happens in $f \doubleplus reverse\ r$. At this time, $m > $, breaks the balance rule. Since $m, n$ are integers, we know $m = n + 1$. $\doubleplus$ takes $O(n)$ time, and reverse takes $O(m)$ time. The total time is bound to $O(n + m)$, which is proportion to the number of elements. Our solution is to distribute this computation to multiple push and pop operations. Let's revisit the tail recursive\cite{wiki-tail-call}\cite{recursion} reverse:
 
 \be
-  |R| = |F| + 1
+reverse\ = reverse'\ [\ ]
 \ee
 
-Both $F$ and the result of $reverse(R)$ are singly linked-list,
-It takes $O(|F|)$ time to concatenate them together, and it takes extra
-$O(|R|)$ time to reverse the rear list, so the total computation
-is bound to $O(|N|)$, where $N = |F| + |R|$. Which is proportion to the
-total number of elements in the queue.
-
-In order to realize a real-time queue, we can't computing $ F \cup reverse(R)$
-monolithic. Our strategy is to distribute this expensive computation to every
-pop and push operations. Thus although each pop and push get a bit slow,
-we may avoid the extremely slow worst pop or push case.
-
-\subsubsection{Incremental reverse}
-\index{Queue!Incremental reverse}
-
-Let's examine how functional reverse algorithm is implemented typically.
+This is in Curried form, where:
 
 \be
-  reverse(X) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & X = \phi \\
-  reverse(X') \cup \{ x_1 \} & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+\textit{reverse}'\ a\ [\ ] & = & a \\
+\textit{reverse}'\ a\ (x \cons xs) & = & \textit{reverse}'\ (x \cons a)\ xs \\
+\end{array}
 \ee
 
-Where $X' = tail(X) = \{ x_2, x_3, ...\}$.
-
-This is a typical recursive algorithm, that if the list to be reversed is
-empty, the result is just an empty list. This is the edge case; otherwise, we
-take the first element $x_1$ from the list, reverse the rest $\{x_2, x_3, ..., x_n \}$,
-to $\{x_n, x_{n-1}, .., x_3, x_2 \}$ and append $x_1$ after it.
-
-However, this algorithm performs poor, as appending an element to the end of a list
-is proportion to the length of the list. So it's $O(N^2)$, but not a linear
-time reverse algorithm.
-
-There exists another implementation which utilizes an accumulator $A$, like below.
+We can turn the tail recursive implementation to stepped computation. We model it as a series of state transformation. Define a state machine with two states: reverse state $S_r$, and complete state $S_f$. We {\em slow-down} the reverse computation as below:
 
 \be
-  reverse(X) = reverse'(X, \phi)
-\ee
-
-Where
-
-\be
- reverse'(X, A) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  A & X = \phi \\
-  reverse'(X', \{ x_1 \} \cup A) & otherwise
-  \end{array}
-\right .
-\ee
-
-We call $A$ as {\em accumulator} because it accumulates intermediate reverse result
-at any time. Every time we call $reverse'(X, A)$, list $X$ contains the rest of
-elements wait to be reversed, and $A$ holds all the reversed elements so far. For instance
-when we call $reverse'()$ at $i$-th time, $X$ and $A$ contains the following
-elements:
-
-\[
-  \begin{array}{r@{\quad}l}
-  X = \{x_i, x_{i+1}, ..., x_n \} & A = \{ x_{i-1}, x_{i-2}, ... x_1 \}
-  \end{array}
-\]
-
-In every non-trivial case, we takes the first element from $X$ in $O(1)$ time;
-then put it in front of the accumulator $A$, which is again $O(1)$ constant time.
-We repeat it $n$ times, so this is a linear time ($O(n)$) algorithm.
-
-The latter version of reverse is obviously a {\em tail-recursion} algorithm,
-see \cite{tail-call} and \cite {recursion} for detail. Such characteristic
-is easy to change from monolithic algorithm to incremental manner.
-
-The solution is state transferring. We can use a state machine contains
-two types of stat: reversing state $S_r$ to indicate that the reverse
-is still on-going (not finished), and finish state $S_f$ to indicate
-the reverse has been done (finished). In Haskell programming
-language, it can be defined as a type.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-data State a = | Reverse [a] [a]
-               | Done [a]
-\end{lstlisting}
-
-And we can schedule (slow-down) the above $reverse'(X, A)$ function with
-these two types of state.
-
-\be
-  step(S, X, A) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (S_f, A) & S = S_r \land X = \phi \\
-  (S_r, X', \{ x_1 \} \cup A) & S = S_r \land X \neq \phi \\
-  \end{array}
-\right .
+\begin{array}{rcl}
+step\ S_r\ a\ [\ ] & = & (S_f, a) \\
+step\ S_r\ a\ (x \cons xs) & = & (S_r, (x \cons a), xs) \\
+\end{array}
 \ee
 
 Each step, we examine the state type first, if the current state is
@@ -585,7 +418,6 @@ into steps, we next need to schedule(slow-down) the list concatenation
 part $F \cup ...$, which is bound to $O(|F|)$, into incremental
 manner so that we can distribute it to pop and push operations.
 
-\subsubsection{Incremental concatenate}
 \index{Queue!Incremental concatenate}
 
 It's a bit more challenge to implement incremental list concatenation
@@ -664,8 +496,6 @@ next (Concat (x:f') acc) = Concat f' (x:acc)
 
 All left to us is to distribute these incremental steps into every pop and push
 operations to implement a real-time $O(1)$ purely functional queue.
-
-\subsubsection{Sum up}
 
 Before we dive into the final real-time queue implementation, let's analyze how
 many incremental steps are taken to achieve the result of $F \cup reverse(R)$.
@@ -955,10 +785,6 @@ so that we copy one element per step along with the reversing.
 \end{itemize}
 \end{Exercise}
 
-
-% ================================================================
-%                 Lazy Real-time queue
-% ================================================================
 \section{Lazy real-time queue}
 \index{Queue!Lazy real-time queue}
 
@@ -1200,9 +1026,6 @@ rotate [] [y] acc = y:acc
 rotate (x:xs) (y:ys) acc = x : rotate xs ys (y:acc)
 \end{lstlisting}
 
-% ================================================================
-%                 Short summary
-% ================================================================
 \section{Notes and short summary}
 Just as mentioned in the beginning of this book in the first chapter,
 queue isn't so simple as it was thought. We've tries to explain
