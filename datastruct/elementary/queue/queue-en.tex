@@ -410,10 +410,10 @@ $\overleftarrow{r}$ step by step;
 
 \be
 \begin{array}{rcll}
-next\ (S_r, f', x \cons f, r', y \cons r) & = & (S_r, x \cons f', f, y \cons r', r) & \text{stepped reverse}\ f, r\\
-next\ (S_r, f', [\ ], r', [y]) & = & next\ (S_c, f', y \cons r') & \text{reverse done, start concatenate}\\
-next\ (S_c, a, [\ ]) & = & (S_f, a) & \text{concatenate done}\\
-next\ (S_c, a, x \cons f') & = & (S_c, x \cons a, f') & \text{stepped concatenate}\\
+next\ (S_r, f', x \cons f, r', y \cons r) & = & (S_r, x \cons f', f, y \cons r', r) & \text{reverse}\ f, r\\
+next\ (S_r, f', [\ ], r', [y]) & = & next\ (S_c, f', y \cons r') & \text{reverse done, start concatenation}\\
+next\ (S_c, a, [\ ]) & = & (S_f, a) & \text{done}\\
+next\ (S_c, a, x \cons f') & = & (S_c, x \cons a, f') & \text{concatenation}\\
 \end{array}
 \ee
 
@@ -445,222 +445,64 @@ However, pop may happen before the completion of $2n + 2$ steps. We are facing t
 \label{tab:pop-before-n}
 \end{table}
 
-After these $M$ pop operations, the copy of $F$ is exhausted. And we just
-start incremental concatenation phase at that time. What if user goes
-on popping?
-
-The fact is that since $F$ is exhausted (becomes $\phi$), we needn't do concatenation
-at all. Since $F \cup \overleftarrow{R} = \phi \cup \overleftarrow{R} = \overleftarrow{R}$.
-
-It indicates us, when doing concatenation, we only need to concatenate those elements
-haven't been popped, which are still left in $F$. As user pops elements one by one
-continuously from the head of front list $F$, one method is to use a counter,
-record how many elements there are still in $F$. The counter is initialized as 0
-when we start computing $F \cup reverse(R)$, it's increased by one when we reverse
-one element in $F$, which means we need concatenate this element in the future;
-and it's decreased by one every time when pop is
-performed, which means we can concatenate one element less; of course we need decrease
-this counter as well in every steps of concatenation. If and only if this counter
-becomes zero, we needn't do concatenations any more.
-
-We can give the realization of purely functional real-time queue according to the above
-analysis.
-
-We first add an idle state $S_0$ to simplify some state transferring. Below Haskell program
-is an example of this modified state definition.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-data State a = Empty
-             | Reverse Int [a] [a] [a] [a] -- n, f', acc\_f' r, acc\_r
-             | Append Int [a] [a]          -- n, rev\_f', acc
-             | Done [a] -- result: f ++ reverse r
-\end{lstlisting}
-
-And the data structure is defined with three parts, the front list (augmented with length);
-the on-going state of computing $F \cup reverse(R)$; and the rear list (augmented with length).
-
-Here is the Haskell definition of real-time queue.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-data RealtimeQueue a = RTQ [a] Int (State a) [a] Int
-\end{lstlisting}
-
-The empty queue is composed with empty front and rear list together with idle state $S_0$ as
-$Queue(\phi, 0, S_0, \phi, 0)$. And we can test if a queue is empty by checking if $|F| = 0$
-according
-to the balance invariant defined before. Push and pop are changed accordingly.
+The copy of $f$ is exhausted after repeated $n$ pops. We are about to stepped concatenation. What if pop happens at this time? Since $f$ is exhausted, it becomes $[\ ]$. We needn't concatenate anymore. This is because $f \doubleplus \overleftarrow{r} = [\ ] \doubleplus \overleftarrow{r} = \overleftarrow{r}$. In fact, we only need to concatenate the elements in $f$ that haven't been popped. Because we pop elements from the head of $f$, we use a counter to record the remaining elements in $f$. It's initialized as 0. We apply +1 every time when reverse an element in $f$. It means we need concatenate this element in the future; Whenever pop happens, we apply -1, means we needn't concatenate this one any more. We also decrease it during concatenation process, and cancel the process when it is 0. Below is the updated state transformation:
 
 \be
-  push(Q, x) = balance(F, |F|, \mathcal{S}, \{ x \} \cup R, |R|+1)
+\begin{array}{rcll}
+next\ (S_r, n, f', x \cons f, r', y \cons r) & = & (S_r, n + 1, x \cons f', f, y \cons r', r) & \text{reverse}\ f, r\\
+next\ (S_r, n, f', [\ ], r', [y]) & = & next\ (S_c, n, f', y \cons r') & \text{reverse done, start concatenation}\\
+next\ (S_c, 0, a, f) & = & (S_f, a) & \text{done}\\
+next\ (S_c, n, a, x \cons f') & = & (S_c, n - 1, x \cons a, f') & \text{concatenation}\\
+next\ S_0 & = & S_0 & \text{idle} \\
+\end{array}
 \ee
+
+We define addition idle state $S_0$ to simplify the transition logic. The queue contains 3 parts: the front list $f$ with its length $n$, the state $S$ of on going $f \doubleplus reverse\ r$, and the rear list $r$ with its length $m$. Denoted as $(f, n, S, r, m)$. The empty queue is $([\ ], 0, S_0, [\ ], 0)$. We can tell a queue is empty when $n = 0$ according to the balance rule. The push/pop are updated as:
 
 \be
-  pop(Q) = balance(F', |F|-1, abort(\mathcal{S}), R, |R|)
+\begin{cases}
+  push\ x\ (f, n, S, r, m) & = balance\ f\ n\ S\ (x \cons r)\ (m + 1) \\
+  pop\ (x \cons f, n, S, r, m) & = balance\ f\ (n - 1)\ (abort\ S)\ r\ m \\
+\end{cases}
 \ee
 
-The major difference is $abort()$ function. Based on our above analysis, when there
-is popping, we need decrease the counter, so that we can concatenate one element less.
-We define this as aborting. The details will be given after $balance()$ function.
-
-The relative Haskell code for push and pop are listed like this.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-push (RTQ f lenf s r lenr) x = balance f lenf s (x:r) (lenr + 1)
-pop (RTQ (_:f) lenf s r lenr) = balance f (lenf - 1) (abort s) r lenr
-\end{lstlisting}
-
-The $balance()$ function first check the balance invariant, if it's violated, we need
-start re-balance it by starting compute $F \cup reverse(R)$ incrementally; otherwise
-we just execute one step of the unfinished incremental computation.
+Where $abort$ decrease the counter in pop to cancel an element for concatenation. We'll define it later. $balance$ triggers stepped $f \doubleplus reverse\ r$ if the queue is unbalanced, else runs a step:
 
 \be
-  balance(F, |F|, \mathcal{S}, R, |R|) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  step(F, |F|, \mathcal{S}, R, |R|) & |R| \leq |F| \\
-  step(F, |F| + |R|, (S_r, 0, F, \phi, R, \phi) \phi, 0) & otherwise
-  \end{array}
-\right .
+balance\ f\ n\ S\ r\ m = \begin{cases}
+  m \leq n: & step\ f\ n\ S\ r\ m \\
+  \text{otherwise}: & step\ f\ (n + m)\ (next\ (S_r, 0, [\ ], f, [\ ], r))\ [\ ]\ 0 \\
+\end{cases}
 \ee
 
-The relative Haskell code is given like below.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-balance f lenf s r lenr
-    | lenr <= lenf =  step f lenf s r lenr
-    | otherwise = step f (lenf + lenr) (Reverse 0 f [] r []) [] 0
-\end{lstlisting}
-
-The $step()$ function typically transfer the state machine one state ahead, and
-it will turn the state to idle ($S_0$) when the incremental computation finishes.
+Where $step$ transforms the state machine to next state. It ends with the idle state $S_0$ when completes.
 
 \be
-  step(F, |F|, \mathcal{S}, R, |R|) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  Queue(F', |F|, S_0, R, |R|) &  S' = S_f \\
-  Queue(F, |F|, \mathcal{S}', R, |R|) & otherwise
-  \end{array}
-  \right .
+step\ f\ n\ S\ r\ m = queue\ (next\ S)
 \ee
 
-Where $\mathcal{S}' = next(\mathcal{S})$ is the next state transferred;
-$F' = F \cup reverse(R)$, is the final new front list result from the incremental
-computing. The real
-state transferring is implemented in $next()$ function as the following. It's different
-from previous version by adding the counter field $n$ to record how many elements left
-we need to concatenate.
+Where:
 
 \be
-  next(\mathcal{S}) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (S_r, n+1, F', \{ f_1 \} \cup \overleftarrow{F}, R', \{ r_1 \} \cup \overleftarrow{R}) &
-      S = S_r \land F \neq \phi \\
-  (S_c, n, \overleftarrow{F}, \{ r_1 \} \cup \overleftarrow{R}) &
-      S = S_r \land F = \phi \\
-  (S_f, A) & S = S_c \land n = 0 \\
-  (S_c, n-1, X', \{ x_1 \} \cup A) & S = S_c \land n \neq 0 \\
-  \mathcal{S} & otherwise
-  \end{array}
-\right .
+\begin{array}{rcll}
+queue\ (S_f, f') & = & (f', n, S_0, r, m) & \text{replace $f$ with $f'$} \\
+queue\ S' & = & (f, n, S', r, m) & \\
+\end{array}
 \ee
 
-And the corresponding Haskell code is like this.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-next (Reverse n (x:f) f' (y:r) r') = Reverse (n+1) f (x:f') r (y:r')
-next (Reverse n [] f' [y] r') = Concat n f' (y:r')
-next (Concat 0 _ acc) = Done acc
-next (Concat n (x:f') acc) = Concat (n-1) f' (x:acc)
-next s = s
-\end{lstlisting}
-
-Function $abort()$ is used to tell the state machine, we can concatenate one element
-less since it is popped.
+We define $abort$ to cancel an element:
 
 \be
-  abort(\mathcal{S}) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (S_f, A') & S = S_c \land n = 0 \\
-  (S_c, n-1, X' A) & S = S_c \land n \neq 0 \\
-  (S_r, n-1, F, \overleftarrow{F}, R, \overleftarrow{R}) & S = S_r \\
-  \mathcal{S} & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+abort\ (S_c, 0, (x \cons a), f') & = & (S_f, a) \\
+abort\ (S_c, n, a, f') & = & (S_c, n - 1, a, f') \\
+abort\ (S_r, n, f' f, r' r) & = & (S_r, n - 1, f', f, r', r) \\
+abort\ S & = & S
+\end{array}
 \ee
-
-Note that when $n = 0$ we actually rollback one concatenated element by
-return $A'$ as the result but not $A$. (Why? this is left as an exercise.)
-
-The Haskell code for abort function is like the following.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-abort (Concat 0 _ (_:acc)) = Done acc     -- Note! we rollback 1 elem
-abort (Concat n f' acc) = Concat (n-1) f' acc
-abort (Reverse n f f' r r') = Reverse (n-1) f f' r r'
-abort s = s
-\end{lstlisting}
-
-It seems that we've done, however, there is still one tricky issue hidden
-behind us.
-If we push an element $x$ to an empty queue, the result queue will be:
-\[
-  Queue(\phi, 1, (S_c, 0, \phi, \{ x \}), \phi, 0)
-\]
-
-If we perform pop immediately, we'll get an error! We found that
-the front list is empty although the previous computation of $F \cup reverse(R)$
-has been finished. This is because it takes one more extra step to
-transfer from the state $(S_c, 0, \phi, A)$ to $(S_f, A)$. It's necessary
-to refine the $\mathcal{S}'$ in $step()$ function a bit.
-
-\be
-  \mathcal{S}' = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  next(next(\mathcal{S})) & F = \phi \\
-  next(\mathcal{S}) & otherwise
-  \end{array}
-\right .
-\ee
-
-The modification reflects to the below Haskell code:
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-step f lenf s r lenr =
-    case s' of
-      Done f' -> RTQ f' lenf Empty r lenr
-      s' -> RTQ f lenf s' r lenr
-    where s' = if null f then next $ next s else next s
-\end{lstlisting} %$
-
-Note that this algorithm differs from the one given by Chris Okasaki in \cite{okasaki-book}.
-Okasaki's algorithm executes two steps per pop and push, while the one presents in
-this chapter executes only one per pop and push, which leads to more distributed
-performance.
 
 \begin{Exercise}
-\begin{itemize}
-\item Why need we rollback one element when $n=0$ in $abort()$ function?
-
-\item Realize the real-time queue with symmetric paired-array queue solution in your favorite
-imperative programming language.
-
-\item In the footnote, we mentioned that when we start incremental reversing
-with in-place paired-array solution, copying the array can't be done monolithic
-or it will lead to linear time operation. Implement the lazy copying
-so that we copy one element per step along with the reversing.
-
-\end{itemize}
+\Question{Why need rollback an element (we cancelled the previous `cons', removed $x$ and return $a$ as the result) when $n=0$ in $abort$? }
 \end{Exercise}
 
 \section{Lazy real-time queue}
