@@ -411,83 +411,38 @@ $\overleftarrow{r}$ step by step;
 \be
 \begin{array}{rcll}
 next\ (S_r, f', x \cons f, r', y \cons r) & = & (S_r, x \cons f', f, y \cons r', r) & \text{stepped reverse}\ f, r\\
-next\ (S_r, f', [\ ], r', [y]) & = & next\ (S_c, f', y \cons r') & \text{reverse done, start to concatenate}\\
+next\ (S_r, f', [\ ], r', [y]) & = & next\ (S_c, f', y \cons r') & \text{reverse done, start concatenate}\\
 next\ (S_c, a, [\ ]) & = & (S_f, a) & \text{concatenate done}\\
 next\ (S_c, a, x \cons f') & = & (S_c, x \cons a, f') & \text{stepped concatenate}\\
 \end{array}
 \ee
 
-All left to us is to distribute these incremental steps into every pop and push
-operations to implement a real-time $O(1)$ purely functional queue.
+We need arrange these steps to each push/pop next. From the balance rule, when $m = n + 1$, we kick off $f \doubleplus reverse\ r$. it takes $n + 1$ steps to reverse $r$, within these steps, we reverse $f$ in parallel. After that, we use another $n + 1$ steps to concatenate. $2n + 2$ steps in total. The critical question is: Before we complete the $2n + 2$ steps, will the queue become unbalanced due to a series of push/pop operations?
 
-Before we dive into the final real-time queue implementation, let's analyze how
-many incremental steps are taken to achieve the result of $F \cup reverse(R)$.
-According to the balance variant we used previously, $|R| = |F| + 1$, Let's
-denotes $m = |F|$.
-
-Once the queue gets unbalanced due to some push or pop operation, we start this
-incremental  $F \cup reverse(R)$.
-It needs $m + 1$ steps to reverse $R$, and at the same time, we finish reversing
-the list $F$ within these steps. After that, we need extra $m+1$ steps to execute
-the concatenation. So there are $2m + 2$ steps.
-
-It seems that distribute one step inside one pop or push operation is the natural
-solution. However, there is a critical
-question must be answered: Is it possible that before we finish these $2m + 2$ steps,
-the queue gets unbalanced again due to a series push and pop?
-
-There are two facts about this question, one is good news and the other is bad news.
-
-Let's first show the good news, that luckily, continuously pushing can't make the
-queue unbalanced again before we finish these $2m + 2$ steps to achieve $F \cup reverse(R)$.
-This is because once we start re-balancing, we can get a new front list
-$F' = F \cup reverse(R)$ after $2m + 2$ steps. While the next time unbalance
-is triggered when
+Luckily, repeat pushing won't break the balance rule again before we complete $f \doubleplus reverse\ r$ in $2n + 2$ steps. We will obtain a new front list $f' = f \doubleplus reverse\ r$ after $2n + 2$ steps, while the time to break the balance rule again is:
 
 \be
   \begin{array}{rcl}
-  |R'| & = & |F'| + 1 \\
-       & = & |F| + |R| + 1 \\
-       & = & 2m + 2
+  |r'| & = & |f'| + 1 \\
+       & = & |f| + |r| + 1 \\
+       & = & 2n + 2
   \end{array}
 \ee
 
-That is to say, even we continuously pushing as mush elements as possible after
-the last unbalanced time, when the queue gets unbalanced again, the $2m+2$ steps
-exactly get finished at that time point. Which means the new front list $F'$ is
-calculated OK. We can safely go on to compute $F' \cup reverse(R')$. Thanks to the
-balance invariant which is designed in previous section.
+Thanks to the balance rule. It means even repeat pushing as many elements as possible, from the previous to the next time when the queue is unbalanced, the $2n + 2$ steps are guaranteed to be completed, hence the new $f$ is ready. We can next safely start to compute $f' \doubleplus reverse\ r'$.
 
-But, the bad news is that, pop operation can happen at anytime before these
-$2m+2$ steps finish. The situation is that once we want to extract element
-from front list, the new front list $F' = F \cup reverse(R)$ hasn't been
-ready yet. We don't have a valid front list at hand.
+However, pop may happen before the completion of $2n + 2$ steps. We are facing the situation that needs extract element from $f$, while the new front list $f' = f \doubleplus reverse\ r$ hasn't been ready yet. To solve this issue, we duplicate a copy of $f$ when doing $reverse\ f$. We are save even repeat pop for $n$ times. Table \ref{tab:pop-before-n} shows the queue during phase 1 (reverse $f$ and $r$ in parallel)\footnote{Although it takes linear time to duplicate a list, however, the one time copying won't happen at all. We actually duplicate the reference to the front list, and delay the element level copying to each step}.
 
-One solution to this problem is to keep a copy of original front list $F$,
-during the time we are calculating $reverse(F)$ which is described in phase 1 of
-our incremental computing strategy. So that we are still safe even if user
-continuously performs first $m$ pop operations. So the queue looks like
-in table \ref{tab:pop-before-m} at some time after we start the incremental computation and before
-phase 1 (reverse $F$ and $R$ simultaneously) ending\footnote{One may wonder that copying
-a list takes linear time to the length of the list. If so the whole solution
-would make no sense. Actually, this linear time copying won't happen at all.
-This is because the purely functional nature, the front list won't be mutated
-either by popping or by reversing. However, if trying to realize a symmetric
-solution with paired-array and mutate the array in-place, this issue should be stated, and
-we can perform a `lazy' copying, that the real copying
-work won't execute immediately, instead, it copies one element every step we
-do incremental reversing. The detailed implementation is left as an exercise.}.
-
-\begin{table}
+\begin{table}[htbp]
 \centering
-\begin{tabular}{l l l}
-  front copy & on-going computation & new rear \\
+\begin{tabular}{c | c | c}
+  $f$ copy & on-going part & new $r$ \\
   \hline
-  $\{ f_i, f_{i+1}, ..., f_M \}$ & $(S_r, \tilde{F}, ..., \tilde{R}, ...)$ & $ \{ ... \}$ \\
-  first $i-1$ elements popped & intermediate result $\overleftarrow{F}$ and $\overleftarrow{R}$ & new elements pushed
+  $\{ f_i, f_{i+1}, ..., f_n \}$ & $(S_r, \tilde{f}, ..., \tilde{r}, ...)$ & $ \{ ... \}$ \\
+  first $i-1$ elements out & intermediate $\overleftarrow{f}$, $\overleftarrow{r}$ & newly pushed
 \end{tabular}
-\caption{Intermediate state of a queue before first $m$ steps finish.}
-\label{tab:pop-before-m}
+\caption{Before completion of the first $n$ steps.}
+\label{tab:pop-before-n}
 \end{table}
 
 After these $M$ pop operations, the copy of $F$ is exhausted. And we just
