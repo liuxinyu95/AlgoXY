@@ -508,276 +508,180 @@ abort\ S & = & S
 \section{Lazy real-time queue}
 \index{Queue!Lazy real-time queue}
 
-The key to realize a real-time queue is to break down the expensive
-$F \cup reverse(R)$ to avoid monolithic computation. Lazy evaluation
-is particularly helpful in such case. In this section, we'll explore
-if there is some more elegant solution by exploit laziness.
-
-Suppose that there exits a function $rotate()$,
-which can compute $F \cup reverse(R)$ incrementally. that's to say,
-with some accumulator $A$, the following two functions are equivalent.
-
+The key to realize real-time queue is to break down the expensive
+$f \doubleplus reverse\ r$. We can simplify it with lazy evaluation. Assume function $rotate$ compute $f \doubleplus reverse\ r$ in steps, i.e., below two functions are equivalent with an accumulator $a$.
 \be
-  rotate(X, Y, A) \equiv X \cup reverse(Y) \cup A
+  rotate\ xs\ ys\ a = xs \doubleplus (reverse\ ys) \doubleplus a
   \label{eq:rot-def}
 \ee
 
-Where we initialized $X$ as the front list $F$, $Y$ as the rear list $R$,
-and the accumulator $A$ is initialized as empty $\phi$.
-
-The trigger of rotation is still as same as before when $|F| + 1 = |R|$.
-Let's keep this constraint as an invariant during the whole rotation process,
-that $|X| + 1 = |Y|$ always holds.
-
-It's obvious to deduce to the trivial case:
+We initialize $xs$ as the front list $f$, $ys$ as the rear list $r$,
+the accumulator $a$ empty $[\ ]$. We implement $rotate$ from the edge case:
 
 \be
-  rotate(\phi, \{ y_1 \}, A) = \{ y_1 \} \cup A
+  rotate\ [\ ]\ [y]\ a = y \cons a
 \ee
 
-Denote $X = \{ x_1, x_2, ... \}$, $Y = \{ y_1, y_2, ...\}$, and
-$X' = \{ x_2, x_3, ...  \}$, $Y' = \{ y_2, y_3, ...\}$ are the rest
-of the lists without the first element for $X$ and $Y$ respectively.
-The recursion case is ruled out as the following.
+The recursive case is:
 
 \be
-  \begin{array}{rcll}
-  rotate( X, Y, A ) & \equiv & X \cup reverse(Y) \cup A & \mbox{Definition of (}\ref{eq:rot-def} \mbox{)} \\
-  & \equiv & \{ x_1 \} \cup (X' \cup reverse(Y) \cup A) & \mbox{Associative of } \cup \\
-  & \equiv & \{ x_1 \} \cup (X' \cup reverse(Y') \cup (\{ y_1 \} \cup A)) & \mbox{Nature of reverse and associative of }  \cup \\
-  & \equiv & \{ x_1 \} \cup rotate(X', Y', \{ y_1 \} \cup A) & \mbox{Definition of (} \ref{eq:rot-def} \mbox{)}
+  \begin{array}{cll}
+  & rotate\ (x \cons xs)\ (y \cons ys)\ a & \\
+  = & (x \cons xs) \doubleplus (reverse\ (y \cons ys)) \doubleplus a & \text{from (\ref{eq:rot-def})} \\
+  = & x : (xs \doubleplus reverse\ (y \cons ys)) \doubleplus a) & \text{concatenation is associative} \\
+  = &  x : (xs \doubleplus reverse\ ys \doubleplus (y \cons a)) & \text{reverse property, and associative} \\
+  = & x : rotate\ xs\ ys\ (y \cons a) & \text{reverse of (\ref{eq:rot-def})}
   \end{array}
 \ee
 
-Summarize the above two cases, yields the final incremental rotate algorithm.
+Summarize them together:
 
 \be
-rotate(X, Y, A) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ y_1 \} \cup A & X = \phi \\
-  \{ x_1 \} \cup rotate(X', Y', \{ y_1 \} \cup A) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+rotate\ [\ ]\ [y]\ a & = & y \cons a \\
+rotate\ (x \cons xs)\ (y \cons ys)\ a & = & x : rotate\ xs\ ys\ (y \cons a) \\
+\end{array}
 \ee
 
-If we execute $\cup$ lazily instead of strictly, that is, execute $\cup$
-once pop or push operation is performed, the computation of $rotate$ can
-be distribute to push and pop naturally.
-
-Based on this idea, we modify the paired-list queue definition to change
-the front list to a lazy list, and augment it with a computation stream.
-\cite{SICP}. When the queue triggers re-balance constraint by some
-pop/push, that
-$|F| + 1 = |R|$, The algorithm creates a lazy rotation computation,
-then use this lazy rotation as the new front list $F'$; the new rear
-list becomes $\phi$, and a copy of $F'$ is maintained as a stream.
-
-After that, when we performs every push and pop; we consume the
-stream by forcing a $\cup$ operation. This results us advancing one
-step along the stream, $ \{ x \} \cup F''$, where $F'' = tail(F')$.
-We can discard $x$, and replace the stream $F'$ with $F''$.
-
-Once all of the stream is exhausted, we can start another rotation.
-
-In order to illustrate this idea clearly, we turns to Scheme/Lisp
-programming language to show example codes, because it gives us
-explicit control of laziness.
-
-In Scheme/Lisp, we have the following three tools to deal with lazy
-stream.
-
-\lstset{language=Lisp}
-\begin{lstlisting}
-(define (cons-stream a b) (cons a (delay b)))
-
-(define stream-car car)
-
-(define (stream-cdr s) (cdr (force s)))
-\end{lstlisting}
-
-Function \texttt{cons-stream} constructs a 'lazy' list from an element $x$
-and an existing list $L$ without really evaluating
-the value of $L$; The evaluation is actually delayed to
-\texttt{stream-cdr}, where the computation is forced. delaying can
-be realized by lambda calculus as described in\cite{SICP}.
-
-The lazy paired-list queue is defined as the following.
-
-\lstset{language=Lisp}
-\begin{lstlisting}
-(define (make-queue f r s)
-  (list f r s))
-
-;; Auxiliary functions
-(define (front-lst q) (car q))
-
-(define (rear-lst q) (cadr q))
-
-(define (rots q) (caddr q))
-\end{lstlisting}
-
-A queue is consist of three parts, a front list, a rear list,
-and a stream which represents the computation of $F \cup reverse(R)$.
-Create an empty queue is trivial as making all these three parts
-null.
-
-\begin{lstlisting}
-(define empty (make-queue '() '() '()))
-\end{lstlisting}
-
-Note that the front-list is also lazy stream actually, so we need use
-stream related functions to manipulate it. For example, the following
-function test if the queue is empty by checking the front lazy list stream.
-
-\begin{lstlisting}
-(define (empty? q) (stream-null? (front-lst q)))
-\end{lstlisting}
-
-The push function is almost as same as the one given in previous section.
-That we put the new element in front of the rear list; and then examine
-the balance invariant and do necessary balancing works.
+In lazy evaluation settings, (:) is delayed to push/pop, hence the $rotate$ is broken down. We change the paired-list queue definition to $(f, r, rot)$, where $rot$ is the on going $f \doubleplus reverse\ r$ computation. It is initialized empty $[\ ]$.
 
 \be
-push(Q, x) = balance(\mathcal{F}, \{ x \} \cup R, \mathcal{R}_s)
+\begin{cases}
+push\ x\ (f, r, rot) & = balance\ f\ (x \cons r)\ rot \\
+pop\ (x \cons f, r, rot) & = balance\ f\ r\ rot \\
+\end{cases}
 \ee
 
-Where $\mathcal{F}$ represents the lazy stream of front list; $\mathcal{R}_s$ is
-the stream of rotation computation. The relative Scheme/Lisp
-code is give below.
-
-\begin{lstlisting}
-(define (push q x)
-  (balance (front-lst q) (cons x (rear q)) (rots q)))
-\end{lstlisting}
-
-While pop is a bit different, because the front list is actually lazy stream,
-we need force an evaluation. All the others are as same as before.
+Every time, $balance$ advances the rotation one step, and starts another round when completes.
 
 \be
-pop(Q) = balance(\mathcal{F}', R, \mathcal{R}_s)
+\begin{array}{rcll}
+balance\ f\ r\ [\ ] & = & (f', [\ ], f') & \text{其中}: f' = rotate\ f\ r\ [\ ] \\
+balance\ f\ r\ (x \cons rot) & = & (f, r, rot) & \text{推进轮转}\\
+\end{array}
 \ee
 
-Here $\mathcal{F}'$, force one evaluation to $\mathcal{F}$, the Scheme/Lisp
-code regarding to this equation is as the following.
+\begin{Exercise}
+Implement bidirectional queue, support add/remove elements on both head and tail in constant time.
+\end{Exercise}
 
-\begin{lstlisting}
-(define (pop q)
-  (balance (stream-cdr (front-lst q)) (rear q) (rots q)))
+\section{Appendix - example programs}
+
+List implemented queue:
+
+\begin{lstlisting}[language = Bourbaki]
+Queue<K> enQ(Queue<K> q, K x) {
+    var p = Node(x)
+    p.next = null
+    q.tail.next = p
+    q.tail = p
+    return q
+}
+
+K deQ(Queue<K> q) {
+    var p = q.head.next   //the next of S
+    q.head.next = p.next
+    if q.tail == p then q.tail = q.head //empty
+    return p.key
+}
 \end{lstlisting}
 
-For illustration purpose, we skip the error handling (such as pop from
-an empty queue etc) here.
+Circular buffer queue:
 
-And one can access the top element in the queue by extract from
-the front list stream.
+\begin{lstlisting}[language = Bourbaki]
+data Queue<K> {
+    K buf[]
+    int head, cnt, size
 
-\begin{lstlisting}
-(define (front q) (stream-car (front-lst q)))
+    Queue(int max) {
+        buf = Array<K>(max)
+        size = max
+        head = cnt = 0
+    }
+}
 \end{lstlisting}
 
-The balance function first checks if the computation stream is completely
-exhausted, and starts new rotation accordingly; otherwise, it just consumes
-one evaluation by enforcing the lazy stream.
-
-\be
-balance(Q) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  Queue(\mathcal{F}', \phi, \mathcal{F}') & \mathcal{R}_s = \phi \\
-  Queue(\mathcal{F}, R, \mathcal{R}_s') & otherwise
-  \end{array}
-\right .
-\ee
-
-Here $\mathcal{F}'$ is defined to start a new rotation.
-
-\be
-  \mathcal{F}' = rotate(F, R, \phi)
-\ee
-
-The relative Scheme/Lisp program is listed accordingly.
+Enqueue, dequeue implementation for circular buffer queue:
 
 \begin{lstlisting}
-(define (balance f r s)
-  (if (stream-null? s)
-      (let ((newf (rotate f r '())))
-    (make-queue newf '() newf))
-      (make-queue f r (stream-cdr s))))
+N offset(N i, N size) = if i < size then i else i - size
+
+void enQ(Queue<K> q, K x) {
+    if q.cnt < q.size {
+        q.buf[offset(q.head + q.cnt, q.size)] = x;
+        q.cnt = q.cnt + 1
+    }
+}
+
+K head(Queue<K> q) = if q.cnt == 0 then null else q.buf[q.head]
+
+K deQ(Queue<K> q) {
+    K x = null
+    if q.cnt > 0 {
+        x = head(q)
+        q.head = offset(q->head + 1, q->size);
+        q.cnt = q.cnt -1
+    }
+    return x
+}
 \end{lstlisting}
 
-The implementation of incremental rotate function is just as same as
-what we analyzed above.
+Real-time queue:
 
-\begin{lstlisting}
-(define (rotate xs ys acc)
-  (if (stream-null? xs)
-      (cons-stream (car ys) acc)
-      (cons-stream (stream-car xs)
-           (rotate (stream-cdr xs) (cdr ys)
-               (cons-stream (car ys) acc)))))
-\end{lstlisting}
+\begin{Haskell}
+data State a = Empty
+             | Reverse Int [a] [a] [a] [a] -- n, acc f, f, acc r, r
+             | Concat Int [a] [a]          -- n, acc, reversed f
+             | Done [a]  -- f' = f ++ reverse r
 
-We used explicit lazy evaluation in Scheme/Lisp. Actually, this program
-can be very short by using lazy programming languages, for example,
-Haskell.
+-- f, n = length f, state, r, m = length r
+data RealtimeQueue a = RTQ [a] Int (State a) [a] Int
 
-\lstset{language=Haskell}
-\begin{lstlisting}
+push x (RTQ f n s r m) = balance f n s (x:r) (m + 1)
+
+pop (RTQ (_:f) n s r m) = balance f (n - 1) (abort s) r m
+
+top (RTQ (x:_) _ _ _ _) = x
+
+balance f n s r m
+    | m <= n =  step f n s r m
+    | otherwise = step f (m + n) (next (Reverse 0 [] f [] r)) [] 0
+
+step f n s r m = queue (next s) where
+  queue (Done f') = RTQ f' n Empty r m
+  queue s' = RTQ f n s' r m
+
+next (Reverse n f' (x:f) r' (y:r)) = Reverse (n + 1) (x:f') f (y:r') r
+next (Reverse n f' [] r' [y]) = next $ Concat n (y:r') f'
+next (Concat 0 acc _) = Done acc
+next (Concat n acc (x:f')) = Concat (n-1) (x:acc) f'
+next s = s
+
+abort (Concat 0 (_:acc) _) = Done acc -- rollback 1 elem
+abort (Concat n acc f') = Concat (n - 1) acc f'
+abort (Reverse n f' f r' r) = Reverse (n - 1) f' f r' r
+abort s = s
+\end{Haskell}
+
+Lazy real-time queue:
+
+\begin{Haskell}
 data LazyRTQueue a = LQ [a] [a] [a] -- front, rear, f ++ reverse r
 
-instance Queue LazyRTQueue where
-    empty = LQ [] [] []
+empty = LQ [] [] []
 
-    isEmpty (LQ f _ _) = null f
+push (LQ f r rot) x = balance f (x:r) rot
 
-    -- O(1) time push
-    push (LQ f r rot) x = balance f (x:r) rot
+pop (LQ (_:f) r rot) = balance f r rot
 
-    -- O(1) time pop
-    pop (LQ (_:f) r rot) = balance f r rot
-
-    front (LQ (x:_) _ _) = x
+top (LQ (x:_) _ _) = x
 
 balance f r [] = let f' = rotate f r [] in LQ f' [] f'
 balance f r (_:rot) = LQ f r rot
 
 rotate [] [y] acc = y:acc
 rotate (x:xs) (y:ys) acc = x : rotate xs ys (y:acc)
-\end{lstlisting}
-
-\section{Notes and short summary}
-Just as mentioned in the beginning of this book in the first chapter,
-queue isn't so simple as it was thought. We've tries to explain
-algorithms and data structures both in imperative and in function
-approaches; Sometimes, it gives impression that functional way is
-simpler and more expressive in most time. However, there are still
-plenty of areas, that more studies and works are needed to give equivalent
-functional solution. Queue is such an important topic, that it
-links to many fundamental purely functional data structures.
-
-That's why Chris Okasaki made intensively study and took a great
-amount of discussions in \cite{okasaki-book}. With purely functional
-queue solved, we can easily implement dequeue with the similar
-approach revealed in this chapter. As we can handle elements effectively
-in both head and tail, we can advance one step ahead to realize
-sequence data structures, which support fast concatenate, and
-finally we can realize random access data structures to mimic
-array in imperative settings. The details will be explained
-in later chapters.
-
-Note that, although we haven't mentioned priority queue, it's quite
-possible to realized it with heaps. We have covered topic of heaps
-in several previous chapters.
-
-\begin{Exercise}
-\begin{itemize}
-\item Realize dequeue, which support adding and removing elements on both sides in
-constant $O(1)$ time in purely functional way.
-\item Realize dequeue in a symmetric solution only with array in your
-favorite imperative programming language.
-\end{itemize}
-\end{Exercise}
+\end{Haskell}
 
 \ifx\wholebook\relax \else
 \section{Answers}
