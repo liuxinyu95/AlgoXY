@@ -377,122 +377,45 @@ step\ S_r\ a\ (x \cons xs) & = & (S_r, (x \cons a), xs) \\
 \end{array}
 \ee
 
-Each step, we examine the state type first, if the current state is
-$S_r$ (on-going), and the rest elements to be reversed in $X$ is
-empty, we can turn the algorithm to finish state $S_f$; otherwise,
-we take the first element from $X$, put it in front of $A$ just
-as same as above, but we do NOT perform recursion, instead, we
-just finish this
-step. We can store the current state as well as the resulted $X$
-and $A$, the reverse can be continued at any time when we call 'next'
-$step$ function in the future with the stored state, $X$ and $A$
-passed in.
-
-Here is an example of this step-by-step reverse algorithm.
+Each step, we check and transform the state. $S_r$ means the reverse is on going. If there is no remaining element to reverse, we change the state to $S_f$ (done); otherwise, we pick the head element $x$, link it ahead of $a$. This step terminates, but not continues to recursion. The new state with the intermediate reverse result will be input to the next $step$. For example:
 
 \[
-\begin{array}{lcl}
-step(S_r, \text{``hello''}, \phi) & = & (S_r, \text{``ello''}, \text{``h''}) \\
-step(S_r, \text{``ello''}, \text{``h''}) & = & (S_r, \text{``llo''}, \text{``eh''}) \\
+\begin{array}{rcl}
+step\ S_r\ \text{``hello''}\ [\ ] & = & (S_r, \text{``ello''}, \text{``h''}) \\
+step\ S_r\ \text{``ello''}\ \text{``h''} & = & (S_r, \text{``llo''}, \text{``eh''}) \\
 ... & & \\
-step(S_r, \text{``o''}, \text{``lleh''}) & = & (S_r, \phi, \text{``olleh''}) \\
-step(S_r, \phi, \text{``olleh''}) & = & (S_f, \text{``olleh''})
+step\ S_r\ \text{``o''}\ \text{``lleh''} & = & (S_r, [\ ], \text{``olleh''}) \\
+step\ S_r\ [\ ]\ \text{``olleh''} & = & (S_f, \text{``olleh''})
 \end{array}
 \]
 
-And in Haskell code manner, the example is like the following.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-step $ Reverse "hello" [] = Reverse "ello" "h"
-step $ Reverse "ello" "h" = Reverse "llo" "eh"
-...
-step $ Reverse "o" "lleh" = Reverse [] "olleh"
-step $ Reverse [] "olleh" = Done "olleh"
-\end{lstlisting}
-
-Now we can distribute the reverse into steps in every pop and push
-operations. However, the problem is just half solved. We want to
-break down $ F \cup reverse(R)$, and we have broken $reverse(R)$
-into steps, we next need to schedule(slow-down) the list concatenation
-part $F \cup ...$, which is bound to $O(|F|)$, into incremental
-manner so that we can distribute it to pop and push operations.
-
-\index{Queue!Incremental concatenate}
-
-It's a bit more challenge to implement incremental list concatenation
-than list reversing. However, it's possible to re-use the result
-we gained from increment reverse by a small trick: In order to
-realize $X \cup Y$, we can first reverse $X$ to $\overleftarrow{X}$,
-then take elements one by one from $\overleftarrow{X}$ and put
-them in front of $Y$ just as what we have done in $reverse'$.
+We can next distribute the reverse steps to push/pop operations. However, it only solves half problem. We next need slow-down $\doubleplus$ computation, which is more complex. We use state machine too. To concatenate $xs \doubleplus ys$, we first reverse $xs$ to $\overleftarrow{xs}$, then pick elements form $\overleftarrow{xs}$ one by one, and link each head of $ys$. The idea is similar to $\textit{reverse}'$:
 
 \be
   \begin{array}{rcl}
-    X \cup Y & \equiv & reverse(reverse(X)) \cup Y \\
-             & \equiv & reverse'(reverse(X), \phi) \cup Y \\
-             & \equiv & reverse'(reverse(X), Y) \\
-             & \equiv & reverse'(\overleftarrow{X}, Y)
+    xs \doubleplus ys & = & (reverse\ reverse\ xs) \doubleplus ys \\
+             & = & (reverse'\ [\ ]\ (reverse\ xs)) \doubleplus ys \\
+             & = & reverse'\ ys\ (reverse\ xs) \\
+             & = & reverse'\ ys\ \overleftarrow{xs}
   \end{array}
 \ee
 
-This fact indicates us that we can use an extra state to instruct
-the $step()$ function to continuously concatenating $\overleftarrow{F}$
-after $R$ is reversed.
+We need add another state. After reverse $r$, we step by step concatenate from $\overleftarrow{f}$. The three states are: $S_r$ of reverse, $S_c$ of concatenate, $S_f$ of completion. The two phases are:
 
-The strategy is to do the total work in two phases:
 \begin{enumerate}
-\item Reverse both $F$ and $R$ in parallel to get $\overleftarrow{F} = reverse(F)$, and
-$\overleftarrow{R} = reverse(R)$ incrementally;
-\item Incrementally take elements from $\overleftarrow{F}$ and put them in front of
-$\overleftarrow{R}$.
+\item Reverse $f$ and $r$ in parallel to: $\overleftarrow{f}$ and
+$\overleftarrow{r}$ step by step;
+\item Stepped taking elements from $\overleftarrow{f}$, and link each ahead of $\overleftarrow{r}$.
 \end{enumerate}
 
-So we define three types of state: $S_r$ represents reversing; $S_c$ represents
-concatenating; and $S_f$ represents finish.
-
-In Haskell, these types of state are defined as the following.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-data State a = Reverse [a] [a] [a] [a]
-             | Concat [a] [a]
-             | Done [a]
-\end{lstlisting}
-
-Because we reverse $F$ and $R$ simultaneously, so reversing state takes two
-pairs of lists and accumulators.
-
-The state transferring is defined according to the two phases strategy described
-previously.
-Denotes that $F = \{ f_1, f_2, ... \}$, $F' = tail(F) = \{f_2, f_3, ... \}$,
-$R = \{ r_1, r_2, ... \}$, $R' = tail(R) = \{ r_2, r_3, ... \}$. A state $\mathcal{S}$,
-contains it's type $S$, which has the value among $S_r$, $S_c$, and $S_f$.
-Note that $\mathcal{S}$ also contains necessary
-parameters such as $F$, $\overleftarrow{F}$, $X$, $A$ etc as intermediate results.
-These parameters vary according to the different states.
-
 \be
-  next(\mathcal{S}) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (S_r, F', \{ f_1 \} \cup \overleftarrow{F}, R', \{ r_1 \} \cup \overleftarrow{R}) & S = S_r \land F \neq \phi \land R \neq \phi \\
-  (S_c, \overleftarrow{F}, \{ r_1 \} \cup \overleftarrow{R}) & S = S_r \land F = \phi \land R = \{ r_1 \} \\
-  (S_f, A) & S = S_c \land X = \phi \\
-  (S_c, X', \{ x_1 \} \cup A) & S = S_c \land X \neq \phi
-  \end{array}
-\right .
+\begin{array}{rcll}
+next\ (S_r, f', x \cons f, r', y \cons r) & = & (S_r, x \cons f', f, y \cons r', r) & \text{stepped reverse}\ f, r\\
+next\ (S_r, f', [\ ], r', [y]) & = & next\ (S_c, f', y \cons r') & \text{reverse done, start to concatenate}\\
+next\ (S_c, a, [\ ]) & = & (S_f, a) & \text{concatenate done}\\
+next\ (S_c, a, x \cons f') & = & (S_c, x \cons a, f') & \text{stepped concatenate}\\
+\end{array}
 \ee
-
-The relative Haskell program is list as below.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-next (Reverse (x:f) f' (y:r) r') = Reverse f (x:f') r (y:r')
-next (Reverse [] f' [y] r') = Concat f' (y:r')
-next (Concat 0 _ acc) = Done acc
-next (Concat (x:f') acc) = Concat f' (x:acc)
-\end{lstlisting}
 
 All left to us is to distribute these incremental steps into every pop and push
 operations to implement a real-time $O(1)$ purely functional queue.
