@@ -3,7 +3,7 @@ Elementary Algorithms
 
 Edition: 1.6180339887498949
 
-2022/10
+2022/11
 
 This book introduces about elementary algorithms and data structure. It includes side-by-side comparison about purely functional realization and their imperative counterpart.
 
