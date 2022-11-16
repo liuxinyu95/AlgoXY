@@ -121,64 +121,35 @@ insert_T\ t\ (t_1 \cons ts) & = & \begin{cases}
 若森林中包含$m$棵树，$m$的大小为$O(\lg n)$，头部插入的性能为$O(\lg n)$。稍后我们证明分摊性能为$O(1)$。
 
 \index{二叉随机访问列表!从头部删除}
-类似地，我们可以实现“cons”的逆运算，从序列的头部删除元素。
-
-\begin{itemize}
-\item 如果森林中的第一棵树只含有一个叶子节点，将这棵大小为1的树删除；
-\item 否则，将第一棵树的两个子树拆分，然后递归地将第一棵子树继续拆分直到获得一棵只有一个叶子节点的树。
-\end{itemize}
-
-图\ref{fig:bralist-pop}给出了从序列头部删除元素的步骤。
+对称地，我们利用插入的逆过程实现从序列头部删除元素。如果森林中第一棵树是$t_0$（单叶子节点），我们直接将$t_0$删除；否则，递归地将第一棵树拆分直到获得$t_0$，然后将其删除。如图\ref{fig:bralist-pop}所示。
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{含有5个元素的序列}{\includegraphics[scale=0.5]{img/bralst-5}}
-  \subcaptionbox{删除$x_5$，大小为1，只有一个叶子节点的树被删除。}{\includegraphics[scale=0.5]{img/bralst-4}} \\
-  \subcaptionbox{删除$x_4$，由于不是仅包含一个叶子节点的树，它首先被拆分成大小为2的两棵子树。然后第一棵子树继续被拆分成两个叶子。此后含有$x_4$的第一个叶子被删除。森林中剩下两棵树，一棵是含有$x_3$的子树，另外一棵大小为2，包含元素$x_2, x_1$。}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-3}\hspace{0.2\textwidth}}
-  \caption{从头部删除元素的步骤} \label{fig:bralist-pop}
+  \subcaptionbox{序列$x_1, x_2, ..., x_5$对应森林$[t_0, t_2]$}{\includegraphics[scale=0.5]{img/bralst-5}}
+  \subcaptionbox{删除$x_5$。直接删除$t_0$。}{\includegraphics[scale=0.5]{img/bralst-4}} \\
+  \subcaptionbox{删除$x_4$。经过两次拆分后得到$[t_0, t_0, t_1]$，删除后得$[t_0, t_1]$。}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-3}\hspace{0.2\textwidth}}
+  \caption{从头部删除元素}
+  \label{fig:bralist-pop}
 \end{figure}
 
-简单起见，假设序列不为空，我们可以忽略从空序列中删除元素的错误处理。上述算法可以表示为下面的表达式。记森林为$F = \{t_1, t_2, ... \}$，除去第一棵树后的剩余部分为$F' = \{ t_2, t_3, ...\}$。
-
 \be
-extractTree(F) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (t_1, F') & t_1 {\quad} \mbox{is leaf} \\
-  extractTree(\{t_l, t_r\} \cup F') & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+extract\ ((x) \cons ts) & = & (x, ts) \\
+extract\ ((s, t_1, t_2) \cons ts) & = & extract\ (t_1 \cons t_2 \cons ts) \\
+\end{array}
 \ee
 
-其中$\{ t_l, t_r \} = unlink(t_1)$，为$t_1$的两棵子树。
-
-下面的Haskell程序实现了这一算法。
-
-\begin{lstlisting}[style=Haskell]
-extractTree (t@(Leaf x):ts) = (t, ts)
-extractTree (t@(Node _ t1 t2):ts) = extractTree (t1:t2:ts)
-\end{lstlisting}
-
-使用这一定义，可以很容易地给出$head$和$tail$函数，前者返回序列中的第一个元素，后者返回剩余元素。
+利用$extract$即可实现对头部元素的删除：
 
 \be
-head(S) = key(first(extractTree(S)))
+\begin{cases}
+head & = \textit{fst} \circ extract \\
+tail & = \textit{snd} \circ extract \\
+\end{cases}
 \ee
 
-\be
-tail(S) = second(extractTree(S))
-\ee
+其中$\textit{fst}\ (a, b) = a$, $\textit{snd}\ (a, b) = b$分别返回一对值中的两个部分。
 
-其中函数$first$返回一对元素（亦称为tuple）中的前一个元素；$second$返回后一个元素。函数$key$用以访问叶子节点中存储的元素。下面的Haskell例子程序实现这两个函数。
-
-\begin{lstlisting}[style=Haskell]
-head' ts = x where (Leaf x, _) = extractTree ts
-tail' = snd . extractTree
-\end{lstlisting}
-
-为了和Haskell的标准库中定义的\texttt{head}和\texttt{tail}区别，我们加上了“'”号（另外一种方法是通过隐藏import不导入标准库中的定义，我们忽略这些和语言相关的特定细节）。
-
-\subsubsection{随机访问元素}
 \index{二叉随机访问列表!随机访问}
 
 森林中的树实际上将元素划分为大小不同的块进行管理，给定任意索引，可以很容易地定位到保存此元素的树。然后在树中进行一次查找就可以得到结果。因为所有的树都是二叉树（确切地说是完全二叉树），所以树中的查找实际上是二分查找，性能和树的大小成对数比例。进行随机访问时，相比在链表中进行线性查找要快得多。
@@ -2586,6 +2557,12 @@ insert x = insertTree (Leaf x) where
     insertTree t [] = [t]
     insertTree t (t':ts) = if size t < size t' then  t:t':ts
                            else insertTree (link t t') ts
+
+extract ((Leaf x):ts) = (x, ts)
+extract ((Node _ t1 t2):ts) = extract (t1:t2:ts)
+
+head' = fst . extract
+tail' = snd . extract
 \end{Haskell}
 
 

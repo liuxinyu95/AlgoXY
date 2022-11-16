@@ -41,16 +41,13 @@ insert x = insertTree (Leaf x) where
   insertTree t (t':ts) = if size t < size t' then  t:t':ts
                          else insertTree (link t t') ts
 
--- Assert the BRAList isn't empty
-extractTree :: BRAList a -> (Tree a, BRAList a)
-extractTree (t@(Leaf x):ts) = (t, ts)
-extractTree (t@(Node _ t1 t2):ts) = extractTree (t1:t2:ts)
+-- Assert the list isn't empty
+extract ((Leaf x):ts) = (x, ts)
+extract ((Node _ t1 t2):ts) = extract (t1:t2:ts)
 
-head' :: BRAList a -> a
-head' ts = x where (Leaf x, _) = extractTree ts
+head' = fst . extract
 
-tail' :: BRAList a -> BRAList a
-tail' = snd . extractTree
+tail' = snd . extract
 
 getAt :: BRAList a -> Int -> a
 getAt (t:ts) i = if i < size t then lookupTree t i
