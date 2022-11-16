@@ -31,22 +31,15 @@ data Tree a = Leaf a
 -- The random access list is represented as a forest of binary trees.
 type BRAList a = [Tree a]
 
--- Auxilary functions
-size :: Tree a -> Int
 size (Leaf _) = 1
 size (Node sz _ _) = sz
 
--- Precondition: rank t1 = rank t2
-link :: Tree a -> Tree a -> Tree a
 link t1 t2 = Node (size t1 + size t2) t1 t2
 
-cons :: a -> BRAList a -> BRAList a
-cons x ts = insertTree ts (Leaf x) 
-
-insertTree :: BRAList a -> Tree a -> BRAList a
-insertTree [] t = [t]
-insertTree (t':ts) t = if size t < size t' then  t:t':ts
-                       else insertTree ts (link t t')
+insert x = insertTree (Leaf x) where
+  insertTree t [] = [t]
+  insertTree t (t':ts) = if size t < size t' then  t:t':ts
+                         else insertTree (link t t') ts
 
 -- Assert the BRAList isn't empty
 extractTree :: BRAList a -> (Tree a, BRAList a)
@@ -74,14 +67,14 @@ setAt (t:ts) i x = if i < size t then (updateTree t i x):ts
 
 updateTree :: Tree a -> Int -> a -> Tree a
 updateTree (Leaf _) 0 x = Leaf x
-updateTree (Node sz t1 t2) i x = 
+updateTree (Node sz t1 t2) i x =
     if i < sz `div` 2 then Node sz (updateTree t1 i x) t2
     else Node sz t1 (updateTree t2 (i - sz `div` 2) x)
 
 -- Auxilary functions for flatten etc.
 
 fromList :: [a] -> BRAList a
-fromList = foldr cons []
+fromList = foldr insert []
 
 toList :: BRAList a -> [a]
 toList [] = []
@@ -90,8 +83,8 @@ toList (t:ts) = (treeToList t) ++ toList ts where
     treeToList (Node _ t1 t2) = (treeToList t1) ++ treeToList t2
 
 -- testing
-prop_cons :: [Int] -> Bool
-prop_cons xs = xs == (toList $ fromList xs)
+prop_insert :: [Int] -> Bool
+prop_insert xs = xs == (toList $ fromList xs)
 
 prop_head :: [Int] -> Property
 prop_head xs = not (null xs) ==> xs == (rebuild $ fromList xs) where

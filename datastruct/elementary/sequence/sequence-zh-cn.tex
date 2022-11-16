@@ -76,96 +76,51 @@
 n = 2^0 e_0 + 2^1 e_1 + ... + 2^m e_m
 \ee
 
-如果$e_i \neq 0$，就需要一棵大小为$2^i$的完全二叉树$t_i$。在图\ref{fig:bi-tree-sequence}的例子中，序列长度为$6 = (110)_2$。最低位是0，我们不需要大小为1的树；第2位是1，需要一棵大小为2的树$t_1$；最高位是1，需要一棵大小为4的树$t_2$。这样就把序列$[x_1, x_2, ..., x_n]$表示为树的列表。我们称之为\textbf{二叉随机访问列表}\cite{okasaki-book}。
+如果$e_i \neq 0$，就需要一棵大小为$2^i$的完全二叉树$t_i$。在图\ref{fig:bi-tree-sequence}的例子中，序列长度为$6 = (110)_2$。最低位是0，我们不需要大小为1的树；第2位是1，需要一棵大小为2的树$t_1$；最高位是1，需要一棵大小为4的树$t_2$。这样就把序列$[x_1, x_2, ..., x_n]$表示为树的列表。我们称之为\textbf{二叉随机访问列表}\cite{okasaki-book}。我们可以在二叉树定义的基础上稍作变化以实现这种列表：1、元素只保存在叶子节点中，2、在每棵子树中记录树的大小。这样每个分枝节点记为$(s, l, r)$，其中$s$表示子树的大小，$l$、$r$分别表示左右子树。包含元素$x$的叶子节点记为$(x)$。我们可以这样获取一棵树的大小：
 
-我们可以复用二叉树的定义。下面的Haskell例子程序定义了树和二叉随机访问列表。
+\be
+\begin{array}{rcl}
+size\ (x) & = & 1 \\
+size\ (s, l, r) & = & s \\
+\end{array}
+\ee
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-data Tree a = Leaf a
-            | Node Int (Tree a) (Tree a)  -- size, left, right
-
-type BRAList a = [Tree a]
-\end{lstlisting}
-
-和标准二叉树定义相比，我们增加了size的信息。这样能够避免每次都递归计算size，可以用常数时间获取树的大小。
-
-\begin{lstlisting}[style=Haskell]
-size (Leaf _) = 1
-size (Node sz _ _) = sz
-\end{lstlisting}
-
-\subsection{在序列的头部插入}
 \index{二叉随机访问列表!插入}
-使用森林表示序列可以高效实现许多操作。例如，将新元素$y$插入到序列的前面可以实现如下：
+为了把新元素$y$插入到序列$S$的前面，我们创建一棵只有一个叶子节点的$t_0$树：$t' = (y)$，然后把它插入到森林中。$insert\ y\ S = insert_T\ (y)\ S$，或写成克里化形式：
 
-\begin{enumerate}
-\item 创建一个只含有一个叶子节点$y$的树$t'$；
-\item 检查森林中的第一棵树，比较它和$t'$的size大小，如果它的size大于$t'$的，就将$t'$作为森林中的第一棵树，由于森林本质是一个树的链表，在表头插入$t'$只需要常数时间$O(1)$；
-\item 否则，若森林中的第一棵树的size和$t'$相等，记森林中的这棵树为$t_i$，可以通过将$t_i$和$t'$链接起来，形成一棵新树$t'_{i+1}$，$t_i$和$t'$分别为这棵新树的左右子树。然后我们递归地将$t'_{i+1}$插入到森林中。
-\end{enumerate}
+\be
+insert\ y = insert_T\ (y)
+\ee
 
-图\ref{fig:bralist-2}描述了将元素$x_1, x_2, ..., x_6$依次插入到空列表的情况。
+我们检查森林中的第一棵树$t_i$，比较$t_i$和$t'$的大小，如果$t_i$较大，就将$t'$置于森林最前面（常数时间）；若$t_i$和$t'$相等，我们将它们链接（常数时间）成一棵较大的树：$t'_{i+1} = (2s, t_i, t')$，然后递归地将$t'_{i+1}$插入到森林中。如图\ref{fig:bralist-2}所示。
+
+\be
+\begin{array}{rcl}
+insert_T\ t\ [\ ] & = & [t] \\
+insert_T\ t\ (t_1 \cons ts) & = & \begin{cases}
+  size\ t < size\ t_1: & t : t_1 : ts \\
+  \text{否则}: & insert_T\ (link\ t\ t_1)\ ts \\
+  \end{cases}
+\end{array}
+\ee
+
+其中$link$将两棵大小相同的树链接起来：$link\ t_1\ t_2 = (size\ t_1 + size\ t_2, t_1, t_2)$。
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{包含一个元素$x_1$的叶子。}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-1}\hspace{0.2\textwidth}}
-  \subcaptionbox{插入$x_2$。进行链接，产生一棵高度为1的树。}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-2}\hspace{0.2\textwidth}} \\
-  \subcaptionbox{插入$x_3$。结果包含两棵树$t_1$和$t_2$。}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-3}\hspace{0.2\textwidth}}
-  \subcaptionbox{插入$x_4$。首先将两个叶子链接成一棵二叉树，然后再次链接，产生一棵高度为2的树。}{\includegraphics[scale=0.5]{img/bralst-4}} \\
-  \subcaptionbox{插入$x_5$。 森林中包含两棵树，一棵仅含有一个叶子节点（$t_0$），另一棵为$t_2$。}{\includegraphics[scale=0.5]{img/bralst-5}}
-  \subcaptionbox{插入$x_6$。将两个叶子链接成$t_1$。}{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/bralst-6}} \\
-  \caption{将元素插入到空列表的步骤} \label{fig:bralist-2}
+  \subcaptionbox{插入$x_1$。}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-1}\hspace{0.2\textwidth}}
+  \subcaptionbox{插入$x_2$，链接产生$[t_1]$。}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-2}\hspace{0.2\textwidth}} \\
+  \subcaptionbox{插入$x_3$，结果为$[t_0, t_1]$。}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-3}\hspace{0.2\textwidth}}
+  \subcaptionbox{插入$x_4$。经两次链接后结果为$[t_2]$。}{\includegraphics[scale=0.5]{img/bralst-4}} \\
+  \subcaptionbox{插入$x_5$，结果为：$[t_0, t_2]$。}{\includegraphics[scale=0.5]{img/bralst-5}}
+  \subcaptionbox{插入$x_6$，结果为：$[t_1, t_2]$。}{\hspace{0.1\textwidth}\includegraphics[scale=0.5]{img/bralst-6}} \\
+  \caption{插入$x_1, x_2, ..., x_6$}
+  \label{fig:bralist-2}
 \end{figure}
 
-由于森林中最多包含$m$棵树，$m$的大小为$O(\lg n)$，因此在头部插入的算法最坏情况下的性能为$O(\lg n)$。稍后我们会证明分摊性能为$O(1)$。
+若森林中包含$m$棵树，$m$的大小为$O(\lg n)$，头部插入的性能为$O(\lg n)$。稍后我们证明分摊性能为$O(1)$。
 
-接下来我们将上述算法形式化。定义将元素插入到序列头部的函数为$insert(S, x)$。
-
-\be
-insert(S, x) = insertTree(S, leaf(x))
-\ee
-
-这一函数从元素$x$构造一棵只有一个叶子节点的树，然后调用$insertTree$将树插入到森林中。若森林不为空，记$F=\{ t_1, t_2, ...\}$，$F' = \{ t_2, t_3, ...\}$表示森林中除第一棵树外的剩余部分。
-
-\be
-insertTree(F, t) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ t \} & F = \phi \\
-  \{ t \} \cup F & size(t) < size(t_1) \\
-  insertTree(F', link(t, t_1)) & otherwise
-  \end{array}
-\right .
-\ee
-
-其中函数$link(t_1, t_2)$从两棵size相同的较小的树构造一棵新树。函数$tree(s, t_1, t_2)$用于构造一棵树，size为$s$，左右子树分别为$t_1$和$t_2$。树的链接可以实现如下：
-
-\be
-link(t_1, t_2) = tree(size(t_1) + size(t_2), t_1, t_2)
-\ee
-
-下面的Haskell例子程序实现了在表头插入元素的算法。
-
-\begin{lstlisting}[style=Haskell]
-cons :: a -> BRAList a -> BRAList a
-cons x ts = insertTree ts (Leaf x)
-
-insertTree :: BRAList a -> Tree a -> BRAList a
-insertTree [] t = [t]
-insertTree (t':ts) t = if size t < size t' then  t:t':ts
-                       else insertTree ts (link t t')
-
--- Precondition: rank t1 = rank t2
-link :: Tree a -> Tree a -> Tree a
-link t1 t2 = Node (size t1 + size t2) t1 t2
-\end{lstlisting}
-
-这段代码中，我们使用了Lisp中的命名传统，把向列表头部插入元素称为“cons”。
-
-\subsubsection{从序列头部删除元素}
 \index{二叉随机访问列表!从头部删除}
-
 类似地，我们可以实现“cons”的逆运算，从序列的头部删除元素。
 
 \begin{itemize}
@@ -2610,6 +2565,29 @@ mtf(S, i) = \{x\} \cup S' \\
 % ================================================================
 %                 Appendix
 % ================================================================
+
+\section{附录：例子程序}
+
+随机访问列表（森林）：
+
+\lstset{frame = single}
+\begin{Haskell}
+data Tree a = Leaf a
+            | Node Int (Tree a) (Tree a)
+
+type BRAList a = [Tree a]
+
+size (Leaf _) = 1
+size (Node sz _ _) = sz
+
+link t1 t2 = Node (size t1 + size t2) t1 t2
+
+insert x = insertTree (Leaf x) where
+    insertTree t [] = [t]
+    insertTree t (t':ts) = if size t < size t' then  t:t':ts
+                           else insertTree (link t t') ts
+\end{Haskell}
+
 
 \ifx\wholebook\relax \else
 
