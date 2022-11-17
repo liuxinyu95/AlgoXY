@@ -177,7 +177,7 @@ lookup_T\ i\ (s, t_1, t_2) & = & \begin{cases}
 \end{array}
 \ee
 
-图\ref{fig:get-at-example}描述了在一个长度为6的序列中查找第4个元素的步骤。第一棵树大小为2 < 4，继续检查第二棵树，并将索引更新为$i' = 4 - 2 $。接下来的树大小为$4 > i' = 2$，故待查找元素就在这棵树中。因为索引为2，不大于拆半的子树大小$4/2 = 2$，所以接下来检查左子树，然后检查右侧的孙子分支，最终得到要访问的元素。
+图\ref{fig:get-at-example}描述了在一个长度为6的序列中查找第4个元素的步骤。第一棵树大小为2 < 4，继续检查第二棵树，并将索引更新为$i' = 4 - 2 $。接下来的树大小为$4 > i' = 2$，故待查找元素就在这棵树中。因为索引为2，不大于拆半的子树大小$4/2 = 2$，所以接下来检查左子树，然后检查右侧的孙子分支，最终得到要访问的元素。类似地，我们也可以修改任意位置$i$的元素。
 
 \begin{figure}[htbp]
   \centering
@@ -189,58 +189,13 @@ lookup_T\ i\ (s, t_1, t_2) & = & \begin{cases}
   \label{fig:get-at-example}
 \end{figure}
 
-使用类似的思路，我们可以修改任意位置$i$的元素。首先比较森林中第一棵树$T_1$的size和$i$的大小，若小于$i$，待修改的元素不在第一棵树中。我们递归地检查森林中的下一棵树，将它的size和$i - |T_1|$比较，其中$|T_1|$是第一棵树的size。否则，若这一size大于等于$i$，待修改的元素在树中，我们递归地拆分树，直到获得叶子节点，然后将节点中的元素替换为新元素。
-
-\be
-set(S, i, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ updateTree(T_1, i, x) \} \cup S' & i < |T_1| \\
-  \{T_1\} \cup set(S', i - |T_1|, x) & otherwise
-  \end{array}
-\right .
-\ee
-
-其中$S' = \{ T_2, T_3, ...\}$是森林中除第一棵树外的剩余部分。
-
-函数$setTree(T, i, x)$执行树搜索，并将第$i$个元素替换为$x$。
-
-\be
-setTree(T, i, x) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  leaf(x) & i = 0 \land |T| = 1 \\
-  tree(|T|, setTree(T_l, i, x), T_r) & i < \lfloor \frac{|T|}{2} \rfloor \\
-  tree(|T|, T_l, setTree(T_r, i - \lfloor \frac{|T|}{2} \rfloor, x)) & otherwise
-  \end{array}
-\right .
-\ee
-
-其中$T_l$和$T_r$分别为$T$的左右子树。下面的Haskell例子程序实现了这一算法。
-
-\begin{lstlisting}[style=Haskell]
-setAt :: BRAList a -> Int -> a -> BRAList a
-setAt (t:ts) i x = if i < size t then (updateTree t i x):ts
-                   else t:setAt ts (i-size t) x
-
-updateTree :: Tree a -> Int -> a -> Tree a
-updateTree (Leaf _) 0 x = Leaf x
-updateTree (Node sz t1 t2) i x =
-    if i < sz `div` 2 then Node sz (updateTree t1 i x) t2
-    else Node sz t1 (updateTree t2 (i - sz `div` 2) x)
-\end{lstlisting}
-
-根据完全二叉树的性质，对于含有$n$个元素，用二叉随机访问列表表示的序列，森林中树木的棵数为$O(\lg n)$。因此任意给定索引$i$，最多需要$O(\lg n)$时间来定位到树。接下来的搜索和树的高度成正比，最多也是$O(\lg n)$。因此随机访问的总体性能为$O(\lg n)$。
+根据完全二叉树的性质，对于含有$n$个元素的序列，树木的棵数为$O(\lg n)$。对于索引$i$，最多需要$O(\lg n)$时间来定位到树。接下来的搜索和树的高度成正比，最多也是$O(\lg n)$。因此随机访问的总体性能为$O(\lg n)$。
 
 \begin{Exercise}
-\begin{enumerate}
-\item 本节给出的随机访问算法没有处理索引越界的错误情况。选择一门编程语言，修改算法，实现错误处理。
-
-\item 也可以用命令式方式实现二叉随机访问列表，提供在序列头部的快速操作。随机访问可以通过两个步骤实现：首先定位到树，然后利用数组的常数时间随机访问能力。选择一门命令式语言实现这一思路。
-\end{enumerate}
+如何处理索引越界情况？
 \end{Exercise}
 
-\section{二叉随机访问列表的数字表示（Numeric representation）}
+\section{数字表示}
 \index{序列!二叉随机访问列表的数字表示}
 
 在前一节，我们提到对于任意长度为$n$的序列，可以将$n$表示为二进制形式$n = 2^0e_0 + 2^1e_1 + ... + 2^me_m$，其中$e_i$为第$i$位，值为1或者0。若$e_i \neq 0$，则存在一棵大小为$2^i$的完全二叉树。
@@ -2541,12 +2496,13 @@ extract ((Node _ t1 t2):ts) = extract (t1:t2:ts)
 head' = fst . extract
 tail' = snd . extract
 
-getAt (t:ts) i = if i < size t then lookupTree t i
-                 else getAt ts (i - size t)
-
-lookupTree (Leaf x) 0 = x
-lookupTree (Node sz t1 t2) i = if i < sz `div` 2 then lookupTree t1 i
-                               else lookupTree t2 (i - sz `div` 2)
+getAt i (t:ts) | i < size t = lookupTree i t
+               | otherwise = getAt (i - size t) ts
+  where
+    lookupTree 0 (Leaf x) = x
+    lookupTree i (Node sz t1 t2)
+        | i < sz `div` 2 = lookupTree i t1
+        | otherwise = lookupTree (i - sz `div` 2) t2
 \end{Haskell}
 
 

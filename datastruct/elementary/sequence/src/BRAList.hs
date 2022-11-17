@@ -49,31 +49,23 @@ head' = fst . extract
 
 tail' = snd . extract
 
-getAt :: BRAList a -> Int -> a
-getAt (t:ts) i = if i < size t then lookupTree t i
-                 else getAt ts (i - size t)
+getAt i (t:ts) | i < size t = lookupTree i t
+               | otherwise = getAt (i - size t) ts
+  where
+    lookupTree 0 (Leaf x) = x
+    lookupTree i (Node sz t1 t2) | i < sz `div` 2 = lookupTree i t1
+                                 | otherwise = lookupTree (i - sz `div` 2) t2
 
-lookupTree :: Tree a -> Int -> a
-lookupTree (Leaf x) 0 = x
-lookupTree (Node sz t1 t2) i = if i < sz `div` 2 then lookupTree t1 i
-                               else lookupTree t2 (i - sz `div` 2)
-
-setAt :: BRAList a -> Int -> a -> BRAList a
 setAt (t:ts) i x = if i < size t then (updateTree t i x):ts
                    else t:setAt ts (i-size t) x
+  where
+    updateTree (Leaf _) 0 x = Leaf x
+    updateTree (Node sz t1 t2) i x =
+        if i < sz `div` 2 then Node sz (updateTree t1 i x) t2
+        else Node sz t1 (updateTree t2 (i - sz `div` 2) x)
 
-updateTree :: Tree a -> Int -> a -> Tree a
-updateTree (Leaf _) 0 x = Leaf x
-updateTree (Node sz t1 t2) i x =
-    if i < sz `div` 2 then Node sz (updateTree t1 i x) t2
-    else Node sz t1 (updateTree t2 (i - sz `div` 2) x)
-
--- Auxilary functions for flatten etc.
-
-fromList :: [a] -> BRAList a
 fromList = foldr insert []
 
-toList :: BRAList a -> [a]
 toList [] = []
 toList (t:ts) = (treeToList t) ++ toList ts where
     treeToList (Leaf x) = [x]
@@ -89,7 +81,7 @@ prop_head xs = not (null xs) ==> xs == (rebuild $ fromList xs) where
     rebuild ts = head' ts : (rebuild $ tail' ts)
 
 prop_lookup :: [Int] -> Int -> Property
-prop_lookup xs i = (0 <=i && i < length xs) ==> (getAt (fromList xs) i) == (xs !! i)
+prop_lookup xs i = (0 <=i && i < length xs) ==> (getAt i (fromList xs)) == (xs !! i)
 
 prop_update :: [Int] -> Int -> Int -> Property
 prop_update xs i y = (0 <=i && i< length xs) ==> toList (setAt (fromList xs) i y) == xs' where
