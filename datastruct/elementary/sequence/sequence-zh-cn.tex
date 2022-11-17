@@ -61,7 +61,7 @@
 \section{二叉随机访问列表}
 \index{序列!二叉随机访问列表}
 
-二叉随机访问列表是由二叉树森林实现的随机访问列表。森林是包含若干树的列表。对任何非负整数$n$，将其表达为二进制，我们就知道需要多少棵二项式树来存储$n$个元素（见第10章二项式堆）。每个值为1的二进制位代表一棵二项式树，树的秩为对应的二进制位。进一步，对含$n$个节点的二项式堆，任给索引$1 \leq i \leq n$，我们都可以快速在堆中定位到保存第$i$个节点的二项式树。这样，就可以用完全二叉树森林来实现随机访问序列。如图\ref{fig:bi-tree-sequence}所示，树$t_1$、$t_2$表示序列$[x_1, x_2, x_3, x_4, x_5, x_6]$。
+二叉随机访问列表是由二叉树森林实现的随机访问列表。森林包含若干完全二叉树。元素只保存在叶子节点中。对任何非负整数$n$，将其表达为二进制，我们就知道需要多少棵完全二叉树来存储$n$个元素。每个值为1的二进制位代表一棵二叉树，树的大小对应着二进制位的高低。任给索引$1 \leq i \leq n$，我们都可以快速在森林中定位到保存第$i$个节点的二叉树。如图\ref{fig:bi-tree-sequence}所示，树$t_1$、$t_2$表示序列$[x_1, x_2, x_3, x_4, x_5, x_6]$。
 
 \begin{figure}[htbp]
   \centering
@@ -76,7 +76,7 @@
 n = 2^0 e_0 + 2^1 e_1 + ... + 2^m e_m
 \ee
 
-如果$e_i \neq 0$，就需要一棵大小为$2^i$的完全二叉树$t_i$。在图\ref{fig:bi-tree-sequence}的例子中，序列长度为$6 = (110)_2$。最低位是0，我们不需要大小为1的树；第2位是1，需要一棵大小为2的树$t_1$；最高位是1，需要一棵大小为4的树$t_2$。这样就把序列$[x_1, x_2, ..., x_n]$表示为树的列表。我们称之为\textbf{二叉随机访问列表}\cite{okasaki-book}。我们可以在二叉树定义的基础上稍作变化以实现这种列表：1、元素只保存在叶子节点中，2、在每棵子树中记录树的大小。这样每个分枝节点记为$(s, l, r)$，其中$s$表示子树的大小，$l$、$r$分别表示左右子树。包含元素$x$的叶子节点记为$(x)$。我们可以这样获取一棵树的大小：
+如果$e_i \neq 0$，就需要一棵大小为$2^i$的完全二叉树$t_i$。在图\ref{fig:bi-tree-sequence}的例子中，序列长度为$6 = (110)_2$。最低位是0，我们不需要大小为1的树；第2位是1，需要一棵大小为2的树$t_1$；最高位是1，需要一棵大小为4的树$t_2$。这样就把序列$[x_1, x_2, ..., x_n]$表示为树的列表。列表中每棵树的大小都是唯一的，并按照从小到大排列。我们称之为\textbf{二叉随机访问列表}\cite{okasaki-book}。我们可以在二叉树定义的基础上稍作变化以实现这种列表：1、元素只保存在叶子节点中，2、在每棵子树中记录树的大小。这样每个分枝节点记为$(s, l, r)$，其中$s$表示子树的大小，$l$、$r$分别表示左右子树。包含元素$x$的叶子节点记为$(x)$。我们可以这样获取一棵树的大小：
 
 \be
 \begin{array}{rcl}
@@ -151,65 +151,42 @@ tail & = \textit{snd} \circ extract \\
 其中$\textit{fst}\ (a, b) = a$, $\textit{snd}\ (a, b) = b$分别返回一对值中的两个部分。
 
 \index{二叉随机访问列表!随机访问}
-
-森林中的树实际上将元素划分为大小不同的块进行管理，给定任意索引，可以很容易地定位到保存此元素的树。然后在树中进行一次查找就可以得到结果。因为所有的树都是二叉树（确切地说是完全二叉树），所以树中的查找实际上是二分查找，性能和树的大小成对数比例。进行随机访问时，相比在链表中进行线性查找要快得多。
-
-给定索引$i$和序列$S$，序列使用由树组成的森林来表示，随机访问算法可以描述如下\footnote{按照传统，在进行算法描述时，索引$i$从1开始；在大多数编程语言中，索引从0开始。}：
+森林中的树实际上将元素划分为大小不同的区块。给定任意索引$1 \leq i \leq n$，我们先定位到对应的完全二叉树，然后再进行一次树查找就可定位到元素。
 
 \begin{enumerate}
-\item 比较$i$和森林中第一棵树$T_1$的size的大小，若$i$小于等于size，则元素在$T_1$中，接下来在$T_1$中查找；
-\item 否则，从$i$中减去$T_1$的size，然后在森林中剩余的树中重复前面的步骤。
+\item 比较$i$和森林中第一棵树$t$的大小，若$i \leq size(t)$，则元素在$t$中，接下来在树$t$中进行查找；
+\item 否则，令$i' = i - size(t)$，然后递归地在剩余的树中查找第$i'$个元素。
 \end{enumerate}
 
-这一算法可以形式化为下面的定义。
-
 \be
-get(S, i) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  lookupTree(T_1, i) & i \leq |T_1| \\
-  get(S', i- |T_1|) & otherwise
-  \end{array}
-\right .
+(t \cons ts)[i] = \begin{cases}
+  i \leq size\ t: & lookup_T\ i\ t \\
+  \text{否则}: & ts[i - size\ t] \\
+\end{cases}
 \ee
 
-其中$|T| = size(T)$，而$S' = \{ T_2, T_3, ... \}$为森林中除第一棵树以外的剩余部分。这里我们没有进行越界检查和错误处理，这些可以留给读者作为练习。
-
-函数$lookupTree$是一个二分查找算法，如果$i$等于1，我们返回树的根节点，否则，我们将树对半拆分，如果$i$小于拆分后树的size，就递归地在左子树中查找，否则就递归地在右子树中查找。
+其中$lookup_T$在树中进行二分查找。如果$i = 1$，我们返回根节点；否则，我们将树拆半，然后递归查找：
 
 \be
-lookupTree(T, i) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  root(T) & i = 1 \\
-  lookupTree(left(T)) & i \leq \lfloor \frac{|T|}{2} \rfloor \\
-  lookupTree(right(T)) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+lookup_T\ 1\ (x) & = & x \\
+lookup_T\ i\ (s, t_1, t_2) & = & \begin{cases}
+  i \leq \lfloor \dfrac{s}{2} \rfloor: & lookup_T\ i\ t_1 \\
+  \text{否则}: & lookup_T\ (i - \lfloor \dfrac{s}{2} \rfloor)\ t_2 \\
+  \end{cases}
+\end{array}
 \ee
 
-其中函数$left$返回$T$的左子树$T_l$，而$right$返回右子树$T_r$。
-
-下面的Haskell例子程序实现了相应的算法。
-
-\begin{lstlisting}[style=Haskell]
-getAt (t:ts) i = if i < size t then lookupTree t i
-                 else getAt ts (i - size t)
-
-lookupTree (Leaf x) 0 = x
-lookupTree (Node sz t1 t2) i = if i < sz `div` 2 then lookupTree t1 i
-                               else lookupTree t2 (i - sz `div` 2)
-\end{lstlisting}
-
-图\ref{fig:get-at-example}描述了在一个长度为6的序列中查找第4个元素的步骤。首先检查第一棵树，由于大小为2，小于4，所以继续检查第二棵树，同时将索引更新为$i'=4-2$。即查找森林中剩余部分的第2个元素。由于接下来的树大小为4，大于2，所以待查找的元素就在这棵树中。因为新索引为2，它不大于对半拆分的子树尺寸4/2=2，所以接下来需要检查左子树，然后检查右侧的孙子分支，最终得到要访问的元素。
+图\ref{fig:get-at-example}描述了在一个长度为6的序列中查找第4个元素的步骤。第一棵树大小为2 < 4，继续检查第二棵树，并将索引更新为$i' = 4 - 2 $。接下来的树大小为$4 > i' = 2$，故待查找元素就在这棵树中。因为索引为2，不大于拆半的子树大小$4/2 = 2$，所以接下来检查左子树，然后检查右侧的孙子分支，最终得到要访问的元素。
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{$getAt(S, 4))$, $4 > size(t_1) = 2$}{\includegraphics[scale=0.5]{img/bralst-6}}
-  \subcaptionbox{$getAt(S', 4-2) \Rightarrow lookupTree(t_2, 2)$}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-4}\hspace{0.2\textwidth}} \\
-  \subcaptionbox{$ 2 \leq \lfloor size(t_2)/2 \rfloor \Rightarrow lookupTree(left(t_2), 2)$}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-4l}\hspace{0.2\textwidth}}
-  \subcaptionbox{$lookupTree(right(left(t_2)), 1)$, $x_3$被返回}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-4lr}\hspace{0.2\textwidth}}
-  \caption{在序列中访问第4个元素的步骤} \label{fig:get-at-example}
+  \subcaptionbox{$S[4], 4 > size(t_1) = 2$}{\includegraphics[scale=0.5]{img/bralst-6}}
+  \subcaptionbox{$S'[4-2] \Rightarrow lookup_T\ 2\ t_2$}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-4}\hspace{0.2\textwidth}} \\
+  \subcaptionbox{$ 2 \leq \lfloor \dfrac{size(t_2)}{2} \rfloor \Rightarrow lookup_T\ 2\ left(t_2)$}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-4l}\hspace{0.2\textwidth}}
+  \subcaptionbox{$lookup_T\ 1\ right(left(t_2))$, 返回$x_3$}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-4lr}\hspace{0.2\textwidth}}
+  \caption{获取$S[4]$}
+  \label{fig:get-at-example}
 \end{figure}
 
 使用类似的思路，我们可以修改任意位置$i$的元素。首先比较森林中第一棵树$T_1$的size和$i$的大小，若小于$i$，待修改的元素不在第一棵树中。我们递归地检查森林中的下一棵树，将它的size和$i - |T_1|$比较，其中$|T_1|$是第一棵树的size。否则，若这一size大于等于$i$，待修改的元素在树中，我们递归地拆分树，直到获得叶子节点，然后将节点中的元素替换为新元素。
@@ -2563,6 +2540,13 @@ extract ((Node _ t1 t2):ts) = extract (t1:t2:ts)
 
 head' = fst . extract
 tail' = snd . extract
+
+getAt (t:ts) i = if i < size t then lookupTree t i
+                 else getAt ts (i - size t)
+
+lookupTree (Leaf x) 0 = x
+lookupTree (Node sz t1 t2) i = if i < sz `div` 2 then lookupTree t1 i
+                               else lookupTree t2 (i - sz `div` 2)
 \end{Haskell}
 
 
