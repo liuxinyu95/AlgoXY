@@ -198,71 +198,27 @@ lookup_T\ i\ (s, t_1, t_2) & = & \begin{cases}
 \section{数字表示}
 \index{序列!二叉随机访问列表的数字表示}
 
-在前一节，我们提到对于任意长度为$n$的序列，可以将$n$表示为二进制形式$n = 2^0e_0 + 2^1e_1 + ... + 2^me_m$，其中$e_i$为第$i$位，值为1或者0。若$e_i \neq 0$，则存在一棵大小为$2^i$的完全二叉树。
-
-这一事实反映了$n$的二进制形式和森林之间存在明确的关系。向序列的头部插入元素，类似于将二进制数增加1；而从序列的头部删除元素类似于将二进制数减少1。我们称这种关系为\underline{numeric representation}\cite{okasaki-book}。
-
-为了将二叉随机访问列表用二进制数字表示，可以为每一个二进制位定义两个状态。状态$Zero$表示不存在对应此二进制位大小的树，而$One$表示森林中存在一棵对应于此二进制位大小的树。如果状态为$One$，我们可以将对应的树附加到状态上。
-
-下面的Haskell例子程序定义了这样状态。
-
-\begin{lstlisting}[style=Haskell]
-data Digit a = Zero
-             | One (Tree a)
-
-type RAList a = [Digit a]
-\end{lstlisting}
-
-我们重用了完全二叉树的定义，并把它附加到状态$One$上。同时将树的大小信息也加以缓存。
-
-定义了数字（digit）后，一个森林就可以按照包含若干数字的列表来处理。我们首先看如何将新元素的插入操作实现为二进制数的增加。设函数$one(t)$创建一个$One$的状态，并将树$t$附加到这个状态上。函数$getTree(s)$从状态$s$中获取树。序列$S$是一个列表，包含若干表示状态的数字，记为$S = \{ s_1, s_2, ... \}$。$S'$为除第一个状态外的剩余部分。
+非负整数$n$的二进制形式和森林之间存在关系：$n = 2^0e_0 + 2^1e_1 + ... + 2^me_m$，其中$e_i$为第$i$位的值。若$e_i = 1$，则存在一棵大小为$2^i$的完全二叉树。向序列头部插入元素，对应于二进制数加1；而删除对应二进制数减1。我们称这种关系为\underline{数字表示}\cite{okasaki-book}。为了明确表示这种对应，我们为每个二进制位定义两个状态：状态零$Zero$表示不存在二叉树，而状态一$One\ t$表示存在二叉树$t$。这样森林就可以表示为一组二进制状态的列表，从而把插入实现为二进制数的增加。
 
 \be
-insertTree(S, t) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ one(t) \} & S = \phi \\
-  \{ one(t) \} \cup S' & s_1 = Zero \\
-  \{ Zero \} \cup insertTree(S', link(t, getTree(s_1))) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+add\ t\ [\ ] & = & [One\ t] \\
+add\ t\ (Zero \cons ds) & = & (One\ t) : ds \\
+add\ t\ (One\ t' \cons ds) & = & Zero : add\ (link\ t\ t')\ ds
+\end{array}
 \ee
 
-将一棵新树$t$插入到一个用二进制数字序列表示的森林$S$时，若森林为空，我们创建一个状态$One$，将待插入的树附加到状态上。这个状态是二进制数中的唯一一位。相当于二进制加法$0 + 1 = 1$。
+将树$t$插入森林对应二进制加法：若森林为空，我们创建状态$One\ t$，它是二进制数中的唯一位。相当于$0 + 1 = 1$。若森林不空，如果二进制首位数字是$Zero$，我们创建一个状态$One\ t$替换掉$Zero$。这相当于二进制加法$(...digits...0)_2 + 1 = (...digits...1)_2$。例如$6 + 1 = (110)_2 + 1 = (111)_2 = 7$。如果二进制首位是$One\ t'$，我们认为$t$和$t'$的大小相同。这是因为我们总是以一个叶子$t_0 = (x)$开始插入，待插入树的大小逐渐增长，呈一个序列$1, 2, 4, ..., 2^i, ...$。我们将$t$和$t'$链接起来，递归地插入到剩余的数字中。而之前的$One\ t'$被替换为$Zero$。这相当于二进制加法$(...digits...1)_2 + 1 = (...digits'...0)_2$。例如$7 + 1 = (111)_2 + 1 = (1000)_2 = 8$。
 
-否则，如果森林不为空，我们需要检查二进制数的第一位，如果第一个数字是$Zero$，我们创建一个状态$One$，附加上待插入的树，然后用这个新创建的$One$状态替换掉$Zero$状态。这相当于二进制加法$(...digits...0)_2 + 1 = (...digits...1)_2$。例如$6 + 1 = (110)_2 + 1 = (111)_2 = 7$。
-
-最后一种情况是二进制数的第一位数字是$One$，这里我们假设待插入的树$t$和状态$One$中附加的树具有相同的size。这一点可以通过插入过程得到保证，我们总是从一个叶子开始插入，然后待插入的树的大小逐渐增长，呈一个序列$1, 2, 4, ..., 2^i, ...$。此时，我们将两棵树链接成一棵更大的树，然后递归地将链接结果插入到剩余的数字中。而之前的$One$状态，被替换为一个$Zero$状态。这相当于二进制加法$(...digits...1)_2 + 1 = (...digits'...0)_2$，其中$(...digits'...)_2 = (...digits...)_2+1$。例如$7 + 1 = (111)_2 + 1 = (1000)_2 = 8$。
-
-下面的Haskell例子程序实现了这一算法。
-
-\begin{lstlisting}[style=Haskell]
-insertTree :: RAList a -> Tree a -> RAList a
-insertTree [] t = [One t]
-insertTree (Zero:ts) t = One t : ts
-insertTree (One t' :ts) t = Zero : insertTree ts (link t t')
-\end{lstlisting}
-
-其他函数，包括$link()$、$cons()$等和此前的定义一样。
-
-接下来我们解释如何用二进制数的减法来表示从序列的头部删除元素。如果序列只含有唯一的状态$One$，且状态上附加的树只有一个叶子。删除后序列变为空。这相当于二进制减法$1 - 1 = 0$。
-
-否则，我们检查序列中的第一个数字，如果是$One$，它将被替换为$Zero$，表示森林中的这棵树将被删除。这相当于二进制减法 $(...digits...1)_2 - 1 = (...digits...0)_2$。例如$7 - 1 = (111)_2 - 1 = (110)_2 = 6$;
-
-如果序列中的第一个数字是$Zero$，我们需要向后继的数字借位来进行删除。我们递归地从剩余的数字中抽取树，将其分拆成两棵子树。$Zero$状态将被替换成$One$状态，并将此前分拆出的右子树附加到状态上，而删除掉左子树。这相当于二进制减法$(...digits...0)_2 - 1 = (...digits'...1)_2$，其中$(...digits'...)_2 = (...digits...)_2 - 1$。例如$4 - 1 = (100)_2 - 1 = (11)_2 = 3$。下面的定义给出了删除算法。
+接下来我们用二进制减法来表示删除。如果序列只含有一位$One\ t$，删除后序列变为空。这对应二进制减法$1 - 1 = 0$。如果序列有多位，并且首位是$One\ t$，我们将其替换为$Zero$。这相当于二进制减法 $(...digits...1)_2 - 1 = (...digits...0)_2$。例如$7 - 1 = (111)_2 - 1 = (110)_2 = 6$。如果首位是$Zero$，减法需要借位。我们递归地从剩余的数字中抽取树，将其分拆成两棵树$t_1$、$t_2$，将$Zero$替换成$One\ t_2$，并删除$t_1$。这相当于二进制减法$(...digits...0)_2 - 1 = (...digits'...1)_2$。例如$4 - 1 = (100)_2 - 1 = (11)_2 = 3$。
 
 \be
-extractTree(S) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (t, \phi) & S = \{ one(t) \} \\
-  (t, S') & s_1 = one(t) \\
-  (t_l, \{ one(t_r) \} \cup S'' & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+minus\ [One\ t] & = & (t, [\ ]) \\
+minus\ ((One\ t) \cons ts) & = & (t, Zero \cons ts) \\
+minus\ (Zero \cons ts) & = & (t_1, (One\ t_2) \cons ts'), \text{其中}: (s, t_1, t_2) = minus\ ts \\
+\end{array}
 \ee
-
-其中$(t', S'') = extractTree(S')$，$t_l$和$t_r$分别是$t'$的左右子树。其他函数，包括$head$和$tail$的定义和此前一样。
 
 使用数字表示二叉随机访问列表并没有改变复杂度，Okasaki在\cite{okasaki-ralist}中给出了详细地解释。作为例子，我们使用聚合（aggregation）法，来分析在头部插入的平均（或称分摊）复杂度。
 
@@ -2505,6 +2461,25 @@ getAt i (t:ts) | i < size t = lookupTree i t
         | otherwise = lookupTree (i - sz `div` 2) t2
 \end{Haskell}
 
+随机访问森林的数值表示：
+\begin{Haskell}
+data Digit a = Zero | One (Tree a)
+
+type RAList a = [Digit a]
+
+insert x = add (Leaf x) where
+  add t [] = [One t]
+  add t (Zero:ts) = One t : ts
+  add t (One t' :ts) = Zero : add (link t t') ts
+
+minus [One t] = (t, [])
+minus (One t:ts) = (t, Zero:ts)
+minus (Zero:ts) = (t1, One t2:ts') where
+    (Node _ t1 t2, ts') = minus ts
+
+head' ts = x where (Leaf x, _) = minus ts
+tail' = snd . minus
+\end{Haskell}
 
 \ifx\wholebook\relax \else
 
