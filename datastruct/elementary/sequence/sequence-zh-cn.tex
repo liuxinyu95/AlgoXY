@@ -258,9 +258,9 @@ O(T/n) = O(\frac{2^{m+1}}{2^m}) = O(1)
 \end{Exercise}
 
 \section{双数组序列}
-\index{序列!双数组序列}
+\index{序列!双数组序列} \index{双数组列表!插入和添加}
 
-在上一章中，我们给出过双数组队列。由于数组可以常数时间随机访问，我们可以将其扩展为双数组序列。如图\ref{fig:parrays}，按头对头的方式连接两个数组。在列表的头部插入时，添加到$f$数组末尾；向尾部插入时，添加到$r$数组末尾。
+在上一章中，我们给出过双数组队列。由于数组可以常数时间随机访问，我们可以将其扩展为双数组序列。如图\ref{fig:parrays}，按头对头的方式连接两个数组。在列表的头部插入时，添加到$f$数组末尾；向尾部插入时，添加到$r$数组末尾。这样我们用一对数组表示列表$S = (f, r)$，令$\textproc{Front}(S) = f$，$\textproc{Rear}(S) = r$。插入、删除实现如下：
 
 \begin{figure}[htbp]
   \centering
@@ -269,140 +269,73 @@ O(T/n) = O(\frac{2^{m+1}}{2^m}) = O(1)
   \label{fig:parrays}
 \end{figure}
 
-\index{双数组列表!插入和添加}
-令\textproc{Front}($S$)返回$f$数组，而\textproc{Rear}($S$)返回$r$数组。插入、删除实现如下：
-
 \begin{algorithmic}[1]
 \Function{Insert}{$x, S$}
   \State \textproc{Append}($x$, \Call{Front}{$S$})
 \EndFunction
-\Statex
+%\Statex
 \Function{Append}{$x, S$}
   \State \textproc{Append}($x$, \Call{Rear}{$S$})
 \EndFunction
 \end{algorithmic}
 
 \index{双数组列表!随机访问}
-由于内部的数据结构是数组（动态数组vector），它支持随机访问，因此很容易实现索引算法。
+随机访问第$i$个元素时，我们先判断$i$索引到$f$还是$r$，然后再定位到元素。若$ i \leq |f|$，元素在$f$中。由于$f$和$r$头对头连接的，所以$f$按照从右向左逆序索引元素。我们用$|f| - i + 1$定位到元素；如果$i > |f|$，元素在$r$中。元素是从左向右索引的，我们用$i - |f|$定位到元素。
 
-\begin{algorithmic}
-\Function{Get}{$L, i$}
-  \State $F \gets $ \Call{Front}{$L$}
-  \State $n \gets $ \Call{Size}{$F$}
+\begin{algorithmic}[1]
+\Function{Get}{$i, S$}
+  \State $f, r \gets $ \Call{Front}{$S$}, \Call{Rear}{$S$}
+  \State $n \gets $ \Call{Size}{$f$}
   \If{$i \leq n $}
-    \State \Return $F$[$n-i+1$]
+    \State \Return $f[n - i + 1]$ \Comment{反向索引}
   \Else
-    \State \Return \Call{Rear}{$L$}[$i-n$]
+    \State \Return $r[i - n]$
   \EndIf
 \EndFunction
 \end{algorithmic}
 
-这里索引$i \in [1, |L|]$。如果它不大于front数组的大小，则待访问的元素存储于front数组中。但因为front数组和rear数组是按照头对头的方式连接到一起的，所以front数组中的元素是按照“逆序”索引的。我们需要用数组的尺寸减去$i$来定位到元素；如果$i$大于front数组的大小，说明待访问的元素在rear数组中。而rear数组中的各个元素的顺序是正常的，我们只需要将$i$减去front数组的尺寸就可以定位到元素。
-
-下面的ISO C++例子程序实现了这一算法。
-
-\begin{lstlisting}
-template<typename Key>
-Key get(List<Key>& xs, int i) {
-    if( i < xs.n )
-        return xs.front[xs.n-i-1];
-    else
-        return xs.rear[i-xs.n];
-}
-\end{lstlisting}
-
-随机访问修改元素的算法留给读者作为练习。
-
-\subsection{删除和平衡}
 \index{双数组列表!删除和平衡}
-删除要比插入和添加复杂。这是因为删除可能造成一个数组（front数组或者rear数组）变空，而另外一个仍存有元素。极端情况下，列表会变得很不平衡。我们需要在这种情况下恢复平衡。
+删除可能把一个数组$f$或$r$变空，而另一个仍有元素，需要恢复平衡。当$f$或$r$等于$[\ ]$时，我们将另一数组分成两半，然后将前一半反转形成一对新的数组。$f$、$r$是对称的。我们也可以交换$f$、$r$，递归调用\textproc{Balance}，再把$f$、$r$交换回来。
 
-最简单的想法是当front或者rear数组变空时开始修复。我们可以将另外一个数组分成两半，然后将前一半反转顺序形成一对新的数组。算法描述如下：
-
-\begin{algorithmic}
-\Function{Balance}{$L$}
-  \State $F \gets$ \Call{Front}{$L$}, $R \gets$ \Call{Rear}{$L$}
-  \State $n \gets$ \Call{Size}{$F$}, $m \gets$ \Call{Size}{$R$}
-  \If{ $F = \phi$}
-    \State $F \gets$ \Call{Reverse}{$R$[1 ... $\lfloor \frac{m}{2} \rfloor$]}
-    \State $R \gets R[\lfloor \frac{m}{2} \rfloor + 1$ ... $m]$
-  \ElsIf{ $R = \phi$ }
-    \State $R \gets$ \Call{Reverse}{$F$[1 ... $\lfloor \frac{n}{2} \rfloor$]}
-    \State $F \gets F[\lfloor \frac{n}{2} \rfloor + 1$ ... $n]$
+\begin{algorithmic}[1]
+\Function{Balance}{$S$}
+  \State $f \gets$ \Call{Front}{$S$}, $r \gets$ \Call{Rear}{$S$}
+  \State $n \gets$ \Call{Size}{$f$}, $m \gets$ \Call{Size}{$r$}
+  \If{$F = [\ ]$}
+    \State $k \gets \lfloor \dfrac{m}{2} \rfloor$
+    \State \Return $(\textproc{Reverse}(r[1 ... k]), r[(k + 1) ... m])$
   \EndIf
+  \If{$R = [\ ]$}
+    \State $k \gets \lfloor \dfrac{n}{2} \rfloor$
+    \State \Return $(f[(k + 1) ... n], \textproc{Reverse}(f[1 ... k]))$
+  \EndIf
+  \State \Return $(f, r)$
 \EndFunction
 \end{algorithmic}
 
-实际上front数组变空或rear数组变空引发的恢复平衡操作是对称的。我们可以交换front和rear数组，递归调用平衡恢复函数，最后在再把front和rear数组交换回来。下面的ISO C++例子程序实现了这一思路。
+在每次删除时，我们都检查$f$、$r$是否为空，并触发平衡操作：
 
-\begin{lstlisting}
-template<typename Key>
-void balance(List<Key>& xs) {
-    if(xs.n == 0) {
-        back_insert_iterator<vector<Key> > i(xs.front);
-        reverse_copy(xs.rear.begin(), xs.rear.begin() + xs.m/2, i);
-        xs.rear.erase(xs.rear.begin(), xs.rear.begin() +xs.m/2);
-        xs.n = xs.m/2;
-        xs.m -= xs.n;
-    } else if(xs.m == 0) {
-        swap(xs.front, xs.rear);
-        swap(xs.n, xs.m);
-        balance(xs);
-        swap(xs.front, xs.rear);
-        swap(xs.n, xs.m);
-   }
-}
-\end{lstlisting}
-
-定义好\textproc{Balance}算法后，就很容易实现头部和尾部的删除算法了。
-
-\begin{algorithmic}
-\Function{Remove-Head}{$L$}
-  \State \Call{Balance}{$L$}
-  \State $F \gets $ \Call{Front}{$L$}
-  \If{$F = \phi$}
-    \State \Call{Remove-Tail}{$L$}
+\begin{algorithmic}[1]
+\Function{Remove-Head}{$S$}
+  \State \Call{Balance}{$S$}
+  \State $f, r \gets$ \Call{Front}{$S$}, \Call{Rear}{$S$}
+  \If{$f = [\ ]$} \Comment{$S = ([], [x])$}
+    \State $r \gets [\ ]$
   \Else
-    \State \Call{Size}{$F$} $\gets $ \Call{Size}{$F$} - 1
+    \State \Call{Remove-Last}{$f$}
   \EndIf
 \EndFunction
 \Statex
-\Function{Remove-Tail}{$L$}
-  \State \Call{Balance}{$L$}
-  \State $R \gets $ \Call{Rear}{$L$}
-  \If{$R = \phi$}
-    \State \Call{Remove-Head}{$L$}
+\Function{Remove-Tail}{$S$}
+  \State \Call{Balance}{$S$}
+  \State $f, r \gets$ \Call{Front}{$S$}, \Call{Rear}{$S$}
+  \If{$r = [\ ]$} \Comment{$S = ([x], [])$}
+    \State $f \gets [\ ]$
   \Else
-    \State \Call{Size}{$R$} $\gets $ \Call{Size}{$R$} - 1
+    \State \Call{Remove-Last}{$r$}
   \EndIf
 \EndFunction
 \end{algorithmic}
-
-这里存在一种边界情况：恢复平衡后，待删除的数组仍然是空的。此时，使用双数组实现的列表中只有一个元素。我们只需要删除掉这唯一的元素，结果是一个空列表。下面的ISO C++程序实现了这一算法。
-
-\begin{lstlisting}
-template<typename Key>
-void remove_head(List<Key>& xs) {
-    balance(xs);
-    if(xs.front.empty())
-        remove_tail(xs); //删除rear中的唯一元素。
-    else {
-        xs.front.pop_back();
-        --xs.n;
-    }
-}
-
-template<typename Key>
-void remove_tail(List<Key>& xs) {
-    balance(xs);
-    if(xs.rear.empty())
-        remove_head(xs); //删除front中的唯一元素。
-    else {
-        xs.rear.pop_back();
-        --xs.m;
-    }
-}
-\end{lstlisting}
 
 显然，最坏情况下性能为$O(n)$，其中$n$是双数组列表中存储的元素个数。最坏情况发生在平衡恢复被启动时，不论是逆序操作，还是shift操作都是线性时间的。但是删除算法的分摊复杂度仍然是$O(1)$，我们把证明作为练习留给读者。
 
@@ -2270,6 +2203,10 @@ void insert(K x, Seq<K> s) = append(x, s.front)
 
 void append(K x, Seq<K> s) = append(x, s.rear)
 
+K get(Int i, Seq<K> s) {
+    Int n = length(s.front)
+    return if i < n then s.front[n - i - 1] else s.rear[i - n]
+}
 \end{lstlisting}
 
 \ifx\wholebook\relax \else
