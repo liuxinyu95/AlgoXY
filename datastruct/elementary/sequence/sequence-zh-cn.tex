@@ -337,98 +337,40 @@ O(T/n) = O(\frac{2^{m+1}}{2^m}) = O(1)
 \EndFunction
 \end{algorithmic}
 
-显然，最坏情况下性能为$O(n)$，其中$n$是双数组列表中存储的元素个数。最坏情况发生在平衡恢复被启动时，不论是逆序操作，还是shift操作都是线性时间的。但是删除算法的分摊复杂度仍然是$O(1)$，我们把证明作为练习留给读者。
+由于要进行反转，双数组序列在最坏情况下性能为$O(n)$，其中$n$是元素个数。但是分摊复杂度是常数时间的。
 
 \begin{Exercise}
-\begin{enumerate}
-\item 选择一门命令式语言实现随机访问的修改算法。
-\item 我们使用了标准库中的vector来处理动态内存分配，请尝试用普通数组，自己管理内存分配来实现双数组列表，比较两个版本并分析算法的复杂度是否受到了影响。
-\item 证明双数组列表删除算法的分摊复杂度为$O(1)$。
-\end{enumerate}
+\Question{证明双数组序列删除的分摊复杂度为常数时间。}
 \end{Exercise}
 
 \section{可连接列表}
 \index{序列!可链接列表}
 
-通过使用二叉随机访问列表，我们实现了序列数据结构。支持在$O(\lg n)$时间的头部插入和删除，以及通过索引进行随机存取。
-
-但是，将两个列表连接起来却并不容易。每个列表都是由完全二叉树组成的森林，我们不能简单地将它们合并到一起（森林本质上是树的列表，对于任何size，最多只存在一棵树的尺寸等于这一size。而且直接合并两个列表也并不快）。一个方法是将第一个序列中的元素逐一推入一个栈中，然后依次将栈中元素弹出并使用\texttt{cons}函数插入到第二个序列中。当然，栈可以通过使用递归来隐式实现，例如：
-
-\be
-concat(s_1, s_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  s_2 & s_1 = \phi \\
-  cons(head(s_1), concat(tail(s_1), s_2)) & otherwise
-  \end{array}
-\right .
-\ee
-
-其中函数$cons$、$head$和$tail$的定义和此前的一致。
-
-如果两个序列的长度分别是$m$和$n$，这一方法首先用$O(n \lg n)$时间将第一个序列中的元素推入栈中，然后使用$\Omega(n \lg (n + m))$的时间将元素逐一插入的第二个序列的前面。其中$\Omega$表示上限，具体的定义可以参考\cite{CLRS}。
-
-在前面章节中，我们实现了实时队列。他支持常数时间$O(1)$的入队和出队。如果我们能够将队列的连接操作实现为某种形式的入队操作，就可以将性能提高到常数时间。Okasaki在\cite{okasaki-book}中给出了这样的实现。
-
-为了实现可连接列表，Okasaki设计了一种K叉树结构。树的根节点保存列表中的第一个元素，我们可以用常数时间$O(1)$访问到它。所有子树都是更小的可连接列表，保存在一个实时队列中。将另外一个列表连接到尾部相当于把这个列表添加为最后一个子树，这实际上是一个入队操作。添加新元素可以这样实现：首先将元素放入到一棵只有一个叶子节点的树中。然后将这棵树连接到序列的尾部从而完成添加。
-
-图\ref{fig:clist}描述了这一数据结构。
+虽然我们可以用$O(\lg n)$时间在二叉树随机访问森林的头部进行插入、删除、索引，但连接两个序列并不容易。我们不能简单地将所有二叉树合并到一起，而需要不断链接大小相同的树。图\ref{fig:clist}给出了一种可连接列表的实现。多叉树的根存储序列的第一个元素$x_1$, 其它元素被分成若干片段保存在更小的序列中，每个片段是一棵子树。这些子树由一个实时队列（见上一章）管理，表示为$(x_1, Q_x) = [x_1, x_2, ..., x_n]$。当需要连接另一个列表$(y_1, Q_y) = [y_1, y_2, ..., y_m]$时，我们将其入队到$Q_x$的尾部。连接运算定义如下。实时队列的入队性能为常数时间，因此列表连接的性能也是常数时间的。
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{列表$\{ x_1, x_2, ..., x_n\}$的数据结构}{\includegraphics[scale=0.5]{img/clist}} \\
-  \subcaptionbox{和另一列表$\{y_1, y_2, ..., y_m\}$连接后的结果}{\includegraphics[scale=0.4]{img/clist1}}
-  \caption{可连接列表的数据结构} \label{fig:clist}
+  \subcaptionbox{$(x_1, Q_x) = [x_1, x_2, ..., x_n]$}{\includegraphics[scale=0.5]{img/clist}} \\
+  \subcaptionbox{连接$(y_1, Q_y) = [y_1, y_2, ..., y_m]$相当于入队$c_{n+1}$到$Q_x$}{\includegraphics[scale=0.4]{img/clist1}}
+  \caption{可连接列表}
+  \label{fig:clist}
 \end{figure}
 
-下面的Haskell例子程序定义了这种递归数据结构。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-data CList a = Empty | CList a (Queue (CList a))
-\end{lstlisting}
-
-一个可连接列表或者为空，或者是一个K叉树，包含一个root元素和一个存有$K$棵子树的队列，每棵子树也都是可连接列表。这里我们复用前面章节中定义的实时队列。
-
-设函数$clist(x, Q)$通过一个元素$x$和一个由子列表组成的队列$Q$构造一个可连接列表。函数$root(s)$返回K叉树的根元素，$queue(s)$返回由子序列构成的队列。定义连接算法可以定义如下：
-
 \be
-concat(s_1, s_2) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  s_1 & s_2 = \phi \\
-  s_2 & s_1 = \phi \\
-  clist(x, push(Q, s_2)) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+concat\ s\ \nil & = & s \\
+concat\ \nil\ s & = & s \\
+concat\ (x, Q)\ s & = & (x, push\ s\ Q) \\
+\end{array}
 \ee
 
-其中$x = root(s_1)$、$Q = queue(s_1)$。连接两个列表时，如果任何一个为空，则结果为另一个列表；否则，我们将第二个列表放入第一个列表中队列的尾部。
-
-使用实时队列可以保证入队操作的性能为常数时间$O(1)$，因此列表连接操作的时间为$O(1)$。
-
-下面的Haskell例子程序实现了连接算法。
-
-\begin{lstlisting}[style=Haskell]
-concat x Empty = x
-concat Empty y = y
-concat (CList x q) y = CList x (push q y)
-\end{lstlisting}
-
-这一设计既获得了良好的连接操作性能，还同时可以在头部、尾部高效添加元素
+插入新元素$z$时，我们先创建一个单元素列表$(z, \nil)$，然后将其连接起来。
 
 \be
-cons(x, s) = concat(clist(x, \phi), s)
-\ee
-
-\be
-append(s, x) = concat(s, clist(x, \phi))
-\ee
-
-通过返回K叉树的根，可以获得列表的第一个元素
-
-\be
-head(s) = root(s)
+\begin{cases}
+insert\ x\ s & = concat\ (x, \nil)\ s \\
+append\ x\ s & = concat\ s\ (x, \nil) \\
+\end{cases}
 \ee
 
 但是从可连接列表的头部删除元素有些复杂。这是因为第一个元素为根节点，删除后我们需要从剩余的子树队列中重新构造一棵K叉树。
@@ -2208,6 +2150,18 @@ K get(Int i, Seq<K> s) {
     return if i < n then s.front[n - i - 1] else s.rear[i - n]
 }
 \end{lstlisting}
+
+可连接列表：
+
+\begin{Haskell}
+data CList a = Empty | CList a (Queue (CList a))
+
+concat x Empty = x
+concat Empty y = y
+concat (CList x q) y = CList x (push q y)
+
+\end{Haskell}
+
 
 \ifx\wholebook\relax \else
 
