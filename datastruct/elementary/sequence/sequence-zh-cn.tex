@@ -382,70 +382,44 @@ concat_q\ Q & = & concat\ (top\ Q)\ (concat_q\ (pop\ Q)) \\
 \end{array}
 \ee
 
-全部子树存储在实时队列中。我们将第一棵子树$c_1$出队，然后递归地将剩余的子树连接在一起成为$s'$，最后把$c_1$、$s'$连接起来。我们使用$concat_q$从头部删除元素。
+全部子树存储在实时队列中。我们将第一棵子树$c_1$出队，然后递归地将剩余的子树连接在一起成为$s$，最后把$c_1$、$s$连接起来。我们使用$concat_q$从头部删除元素。
 
 \be
 tail\ (x, Q) = concat_q\ Q
 \ee
 
-算法$concat_q$遍历了队列，逐步归并到一个最终的结果。这本质上相当于叠加操作\cite{learn-haskell}。
+算法$concat_q$遍历了队列，逐步归并到一个最终的结果。这本质上相当于对$Q$进行叠加操作\cite{learn-haskell}。
 
 \be
-foldQ(f, e, Q) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  e & Q = \phi \\
-  f(front(Q), foldQ(f, e, pop(Q))) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+fold\ f\ z\ \nil & = & z \\
+fold\ f\ z\ Q & = & f\ (top\ Q)\ (fold\ f\ z\ (pop\ Q)) \\
+\end{array}
 \ee
 
-函数$foldQ$接受三个参数，一个二元函数$f$，用以reduce，一个初始值$e$，和一个需要遍历的队列$Q$。
-
-我们给出一些在队列上进行fold的例子。假设队列$Q$从头到尾包含元素$\{ 1, 2, 3, 4, 5 \}$。
+其中$f$是用于归并的二元函数，$z$是零元。下面是一些队列叠加的例子，令$Q = [1, 2, ..., 5]$。
 
 \[
-\begin{array}{l}
-foldQ(+, 0, Q) = 1 + (2 + (3 + (4 + (5 + 0)))) = 15 \\
-foldQ(\times, 1, Q) = 1 \times (2 \times (3 \times (4 \times (5 \times 1)))) = 120 \\
-foldQ(\times, 0, Q) = 1 \times (2 \times (3 \times (4 \times (5 \times 0)))) = 0 \\
+\begin{array}{rcl}
+fold\ (+)\ 0\ Q & = & 1 + (2 + (3 + (4 + (5 + 0)))) = 15 \\
+fold\ (\times)\ 1\ Q\ & = & 1 \times (2 \times (3 \times (4 \times (5 \times 1)))) = 120 \\
+fold\ (\times)\ 0\ Q & = & 1 \times (2 \times (3 \times (4 \times (5 \times 0)))) = 0 \\
 \end{array}
 \]
 
-仿照这些例子，函数$concatAll$可以用$foldQ$来定义。
+我们可以利用叠加来定义$concat_q$（克里化形式）：
 
 \be
-concatAll(Q) = foldQ(concat, \phi, Q)
+concat_q = fold\ concat\ \nil
 \ee
 
-下面的Haskell例子程序使用fold的概念实现了子树的连接。
-
-\begin{lstlisting}[style=Haskell]
-concatAll = foldQ concat Empty
-
-foldQ :: (a -> b -> b) -> b -> Queue a -> b
-foldQ f z q | isEmptyQ q = z
-            | otherwise = (front q) `f` foldQ f z (pop q)
-\end{lstlisting}
-
-但是删除算法的性能并非在所有的情况下都能得到保证。最坏情况发生在用户连续向一个空列表添加$n$个元素后，然后立即执行一次删除时。此时K叉树中，第一个元素存储在根节点，而$n-1$棵子树都只含有一个叶子节点。因此$concatAll$算法退化到线性时间$O(n)$。
-
-元素的插入、添加、删除、以及列表的连接操作如果随机发生，平均下来，这一算法的分摊复杂度是常数时间$O(1)$的。具体证明我们留给读者作为练习。
+删除操作的性能在最坏情况下是线性的。当连续向空序列添加$n$个元素后，立即执行一次删除。此时多叉树中的$n-1$棵子树都是单元素的（只含有一个叶子节点）。$concat_q$需要$O(n)$时间进行归并。如果插入、添加、删除、连接随机发生，则分摊复杂度是常数时间的。
 
 \begin{Exercise}
-\begin{enumerate}
-\item 如何将一个元素添加到二叉随机访问列表的末尾？
-
-\item 证明可连接列表的删除操作的分摊复杂度为常数时间$O(1)$，提示：使用banker方法。
-
-\item 选择一门命令式语言，实现可连接列表。
-\end{enumerate}
+\Question{证明可连接列表的删除操作的分摊复杂度为常数时间的。} %Banker方法
 \end{Exercise}
 
-% =========================================
-%  Finger tree
-% =========================================
-\section{手指树（Finger Tree）}
+\section{手指树}
 \index{序列!手指树}
 我们目前介绍的这些数据结构，尚未达到本章开头给出的全部目标。
 
