@@ -424,6 +424,7 @@ concat_q = fold\ concat\ \nil
 
 二叉随机访问列表可以在头部用常数时间（分摊）插入、删除，以对数时间进行随机访问。但是难以向尾部添加元素、也无法进行快速连接。可连接列表能够用常数时间（分摊）进行连接，在头、尾部用常数时间插入。但不能用索引进行随机访问。这两个例子提示我们：1、需要某种方式快速访问头、尾以进行增删；带有递归的结构（例如树）可将随机访问转换成分而治之的搜索。手指树\cite{finger-tree-1977}利用了这两点来实现序列\cite{finger-tree-2006}。树是否平衡对搜索性能至关重要。手指树利用了2-3树（一种特殊的B-树）。一棵2-3树包含二或三棵子树，如：$(t_1, t_2)$或$(t_1, t_2, t_3)$。
 
+\lstset{frame = single}
 \begin{Haskell}
 data Node a = Br2 a a | Br3 a a a
 \end{Haskell}
@@ -431,9 +432,9 @@ data Node a = Br2 a a | Br3 a a a
 最左侧的非叶子节点叫做$f$手指（或左侧手指），最右侧的非叶子节点叫做$r$手指（或右侧手指）\footnote{分别是英文前（front）、后（rear）的首字母。}。两个手指都是2-3树，并且所有的子节点都是叶子，它们实现为含有2到3个叶子的列表。当然手指树也可以为空或者含有单元素的叶子。归纳起来，我们定义一棵手指树为：
 
 \begin{enumerate}
-\item 或者为空$nil$；
-\item 或者是但元素叶子$(x)$；
-\item 或者包含三部分：一棵子树和左、右手指，每个手指是一个至多3个元素的列表。记为$(f, t, r)$；
+\item 或者为空$\nil$；
+\item 或者是单元素叶子$(x)$；
+\item 或者包含三部分：一棵子树和左、右手指，记为$(f, t, r)$。每个手指是一个至多3个元素的列表；
 \end{enumerate}
 
 \begin{Haskell}
@@ -472,59 +473,30 @@ data Tree a = Empty
 \end{array}
 \]
 
-注意最后一个例子中，中间部分的子树是一个叶子。手指树是递归的。除去$f$、$r$手指的中间部分是一棵更深的手指树，定义为$Tree\ (Node\ a)$。深度增加一级，就多嵌套一级。
-
 \index{手指树!头部插入}
-上面的例子实际描述了向手指树插入元素的过程。我们可以归纳如下：
+注意最后一个例子中，中间部分的子树是一个叶子。手指树是递归的。除去$f$、$r$手指的中间部分是一棵更深的手指树，定义为$Tree\ (Node\ a)$。深度增加一级，就多嵌套一级。上面的例子实际描述了向手指树插入元素的过程。我们可以归纳如下。向一棵手指树$T$中插入$a$时：
 
-当向一棵手指树$T$中插入元素$x$时，
-\begin{itemize}
-\item 如果树为空，则结果为一个叶子，包含一个元素$x$；
-\item 如果树为一个叶子，包含元素$y$，则结果为一棵新手指树。front手指包含了新插入的元素$x$，rear手指包含了此前的元素$y$；中间部分为空的手指树；
-\item 如果front手指中包含的元素个数不超过2-3树的上限3，新元素被插入到front手指的最前面；
-\item 否则，如果front手指中包含的元素个数超过了2-3树的上限。front手指中的最后3个元素被放入一棵新的2-3树，然后这棵树被递归地插入到中间部分。新元素$x$被插入到front手指中剩余元素的前面。
-\end{itemize}
-
-令函数$leaf(x)$创建包含元素$x$的叶子节点，函数$tree(F, T', R)$从三部分构造出一棵手指树：$F$为front手指，是一个包含若干元素的列表。$R$是rear手指；$T'$是中间部分的子树，为一棵更深的手指树。函数$tr3(a, b, c)$从三个元素$a, b, c$创建一棵2-3树；函数$tr2(a, b)$从两个元素$a$和$b$创建一棵2-3树。
+\begin{enumerate}
+\item 如果$T = \nil$，则结果为单元素叶子$(a)$；
+\item 如果$T = (b)$是一个叶子，结果为$([a], \nil, [b])$；
+\item $T = (f, t, r)$，如果$f$中元素个数不超过3，将$x$插入到$f$中，如果$f$中元素个数超过3。将$f$中的后3个元素移入一棵新的2-3树$t'$，递归地将$t'$插入到$t$中。最后将$x$插入到$f$中。
+\end{enumerate}
 
 \be
-insertT(x, T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  leaf(x) & T = \phi \\
-  tree(\{x\}, \phi, \{y\}) & T = leaf(y) \\
-    \begin{array}{l}
-    tree(\{x, x_1\}, insertT( \\
-    \quad tr3(x_2, x_3, x_4), T'), R)
-    \end{array} &
-    \begin{array}{l}
-      T = tree(\{x_1, x_2, x_3, x_4\}, \\
-      \quad T', R) \end{array} \\
-  tree(\{x\} \cup F, T', R) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+insert\ a\ \nil & = & (x) \\
+insert\ a\ (b) & = & ([a], \nil, [b]) \\
+insert\ a\ ([b, c, d, e], t, r) & = & ([a, b], insert\ (c, d, e)\ t, r) \\
+insert\ a\ (f, t, r) & = & (a \cons f, t, r) \\
+\end{array}
 \ee
 
-这一算法的性能主要由递归部分决定。其他情况下都是常数时间$O(1)$。递归的深度和树的高度成比例，因此算法的性能为$O(h)$，其中$h$为树的高度。由于使用2-3树并维持平衡，因此$h= O(\lg n)$，其中$n$是手指树中存储元素的个数。
+出了递归插入外，其它情况插入都需要常数时间。递归深度取决于树的高度$h$，由于使用2-3树并维持平衡，因此$h= O(\lg n)$，其中$n$是手指树中存储元素的个数。递归可以分摊到其它情况中，插入的分摊复杂度为常数时间\cite{okasaki-book}\cite{finger-tree-2006}。
 
-更深入的分析可以给出$insertT$的分摊复杂度为$O(1)$，递归情况消耗的时间可以分摊到其他简单情况中。读者可以参考\cite{okasaki-book}和\cite{finger-tree-2006}来了解详细的证明。
+我们也可以消除递归，用迭代的方式实现插入。
 
-下面的Haskell例子程序实现了插入算法。
-
-\begin{lstlisting}[style=Haskell]
-cons :: a -> Tree a -> Tree a
-cons a Empty = Lf a
-cons a (Lf b) = Tr [a] Empty [b]
-cons a (Tr [b, c, d, e] m r) = Tr [a, b] (cons (Br3 c d e) m) r
-cons a (Tr f m r) = Tr (a:f) m r
-\end{lstlisting}
-
-这段程序使用了LISP的命名传统来描述在如何列表的前面插入元素。
-
-插入算法也可以用命令式的方式实现。设函数\textproc{Tree}()可以构造一棵空树，树中的所有变量包括front手指、rear手指、中间部分子树、和父节点指针都为空。函数\textproc{Node}()用以创建一个空节点。
-
-\begin{algorithmic}
-\Function{Prepend-Node}{$n, T$}
+\begin{algorithmic}[1]
+\Function{Insert}{$n, T$}
   \State $r \gets $ \textproc{Tree}()
   \State $p \gets r$
   \State \Call{Connect-Mid}{$p, T$}
