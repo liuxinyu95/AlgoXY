@@ -491,101 +491,35 @@ insert\ a\ (f, t, r) & = & (a \cons f, t, r) \\
 \end{array}
 \ee
 
-出了递归插入外，其它情况插入都需要常数时间。递归深度取决于树的高度$h$，由于使用2-3树并维持平衡，因此$h= O(\lg n)$，其中$n$是手指树中存储元素的个数。递归可以分摊到其它情况中，插入的分摊复杂度为常数时间\cite{okasaki-book}\cite{finger-tree-2006}。
-
-我们也可以消除递归，用迭代的方式实现插入。
+出了递归插入外，其它情况插入都需要常数时间。递归深度取决于树的高度$h$，由于使用2-3树并维持平衡，因此$h= O(\lg n)$，其中$n$是手指树中存储元素的个数。递归可以分摊到其它情况中，插入的分摊复杂度为常数时间\cite{okasaki-book}\cite{finger-tree-2006}。我们也可以消除递归，用迭代的方式实现插入。我们增加一个从子树指向父节点的引用，并通过\textproc{Parent}($T$)获取。其中$T = (f, t, r)$，令$\textproc{Mid}(T) = t$。
 
 \begin{algorithmic}[1]
-\Function{Insert}{$n, T$}
-  \State $r \gets $ \textproc{Tree}()
-  \State $p \gets r$
-  \State \Call{Connect-Mid}{$p, T$}
-  \While{\textproc{Full?}(\Call{Front}{$T$})}
-    \State $F \gets $ \Call{Front}{$T$}  \Comment{$F = \{n_1, n_2, n_3, ...\}$}
-    \State \Call{Front}{$T$} $\gets$ $\{n, F[1]\}$  \Comment{$F[1] = n_1$}
-    \State $n \gets$ \textproc{Node}()
-    \State \Call{Children}{$n$} $\gets F[2..]$  \Comment{$F[2..] = \{ n_2, n_3, ... \}$}
+\Function{Insert}{$x, T$}
+  \State $n = (x)$
+  \State $\perp \gets p \gets ([\ ], T, [\ ])$
+  \While{$|\textproc{Front}(T)| \geq 3$}
+    \State $f \gets \textproc{Front}(T)$
+    \State $n \gets (f[2], f[3], ...)$
+    \State $\textproc{Front}(T) \gets [n, f[1]]$
     \State $p \gets T$
     \State $T \gets$ \Call{Mid}{$T$}
   \EndWhile
   \If{$T =$ NIL}
-    \State $T \gets$ \textproc{Tree}()
-    \State \Call{Front}{$T$}$\gets \{ n \}$
-  \ElsIf{ $|$ \Call{Front}{$T$} $|$ = 1 $\land$ \Call{Rear}{$T$} = $\phi$}
+    \State $T \gets ([n], \text{NIL}, [\ ])$
+  \ElsIf{ $|\textproc{Front}(T)| = 1$ and $\textproc{Rear}(T) = [\ ]$}
     \State \Call{Rear}{$T$} $\gets$ \Call{Front}{$T$}
-    \State \Call{Front}{$T$} $\gets \{ n \}$
+    \State \Call{Front}{$T$} $\gets [n]$
   \Else
-    \State \Call{Front}{$T$} $\gets \{ n \} \cup $ \Call{Front}{$T$}
+    \State \textproc{Insert}(\Call{Front}{$T$}, $n$)
   \EndIf
-  \State \Call{Connect-Mid}{$p, T$} $\gets T$
-  \State \Return \Call{Flat}{$r$}
-\EndFunction
-\end{algorithmic}
-
-其中符号$L[i..]$表示列表$L$的子列表，不包含最前面的$i-1$个元素，若$L = \{a_1, a_2, ..., a_n\}$, 则$L[i..] = \{a_i, a_{i+1}, ..., a_n\}$。
-
-函数\textproc{Front}、\textproc{Rear}、\textproc{Mid}、和\textproc{Parent}分别用以获得front手指、rear手指、中间部分子树、和父节点。函数\textproc{Children}用以获取一个节点的全部子节点。
-
-函数\textproc{Connect-Mid}($T_1, T_2$)将树$T_2$作为中间部分子树连接到$T_1$上。如果$T_2$不为空，还会将$T_1$设置为$T_2$的父节点。
-
-在这一算法中，如果front手指已满，达到3个元素，我们就沿着中间部分子树，进行一次性的自顶向下的遍历。我们将front手指中除第一个元素外的剩余部分抽出，放入一个新节点（$Node$深度增加1），然后继续将此新节点插入到中间部分的子树中。front手指剩下原来的第一个元素，待插入元素被放到最前面成为新的第一个元素。
-
-遍历结束后，我们要么到达了一个空树，要么到达了一棵子树，这棵子树的front手指仍然可以容纳更多元素。对于第一种情况，我们创建一个叶子节点，对于后一种情况，我们进行一次简单的列表插入将节点插入到front手指的最前面。
-
-在遍历过程中，我们使用$p$来记录当前树的父节点，这样新创建的树可以被连接到$p$的中间部分作为子树。
-
-最后，我们返回树的根$r$。算法中最后需要解释的是\textproc{Flat}函数。为了简化逻辑，我们创建了一棵空的“ground”树，并让它成为根的父节点。在返回根节点前，我们需要再消除掉这棵多余的“ground”树。这一过程的实现如下：
-
-\begin{algorithmic}
-\Function{Flat}{$T$}
-  \While{$T \neq$ NIL $\land T$ is empty}
-    \State $T \gets$ \Call{Mid}{$T$}
-  \EndWhile
-  \If{$T \neq$ NIL}
-    \State \Call{Parent}{$T$} $\gets $ NIL
-  \EndIf
+  \State \Call{Mid}{$p$} $\gets T$, \Call{Parent}{$T$} $\gets p$
+  \State $T \gets$ \Call{Mid}{$\perp$}, \Call{Parent}{$T$} $\gets$ NIL
   \State \Return $T$
 \EndFunction
 \end{algorithmic}
 
-这个while循环用以检查树$T$是否是ground，即树不为NIL（$=\phi$），但是front手指和rear手指都是空。
+我们将待插入元素$x$装入一个单元素叶子$(x)$。如果$f$手指超出3个元素，就沿着中间子树，进行一次自顶向下的遍历。我们将$f$中除第一个元素外的剩余部分抽出，放入一个新节点$n$（深度增加1），然后继续将$n$插入到中间子树中。将待插入内容和$f$中剩下的一个元素组成新的$f$手指。遍历结束后，我们要么到达了一个空树，要么到达了一棵子树，这棵子树的$f$手指仍可容纳更多元素。对于第一种情况，我们创建一个叶子节点，对于后一种情况，我们将$n$插入到$f$最前面。最后，我们返回树的根$T$。为了简化处理，我们创建了一个特殊的$\perp$节点，它是根节点的父节点。
 
-下面的Python例子程序实现了手指树的插入算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def insert(x, t):
-    return prepend_node(wrap(x), t)
-
-def prepend_node(n, t):
-    root = prev = Tree()
-    prev.set_mid(t)
-    while frontFull(t):
-        f = t.front
-        t.front = [n] + f[:1]
-        n = wraps(f[1:])
-        prev = t
-        t = t.mid
-    if t is None:
-        t = leaf(n)
-    elif len(t.front)==1 and t.rear == []:
-        t = Tree([n], None, t.front)
-    else:
-        t = Tree([n]+t.front, t.mid, t.rear)
-    prev.set_mid(t)
-    return flat(root)
-
-def flat(t):
-    while t is not None and t.empty():
-        t = t.mid
-    if t is not None:
-        t.parent = None
-    return t
-\end{lstlisting}
-
-函数\texttt{set\_mid}、\texttt{frontFull}、\texttt{wrap}、\texttt{wraps}、\texttt{empty}、和树的创建的实现都很简单直观，我们这里不再赘述，读者可以把它们当作练习。
-
-\subsection{从头部删除元素}
 \index{手指树!头部删除}
 
 通过把$insertT$中的各个操作进行逆操作，就可以实现从序列头部删除元素。
@@ -2034,6 +1968,38 @@ tail (CList _ q) = concatAll q
 concatAll EmptyQ  = Empty
 concatAll q = concat (top q) (concatAll (pop q))
 \end{Haskell}
+
+手指树的插入
+\lstset{language=Python}
+\begin{lstlisting}
+def insert(x, t):
+    return prepend_node(wrap(x), t)
+
+def prepend_node(n, t):
+    root = prev = Tree()
+    prev.set_mid(t)
+    while frontFull(t):
+        f = t.front
+        t.front = [n] + f[:1]
+        n = wraps(f[1:])
+        prev = t
+        t = t.mid
+    if t is None:
+        t = leaf(n)
+    elif len(t.front)==1 and t.rear == []:
+        t = Tree([n], None, t.front)
+    else:
+        t = Tree([n]+t.front, t.mid, t.rear)
+    prev.set_mid(t)
+    return flat(root)
+
+def flat(t):
+    while t is not None and t.empty():
+        t = t.mid
+    if t is not None:
+        t.parent = None
+    return t
+\end{lstlisting}
 
 \ifx\wholebook\relax \else
 
