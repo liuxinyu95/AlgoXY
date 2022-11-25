@@ -421,118 +421,61 @@ concat_q = fold\ concat\ \nil
 
 \section{手指树}
 \index{序列!手指树}
-我们目前介绍的这些数据结构，尚未达到本章开头给出的全部目标。
 
-二叉随机访问列表可以在头部进行快速地插入、删除，随机访问的速度也比较快。但是两个列表连接的性能不够理想，同时也没有好方法在尾部添加元素。
+二叉随机访问列表可以在头部用常数时间（分摊）插入、删除，以对数时间进行随机访问。但是难以向尾部添加元素、也无法进行快速连接。可连接列表能够用常数时间（分摊）进行连接，在头、尾部用常数时间插入。但不能用索引进行随机访问。这两个例子提示我们：1、需要某种方式快速访问头、尾以进行增删；带有递归的结构（例如树）可将随机访问转换成分而治之的搜索。手指树\cite{finger-tree-1977}利用了这两点来实现序列\cite{finger-tree-2006}。树是否平衡对搜索性能至关重要。手指树利用了2-3树（一种特殊的B-树）。一棵2-3树包含二或三棵子树，如：$(t_1, t_2)$或$(t_1, t_2, t_3)$。
 
-可连接列表可以快速地将多个列表连接起来，在头部和尾部插入的性能也很好。但是却不支持通过索引随机访问元素。
-
-这两个例子提供了一些思路给我们：
-
-\begin{itemize}
-\item 为了能够在头部和尾部进行快速操作，必须能够通过某种方式快速地访问头部和尾部；
-\item 类似于树的数据结构可以帮助将随机访问转换成分而治之的搜索，如果树的平衡性很好，则搜索性能可以保证为对数时间。
-\end{itemize}
-
-\subsection{定义}
-\index{手指树!定义}
-手指树（finger tree）\cite{finger-tree-1977}于1977年被提出，可以用于实现高效的序列。并且适于纯函数式的实现\cite{finger-tree-2006}。
-
-我们知道，树的平衡与否，对于搜索的性能至关重要。因此可以考虑使用平衡树作为底层数据结构。手指树的底层数据结构为2-3树，它是一种特殊的B-树（读者可以参考本书前面B树的章节）。
-
-一棵2-3树包含两个或三个子节点。下面的Haskell例子程序定义了2-3树。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
+\begin{Haskell}
 data Node a = Br2 a a | Br3 a a a
-\end{lstlisting}
+\end{Haskell}
 
-在命令式编程环境中，节点的定义可以包含一个子节点的列表，这一列表至多包含3个子节点。下面的ANSI C例子程序定义了这样的节点。
+最左侧的非叶子节点叫做$f$手指（或左侧手指），最右侧的非叶子节点叫做$r$手指（或右侧手指）\footnote{分别是英文前（front）、后（rear）的首字母。}。两个手指都是2-3树，并且所有的子节点都是叶子，它们实现为含有2到3个叶子的列表。当然手指树也可以为空或者含有单元素的叶子。归纳起来，我们定义一棵手指树为：
 
-\lstset{language=C}
-\begin{lstlisting}
-union Node {
-    Key* keys;
-    union Node* children;
-};
-\end{lstlisting}
+\begin{enumerate}
+\item 或者为空$nil$；
+\item 或者是但元素叶子$(x)$；
+\item 或者包含三部分：一棵子树和左、右手指，每个手指是一个至多3个元素的列表。记为$(f, t, r)$；
+\end{enumerate}
 
-这一定义中，一个节点可以包含$2 \sim 3$个key或者$2 \sim 3$棵子树。这里key是叶子节点中元素的类型。
-
-记最左侧的非叶子节点为front手指（也称左侧手指），最右侧的非叶子节点为rear手指（也称右侧手指）。两个手指都是2-3树，并且所有的子节点都是叶子，我们可以直接用含有2到3个叶子的列表表示它们。当然手指树也可以为空，或者是仅含有一个元素的叶子。
-
-归纳起来，一棵手指树可以被描述如下：
-
-\begin{itemize}
-\item 一棵手指树或者为空；
-\item 或者是仅包含一个元素的叶子；
-\item 或者包含三部分：一个左侧手指，是一个至多包含3个元素的列表；一棵子手指树；和一个右侧手指，它也是一个至多包含3个元素的列表。
-\end{itemize}
-
-这一定义是递归的，可以容易地用纯函数式的方式实现。下面的Haskell例子程序定义了手指树。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
+\begin{Haskell}
 data Tree a = Empty
             | Lf a
             | Tr [a] (Tree (Node a)) [a]
-\end{lstlisting}
-
-在命令式环境中，我们可以用类似的方法定义手指树。而且，我们还可以增加一个指向parent的变量，方便从任何节点回溯到根节点。下面的ANSI C代码定义了手指树。
-
-\lstset{language=C}
-\begin{lstlisting}
-struct Tree {
-    union Node* front;
-    union Node* rear;
-    Tree* mid;
-    Tree* parent;
-};
-\end{lstlisting}
-
-我们可以使用空指针NIL代表空树；如果只有一个元素，则将这一元素存储在front手指中。而它的rear手指和中间部分都为空。
-
-图\ref{fig:ftr-example-1}和\ref{fig:ftr-example-2}给出了一些手指树的例子
+\end{Haskell}
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{空树}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/ftr-empty}\hspace{0.2\textwidth}}
-  \subcaptionbox{只含有一个叶子}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/ftr-leaf}\hspace{0.2\textwidth}} \\
-  \subcaptionbox{front和rear手指都只含有一个元素，中间部分为空。}{\includegraphics[scale=0.5]{img/ftr-ab}}
-  \caption{手指树的例子，1} \label{fig:ftr-example-1}
+  \subcaptionbox{$\nil$}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/ftr-empty}\hspace{0.2\textwidth}}
+  \subcaptionbox{$(x)$}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/ftr-leaf}\hspace{0.2\textwidth}} \\
+  \subcaptionbox{$([b], \nil, [a])$}{\includegraphics[scale=0.5]{img/ftr-ab}}
+  \caption{手指树，例1}
+  \label{fig:ftr-example-1}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{向front手指插入3个元素后，它超过了2-3树的限制，不再平衡。}{\includegraphics[scale=0.5]{img/ftr-abcde}}
+  \subcaptionbox{向$f$手指插入3个元素后，超过了2-3树的限制，不再平衡。}{\includegraphics[scale=0.5]{img/ftr-abcde}}
   \hspace{0.2\textwidth}
-  \subcaptionbox{恢复平衡。front手指含有2个元素；中间部分为一个叶子，包含一棵有3个分支的2-3树。}{\includegraphics[scale=0.5]{img/ftr-abcdef}}
-  \caption{手指树的例子，2} \label{fig:ftr-example-2}
+  \subcaptionbox{恢复平衡。$f$手指含有2个元素；中间部分为叶子，包含一棵2-3树。}{\includegraphics[scale=0.5]{img/ftr-abcdef}}
+  \caption{手指树，例2}
+\label{fig:ftr-example-2}
 \end{figure}
 
-第一个例子为一棵空树；第二个例子是插入一个元素后的结果，变成了只含有一个叶子的节点；第三个例子是含有两个元素的手指树，一个元素在front手指中，另外一个在rear手指中。
+如图\ref{fig:ftr-example-1}和\ref{fig:ftr-example-2}所示。例1中(a)为$\nil$，(b)是插入一个元素后的结果。(c)含有两个元素，分别在$f$、$r$手指中。如果继续插入元素，$f$手指会超过2-3树的限制，如例2(a)所示。(b)恢复平衡后，$f$手指中有2个元素，中间部分是一个含有一棵2-3树的叶子。这些例子可以表示为：
 
-如果我们继续向树中插入元素，这些新元素将依次放入front手指中，直到超过2-3树的限制。第四个例子给出了这种情况，front手指中保存了4个元素，树不再平衡。
+\[
+\begin{array}{ll}
+\nil & \texttt{Empty}\\
+(a) & \texttt{Lf a}\\
+([b], \nil, [a]) & \texttt{Tr [b] Empty [a]}\\
+([e, d, c, b], \nil, [a]) & \texttt{Tr [e, d, c, b] Empty [a]}\\
+([f, e], (d, c, b), [a]) & \texttt{Tr [f, e] Lf (Br3 d c b) [a]}\\
+\end{array}
+\]
 
-最后的例子中，树恢复了平衡。front手指中存有2个元素。中间部分不再为空，而是一个含有2-3树的“叶子”（我们稍后解释为什么它是叶子）。叶子的内容为一棵有3个分支的树，每个分支都包含了一个元素。
+注意最后一个例子中，中间部分的子树是一个叶子。手指树是递归的。除去$f$、$r$手指的中间部分是一棵更深的手指树，定义为$Tree\ (Node\ a)$。深度增加一级，就多嵌套一级。
 
-下面的Haskell表达式对应这5个例子。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-Empty
-Lf a
-[b] Empty [a]
-[e, d, c, b] Empty [a]
-[f, e] Lf (Br3 d c b) [a]
-\end{lstlisting}
-
-在最后一个例子中，为什么中间部分的子树是一个叶子呢？手指树的定义是递归的。除去front和rear手指的中间部分是一棵更深的手指树，定义为$Tree(Node(a))$。每当深度增加时，$Node$就会被多嵌入一级。如果第一级的元素类型为$a$，则第二级的元素类型为$Node(a)$，第三级为$Node(Node(a))$……第$n$级为$Node(Node(Node(...(a))...)) = Node^n(a)$，其中$^n$表示$Node$函数被施行（apply）了$n$次。
-
-\subsection{向序列的头部插入元素}
 \index{手指树!头部插入}
-
-我们给出的例子实际描述了向手指树逐一插入元素的典型过程。归纳这些例子可以给出在头部插入的算法描述。
+上面的例子实际描述了向手指树插入元素的过程。我们可以归纳如下：
 
 当向一棵手指树$T$中插入元素$x$时，
 \begin{itemize}
