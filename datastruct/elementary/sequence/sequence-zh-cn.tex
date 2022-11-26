@@ -535,76 +535,46 @@ insert\ a\ (f, t, r) & = & (a \cons f, t, r) \\
 \subsection{删除}
 \index{手指树!头部删除}
 
-通过把$insertT$中的各个操作进行逆操作，就可以实现从序列头部删除元素。
-
-记$F = \{f_1, f_2, ...\}$为front手指列表，$M$为中间部分子树，$R = \{r_1, r_2, ...\}$为rear手指列表，$R' = \{r_2, r_3, ... \}$为$R$中除去第一个元素外的剩余部分。
+从头部删除可以看作对\textit{insert}进行逆操作。
 
 \be
-extractT(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (x, \phi) & T = leaf(x) \\
-  (x, leaf(y)) & T = tree(\{x\}, \phi, \{y\}) \\
-  (x, tree(\{r_1\}, \phi, R')) & T = tree(\{x\}, \phi, R) \\
-  (x, tree(toList(F'), M', R)) &
-    \begin{array}{l}
-      T = tree(\{x\}, M, R), \\
-      (F', M') = extractT(M) \end{array} \\
-  (f_1, tree(\{f_2, f_3, ...\}, M, R)) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+extract\ (a) & = & (a, \nil) \\
+extract\ ([a], \nil, [b]) & = & (a, (b)) \\
+extract\ ([a], \nil, b \cons bs) & = & (a, ([b], \nil, bs)) \\
+extract\ ([a], t, r) & = & (a, (toList\ f, t', r)), \text{其中}: (f, t') = extract\ t \\
+extract\ (a \cons as, t, r) & = & (a, (as, t, r)) \\
+\end{array}
 \ee
 
-其中函数$toList(T)$将一棵2-3树转换为一个普通列表。如下：
+其中$toList$将一棵2-3树转换为列表：
 
 \be
-toList(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{x, y\} & T = tr2(x, y) \\
-  \{x, y, z\} & T = tr3(x, y, z)
-  \end{array}
-\right .
+\begin{array}{rcl}
+toList\ (a, b) & = & [a, b] \\
+toList\ (a, b, c) & = & [a, b, c] \\
+\end{array}
 \ee
 
-我们略过了错误处理（例如从一个空树中删除元素的错误）。如果手指树是只包含一个元素的叶子，则删除的结果为一棵空树；如果手指树包含两个元素，一个元素在front手指，另一个元素在rear手指，我们删除front手指中的元素，结果变成了只含有一个元素的叶子；如果front手指中只含有一个元素，中间部分为空，而rear手指不空，我们删除front手指中的唯一元素，然后从rear手指中“借”一个元素放入front手指；如果front手指只有一个元素，而中间部分的子树不为空，我们就递归地从子树中删除一个节点，然后将这一节点转换成普通列表来代替front手指。而原来front手指中的唯一元素被删除并返回；最后一种情况，如果front手指包含一个以上的元素，我们只需要将第一个元素删除，而维持其它部分不变。
+我们略过了错误情况（如从空树中删除）。如果手指树是单元素叶子，结果为空树；如果手指树只包含两个元素，我们删除$f$中的元素，结果为单元素的叶子；如果$f$中只含有一个元素，中间部分为空，而$r$不空，我们删除$f$中的唯一元素，然后从$r$中“借”一个元素放入$f$；如果$f$只有一个元素，而中间子树不空，我们就递归地从子树中删除一个节点，然后将这一节点中的内容转换成列表来代替$f$。而原来$f$中的唯一元素被删除；如果$f$包含一个以上的元素，我们将第一个元素删除。图\ref{fig:ftr-uncons-example}展示了从序列头部删除两个元素的例子。
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{用手指树表示的含有10个元素的序列。}{\includegraphics[scale=0.4]{img/ftr-10}} \\
-  \subcaptionbox{删除第一个元素后，front手指还剩一个元素。}{\includegraphics[scale=0.4]{img/ftr-9}} \\
-  \subcaptionbox{再次从头部删除一个元素，我们从中间部分的子树“借”一个节点，将这个节点从一棵2-3树转换成一个列表，作为新的front手指。中间部分的子树变成了含有一棵2-3树节点的叶子。}{\hspace{0.2\textwidth}\includegraphics[scale=0.4]{img/ftr-8}\hspace{0.2\textwidth}}
-  \caption{从一个序列的头部依次删除两个元素的例子} \label{fig:ftr-uncons-example}
+  \subcaptionbox{含有10个元素的树。}{\includegraphics[scale=0.4]{img/ftr-10}} \\
+  \subcaptionbox{删除一个元素后，$f$还剩一个元素。}{\includegraphics[scale=0.4]{img/ftr-9}} \\
+  \subcaptionbox{再次删除一个元素，从中间子树“借”一个节点，将它从2-3树转换成列表，作为新的$f$。}{\hspace{0.2\textwidth}\includegraphics[scale=0.4]{img/ftr-8}\hspace{0.2\textwidth}}
+  \caption{删除}
+  \label{fig:ftr-uncons-example}
 \end{figure}
 
-图\ref{fig:ftr-uncons-example}展示了从序列头部删除两个元素的例子。手指树中存有10个元素。当第一个元素被删除后，front手指中还剩一个元素。接着再次删除一个元素后，front手指变为空。我们从中间的子树中“借”一个节点。把它从一棵2-3树转换成含有3个元素的列表。这一列表成为新的front手指。中间部分的子树从原来的三部分变成一个只含有一个2-3树节点的叶子。这一节点包含三个元素。
+使用$extract$，我们可以定义出$head$和$tail$：
 
-下面的Haskell例子程序实现了\texttt{uncons}。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-uncons :: Tree a -> (a, Tree a)
-uncons (Lf a) = (a, Empty)
-uncons (Tr [a] Empty [b]) = (a, Lf b)
-uncons (Tr [a] Empty (r:rs)) = (a, Tr [r] Empty rs)
-uncons (Tr [a] m r) = (a, Tr (nodeToList f) m' r) where (f, m') = uncons m
-uncons (Tr f m r) = (head f, Tr (tail f) m r)
-\end{lstlisting}
-
-其中函数\texttt{nodeToList}定义如下：
-
-\begin{lstlisting}[style=Haskell]
-nodeToList :: Node a -> [a]
-nodeToList (Br2 a b) = [a, b]
-nodeToList (Br3 a b c) = [a, b, c]
-\end{lstlisting}
-
-类似地，我们可以使用\texttt{uncons}定义函数\texttt{head}和\texttt{tail}。
-
-\begin{lstlisting}[style=Haskell]
-head = fst . uncons
-tail = snd . uncons
-\end{lstlisting}
+\be
+\begin{cases}
+head & = fst \circ extract \\
+tail & = snd \circ extract \\
+\end{cases}
+\ee
 
 \subsection{删除时处理不规则的手指树}
 \index{手指树!不规则的手指树}
