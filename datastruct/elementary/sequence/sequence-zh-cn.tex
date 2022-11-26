@@ -576,30 +576,35 @@ tail & = snd \circ extract \\
 \end{cases}
 \ee
 
-\subsection{删除时处理不规则的手指树}
-\index{手指树!不规则的手指树}
-删除的算法可以归纳为“删除——借”策略。如果删除后front手指变空，就从中间部分的子树中“借”节点。但是树的形式有可能是不规则的，例如front手指和中间子树都为空。这种情况通常是由于分拆操作造成的，我们稍后会详细介绍。
+\begin{Exercise}
+\Question{消除递归，用循环实现删除。}
+\end{Exercise}
 
-\begin{figure}[htbp]
-  \centering
+\begin{Answer}
+\Question{消除递归，用循环实现删除。
+
+如果删除后front手指变空，就从中间部分的子树中“借”节点。但是树的形式有可能是不规则的，例如front手指和中间子树都为空。这种情况通常是由于分拆操作造成的。
+
+\begin{center}
   \includegraphics[scale=0.4]{img/ftr-illed-1}
-  \caption{不规则树的例子，第$i$层子树的front手指不为空} \label{fig:ftr-illed-form}
-\end{figure}
+  \captionof{figure}{不规则树，第$i$层子树的$f$不空}
+  \label{fig:ftr-illed-form}
+\end{center}
 
-我们要设计一个命令式算法，可以从不规则的手指树中删除第一个元素。思路是首先进行一轮自顶向下的遍历，找到一棵子树，或者它的front手指不为空，或者它的front手指和中间部分的子树都为空，如图\ref{fig:ftr-illed-form}。对于前者，我们可以从front手指中提取出第一个元素，它为一个节点。对于后者，由于只有rear手指不为空，我们可以把它和空的front手指交换，将其转换成前一种情况。
+我们要从不规则的手指树中删除第一个元素。首先进行一轮自顶向下的遍历，找到一棵子树，或者它的$f$不为空，或者$f$和中间子树都为空，如图\ref{fig:ftr-illed-form}。对于前者，我们可以从$f$中提取出第一个元素（是一个节点）。对于后者，由于只有$r$不为空，我们交换$f$、$r$，转换成前一种情况。此后，我们检查从$f$中取出的节点是否为叶子。如果不是，我们需要继续提取。我们沿着父节点一直向上回溯，直到我们提取到一个叶子节点。此时我们将到达树的根节点。图\ref{fig:ftr-illed-extract}描述了这一过程。
 
-此后，我们需要检查从front手指中取出的节点是否为叶子节点（如何做到？我们将这一问题留给读者作为练习），如果不是，我们需要继续从这一节点的子节点中提取出第一个子节点，而把剩余的节点列表作为当前树的父节点的front手指。我们需要沿着父节点一直向上回溯，直到我们提取到一个叶子节点。此时我们将到达树的根节点。图\ref{fig:ftr-illed-extract}描述了这一过程。
+\begin{center}
+  \includegraphics[scale=0.4]{img/ftr-illed-2} \\
+  提取第一个元素$n[i][1]$，然后将它的子节点放到上一级树的$f$手指中。\\
+  \includegraphics[scale=0.4]{img/ftr-illed-i} \\
+  重复$i$次，最终提取到$x[1]$。\\
+  \captionof{figure}{自底向上遍历，直到提取出一个叶子节点}
+  \label{fig:ftr-illed-extract}
+\end{center}
 
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{提取第一个元素n{[i]}{[1]}，然后将它的子节点放到上一级树的front手指中。}{\includegraphics[scale=0.4]{img/ftr-illed-2}}
-  \subcaptionbox{重复这一过程$i$次，最终提取到x{[1]}。}{\hspace{0.1\textwidth}\includegraphics[scale=0.4]{img/ftr-illed-i}}
-  \caption{自底向上遍历，直到提取出一个叶子节点} \label{fig:ftr-illed-extract}
-\end{figure}
+根据这一思路，下面的算法实现了列表头部的删除操作（假设树不为空）。
 
-根据这一思路，下面的算法实现了列表头部的删除操作。这里假设传入的树不为空。
-
-\begin{algorithmic}
+\begin{algorithmic}[1]
 \Function{Extract-Head}{$T$}
   \State $r \gets$ \textproc{Tree}()
   \State \Call{Connect-Mid}{$r, T$}
@@ -628,36 +633,7 @@ tail & = snd \circ extract \\
 
 这里函数\textproc{Elem}($n$)返回叶子节点$n$中保存的唯一元素。和命令式插入算法类似，这里使用了一棵“ground”树作为根节点的父节点。这样可以简化边界处理的逻辑。因此最后在返回前要做额外的处理，去除掉多余的“grand”树。
 
-下面的Python例子程序实现了这一算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def extract_head(t):
-    root = Tree()
-    root.set_mid(t)
-    while t.front == [] and t.mid is not None:
-        t = t.mid
-    if t.front == [] and t.rear != []:
-        (t.front, t.rear) = (t.rear, t.front)
-    n = wraps(t.front)
-    while True: # repeat-until循环
-        ns = n.children
-        n = ns[0]
-        t.front = ns[1:]
-        t = t.parent
-        if t.mid.empty():
-            t.mid.parent = None
-            t.mid = None
-        if n.leaf:
-            break
-    return (elem(n), flat(root))
-\end{lstlisting}
-
-如果树的front手指和rear手指都为空，则成员函数\texttt{Tree.empty()}返回真。我们增加了一个标记\texttt{Node.leaf}来记录一个节点是叶子节点，还是复合节点。本节的练习要求读者思考其他的方法。
-
-由于允许不规则的树存在，从手指树中获取第一个和最后一个元素的算法需要做相应的调整，对于不规则的树，手指可以为空，我们不再仅仅返回手指的第一个或者最后一个子节点。
-
-解决方法和\textproc{Extract-Head}类似，如果手指为空，而中间部分的子树不为空，我们就沿着中间部分向下遍历，直到发现手指不为空，或者所有的节点都存储在另一侧的手指中。例如下面的算法，即使是不规则树，也能返回第一个叶子节点。
+如果树的front手指和rear手指都为空，则成员函数\texttt{Tree.empty()}返回真。我们增加了一个标记\texttt{Node.leaf}来记录一个节点是叶子节点，还是复合节点。由于允许不规则的树存在，从手指树中获取第一个和最后一个元素的算法需要做相应的调整，对于不规则的树，手指可以为空，我们不再仅仅返回手指的第一个或者最后一个子节点。解决方法和\textproc{Extract-Head}类似，如果手指为空，而中间部分的子树不为空，我们就沿着中间部分向下遍历，直到发现手指不为空，或者所有的节点都存储在另一侧的手指中。例如下面的算法，即使是不规则树，也能返回第一个叶子节点。
 
 \begin{algorithmic}
 \Function{First-Lf}{$T$}
@@ -684,28 +660,11 @@ def extract_head(t):
 \EndFunction
 \end{algorithmic}
 
-下面的Python例子程序实现了这一算法。
+获取最后一个元素与此类似.
+}
+\end{Answer}
 
-\lstset{language=Python}
-\begin{lstlisting}
-def first(t):
-    return elem(first_leaf(t))
-
-def first_leaf(t):
-    while t.front == [] and t.mid is not None:
-        t = t.mid
-    if t.front == [] and t.rear != []:
-        n = t.rear[0]
-    else:
-        n = t.front[0]
-    while not n.leaf:
-        n = n.children[0]
-    return n
-\end{lstlisting}
-
-获取最后一个元素与此类似，我们将其作为练习留给读者。
-
-\subsection{在序列的尾部添加元素}
+\subsection{添加}
 \index{手指树!尾部添加}
 
 由于手指树是对称的，我们可以参考$insertT$实现尾部添加算法。
@@ -1947,7 +1906,7 @@ x ++ Empty = x
 Empty ++ y = y
 (CList x q) ++ y = CList x (push q y)
 
-fold f z q | isEmptyQ q = z
+fold f z q | isEmpty q = z
            | otherwise = (top q) `f` fold f z (pop q)
 
 concat = fold (++) Empty
