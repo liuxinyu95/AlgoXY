@@ -358,9 +358,9 @@ O(T/n) = O(\frac{2^{m+1}}{2^m}) = O(1)
 
 \be
 \begin{array}{rcl}
-concat\ s\ \nil & = & s \\
-concat\ \nil\ s & = & s \\
-concat\ (x, Q)\ s & = & (x, push\ s\ Q) \\
+s \doubleplus \nil & = & s \\
+\nil \doubleplus s & = & s \\
+(x, Q) \doubleplus s & = & (x,\ push\ s\ Q) \\
 \end{array}
 \ee
 
@@ -368,8 +368,8 @@ concat\ (x, Q)\ s & = & (x, push\ s\ Q) \\
 
 \be
 \begin{cases}
-insert\ x\ s & = concat\ (x, \nil)\ s \\
-append\ x\ s & = concat\ s\ (x, \nil) \\
+insert\ x\ s & = (x, \nil) \doubleplus s \\
+append\ x\ s & = s \doubleplus (x, \nil) \\
 \end{cases}
 \ee
 
@@ -377,18 +377,18 @@ append\ x\ s & = concat\ s\ (x, \nil) \\
 
 \be
 \begin{array}{rcl}
-concat_q\ \nil & = & \nil \\
-concat_q\ Q & = & concat\ (top\ Q)\ (concat_q\ (pop\ Q)) \\
+concat\ \nil & = & \nil \\
+concat\ Q & = & (top\ Q) \doubleplus concat\ (pop\ Q) \\
 \end{array}
 \ee
 
-全部子树存储在实时队列中。我们将第一棵子树$c_1$出队，然后递归地将剩余的子树连接在一起成为$s$，最后把$c_1$、$s$连接起来。我们使用$concat_q$从头部删除元素。
+全部子树存储在实时队列中。我们将第一棵子树$c_1$出队，然后递归地将剩余的子树连接在一起成为$s$，最后把$c_1$、$s$连接起来。我们使用$concat$从头部删除元素。
 
 \be
-tail\ (x, Q) = concat_q\ Q
+tail\ (x, Q) = concat\ Q
 \ee
 
-算法$concat_q$遍历了队列，逐步归并到一个最终的结果。这本质上相当于对$Q$进行叠加操作\cite{learn-haskell}。
+算法$concat$遍历了队列，逐步归并到一个最终的结果。这本质上相当于对$Q$进行叠加操作\cite{learn-haskell}。
 
 \be
 \begin{array}{rcl}
@@ -407,13 +407,13 @@ fold\ (\times)\ 0\ Q & = & 1 \times (2 \times (3 \times (4 \times (5 \times 0)))
 \end{array}
 \]
 
-我们可以利用叠加来定义$concat_q$（克里化形式）：
+我们可以利用叠加来定义$concat$（克里化形式）：
 
 \be
-concat_q = fold\ concat\ \nil
+concat = fold\ (\doubleplus)\ \nil
 \ee
 
-删除操作的性能在最坏情况下是线性的。当连续向空序列添加$n$个元素后，立即执行一次删除。此时多叉树中的$n-1$棵子树都是单元素的（只含有一个叶子节点）。$concat_q$需要$O(n)$时间进行归并。如果插入、添加、删除、连接随机发生，则分摊复杂度是常数时间的。
+删除操作的性能在最坏情况下是线性的。当连续向空序列添加$n$个元素后，立即执行一次删除。此时多叉树中的$n-1$棵子树都是单元素的（只含有一个叶子节点）。$concat$需要$O(n)$时间进行归并。如果插入、添加、删除、连接随机发生，则分摊复杂度是常数时间的。
 
 \begin{Exercise}
 \Question{证明可连接列表的删除操作的分摊复杂度为常数时间的。} %Banker方法
@@ -1971,15 +1971,22 @@ K get(Int i, Seq<K> s) {
 \begin{Haskell}
 data CList a = Empty | CList a (Queue (CList a))
 
-concat x Empty = x
-concat Empty y = y
-concat (CList x q) y = CList x (push q y)
+wrap x = CList x emptyQ
+
+x ++ Empty = x
+Empty ++ y = y
+(CList x q) ++ y = CList x (push q y)
+
+fold f z q | isEmptyQ q = z
+           | otherwise = (top q) `f` fold f z (pop q)
+
+concat = fold (++) Empty
+
+insert x xs = (wrap x) ++ xs
+append xs x = xs ++ wrap x
 
 head (CList x _) = x
-tail (CList _ q) = concatAll q
-
-concatAll EmptyQ  = Empty
-concatAll q = concat (top q) (concatAll (pop q))
+tail (CList _ q) = concat q
 \end{Haskell}
 
 \ifx\wholebook\relax \else

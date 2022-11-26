@@ -31,7 +31,7 @@ import Prelude hiding (head, tail, (++))
 
 -- A simple lazy real-time queue,
 
-data Queue a = Q [a] [a][a] deriving (Show, Eq) -- front, rear, stream of f ++ reverse r
+data Queue a = Q [a] [a] [a] deriving (Show, Eq) -- front, rear, stream of f ++ reverse r
 
 emptyQ = Q [] [] []
 isEmptyQ (Q f _ _) = null f
@@ -48,49 +48,42 @@ balance f r (_:s) = Q f r s
 rotate [] [y] acc = y:acc
 rotate (x:xs) (y:ys) acc = x : rotate xs ys (y:acc)
 
--- folding right like
-foldQ :: (a -> b -> b) -> b -> Queue a -> b
-foldQ f z q | isEmptyQ q = z
-            | otherwise = (front q) `f` foldQ f z (pop q)
-                          
--- Catenable list
+fold :: (a -> b -> b) -> b -> Queue a -> b
+fold f z q | isEmptyQ q = z
+           | otherwise = (front q) `f` fold f z (pop q)
 
+-- Catenable list
 data CList a = Empty | CList a (Queue (CList a)) deriving (Show, Eq)
 
 singleton x = CList x emptyQ
 
-link x Empty = x
-link Empty y = y
-link (CList x q) y = CList x (push q y)
+x ++ Empty = x
+Empty ++ y = y
+(CList x q) ++ y = CList x (push q y)
 
 isEmpty Empty = True
 isEmpty _ = False
-
-xs ++ ys = link xs ys
 
 cons x xs = (singleton x) ++ xs
 snoc xs x = xs ++ singleton x -- a.k.a append
 
 head (CList x _) = x -- we skip the error handling for empty list
-tail (CList _ q) = linkAll q
+tail (CList _ q) = CList.concat q
 
 -- folding right like function
-linkAll = foldQ link Empty
+concat = fold (++) Empty
 
-linkAll' q | isEmptyQ q = Empty
-           | otherwise = link (front q) (linkAll' (pop q))
-                        
--- Auxiliary functions for flatten etc.
+-- concat' q | isEmptyQ q = Empty
+--           | otherwise = link (front q) (concat' (pop q))
 
 fromList :: [a] -> CList a
 fromList = foldr cons Empty
 
 toList :: CList a -> [a]
 toList Empty = []
-toList (CList x q) = x : foldQ (\e xs -> concat [toList e, xs]) [] q
+toList (CList x q) = x : fold (\e xs -> Prelude.concat [toList e, xs]) [] q
 
 -- testing
-
 prop_cons :: [Int] -> Bool
 prop_cons xs = xs == (toList $ fromList xs)
 
@@ -98,6 +91,6 @@ prop_head :: [Int] -> Property
 prop_head xs = not (null xs) ==> xs == (rebuild $ fromList xs) where
   rebuild Empty = []
   rebuild lst = head lst : (rebuild $ tail lst)
-  
+
 prop_concat :: [Int] -> [Int] -> Bool
-prop_concat xs ys = concat [xs, ys] == toList (fromList xs ++ fromList ys)
+prop_concat xs ys = Prelude.concat [xs, ys] == toList (fromList xs ++ fromList ys)
