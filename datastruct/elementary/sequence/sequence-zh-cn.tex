@@ -670,313 +670,72 @@ append\ (f, t, r)\ a & = & (f, t, r \doubleplus [a]) \\
 \end{array}
 \ee
 
-如果rear手指仍然是合法的2-3树，包含的元素不超过4个，新元素就可以直接插入到rear手指中。否则，我们将rear手指分拆，将前三个元素取出，构造一棵新的2-3树，递归地添加到中间部分子树的末尾。此外，我们还要处理两种边界情况：一种是手指树为空，另外一种是仅含有一个叶子节点。
+如果$r$中的元素不超过4个，仍是合法的2-3树，我们直接把新元素添加到$r$末尾。否则，将$r$中的前三个元素取出，构造一棵新的2-3树，递归地添加到中间子树的尾部。
 
 \index{手指树!尾部删除}
 
 \be
-removeT(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, x) & T = leaf(x) \\
-  (leaf(y), x) & T = tree(\{y\}, \phi, \{x\}) \\
-  (tree(init(F), \phi, last(F)), x) & T = tree(F, \phi, \{x\}) \land F \neq \phi \\
-  (tree(F, M', toList(R')), x) & \begin{array}{l}
-  T = tree(F, M, \{x\}), \\
-  (M', R') = removeT(M) \end{array} \\
-  (tree(F, M, init(R)), last(R)) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+remove\ (a) & = & (\nil, a) \\
+remove\ ([a], \nil, [b]) & = & ((a), b) \\
+remove\ (f, \nil, [a]) & = & ((init f, \nil, [last f]), a) \\
+remove\ (f, t, [a]) & = & ((f, t', toList\ r), a), \text{其中}: (t', r) = remove\ t \\
+remove\ (f, t, r) & = & ((f, t, init\ r), last\ r) \\
+\end{array}
 \ee
 
-函数$toList(T)$的定义和此前一样，它将一棵2-3树转换为普通列表。函数$init(L)$返回列表$L$中除最后一个元素外的剩余部分，若$L = \{a_1, a_2, ..., a_{n-1}, a_n\}$，则$init(L) = \{a_1, a_2, ..., a_{n-1}\}$。函数$last(L)$返回列表$L$中的最后一个元素，即$last(L) = a_n$。读者可以参考本书的附录了解它们的具体实现。
-
-下面的Haskell例子程序实现了尾部删除算法。函数被命名为\texttt{unsnoc}以表明它是函数\texttt{snoc}的逆运算。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-unsnoc :: Tree a -> (Tree a, a)
-unsnoc (Lf a) = (Empty, a)
-unsnoc (Tr [a] Empty [b]) = (Lf a, b)
-unsnoc (Tr f@(_:_) Empty [a]) = (Tr (init f) Empty [last f], a)
-unsnoc (Tr f m [a]) = (Tr f m' (nodeToList r), a) where (m', r) = unsnoc m
-unsnoc (Tr f m r) = (Tr f m (init r), last r)
-\end{lstlisting}
-
-我们也可以为手指树定义类似列表的\texttt{last}和\texttt{init}函数。
-
-\begin{lstlisting}[style=Haskell]
-last = snd . unsnoc
-init = fst . unsnoc
-\end{lstlisting}
+其中$last$获取列表的最后一个元素，$init$返回其余部分（定义见第一章）。
 
 \subsection{连接}
 \index{手指树!连接}
 
-考虑两棵手指树都不为空的情况。记两棵树为$T_1 = tree(F_1, M_1, R_1)$和$T_2 = tree(F_2, M_2, R_2)$。可以用$F_1$作为连接结果的新front手指，用$R_2$作为连接结果的新rear手指。我们需要将$M_1$、$R_1$、$F_2$、$M_2$合并成一棵新的中间部分子树。
-
-由于$R_1$和$F_2$都是节点的列表，所以这一问题等价于实现如下的算法：
+考虑两棵手指树都不为空的情况：$T_1 = (f_1, t_1, r_1)$、$T_2 = (f_2, t_2, r_2)$。我们用$f_1$作为连接结果中的$f$，用$r_2$作为结果中的$r$。然后将$t_1$、$r_1$、$f_2$、$t_2$合并成中间子树。由于$r_1$和$f_2$都是节点的列表，所以这等价于如下问题：
 
 \[
-merge(M_1, R_1 \cup F_2, M_2) = ?
+merge\ t_1\ (r_1 \doubleplus f_2)\ t_2 = ?
 \]
 
-进一步观察可以发现，$M_1$和$M_2$都是手指树，只不过它们比$T_1$和$T_2$的节点深度大一级，若$T_1$树中存储的元素类型为$a$，则$M_1$中存储的元素类型为$Node(a)$。因此，我们可以递归地进行合并：保留$M_1$的front手指和$M_2$的rear手指，然后将$M_1$和$M_2$的中间部分，以及$M_1$的rear手指和$M_2$的front手指合并。
-
-记函数$front(T)$返回树$T$的front手指，$rear(T)$返回rear手指，$mid(T)$返回中间部分的子树。当两棵树都不为空时，$merge$算法可以定义如下：
+$t_1$和$t_2$也都是手指树，但它们比$T_1$和$T_2$深一级，若$T_1$中的元素类型为$a$，则$t_1$中的元素类型为$Node\ a$。我们递归地进行合并：保留$t_1$的$f$手指和$t_2$的$r$手指，然后将$t_1$和$t_2$的中间部分，$t_1$的$r$手指和$t_2$的$f$手指合并。
 
 \be
-\begin{array}{l}
-merge(M_1, R_1 \cup F_2, M_2) = tree(front(M_1), S, rear(M_2)) \\
-S = merge(mid(M_1), rear(M_1) \cup R_1 \cup F_2 \cup front(M_2), mid(M_2))
+\begin{array}{rcl}
+merge\ \nil\ ts\ t_2 & = & foldr\ insert\ t_2\ ts \\
+merge\ t_1\ ts\ \nil & = & foldl\ append\ t_1\ ts \\
+merge\ (a)\ ts\ t_2 & = & merge\ \nil\ (a \cons ts)\ t_2 \\
+merge\ t_1\ ts\ (a) & = & merge\ t_1\ (ts \doubleplus [a])\ \nil \\
+merge\ (f_1, t_1, r_1)\ ts\ (f_2, t_2, r_2) & = & (f_1, merge\ t_1\ (nodes\ (r_1 \doubleplus ts \doubleplus f_2))\ t_2, r_2) \\
 \end{array}
 \label{eq:merge-recursion}
 \ee
 
-而树的连接算法也可以使用$merge()$来定义。
+其中$nodes$将若干元素组织成一组2-3树。这是因为中间子树中的元素类型，比手指中的元素类深一级。
 
 \be
-concat(T_1, T_2) = tree(F_1, merge(M_1, R_1 \cup F_2, M_2), R_2)
+\begin{array}{rcl}
+nodes\ [a, b] & = & [(a, b)] \\
+nodes\ [a, b, c] & = & [(a, b, c)] \\
+nodes\ [a, b, c, d] & = & [(a, b), (c, d)] \\
+nodes\ (a \cons b \cons c \cons ts) & = & (a, b, c) \cons nodes\ ts \\
+\end{array}
 \ee
 
-比较这一定义和式（\ref{eq:merge-recursion}），我们发现连接操作本质上就是合并操作，我们可以给出下面的定义：
+这样我们可以用$merge$来定义手指树的连接：
 
 \be
-concat(T_1, T_2) = merge(T_1, \phi, T_2)
+(f_1, t_1, r_1) \doubleplus (f_2, t_2, r_2) = (f_1, merge\ t_1\ (r_1 \doubleplus f_2)\ t_2, r_2)
 \ee
 
-最后，我们需要为$merge()$算法定义边界条件。
+比较这一定义和(\ref{eq:merge-recursion})，连接操作本质上就是合并操作，我们可以给出下面更加一致的定义：
 
 \be
-merge(T_1, S, T_2) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  foldR(insertT, T_2, S) & T_1 = \phi \\
-  foldL(appendT, T_1, S) & T_2 = \phi \\
-  merge(\phi, \{x\} \cup S, T_2) & T_1 = leaf(x) \\
-  merge(T_1, S \cup \{x\}, \phi) & T_2 = leaf(x) \\
-  \begin{array}{l}
-  tree(F_1, merge(M_1, \\
-  \quad nodes(R_1 \cup S \cup F_2), M2), R_2) \end{array} & otherwise
-  \end{array}
-\right .
+T_1 \doubleplus T_2 = merge\ T_1\ [\ ]\ T_2
 \ee
 
-大部分的情况都比较直观。若$T_1$或$T_2$中的任何一棵为空，算法就逐一将列表$S$中的元素插入或者添加到另一棵树中；函数$foldL$和$foldR$类似于命令式编程环境中的for-each循环。其中$foldL$自左向右处理$S$中的元素，而$foldR$自右向左处理。
+连接的性能取决于递归的合并操作。递归的深度为两棵树中较小的一棵。由于2-3树的平衡性，手指树的高度为$O(\lg n)$其中$n$为元素的个数。合并在边界条件下的性能和插入一样（最多调用$insert$\ 8次）为分摊常数时间，最坏情况为$O(\lg m)$，其中$m$是两棵树的高度差。总体上算法的复杂度为$O(\lg n)$，其中$n$是两棵手指树中含有的元素总数。
 
-对于非空列表$L=\{ a_1, a_2, ..., a_{n-1}, a_n\}$，记$L' = \{ a_2, a_3, ..., a_{n-1}, a_n\}$为除第一元素外的剩余部分。$foldL$和$foldR$可以分别定义如下：
-
-\be
-foldL(f, e, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  e & L = \phi \\
-  foldL(f, f(e, a_1), L') & otherwise
-  \end{array}
-\right .
-\ee
-
-\be
-foldR(f, e, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  e & L = \phi \\
-  f(a_1, foldR(f, e, L')) & otherwise
-  \end{array}
-\right .
-\ee
-
-读者可以参考本书的附录了解它们的详细内容。
-
-若任一棵树是仅包含一个元素的叶子，我们将这一元素插入或者添加到$S$中将其转换为前一种边界情况（其中一棵树为空的情况）。
-
-函数$nodes$将元素列表转换成一组2-3树的列表。这是因为中间部分的子树中的元素类型，比手指中的元素类型在$Node$上深一级。考虑递归调用达到边界情况的时候，假设此时$M_1$为空，我们需要逐一将所有$R_1 \cup S \cup F_2$中的元素插入$M_2$。但是我们不能直接执行插入操作，若此时的元素类型为$a$，我们只能将类型为2-3树的$Node(a)$插入到$M_2$中。这和前面的$insertT$算法中的处理类似：取出最后三个元素，转换成一棵2-3树，然后递归地执行$insertT$。下面给出了$nodes$的定义：
-
-\be
-nodes(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{tr2(x_1, x_2)\} & L = \{x_1, x_2\} \\
-  \{tr3(x_1, x_2, x_3)\} & L = \{x_1, x_2, x_3\} \\
-  \{tr2(x_1, x_2), tr2(x_3, x_4)\} & L = \{x_1, x_2, x_3, x_4\} \\
-  \{tr3(x_1, x_2, x_3)\} \cup nodes(\{x_4, x_5, ...\}) & otherwise
-  \end{array}
-\right .
-\ee
-
-函数$nodes$需要遵守2-3树的限制条件，若列表中只有2个或3个元素，结果是只含有一棵2-3树的列表；若列表中含有4个元素，则结果列表中包含两棵树，每棵树有两个分支；否则，如果多于4个元素，就将前3个元素放到一棵2-3树中，然后递归地调用$nodes$来处理剩余的元素。
-
-连接操作的性能取决于合并算法。分析递归的情况可以发现，递归的深度和两棵树种较矮的一棵成比例。由于2-3树可以保证平衡性，它的高度为$O(\lg n')$其中$n'$为元素的个数。合并在边界条件下的性能和插入一样（最多调用$insertT$8次）为分摊时间$O(1)$，最坏情况问为$O(\lg m)$，其中$m$是两棵树的高度差。因此，总体上算法的复杂度为$O(\lg n)$，其中$n$是两棵手指树中含有的元素总数。
-
-下面的Haskell例子程序实现了连接算法
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-concat :: Tree a -> Tree a -> Tree a
-concat t1 t2 = merge t1 [] t2
-\end{lstlisting}
-
-由于Haskell标准库prelude中含有一个名为\texttt{concat}的函数，因此需要做一些额外的处理，如隐藏import或者更换名字，以避免冲突。
-
-\begin{lstlisting}[style=Haskell]
-merge :: Tree a -> [a] -> Tree a -> Tree a
-merge Empty ts t2 = foldr cons t2 ts
-merge t1 ts Empty = foldl snoc t1 ts
-merge (Lf a) ts t2 = merge Empty (a:ts) t2
-merge t1 ts (Lf a) = merge t1 (ts++[a]) Empty
-merge (Tr f1 m1 r1) ts (Tr f2 m2 r2) = Tr f1 (merge m1 (nodes (r1 ++ ts ++ f2)) m2) r2
-\end{lstlisting}
-
-其中$nodes$函数的实现如下：
-
-\begin{lstlisting}[style=Haskell]
-nodes :: [a] -> [Node a]
-nodes [a, b] = [Br2 a b]
-nodes [a, b, c] = [Br3 a b c]
-nodes [a, b, c, d] = [Br2 a b, Br2 c d]
-nodes (a:b:c:xs) = Br3 a b c:nodes xs
-\end{lstlisting}
-
-为了用命令式的方式连接两棵手指树$T_1$和$T_2$，我们需要沿着两棵树的中间部分的子树向下遍历，直到其中一棵为空。每次迭代中，我们创建一棵新树，用$T_1$的front手指作为新树$T$的front手指；用$T_2$的rear手指作为$T$的rear手指。剩下的两个手指（$T_1$的rear手指和$T_2$的front手指）中的元素被放入一个列表，然后被分组放入若干2-3树中。记这一2-3树的列表为$N$。$N$不仅随着遍历在长度上增加，而且每次迭代元素的深度也增加一级。我们将这棵新树附加到上一级的树中作为中间部分，然后进入下一次迭代。
-
-当两棵树种的任一棵树变为空的时候，我们停止遍历，然后逐一将$N$中的2-3树插入到另一棵非空的树中，并将其设为上一级结果的中间部分子树。
-
-下面的算法给出了这一过程的详细描述。
-
-\begin{algorithmic}
-\Function{Concat}{$T_1, T_2$}
-  \State \Return \Call{Merge}{$T_1, \phi, T_2$}
-\EndFunction
-\Statex
-\Function{Merge}{$T_1, N, T_2$}
-  \State $r \gets$ \textproc{Tree}()
-  \State $p \gets r$
-
-  \While{$T_1 \neq$ NIL $\land T_2 \neq$ NIL}
-    \State $T \gets$ \textproc{Tree}()
-    \State \Call{Front}{$T$} $\gets$ \Call{Front}{$T_1$}
-    \State \Call{Rear}{$T$} $\gets$ \Call{Rear}{$T_2$}
-    \State \Call{Connect-Mid}{$p, T$}
-    \State $p \gets T$
-    \State $N \gets$ \textproc{Nodes}(\Call{Rear}{$T_1$} $\cup N \cup$ \Call{Front}{$T_2$})
-    \State $T_1 \gets$ \Call{Mid}{$T_1$}
-    \State $T_2 \gets$ \Call{Mid}{$T_2$}
-  \EndWhile
-
-  \If{$T_1 =$ NIL}
-    \State $T \gets T_2$
-    \For{each $n \in $ \Call{Reverse}{$N$}}
-      \State $T \gets$ \Call{Prepend-Node}{$n, T$}
-    \EndFor
-  \ElsIf{$T_2 =$ NIL}
-    \State $T \gets T_1$
-    \For{each $n \in N$}
-      \State $T \gets$ \Call{Append-Node}{$T, n$}
-    \EndFor
-  \EndIf
-  \State \Call{Connect-Mid}{$p, T$}
-
-  \State \Return \Call{Flat}{$r$}
-\EndFunction
-\end{algorithmic}
-
-算法中的for-each循环也可以用左侧fold或者右侧fold来实现。下面的Python例子程序实现了这一算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def concat(t1, t2):
-    return merge(t1, [], t2)
-
-def merge(t1, ns, t2):
-    root = prev = Tree() #作为哨兵的dummy节点
-    while t1 is not None and t2 is not None:
-        t = Tree(t1.size + t2.size + sizeNs(ns), t1.front, None, t2.rear)
-        prev.set_mid(t)
-        prev = t
-        ns = nodes(t1.rear + ns + t2.front)
-        t1 = t1.mid
-        t2 = t2.mid
-    if t1 is None:
-        prev.set_mid(foldR(prepend_node, ns, t2))
-    elif t2 is None:
-        prev.set_mid(reduce(append_node, ns, t1))
-    return flat(root)
-\end{lstlisting}
-
-由于Python标准库只提供了左侧fold的函数\texttt{reduce}，右侧fold可以按照下面的定义实现，逐一将元素按照逆序取出并应用传入的函数。
-
-\begin{lstlisting}
-def foldR(f, xs, z):
-    for x in reversed(xs):
-        z = f(x, z)
-    return z
-\end{lstlisting}
-
-唯一需要实现的算法是将若干元素平衡分组放入一些2-3树中。一棵2-3树最多可以容纳3个分支，若元素个数多于4，我们可以取出3个放入一棵树中，然后继续处理剩下的元素。若只含有4个，则它们被分成2棵2个分支的树。对于其余的情况（3个、2个或1个），我们将它们全部放入一棵2-3树中。
-
-记节点列表为$L=\{ n_1, n_2, ... \}$，下面的算法实现了这一处理过程。
-
-\begin{algorithmic}
-\Function{Nodes}{$L$}
-  \State $N = \phi$
-  \While{$|L| > 4$}
-    \State $n \gets$ \textproc{Node}()
-    \State \Call{Children}{$n$} $\gets L[1..3]$  \Comment{ $\{n_1, n_2, n_3 \}$ }
-    \State $N \gets N \cup \{ n \}$
-    \State $L \gets L[4...]$ \Comment{ $\{ n_4, n_5, ... \}$ }
-  \EndWhile
-
-  \If{$|L| = 4$}
-    \State $x \gets$ \textproc{Node}()
-    \State \Call{Children}{$x$} $\gets \{L[1], L[2]\}$
-    \State $y \gets$ \textproc{Node}()
-    \State \Call{Children}{$y$} $\gets \{L[3], L[4]\}$
-    \State $N \gets N \cup \{ x, y \}$
-  \ElsIf{$L \neq \phi$}
-    \State $n \gets$ \textproc{Node}()
-    \State \Call{Children}{$n$} $\gets L$
-    \State $N \gets N \cup \{ n \}$
-  \EndIf
-
-  \State \Return $N$
-\EndFunction
-\end{algorithmic}
-
-下面的Python例子程序实现了这一算法，其中函数\texttt{wraps()}首先创建一棵树，然后将一个列表中的元素设为节点的子树。
-
-\begin{lstlisting}
-def nodes(xs):
-    res = []
-    while len(xs) > 4:
-        res.append(wraps(xs[:3]))
-        xs = xs[3:]
-    if len(xs) == 4:
-        res.append(wraps(xs[:2]))
-        res.append(wraps(xs[2:]))
-    elif xs != []:
-        res.append(wraps(xs))
-    return res
-\end{lstlisting}
-
-\begin{Exercise}
-\begin{enumerate}
-\item 选择一门命令式语言，实现完整的手指树插入算法。
-
-\item 如何判定一个节点是否是叶子？它仅包含一个基本元素还是包含一个含有若干子树的复合节点？我们不能仅仅通过size来进行判定，例如只包含一个叶子的节点，形如$node(1, \{node(1, \{x\}\})$。请分别使用动态类型语言（如Python或lisp）和静态类型语言（如C++)来解决这一问题。
-
-\item 选择一门命令式语言，实现\textproc{Extract-Tail}算法。
-
-\item 分别用函数式和命令式的方法返回一棵手指树中的最后一个元素，对于命令式方法，要求能够处理不规则树。
-
-\item 不使用fold，实现手指树的连接算法。可以使用递归或者循环。
-\end{enumerate}
-\end{Exercise}
-
-\subsection{手指树的随机访问}
+\subsection{随机访问}
 \index{手指树!随机访问}
 
-\subsubsection{增加size记录}
-\index{手指树!size记录}
 提供快速随机访问的策略是将其转换为树搜索。为了避免反复计算树的size，我们给树和节点增加size变量。
 
 下面的Haskell例子代码在定义中增加了size信息。
