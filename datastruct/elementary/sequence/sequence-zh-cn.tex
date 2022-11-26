@@ -736,325 +736,33 @@ T_1 \doubleplus T_2 = merge\ T_1\ [\ ]\ T_2
 \subsection{随机访问}
 \index{手指树!随机访问}
 
-提供快速随机访问的策略是将其转换为树搜索。为了避免反复计算树的size，我们给树和节点增加size变量。
+我们的策略是把随机访问转换为树搜索。为了避免反复计算树的大小，我们给每个节点增加一个$s$变量记录其包含的元素个数：$(s, f, t, r)$。
 
-下面的Haskell例子代码在定义中增加了size信息。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
+\begin{Haskell}
 data Tree a = Empty
             | Lf a
             | Tr Int [a] (Tree (Node a)) [a]
-\end{lstlisting}
-
-下面的ANSI C结构定义中也增加了size信息。
-
-\lstset{language=C}
-\begin{lstlisting}
-struct Tree {
-    union Node* front;
-    union Node* rear;
-    Tree* mid;
-    Tree* parent;
-    int size;
-};
-\end{lstlisting}
-
-设函数$tree(s, F, M, R)$从size信息$s$、front手指列表$F$、rear手指列表$R$、和中间部分的子树$M$构造一棵手指树。当我们需要获得size信息时，可以通过函数$size(T)$来获取：
-
-\[
-size(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  0 & T = \phi \\
-  ? & T = leaf(x) \\
-  s & T = tree(s, F, M, R)
-  \end{array}
-\right .
-\]
-
-若树为空，则size为0；若树可以表示为$tree(s, F, M, R)$则size为$s$；但是当树只有一片叶子时他的size是什么？它是1么？答案是否定的。只有当$T = leaf(a)$并且$a$不是一个节点而是一个元素时size才等于1。其余情况下，size都不为1，因为$a$可以是一个节点类型。因此我们在上面的等式中暂时放置了一个“？”。
-
-正确的方式是通过某种形式size函数调用来获取信息。
+\end{Haskell}
 
 \be
-size(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  0 & T = \phi \\
-  size'(x) & T = leaf(x) \\
-  s & T = tree(s, F, M, R)
-  \end{array}
-\right .
-\ee
-
-注意，这不是一个递归调用。$size \neq size'$，函数$size'$的参数或者是一个2-3树，或者是一个普通的元素。为了统一这两种情况，我们可以将唯一的元素放入到一个节点中。这样就可以用一致的方式（节点和size）来表示所有情况。下面的Haskell例子程序修改了节点的定义：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-data Node a = Br Int [a]
-\end{lstlisting}
-
-ANSI C例子程序的修改如下：
-
-\lstset{language=C}
-\begin{lstlisting}
-struct Node {
-    Key key;
-    struct Node* children;
-    int size;
-};
-\end{lstlisting}
-
-例子程序中，我们将union改为了struct。如果节点不是叶子，key将会带来一些额外的空间占用。
-
-设函数$tr(s, L)$从一个size参数$s$和一个列表$L$，创建一个节点（或者是一个元素的叶子，或者是一棵2-3树），下面列出了一些例子：
-
-\[
-\begin{array}{ll}
-tr(1, \{x\}) & \text{只有一个元素的树} \\
-tr(2, \{x, y\}) & \text{含有两个元素的2-3树} \\
-tr(3, \{x, y, z\}) & \text{含有3个元素的2-3树}
-\end{array}
-\]
-
-这样，$size'$函数的实现就可以返回节点的size信息。我们有$size'(tr(s, L)) = s$。
-
-将元素$x$放入树中可以通过调用函数$tr(1, \{x\})$来实现，我们可以定义下面的辅助函数$wrap$和$unwrap$：
-
-\be
-\begin{array}{l}
-wrap(x) = tr(1, \{x\}) \\
-unwrap(n) = x \quad:\quad n = tr(1, \{x\})
+\begin{array}{rcl}
+size\ \nil & = & 0 \\
+size\ (x) & = & 1 \\
+size\ (s, f, t, r) & = & s \\
 \end{array}
 \ee
 
-现在front手指和rear手指都变成了节点的列表。为了计算手指的size，我们可以提供一个$size''(L)$函数，它把列表中每个节点的size加起来。记$L = \{ a_1, a_2, ... \}$、$L' = \{ a_2, a_3, ... \}$。
+我们还需要获取2-3树的大小：
 
 \be
-size''(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  0 & L = \phi \\
-  size'(a_1) + size''(L') & otherwise
-  \end{array}
-\right .
-\ee
-
-也可以用一些高阶函数来定义$size''(L)$。例如：
-
-\be
-size''(L) = sum(map(size', L))
-\ee
-
-我们也可以将若干节点组成的列表转换成更深一级的2-3树，或进行相反的转换：
-
-\be
-\begin{array}{l}
-wraps(L) = tr(size''(L), L) \\
-unwraps(n) = L \quad:\quad n = tr(s, L) \\
+\begin{array}{rcl}
+size\ (t_1, t_2) & = & size\ t_1 + size\ t_2 \\
+size\ (t_1, t_2, t_3) & = & size\ t_1 + size\ t_2 + size\ t_3 \\
 \end{array}
 \ee
 
-下面的Haskell例子程序实现了这些辅助函数。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-size (Br s _) = s
-
-sizeL = sum .(map size)
-
-sizeT Empty = 0
-sizeT (Lf a) = size a
-sizeT (Tr s _ _ _) = s
-\end{lstlisting}
-
-下面是wrap和unwrap辅助函数。我们省略了它们的类型定义。
-
-\begin{lstlisting}[style=Haskell]
-wrap x = Br 1 [x]
-unwrap (Br 1 [x]) = x
-wraps xs = Br (sizeL xs) xs
-unwraps (Br _ xs) = xs
-\end{lstlisting}
-
-在命令式环境中，我们可以通过结构中的变量获得节点和树的size信息。下面的算法将若干节点的size相加。
-
-\begin{algorithmic}
-\Function{Size-Nodes}{$L$}
-  \State $s \gets 0$
-  \For{$\forall n \in L$}
-    \State $s \gets s + $ \Call{Size}{$n$}
-  \EndFor
-  \State \Return $s$
-\EndFunction
-\end{algorithmic}
-
-下面的Python例子程序使用了标准库中提供的\texttt{sum()}和\texttt{map()}实现了这一操作。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def sizeNs(xs):
-    return sum(map(lambda x: x.size, xs))
-\end{lstlisting}
-
-在命令式环境中，我们通常使用NIL来代表空树，可以提供一个辅助函数来统一计算非空树和空树的size。
-
-\begin{algorithmic}
-\Function{Size-Tr}{$T$}
-  \If{$T = $ NIL}
-    \State \Return 0
-  \Else
-    \State \Return \Call{Size}{$T$}
-  \EndIf
-\EndFunction
-\end{algorithmic}
-
-\subsubsection{增加size信息后引入的改动}
-
-我们前面给出的算法也要针对size信息，做相应的修改。例如$insertT$函数会先将元素放入一个节点后再插入。
-
-\be
-insertT(x, T) = insertT'(wrap(x), T)
-\ee
-
-相应的Haskell例子程序修改如下：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-cons a t = cons' (wrap a) t
-\end{lstlisting}
-
-元素$x$被放入节点后，节点的size为1。此前给出插入算法中，函数$tree(F, M, R)$从一个front手指，中间部分的子树，和一个rear手指构造一棵手指树。我们现在需要从这三个参数中获得size信息，并累加起来存入构造好的树中。
-
-\be
-tree'(F, M, R) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  fromL(F) & M = \phi \land R = \phi \\
-  fromL(R) & M = \phi \land F = \phi \\
-  tree'(unwraps(F'), M', R) & F = \phi, (F', M') = extractT'(M) \\
-  tree'(F, M', unwraps(R')) & R = \phi, (M', R') = removeT'(M) \\
-  tree(s, F, M, R) & otherwise
-  \end{array}
-\right .
-\ee
-
-其中$s = size''(F) + size(M) + size''(R)$是累加后的size信息。函数$fromL()$将一个节点的列表转换为一棵手指树，它逐一将节点插入到一棵空树中。
-
-\[
-fromL(L) = foldR(insertT', \phi, L)
-\]
-
-当然，我们也可以不用fold，而用递归的方法实现它。
-
-上述算法中的最后一个情况是最简单的。若$F$、$M$、$R$都不为空，就分别取出这三部分的size，相加到一起，并通过调用$tree(s, F, M, R)$存入新构造好的树中。若中间部分的子树和任一手指都为空，算法就将另一个非空手指中的节点依次取出，插入到一棵空树中。如果中间部分的子树不为空，但是存在一个手指为空，算法就从中间部分“借”一个节点。如果front手指为空，就从中间部分的头部取出第一个节点作为借来的节点；若rear手指为空，就从中间部分的尾部取出一个节点作为借来的节点。然后算法将这个借”的节点unwrap成一个列表，并递归调用$tree'()$函数来构造结果。
-
-下面的Haskell例子程序实现了这一算法。
-
-\begin{lstlisting}[style=Haskell]
-tree f Empty [] = foldr cons' Empty f
-tree [] Empty r = foldr cons' Empty r
-tree [] m r = let (f, m') = uncons' m in tree (unwraps f) m' r
-tree f m [] = let (m', r) = unsnoc' m in tree f m' (unwraps r)
-tree f m r = Tr (sizeL f + sizeT m + sizeL r) f m r
-\end{lstlisting}
-
-算法$insertT'()$可以使用$tree'()$定义如下：
-
-\be
-insertT'(x, T) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  leaf(x) & T = \phi \\
-  tree'(\{x\}, \phi, \{y\}) & T = leaf(x) \\
-  \begin{array}{l}
-  tree'(\{x, x_1\}, insertT'(\\
-  \quad wraps( \{x_2, x_3, x_4\}), M), R) \end{array} &
-  \begin{array}{l}
-    T = tree(s, \{x_1, x_2, \\
-    \quad x_3, x_4\}, M, R) \end{array} \\
-  tree'(\{x\} \cup F, M, R) & otherwise
-  \end{array}
-\right .
-\ee
-
-下面的Haskell例子程序实现了这一算法。
-
-\begin{lstlisting}[style=Haskell]
-cons' a Empty = Lf a
-cons' a (Lf b) = tree [a] Empty [b]
-cons' a (Tr _ [b, c, d, e] m r) = tree [a, b] (cons' (wraps [c, d, e]) m) r
-cons' a (Tr _ f m r) = tree (a:f) m r
-\end{lstlisting}
-
-命令式算法也需要做相应的修改，例如在向手指树的头部插入元素时，需要一边遍历，一边更新size信息。
-
-\begin{algorithmic}
-\Function{Prepend-Node}{$n, T$}
-  \State $r \gets $ \textproc{Tree}()
-  \State $p \gets r$
-  \State \Call{Connect-Mid}{$p, T$}
-  \While{\textproc{Full?}(\Call{Front}{$T$})}
-    \State $F \gets $ \Call{Front}{$T$}
-    \State \Call{Front}{$T$} $\gets$ $\{n, F[1]\}$
-    \State \Call{Size}{$T$} $\gets$ \Call{Size}{$T$} + \Call{Size}{$n$} \Comment{update size}
-    \State $n \gets$ \textproc{Node}()
-    \State \Call{Children}{$n$} $\gets F[2..]$
-    \State $p \gets T$
-    \State $T \gets$ \Call{Mid}{$T$}
-  \EndWhile
-  \If{$T =$ NIL}
-    \State $T \gets$ \textproc{Tree}()
-    \State \Call{Front}{$T$}$\gets \{ n \}$
-  \ElsIf{ $|$ \Call{Front}{$T$} $|$ = 1 $\land$ \Call{Rear}{$T$} = $\phi$}
-    \State \Call{Rear}{$T$} $\gets$ \Call{Front}{$T$}
-    \State \Call{Front}{$T$} $\gets \{ n \}$
-  \Else
-    \State \Call{Front}{$T$} $\gets \{ n \} \cup $ \Call{Front}{$T$}
-  \EndIf
-  \State \Call{Size}{$T$} $\gets$ \Call{Size}{$T$} + \Call{Size}{$n$} \Comment{update size}
-  \State \Call{Connect-Mid}{$p, T$} $\gets T$
-  \State \Return \Call{Flat}{$r$}
-\EndFunction
-\end{algorithmic}
-
-下面的Python例子代码实现了这一改变。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def prepend_node(n, t):
-    root = prev = Tree()
-    prev.set_mid(t)
-    while frontFull(t):
-        f = t.front
-        t.front = [n] + f[:1]
-        t.size = t.size + n.size
-        n = wraps(f[1:])
-        prev = t
-        t = t.mid
-    if t is None:
-        t = leaf(n)
-    elif len(t.front)==1 and t.rear == []:
-        t = Tree(n.size + t.size, [n], None, t.front)
-    else:
-        t = Tree(n.size + t.size, [n]+t.front, t.mid, t.rear)
-    prev.set_mid(t)
-    return flat(root)
-\end{lstlisting}
-
-例子代码中，树的构造函数也做了修改以便接受size作为第一个参数。而\texttt{leaf}辅助函数不仅从一个节点构造树，还将正确的size设置好。n
-
-简单起见，我们不再解释$extractT$、$appendT$、$removeT$、和$concat$算法中需要针对size的修改，这些内容留给读者作为练习。
-
-\subsubsection{在指定位置分割手指树}
 \index{手指树!分割}
-
-增加size信息后，给定一个位置，可以很容易地通过树搜索定位到相应的节点。手指树由三部分组成$F$、$M$、和$R$，并且是递归结构。我们可以进一步根据给定的位置$i$，把它分割成三个部分：左侧、位置$i$上的节点、和右侧。
-
-我们拥有$F$、$M$、和$R$的size信息。记这三部分的size分别为：$S_f$、$S_m$、和$S_r$。如果给定的位置$i \leq S_f$，则节点在$F$中，我们接下来在$F$中继续查找；如果$S_f < i \leq S_f + S_m$，则节点在$M$中，我们需要递归在$M$中搜索；否则，节点一定在$R$中，我们接下来在$R$中查找。
-
-如果忽略树为空的错误处理，则只存在一种边界情况。
+对于节点的列表（例如深一级的手指）我们可以用$sum \circ (map\ size)$来计算大小。在插入和删除操作中，我们也需要更新树大小。增加大小信息后，给定一个位置$i$，可以通过树搜索定位到相应的节点。手指树具有递归结构：$(s, f, t, r)$，我们令这些子结构的大小为：$s_f$、$s_t$、$s_r$。如果$i \leq s_f$，则目标位于$f$中，我们接下来在$f$中查找；如果$s_f < i \leq s_f + s_t$，则目标位于$t$中，我们递归在$t$中搜索；否则目标位于$r$中。如果忽略空树，只存在一种边界情况。
 
 \[
 splitAt(i, T) = \left \{
