@@ -605,69 +605,61 @@ tail & = snd \circ extract \\
 根据这一思路，下面的算法实现了列表头部的删除操作（假设树不为空）。
 
 \begin{algorithmic}[1]
-\Function{Extract-Head}{$T$}
-  \State $r \gets$ \textproc{Tree}()
-  \State \Call{Connect-Mid}{$r, T$}
-  \While{\Call{Front}{$T$} $= \phi \land $ \Call{Mid}{$T$} $\neq $ NIL}
+\Function{Extract}{$T$}
+  \State $\perp \gets ([], T, [])$
+  \While{\Call{Front}{$T$} $= [\ ]$ and \Call{Mid}{$T$} $\neq $ NIL}
     \State $T \gets$ \Call{Mid}{$T$}
   \EndWhile
 
-  \If{\Call{Front}{$T$} $ = \phi \land $ \Call{Rear}{$T$} $\neq \phi$}
+  \If{\Call{Front}{$T$} $ = [\ ]$ and \Call{Rear}{$T$} $\neq [\ ]$}
     \State \textproc{Exchange} \Call{Front}{$T$} $\leftrightarrow$ \Call{Rear}{$T$}
   \EndIf
 
-  \State $n \gets $ \textproc{Node}()
-  \State \Call{Children}{$n$} $\gets$ \Call{Front}{$T$}
+  \State $f \gets$ \Call{Front}{$T$}, $r \gets$ \Call{Rear}{$T$}
+  \State $n \gets (f[1], f[2], ...)$ \Comment{$n$是2-3树}
   \Repeat
-    \State $L \gets$ \Call{Children}{$n$} \Comment{$L = \{n_1, n_2, n_3, ...\}$}
-    \State $n \gets L[1]$ \Comment{$ n \gets n_1$}
-    \State \Call{Front}{$T$} $\gets L[2..]$ \Comment{$L[2..] = \{n_2, n_3, ...\}$}
+    \State \Call{Front}{$T$} $\gets [n_2, n_3, ..]$
+    \State $n \gets n_1$
     \State $T \gets $ \Call{Parent}{$T$}
     \If{\Call{Mid}{$T$} becomes empty}
       \State \Call{Mid}{$T$} $\gets$ NIL
     \EndIf
-  \Until{$n$ is a leaf}
-  \State \Return (\Call{Elem}{$n$}, \Call{Flat}{$r$})
+  \Until{$n$ is leaf}
+  \State \Return (\Call{Elem}{$n$}, \Call{Mid}{$\perp$})
 \EndFunction
 \end{algorithmic}
 
-这里函数\textproc{Elem}($n$)返回叶子节点$n$中保存的唯一元素。和命令式插入算法类似，这里使用了一棵“ground”树作为根节点的父节点。这样可以简化边界处理的逻辑。因此最后在返回前要做额外的处理，去除掉多余的“grand”树。
+这里函数\textproc{Elem}($n$)返回叶子节点$n$中保存的唯一元素。由于不规则的树存在，需要调整从手指树中获取第一个和最后一个元素的定义。我们不再仅返回手指的第一个或者最后一个子节点。如果手指为空，而中间子树不为空，我们就沿着中间部分向下遍历，直到发现手指不为空，或者所有的节点都存储在另一侧的手指中。
 
-如果树的front手指和rear手指都为空，则成员函数\texttt{Tree.empty()}返回真。我们增加了一个标记\texttt{Node.leaf}来记录一个节点是叶子节点，还是复合节点。由于允许不规则的树存在，从手指树中获取第一个和最后一个元素的算法需要做相应的调整，对于不规则的树，手指可以为空，我们不再仅仅返回手指的第一个或者最后一个子节点。解决方法和\textproc{Extract-Head}类似，如果手指为空，而中间部分的子树不为空，我们就沿着中间部分向下遍历，直到发现手指不为空，或者所有的节点都存储在另一侧的手指中。例如下面的算法，即使是不规则树，也能返回第一个叶子节点。
-
-\begin{algorithmic}
-\Function{First-Lf}{$T$}
-  \While{\Call{Front}{$T$} $ = \phi \land $ \Call{Mid}{$T$} $\neq$ NIL}
+\begin{algorithmic}[1]
+\Function{First-Leaf}{$T$}
+  \While{\Call{Front}{$T$} $ = [\ ]$ and \Call{Mid}{$T$} $\neq$ NIL}
     \State $T \gets$ \Call{Mid}{$T$}
   \EndWhile
-  \If{\Call{Front}{$T$} $ = \phi \land$ \Call{Rear}{$T$} $\neq \phi$}
+  \If{\Call{Front}{$T$} $ = [\ ]$ and \Call{Rear}{$T$} $\neq [\ ]$}
     \State $n \gets$ \Call{Rear}{$T$}[1]
   \Else
     \State $n \gets$ \Call{Front}{$T$}[1]
   \EndIf
   \While{$n$ is NOT leaf}
-    \State $n \gets$ \Call{Children}{$n$}[1]
+    \State $n \gets n_1$
   \EndWhile
   \State \Return $n$
 \EndFunction
-\end{algorithmic}
-
-注意其中的第二个循环，如果当前的节点不是叶子，它就不断沿着第一个子节点遍历。最后我们会得到一个叶子节点，从而可以获取到元素。
-
-\begin{algorithmic}
+\Statex
 \Function{First}{$T$}
-  \State \Return \textproc{Elem}(\Call{First-Lf}{$T$})
+  \State \Return \textproc{Elem}(\Call{First-Leaf}{$T$})
 \EndFunction
 \end{algorithmic}
 
-获取最后一个元素与此类似.
+其中第二个循环中，如果节点不是叶子，就不断沿着第一个子节点遍历。获取最后一个元素与此类似.
 }
 \end{Answer}
 
-\subsection{添加}
+\subsection{尾部操作}
 \index{手指树!尾部添加}
 
-由于手指树是对称的，我们可以参考$insertT$实现尾部添加算法。
+我们可以对称地实现尾部添加、删除。
 
 \be
 appendT(T, x) = \left \{
@@ -701,64 +693,7 @@ snoc (Tr f m r) a = Tr f m (r++[a])
 
 函数的名字\texttt{snoc}恰好是\texttt{cons}倒过来，我们以此指出它们操作上的对称关系。
 
-用命令式的方法在尾部添加元素与此类似，下面的算法实现了这一操作。
-
-\begin{algorithmic}
-\Function{Append-Node}{$T, n$}
-  \State $r \gets $ \textproc{Tree}()
-  \State $p \gets r$
-  \State \Call{Connect-Mid}{$p, T$}
-  \While{\textproc{Full?}(\Call{Rear}{$T$})}
-    \State $R \gets $ \Call{Rear}{$T$} \Comment{$R = \{n_1, n_2, ..., , n_{m-1}, n_m \}$}
-    \State \Call{Rear}{$T$} $\gets$ $\{n, $ \Call{Last}{$R$} $\}$ \Comment{last element $n_m$}
-    \State $n \gets$ \textproc{Node}()
-    \State \Call{Children}{$n$} $\gets R[1...m-1]$ \Comment{ $\{n1, n2, ..., n_{m-1}\}$}
-    \State $p \gets T$
-    \State $T \gets$ \Call{Mid}{$T$}
-  \EndWhile
-  \If{$T =$ NIL}
-    \State $T \gets$ \textproc{Tree}()
-    \State \Call{Front}{$T$} $\gets \{ n \}$
-  \ElsIf{ $|$ \Call{Rear}{$T$} $|$ = 1 $\land$ \Call{Front}{$T$} = $\phi$}
-    \State \Call{Front}{$T$} $\gets$ \Call{Rear}{$T$}
-    \State \Call{Rear}{$T$} $\gets \{ n \}$
-  \Else
-    \State \Call{Rear}{$T$} $\gets$ \Call{Rear}{$T$} $\cup \{ n \} $
-  \EndIf
-  \State \Call{Connect-Mid}{$p, T$} $\gets T$
-  \State \Return \Call{Flat}{$r$}
-\EndFunction
-\end{algorithmic}
-
-对应的Python例子程序如下。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def append_node(t, n):
-    root = prev = Tree()
-    prev.set_mid(t)
-    while rearFull(t):
-        r = t.rear
-        t.rear = r[-1:] + [n]
-        n = wraps(r[:-1])
-        prev = t
-        t = t.mid
-    if t is None:
-        t = leaf(n)
-    elif len(t.rear) == 1 and t.front == []:
-        t = Tree(t.rear, None, [n])
-    else:
-        t = Tree(t.front, t.mid, t.rear + [n])
-    prev.set_mid(t)
-    return flat(root)
-\end{lstlisting}
-
-\subsection{从尾部删除元素}
 \index{手指树!尾部删除}
-
-和$appendT$类似，我们可以通过实现$extractT$的逆操作从尾部删除最后一个元素。
-
-记非空、非单一叶子的手指树为$tree(F, M, R)$，其中$F$为front手指，$M$为中间部分的子树，$R$为rear手指。
 
 \be
 removeT(T) = \left \{
@@ -795,39 +730,6 @@ unsnoc (Tr f m r) = (Tr f m (init r), last r)
 last = snd . unsnoc
 init = fst . unsnoc
 \end{lstlisting}
-
-命令式的尾部删除算法和头部删除类似。但是这里存在一个特殊情况，当只有一个元素（或者子节点）时，我们总是将其存储在front手指，而rear手指和中间部分的子树为空（即：$Tree(\{n\}, NIL, \phi)$），如果只从rear手指获取最后一个元素，就无法得到正确的结果。
-
-如果rear手指为空，这一特殊情况可以通过交换front手指和rear手指来解决，如下面的算法所示：
-
-\begin{algorithmic}
-\Function{Extract-Tail}{$T$}
-  \State $r \gets$ \textproc{Tree}()
-  \State \Call{Connect-Mid}{$r, T$}
-  \While{\Call{Rear}{$T$} $= \phi \land $ \Call{Mid}{$T$} $\neq $ NIL}
-    \State $T \gets$ \Call{Mid}{$T$}
-  \EndWhile
-
-  \If{\Call{Rear}{$T$} $ = \phi \land $ \Call{Front}{$T$} $\neq \phi$}
-    \State \textproc{Exchange} \Call{Front}{$T$} $\leftrightarrow$ \Call{Rear}{$T$}
-  \EndIf
-
-  \State $n \gets $ \textproc{Node}()
-  \State \Call{Children}{$n$} $\gets$ \Call{Rear}{$T$}
-  \Repeat
-    \State $L \gets$ \Call{Children}{$n$} \Comment{$L = \{n_1, n_2, ..., n_{m-1}, n_m\}$}
-    \State $n \gets$ \Call{Last}{$L$} \Comment{$ n \gets n_m$}
-    \State \Call{Rear}{$T$} $\gets L[1...m-1]$ \Comment{$\{n_1, n_2, ..., n_{m-1}\}$}
-    \State $T \gets $ \Call{Parent}{$T$}
-    \If{\Call{Mid}{$T$} becomes empty}
-      \State \Call{Mid}{$T$} $\gets$ NIL
-    \EndIf
-  \Until{$n$ is a leaf}
-  \State \Return (\Call{Elem}{$n$}, \Call{Flat}{$r$})
-\EndFunction
-\end{algorithmic}
-
-我们把如何获得最后一个元素，以及这一算法的实现留给读者作为练习。
 
 \subsection{连接}
 \index{手指树!连接}
