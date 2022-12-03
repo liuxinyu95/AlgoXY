@@ -69,6 +69,7 @@ cons a (Lf b) = Br (size a + size b) [a] Empty [b]
 cons a (Br s [b, c, d, e] m r) = Br (s + size a) [a, b] ((tr3 c d e) `cons` m) r
 cons a (Br s f m r) = Br (s + size a) (a:f) m r
 
+-- Remove from left
 head' (Seq xs) = getElem $ fst $ uncons xs
 
 tail' (Seq xs) = Seq $ snd $ uncons xs
@@ -90,6 +91,7 @@ snoc (Lf a) b = Br (size a + size b) [a] Empty [b]
 snoc (Br s f m [a, b, c, d]) e = Br (s + size e) f (m `snoc` (tr3 a b c)) [d, e]
 snoc (Br s f m r) a = Br (s + size a) f m (r ++ [a])
 
+-- Remove from right
 last' (Seq xs) = getElem $ snd $ unsnoc xs
 
 init' (Seq xs) = Seq $ fst $ unsnoc xs
