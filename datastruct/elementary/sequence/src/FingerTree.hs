@@ -50,6 +50,9 @@ instance Sized a => Sized (Tree a) where
   size (Lf a) = size a
   size (Br s _ _ _) = s
 
+instance Sized (Seq a) where
+  size (Seq xs) = size xs
+
 tr2 a b = Tr2 (size a + size b) a b
 tr3 a b c = Tr3 (size a + size b + size c) a b c
 
@@ -72,7 +75,6 @@ tail' (Seq xs) = Seq $ snd $ uncons xs
 
 uncons :: (Sized a) => Tree a -> (a, Tree a)
 uncons (Lf a) = (a, Empty)
---uncons (Br _ [a] Empty []) = (a, Empty) -- Why need?
 uncons (Br _ [a] Empty [b]) = (a, Lf b)
 uncons (Br s [a] Empty (r:rs)) = (a, Br (s - size a) [r] Empty rs)
 uncons (Br s [a] m r) = (a, Br (s - size a) (nodesOf f) m' r) where (f, m') = uncons m
@@ -94,23 +96,18 @@ init' (Seq xs) = Seq $ fst $ unsnoc xs
 
 unsnoc :: (Sized a) => Tree a -> (Tree a, a)
 unsnoc (Lf a) = (Empty, a)
---unsnoc (Br _ [] Empty [a]) = (Empty, a) -- Why need?
 unsnoc (Br _ [a] Empty [b]) = (Lf a, b)
 unsnoc (Br s f@(_:_:_) Empty [a]) = (Br (s - size a) (init f) Empty [last f], a)
 unsnoc (Br s f m [a]) = (Br (s - size a) f m' (nodesOf r), a) where (m', r) = unsnoc m
 unsnoc (Br s f m r) = (Br (s - size a) f m (init r), a) where a = last r
 
 -- Concatenate
-(+++) :: Seq a -> Seq a -> Seq a
 Seq xs +++ Seq ys = Seq (xs >+< ys)
 
-(>+<) :: (Sized a) => Tree a -> Tree a -> Tree a
 x >+< y = merge x [] y
 
-(<<<) :: (Sized a) => Tree a -> [a] -> Tree a
 t <<< xs = foldl snoc t xs
 
-(>>>) :: (Sized a) => [a] -> Tree a -> Tree a
 xs >>> t = foldr cons t xs
 
 merge :: (Sized a) => Tree a -> [a] -> Tree a -> Tree a
@@ -164,7 +161,6 @@ lookups n (x:xs) = if n < sx then Place n x
 -- | Cut
 -- | Inspired by Dedekind cut, we cut *on* an element
 -- |  unless the sequence is empty, or out of bound
--- | cut i s, if 1 <= i <= size s --> left, x@i, right
 
 cut :: Int -> Seq a -> (Seq a, Maybe a, Seq a)
 cut i (Seq xs) | i < 0 = (Seq Empty, Nothing, Seq xs)
@@ -212,15 +208,14 @@ tree [] m r = Br (size m + sum (map size r)) (nodesOf f) m' r where (f, m') = un
 tree f m [] = Br (size m + sum (map size f)) f m' (nodesOf r) where (m', r) = unsnoc m
 tree f m r = Br (size m + sum (map size f) + sum (map size r)) f m r
 
--- extractAt :: Seq a -> Int -> (a, Seq a)
--- extractAt (Seq xs) i = let (l, x, r) = split i xs in (getElem x, Seq l +++ Seq r)
+setAt s i x = case cut i s of
+  (_, Nothing, _) -> s
+  (xs, Just y, ys) -> xs +++ (x <| ys)
 
--- setAt :: Seq a -> Int -> a -> Seq a
--- setAt (Seq xs) i x = let (l, _, r) = split i xs in Seq l +++ (x <| Seq r)
+extractAt s i = case cut i s of (xs, Just y, ys) -> (y, xs +++ ys)
 
--- -- move the i-th element to front
--- moveToFront :: Seq a -> Int -> Seq a
--- moveToFront xs i = let (a, xs') = extractAt xs i in a <| xs'
+moveToFront s i = if i < 0 || i >= size s then s
+                  else let (a, s') = extractAt s i in a <| s'
 
 fromList :: [a] -> Seq a
 fromList = foldr (<|) (Seq Empty)
@@ -252,24 +247,29 @@ prop_cut xs = and [(splitAt i xs) `eq` (cut i s) | i <- [-1 .. length xs]] where
    eq (xs, ys) (s1, Nothing, s2) = xs == toList s1 && ys == toList s2
    eq (xs, ys) (s1, Just x, s2) = xs == toList s1 && ys == x : toList s2
 
--- prop_update :: [Int] -> Int -> Int -> Property
--- prop_update xs i y = (0 <=i && i < length xs) ==> toList (setAt (fromList xs) i y) == xs' where
---     xs' = as ++ (y:bs)
---     (as, (_:bs)) = splitAt i xs
+prop_update :: [Int] -> Bool
+prop_update xs = and [(updateAt i xs (i + 1)) == toList (setAt s i (i + 1))
+                     | i <- [-1 .. length xs]] where
+  s = fromList xs
+  updateAt i xs x = if i < 0 then xs else case splitAt i xs of
+    (as, _:bs) -> as ++ (x:bs)
+    (as, []) -> xs
 
--- prop_mtf :: [Int] -> Int -> Property
--- prop_mtf xs i = (0 <=i && i < length xs) ==> (toList $ moveToFront (fromList xs) i) == mtf
---     where
---       mtf = b : as ++ bs
---       (as, (b:bs)) = splitAt i xs
+prop_mtf :: [Int] -> Bool
+prop_mtf xs = and [(toList $ moveToFront s i) == mtf xs i | i <-[-1 .. length xs]]
+    where
+      s = fromList xs
+      mtf xs i = if i < 0 || i >= length xs then xs
+        else let (as, (b:bs)) = splitAt i xs in b : as ++ bs
 
 testAll = do
   quickCheck prop_cons
   quickCheck prop_snoc
   quickCheck prop_concat
   quickCheck prop_lookup
---  quickCheck prop_update
---  quickCheck prop_mtf
+  quickCheck prop_cut
+  quickCheck prop_update
+  quickCheck prop_mtf
 
 -- Reference
 -- [1]. Ralf Hinze and Ross Paterson. ``Finger Trees: A Simple General-purpose Data Structure,'' in Journal of Functional Programming 16:2 (2006), pages 197-217. http://www.soi.city.ac.uk/~ross/papers/FingerTree.html
