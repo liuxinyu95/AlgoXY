@@ -787,372 +787,55 @@ size\ (t_1, t_2, t_3) & = & size\ t_1 + size\ t_2 + size\ t_3 \\
 \end{array}
 \ee
 
-\index{手指树!分割}
-对于节点的列表（例如深一级的手指）我们可以用$sum \circ (map\ size)$来计算大小。在插入和删除操作中，我们也需要更新树大小。增加大小信息后，给定一个位置$i$，可以通过树搜索定位到相应的节点。手指树具有递归结构：$(s, f, t, r)$，我们令这些子结构的大小为：$s_f$、$s_t$、$s_r$。如果$i \leq s_f$，则目标位于$f$中，我们接下来在$f$中查找；如果$s_f < i \leq s_f + s_t$，则目标位于$t$中，我们递归在$t$中搜索；否则目标位于$r$中。如果忽略空树，只存在一种边界情况。
-
-\[
-splitAt(i, T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, x, \phi) & T = leaf(x) \\
-  ... & otherwise
-  \end{array}
-\right .
-\]
-
-如果对叶子进行分割，则左右部分都为空，叶子中的节点就是结果。
-
-递归的情况根据$i$的大小又分为三种子情况。设函数$splitAtL(i, L)$在位置$i$上将节点列表分割成三部分：$(A, x, B) = splitAtL(i, L)$，其中$x$为$L$中第$i$个节点，$A$是$i$前的子列表，而$B$是$i$后的子列表。
-
-\be
-splitAt(i, T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, x, \phi) & T = leaf(x) \\
-  (fromL(A), x, tree'(B, M, R)) & i \leq S_f\\
-  (tree'(F, M_l, A), x, tree'(B, M_r, R)) & S_f < i \leq S_f + S_m \\
-  (tree'(F, M, A), x, fromL(B)) & otherwise
-  \end{array}
-\right .
-\ee
-
-在上式第二种情况中，有$(A, x, B) = splitAtL(i, F)$；而在最后一种情况中，这一关系为：$ (A, x, B) = splitAtL(i-S_f-S_m, R)$；比较复杂的是第三种情况，其中的$M_l$、$x$、$M_r$、$A$、$B$的计算如下：
-
-\[
-\begin{array}{l}
-(M_l, t, M_r) = splitAt(i-S_f, M) \\
-(A, x, B) = splitAtL(i-S_f-size(M_l), unwraps(t))
-\end{array}
-\]
-
-函数$splitAtL$实际上进行了线性遍历，由于列表的长度有限，且不超过2-3树的分支数目限制。因此性能仍然是常数时间$O(1)$的。记$L = \{x_1, x_2, ... \}$、$L' = \{ x_2, x_3, ...\}$。
-
-\be
-splitAtL(i, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, x_1, \phi) & i = 0 \land L = \{x_1\} \\
-  (\phi, x_1, L') & i < size'(x_1) \\
-  (\{x_1\} \cup A, x, B) & otherwise
-  \end{array}
-\right .
-\ee
-
-其中
-
-\[
-(A, x, B) = splitAtL(i-size'(x_1), L')
-\]
-
-分割的解法是典型的分而治之策略。算法的性能取决于中间部分子树的递归搜索，其他情况下都是线性时间。递归的深度和树的高度$h$成比例，因此算法的性能为$O(h)$。由于树是平衡的（使用2-3树，且所有的插入、删除等操作都维持树的平衡），所以$h = O(\lg n)$，其中$n$是树中存储的元素数目。分割算法的整体性能为$O(\lg n)$。
-
-下面的Haskell例子程序给出了$splitAtL$算法的实现。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-splitNodesAt 0 [x] = ([], x, [])
-splitNodesAt i (x:xs) | i < size x = ([], x, xs)
-                      | otherwise = let (xs', y, ys) = splitNodesAt (i-size x) xs
-                                    in (x:xs', y, ys)
-\end{lstlisting}
-
-由于Haskell的标准库中已经定义了同样名字的\texttt{splitAt}函数，为了避免冲突，我们将名称改为\texttt{splitAt'}。
-
-\begin{lstlisting}[style=Haskell]
-splitAt' _ (Lf x) = (Empty, x, Empty)
-splitAt' i (Tr _ f m r)
-    | i < szf = let (xs, y, ys) = splitNodesAt i f
-                in ((foldr cons' Empty xs), y, tree ys m r)
-    | i < szf + szm = let (m1, t, m2) = splitAt' (i-szf) m
-                          (xs, y, ys) = splitNodesAt (i-szf - sizeT m1) (unwraps t)
-                      in (tree f m1 xs, y, tree ys m2 r)
-    | otherwise = let (xs, y, ys) = splitNodesAt (i-szf -szm) r
-                  in (tree f m xs, y, foldr cons' Empty ys)
-    where
-      szf = sizeL f
-      szm = sizeT m
-\end{lstlisting}
-
-\subsubsection{随机访问}
 \index{手指树!随机访问}
-
-使用分割算法，我们可以很容易地实现性能为$O(\lg n)$的随机访问。令函数$mid(x)$返回一个三元组的第2个部分，$left(x)$和$right(x)$分别返回第1和第3部分。
-
-\be
-getAt(S, i) = unwrap(mid(splitAt(i, S)))
-\ee
-
-我们首先在位置$i$将序列分成3部分，然后取出返回的节点，并得到其中的元素。如果希望修改序列中的第$i$个元素，我们首先用$i$来分割，然后将中间部分替换成要修改的值，最后再使用连接操作将这三部分合并起来。
+对于节点的列表（例如深一级的手指）我们可以用$sum \circ (map\ size)$来计算大小。在插入和删除操作中，我们也需要更新树大小。增加大小信息后，给定一个位置$i$，可以通过树搜索定位到相应的节点。手指树具有递归结构：$(s, f, t, r)$，我们令这些子结构的大小为：$s_f$、$s_t$、$s_r$，且$s = s_f + s_t + s_r$。如果$i \leq s_f$，则目标位于$f$中，我们接下来在$f$中查找；如果$s_f < i \leq s_f + s_t$，则目标位于$t$中，我们递归在$t$中搜索；否则目标位于$r$中。除此之外，我们还需要处理叶子节点$(x)$的情况。我们用一对值$(i, t)$表示在数据结构$t$中$i$的位置，并定义查找操作$lookup_T$如下：
 
 \be
-setAt(S, i, x) = concat(L, insertT(x, R))
+\begin{array}{rcl}
+lookup_T\ i\ (x) & = & (i, x) \\
+lookup_T\ i\ (s, f, t, r) & = & \begin{cases}
+  i < s_f: & lookup_s\ i\ f \\
+  s_f \leq i < s_f + s_t: & lookup_N\ (lookup_T\ (i - s_f)\ t) \\
+  \text{否则}: & lookup_s\ (i - s_f - s_t)\ r \\
+\end{cases}
+\end{array}
 \ee
 
-其中
-\[
-(L, y, R) = splitAt(i, S)
-\]
-
-更进一步，我们还可以实现$removeAt(S, i)$算法，从一个序列$S$中删除第$i$个元素。我们首先用位置$i$分割，将节点中的元素返回，然后将左侧和右侧部分连接成一棵新手指树。
+这里：$s_f = sum\ (map\ size\ f), s_t = size\ t$，分别是手指树前两部分的大小。如果在叶子节点$(x)$中查找位于$i$的内容，结果为$(i, x)$。否则我们判断$i$位于$(s, f, t, r)$中哪一部分。如果位于前后手指$f, r$中，我们依次查找手指列表中的每个元素。
 
 \be
-removeAt(S, i) = (unwrap(y), concat(L, R))
+\begin{array}{rcl}
+lookup_s\ i\ (x \cons xs) = \begin{cases}
+  i < size\ x: & (i, x) \\
+  \text{否则}: & lookup_s\ (i - size\ x)\ xs \\
+\end{cases}
+\end{array}
 \ee
 
-下面的Haskell例子程序实现了这些操作。
+如果$i$位于某个元素$x$中（$i < size\ x$），我们返回$(i, x)$，否则我们继续查找后面的元素。如果$i$不位于前后手指$f, r$，而在中间部分$t$，我们递归地在更深层查找，得到位置$(i', m)$。这里$m$是一个2-3树，我们接下来在其中查找：
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-getAt t i = unwrap x where (_, x, _) = splitAt' i t
-setAt t i x = let (l, _, r) = splitAt' i t in concat' l (cons x r)
-removeAt t i = let (l, x, r) = splitAt' i t in (unwrap x, concat' l r)
-\end{lstlisting}
+\be
+\begin{array}{rcl}
+lookup_N\ i\ (t_1, t_2) & = & \begin{cases}
+  i < size\ t_1: & (i, t_1) \\
+  \text{否则}: & (i - size\ t_1, t_2) \\
+\end{cases} \\
+lookup_N\ i\ (t_1, t_2, t_3) & = & \begin{cases}
+  i < size\ t_1: & (i, t_1) \\
+  size\ t_1 \leq i < size\ t_1 + size\ t_2: & (i - size\ t_1, t_2) \\
+  \text{否则}: & (i - size\ t_1 - size\ t_2, t_3) \\
+\end{cases} \\
+\end{array}
+\ee
 
-\subsubsection{命令式随机访问}
-\index{手指树!命令式随机访问}
+我们此前为了计算大小把每个元素$x$都封装在$(x)_e$中，最终我们需要从中把$x$取回：
 
-在命令式环境中，我们可以直接修改树中的值，因此可以不用分割而直接实现\textproc{Get-At}($T, i$)和\textproc{Set-At}($T, i, x$)算法。我们先实现一个通用算法，可以在给定位置执行指定的操作。下面的算法接受三个参数，一棵手指树$T$，一个从0开始的位置索引$i$，以及一个函数$f$，用以对位置$i$上的元素实施操作。
-
-\begin{algorithmic}
-\Function{Apply-At}{$T, i, f$}
-  \While{\Call{Size}{$T$} $> 1$}
-    \State $S_f \gets $ \textproc{Size-Nodes}(\Call{Front}{$T$})
-    \State $S_m \gets $ \textproc{Size-Tr}(\Call{Mid}{$T$})
-    \If{$i < S_f$}
-      \State \Return \textproc{Lookup-Nodes}(\Call{Front}{$T$}, $i$, $f$)
-    \ElsIf{$i < S_f + S_m$}
-      \State $T \gets$ \Call{Mid}{$T$}
-      \State $i \gets i - S_f$
-    \Else
-      \State \Return \textproc{Lookup-Nodes}(\Call{Rear}{$T$}, $i - S_f - S_m$, $f$)
-    \EndIf
-  \EndWhile
-  \State $n \gets$ \Call{First-Lf}{$T$}
-  \State $x \gets$ \Call{Elem}{$n$}
-  \State \Call{Elem}{$n$} $\gets f(x)$
-  \State \Return $x$
-\EndFunction
-\end{algorithmic}
-
-算法本质上是一个分而治之的树搜索。它不断检查当前的树直到树的size为1（可以通过是否是叶子来进行判断么？请考虑后面练习中的不规则树）。每次循环，我们都检查$i$、front手指的size，和中间部分子树的size之间的关系。
-
-如果索引$i$小于front手指的size，则节点在front手指中。算法就调用一个子过程在front手指中查找；如果索引不比front手指的size小，但是比加上中间部分子树的size的结果小，则节点在中间部分，算法就从$i$中减去front手指的size，然后继续遍历中间部分的子树；否则，说明节点在rear手指中，算法调用子过程在其中查找。
-
-循环结束后，我们得到一个节点（可能是一个复合节点），待查找的元素存储于这一节点的第一个叶子中。我们可以将它取出，然后对其执行函数$f$，并将结果存回树中。
-
-算法返回执行$f$前的元素作为最终结果。
-
-接下来我们需要实现算法\textproc{Lookup-Nodes}($L$, $i$, $f$)。它接受三个参数：一个节点列表，一个位置索引，和一个待执行的函数。我们可以逐一检查列表中的每个节点，如果节点为叶子，并且位置索引为0，我们恰巧到达了指定位置。我们在这个叶子的元素上执行函数，并将此前的元素值返回；否则，我们需要比较节点的size和位置索引，以决定是否仅需在这个节点中搜索。
-
-\begin{algorithmic}
-\Function{Lookup-Nodes}{$L, i, f$}
-  \Loop
-    \For{$\forall n \in L$}
-      \If{$n$ is leaf $\land i = 0$}
-        \State $x \gets $ \Call{Elem}{$n$}
-        \State \Call{Elem}{$n$} $\gets f(x)$
-        \State \Return $x$
-      \EndIf
-      \If{$i < $ \Call{Size}{$n$}}
-        \State $L \gets $ \Call{Children}{$n$}
-        \State break
-      \EndIf
-      \State $i \gets i - $ \Call{Size}{$n$}
-    \EndFor
-  \EndLoop
-\EndFunction
-\end{algorithmic}
-
-下面的Python例子程序实现了这一算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def applyAt(t, i, f):
-    while t.size > 1:
-        szf = sizeNs(t.front)
-        szm = sizeT(t.mid)
-        if i < szf:
-            return lookupNs(t.front, i, f)
-        elif i < szf + szm:
-            t = t.mid
-            i = i - szf
-        else:
-            return lookupNs(t.rear, i - szf - szm, f)
-    n = first_leaf(t)
-    x = elem(n)
-    n.children[0] = f(x)
-    return x
-
-def lookupNs(ns, i, f):
-    while True:
-        for n in ns:
-            if n.leaf and i == 0:
-                x = elem(n)
-                n.children[0] = f(x)
-                return x
-            if i < n.size:
-                ns = n.children
-                break
-            i = i - n.size
-\end{lstlisting}
-
-通过将某些特殊函数传入这一通用算法，我们就可以实现\textproc{Get-At}和\textproc{Set-At}操作。
-
-\begin{algorithmic}
-\Function{Get-At}{$T, i$}
-  \State \Return \Call{Apply-At}{$T, i, \lambda_x . x$}
-\EndFunction
-\Statex
-\Function{Set-At}{$T, i, x$}
-  \State \Return \Call{Apply-At}{$T, i, \lambda_y . x$}
-\EndFunction
-\end{algorithmic}
-
-我们传入$id$函数来获取指定位置的元素，它并不改变元素的值；通过传入常数函数，我们可以实现设置，它忽略元素以前的值，而将传入的值作为新结果。
-
-\subsubsection{命令式分割}
-\index{手指树!命令式分割}
-
-在命令式环境下，仅仅实现\textproc{Apply-At}算法还不够，我们还需要能删除指定位置的元素。
-
-此前我们介绍的所有命令式手指树算法都只执行一轮自顶向下的操作。由于不需要自底向上进行回溯。所以，父节点到目前为止还没有派上用场。
-
-使用父节点可以容易地实现分割操作。我们首先沿着中间部分的子树执行一轮自顶向下的遍历，直到分割位置落入front手指或者rear手指。此后，我们沿着父节点分别向上回溯两棵分割树以填入相应的内容。
-
-\begin{algorithmic}
-\Function{Split-At}{$T, i$}
-  \State $T_1 \gets$ \textproc{Tree}()
-  \State $T_2 \gets$ \textproc{Tree}()
-  \While{$S_f \leq i < S_f + S_m$} \Comment{自顶向下遍历}
-    \State $T'_1 \gets$ \textproc{Tree}()
-    \State $T'_2 \gets$ \textproc{Tree}()
-    \State \Call{Front}{$T'_1$} $\gets$ \Call{Front}{$T$}
-    \State \Call{Rear}{$T'_2$} $\gets$ \Call{Rear}{$T$}
-    \State \Call{Connect-Mid}{$T_1, T'_1$}
-    \State \Call{Connect-Mid}{$T_2, T'_2$}
-    \State $T_1 \gets T'_1$
-    \State $T_2 \gets T'_2$
-    \State $i \gets i - S_f$
-    \State $T \gets$ \Call{Mid}{$T$}
-  \EndWhile
-
-  \If{$i < S_f$}
-    \State $(X, n, Y) \gets$ \textproc{Split-Nodes}(\Call{Front}{$T$}, $i$)
-    \State $T'_1 \gets$ \Call{From-Nodes}{$X$}
-    \State $T'_2 \gets T$
-    \State \Call{Size}{$T'_2$} $\gets$ \Call{Size}{$T$} - \Call{Size-Nodes}{$X$} - \Call{Size}{$n$}
-    \State \Call{Front}{$T'_2$} $\gets Y$
-  \ElsIf{$S_f + S_m \leq i$}
-    \State $(X, n, Y) \gets$ \textproc{Split-Nodes}(\Call{Rear}{$T$}, $i - S_f - S_m$)
-    \State $T'_2 \gets$ \Call{From-Nodes}{$Y$}
-    \State $T'_1 \gets T$
-    \State \Call{Size}{$T'_1$} $\gets$ \Call{Size}{$T$} - \Call{Size-Nodes}{$Y$} - \Call{Size}{$n$}
-    \State \Call{Rear}{$T'_1$} $\gets X$
-  \EndIf
-  \State \Call{Connect-Mid}{$T_1, T'_1$}
-  \State \Call{Connect-Mid}{$T_2, T'_2$}
-
-  \State $i \gets i -$ \Call{Size-Tr}{$T'_1$}
-  \While{$n$ is NOT leaf} \Comment{自底向上回溯}
-    \State $(X, n, Y) \gets$ \textproc{Split-Nodes}(\Call{Children}{$n$}, $i$)
-    \State $i \gets i -$ \Call{Size-Nodes}{$X$}
-    \State \Call{Rear}{$T_1$} $\gets X$
-    \State \Call{Front}{$T_2$} $\gets Y$
-    \State \Call{Size}{$T_1$} $\gets$ \Call{Sum-Sizes}{$T_1$}
-    \State \Call{Size}{$T_2$} $\gets$ \Call{Sum-Sizes}{$T_2$}
-    \State $T_1 \gets$ \Call{Parent}{$T_1$}
-    \State $T_2 \gets$ \Call{Parent}{$T_2$}
-  \EndWhile
-
-  \State \Return (\Call{Flat}{$T_1$}, \Call{Elem}{$n$}, \Call{Flat}{$T_2$})
-\EndFunction
-\end{algorithmic}
-
-算法首先创建两棵树$T_1$和$T_2$来保存分割的结果。它们的含义都是“ground”树，为结果树的父节点。第一轮遍历是自顶向下的。令$S_f$和$S_m$分别是front手指和中间部分子树的size。如果待分割的位置落在中间部分的子树中，我们就使用$T$的front手指作为新建的$T'_1$的front手指；并且复用$T$的rear手指作为$T'_2$的rear手指。此时，我们还不能设置$T'_1$和$T'_2$的其他部分，它们仍然为空，我们将在此后填入必要的信息。然后，我们将$T_1$和$T'_1$连接起来，使得后者成为前者的中间部分子树；同样我们把$T_2$和$T'_2$连接起来。最后，我们从分割位置中减去front手指的size，然后继续沿着中间部分的子树遍历。
-
-第一轮遍历结束后，我们到达一个位置，分割要么发生在front手指，要么发生在rear手指。在手指中分割会产生一个三元组，第一部分和第三部分为分割位置前后的子列表，第二部分是包含指定位置元素的节点。两个手指本质上都是2-3树，它们都最多含有3个节点，节点分割算法可以通过线性查找来完成。
-
-\begin{algorithmic}
-\Function{Split-Nodes}{$L, i$}
-  \For{$j \in [1, $ \Call{Length}{$L$} $]$}
-    \If{$i <$ \Call{Size}{$L[j]$}}
-      \State \Return ($L[1...j-1]$, $L[j]$, $L[j+1...$ \Call{Length}{$L$} $]$)
-    \EndIf
-    \State $i \gets i -$ \Call{Size}{$L[j]$}
-  \EndFor
-\EndFunction
-\end{algorithmic}
-
-接下来，我们从三元组创建两个新的树$T'_1$和$T'_2$，然后将它们连接起来作为$T_1$和$T_2$的最终中间子树。
-
-此后，我们需要执行自底向上的回溯。沿着结果树填入所有尚为空的部分。
-
-我们对三元组的第二部分，也就是节点，执行循环。直到它变为一个叶子。每次循环我们不断将节点的子树用更新的位置$i$进行分割。分割结果的第一部分子列表用于填入$T_1$作为rear手指；分割结果的另一部分子列表用于填入$T_2$作为front手指。此后，由于手指树的三个部分：front手指、中间部分子树、和rear手指都完整填入了，我们就可以计算出三部分的size并相加，将结果作为树的size。
-
-\begin{algorithmic}
-\Function{Sum-Sizes}{$T$}
-  \State \Return \textproc{Size-Nodes}(\Call{Front}{$T$}) + \textproc{Size-Tr}(\Call{Mid}{$T$}) + \textproc{Size-Nodes}(\Call{Rear}{$T$})
-\EndFunction
-\end{algorithmic}
-
-接着，迭代继续沿着$T_1$和$T_2$的父节点进行。最后需要实现的算法是\textproc{From-Nodes}($L$)。它从一组节点创建一棵手指树。我们可以逐一将节点插入到一棵空树中实现它。我们把它作为练习留给读者。
-
-下面的Python例子程序实现了分割算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def splitAt(t, i):
-    (t1, t2) = (Tree(), Tree())
-    while szf(t) <= i and i < szf(t) + szm(t):
-        fst = Tree(0, t.front, None, [])
-        snd = Tree(0, [], None, t.rear)
-        t1.set_mid(fst)
-        t2.set_mid(snd)
-        (t1, t2) = (fst, snd)
-        i = i - szf(t)
-        t = t.mid
-
-    if i < szf(t):
-        (xs, n, ys) = splitNs(t.front, i)
-        sz = t.size - sizeNs(xs) - n.size
-        (fst, snd) = (fromNodes(xs), Tree(sz, ys, t.mid, t.rear))
-    elif szf(t) + szm(t) <= i:
-        (xs, n, ys) = splitNs(t.rear, i - szf(t) - szm(t))
-        sz = t.size - sizeNs(ys) - n.size
-        (fst, snd) = (Tree(sz, t.front, t.mid, xs), fromNodes(ys))
-    t1.set_mid(fst)
-    t2.set_mid(snd)
-
-    i = i - sizeT(fst)
-    while not n.leaf:
-        (xs, n, ys) = splitNs(n.children, i)
-        i = i - sizeNs(xs)
-        (t1.rear, t2.front) = (xs, ys)
-        t1.size = sizeNs(t1.front) + sizeT(t1.mid) + sizeNs(t1.rear)
-        t2.size = sizeNs(t2.front) + sizeT(t2.mid) + sizeNs(t2.rear)
-        (t1, t2) = (t1.parent, t2.parent)
-
-    return (flat(t1), elem(n), flat(t2))
-\end{lstlisting}
-
-下面的例子程序将一个节点的列表在指定位置分割开。
-
-\begin{lstlisting}
-def splitNs(ns, i):
-    for j in range(len(ns)):
-        if i < ns[j].size:
-            return (ns[:j], ns[j], ns[j+1:])
-        i = i - ns[j].size
-\end{lstlisting}
-
-使用分割算法，就可以方便地实现删除操作了。我们首先执行分割，然后将结果中的两棵树连接成一棵，并将指定位置的元素返回。
-
-\begin{algorithmic}
-\Function{Remove-At}{$T, i$}
-  \State $(T_1, x, T_2) \gets$ \Call{Split-At}{$T, i$}
-  \State \Return $(x, $ \Call{Concat}{$T_1, T_2$} $)$
-\EndFunction
-\end{algorithmic}
+\be
+T[i] = \begin{cases}
+  \text{若} lookup_T\ i\ T = (i', (x)_e): & \textit{Just}\ x \\
+  \text{否则}: & \textit{Nothing}
+\end{cases}
+\ee
 
 \begin{Exercise}
 \begin{enumerate}
