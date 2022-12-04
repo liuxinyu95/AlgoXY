@@ -70,7 +70,6 @@ cons a (Br s f m r) = Br (s + size a) (a:f) m r
 
 -- Remove from left
 head' (Seq xs) = getElem $ fst $ uncons xs
-
 tail' (Seq xs) = Seq $ snd $ uncons xs
 
 uncons :: (Sized a) => Tree a -> (a, Tree a)
@@ -91,7 +90,6 @@ snoc (Br s f m r) a = Br (s + size a) f m (r ++ [a])
 
 -- Remove from right
 last' (Seq xs) = getElem $ snd $ unsnoc xs
-
 init' (Seq xs) = Seq $ fst $ unsnoc xs
 
 unsnoc :: (Sized a) => Tree a -> (Tree a, a)
@@ -107,7 +105,6 @@ Seq xs +++ Seq ys = Seq (xs >+< ys)
 xs >+< ys = merge xs [] ys
 
 t <<< xs = foldl snoc t xs
-
 xs >>> t = foldr cons t xs
 
 merge :: (Sized a) => Tree a -> [a] -> Tree a -> Tree a
