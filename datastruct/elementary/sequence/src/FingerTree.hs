@@ -60,7 +60,6 @@ nodesOf (Tr2 _ a b) = [a, b]
 nodesOf (Tr3 _ a b c) = [a, b, c]
 
 -- Add from left
-(<|) :: a -> Seq a -> Seq a
 x <| Seq xs = Seq (Elem x `cons` xs)
 
 cons :: (Sized a) => a -> Tree a -> Tree a
@@ -82,7 +81,6 @@ uncons (Br s [a] m r) = (a, Br (s - size a) (nodesOf f) m' r) where (f, m') = un
 uncons (Br s (a:f) m r) = (a, Br (s - size a) f m r)
 
 -- Add from right
-(|>) :: Seq a -> a -> Seq a
 Seq xs |> x  = Seq (xs `snoc` Elem x)
 
 snoc :: (Sized a) => Tree a -> a -> Tree a
@@ -106,7 +104,7 @@ unsnoc (Br s f m r) = (Br (s - size a) f m (init r), a) where a = last r
 -- Concatenate
 Seq xs +++ Seq ys = Seq (xs >+< ys)
 
-x >+< y = merge x [] y
+xs >+< ys = merge xs [] ys
 
 t <<< xs = foldl snoc t xs
 
