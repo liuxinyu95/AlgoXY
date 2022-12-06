@@ -118,133 +118,40 @@ Where $link$ links two trees of the same size: $link\ t_1\ t_2 = (size\ t_1 + si
   \label{fig:bralist-2}
 \end{figure}
 
-As there are at most $M$ trees in the forest, and $m$ is bound to $O(\lg n)$, so the insertion to
-head algorithm is ensured to perform in $O(\lg n)$ even in worst case. We'll prove the amortized
-performance is $O(1)$ later.
+For $n$ elements, there are $m = O(\lg n)$ trees in the forest. The performance is bound to $O(\lg n)$ time. We'll prove the amortized performance is constant time.
 
-Let's formalize the algorithm. we define the function of inserting an element in front of
-a sequence as $insert(S, x)$.
+\index{Binary Random Access List!remove}
 
-\be
-insert(S, x) = insertTree(S, leaf(x))
-\ee
-
-This function just wrap element $x$ to a singleton tree with a leaf, and call $insertTree$ to insert
-this tree to the forest. Suppose the forest $F=\{ t_1, t_2, ...\}$ if it's not empty, and $F' = \{ t_2, t_3, ...\}$
-is the rest of trees without the first one.
-
-\be
-insertTree(F, t) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ t \} & F = \phi \\
-  \{ t \} \cup F & size(t) < size(t_1) \\
-  insertTree(F', link(t, t_1)) & otherwise
-  \end{array}
-\right .
-\ee
-
-Where function $link(t_1, t_2)$ create a new tree from two small trees with same size. Suppose function
-$tree(s, t_1, t_2)$ create a tree, set its size as $s$, makes $t_1$ as the left child, and $t_2$ as
-the right child, linking can be realized as below.
-
-\be
-link(t_1, t_2) = tree(size(t_1) + size(t_2), t_1, t_2)
-\ee
-
-The relative Haskell programs can be given by translating these definitions.
-
-\begin{lstlisting}
-cons :: a -> BRAList a -> BRAList a
-cons x ts = insertTree ts (Leaf x)
-
-insertTree :: BRAList a -> Tree a -> BRAList a
-insertTree [] t = [t]
-insertTree (t':ts) t = if size t < size t' then  t:t':ts
-                       else insertTree ts (link t t')
-
--- Precondition: rank t1 = rank t2
-link :: Tree a -> Tree a -> Tree a
-link t1 t2 = Node (size t1 + size t2) t1 t2
-\end{lstlisting}
-
-Here we use the Lisp tradition to name the function that insert an element before a list as `cons'.
-
-\subsubsection{Remove the element from the head of the sequence}
-\index{Binary Random Access List!Remove from head}
-
-It's not complex to realize the inverse operation of `cons', which can remove element from the
-head of the sequence.
-
-\begin{itemize}
-\item If the first tree in the forest is a singleton leaf, remove this tree from the forest;
-\item otherwise, we can halve the first tree by unlinking its two children, so the first tree
-in the forest becomes two trees, we recursively halve the first tree until it turns to be a
-leaf.
-\end{itemize}
-
-Figure \ref{fig:bralist-pop} illustrates the steps of removing elements from the head of the
-sequence.
+Symmetrically, we can reverse the insert process to define remove. If the first tree is $t_0$ (singleton leaf), we remove $t_0$; otherwise, we repeat splitting the first tree to obtain a $t_0$ and remove it, as shown in figure \ref{fig:bralist-pop}.
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{A sequence of 5 elements}{\includegraphics[scale=0.5]{img/bralst-5}}
-  \subcaptionbox{Result of removing $x_5$, the leaf is removed.}{\includegraphics[scale=0.5]{img/bralst-4}} \\
-  \subcaptionbox{Result of removing $x_4$, As there is not leaf tree, the tree is firstly divided into two sub trees of size 2. The first tree is next divided again into two leafs, after that, the first leaf, which contains $x_4$ is removed. What left in the forest is a leaf tree of $x_3$, and a tree of size 2 with elements $x_2, x_1$.}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-3}\hspace{0.2\textwidth}}
-  \caption{Steps of removing elements from head} \label{fig:bralist-pop}
+  \subcaptionbox{Sequence $x_1, x_2, ..., x_5$ as $[t_0, t_2]$.}{\includegraphics[scale=0.5]{img/bralst-5}}
+  \subcaptionbox{Remove $x_5$. Remove $t_0$ directly.}{\includegraphics[scale=0.5]{img/bralst-4}} \\
+  \subcaptionbox{Remove $x_4$. Split twice to get $[t_0, t_0, t_1]$, then remove the head to get $[t_0, t_1]$.}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-3}\hspace{0.2\textwidth}}
+  \caption{Remove}
+  \label{fig:bralist-pop}
 \end{figure}
 
-
-If we assume the sequence isn't empty, so that we can skip the error handling such as trying
-to remove an element from an empty sequence, this can be expressed with the following definition.
-We denote the forest $F = \{t_1, t_2, ... \}$ and the trees without the first one as
-$F' = \{ t_2, t_3, ...\}$
-
 \be
-extractTree(F) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (t_1, F') & t_1 {\quad} \mbox{is leaf} \\
-  extractTree(\{t_l, t_r\} \cup F') & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+extract\ ((x) \cons ts) & = & (x, ts) \\
+extract\ ((s, t_1, t_2) \cons ts) & = & extract\ (t_1 \cons t_2 \cons ts) \\
+\end{array}
 \ee
 
-where $\{ t_l, t_r \} = unlink(t_1)$ are the two children of $t_1$.
-
-It can be translated to Haskell programs like below.
-
-\begin{lstlisting}
-extractTree (t@(Leaf x):ts) = (t, ts)
-extractTree (t@(Node _ t1 t2):ts) = extractTree (t1:t2:ts)
-\end{lstlisting}
-
-With this function defined, it's convenient to give $head$ and $tail$ functions, the former returns
-the first element in the sequence, the latter return the rest.
+We call $extract$ to remove element from head:
 
 \be
-head(S) = key(first(extractTree(S)))
+\begin{cases}
+head & = \textit{fst} \circ extract \\
+tail & = \textit{snd} \circ extract \\
+\end{cases}
 \ee
 
-\be
-tail(S) = second(extractTree(S))
-\ee
+Where $\textit{fst}\ (a, b) = a$, $\textit{snd}\ (a, b) = b$ access the component in a pair.
 
-Where function $first$ returns the first element in a paired-value (as known as tuple);
-$second$ returns the second element respectively. Function $key$ is used to access the
-element inside a leaf. Below are Haskell programs corresponding to these two functions.
-
-\begin{lstlisting}
-head' ts = x where (Leaf x, _) = extractTree ts
-tail' = snd . extractTree
-\end{lstlisting}
-
-Note that as \texttt{head} and \texttt{tail} functions have already been defined in Haskell standard
-library, we given them apostrophes to make them distinct. (another option is to hide
-the standard ones by importing. We skip the details as they are language specific).
-
-\subsubsection{Random access the element in binary random access list}
-\index{Binary Random Access List!Random access}
+\index{Binary Random Access List!random access}
 
 As trees in the forest help managing the elements in blocks, giving an arbitrary index,
 it's easy to locate which tree this element is stored, after that performing a search
