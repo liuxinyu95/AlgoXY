@@ -197,85 +197,20 @@ There are $O(\lg n)$ full binary trees to hold $n$ elements. For index $i$, we n
 How to handle the out of bound exception?
 \end{Exercise}
 
-\section{Numeric representation for binary random access list}
-\index{Sequence!numeric representation for binary random access list}
-In previous section, we mentioned that for any sequence with $n$ elements, we can
-represent $n$ in binary format so that $n = 2^0e_0 + 2^1e_1 + ... + 2^me_m$. Where $e_i$
-is the $i$-th bit, which can be either 0 or 1. If $e_i \neq 0$ it means that there is
-a complete binary tree with size $2^i$.
+\section{Numeric representation}
+\index{Sequence!numeric representation}
 
-This fact indicates us that there is an explicit relationship between the binary
-form of $n$ and the forest. Insertion a new element on the head can be simulated
-by increasing the binary number by one; while remove an element from the head mimics
-the decreasing of the corresponding binary number by one. This is as known as
-{\em numeric representation} \cite{okasaki-book}.
-
-In order to represent the binary random access list with binary number, we can define two
-states for a bit. That $Zero$ means there is no such a tree with size which is corresponding
-to the bit, while $One$, means such tree exists in the forest. And we can attach
-the tree with the state if it is $One$.
-
-The following Haskell program for instance defines such states.
-
-\begin{lstlisting}
-data Digit a = Zero
-             | One (Tree a)
-
-type RAList a = [Digit a]
-\end{lstlisting}
-
-Here we reuse the definition of complete binary tree and attach it to the state $One$.
-Note that we cache the size information in the tree as well.
-
-With digit defined, forest can be treated as a list of digits. Let's see how inserting
-a new element can be realized as binary number increasing. Suppose function $one(t)$
-creates a $One$ state and attaches tree $t$ to it. And function $getTree(s)$ get the
-tree which is attached to the $One$ state $s$.
-The sequence $S$ is a list of digits
-of states that $S = \{ s_1, s_2, ... \}$, and $S'$ is the rest of digits with the first
-one removed.
+The binary form of $n = 2^0e_0 + 2^1e_1 + ... + 2^me_m$ maps to the forest. The $e_i$ is the $i$-th bit. If $e_i = 1$, there is a full binary tree of size $2^i$. Adding an element corresponds to +1 to a binary number; while deleting corresponds to -1. We call such correspondence {\em numeric representation}\cite{okasaki-book}. To explicitly express this correspondence, we define two states: $Zero$ means none existence of the binary tree, while $One\ t$ means there exits tree $t$. As such, we represent the forest as a list of binary states, and implement insert as binary add.
 
 \be
-insertTree(S, t) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ one(t) \} & S = \phi \\
-  \{ one(t) \} \cup S' & s_1 = Zero \\
-  \{ Zero \} \cup insertTree(S', link(t, getTree(s_1))) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+add\ t\ [\ ] & = & [One\ t] \\
+add\ t\ (Zero \cons ds) & = & (One\ t) : ds \\
+add\ t\ (One\ t' \cons ds) & = & Zero : add\ (link\ t\ t')\ ds
+\end{array}
 \ee
 
-When we insert a new tree $t$ to a forest $S$ of binary digits, If the forest is empty, we
-just create a $One$ state, attach the tree to it, and make this state the only
-digit of the binary number. This is just like $0 + 1 = 1$;
-
-Otherwise if the forest isn't empty, we need examine the first digit of the binary number. If the first digit
-is $Zero$, we just create a $One$ state, attach the tree, and replace the $Zero$ state
-with the new created $One$ state. This is just like $(...digits...0)_2 + 1 = (...digits...1)_2$.
-For example $6 + 1 = (110)_2 + 1 = (111)_2 = 7$.
-
-The last case is that the first
-digit is $One$, here we make assumption that the tree $t$ to be inserted has the
-same size with the tree attached to this $One$ state at this stage.
-This can be ensured by calling this function from inserting a leaf, so that the size
-of the tree to be inserted grows in a series of $1, 2, 4, ..., 2^i, ...$. In such
-case, we need link these two trees (one is $t$, the other is the tree attached to
-the $One$ state), and recursively insert the linked result to the rest of the digits.
-Note that the previous $One$ state has to be replaced with a $Zero$ state. This
-is just like $(...digits...1)_2 + 1 = (...digits'...0)_2$, where $(...digits'...)_2 = (...digits...)_2+1$.
-For example $7 + 1 = (111)_2 + 1 = (1000)_2 = 8$
-
-Translating this algorithm to Haskell yields the following program.
-
-\begin{lstlisting}
-insertTree :: RAList a -> Tree a -> RAList a
-insertTree [] t = [One t]
-insertTree (Zero:ts) t = One t : ts
-insertTree (One t' :ts) t = Zero : insertTree ts (link t t')
-\end{lstlisting}
-
-All the other functions, including $link(), cons()$ etc. are as same as before.
+When add tree $t$, if the forest is empty, we create a state of $One\ t$, it's the only bit, corresponding to $0 + 1 = 1$. If the forest isn't empty, and the first bit is $Zero$, we use the state $One\ t$ to replace $Zero$, corresponding to binary add $(...digits...0)_2 + 1 = (...digits...1)_2$. For e.g. $6 + 1 = (110)_2 + 1 = (111)_2 = 7$. If the first bit is $One\ t'$, we assume $t$ and $t'$ have the same size because we always start to insert from a singleton leaf $t_0 = (x)$. The tree size increase as a sequence of $1, 2, 4, ..., 2^i, ...$. We link $t$ and $t'$, recursively insert to the rest bits. The original $One\ t'$ is replaced by $Zero$. It corresponds to binary add $(...digits...1)_2 + 1 = (...digits'...0)_2$. For e.g. $7 + 1 = (111)_2 + 1 = (1000)_2 = 8$.
 
 Next let's see how removing an element from a sequence can be represented as binary number
 deduction. If the sequence is a singleton $One$ state attached with a leaf.
