@@ -153,157 +153,48 @@ Where $\textit{fst}\ (a, b) = a$, $\textit{snd}\ (a, b) = b$ access the componen
 
 \index{Binary Random Access List!random access}
 
-As trees in the forest help managing the elements in blocks, giving an arbitrary index,
-it's easy to locate which tree this element is stored, after that performing a search
-in the tree yields the result. As all trees are binary (more accurate, complete binary
-tree), the search is essentially binary search, which is bound to the logarithm
-of the tree size. This brings us a faster random access capability than linear search
-in linked-list setting.
-
-Given an index $i$, and a sequence $S$, which is actually a forest of trees, the
-algorithm is executed as the following \footnote{We follow the
-tradition that the index $i$ starts from 1 in algorithm description; while it starts from
-0 in most programming languages}.
+The trees divides elements into chunks. For a given index $1 \leq i \leq n$, we first locate the corresponding tree, then lookup the tree to access the element.
 
 \begin{enumerate}
-\item Compare $i$ with the size of the first tree $T_1$ in the forest, if $i$ is
-less than or equal to the size, the element exists in $T_1$, perform looking up in $T_1$;
-\item Otherwise, decrease $i$ by the size of $T_1$, and repeat the previous step
-in the rest of the trees in the forest.
+\item For the first tree $t$ in the forest, if $i \leq size(t)$, then the element is in $t$, we next lookup $t$ for the target element;
+\item Otherwise, let $i' = i - size(t)$, then recursively lookup the $i'$-th element in the rest trees.
 \end{enumerate}
 
-This algorithm can be represented as the below equation.
-
 \be
-get(S, i) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  lookupTree(T_1, i) & i \leq |T_1| \\
-  get(S', i- |T_1|) & otherwise
-  \end{array}
-\right .
+(t \cons ts)[i] = \begin{cases}
+  i \leq size\ t: & lookup_T\ i\ t \\
+  \text{otherwise}: & ts[i - size\ t] \\
+\end{cases}
 \ee
 
-Where $|T| = size(T)$, and $S' = \{ T_2, T_3, ... \}$ is the rest of trees without the first one in the
-forest. Note that we don't handle out of bound error case, this is left as an exercise
-to the reader.
-
-Function $lookupTree$ is a binary search algorithm. If the index $i$ is 1, we just return the root
-of the tree, otherwise, we halve the tree by unlinking, if $i$ is less than or equal to the size
-of the halved tree, we recursively look up the left tree, otherwise, we
-look up the right tree.
+Where $lookup_T$ applies binary search. If $i = 1$, returns the root, else divides the tree and recursively lookup:
 
 \be
-lookupTree(T, i) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  root(T) & i = 1 \\
-  lookupTree(left(T)) & i \leq \lfloor \frac{|T|}{2} \rfloor \\
-  lookupTree(right(T)) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+lookup_T\ 1\ (x) & = & x \\
+lookup_T\ i\ (s, t_1, t_2) & = & \begin{cases}
+  i \leq \lfloor \dfrac{s}{2} \rfloor: & lookup_T\ i\ t_1 \\
+  \text{otherwise}: & lookup_T\ (i - \lfloor \dfrac{s}{2} \rfloor)\ t_2 \\
+  \end{cases}
+\end{array}
 \ee
 
-Where function $left$ returns the left tree $T_l$ of $T$, while $right$ returns $T_r$.
-
-The corresponding Haskell program is given as below.
-
-\begin{lstlisting}
-getAt (t:ts) i = if i < size t then lookupTree t i
-                 else getAt ts (i - size t)
-
-lookupTree (Leaf x) 0 = x
-lookupTree (Node sz t1 t2) i = if i < sz `div` 2 then lookupTree t1 i
-                               else lookupTree t2 (i - sz `div` 2)
-\end{lstlisting}
-
-Figure \ref{fig:get-at-example} illustrates the steps of looking up the 4-th element
-in a sequence of size 6. It first examine the first tree, since the size is 2 which is
-smaller than 4, so it goes on looking up for the second tree with the updated index $i'=4-2$, which is the
-2nd element in the rest of the forest. As the size of the next tree is 4, which is
-greater than 2, so the element to be searched should be located in this tree.
-It then examines the left sub tree since the new index 2 is not greater than the half size 4/2=2;
-The process next visits the right grand-child, and the final result is returned.
+Figure \ref{fig:get-at-example} gives the steps to lookup the 4-th element in a sequence of length 6. The size of the first tree is 2 < 4, move to the next tree and update the index to $i' = 4 - 2$. The size of the second tree is $4 > i' = 2$, we need lookup it. Because the index 2 is less than the half size $4/2 = 2$, we lookup the left, then the right, and finally locate the element. Similarly, we can alter an element at a given position.
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{$getAt(S, 4))$, $4 > size(t_1) = 2$}{\includegraphics[scale=0.5]{img/bralst-6}}
-  \subcaptionbox{$getAt(S', 4-2) \Rightarrow lookupTree(t_2, 2)$}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-4}\hspace{0.2\textwidth}} \\
-  \subcaptionbox{$ 2 \leq \lfloor size(t_2)/2 \rfloor \Rightarrow lookupTree(left(t_2), 2)$}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-4l}\hspace{0.2\textwidth}}
-  \subcaptionbox{$lookupTree(right(left(t_2)), 1)$, $x_3$ is returned.}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-4lr}\hspace{0.2\textwidth}}
-  \caption{Steps of locating the 4-th element in a sequence.} \label{fig:get-at-example}
+  \subcaptionbox{$S[4], 4 > size(t_1) = 2$}{\includegraphics[scale=0.5]{img/bralst-6}}
+  \subcaptionbox{$S'[4-2] \Rightarrow lookup_T\ 2\ t_2$}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-4}\hspace{0.2\textwidth}} \\
+  \subcaptionbox{$ 2 \leq \lfloor \dfrac{size(t_2)}{2} \rfloor \Rightarrow lookup_T\ 2\ left(t_2)$}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-4l}\hspace{0.2\textwidth}}
+  \subcaptionbox{$lookup_T\ 1\ right(left(t_2))$, return $x_3$}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/bralst-4lr}\hspace{0.2\textwidth}}
+  \caption{Steps to access $S[4]$}
+  \label{fig:get-at-example}
 \end{figure}
 
-By using the similar idea, we can update element at any arbitrary position $i$.
-We first compare the size of the first tree $T_1$ in the forest with $i$, if it is
-less than $i$, it means the element to be updated doesn't exist in the first
-tree. We recursively examine the next tree in the forest, comparing it with
-$i - |T_1|$, where $|T_1|$ represents the size of the first tree. Otherwise
-if this size is greater than or equal to $i$, the element is in the tree,
-we halve the tree recursively until to get a leaf, at this stage, we can
-replace the element of this leaf with a new one.
-
-\be
-set(S, i, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ updateTree(T_1, i, x) \} \cup S' & i < |T_1| \\
-  \{T_1\} \cup set(S', i - |T_1|, x) & otherwise
-  \end{array}
-\right .
-\ee
-
-Where $S' = \{ T_2, T_3, ...\}$ is the rest of the trees in the forest without
-the first one.
-
-Function $setTree(T, i, x)$ performs a tree search and replace the $i$-th element
-with the given value $x$.
-
-\be
-setTree(T, i, x) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  leaf(x) & i = 0 \land |T| = 1 \\
-  tree(|T|, setTree(T_l, i, x), T_r) & i < \lfloor \frac{|T|}{2} \rfloor \\
-  tree(|T|, T_l, setTree(T_r, i - \lfloor \frac{|T|}{2} \rfloor, x)) & otherwise
-  \end{array}
-\right .
-\ee
-
-Where $T_l$ and $T_r$ are left and right sub tree of $T$ respectively. The following
-Haskell program translates the equation accordingly.
-
-\begin{lstlisting}
-setAt :: BRAList a -> Int -> a -> BRAList a
-setAt (t:ts) i x = if i < size t then (updateTree t i x):ts
-                   else t:setAt ts (i-size t) x
-
-updateTree :: Tree a -> Int -> a -> Tree a
-updateTree (Leaf _) 0 x = Leaf x
-updateTree (Node sz t1 t2) i x =
-    if i < sz `div` 2 then Node sz (updateTree t1 i x) t2
-    else Node sz t1 (updateTree t2 (i - sz `div` 2) x)
-\end{lstlisting}
-
-As the nature of complete binary tree, for a sequence with $n$ elements, which
-is represented by binary random
-access list, the number of trees in the forest is bound to $O(\lg n)$. Thus it takes
-$O(\lg n)$ time to locate the tree for arbitrary index $i$, that contains the element in the worst case.
-The followed tree search is bound to the heights of the tree, which is $O(\lg n)$ in the worst case as well.
-So the total performance of random access is $O(\lg n)$.
+There are $O(\lg n)$ full binary trees to hold $n$ elements. For index $i$, we need at most $O(\lg n)$ time to locate the tree, the next lookup time is proportion to the height, which is $O(\lg n)$ at most. The overall random access time is bound to $O(\lg n)$.
 
 \begin{Exercise}
-\begin{enumerate}
-\item The random access algorithm given in this section doesn't handle the error such as
-out of bound index at all. Modify the algorithm to handle this case, and implement
-it in your favorite programming language.
-
-\item It's quite possible to realize the binary random access list in imperative settings,
-which is benefited with fast operation on the head of the sequence. the random access
-can be realized in two steps: firstly locate the tree, secondly use the capability of
-constant random access of array. Write a program to implement it in your favorite imperative
-programming language.
-\end{enumerate}
+How to handle the out of bound exception?
 \end{Exercise}
 
 \section{Numeric representation for binary random access list}
