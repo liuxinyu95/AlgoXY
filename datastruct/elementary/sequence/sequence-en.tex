@@ -212,52 +212,23 @@ add\ t\ (One\ t' \cons ds) & = & Zero : add\ (link\ t\ t')\ ds
 
 When add tree $t$, if the forest is empty, we create a state of $One\ t$, it's the only bit, corresponding to $0 + 1 = 1$. If the forest isn't empty, and the first bit is $Zero$, we use the state $One\ t$ to replace $Zero$, corresponding to binary add $(...digits...0)_2 + 1 = (...digits...1)_2$. For e.g. $6 + 1 = (110)_2 + 1 = (111)_2 = 7$. If the first bit is $One\ t'$, we assume $t$ and $t'$ have the same size because we always start to insert from a singleton leaf $t_0 = (x)$. The tree size increase as a sequence of $1, 2, 4, ..., 2^i, ...$. We link $t$ and $t'$, recursively insert to the rest bits. The original $One\ t'$ is replaced by $Zero$. It corresponds to binary add $(...digits...1)_2 + 1 = (...digits'...0)_2$. For e.g. $7 + 1 = (111)_2 + 1 = (1000)_2 = 8$.
 
-Next let's see how removing an element from a sequence can be represented as binary number
-deduction. If the sequence is a singleton $One$ state attached with a leaf.
-After removal, it becomes empty. This is just like $1 - 1 = 0$;
-
-Otherwise, we examine the first digit, if
-it is $One$ state, it will be replaced with a $Zero$ state to indicate that
-this tree will be no longer exist in the forest as it being removed.
-This is just like $(...digits...1)_2 - 1 = (...digits...0)_2$. For example
-$7 - 1 = (111)_2 - 1 = (110)_2 = 6$;
-
-If the first digit in the sequence is a $Zero$ state, we have to borrow
-from the further digits for removal. We recursively extract a tree from
-the rest digits, and halve the extracted tree to its two children. Then
-the $Zero$ state will be replaced with a $One$ state attached with the
-right children, and the left children is removed. This is something like
-$(...digits...0)_2 - 1 = (...digits'...1)_2$, where
-$(...digits'...)_2 = (...digits)_2 - 1$. For example
-$4 - 1 = (100)_2 - 1 = (11)_2 = 3$.The following equation
-illustrated this algorithm.
+Symmetrically, we can implement remove as binary subtraction. If the sequence is a singleton bit $One\ t$, it becomes empty after remove, corresponding to $1 - 1 = 0$. If there are multiple bits and the first one is $One\ t$, we replace it by $Zero$. This corresponds to $(...digits...1)_2 - 1 = (...digits...0)_2$. For e.g., $7 - 1 = (111)_2 - 1 = (110)_2 = 6$. If the first bit is $Zero$, we need borrow. We cursively extract tree from the rest bits, split into two $t_1, t_2$, replace $Zero$ to $One\ t_2$, and remove $t_1$. It corresponds to $(...digits...0)_2 - 1 = (...digits'...1)_2$. For e.g., $4 - 1 = (100)_2 - 1 = (11)_2 = 3$.
 
 \be
-extractTree(S) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (t, \phi) & S = \{ one(t) \} \\
-  (t, S') & s_1 = one(t) \\
-  (t_l, \{ one(t_r) \} \cup S'' & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+minus\ [One\ t] & = & (t, [\ ]) \\
+minus\ ((One\ t) \cons ts) & = & (t, Zero \cons ts) \\
+minus\ (Zero \cons ts) & = & (t_1, (One\ t_2) \cons ts'), \text{where}: (s, t_1, t_2) = minus\ ts \\
+\end{array}
 \ee
 
-Where $(t', S'') = extractTree(S')$, $t_l$ and $t_r$ are left and right
-sub-trees of $t'$. All other functions, including $head$, $tail$ are
-as same as before.
+Numeric representation doesn't change the performance. We next evaluate the amortized time by aggregation. The steps to insert $n = 2^m$ elements to empty is given as table \ref{tab:ralist-insertion}:
 
-Numeric representation doesn't change the performance of binary random
-access list, readers can refer to \cite{okasaki-ralist} for detailed
-discussion. Let's take for example, analyze the average performance (or amortized) of insertion
-on head algorithm by using aggregation analysis.
-
-Considering the process of inserting $n = 2^m$ elements to an empty binary random access list.
-The numeric representation of the forest can be listed as the following.
-
-\begin{tabular}{l | r}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{| l | r |}
   \hline
-  i & forest (MSB ... LSB) \\
+  i & binary (MSB ... LSB) \\
   \hline
   0 & 0, 0, ..., 0, 0 \\
   1 & 0, 0, ..., 0, 1 \\
@@ -267,9 +238,12 @@ The numeric representation of the forest can be listed as the following.
   $2^m-1$ & 1, 1, ..., 1, 1 \\
   $2^m$ & 1, 0, 0, ..., 0, 0 \\
   \hline
-  bits changed & 1, 1, 2, ... $2^{m-1}$. $2^m$ \\
+  bits changed & 1, 1, 2, ... $2^{m-1}$, $2^m$ \\
   \hline
 \end{tabular}
+\caption{Insert $2^m$ elements.}
+\label{tab:ralist-insertion}
+\end{table}
 
 The LSB of the forest changed every time when there is a new element inserted,
 it costs $2^m$ units of computation; The next bit changes every two times due
