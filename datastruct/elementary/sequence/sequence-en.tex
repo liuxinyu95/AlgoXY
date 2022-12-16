@@ -424,148 +424,61 @@ The performance is bound to linear time in worst case: delete after repeatedly a
 
 \section{Finger tree}
 \index{Sequence!finger tree}
-We haven't been able to meet all the performance targets listed at the beginning
-of this chapter.
 
-Binary random access list enables to insert, remove element
-on the head of sequence, and random access elements fast. However, it performs
-poor when concatenates lists. There is no good way to append element at the
-end of binary random access list.
+Binary random access list supports to insert, remove from head in amortized constant time, and index in logarithm time. But we can't easily append element to tail, or fast concatenate. With concatenate-able list, we can concatenate, insert, and append in amortized constant time, but can't easily index element. From these two examples, we need: 1, access head, tail fast to insert or delete; 2, the recursive structure, e.g., tree, realizes random access as divide and conquer search. Finger tree\cite{finger-tree-1977} implements sequence with these two ideas\cite{finger-tree-2006}. It's critical to maintain the tree balanced to guarantee search performance. Finger tree leverages 2-3 tree (a type of B-tree). A 2-3 tree is consist of 2 or 3 sub-trees, as $(t_1, t_2)$ or $(t_1, t_2, t_3)$.
 
-Concatenate-able list is capable to concatenates multiple lists in a fly, and
-it performs well for adding new element both on head and tail. However, it doesn't
-support randomly access element with a given index.
-
-These two examples bring us some ideas:
-
-\begin{itemize}
-\item In order to support fast manipulation both on head and tail of the sequence,
-there must be some way to easily access the head and tail position;
-\item Tree like data structure helps to turn the random access into divide and
-conquer search, if the tree is well balance, the search can be ensured to
-be logarithm time.
-\end{itemize}
-
-\subsection{Definition}
-\index{Finger tree!Definition}
-Finger tree\cite{finger-tree-1977}, which was first invented in 1977, can help to
-realize efficient sequence. And it is also well implemented in purely functional
-settings\cite{finger-tree-2006}.
-
-As we mentioned that the balance of the tree is critical to ensure the performance
-for search. One option is to use balanced tree as the under ground data structure
-for finger tree. For example the 2-3 tree, which is a special B-tree. (readers
-can refer to the chapter of B-tree of this book).
-
-A 2-3 tree either contains 2 children or 3. It can be defined as below in Haskell.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
+\lstset{frame = single}
+\begin{Haskell}
 data Node a = Br2 a a | Br3 a a a
-\end{lstlisting}
+\end{Haskell}
 
-In imperative settings, node can be defined with a list of sub nodes, which contains
-at most 3 children. For instance the following ANSI C code defines node.
+We define a finger tree as one of below three:
 
-\lstset{language=C}
-\begin{lstlisting}
-union Node {
-  Key* keys;
-  union Node* children;
-};
-\end{lstlisting}
+\begin{enumerate}
+\item empty $\nil$;
+\item a singleton leaf $(x)$;
+\item a tree with three parts: a sub-tree, left and right finger, denoted as $(f, t, r)$. Each finger is a list up to 3 elements\footnote{f: front, r: rear}.
+\end{enumerate}
 
-Note in this definition, a node can either contain $2 \sim 3$ keys, or $2 \sim 3$ sub nodes.
-Where key is the type of elements stored in leaf node.
-
-We mark the left-most none-leaf node as the front finger (or left finger) and the right-most
-none-leaf node as the rear finger (or right finger). Since both fingers are essentially
-2-3 trees with all leafs as children, they can be directly represented as
-list of 2 or 3 leafs. Of course a finger tree can be empty or contain
-only one element as leaf.
-
-So the definition of a finger tree is specified like this.
-
-\begin{itemize}
-\item A finger tree is either empty;
-\item or a singleton leaf;
-\item or contains three parts: a left finger which is a list contains at most
-3 elements; a sub finger tree; and a right finger which is also a list contains
-at most 3 elements.
-\end{itemize}
-
-Note that this definition is recursive, so it's quite possible to be translated
-to functional settings. The following Haskell definition summaries these cases
-for example.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
+\begin{Haskell}
 data Tree a = Empty
             | Lf a
             | Tr [a] (Tree (Node a)) [a]
-\end{lstlisting}
+\end{Haskell}
 
-In imperative settings, we can define the finger tree in a similar manner. What's more,
-we can add a parent field, so that it's possible to back-track to root from any tree node.
-Below ANSI C code defines finger tree accordingly.
-
-\lstset{language=C}
-\begin{lstlisting}
-struct Tree {
-  union Node* front;
-  union Node* rear;
-  Tree* mid;
-  Tree* parent;
-};
-\end{lstlisting}
-
-We can use NIL pointer to represent an empty tree; and a leaf tree contains only one element
-in its front finger, both its rear finger and middle part are empty.
-
-Figure \ref{fig:ftr-example-1} and \ref{fig:ftr-example-2} show some examples
-of figure tree.
+\subsection{Insert}
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{An empty tree}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/ftr-empty}\hspace{0.2\textwidth}}
-  \subcaptionbox{A singleton leaf}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/ftr-leaf}\hspace{0.2\textwidth}} \\
-  \subcaptionbox{Front finger and rear finger contain one element for each, the middle part is empty}{\includegraphics[scale=0.5]{img/ftr-ab}}
-  \caption{Examples of finger tree, 1} \label{fig:ftr-example-1}
+  \subcaptionbox{$\nil$}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/ftr-empty}\hspace{0.2\textwidth}}
+  \subcaptionbox{$(x)$}{\hspace{0.2\textwidth}\includegraphics[scale=0.5]{img/ftr-leaf}\hspace{0.2\textwidth}} \\
+  \subcaptionbox{$([b], \nil, [a])$}{\includegraphics[scale=0.5]{img/ftr-ab}}
+  \caption{Finger tree, example 1}
+  \label{fig:ftr-example-1}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{After inserting extra 3 elements to front finger, it exceeds the 2-3 tree constraint, which isn't balanced any more}{\includegraphics[scale=0.5]{img/ftr-abcde}}
+  \subcaptionbox{Insert 3 elements to $f$, not a valid, balanced 2-3 tree.}{\includegraphics[scale=0.5]{img/ftr-abcde}}
   \hspace{0.2\textwidth}
-  \subcaptionbox{The tree resumes balancing. There are 2 elements in front finger; The middle part is a leaf, which contains a 3-branches 2-3 tree.}{\includegraphics[scale=0.5]{img/ftr-abcdef}}
-  \caption{Examples of finger tree, 2} \label{fig:ftr-example-2}
+  \subcaptionbox{Re-balance. there are two elements in $f$; the middle is a singleton of a 2-3 tree.}{\includegraphics[scale=0.5]{img/ftr-abcdef}}
+  \caption{Finger tree, example 2}
+  \label{fig:ftr-example-2}
 \end{figure}
 
-The first example is an empty finger tree; the second one shows the result after
-inserting one element to empty, it becomes a leaf of one node; the third example
-shows a finger tree contains 2 elements, one is in front finger, the other is
-in rear.
+As shown in figure \ref{fig:ftr-example-1} and \ref{fig:ftr-example-2}. Example 1 (a) is $\nil$, (b) is a singleton, (c) has two element in $f$ and $r$ for each. When add more, $f$ will exceeds 2-3 tree, as in example 2 (a). We need re-balance as in (b). There are two elements in $f$, the middle is singleton of a 2-3 tree. These examples are list as below:
 
-If we continuously insert new elements, to the tree, those elements will be
-put in the front finger one by one, until it exceeds the limit of 2-3 tree.
-The 4-th example shows such condition, that there are 4 elements in front
-finger, which isn't balanced any more.
+\[
+\begin{array}{ll}
+\nil & \texttt{Empty}\\
+(a) & \texttt{Lf a}\\
+([b], \nil, [a]) & \texttt{Tr [b] Empty [a]}\\
+([e, d, c, b], \nil, [a]) & \texttt{Tr [e, d, c, b] Empty [a]}\\
+([f, e], (d, c, b), [a]) & \texttt{Tr [f, e] Lf (Br3 d c b) [a]}\\
+\end{array}
+\]
 
-The last example shows that the finger tree gets fixed so that it resumes
-balancing. There are two elements in the front finger. Note that the middle
-part is not empty any longer. It's a {\em leaf} of a 2-3 tree (why it's a leaf is explained later). The content of the
-leaf is a tree with 3 branches, each contains an element.
-
-We can express these 5 examples as the following Haskell expression.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-Empty
-Lf a
-[b] Empty [a]
-[e, d, c, b] Empty [a]
-[f, e] Lf (Br3 d c b) [a]
-\end{lstlisting}
+\index{Finger tree!insert to left}
 
 In the last example, why the middle part inner tree is a leaf?
 As we mentioned that the definition of finger tree is recursive.
