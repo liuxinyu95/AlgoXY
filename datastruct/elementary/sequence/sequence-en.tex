@@ -298,125 +298,57 @@ When access the $i$-th element, we first determine $i$ index to $f$ or $r$, then
 \end{algorithmic}
 
 \index{Paired-array sequence!remove and balance}
-Removing isn't as simple as insertion and appending. This is because we must handle the
-condition that one array (either front or rear) becomes empty due to removal, while the
-other still contains elements. In extreme case, the list turns to be quite unbalanced.
-So we must fix it to resume the balance.
+Removing can makes $f$ or $r$ empty ($[\ ]$), while the other is not. To re-balance, we halve the none empty one, and reverse either half to form a new pair. As $f$ and $r$ are symmetric, we can swap them, call \textproc{Balance}, then swap back.
 
-One idea is to trigger this fixing when either front or rear array becomes empty. We just
-cut the other array in half, and reverse the first half to form the new pair. The algorithm
-is described as the following.
-
-\begin{algorithmic}
-\Function{Balance}{$L$}
-  \State $F \gets$ \Call{Front}{$L$}, $R \gets$ \Call{Rear}{$L$}
-  \State $n \gets$ \Call{Size}{$F$}, $m \gets$ \Call{Size}{$R$}
-  \If{ $F = \phi$}
-    \State $F \gets$ \Call{Reverse}{$R$[1 ... $\lfloor \frac{m}{2} \rfloor$]}
-    \State $R \gets R[\lfloor \frac{m}{2} \rfloor + 1$ ... $m]$
-  \ElsIf{ $R = \phi$ }
-    \State $R \gets$ \Call{Reverse}{$F$[1 ... $\lfloor \frac{n}{2} \rfloor$]}
-    \State $F \gets F[\lfloor \frac{n}{2} \rfloor + 1$ ... $n]$
+\begin{algorithmic}[1]
+\Function{Balance}{$S$}
+  \State $f \gets$ \Call{Front}{$S$}, $r \gets$ \Call{Rear}{$S$}
+  \State $n \gets$ \Call{Size}{$f$}, $m \gets$ \Call{Size}{$r$}
+  \If{$F = [\ ]$}
+    \State $k \gets \lfloor \dfrac{m}{2} \rfloor$
+    \State \Return $(\textproc{Reverse}(r[1 ... k]), r[(k + 1) ... m])$
   \EndIf
+  \If{$R = [\ ]$}
+    \State $k \gets \lfloor \dfrac{n}{2} \rfloor$
+    \State \Return $(f[(k + 1) ... n], \textproc{Reverse}(f[1 ... k]))$
+  \EndIf
+  \State \Return $(f, r)$
 \EndFunction
 \end{algorithmic}
 
-Actually, the operations are symmetric for the case that front is empty and the case that
-rear is empty. Another approach is to swap the front and rear for one symmetric case
-and recursive resumes the balance, then swap the front and rear back. For example
-below ISO C++ program uses this method.
+Every time when delete, we check $f$, $r$ and balance them:
 
-\begin{lstlisting}
-template<typename Key>
-void balance(List<Key>& xs) {
-  if(xs.n == 0) {
-    back_insert_iterator<vector<Key> > i(xs.front);
-    reverse_copy(xs.rear.begin(), xs.rear.begin() + xs.m/2, i);
-    xs.rear.erase(xs.rear.begin(), xs.rear.begin() +xs.m/2);
-    xs.n = xs.m/2;
-    xs.m -= xs.n;
-  } else if(xs.m == 0) {
-    swap(xs.front, xs.rear);
-    swap(xs.n, xs.m);
-    balance(xs);
-    swap(xs.front, xs.rear);
-    swap(xs.n, xs.m);
-  }
-}
-\end{lstlisting}
-
-With \textproc{Balance} algorithm defined, it's trivial to implement remove algorithm
-both on head and on tail.
-
-\begin{algorithmic}
-\Function{Remove-Head}{$L$}
-  \State \Call{Balance}{$L$}
-  \State $F \gets $ \Call{Front}{$L$}
-  \If{$F = \phi$}
-    \State \Call{Remove-Tail}{$L$}
+\begin{algorithmic}[1]
+\Function{Remove-Head}{$S$}
+  \State \Call{Balance}{$S$}
+  \State $f, r \gets$ \Call{Front}{$S$}, \Call{Rear}{$S$}
+  \If{$f = [\ ]$} \Comment{$S = ([], [x])$}
+    \State $r \gets [\ ]$
   \Else
-    \State \Call{Size}{$F$} $\gets $ \Call{Size}{$F$} - 1
+    \State \Call{Remove-Last}{$f$}
   \EndIf
 \EndFunction
 \Statex
-\Function{Remove-Tail}{$L$}
-  \State \Call{Balance}{$L$}
-  \State $R \gets $ \Call{Rear}{$L$}
-  \If{$R = \phi$}
-    \State \Call{Remove-Head}{$L$}
+\Function{Remove-Tail}{$S$}
+  \State \Call{Balance}{$S$}
+  \State $f, r \gets$ \Call{Front}{$S$}, \Call{Rear}{$S$}
+  \If{$r = [\ ]$} \Comment{$S = ([x], [])$}
+    \State $f \gets [\ ]$
   \Else
-    \State \Call{Size}{$R$} $\gets $ \Call{Size}{$R$} - 1
+    \State \Call{Remove-Last}{$r$}
   \EndIf
 \EndFunction
 \end{algorithmic}
 
-There is an edge case for each, that is even after balancing, the array targeted to
-perform removal is still empty. This happens that there is only one element stored
-in the paired-array list. The solution is just remove this singleton left element,
-and the overall list results empty. Below is the ISO C++ program implements this
-algorithm.
-
-\begin{lstlisting}
-template<typename Key>
-void remove_head(List<Key>& xs) {
-  balance(xs);
-  if(xs.front.empty())
-    remove_tail(xs); //remove the singleton elem in rear
-  else {
-    xs.front.pop_back();
-    --xs.n;
-  }
-}
-
-template<typename Key>
-void remove_tail(List<Key>& xs) {
-  balance(xs);
-  if(xs.rear.empty())
-    remove_head(xs); //remove the singleton elem in front
-  else {
-    xs.rear.pop_back();
-    --xs.m;
-  }
-}
-\end{lstlisting}
-
-It's obvious that the worst case performance is $O(n)$ where $n$ is the number of elements
-stored in paired-array list. This happens when balancing is triggered, and both reverse
-and shifting are linear operation. However, the amortized performance of removal is still
-$O(1)$, the proof is left as exercise to the reader.
+Due to reverse, the performance is $O(n)$ in the worst case, where $n$ is the number of elements, while it is amortized constant time.
 
 \begin{Exercise}
-\begin{enumerate}
-\item Implement the random mutating algorithm in your favorite imperative programming language.
-\item We utilized vector provided in standard library to manage memory dynamically, try to realize
-a version using plain array and manage the memory allocation manually. Compare this version and
-consider how does this affect the performance?
-\item Prove that the amortized performance of removal is $O(1)$ for paired-array list.
-\end{enumerate}
+\Question{For paired-array delete, prove the amortized performance is constant time.}
 \end{Exercise}
 
 \section{Concatenate-able list}
 \index{Sequence!Concatenate-able list}
+
 By using binary random access list, we realized sequence data structure which
 supports $O(\lg n)$ time insertion and removal on head, as well as random accessing element
 with a given index.
