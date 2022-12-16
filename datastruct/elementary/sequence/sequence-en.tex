@@ -480,449 +480,192 @@ As shown in figure \ref{fig:ftr-example-1} and \ref{fig:ftr-example-2}. Example 
 
 \index{Finger tree!insert to left}
 
-In the last example, why the middle part inner tree is a leaf?
-As we mentioned that the definition of finger tree is recursive.
-The middle part besides the front and rear finger is a deeper finger tree,
-which is defined as $Tree(Node(a))$. Every time we go deeper, the
-$Node$ is embedded one more level. if the element type of the first level tree
-is $a$, the element type for the second level tree is $Node(a)$,
-the third level is $Node(Node(a))$, ..., the n-th level is
-$Node(Node(Node(...(a))...)) = Node^n(a)$, where $^n$ indicates the $Node$
-is applied $n$ times.
+In example 2 (b), the middle component is a singleton leaf. Finger tree is recursive, apart from $f$ and $r$, the middle is a deeper finger tree of type $Tree\ (Node\ a)$. One more wrap, one level deeper. Summarize above examples, we define insert $a$ to tree $T$ as below:
 
-\subsection{Insert element to the head of sequence}
-\index{Finger tree!Insert to head}
-
-The examples list above actually reveal the typical process that the
-elements are inserted one by one to a finger tree. It's possible to summarize
-these examples to some cases for insertion on head algorithm.
-
-When we insert an element $x$ to a finger tree $T$,
-\begin{itemize}
-\item If the tree is empty, the result is a leaf which contains the singleton element $x$;
-\item If the tree is a singleton leaf of element $y$, the result is a new finger tree. The front finger contains the new element $x$, the rear finger contains the previous element $y$; the middle part is a empty finger tree;
-\item If the number of elements stored in front finger isn't bigger than the upper limit of 2-3 tree, which is 3, the new element is just inserted to the head
-of front finger;
-\item otherwise, it means that the number of elements stored in front finger exceeds the upper limit of 2-3 tree. the last 3 elements in front finger is wrapped in a 2-3 tree and recursively inserted to the middle part. the new element $x$ is inserted in front of the rest elements in front finger.
-\end{itemize}
-
-Suppose that function $leaf(x)$ creates a leaf of element $x$, function
-$tree(F, T', R)$ creates a finger tree from three part: $F$ is the front
-finger, which is a list contains several elements. Similarity, $R$ is the
-rear finger, which is also a list. $T'$ is the middle part which is a
-deeper finger tree. Function $tr3(a, b, c)$ creates a 2-3 tree from 3
-elements $a, b, c$; while $tr2(a, b)$ creates a 2-3 tree from 2 elements
-$a$ and $b$.
+\begin{enumerate}
+\item If $T = \nil$, the result is a singleton $(a)$;
+\item If $T = (b)$ is a leaf, the result is $([a], \nil, [b])$;
+\item For $T = (f, t, r)$, if there are $\leq 3$ elements in $f$, we insert $a$ to $f$, otherwise ($> 3$), extract the last 3 elements from $f$ to a 2-3 tree $t'$, recursively insert $t'$ to $t$, then insert $a$ to $f$.
+\end{enumerate}
 
 \be
-insertT(x, T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  leaf(x) & T = \phi \\
-  tree(\{x\}, \phi, \{y\}) & T = leaf(y) \\
-  tree(\{x, x_1\}, insertT(tr3(x_2, x_3, x_4), T'), R) & T = tree(\{x_1, x_2, x_3, x_4\}, T', R) \\
-  tree(\{x\} \cup F, T', R) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+insert\ a\ \nil & = & (x) \\
+insert\ a\ (b) & = & ([a], \nil, [b]) \\
+insert\ a\ ([b, c, d, e], t, r) & = & ([a, b], insert\ (c, d, e)\ t, r) \\
+insert\ a\ (f, t, r) & = & (a \cons f, t, r) \\
+\end{array}
 \ee
 
-The performance of this algorithm is dominated by the recursive case. All the
-other cases are constant $O(1)$ time. The recursion depth is proportion to
-the height of the tree, so the algorithm is bound to $O(h)$ time, where $h$ is
-the height. As we use 2-3 tree to ensure that the tree is well balanced,
-$h = O(\lg n)$, where $n$ is the number of elements stored in the finger tree.
+The insert performance is constant time except for the recursive case. The recursion time is proportion to the height of the tree $h$. Because of 2-3 trees, it's balanced, hence $h = O(\lg n)$, where $n$ is the number of elements. When distribute the recursion to other cases, the amortized performance is constant time\cite{okasaki-book}\cite{finger-tree-2006}. We can repeatedly insert a list of elements by folding:
 
-More analysis reveal that the amortized performance of $insertT$ is $O(1)$
-because we can amortize the expensive recursion case to other trivial cases.
-Please refer to \cite{okasaki-book} and \cite{finger-tree-2006} for the detailed proof.
+\be
+xs \gg t = foldr\ insert\ t\ xs
+\ee
 
-Translating the algorithm yields the below Haskell program.
+\begin{Exercise}
+\Question{Eliminate recursion, implement insert with loop.}
+\end{Exercise}
 
-\begin{lstlisting}
-cons :: a -> Tree a -> Tree a
-cons a Empty = Lf a
-cons a (Lf b) = Tr [a] Empty [b]
-cons a (Tr [b, c, d, e] m r) = Tr [a, b] (cons (Br3 c d e) m) r
-cons a (Tr f m r) = Tr (a:f) m r
-\end{lstlisting}
+\begin{Answer}
+\Question{Eliminate recursion, implement insert with loop.
 
-Here we use the LISP naming convention to illustrate inserting a
-new element to a list.
+Let $\textproc{Mid}(T) = t$ access the middle part of tree $T = (f, t, r)$.
 
-The insertion algorithm can also be implemented in imperative approach. Suppose
-function \textproc{Tree}() creates an empty tree, that all fields, including
-front and rear finger, the middle part inner tree and parent are empty.
-Function \textproc{Node}() creates an empty node.
-
-\begin{algorithmic}
-\Function{Prepend-Node}{$n, T$}
-  \State $r \gets $ \textproc{Tree}()
-  \State $p \gets r$
-  \State \Call{Connect-Mid}{$p, T$}
-  \While{\textproc{Full?}(\Call{Front}{$T$})}
-    \State $F \gets $ \Call{Front}{$T$}  \Comment{$F = \{n_1, n_2, n_3, ...\}$}
-    \State \Call{Front}{$T$} $\gets$ $\{n, F[1]\}$  \Comment{$F[1] = n_1$}
-    \State $n \gets$ \textproc{Node}()
-    \State \Call{Children}{$n$} $\gets F[2..]$  \Comment{$F[2..] = \{ n_2, n_3, ... \}$}
+\begin{algorithmic}[1]
+\Function{Insert}{$x, T$}
+  \State $n = (x)$
+  \State $\perp \gets p \gets ([\ ], T, [\ ])$
+  \While{$|\textproc{Front}(T)| \geq 3$}
+    \State $f \gets \textproc{Front}(T)$
+    \State $n \gets (f[2], f[3], ...)$
+    \State $\textproc{Front}(T) \gets [n, f[1]]$
     \State $p \gets T$
     \State $T \gets$ \Call{Mid}{$T$}
   \EndWhile
   \If{$T =$ NIL}
-    \State $T \gets$ \textproc{Tree}()
-    \State \Call{Front}{$T$}$\gets \{ n \}$
-  \ElsIf{ $|$ \Call{Front}{$T$} $|$ = 1 $\land$ \Call{Rear}{$T$} = $\phi$}
+    \State $T \gets ([n], \text{NIL}, [\ ])$
+  \ElsIf{ $|\textproc{Front}(T)| = 1$ and $\textproc{Rear}(T) = [\ ]$}
     \State \Call{Rear}{$T$} $\gets$ \Call{Front}{$T$}
-    \State \Call{Front}{$T$} $\gets \{ n \}$
+    \State \Call{Front}{$T$} $\gets [n]$
   \Else
-    \State \Call{Front}{$T$} $\gets \{ n \} \cup $ \Call{Front}{$T$}
+    \State \textproc{Insert}(\Call{Front}{$T$}, $n$)
   \EndIf
-  \State \Call{Connect-Mid}{$p, T$} $\gets T$
-  \State \Return \Call{Flat}{$r$}
-\EndFunction
-\end{algorithmic}
-
-Where the notation $L[i..]$ means a sub list of $L$ with the first $i-1$
-elements removed, that if $L = \{a_1, a_2, ..., a_n\}$, then $L[i..] = \{a_i, a_{i+1}, ..., a_n\}$.
-
-Functions \textproc{Front}, \textproc{Rear}, \textproc{Mid}, and \textproc{Parent}
-are used to access the front finger, the rear finger, the middle part inner tree and
-the parent tree respectively; Function \textproc{Children} accesses the children of a
-node.
-
-Function \textproc{Connect-Mid}($T_1, T_2$), connect $T_2$ as the inner middle part tree of
-$T_1$, and set the parent of $T_2$ as $T_1$ if $T_2$ isn't empty.
-
-In this algorithm, we performs a one pass top-down traverse along the middle part inner tree
-if the front finger is full that it can't afford to store any more. The criteria for full
-for a 2-3 tree is that the finger contains 3 elements already. In such case, we
-extract all the elements except the first one off, wrap them to a new node (one level deeper node),
-and continuously insert this new node to its middle inner tree. The first element is left
-in the front finger, and the element to be inserted is put in front of it, so that this
-element becomes the new first one in the front finger.
-
-After this traversal, the algorithm either reach an empty tree, or the tree still has room
-to hold more element in its front finger. We create a new leaf for the former case, and
-perform a trivial list insert to the front finger for the latter.
-
-During the traversal, we use $p$ to record the parent of the current tree we are processing.
-So any new created tree are connected as the middle part inner tree to $p$.
-
-Finally, we return the root of the tree $r$. The last trick of this algorithm is the \textproc{Flat}
-function. In order to simplify the logic, we create an empty `ground' tree and set
-it as the parent of the root. We need eliminate this extra `ground' level before return the
-root. This flatten algorithm is realized as the following.
-
-\begin{algorithmic}
-\Function{Flat}{$T$}
-  \While{$T \neq$ NIL $\land T$ is empty}
-    \State $T \gets$ \Call{Mid}{$T$}
-  \EndWhile
-  \If{$T \neq$ NIL}
-    \State \Call{Parent}{$T$} $\gets$ NIL
-  \EndIf
+  \State \Call{Mid}{$p$} $\gets T$
+  \State $T \gets$ \Call{Mid}{$\perp$}, \Call{Mid}{$\perp$} $\gets$ NIL
   \State \Return $T$
 \EndFunction
 \end{algorithmic}
 
-The while loop test if $T$ is trivial empty, that it's not NIL($=\phi$), while both its front
-and rear fingers are empty.
+We wrap $x$ in a leaf $(x)$. If there are more than 3 elements in $f$, we go top-down along the middle part. We extract the elements except the first one in $f$ out, wrap them in a node $n$ (depth + 1), then insert $n$ to the middle. We form $n$ and the remaining in $f$ as the new $f$ finger. At the end of traverse, we either reach an empty tree, or a tree can hold more elements in $f$. For empty tree case, we create a new leaf node; otherwise, we insert $n$ to the head of $f$. We return the root $T$. To simplify implementation, we create a special $\perp$ node as the parent of the root.}
+\end{Answer}
 
-Below Python code implements the insertion algorithm for finger tree.
+\subsection{Extract}
+\index{Finger tree!Remove from left}
 
-\lstset{language=Python}
-\begin{lstlisting}
-def insert(x, t):
-    return prepend_node(wrap(x), t)
-
-def prepend_node(n, t):
-    root = prev = Tree()
-    prev.set_mid(t)
-    while frontFull(t):
-        f = t.front
-        t.front = [n] + f[:1]
-        n = wraps(f[1:])
-        prev = t
-        t = t.mid
-    if t is None:
-        t = leaf(n)
-    elif len(t.front)==1 and t.rear == []:
-        t = Tree([n], None, t.front)
-    else:
-        t = Tree([n]+t.front, t.mid, t.rear)
-    prev.set_mid(t)
-    return flat(root)
-
-def flat(t):
-    while t is not None and t.empty():
-        t = t.mid
-    if t is not None:
-        t.parent = None
-    return t
-\end{lstlisting}
-
-The implementation of function \texttt{set\_mid}, \texttt{frontFull}, \texttt{wrap},
-\texttt{wraps}, \texttt{empty}, and tree
-constructor are trivial enough, that we skip the detail of them here. Readers can take these as
-exercises.
-
-\subsection{Remove element from the head of sequence}
-\index{Finger tree!Remove from head}
-
-It's easy to implement the reverse operation
-that remove the first element from the list by
-reversing the $insertT()$ algorithm line by line.
-
-Let's denote $F = \{f_1, f_2, ...\}$ is the front finger list,
-$M$ is the middle part inner finger tree. $R = \{r_1, r_2, ...\}$
-is the rear finger list of a finger tree,
-and $R' = \{r_2, r_3, ... \}$ is the rest of element with the first one
-removed from $R$.
+We implement extract as the reverse of \textit{insert}.
 
 \be
-extractT(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (x, \phi) & T = leaf(x) \\
-  (x, leaf(y)) & T = tree(\{x\}, \phi, \{y\}) \\
-  (x, tree(\{r_1\}, \phi, R')) & T = tree(\{x\}, \phi, R) \\
-  (x, tree(toList(F'), M', R)) & T = tree(\{x\}, M, R), (F', M') = extractT(M)\\
-  (f_1, tree(\{f_2, f_3, ...\}, M, R)) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+extract\ (a) & = & (a, \nil) \\
+extract\ ([a], \nil, [b]) & = & (a, (b)) \\
+extract\ ([a], \nil, b \cons bs) & = & (a, ([b], \nil, bs)) \\
+extract\ ([a], t, r) & = & (a, (toList\ f, t', r)), \text{where}: (f, t') = extract\ t \\
+extract\ (a \cons as, t, r) & = & (a, (as, t, r)) \\
+\end{array}
 \ee
 
-Where function $toList(T)$ converts a 2-3 tree to plain list as the
-following.
+Where \textit{toList} flatten a 2-3 tree to list:
 
 \be
-toList(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{x, y\} & T = tr2(x, y) \\
-  \{x, y, z\} & T = tr3(x, y, z)
-  \end{array}
-\right .
+\begin{array}{rcl}
+toList\ (a, b) & = & [a, b] \\
+toList\ (a, b, c) & = & [a, b, c] \\
+\end{array}
 \ee
 
-Here we skip the error handling such as trying to remove element from
-empty tree etc. If the finger tree is a leaf, the result after removal
-is an empty tree; If the finger tree contains two elements, one in the
-front finger, the other in rear, we return the element stored in front finger
-as the first element, and the resulted tree after removal is a leaf;
-If there is only one element in front finger, the middle part inner tree
-is empty, and the rear finger isn't empty, we return the only element
-in front finger, and borrow one element from the rear finger to
-front; If there is only one element in front finger, however, the
-middle part inner tree isn't empty, we can recursively remove a node
-from the inner tree, and flatten it to a plain list to replace the
-front finger, and remove the original only element in front finger;
-The last case says that if the front finger contains more than one
-element, we can just remove the first element from front finger
-and keep all the other part unchanged.
+We skip error handling (e.g., extract from empty tree). If the tree is a singleton leaf, the result is empty; if there are two elements, the result is a singleton; if $f$ is a singleton list, the middle is empty, while $r$ isn't empty, we extract the only one in $f$, then borrow one from $r$ to $f$; if the middle isn't empty, we recursively extract a node from the middle, flatten that node to list to replace $f$ (the original one is extracted). If $f$ has more than one element, we extract the first. Figure \ref{fig:ftr-uncons-example} gives examples that extract 2 elements.
+
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{A sequence of 10 elements represented as a finger tree}{\includegraphics[scale=0.4]{img/ftr-10}} \\
-  \subcaptionbox{The first element is removed. There is one element left in front finger.}{\includegraphics[scale=0.4]{img/ftr-9}} \\
-  \subcaptionbox{Another element is remove from head. We borrowed one node from the middle part inner tree, change the node, which is a 2-3 tree to a list, and use it as the new front finger. the middle part inner tree becomes a leaf of one 2-3 tree node.}{\hspace{0.2\textwidth}\includegraphics[scale=0.4]{img/ftr-8}\hspace{0.2\textwidth}}
-  \caption{Examples of remove 2 elements from the head of a sequence} \label{fig:ftr-uncons-example}
+  \subcaptionbox{A sequence of 10 elements.}{\includegraphics[scale=0.4]{img/ftr-10}} \\
+  \subcaptionbox{Extract one, $f$ becomes a singleton list.}{\includegraphics[scale=0.4]{img/ftr-9}} \\
+  \subcaptionbox{Extract another, borrow an element from the middle, flatten the 2-3 tree to a list as the new $f$.}{\hspace{0.2\textwidth}\includegraphics[scale=0.4]{img/ftr-8}\hspace{0.2\textwidth}}
+  \caption{Extract}
+  \label{fig:ftr-uncons-example}
 \end{figure}
 
-Figure \ref{fig:ftr-uncons-example} shows the steps of removing two elements from
-the head of a sequence. There are 10 elements stored in the finger tree.
-When the first element is removed, there is still one element left in the front finger.
-However, when the next element is removed, the front finger is empty. So we `borrow'
-one tree node from the middle part inner tree. This is a 2-3 tree. it is converted
-to a list of 3 elements, and the list is used as the new finger. the middle part
-inner tree change from three parts to a singleton leaf, which contains only one
-2-3 tree node. There are three elements stored in this tree node.
+We can define \textit{head}, \textit{tail} with \textit{extract}.
 
-Below is the corresponding Haskell program for `uncons'.
+\be
+\begin{cases}
+head & = fst \circ extract \\
+tail & = snd \circ extract \\
+\end{cases}
+\ee
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-uncons :: Tree a -> (a, Tree a)
-uncons (Lf a) = (a, Empty)
-uncons (Tr [a] Empty [b]) = (a, Lf b)
-uncons (Tr [a] Empty (r:rs)) = (a, Tr [r] Empty rs)
-uncons (Tr [a] m r) = (a, Tr (nodeToList f) m' r) where (f, m') = uncons m
-uncons (Tr f m r) = (head f, Tr (tail f) m r)
-\end{lstlisting}
+\begin{Exercise}
+\Question{Eliminate recursion, implement extract in loops.}
+\end{Exercise}
 
-And the function \texttt{nodeToList} is defined like this.
+\begin{Answer}
+\Question{Eliminate recursion, implement extract in loops.
 
-\begin{lstlisting}
-nodeToList :: Node a -> [a]
-nodeToList (Br2 a b) = [a, b]
-nodeToList (Br3 a b c) = [a, b, c]
-\end{lstlisting}
+We borrow node from the middle when $f$ is empty. However, the tree may not well formed, e.g., both $f$ and the middle are empty. It is caused by splitting.
 
-Similar as above, we can define \texttt{head} and \texttt{tail} function from
-\texttt{uncons}.
-
-\begin{lstlisting}
-head = fst . uncons
-tail = snd . uncons
-\end{lstlisting}
-
-\subsection{Handling the ill-formed finger tree when removing}
-\index{Finger tree!Ill-formed tree}
-The strategy used so far to remove element from finger tree is a kind of removing and borrowing.
-If the front finger becomes empty after removing, we borrows more nodes from the middle part
-inner tree. However there exists cases that the tree is ill-formed, for example, both the
-front fingers of the tree and its middle part inner tree are empty. Such ill-formed tree
-can result from imperatively splitting, which we'll introduce later.
-
-\begin{figure}[htbp]
-  \centering
+\begin{center}
   \includegraphics[scale=0.4]{img/ftr-illed-1}
-  \caption{Example of an ill-formed tree. The front finger of the i-th level sub tree isn't empty.} \label{fig:ftr-illed-form}
-\end{figure}
+  \captionof{figure}{The $f$ isn't empty at level $i$.}
+  \label{fig:ftr-illed-form}
+\end{center}
 
-Here we developed an imperative algorithm which can remove the first element from finger tree
-even it is ill-formed. The idea is first perform a top-down traverse to find a sub tree which
-either has a non-empty front finger or both its front finger and middle part inner tree are empty.
-For the former case, we can safely extract the first element which is a node from the front finger;
-For the latter case, since only the rear finger isn't empty, we can swap it with the empty front
-finger, and change it to the former case.
+To extract the first element, we need a top-bottom pass, locate a sub-tree, either $f$ isn't empty, or both $f$ and the middle are empty as shown in figure \ref{fig:ftr-illed-form}. For the former, we extract the first node from $f$; for the latter, we swap $f$ and $r$, convert it to the former case. If the node extracted from $f$ isn't a leaf, we need go on extracting. We back track along the parent, till extract a leaf and reach to the root, as shown in figure \ref{fig:ftr-illed-extract}.
 
-After that, we need examine the node we extracted from the front finger is leaf node (How to do
-that? this is left as an exercise to the reader). If not, we need go on extracting the first
-sub node from the children of this node, and left the rest of other children as the new
-front finger to the parent of the current tree. We need repeatedly go up along with the
-parent field till the node we extracted is a leaf. At that time point, we arrive at the
-root of the tree. Figure \ref{fig:ftr-illed-extract} illustrates this process.
+\begin{center}
+  \includegraphics[scale=0.4]{img/ftr-illed-2} \\
+  Extract the first $n[i][1]$, move its sub-tree to $f$ in upper level.\\
+  \includegraphics[scale=0.4]{img/ftr-illed-i} \\
+  Repeat $i$ times, extract $x[1]$. \\
+  \captionof{figure}{Bottom up back track to extract a leaf.}
+  \label{fig:ftr-illed-extract}
+\end{center}
 
-\begin{figure}[htbp]
-  \centering
-  \subcaptionbox{Extract the first element n{[i]}{[1]} and put its children to the front finger of upper level tree.}{\includegraphics[scale=0.4]{img/ftr-illed-2}}
-  \subcaptionbox{Repeat this process $i$ times, and finally x{[1]} is extracted.}{\hspace{0.1\textwidth}\includegraphics[scale=0.4]{img/ftr-illed-i}}
-  \caption{Traverse bottom-up till a leaf is extracted.} \label{fig:ftr-illed-extract}
-\end{figure}
+Assume the tree isn't empty, we implement extract as below:
 
-Based on this idea, the following algorithm realizes the removal operation on head. The
-algorithm assumes that the tree passed in isn't empty.
-
-\begin{algorithmic}
-\Function{Extract-Head}{$T$}
-  \State $r \gets$ \textproc{Tree}()
-  \State \Call{Connect-Mid}{$r, T$}
-  \While{\Call{Front}{$T$} $= \phi \land $ \Call{Mid}{$T$} $\neq $ NIL}
+\begin{algorithmic}[1]
+\Function{Extract}{$T$}
+  \State $\perp \gets ([], T, [])$
+  \While{\Call{Front}{$T$} $= [\ ]$ and \Call{Mid}{$T$} $\neq $ NIL}
     \State $T \gets$ \Call{Mid}{$T$}
   \EndWhile
 
-  \If{\Call{Front}{$T$} $ = \phi \land $ \Call{Rear}{$T$} $\neq \phi$}
+  \If{\Call{Front}{$T$} $ = [\ ]$ and \Call{Rear}{$T$} $\neq [\ ]$}
     \State \textproc{Exchange} \Call{Front}{$T$} $\leftrightarrow$ \Call{Rear}{$T$}
   \EndIf
 
-  \State $n \gets $ \textproc{Node}()
-  \State \Call{Children}{$n$} $\gets$ \Call{Front}{$T$}
+  \State $f \gets$ \Call{Front}{$T$}, $r \gets$ \Call{Rear}{$T$}
+  \State $n \gets (f[1], f[2], ...)$ \Comment{$n$ is 2-3 tree}
   \Repeat
-    \State $L \gets$ \Call{Children}{$n$} \Comment{$L = \{n_1, n_2, n_3, ...\}$}
-    \State $n \gets L[1]$ \Comment{$ n \gets n_1$}
-    \State \Call{Front}{$T$} $\gets L[2..]$ \Comment{$L[2..] = \{n_2, n_3, ...\}$}
+    \State \Call{Front}{$T$} $\gets [n_2, n_3, ..]$
+    \State $n \gets n_1$
     \State $T \gets $ \Call{Parent}{$T$}
     \If{\Call{Mid}{$T$} becomes empty}
       \State \Call{Mid}{$T$} $\gets$ NIL
     \EndIf
-  \Until{$n$ is a leaf}
-  \State \Return (\Call{Elem}{$n$}, \Call{Flat}{$r$})
+  \Until{$n$ is leaf}
+  \State \Return (\Call{Elem}{$n$}, \Call{Mid}{$\perp$})
 \EndFunction
 \end{algorithmic}
 
-Note that function \textproc{Elem}($n$) returns the only element stored inside leaf node $n$.
-Similar as imperative insertion algorithm, a stub `ground' tree is used as the parent of
-the root, which can simplify the logic a bit. That's why we need flatten the tree finally.
+Where function \textproc{Elem}($n$) access the element in sub-tree $n$. We need change the way to access the first/last element of finger tree. If the finger is empty, and the middle isn't empty, we need search along the middle.
 
-Below Python program translates the algorithm.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def extract_head(t):
-    root = Tree()
-    root.set_mid(t)
-    while t.front == [] and t.mid is not None:
-        t = t.mid
-    if t.front == [] and t.rear != []:
-        (t.front, t.rear) = (t.rear, t.front)
-    n = wraps(t.front)
-    while True: # a repeat-until loop
-        ns = n.children
-        n = ns[0]
-        t.front = ns[1:]
-        t = t.parent
-        if t.mid.empty():
-            t.mid.parent = None
-            t.mid = None
-        if n.leaf:
-            break
-    return (elem(n), flat(root))
-\end{lstlisting}
-
-Member function \texttt{Tree.empty()} returns true if both the front finger and
-the rear finger are empty. We put a flag \texttt{Node.leaf}
-to mark if a node is a leaf or compound node. The exercise of this section asks the reader
-to consider some alternatives.
-
-As the ill-formed tree is allowed, the algorithms to access the first and last element of the
-finger tree must be modified, so that they don't blindly return the first or last child
-of the finger as the finger can be empty if the tree is ill-formed.
-
-The idea is quite similar to the \textproc{Extract-Head}, that in case the finger is empty
-while the middle part inner tree isn't, we need traverse along with the inner tree till a
-point that either the finger becomes non-empty or all the nodes are stored in the
-other finger. For instance, the following algorithm can return the first leaf node even
-the tree is ill-formed.
-
-\begin{algorithmic}
-\Function{First-Lf}{$T$}
-  \While{\Call{Front}{$T$} $ = \phi \land $ \Call{Mid}{$T$} $\neq$ NIL}
+\begin{algorithmic}[1]
+\Function{First-Leaf}{$T$}
+  \While{\Call{Front}{$T$} $ = [\ ]$ and \Call{Mid}{$T$} $\neq$ NIL}
     \State $T \gets$ \Call{Mid}{$T$}
   \EndWhile
-  \If{\Call{Front}{$T$} $ = \phi \land$ \Call{Rear}{$T$} $\neq \phi$}
+  \If{\Call{Front}{$T$} $ = [\ ]$ and \Call{Rear}{$T$} $\neq [\ ]$}
     \State $n \gets$ \Call{Rear}{$T$}[1]
   \Else
     \State $n \gets$ \Call{Front}{$T$}[1]
   \EndIf
   \While{$n$ is NOT leaf}
-    \State $n \gets$ \Call{Children}{$n$}[1]
+    \State $n \gets n_1$
   \EndWhile
   \State \Return $n$
 \EndFunction
-\end{algorithmic}
-
-Note the second loop in this algorithm that it keeps traversing on the first sub-node
-if current node isn't a leaf. So we always get a leaf node and it's trivial to get
-the element inside it.
-
-\begin{algorithmic}
+\Statex
 \Function{First}{$T$}
-  \State \Return \textproc{Elem}(\Call{First-Lf}{$T$})
+  \State \Return \textproc{Elem}(\Call{First-Leaf}{$T$})
 \EndFunction
 \end{algorithmic}
 
-The following Python code translates the algorithm to real program.
+In the second loop, if the node is not a leaf, we need traverse along the first sub-tree. The method to access the last element is symmetric.
+}
+\end{Answer}
 
-\lstset{language=Python}
-\begin{lstlisting}
-def first(t):
-    return elem(first_leaf(t))
-
-def first_leaf(t):
-    while t.front == [] and t.mid is not None:
-        t = t.mid
-    if t.front == [] and t.rear != []:
-        n = t.rear[0]
-    else:
-        n = t.front[0]
-    while not n.leaf:
-        n = n.children[0]
-    return n
-\end{lstlisting}
-
-To access the last element is quite similar, and we left it as an exercise to the reader.
-
-\subsection{append element to the tail of the sequence}
+\subsection{Append and remove}
 \index{Finger tree!Append to tail}
 
 Because finger tree is symmetric, we can give the realization of appending element on tail
