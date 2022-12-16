@@ -349,252 +349,79 @@ Due to reverse, the performance is $O(n)$ in the worst case, where $n$ is the nu
 \section{Concatenate-able list}
 \index{Sequence!Concatenate-able list}
 
-By using binary random access list, we realized sequence data structure which
-supports $O(\lg n)$ time insertion and removal on head, as well as random accessing element
-with a given index.
-
-However, it's not so easy to concatenate two lists. As both lists are forests of
-complete binary trees, we can't merely merge them (Since forests are essentially
-list of trees, and for any size, there is at most one tree of that size. Even
-concatenate forests directly is not fast). One solution is to push the element
-from the first sequence one by one to a stack and then pop those elements and insert
-them to the head of the second one by using `cons' function. Of course the
-stack can be implicitly used in recursion manner, for instance:
-
-\be
-concat(s_1, s_2) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  s_2 & s_1 = \phi \\
-  cons(head(s_1), concat(tail(s_1), s_2)) & otherwise
-  \end{array}
-\right .
-\ee
-
-Where function $cons$, $head$ and $tail$ are defined in previous section.
-
-If the length of the two sequence is $n$, and $m$, this method takes $O(N \lg n)$
-time repeatedly push all elements from the first sequence to stacks, and then
-takes $\Omega(n \lg (n + m))$ to insert the elements in front of the second sequence.
-Note that $\Omega$ means the upper limit, There is detailed definition for it in
-\cite{CLRS}.
-
-We have already implemented the real-time queue in previous chapter. It supports
-$O(1)$ time pop and push. If we can turn the sequence concatenation to a kind
-of pushing operation to queue, the performance will be improved to $O(1)$ as well.
-Okasaki gave such realization in \cite{okasaki-book}, which can concatenate
-lists in constant time.
-
-To represent a concatenate-able list, the data structure designed by Okasaki is
-essentially a K-ary tree. The root of the tree stores the first element in the
-list. So that we can access it in constant $O(1)$ time. The sub-trees or children
-are all small concatenate-able lists, which are managed by real-time queues.
-Concatenating another list to the end is just adding it as the last child, which
-is in turn a queue pushing operation. Appending a new element can be realized
-as that, first wrapping the element to a singleton tree, which is a leaf with
-no children. Then, concatenate this singleton to finalize appending.
-
-Figure \ref{fig:clist} illustrates this data structure.
+We achieve $O(\lg n)$ time insert, delete, random index with binary tree forest. However, it's not easy to concatenate two sequences. We can't merely merge trees, but need link trees with the same size. Figure \ref{fig:clist} shows an implementation of concatenate-able list. The first element $x_1$ is in root, the rest is organized with smaller sequences, each one is a sub-tree. These sub-trees are put in a real-time queue (see chapter 11). We denote the sequence as $(x_1, Q_x) = [x_1, x_2, ..., x_n]$. When concatenate with another sequence of $(y_1, Q_y) = [y_1, y_2, ..., y_m]$, we append it to $Q_x$. The real-time queue guarantees the en-queue in constant time, hence the concatenate performance is in constant time.
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{The data structure for list $\{ x_1, x_2, ..., x_n\}$}{\includegraphics[scale=0.5]{img/clist}} \\
-  \subcaptionbox{The result after concatenated with list $\{y_1, y_2, ..., y_m\}$}{\includegraphics[scale=0.4]{img/clist1}}
-  \caption{Data structure for concatenate-able list} \label{fig:clist}
+  \subcaptionbox{$(x_1, Q_x) = [x_1, x_2, ..., x_n]$}{\includegraphics[scale=0.5]{img/clist}} \\
+  \subcaptionbox{Concatenate with $(y_1, Q_y) = [y_1, y_2, ..., y_m]$, add$c_{n+1}$ to $Q_x$}{\includegraphics[scale=0.4]{img/clist1}}
+  \caption{Concatenate-able list}
+  \label{fig:clist}
 \end{figure}
 
-Such recursively designed data structure can be defined in the following
-Haskell code.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-data CList a = Empty | CList a (Queue (CList a))
-\end{lstlisting}
-
-It means that a concatenate-able list is either empty or a K-ary tree, which
-again consists of a queue of concatenate-able sub-lists and a root element.
-Here we reuse the realization of real-time queue mentioned in previous
-chapter.
-
-Suppose function $clist(x, Q)$ constructs a concatenate-able list from
-an element $x$, and a queue of sub-lists $Q$. While function $root(s)$
-returns the root element of such K-ary tree implemented list. and
-function $queue(s)$ returns the queue of sub-lists respectively.
-We can implement the algorithm
-to concatenate two lists like this.
-
 \be
-concat(s_1, s_2) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  s_1 & s_2 = \phi \\
-  s_2 & s_1 = \phi \\
-  clist(x, push(Q, s_2)) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+s \doubleplus \nil & = & s \\
+\nil \doubleplus s & = & s \\
+(x, Q) \doubleplus s & = & (x,\ push\ s\ Q) \\
+\end{array}
 \ee
 
-Where $x = root(s_1)$ and $Q = queue(s_1)$. The idea of concatenation is that
-if either one of the list to be concatenated is empty, the result is
-just the other list; otherwise, we push the second list as the last
-child to the queue of the first list.
-
-Since the push operation is $O(1)$ constant time for a well realized
-real-time queue, the performance of concatenation is bound to $O(1)$.
-
-The $concat$ function can be translated to the below Haskell program.
-
-\begin{lstlisting}
-concat x Empty = x
-concat Empty y = y
-concat (CList x q) y = CList x (push q y)
-\end{lstlisting}
-
-Besides the good performance of concatenation, this design also brings
-satisfied features for adding element both on head and tail.
+When insert new element $z$, we create a singleton of $(z, \nil)$, then concatenate it to the sequence:
 
 \be
-cons(x, s) = concat(clist(x, \phi), s)
+\begin{cases}
+insert\ x\ s & = (x, \nil) \doubleplus s \\
+append\ x\ s & = s \doubleplus (x, \nil) \\
+\end{cases}
 \ee
+
+When delete $x_1$ from head, we lose the root. The rest sub-trees are all concatenate-able lists. We concatenate them all to a new sequence.
 
 \be
-append(s, x) = concat(s, clist(x, \phi))
+\begin{array}{rcl}
+concat\ \nil & = & \nil \\
+concat\ Q & = & (top\ Q) \doubleplus concat\ (pop\ Q) \\
+\end{array}
 \ee
 
-Getting the first element is just returning the root
-of the K-ary tree.
+The real-time queue hold sub-trees, we pop the first $c_1$, and recursively concatenate the rest to $s$, then concatenate $c_1$ and $s$. We define delete from head with $concat$.
 
 \be
-head(s) = root(s)
+tail\ (x, Q) = concat\ Q
 \ee
 
-It's a bit complex to realize the algorithm that removes the first
-element from a concatenate-able list. This is because after the root,
-which is the first element in the sequence got removed, we have to
-re-construct the rest things, a queue of sub-lists, to a K-ary
-tree.
-
-After the root being removed, there left
-all children of the K-ary tree. Note that all of them are also
-concatenate-able list, so that one natural solution is to
-concatenate them all together to a big list.
+Function $concat$ traverses the queue, and reduces to a result, it essentially folds on $Q$\cite{learn-haskell}.
 
 \be
-concatAll(Q) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & Q = \phi \\
-  concat(front(Q), concatAll(pop(Q))) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+fold\ f\ z\ \nil & = & z \\
+fold\ f\ z\ Q & = & f\ (top\ Q)\ (fold\ f\ z\ (pop\ Q)) \\
+\end{array}
 \ee
 
-Where function $front$ just returns the first element from a
-queue without removing it, while $pop$ does the removing work.
-
-If the queue is empty, it means that there is no children at all, so
-the result is also an empty list; Otherwise, we pop the first child,
-which is a concatenate-able list, from the queue, and recursively
-concatenate all the rest children to a list; finally, we concatenate this list
-behind the already popped first children.
-
-With $concatAll$ defined, we can then implement the algorithm
-of removing the first element from a list as below.
-
-\be
-tail(s) = linkAll(queue(s))
-\ee
-
-The corresponding Haskell program is given like the following.
-
-\begin{lstlisting}
-head (CList x _) = x
-tail (CList _ q) = linkAll q
-
-linkAll q | isEmptyQ q = Empty
-          | otherwise = link (front q) (linkAll (pop q))
-\end{lstlisting}
-
-Function \texttt{isEmptyQ} is used to test a queue is empty, it is trivial and
-we omit its definition. Readers can refer to the source code along with
-this book.
-
-$linkAll$ algorithm actually traverses the queue data structure,
-and reduces to a final result. This remind us of {\em folding} mentioned
-in the chapter of binary search tree. readers can refer to the
-appendix of this book for the detailed description of folding.
-It's quite possible to define a folding algorithm for queue instead
-of list\footnote{Some functional programming language, such as
-Haskell, defined type class, which is a concept of monoid so that
-it's easy to support folding on a customized data structure.}
-\cite{learn-haskell}.
-
-\be
-foldQ(f, e, Q) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  e & Q = \phi \\
-  f(front(Q), foldQ(f, e, pop(Q))) & otherwise
-  \end{array}
-\right .
-\ee
-
-Function $foldQ$ takes three parameters, a function $f$, which is used
-for reducing, an initial value $e$, and the queue $Q$ to be traversed.
-
-Here are some examples to illustrate folding on queue. Suppose
-a queue $Q$ contains elements $\{ 1, 2, 3, 4, 5 \}$ from head to tail.
+Where $f$ is a binary function, $z$ is zero unit. Here are examples of folding on queue $Q = [1, 2, ..., 5]$:
 
 \[
-\begin{array}{l}
-foldQ(+, 0, Q) = 1 + (2 + (3 + (4 + (5 + 0)))) = 15 \\
-foldQ(\times, 1, Q) = 1 \times (2 \times (3 \times (4 \times (5 \times 1)))) = 120 \\
-foldQ(\times, 0, Q) = 1 \times (2 \times (3 \times (4 \times (5 \times 0)))) = 0 \\
+\begin{array}{rcl}
+fold\ (+)\ 0\ Q & = & 1 + (2 + (3 + (4 + (5 + 0)))) = 15 \\
+fold\ (\times)\ 1\ Q\ & = & 1 \times (2 \times (3 \times (4 \times (5 \times 1)))) = 120 \\
+fold\ (\times)\ 0\ Q & = & 1 \times (2 \times (3 \times (4 \times (5 \times 0)))) = 0 \\
 \end{array}
 \]
 
-Function $linkAll$ can be changed by using $foldQ$ accordingly.
+We can define $concat$ with fold (Curried form):
 
 \be
-linkAll(Q) = foldQ(link, \phi, Q)
+concat = fold\ (\doubleplus)\ \nil
 \ee
 
-The Haskell program can be modified as well.
-
-\begin{lstlisting}
-linkAll = foldQ link Empty
-
-foldQ :: (a -> b -> b) -> b -> Queue a -> b
-foldQ f z q | isEmptyQ q = z
-            | otherwise = (front q) `f` foldQ f z (pop q)
-\end{lstlisting}
-
-However, the performance of removing can't be ensured in all cases.
-The worst case is that, user keeps appending $n$ elements to a empty
-list, and then immediately performs removing. At this time, the K-ary
-tree has the first element stored in root. There are $n-1$ children,
-all are leaves. So $linkAll()$ algorithm downgrades to $O(n)$ which
-is linear time.
-
-Considering the add, append, concatenate and removing operations are randomly performed.
-The average case is amortized $O(1)$, The proof is left as
-en exercise to the reader.
+The performance is bound to linear time in worst case: delete after repeatedly add $n$ elements. All $n-1$ sub-trees are singleton. $concat$ takes $O(n)$ time to consolidate. The amortized performance is constant time if add, append, delete randomly happen.
 
 \begin{Exercise}
-\begin{enumerate}
-\item Can you figure out a solution to append an element to the end of a binary
-random access list?
-
-\item Prove that the amortized performance of removal operation for concatenate-able list is
-$O(1)$. Hint: using the banker's method.
-
-\item Implement the concatenate-able list in your favorite imperative language.
-\end{enumerate}
+\Question{Prove the amortized performance for delete is constant time} %Banker method.
 \end{Exercise}
 
-% =========================================
-%  Finger tree
-% =========================================
 \section{Finger tree}
 \index{Sequence!finger tree}
 We haven't been able to meet all the performance targets listed at the beginning
