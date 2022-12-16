@@ -666,181 +666,40 @@ In the second loop, if the node is not a leaf, we need traverse along the first 
 \end{Answer}
 
 \subsection{Append and remove}
-\index{Finger tree!Append to tail}
+\index{Finger tree!Append to right}
 
-Because finger tree is symmetric, we can give the realization of appending element on tail
-by referencing to $insertT$ algorithm.
-
-\be
-appendT(T, x) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  leaf(x) & T = \phi \\
-  tree(\{y\}, \phi, \{x\}) & T = leaf(y) \\
-  tree(F, appendT(M, tr3(x_1, x_2, x_3)), \{x_4, x\}) & T = tree(F, M, \{x_1, x_2, x_3, x_4\}) \\
-  tree(F, M, R \cup \{x\}) & otherwise
-  \end{array}
-\right .
-\ee
-
-Generally speaking, if the rear finger is still valid 2-3 tree, that the number of elements
-is not greater than 4, the new elements is directly appended to rear finger.
-Otherwise, we break the rear finger, take the first 3 elements in rear finger to create a
-new 2-3 tree, and recursively append it to the middle part inner tree.
-If the finger tree is empty or a singleton leaf, it will be handled in the first two cases.
-
-Translating the equation to Haskell yields the below program.
-
-\lstset{language=Python}
-\begin{lstlisting}
-snoc :: Tree a -> a -> Tree a
-snoc Empty a = Lf a
-snoc (Lf a) b = Tr [a] Empty [b]
-snoc (Tr f m [a, b, c, d]) e = Tr f (snoc m (Br3 a b c)) [d, e]
-snoc (Tr f m r) a = Tr f m (r++[a])
-\end{lstlisting}
-
-Function name \texttt{snoc} is mirror of \texttt{cons}, which indicates the symmetric relationship.
-
-Appending new element to the end imperatively is quite similar. The following algorithm
-realizes appending.
-
-\begin{algorithmic}
-\Function{Append-Node}{$T, n$}
-  \State $r \gets $ \textproc{Tree}()
-  \State $p \gets r$
-  \State \Call{Connect-Mid}{$p, T$}
-  \While{\textproc{Full?}(\Call{Rear}{$T$})}
-    \State $R \gets $ \Call{Rear}{$T$} \Comment{$R = \{n_1, n_2, ..., , n_{m-1}, n_m \}$}
-    \State \Call{Rear}{$T$} $\gets$ $\{n, $ \Call{Last}{$R$} $\}$ \Comment{last element $n_m$}
-    \State $n \gets$ \textproc{Node}()
-    \State \Call{Children}{$n$} $\gets R[1...m-1]$ \Comment{ $\{n1, n2, ..., n_{m-1}\}$}
-    \State $p \gets T$
-    \State $T \gets$ \Call{Mid}{$T$}
-  \EndWhile
-  \If{$T =$ NIL}
-    \State $T \gets$ \textproc{Tree}()
-    \State \Call{Front}{$T$} $\gets \{ n \}$
-  \ElsIf{ $|$ \Call{Rear}{$T$} $|$ = 1 $\land$ \Call{Front}{$T$} = $\phi$}
-    \State \Call{Front}{$T$} $\gets$ \Call{Rear}{$T$}
-    \State \Call{Rear}{$T$} $\gets \{ n \}$
-  \Else
-    \State \Call{Rear}{$T$} $\gets$ \Call{Rear}{$T$} $\cup \{ n \} $
-  \EndIf
-  \State \Call{Connect-Mid}{$p, T$} $\gets T$
-  \State \Return \Call{Flat}{$r$}
-\EndFunction
-\end{algorithmic}
-
-And the corresponding Python programs is given as below.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def append_node(t, n):
-    root = prev = Tree()
-    prev.set_mid(t)
-    while rearFull(t):
-        r = t.rear
-        t.rear = r[-1:] + [n]
-        n = wraps(r[:-1])
-        prev = t
-        t = t.mid
-    if t is None:
-        t = leaf(n)
-    elif len(t.rear) == 1 and t.front == []:
-        t = Tree(t.rear, None, [n])
-    else:
-        t = Tree(t.front, t.mid, t.rear + [n])
-    prev.set_mid(t)
-    return flat(root)
-\end{lstlisting}
-
-\subsection{remove element from the tail of the sequence}
-\index{Finger tree!Remove from tail}
-
-Similar to $appendT$, we can realize the algorithm which remove the last element from
-finger tree in symmetric manner of $extractT$.
-
-We denote the non-empty, non-leaf finger tree as $tree(F, M, R)$, where $F$ is the
-front finger, $M$ is the middle part inner tree, and $R$ is the rear finger.
+We implement append, remove on right symmetrically.
 
 \be
-removeT(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, x) & T = leaf(x) \\
-  (leaf(y), x) & T = tree(\{y\}, \phi, \{x\}) \\
-  (tree(init(F), \phi, last(F)), x) & T = tree(F, \phi, \{x\}) \land F \neq \phi \\
-  (tree(F, M', toList(R')), x) & T = tree(F, M, \{x\}), (M', R') = removeT(M) \\
-  (tree(F, M, init(R)), last(R)) & otherwise
-  \end{array}
-\right .
+\begin{array}{rcl}
+append\ \nil\ a & = & (a) \\
+append\ (a)\ b & = & ([a], \nil, [b]) \\
+append\ (f, t, [a, b, c, d])\ e & = & (f, append\ t\ (a, b, c), [d, e]) \\
+append\ (f, t, r)\ a & = & (f, t, r \doubleplus [a]) \\
+\end{array}
 \ee
 
-Function $toList(T)$ is used to flatten a 2-3 tree to plain list, which is defined
-previously. Function $init(L)$ returns all elements except for the last one in list $L$,
-that if $L = \{a_1, a_2, ..., a_{n-1}, a_n\}$, $init(L) = \{a_1, a_2, ..., a_{n-1}\}$.
-And Function $last(L)$ returns the last element, so that $last(L) = a_n$. Please
-refer to the appendix of this book for their implementation.
+If there are no more 4 elements in $r$, we append the new element to tail of $r$. Otherwise, we extract the first 3 from $r$, form a new 2-3 tree, and recursively append it to the middle. We can repeatedly append a list of elements by folding from left:
 
-Algorithm $removeT()$ can be translated to the following Haskell program, we name
-it as \texttt{unsnoc} to indicate it's the reverse function of \texttt{snoc}.
+\be
+t \ll xs = foldl\ append\ t\ xs
+\ee
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-unsnoc :: Tree a -> (Tree a, a)
-unsnoc (Lf a) = (Empty, a)
-unsnoc (Tr [a] Empty [b]) = (Lf a, b)
-unsnoc (Tr f@(_:_) Empty [a]) = (Tr (init f) Empty [last f], a)
-unsnoc (Tr f m [a]) = (Tr f m' (nodeToList r), a) where (m', r) = unsnoc m
-unsnoc (Tr f m r) = (Tr f m (init r), last r)
-\end{lstlisting}
+\index{Finger tree!Remove from right}
 
-And we can define a special function \texttt{last} and \texttt{init} for finger tree which is similar
-to their counterpart for list.
+The remove is reversed operation of append:
 
-\begin{lstlisting}
-last = snd . unsnoc
-init = fst . unsnoc
-\end{lstlisting}
+\be
+\begin{array}{rcl}
+remove\ (a) & = & (\nil, a) \\
+remove\ ([a], \nil, [b]) & = & ((a), b) \\
+remove\ (f, \nil, [a]) & = & ((init f, \nil, [last f]), a) \\
+remove\ (f, t, [a]) & = & ((f, t', toList\ r), a), \text{其中}: (t', r) = remove\ t \\
+remove\ (f, t, r) & = & ((f, t, init\ r), last\ r) \\
+\end{array}
+\ee
 
-Imperatively removing the element from the end is almost as same as removing on the head.
-Although there seems to be a special case, that as we always store the only element (or sub node) in the front
-finger while the rear finger and middle part inner tree are empty (e.g. $Tree(\{n\}, NIL, \phi)$),
-it might get nothing if always try to fetch the last element from rear finger.
-
-This can be solved by swapping the front and the rear finger if the rear is empty as in the
-following algorithm.
-
-\begin{algorithmic}
-\Function{Extract-Tail}{$T$}
-  \State $r \gets$ \textproc{Tree}()
-  \State \Call{Connect-Mid}{$r, T$}
-  \While{\Call{Rear}{$T$} $= \phi \land $ \Call{Mid}{$T$} $\neq $ NIL}
-    \State $T \gets$ \Call{Mid}{$T$}
-  \EndWhile
-
-  \If{\Call{Rear}{$T$} $ = \phi \land $ \Call{Front}{$T$} $\neq \phi$}
-    \State \textproc{Exchange} \Call{Front}{$T$} $\leftrightarrow$ \Call{Rear}{$T$}
-  \EndIf
-
-  \State $n \gets $ \textproc{Node}()
-  \State \Call{Children}{$n$} $\gets$ \Call{Rear}{$T$}
-  \Repeat
-    \State $L \gets$ \Call{Children}{$n$} \Comment{$L = \{n_1, n_2, ..., n_{m-1}, n_m\}$}
-    \State $n \gets$ \Call{Last}{$L$} \Comment{$ n \gets n_m$}
-    \State \Call{Rear}{$T$} $\gets L[1...m-1]$ \Comment{$\{n_1, n_2, ..., n_{m-1}\}$}
-    \State $T \gets $ \Call{Parent}{$T$}
-    \If{\Call{Mid}{$T$} becomes empty}
-      \State \Call{Mid}{$T$} $\gets$ NIL
-    \EndIf
-  \Until{$n$ is a leaf}
-  \State \Return (\Call{Elem}{$n$}, \Call{Flat}{$r$})
-\EndFunction
-\end{algorithmic}
-
-How to access the last element as well as implement this algorithm to working program are
-left as exercises.
+Where \textit{last} accesses the last element of a list, \textit{init} returns the rest (see chapter 1).
 
 \subsection{concatenate}
 \index{Finger tree!Concatenate}
