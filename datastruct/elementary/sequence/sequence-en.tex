@@ -704,126 +704,47 @@ Where \textit{last} accesses the last element of a list, \textit{init} returns t
 \subsection{concatenate}
 \index{Finger tree!Concatenate}
 
-Consider the none-trivial case that concatenate two finger trees $T_1 = tree(F_1, M_1, R_1)$ and
-$T_2 = tree(F_2, M_2, R_2)$. One natural idea is to use $F_1$ as the new front finger for the
-concatenated result, and keep $R_2$ being the new rear finger. The rest of work is to merge
-$M_1$, $R_1$, $F_2$ and $M_2$ to a new middle part inner tree.
-
-Note that both $R_1$ and $F_2$ are plain lists of node, so the sub-problem is to realize a
-algorithm like this.
+When concatenate two none empty finger trees $T_1 = (f_1, t_1, r_1)$, $T_2 = (f_2, t_2, r_2)$, we use $f_1$ as the result front $f$, $r_2$ as the result rear $r$. Then merge $t_1, r_1, f_2, t_2$ as the middle tree. Because both $r_1$ and $f_2$ are list of nodes, it equivalent to the below problem:
 
 \[
-merge(M_1, R_1 \cup F_2, M_2) = ?
+merge\ t_1\ (r_1 \doubleplus f_2)\ t_2 = ?
 \]
 
-More observation reveals that both $M_1$ and $M_2$ are also finger trees, except that they
-are one level deeper than $T_1$ and $T_2$ in terms of $Node(a)$, where $a$ is the type of
-element stored in the tree. We can recursively use the strategy that keep the front finger
-of $M_1$ and the rear finger of $M_2$, then merge the middle part inner tree of $M_1$, $M_2$,
-as well as the rear finger of $M_1$ and front finger of $M_2$.
-
-If we denote function $front(T)$ returns the front finger, $rear(T)$ returns the rear finger,
-$mid(T)$ returns the middle part inner tree. the above $merge$ algorithm can be
-expressed for non-trivial case as the following.
+Both $t_1$ and $t_2$ are finger trees deeper than $T_1$ and $T_2$ a level. If the type of element in $T_1$ is $a$, then the type of element in $t_1$ $Node\ a$. We recursively merge, keep the front of $t_1$ and rear of $t_2$, then further merge the middle of $t_1$, $t_2$, and the rear of $t_1$, the front of $t_2$.
 
 \be
-\begin{array}{l}
-merge(M_1, R_1 \cup F_2, M_2) = tree(front(M_1), S, rear(M_2)) \\
-S = merge(mid(M_1), rear(M_1) \cup R_1 \cup F_2 \cup front(M_2), mid(M_2))
+\begin{array}{rcl}
+merge\ \nil\ ts\ t_2 & = & ts \gg t_2 \\
+merge\ t_1\ ts\ \nil & = & t_1 \ll ts \\
+merge\ (a)\ ts\ t_2 & = & merge\ \nil\ (a \cons ts)\ t_2 \\
+merge\ t_1\ ts\ (a) & = & merge\ t_1\ (ts \doubleplus [a])\ \nil \\
+merge\ (f_1, t_1, r_1)\ ts\ (f_2, t_2, r_2) & = & (f_1, merge\ t_1\ (nodes\ (r_1 \doubleplus ts \doubleplus f_2))\ t_2, r_2) \\
 \end{array}
 \label{eq:merge-recursion}
 \ee
 
-If we look back to the original concatenate solution, it can be expressed as below.
+Where $nodes$ collects elements to a list of 2-3 trees. This is because type of the element in the middle is deeper than the finger.
 
 \be
-concat(T_1, T_2) = tree(F_1, merge(M_1, R_1 \cup F_2, M_2), R_2)
+\begin{array}{rcl}
+nodes\ [a, b] & = & [(a, b)] \\
+nodes\ [a, b, c] & = & [(a, b, c)] \\
+nodes\ [a, b, c, d] & = & [(a, b), (c, d)] \\
+nodes\ (a \cons b \cons c \cons ts) & = & (a, b, c) \cons nodes\ ts \\
+\end{array}
 \ee
 
-And compare it with equation \ref{eq:merge-recursion}, it's easy to note the fact that
-concatenating is essentially merging. So we have the final algorithm like this.
+We then define finger tree concatenation with $merge$:
 
 \be
-concat(T_1, T_2) = merge(T_1, \phi, T_2)
+(f_1, t_1, r_1) \doubleplus (f_2, t_2, r_2) = (f_1, merge\ t_1\ (r_1 \doubleplus f_2)\ t_2, r_2)
 \ee
 
-By adding edge cases, the $merge()$ algorithm can be completed as below.
+Compare with (\ref{eq:merge-recursion}), concatenation is essentially merge, we can define them in a unified way:
 
 \be
-merge(T_1, S, T_2) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  foldR(insertT, T_2, S) & T_1 = \phi \\
-  foldL(appendT, T_1, S) & T_2 = \phi \\
-  merge(\phi, \{x\} \cup S, T_2) & T_1 = leaf(x) \\
-  merge(T_1, S \cup \{x\}, \phi) & T_2 = leaf(x) \\
-  tree(F_1, merge(M_1, nodes(R_1 \cup S \cup F_2), M2), R_2) & otherwise
-  \end{array}
-\right .
+T_1 \doubleplus T_2 = merge\ T_1\ [\ ]\ T_2
 \ee
-
-Most of these cases are straightforward. If any one of $T_1$ or $T_2$ is empty, the algorithm
-repeatedly insert/append all elements in $S$ to the other tree; Function $foldL$ and
-$foldR$ are kinds of for-each process in imperative settings. The difference is that
-$foldL$ processes the list $S$ from left to right while $foldR$ processes from right to left.
-
-Here are their definition. Suppose list $L=\{ a_1, a_2, ..., a_{n-1}, a_n\}$,
-$L' = \{ a_2, a_3, ..., a_{n-1}, a_n\}$ is the rest of elements except for the first one.
-
-\be
-foldL(f, e, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  e & L = \phi \\
-  foldL(f, f(e, a_1), L') & otherwise
-  \end{array}
-\right .
-\ee
-
-\be
-foldR(f, e, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  e & L = \phi \\
-  f(a_1, foldR(f, e, L')) & otherwise
-  \end{array}
-\right .
-\ee
-
-They are detailed explained in the appendix of this book.
-
-If either one of the tree is a leaf, we can insert or append the element of this leaf to
-$S$, so that it becomes the trivial case of concatenating one empty tree with another.
-
-Function $nodes$ is used to wrap a list of elements to a list of 2-3 trees.
-This is because the contents of middle part inner tree, compare to the
-contents of finger, are one level deeper in terms of $Node$. Consider the
-time point that transforms from recursive case to edge case. Let's suppose
-$M_1$ is empty at that time, we then need repeatedly insert all elements from
-$R_1 \cup S \cup F_2$ to $M_2$. However, we can't directly do the insertion.
-If the element type is $a$, we can only insert $Node(a)$ which is 2-3 tree
-to $M_2$. This is just like what we did in the $insertT$ algorithm,
-take out the last 3 elements, wrap them in a 2-3 tree, and recursive
-perform $insertT$. Here is the definition of $nodes$.
-
-\be
-nodes(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{tr2(x_1, x_2)\} & L = \{x_1, x_2\} \\
-  \{tr3(x_1, x_2, x_3)\} & L = \{x_1, x_2, x_3\} \\
-  \{tr2(x_1, x_2), tr2(x_3, x_4)\} & L = \{x_1, x_2, x_3, x_4\} \\
-  \{tr3(x_1, x_2, x_3)\} \cup nodes(\{x_4, x_5, ...\}) & otherwise
-  \end{array}
-\right .
-\ee
-
-Function $nodes$ follows the constraint of 2-3 tree, that if there are
-only 2 or 3 elements in the list, it just wrap them in singleton list
-contains a 2-3 tree; If there are 4 elements in the lists, it split them
-into two trees each is consist of 2 branches; Otherwise, if there are
-more elements than 4, it wraps the first three in to one tree with 3 branches,
-and recursively call $nodes$ to process the rest.
 
 The performance of concatenation is determined by merging. Analyze the
 recursive case of merging reveals that the depth of recursion is
