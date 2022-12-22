@@ -794,10 +794,54 @@ size\ (t_1, t_2, t_3) & = & size\ t_1 + size\ t_2 + size\ t_3 \\
 \end{array}
 \ee
 
+Given a list of nodes (e.g., finger at deeper level), we calculate size from $sum \circ (map\ size)$. We need update the size when insert or delete element. With size augmented, we can lookup the tree for any position $i$. The finger tree $(s, f, t, r)$ has recursive structure. Let the size of these components be $s_f, s_t, s_r$, and $s = s_f + s_t + s_r$. If $i \leq s_f$, the location is in $f$, we further lookup $f$; if $s_f < i \leq s_f + s_t$, then the location is in $t$, we need recursively lookup $t$; otherwise, we lookup $r$. We also need handle leaf case of $(x)$. We use a pair $(i, t)$ to define the position $i$ at data structure $t$, and define $lookup_T$ as below:
 
+\be
+\begin{array}{rcl}
+lookup_T\ i\ (x) & = & (i, x) \\
+lookup_T\ i\ (s, f, t, r) & = & \begin{cases}
+  i < s_f: & lookup_s\ i\ f \\
+  s_f \leq i < s_f + s_t: & lookup_N\ (lookup_T\ (i - s_f)\ t) \\
+  \text{otherwise}: & lookup_s\ (i - s_f - s_t)\ r \\
+\end{cases}
+\end{array}
+\ee
 
-\subsubsection{Split a finger tree at a given position}
-\index{Finger tree!splitting}
+Where $s_f = sum\ (map\ size\ f), s_t = size\ t$, are the sizes of the first two components. When lookup location $i$, if the tree is a leaf $(x)$, the result is $(i, x)$; otherwise we need figure out which component among $(s, f, t, r)$ that $i$ points to. If it either in $f$ or $r$, then we lookup the figure:
+
+\be
+\begin{array}{rcl}
+lookup_s\ i\ (x \cons xs) = \begin{cases}
+  i < size\ x: & (i, x) \\
+  \text{otherwise}: & lookup_s\ (i - size\ x)\ xs \\
+\end{cases}
+\end{array}
+\ee
+
+If $i$ is in some element $x$ ($i < size\ x$), we return $(i, x)$; otherwise, we continue looking up the rest elements. If $i$ points to the middle $t$, we recursively lookup to obtain a place $(i', m)$, where $m$ is a 2-3 tree. We next lookup $m$:
+
+\be
+\begin{array}{rcl}
+lookup_N\ i\ (t_1, t_2) & = & \begin{cases}
+  i < size\ t_1: & (i, t_1) \\
+  \text{otherwise}: & (i - size\ t_1, t_2) \\
+\end{cases} \\
+lookup_N\ i\ (t_1, t_2, t_3) & = & \begin{cases}
+  i < size\ t_1: & (i, t_1) \\
+  size\ t_1 \leq i < size\ t_1 + size\ t_2: & (i - size\ t_1, t_2) \\
+  \text{otherwise}: & (i - size\ t_1 - size\ t_2, t_3) \\
+\end{cases} \\
+\end{array}
+\ee
+
+Because we previously wrapped $x$ inside $(x)_e$, we need extract $x$ out finally:
+
+\be
+T[i] = \begin{cases}
+  \text{if}\ lookup_T\ i\ T = (i', (x)_e): & \textit{Just}\ x \\
+  \text{otherwise}: & \textit{Nothing}
+\end{cases}
+\ee
 
 With size information augmented, it's easy to locate a node at given position by performing
 a tree search. What's more, as the finger tree is constructed from three part $F$, $M$, and
