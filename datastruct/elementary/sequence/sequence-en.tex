@@ -846,18 +846,346 @@ T[i] = \begin{cases}
 We return the result of type $\textit{Maybe}\ a = \textit{Nothing} | \textit{Just}\ a$, means either found, or lookup failed\footnote{Many programming environments provide equivalent tool, like the \texttt{Optional<T>} in Java/C++.}. The random access looks up the finger tree recursively, proportion to the tree depth. Because finger tree is balanced, the performs is bound to $O(\lg n)$, where $n$ is the number of elements.
 
 \index{MTF}
-We achieved balanced performance with finger tree implementation. The operations at head and tail are bound to amortized constant time, concatenation, split, and random access are in logarithm time\cite{hackage-ftr}. By the end of this chapter, we've given the most elementary data structures. They are useful to solve some classic problems. For example, we can use sequence to implement MTF (move-to-front\footnote{Used in Burrows-Wheeler transform (BWT) data compression algorithm.}) encoding algorithm\cite{mtf-wiki}. MTF move any element at position $i$ to the front of the sequence:
+We achieved balanced performance with finger tree implementation. The operations at head and tail are bound to amortized constant time, concatenation, split, and random access are in logarithm time\cite{hackage-ftr}. By the end of this chapter, we've seen many elementary data structures. They are useful to solve some classic problems. For example, we can use sequence to implement MTF (move-to-front\footnote{Used in Burrows-Wheeler transform (BWT) data compression algorithm.}) encoding algorithm\cite{mtf-wiki}. MTF move any element at position $i$ to the front of the sequence:
 
 \[
 mtf\ i\ S = x \lhd S', \text{where}(x, S') = \textit{extractAt}\ i\ S
 \]
 
-In the next chapters, we'll go through the elementary divide and conquer sorting algorithms, including quick sort, merge sort and their variants; then give the string matching algorithms and elementary search algorithms.
+In the next chapters, we'll go through the classic divide and conquer sorting algorithms, including quick sort, merge sort and their variants; then give the string matching algorithms and elementary search algorithms.
 
 \begin{Exercise}
 \Question{For random access, how to handle empty tree $\nil$ and out of bound cases?}
 \Question{Implement $cut\ i\ S$, split sequence $S$ at position $i$.}
 \end{Exercise}
+
+\begin{Answer}
+\Question{For random access, how to handle empty tree $\nil$ and out of bound cases?
+
+We check boundaries during random access, for example:
+\[
+\begin{array}{rcl}
+\nil [i] & = & \textit{Nothing} \\
+T [i] & = & \begin{cases}
+  i < 0\ \text{or}\ i \geq size\ T: & \textit{Nothing} \\
+  \text{otherwise}: & ...
+\end{cases}
+\end{array}
+\]
+}
+\Question{Implement $cut\ i\ S$, split sequence $S$ at position $i$.
+
+We give an implementation based on the tree definition in appendix. We first do boundary check, if $0 \leq i < size\ s$, we next call \textit{catTree\ i\ S} to split the tree:
+
+\begin{Haskell}
+cut :: Int -> Seq a -> (Seq a, Maybe a, Seq a)
+cut i (Seq xs) | i < 0 = (Seq Empty, Nothing, Seq xs)
+               | i < size xs = case cutTree i xs of
+                 (a, Just (Place _ (Elem x)), b) -> (Seq a, Just x, Seq b)
+                 (a, Nothing, b) -> (Seq a, Nothing, Seq b)
+               | otherwise = (Seq xs, Nothing, Seq Empty)
+\end{Haskell}
+
+\textit{cutTree} splits the tree in three parts: left, middle, and right. We wrap the middle in \textit{Maybe} type to handle the not found case; when found, the result is a pair of position $i'$ and node $a$, wrapped in the type of \textit{Place}. if $i$ points to finger $f$ or $r$, we call \textit{cutList} to further split, then build the result; if $i$ points to middle, we recursively cut the middle to obtain a place $\textit{Place}\ i'\ a$, then cut the 2-3 tree $a$ at position $i'$:
+
+\begin{Haskell}
+cutTree :: (Sized a) => Int -> Tree a -> (Tree a, Maybe (Place a), Tree a)
+cutTree _ Empty = (Empty, Nothing, Empty)
+cutTree i (Lf a) | i < size a = (Empty, Just (Place i a), Empty)
+                 | otherwise = (Lf a, Nothing, Empty)
+cutTree i (Br s f m r)
+  | i < sf = case cutList i f of
+               (xs, x, ys) -> (Empty <<< xs, x, tree ys m r)
+  | i < sm = case cutTree (i - sf) m of
+               (t1, Just (Place i' a), t2) -> let (xs, x, ys) = cutNode i' a
+                 in (tree f t1 xs, x, tree ys t2 r)
+  | i < s  = case cutList (i - sm) r of
+               (xs, x, ys) -> (tree f m xs, x, ys >>> Empty)
+  where
+    sf = sum $ map size f
+    sm = sf + size m
+\end{Haskell}
+
+Where $tree\ f\ m\ r$ builds a finger tree, and simplify the result:
+
+\begin{Haskell}
+tree as Empty [] = as >>> Empty
+tree [] Empty bs = Empty <<< bs
+tree [] m r = Br (size m + sum (map size r)) (nodesOf f) m' r
+    where (f, m') = uncons m
+tree f m [] = Br (size m + sum (map size f)) f m' (nodesOf r)
+    where (m', r) = unsnoc m
+tree f m r = Br (size m + sum (map size f) + sum (map size r)) f m r
+\end{Haskell}
+
+We implement the finger cut and 2-3 tree cut as below:
+
+\begin{Haskell}
+cutList :: (Sized a) => Int -> [a] -> ([a], Maybe (Place a), [a])
+cutList _ [] = ([], Nothing, [])
+cutList i (x:xs) | i < sx = ([], Just (Place i x), xs)
+                 | otherwise = let (xs', y, ys) = cutList (i - sx) xs
+                               in (x:xs', y, ys)
+  where sx = size x
+
+cutNode :: (Sized a) => Int -> Node a -> ([a], Maybe (Place a), [a])
+cutNode i (Tr2 _ a b) | i < sa = ([], Just (Place i a), [b])
+                      | otherwise = ([a], Just (Place (i - sa) b), [])
+  where sa = size a
+cutNode i (Tr3 _ a b c) | i < sa = ([], Just (Place i a), [b, c])
+                        | i < sab = ([a], Just (Place (i - sa) b), [c])
+                        | otherwise = ([a, b], Just (Place (i - sab) c), [])
+  where sa = size a
+        sab = sa + size b
+\end{Haskell}
+
+With \textit{cut} defined, we can update or delete any element at given position, move to front (MTF), they all bound to $O(\lg n)$ time.
+
+\begin{Haskell}
+setAt s i x = case cut i s of
+  (_, Nothing, _) -> s
+  (xs, Just y, ys) -> xs +++ (x <| ys)
+
+extractAt s i = case cut i s of (xs, Just y, ys) -> (y, xs +++ ys)
+
+moveToFront i s = if i < 0 || i >= size s then s
+                  else let (a, s') = extractAt s i in a <| s'
+\end{Haskell}
+}
+\end{Answer}
+
+\section{Appendix - example programs}
+
+Binary random access list (forest):
+
+\lstset{frame = single}
+\begin{Haskell}
+data Tree a = Leaf a
+            | Node Int (Tree a) (Tree a)
+
+type BRAList a = [Tree a]
+
+size (Leaf _) = 1
+size (Node sz _ _) = sz
+
+link t1 t2 = Node (size t1 + size t2) t1 t2
+
+insert x = insertTree (Leaf x) where
+    insertTree t [] = [t]
+    insertTree t (t':ts) = if size t < size t' then  t:t':ts
+                           else insertTree (link t t') ts
+
+extract ((Leaf x):ts) = (x, ts)
+extract ((Node _ t1 t2):ts) = extract (t1:t2:ts)
+
+head' = fst . extract
+tail' = snd . extract
+
+getAt i (t:ts) | i < size t = lookupTree i t
+               | otherwise = getAt (i - size t) ts
+  where
+    lookupTree 0 (Leaf x) = x
+    lookupTree i (Node sz t1 t2)
+        | i < sz `div` 2 = lookupTree i t1
+        | otherwise = lookupTree (i - sz `div` 2) t2
+\end{Haskell}
+
+Numeric representation of binary random access list:
+
+\begin{Haskell}
+data Digit a = Zero | One (Tree a)
+
+type RAList a = [Digit a]
+
+insert x = add (Leaf x) where
+  add t [] = [One t]
+  add t (Zero:ts) = One t : ts
+  add t (One t' :ts) = Zero : add (link t t') ts
+
+minus [One t] = (t, [])
+minus (One t:ts) = (t, Zero:ts)
+minus (Zero:ts) = (t1, One t2:ts') where
+    (Node _ t1 t2, ts') = minus ts
+
+head' ts = x where (Leaf x, _) = minus ts
+tail' = snd . minus
+\end{Haskell}
+
+Paired-array sequence:
+
+\begin{lstlisting}[language = Bourbaki]
+Data Seq<K> {
+    [K] front = [], rear = []
+}
+
+Int length(S<K> s) = length(s.front) + length(s.rear)
+
+void insert(K x, Seq<K> s) = append(x, s.front)
+
+void append(K x, Seq<K> s) = append(x, s.rear)
+
+K get(Int i, Seq<K> s) {
+    Int n = length(s.front)
+    return if i < n then s.front[n - i - 1] else s.rear[i - n]
+}
+\end{lstlisting}
+
+Concatenate-able list:
+
+\begin{Haskell}
+data CList a = Empty | CList a (Queue (CList a))
+
+wrap x = CList x emptyQ
+
+x ++ Empty = x
+Empty ++ y = y
+(CList x q) ++ y = CList x (push q y)
+
+fold f z q | isEmpty q = z
+           | otherwise = (top q) `f` fold f z (pop q)
+
+concat = fold (++) Empty
+
+insert x xs = (wrap x) ++ xs
+append xs x = xs ++ wrap x
+
+head (CList x _) = x
+tail (CList _ q) = concat q
+\end{Haskell}
+
+Finger tree:
+
+\begin{Haskell}
+-- 2-3 tree
+data Node a = Tr2 Int a a
+            | Tr3 Int a a a
+
+-- finger tree
+data Tree a = Empty
+            | Lf a
+            | Br Int [a] (Tree (Node a)) [a] -- size, front, mid, rear
+
+newtype Elem a = Elem { getElem :: a } -- wrap element
+
+newtype Seq a = Seq (Tree (Elem a)) -- sequence
+
+class Sized a where  -- support size measurement
+  size :: a -> Int
+
+instance Sized (Elem a) where
+  size _ = 1  -- 1 for any element
+
+instance Sized (Node a) where
+  size (Tr2 s _ _) = s
+  size (Tr3 s _ _ _) = s
+
+instance Sized a => Sized (Tree a) where
+  size Empty = 0
+  size (Lf a) = size a
+  size (Br s _ _ _) = s
+
+instance Sized (Seq a) where
+  size (Seq xs) = size xs
+
+tr2 a b = Tr2 (size a + size b) a b
+tr3 a b c = Tr3 (size a + size b + size c) a b c
+
+nodesOf (Tr2 _ a b) = [a, b]
+nodesOf (Tr3 _ a b c) = [a, b, c]
+
+-- left
+x <| Seq xs = Seq (Elem x `cons` xs)
+
+cons :: (Sized a) => a -> Tree a -> Tree a
+cons a Empty = Lf a
+cons a (Lf b) = Br (size a + size b) [a] Empty [b]
+cons a (Br s [b, c, d, e] m r) = Br (s + size a) [a, b] ((tr3 c d e) `cons` m) r
+cons a (Br s f m r) = Br (s + size a) (a:f) m r
+
+head' (Seq xs) = getElem $ fst $ uncons xs
+tail' (Seq xs) = Seq $ snd $ uncons xs
+
+uncons :: (Sized a) => Tree a -> (a, Tree a)
+uncons (Lf a) = (a, Empty)
+uncons (Br _ [a] Empty [b]) = (a, Lf b)
+uncons (Br s [a] Empty (r:rs)) = (a, Br (s - size a) [r] Empty rs)
+uncons (Br s [a] m r) = (a, Br (s - size a) (nodesOf f) m' r)
+    where (f, m') = uncons m
+uncons (Br s (a:f) m r) = (a, Br (s - size a) f m r)
+
+-- right
+Seq xs |> x  = Seq (xs `snoc` Elem x)
+
+snoc :: (Sized a) => Tree a -> a -> Tree a
+snoc Empty a = Lf a
+snoc (Lf a) b = Br (size a + size b) [a] Empty [b]
+snoc (Br s f m [a, b, c, d]) e = Br (s + size e) f (m `snoc` (tr3 a b c)) [d, e]
+snoc (Br s f m r) a = Br (s + size a) f m (r ++ [a])
+
+last' (Seq xs) = getElem $ snd $ unsnoc xs
+init' (Seq xs) = Seq $ fst $ unsnoc xs
+
+unsnoc :: (Sized a) => Tree a -> (Tree a, a)
+unsnoc (Lf a) = (Empty, a)
+unsnoc (Br _ [a] Empty [b]) = (Lf a, b)
+unsnoc (Br s f@(_:_:_) Empty [a]) = (Br (s - size a) (init f) Empty [last f], a)
+unsnoc (Br s f m [a]) = (Br (s - size a) f m' (nodesOf r), a)
+    where (m', r) = unsnoc m
+unsnoc (Br s f m r) = (Br (s - size a) f m (init r), a) where a = last r
+
+-- concatenate
+Seq xs +++ Seq ys = Seq (xs >+< ys)
+
+xs >+< ys = merge xs [] ys
+
+t <<< xs = foldl snoc t xs
+xs >>> t = foldr cons t xs
+
+merge :: (Sized a) => Tree a -> [a] -> Tree a -> Tree a
+merge Empty es t2 = es >>> t2
+merge t1 es Empty = t1 <<< es
+merge (Lf a) es t2 = merge Empty (a:es) t2
+merge t1 es (Lf a) = merge t1 (es++[a]) Empty
+merge (Br s1 f1 m1 r1) es (Br s2 f2 m2 r2) =
+    Br (s1 + s2 + (sum $ map size es)) f1 (merge m1 (trees (r1 ++ es ++ f2)) m2) r2
+
+trees [a, b] = [tr2 a b]
+trees [a, b, c] = [tr3 a b c]
+trees [a, b, c, d] = [tr2 a b, tr2 c d]
+trees (a:b:c:es) = (tr3 a b c):trees es
+
+-- index
+data Place a = Place Int a
+
+getAt :: Seq a -> Int -> Maybe a
+getAt (Seq xs) i | i < size xs = case lookupTree i xs of
+                     Place _ (Elem x) -> Just x
+                 | otherwise = Nothing
+
+lookupTree :: (Sized a) => Int -> Tree a -> Place a
+lookupTree n (Lf a) = Place n a
+lookupTree n (Br s f m r) | n < sf = lookups n f
+                          | n < sm = case lookupTree (n - sf) m of
+                                            Place n' xs -> lookupNode n' xs
+                          | n < s = lookups (n - sm) r
+  where sf = sum $ map size f
+        sm = sf + size m
+
+lookupNode :: (Sized a) => Int -> Node a -> Place a
+lookupNode n (Tr2 _ a b) | n < sa = Place n a
+                         | otherwise = Place (n - sa) b
+  where sa = size a
+lookupNode n (Tr3 _ a b c) | n < sa = Place n a
+                           | n < sab = Place (n - sa) b
+                           | otherwise = Place (n - sab) c
+  where sa = size a
+        sab = sa + size b
+
+lookups :: (Sized a) => Int -> [a] -> Place a
+lookups n (x:xs) = if n < sx then Place n x
+                   else lookups (n - sx) xs
+  where sx = size x
+\end{Haskell}
 
 \ifx\wholebook\relax \else
 \section{Answers}
