@@ -84,11 +84,7 @@ enter the folder contains the book TeX manuscript, run
 $ make
 ```
 
-This will generate algoxy-en.pdf and algoxy-zh-cn.pdf. If you only need the Chinese version for example, you can run `make cn` instead.
-
-### Other branches
-
-The other two branches, `zh-cn` and `jvm` are deprecated. Please do NOT checkout/track them.
+This will generate algoxy-en.pdf and algoxy-zh-cn.pdf. If you only need the Chinese version for example, you can run `make cn` instead. Run `make force-cn` or `make force-en` to force build the book.
 
 --
 
