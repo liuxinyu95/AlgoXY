@@ -118,7 +118,63 @@ sort\ (x \cons xs) & = & sort\ as \doubleplus [x] \doubleplus sort\ bs, \text{�
 \end{array}
 \ee
 
-划分对于众多采用分治策略的排序算法很重要。我们接下来考虑如何实现原地划分。
+我们也可以用叠加来定义划分：
+
+\be
+\textit{part}\ p\ = foldr\ f\ ([\ ], [\ ])
+\ee
+
+其中$f$定义为：
+
+\be
+f\ (as, bs)\ x = \begin{cases}
+p(x): & (x \cons as, bs) \\
+\text{否则}: & (as, x \cons bs) \\
+\end{cases}
+\ee
+
+使用叠加实现的划分，本质上是向划分结果$(as, bs)$累积的过程。若$p(x)$，则累积$x$到$as$，否则累积到$bs$。这样我们可以实现一个尾递归的划分：
+
+\be
+\begin{array}{rcl}
+\textit{part}\ p\ [\ ]\ as\ bs & = & (as, bs) \\
+\textit{part}\ p\ (x \cons xs)\ as\ bs & = & \begin{cases}
+  p(x): & \textit{part}\ p\ xs\ (x \cons as)\ bs \\
+  \text{否则}: & \textit{part}\ p\ xs\ as\ (x \cons bs) \\
+\end{cases}
+\end{array}
+\ee
+
+下面的表达式对$(x \cons xs)$进行划分：
+
+\[
+(as, bs) = \textit{part}\ (\leq x)\ xs\ [\ ]\ [\ ]
+\]
+
+快速排序定义中的连接操作$sort\ as \doubleplus [x] \doubleplus sort\ bs$可以进一步转化为累积形式：
+
+\be
+\begin{array}{rcl}
+sort\ s\ [\ ] & = & s \\
+sort\ s\ (x \cons xs) & = & sort\ (x : sort\ s\ bs)\ as \\
+\end{array}
+\ee
+
+其中$s$为累积结果。我们传入一个空列表来启动排序：$qsort = sort\ [\ ]$。划分完成时，需要递归地对两个子列表$as$、$bs$排序。我们可以先对$bs$排序，将$x$链接到结果前，作为新的“累积结果”传入后续的排序中。
+
+\begin{Haskell}
+sort = sort' []
+
+sort' acc [] = acc
+sort' acc (x:xs) = sort' (x : sort' acc bs) as where
+  (as, bs) = part xs [] []
+  part [] as bs = (as, bs)
+  part (y:ys) as bs | y <= x = part ys (y:as) bs
+                    | otherwise = part ys as (y:bs)
+\end{Haskell}
+
+\subsection{原地排序}
+我们接下来考虑如何实现原地划分、排序。图\ref{fig:partition-1-way}描述了这种一次遍历划分的方法\cite{Bentley}\cite{CLRS}。我们从左向右扫描数组。任何时候，数组都由图\ref{fig:partition-1-way} (a)所示的几部分组成：
 
 \begin{figure}[htbp]
    \centering
@@ -173,8 +229,6 @@ sort\ (x \cons xs) & = & sort\ as \doubleplus [x] \doubleplus sort\ bs, \text{�
    \label{fig:partition-1-way}
 \end{figure}
 
-图\ref{fig:partition-1-way}描述了这种一次遍历划分的方法\cite{Bentley}\cite{CLRS}。我们从左向右扫描数组。任何时候，数组都由图\ref{fig:partition-1-way} (a)所示的几部分组成：
-
 \begin{itemize}
 \item 最左侧为基准$p$。划分结束时，$p$被移动到最终位置；
 \item 一段只包含$\leq p$的部分。这一段的右侧边界为$L$；
@@ -205,7 +259,7 @@ sort\ (x \cons xs) & = & sort\ as \doubleplus [x] \doubleplus sort\ bs, \text{�
 \centering
 \begin{tabular}{|llllllll|l|}
 \hline
-\underline{3}(l)  & 2(r) & 5 & 4 & 0 & 1 & 6 & 7 & 开始，$pivot = 3$、$l = 1$、$r = 2$ \\
+\underline{3}(l)  & 2(r) & 5 & 4 & 0 & 1 & 6 & 7 & 开始，$p = 3$、$l = 1$、$r = 2$ \\
 \underline{3} & 2(l)(r) & 5 & 4 & 0 & 1 & 6 & 7 & $2 < 3$，移动$l$（$r=l$）\\
 \underline{3} & 2(l) & 5(r) & 4 & 0 & 1 & 6 & 7 & $5 > 3$, 继续 \\
 \underline{3} & 2(l) & 5 & 4(r) & 0 & 1 & 6 & 7 & $4 > 3$, 继续 \\
@@ -215,31 +269,13 @@ sort\ (x \cons xs) & = & sort\ as \doubleplus [x] \doubleplus sort\ bs, \text{�
 \underline{3} & 2 & 0 & 1(l) & 5 & 4(r) & 6 & 7 & 移动$l$，然后和$r$交换 \\
 \underline{3} & 2 & 0 & 1(l) & 5 & 4 & 6(r) & 7 & $6 > 3$，继续 \\
 \underline{3} & 2 & 0 & 1(l) & 5 & 4 & 6 & 7(r) & $7 > 3$，继续 \\
-1 & 2 & 0 & 3 & 5(l+1) & 4 & 6 & 7 & $r$越过了边界，交换pivot和$l$ \\
+1 & 2 & 0 & 3 & 5(l+1) & 4 & 6 & 7 & $r$越过了边界，交换$p$和$l$ \\
 \hline
 \end{tabular}
 \caption{扫描并划分数组} \label{tab:partition-steps}
 \end{table}
 
-下面的ANSI C例子程序实现了这一划分算法。
-
-\lstset{language=C}
-\begin{lstlisting}
-int partition(Key* xs, int l, int u) {
-    int pivot, r;
-    for (pivot = l, r = l + 1; r < u; ++r)
-        if (!(xs[pivot] < xs[r])) {
-            ++l;
-            swap(xs[l], xs[r]);
-        }
-    swap(xs[pivot], xs[l]);
-    return l + 1;
-}
-\end{lstlisting}
-
-其中\texttt{swap(a, b)}可以定义为函数或者宏。ISO C++中\texttt{swap(a, b)}在标准库中以函数模板的形式提供。被交换的元素类型通过模板进行推导。我们此后不再详细解释这些语言细节。
-
-使用这一划分算法，命令式的原地快速排序可以实现如下：
+使用\textproc{Partition}，可以实现快速排序如下：
 
 \begin{algorithmic}[1]
 \Procedure{Quick-Sort}{$A, l, u$}
@@ -251,143 +287,7 @@ int partition(Key* xs, int l, int u) {
 \EndProcedure
 \end{algorithmic}
 
-对数组进行排序时，我们传入数组的上下界，如：\textproc{Quick-Sort}($A, 1, |A|$)。其中$l \geq u$用以判断数组片段为空或者只含有一个元素，这两种情况下我们都认为数组是已序的，算法直接返回而无需做任何处理。
-
-下面的ANSI C例子程序给出了原地快速排序的实现。
-
-\lstset{language=C}
-\begin{lstlisting}
-void quicksort(Key* xs, int l, int u) {
-    int m;
-    if (l < u) {
-        m = partition(xs, l, u);
-        quicksort(xs, l, m - 1);
-        quicksort(xs, m, u);
-    }
-}
-\end{lstlisting}
-
-\subsection{函数式划分算法的小改进}
-\index{快速排序!函数式一次性划分}
-
-在深入分析快速排序的划分算法前，我们首先可以用fold来实现一个小改进：只需要遍历一遍就可以完成划分的算法。读者可以参考本书附录A来了解fold的详细内容。
-
-\be
-partition(p, L) = fold(f(p), (\phi, \phi), L)
-\ee
-
-其中函数$f$使用断言$p$来对元素和pivot进行比较。断言作为一个参数传入函数$f$，我们称之为$f$的“柯里化”形式（Currying form），参见附录A。另外，$f$可以是$partition$函数作用域内的一个词法闭包（lexical closure），它可以访问这一作用域内的断言。函数$f$不断更新划分结果内的一对列表。
-
-\be
-f(p, x, (A, B)) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\{ x \} \cup A, B) & p(x) \\
-  (A, \{ x \} \cup B) & \lnot p(x)
-  \end{array}
-\right.
-\ee
-
-我们这里使用了模式匹配（pattern-matching）形式的定义。在不支持模式匹配的环境中，需要使用一个变量，如$P$来代表列表对$(A, B)$，并使用函数来获取$P$中的两个值。
-
-下面的Haskell例子程序实现了这一改进的快速排序，每次划分只需要遍历一次。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-sort [] = []
-sort (x:xs) = sort small ++ [x] ++ sort big where
-  (small, big) = foldr f ([], []) xs
-  f a (as, bs) = if a <= x then (a:as, bs) else (as, a:bs)
-\end{lstlisting}
-
-\subsubsection{累积划分（Accumulated partition）}
-\index{快速排序!累积划分（Accumulated partition）}
-
-使用fold进行划分的过程，实际上是向结果列表对$(A, B)$累积的过程。若元素不大于pivot，则它被累积到$A$，否则累积到$B$。我们可以将这一累积过程明确定义出来，相对于最初的基本快速排序算法，这样既可以节省空间，又利于进行尾递归优化（参见附录A）。
-
-\be
-partition(p, L, A, B) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (A, B) & L = \phi \\
-  partition(p, L', \{ l_1 \} \cup A, B) & p(l_1) \\
-  partition(p, L', A, \{ l_1 \} \cup B) & otherwise
-  \end{array}
-\right.
-\ee
-
-其中，若列表$L$不空，则$l_1$代表其中的第一个元素，$L'$代表除第一元素外的剩余部分，形如：$L' = \{ l_2, l_3, ...\}$。通过向划分函数传入比较参数，如：$\lambda_x x \leq pivot$即可以实现升序的排序算法。
-
-\be
-sort(L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  sort(A) \cup \{ l_1 \} \cup sort(B) & otherwise
-  \end{array}
-\right.
-\ee
-
-其中$A$、$B$是通过上述划分函数计算出的结果。
-
-\[
-(A, B) = partition(\lambda_x x \leq l_1, L', \phi, \phi)
-\]
-
-\subsubsection{累积式快速排序}
-\index{快速排序!累积式快速排序}
-
-观察前面快速排序定义中的递归部分可以发现，列表的连接操作$sort(A) \cup \{l_1\} \cup sort(B)$需要的时间和列表的长度成比例。可以使用附录A中介绍的一些方法提高性能，另外，也可以将排序算法转换为累积形式。
-
-\[
-sort'(L, S) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  S & L = \phi \\
-  ... & otherwise
-  \end{array}
-\right.
-\]
-
-其中$S$为累积结果。我们传入一个空的起始值来启动排序：$sort(L) = sort'(L, \phi)$。当划分完成时，需要递归地对两个子列表进行排序。我们可以先递归地将大于pivot的元素排序，然后将pivot链接到这一结果的前面。然后将链接结果作为新的“累积结果”传入后续的排序过程中。
-
-根据这一思路，上述算法中的省略号部分可以实现如下：
-
-\[
-sort'(L, S) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  S & L = \phi \\
-  sort(A, \{l_1\} \cup sort(B, ?)) & otherwise
-  \end{array}
-\right.
-\]
-
-当开始对$B$排序时，累积结果应该是什么呢？这里有一个很重要的不变性质：任何时候，累积结果$S$中总保存了迄今为止已经排序好的元素。因此，我们通过向$S$累积来对$B$排序。
-
-\be
-sort'(L, S) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  S & L = \phi \\
-  sort(A, \{l_1\} \cup sort(B, S)) & otherwise
-  \end{array}
-\right.
-\ee
-
-下面的Haskell例子程序实现了累积式快速排序算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-asort xs = asort' xs []
-
-asort' [] acc = acc
-asort' (x:xs) acc = asort' as (x:asort' bs acc) where
-  (as, bs) = part xs [] []
-  part [] as bs = (as, bs)
-  part (y:ys) as bs | y <= x = part ys (y:as) bs
-                    | otherwise = part ys as (y:bs)
-\end{lstlisting}
+我们在排序时传入数组上下界，如：\textproc{Quick-Sort}($A, 1, |A|$)。如果数组片段为空或只含有一个元素，我们直接返回。
 
 \begin{Exercise}
 \begin{itemize}
@@ -2350,6 +2250,34 @@ def merge(xs, ys):
     \item 使用归并排序的策略，设计一种算法可以从一个序列产生一棵二叉搜索树。
   \end{itemize}
 \end{Exercise}
+
+\section{附录：例子程序}
+
+原地划分：
+
+\begin{lstlisting}[language = Bourbaki]
+Int partition(K[] xs, Int l, Int u) {
+    for (Int pivot = l, Int r = l + 1; r < u; ++r) {
+        if xs[pivot] >= xs[r] {
+            l = l + 1
+            swap(xs[l], xs[r])
+        }
+    }
+    swap(xs[pivot], xs[l])
+    return l + 1
+}
+\end{lstlisting}
+
+快速排序：
+\begin{lstlisting}[language = Bourbaki]
+void quicksort(K[] xs, Int l, Int u) {
+    if l < u {
+        Int m = partition(xs, l, u)
+        quicksort(xs, l, m - 1)
+        quicksort(xs, m, u)
+    }
+}
+\end{lstlisting}
 
 \ifx\wholebook\relax\else
 
