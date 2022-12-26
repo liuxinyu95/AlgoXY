@@ -97,60 +97,41 @@ sort (x:xs) = sort [y | y<-xs, y <= x] ++ [x] ++ sort [y | y<-xs, x < y]
 
 \subsection{划分}
 \index{快速排序!划分（partition）}
-在基本快速排序的定义中，我们遍历了两次：第一次获得了所有$\leq p$的元素，第二次获得所有$> p$的元素。可以将它们合并成一次划分过程：
+在基本快速排序的定义中，我们遍历了两次：第一次获得了所有$\leq x$的元素，第二次获得所有$> x$的元素。可以将它们合并成一次划分过程：
 
 \be
-partition(p, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, \phi) & L = \phi \\
-  (\{ l_1 \} \cup A, B) & p(l_1), (A, B) = partition(p, L') \\
-  (A, \{ l_1 \} \cup B) & \lnot p(l_1)
-  \end{array}
-\right.
+\begin{array}{rcl}
+\textit{part}\ p\ [\ ] & = & ([\ ], [\ ]) \\
+\textit{part}\ p\ (x \cons xs) & = & \begin{cases}
+ p(x): & (x \cons as, bs), \text{其中}: (as, bs) = \textit{part}\ p\ xs \\
+ \text{否则}: & (as, x \cons bs) \\
+\end{cases} \\
+\end{array}
 \ee
 
-这里的$\{x\} \cup L$仅仅是一个“cons”操作（将元素链接到表头），它只需要常数时间。使用partition，快速排序可以定义为：
+这样快速排序的定义变为：
 
 \be
-sort(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  sort(A) \cup \{l_1\} \cup sort(B) & L \neq \phi, (A, B) = partition(\lambda_x x \leq l_1, L')
-  \end{array}
-\right.
+\begin{array}{rcl}
+sort\ [\ ] & = & [\ ] \\
+sort\ (x \cons xs) & = & sort\ as \doubleplus [x] \doubleplus sort\ bs, \text{其中}: (as, bs) = \textit{part}\ (\leq x)\ xs \\
+\end{array}
 \ee
 
-下面的Haskell例子程序实现了这一算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-sort [] = []
-sort (x:xs) = sort as ++ [x] ++ sort bs where
-    (as, bs) = partition (<= x) xs
-
-partition _ [] = ([], [])
-partition p (x:xs) = let (as, bs) = partition p xs in
-    if p x then (x:as, bs) else (as, x:bs)
-\end{lstlisting}
-
-划分（partition）的概念对于快速排序至关重要。划分在其很多其他排序排序算法中也很关键。本章的最后部分会解释它如何普遍地影响着排序的思想方法。在进一步改进快速排序的划分算法前，我们先来考虑如何用命令式的方法实现原地快速排序。
-
-在诸多的划分方法中，Lomuto\cite{Bentley}、\cite{CLRS}给出的方法是最简单易懂的。我们稍后还会介绍其他划分方法，并展示不同的方法是如何影响性能的。
+划分对于众多采用分治策略的排序算法很重要。我们接下来考虑如何实现原地划分。
 
 \begin{figure}[htbp]
    \centering
    \subcaptionbox{划分的不变性质}{
       \begin{tikzpicture}[scale=0.8]
       \draw (0, 0) rectangle (1, 1) node (xl) [pos=.5] {x[l]}
-            (1, 0) rectangle (5, 1) node (leq) [pos=.5] {...不大于pivot的...}
-            (5, 0) rectangle (9, 1) node (ge) [pos=.5] {...大于pivot的...}
+            (1, 0) rectangle (5, 1) node (leq) [pos=.5] {... $\leq p$ ...}
+            (5, 0) rectangle (9, 1) node (ge) [pos=.5] {... $> p$ ...}
             (9, 0) rectangle (11, 1) node (rest) [pos=.5] {...?...}
             (11, 0) rectangle (12, 1) node (xu) [pos=.5] {x[u]};
       \fill [black] (5, 0) rectangle (5.1, 1) node (leftbar) [pos=.5] {}
                     (9, 0) rectangle (9.1, 1) node (rightbar) [pos=.5] {};
-      \draw (0, 2) node (pivot) {pivot $p$}
+      \draw (0, 2) node (pivot) {$p = x[l]$}
             (5, 2) node (left) {左边界$L$}
             (9, 2) node (right) {右边界$R$};
       \draw[thick, ->] (pivot) edge (xl)
@@ -164,9 +145,9 @@ partition p (x:xs) = let (as, bs) = partition p xs in
             (2.5, 0) rectangle (4, 1) node (rest) [pos=.5] (ai) {...?...}
             (4, 0) rectangle (5, 1) node (xu) [pos=.5] {x[u]};
       \fill [black] (1, 0) rectangle (1.1, 1) node (leftbar) [pos=.5] {};
-      \draw (-2, 2) node (pivot) {pivot $p$}
-            (0, 2) node (left) {左边界$L$}
-            (2, 2) node (right) {右边界$R$};
+      \draw (-2, 2) node (pivot) {$p$}
+            (0, 2) node (left) {$L$}
+            (2, 2) node (right) {$R$};
       \draw[thick, ->] (pivot) edge [bend right] (xl)
                        (left) edge [bend right] (leftbar)
                        (right) edge [bend left] (leftbar);
@@ -174,49 +155,41 @@ partition p (x:xs) = let (as, bs) = partition p xs in
    \subcaptionbox{结束}{
       \begin{tikzpicture}[scale=0.8]
       \draw (0, 0) rectangle (1, 1) node (xl) [pos=.5] {x[l]}
-            (1, 0) rectangle (5, 1) node (leq) [pos=.5] {...不大于pivot的...}
+            (1, 0) rectangle (5, 1) node (leq) [pos=.5] {... $\leq p$ ...}
             (5, 0) rectangle (6, 1) node (xleft) [pos=.5] {x[$L$] }
-            (6, 0) rectangle (10, 1) node (ge) [pos=.5] {...大于pivot的...}
+            (6, 0) rectangle (10, 1) node (ge) [pos=.5] {... $> p$ ...}
             (10, 0) rectangle (11, 1) node (xu) [pos=.5] {x[u]};
       \fill [black] (6, 0) rectangle (6.1, 1) node (leftbar) [pos=.5] {}
                     (11, 0) rectangle (11.1, 1) node (rightbar) [pos=.5] {};
-      \draw (0, 2) node (pivot) {pivot $p$}
-            (6, 2) node (left) {左边界$L$}
-            (12, 2) node (right) {右边界$R$};
+      \draw (0, 2) node (pivot) {$p$}
+            (6, 2) node (left) {$L$}
+            (12, 2) node (right) {$R$};
       \draw[thick, ->] (pivot) edge (xl)
                        (left) edge [bend right] (leftbar)
                        (right) edge [bend left] (rightbar);
       \draw[thick, <->] (xl) edge [bend right] node [below] {交换} (xleft);
       \end{tikzpicture}} \\
-   \caption{使用最左边的元素作pivot划分一段数组}
+   \caption{用首个元素作基准$p$划分一段数组}
    \label{fig:partition-1-way}
 \end{figure}
 
-图\ref{fig:partition-1-way}描述了这种一次遍历进行划分的方法。我们从左向右逐一处理数组中的元素。任何时候，数组都由图\ref{fig:partition-1-way} (a)所示的几部分组成：
+图\ref{fig:partition-1-way}描述了这种一次遍历划分的方法\cite{Bentley}\cite{CLRS}。我们从左向右扫描数组。任何时候，数组都由图\ref{fig:partition-1-way} (a)所示的几部分组成：
 
 \begin{itemize}
-\item 最左侧为pivot，当划分过程结束时，pivot会被移动到最终的位置；
-\item 一段只包含不大于pivot的元素的部分。这一段的右侧边界被标记为$L$；
-\item 一段只包含大于pivot的元素的部分。这一段的右侧边界被标记为$R$。也就是说，$L$标记和$R$标记之间的元素都大于pivot；
-\item $R$标记后面的元素尚未被处理。这部分的元素可能大于，也可能不大于pivot。
+\item 最左侧为基准$p$。划分结束时，$p$被移动到最终位置；
+\item 一段只包含$\leq p$的部分。这一段的右侧边界为$L$；
+\item 一段只包含$> p$的部分。这一段的右侧边界为$R$。$L$、$R$之间的元素都大于$p$；
+\item $R$后面的元素尚未处理。这部分的元素可能大于或不大于$p$。
 \end{itemize}
 
-在划分过程开始的时候，$L$标记指向pivot，$R$标记指向pivot后的下一个元素，如图\ref{fig:partition-1-way} (b)所示。然后算法不断地向右侧移动$R$标记进行处理直到$R$标记越过数组的右侧边界。
-
-每次迭代，都比较$R$标记指向的元素和pivot的大小。若大于pivot，这一元素应该位于$L$和$R$标记之间，算法继续向前移动$R$标记以检查下一个元素；否则，说明$R$标记指向的元素小于或者等于pivot（不大于），它应该位于$L$标记的左侧。为此，我们将$L$标记向前移动一步，然后交换$L$和$R$标记指向的元素。
-
-当$R$标记越过最后一个元素时，所有的元素都已处理完毕。大于pivot的元素都被移动到了$L$标记的右侧，而其他元素位于$L$标记的左侧。此时我们需要移动pivot元素，使得它位于这两段的中间。为此，我们可以交换pivot和$L$标记指向的元素。如图\ref{fig:partition-1-way} (c)中的双向箭头所示。
-
-$L$标记最终指向pivot，它将整个的数组分成了两部分。我们将$L$标记作为划分过程的结果返回。实际中，为了方便后继处理，我们通常将$L$标记增加1，使得它指向第一个大于pivot的元素。整个划分过程中，我们就地修改了数组中的内容。
-
-划分算法可以描述如下。它接受三个参数：一个数组$A$，待划分区间的上下界\footnote{这里描述的算法和\cite{CLRS}中的略有不同，后者用待划分区间的最后一个元素作为pivot。}
+划分开始时，$L$指向$p$，$R$指向$p$的下一个元素，如图\ref{fig:partition-1-way} (b)所示。然后不断向右移动$R$进行处理，直到$R$越过数组右侧。每次迭代，都比较$R$指向的元素和$p$。若$x[R] > p$，它应位于$L$和$R$之间，我们继续向前移动$R$；否则$x[R] \leq p$，它应该位于$L$左侧。我们将$L$向前移动一步，然后交换$x[L]$和$x[R]$。当$R$越过最后一个位置时，所有的元素都已处理完。$> p$的元素都被移动到了$L$右侧，而其它元素位于$L$左侧。此时我们需要移动$p$，使它位于这两段的中间。为此，我们交换$p$和$x[L]$。如图\ref{fig:partition-1-way} (c)中的双向箭头所示。$L$最终指向$p$，将整个数组分成两部分。我们将$L$作为划分的结果返回。为了方便后继处理，我们将$L$增加1，使得它指向第一个大于$p$的元素。令数组为$A$，待划分区间的上下界为$l, u$，原地划分实现如下：
 
 \begin{algorithmic}[1]
 \Function{Partition}{A, l, u}
-  \State $p \gets A[l]$  \Comment{$p$为pivot}
-  \State $L \gets l$ \Comment{左侧标记}
-  \For{$R \in [l+1, u]$} \Comment{对右侧标记进行迭代}
-    \If{$\lnot (p < A[R])$} \Comment{对于严格弱序，定义$<$比较就足够了}
+  \State $p \gets A[l]$  \Comment{基准}
+  \State $L \gets l$ \Comment{左侧}
+  \For{$R$ in $[l+1, u]$} \Comment{对右侧迭代}
+    \If{$p \geq A[R]$}
       \State $L \gets L + 1$
       \State \textproc{Exchange} $A[L] \leftrightarrow A[R]$
     \EndIf
@@ -226,7 +199,7 @@ $L$标记最终指向pivot，它将整个的数组分成了两部分。我们将
 \EndFunction
 \end{algorithmic}
 
-表\ref{tab:partition-steps}给出了划分数组$\{ 3, 2, 5, 4, 0, 1, 6, 7\}$的步骤。
+表\ref{tab:partition-steps}给出了划分数组$[3, 2, 5, 4, 0, 1, 6, 7]$的步骤。
 
 \begin{table}[htbp]
 \centering
@@ -245,7 +218,7 @@ $L$标记最终指向pivot，它将整个的数组分成了两部分。我们将
 1 & 2 & 0 & 3 & 5(l+1) & 4 & 6 & 7 & $r$越过了边界，交换pivot和$l$ \\
 \hline
 \end{tabular}
-\caption{扫描并划分数组的步骤} \label{tab:partition-steps}
+\caption{扫描并划分数组} \label{tab:partition-steps}
 \end{table}
 
 下面的ANSI C例子程序实现了这一划分算法。
