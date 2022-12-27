@@ -553,28 +553,24 @@ pass xss (x:xs) = step xs [] [x] [] xss where
 \EndProcedure
 \end{algorithmic}
 
-考虑所有元素都相等的极端情况：数组划分为两段长度相等的子数组，发生了$\frac{n}{2}$次交换。由于划分是平衡的，所以总体性能仍然为$O(n \lg n)$，而没有退化。和此前的划分实现对比，这一方法的交换次数更少。它跳过了那些在$p$正确一侧的元素不进行处理。
-
 \index{快速排序!三路划分}
-显然，我们应该避免对重复元素进行不必要的交换操作。进一步，可以利用“三分排序”（ternary sort，也称作三路划分）的思路来改进算法，所有严格小于pivot的元素被放入左侧的子序列片段，严格大于pivot的元素被放入右侧，而中间部分包含所有等于pivot的元素。使用三路划分，我们只需要对不等于pivot的元素进行递归排序。在上述的特殊情况中，由于所有的元素都相等，我们无需进行进一步的递归排序。因此整体的性能为线性时间$O(n)$。
-
-我们接下来需要考虑如何实现三路划分。Jon Bentley和Douglas McIlroy给出了一个方法：如图\ref{fig:partition-3-way} (a)所示，所有和pivot相等的元素最初保存在最左侧和最右侧\cite{3-way-part}、\cite{opt-qs}。
+考虑所有元素都相等的极端情况：数组划分为两段长度相等的子数组，发生了$\dfrac{n}{2}$次交换。由于划分是平衡的，所以总体性能仍然为$O(n \lg n)$，而没有退化。和此前的划分实现对比，这一方法的交换次数更少。它跳过了那些在基准正确一侧的元素不进行处理。我们可以把双向划分和三路划分结合起来。只对不等于基准的元素进行递归。Jon Bentley和Douglas McIlroy给出了一个方法：如图\ref{fig:partition-3-way} (a)所示，先把所有和基准相等的元素保存在两侧\cite{3-way-part}\cite{opt-qs}。
 
 \begin{figure}[htbp]
    \centering
    \subcaptionbox{三路划分的不变条件。}{
       \begin{tikzpicture}[scale=0.8]
       \draw (0, 0) rectangle (1, 1) node (xl) [pos=.5] {x[l]}
-            (1, 0) rectangle (3, 1) node [pos=.5] {...等于...}
-            (3, 0) rectangle (5, 1) node [pos=.5] {...小于...}
-            (5, 0) rectangle (7, 1) node [pos=.5] {...?...}
-            (7, 0) rectangle (9, 1) node [pos=.5] {...大于...}
-            (9, 0) rectangle (11, 1) node [pos=.5] {...等于...};
+            (1, 0) rectangle (3, 1) node [pos=.5] {... $=$ ...}
+            (3, 0) rectangle (5, 1) node [pos=.5] {... $<$ ...}
+            (5, 0) rectangle (7, 1) node [pos=.5] {... ? ...}
+            (7, 0) rectangle (9, 1) node [pos=.5] {... $>$ ...}
+            (9, 0) rectangle (11, 1) node [pos=.5] {... $=$ ...};
       \fill [black] (3, 0) rectangle (3.1, 1) node (pbar) [pos=.5] {}
                     (5, 0) rectangle (5.1, 1) node (ibar) [pos=.5] {}
                     (7, 0) rectangle (7.1, 1) node (jbar) [pos=.5] {}
                     (9, 0) rectangle (9.1, 1) node (qbar) [pos=.5] {};
-      \draw (0, 2) node (pivot) {pivot}
+      \draw (0, 2) node (pivot) {基准}
             (3, 2) node (p) {$p$}
             (5, 2) node (i) {$i$}
             (7, 2) node (j) {$j$}
@@ -585,11 +581,11 @@ pass xss (x:xs) = step xs [] [x] [] xss where
                        (j) edge [bend left] (jbar)
                        (q) edge [bend left] (qbar);
       \end{tikzpicture}} \\
-   \subcaptionbox{将和pivot相等的元素交换到中间部分。}{\hspace{0.1\textwidth}
+   \subcaptionbox{将等于基准的元素交换到中间。}{\hspace{0.1\textwidth}
       \begin{tikzpicture}[scale=0.8]
-      \draw (0, 0) rectangle (2, 1) node [pos=.5] {...小于...}
-            (2, 0) rectangle (4, 1) node [pos=.5] {...等于...}
-            (4, 0) rectangle (6, 1) node [pos=.5] {...大于...};
+      \draw (0, 0) rectangle (2, 1) node [pos=.5] {... $<$ ...}
+            (2, 0) rectangle (4, 1) node [pos=.5] {... $=$ ...}
+            (4, 0) rectangle (6, 1) node [pos=.5] {... $>$ ...};
       \fill [black] (2, 0) rectangle (2.1, 1) node (ibar) [pos=.5] {}
                     (4, 0) rectangle (4.1, 1) node (jbar) [pos=.5] {};
       \draw (2, 2) node (i) {$i$}
@@ -602,11 +598,7 @@ pass xss (x:xs) = step xs [] [x] [] xss where
    \label{fig:partition-3-way}
 \end{figure}
 
-扫描过程大部分和Robert Sedgewick给出的相似，两个指针$i$和$j$相向前进直到$i$遇到任何大于等于pivot的元素，并且$j$遇到任何小于等于pivot的元素。此时，如果$i$和$j$没有相遇或者交错，我们不仅交换它们指向的元素，同时检查被指向的元素是否和pivot相等，如果相等，就交换$i$和$p$指向的元素，以及$j$和$q$指向的元素。
-
-在划分过程结束前，需要把所有等于pivot的元素从左右两侧交换到中间。交换的次数取决于重复元素的个数。如果所有的元素都不等，则交换次数为零，不产生任何额外的性能消耗。划分的最终结果如图\ref{fig:partition-3-way} (b)所示。此后，我们只需要对“严格小于”和“严格大于”部分的子片段进行递归排序。
-
-可以通过修改两路划分的算法进行实现。
+扫描过程仍然是左右相向的。直到$i$遇到$\geq$基准的元素，并且$j$遇到$\leq$基准的元素。此时如果$i$和$j$没有相遇或者交错，我们不仅交换$A[i] \leftrightarrow A[j]$，同时检查$A[i], A[j]$是否等于基准。如果相等，就交换$A[i] \leftrightarrow A[p]$或$A[j] \leftrightarrow A[q]$。在划分结束前，我们需要把所有等于基准的元素从左右交换到中间。交换次数取决于重复元素的个数。如果所有元素唯一，则交换次数为零，不产生任何额外消耗。划分结果如图\ref{fig:partition-3-way} (b)所示。此后，我们只需要对“严格小于”和“严格大于”部分递归。
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
