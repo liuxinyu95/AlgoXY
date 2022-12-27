@@ -293,7 +293,7 @@ sort' acc (x:xs) = sort' (x : sort' acc bs) as where
 \Question{改进基本快速排序的定义，除了列表为空外，优化对单元素列表的处理。}
 \end{Exercise}
 
-\section{快速排序的性能}
+\subsection{性能分析}
 \index{快速排序!性能分析}
 
 快速排序在实际应用中性能良好。我们需要使用统计学工具来分析平均情况下的性能。首先分析最好和最坏情况。最好情况下，每次划分都将序列均分。如图\ref{fig:qsort-best}所示，共需要$O(\lg n)$次递归调用。第一层划分一次，处理$n$个元素；第二层划分两次，每次处理$n/2$个元素，总体执行时间为$2 O(n/2) = O(n)$。第三层划分四次，每次处理$n/4$个元素，总体执行时间也是$O(n)$……最后一层总共有$n$个片段，每个片段一个元素，总时间也是$O(n)$。将所有层的执行时间相加，得到快速排序在最好情况下的性能为$O(n \lg n)$。
@@ -307,7 +307,7 @@ sort' acc (x:xs) = sort' (x : sort' acc bs) as where
 
 最坏情况下，划分极不平衡。一部分长$O(1)$，另一部分的长$O(n)$。递归的深度退化为$O(n)$。用图来描述，最好情况下，快速排序过程形成一棵平衡二叉树；最坏情况下，形成一棵极不平衡的树，每个节点都只有一棵子树，另一棵子树为空。二叉树退化成了一个长度为$O(n)$的链表。而在每一层中，所有的元素都被处理，因此最坏情况下的性能为$O(n^2)$，这和插入排序、选择排序的性能相当。我们可以考虑几种特殊的最坏情况，例如大量元素都相等导致划分结果不平衡。另外已序序列也导致不平衡划分。还有其它一些情况导致性能下降，不存在一种方法可以完全避免最坏情况。
 
-\subsection{平均情况\texorpdfstring{$\bigstar$}{★}}
+\subsubsection{平均情况\texorpdfstring{$\bigstar$}{★}}
 \index{快速排序!平均情况分析}
 
 快速排序在平均情况下性能良好。即使每次划分总得到长度比为1:9的两部分，性能仍然为$O(n \lg n)$\cite{CLRS}。我们给出两种方法分析快速排序在平均情况下的复杂度。第一种方法利用比较操作的次数来考量性能\cite{CLRS}。在选择排序中，任何两个元素都进行了比较。快速排序避免了很多不必要的比较。考虑划分列表$[a_1, a_2, a_3, ..., a_n]$，选择$a_1$作为基准，划分结果产生两个子列表$A = [x_1, x_2, ..., x_k]$和$B = [y_1, y_2, ..., y_{n-k-1}]$。在后继的排序过程中，$A$中任何元素都不再和$B$中的任何元素进行比较。令最终排序的结果为$[a_1, a_2, ..., a_n]$，我们有：若$a_i < a_j$，当且仅当存在某一元素$a_k$满足$a_i < a_k < a_j$，并且$a_k$在$a_i$或$a_j$之前被选为基准时，我们不再对$a_i$和$a_j$进行比较。也就是说，若$a_i$与$a_j$进行比较，则要么$a_i$、要么$a_j$一定在所有$a_{i+1} < a_{i+2} < ... < a_{j-1}$之前被选为基准。令$P(i, j)$代表$a_i$和$a_j$进行比较的概率，我们有：
@@ -423,20 +423,17 @@ O(\frac{T(n)}{n+1}) = O(\frac{T(1)}{2} + 2c \ln n + \gamma + \epsilon_n) = O(\lg
 O(T(n)) = O(n \lg n)
 \ee
 
-\section{工程中的改进}
-\index{快速排序!工程中的改进}
+\subsection{改进}
+\index{快速排序!改进} \index{快速排序!三分划分}
 
-快速排序性能优异，但在最坏情况下，性能会退化到平方级别。如果数据随机分布，出现最坏情况的概率很低。尽管如此，工程上常常采用一些方法以避免或减少出现最坏情况。
-
-\index{快速排序!三分划分}
-我们给出的划分实现\textproc{Partition}在处理大量重复元素时出现性能下降。考虑含有$n$个相等元素的特殊序列$[x, x, ..., x]$：
+快速排序性能优异，但在最坏情况下，性能会退化到平方级别。如果数据随机分布，出现最坏情况的概率很低。尽管如此，工程上常常采用一些方法以避免或减少出现最坏情况。我们给出的划分实现\textproc{Partition}在处理大量重复元素时出现性能下降。考虑含有$n$个相等元素的特殊序列$[x, x, ..., x]$：
 
 \begin{enumerate}
 \item 基本快速排序：任选一个元素作为基准$p = x$，分割后得到两个序列：$[x, x, ..., x]$，长度为$n-1$，另外一个序列为空。接下来递归地对长为$n-1$的序列排序。总复杂度为$O(n^2)$。
 \item 只用严格的$< x$、$> x$进行划分。结果是两个空序列和$n$个等于$x$的元素。接下来的递归只应用到两个空列上并立即结束。结果为$[\ ] \doubleplus [x, x, ..., x] \doubleplus [\ ]$。总复杂度为$O(n)$。
 \end{enumerate}
 
-据此，我们对划分进行改进：相对于二分划分，三分划分能更好地处理重复元素。
+据此，我们对划分进行改进：相对于二分划分，\textbf{三分划分}能更好地处理重复元素。
 
 \be
 \begin{array}{rcl}
@@ -480,8 +477,8 @@ part\ S\ E\ G\ x\ (y \cons ys) & = & \begin{cases}
 理查德$\cdot$伯德给出了另一种改进\cite{fp-pearls}，它不立即连接递归排序的结果，而是把排好的子列表保存起来，最终再连接在一起：
 
 \begin{Haskell}
-psort :: (Ord a) => [a] -> [a]
-psort = concat . (pass [])
+sort :: (Ord a) => [a] -> [a]
+sort = concat . (pass [])
 
 pass xss [] = xss
 pass xss (x:xs) = step xs [] [x] [] xss where
@@ -492,29 +489,21 @@ pass xss (x:xs) = step xs [] [x] [] xss where
 \end{Haskell}
 
 \index{快速排序!双向划分}
-也可以用命令式的方法解决大量重复元素的问题。Robert Sedgewick给出了一个划分方法\cite{qsort-impl}、\cite{Bentley}，使用两个指针，一个从左向右移动，另一个从右向左移动。开始的时候两个指针指向数组的左右边界。
-
-划分开始时，选择最左侧的元素作为pivot。然后左侧指针$i$不断向右前进直到遇到一个不小于pivot的元素；另外\footnote{注意，我们没有使用“然后”一词，因为这两轮扫描可以同时并发进行。}，右侧指针$j$不断向左扫描直到遇到一个不大于pivot的元素。
-
-此时，所有在左侧指针$i$之前的元素都严格小于pivot，而所有在右侧指针$j$之后的元素都严格大于pivot。$i$指向一个大于或等于pivot的元素；而$j$指向一个小于或等于pivot的元素。图\ref{fig:partition-2-way} (a)描述了此时的情形。
-
-为了将全部小于或等于pivot的元素划分到左侧，而其余元素划分到右侧，我们可以交换$i$和$j$指向的两个元素。然后我们恢复扫描，重复上面的步骤直到$i$和$j$相遇或者交错。
-
-在划分的任何时刻，总保持着不变条件（invariant），即所有$i$之前的元素（包括$i$指向的元素）都不大于pivot；而所有$j$之后的元素（包括$j$指向的元素）都不小于pivot。$i$和$j$之间的元素尚未处理。图\ref{fig:partition-2-way} (b)描述了这一不变条件。
+我们接下来介绍的改进叫做\textbf{双向划分}，是罗伯特$\cdot$塞奇维克（Robert Sedgewick）给出的\cite{qsort-impl}\cite{Bentley}。使用两个指针$i, j$从左右两侧相向扫描。开始时$i, j$指向数组左右边界，选择最左侧的元素作为基准$p$。然后左指针$i$向右扫描直到遇到一个$\geq p$的元素；另外\footnote{两轮扫描可以并发。}右指针$j$向左扫描直到遇到一个$\leq p$的元素。此时，所有$i$左边的元素都$< p$，所有$j$右边的元素都$> p$。$i$指向一个$\geq p$的元素，而$j$指向一个$\leq p$的元素。如图\ref{fig:partition-2-way} (a)。为了将全部$\leq p$的元素划分到左侧，其余元素划分到右侧，我们交换$i$和$j$指向的两个元素。然后恢复扫描，重复上面的步骤直到$i$和$j$相遇或者交错。在划分的任何时刻，总保持着不变条件：所有$i$左侧的元素（包括$i$）都$\leq p$；所有$j$右侧的元素（包括$j$）都$\geq p$。$i$和$j$之间的元素尚未处理。如图\ref{fig:partition-2-way} (b)。
 
 \begin{figure}[htbp]
    \centering
    \subcaptionbox{指针$i$和$j$停止前进时}{
       \begin{tikzpicture}[scale=0.8]
       \draw (0, 0) rectangle (1, 1) node (xl) [pos=.5] {x[l]}
-            (1, 0) rectangle (5, 1) node (leq) [pos=.5] {...小于pivot的...}
+            (1, 0) rectangle (5, 1) node (leq) [pos=.5] {... $< p$ ...}
             (5, 0) rectangle (6, 1) node (xi) [pos=.5] {x[i]}
-            (6, 0) rectangle (8, 1) node (rest) [pos=.5] {...?...}
+            (6, 0) rectangle (8, 1) node (rest) [pos=.5] {... ? ...}
             (8, 0) rectangle (9, 1) node (xj) [pos=.5] {x[j]}
-            (9, 0) rectangle (13, 1) node (ge) [pos=.5] {...大于pivot的...};
-      \draw (0, 2) node (pivot) {pivot $p$}
-            (5, 2) node (left) {$\geq$ pivot}
-            (8, 2) node (right) {$\leq$ pivot};
+            (9, 0) rectangle (13, 1) node (ge) [pos=.5] {... $> p$ ...};
+      \draw (0, 2) node (pivot) {基准$p$}
+            (5, 2) node (left) {$\geq p$}
+            (8, 2) node (right) {$\leq p$};
       \draw[thick, ->] (pivot) edge (xl)
                        (left) edge [bend right] (xi)
                        (right) edge [bend right] (xj);
@@ -522,76 +511,51 @@ pass xss (x:xs) = step xs [] [x] [] xss where
    \subcaptionbox{划分不变条件}{
       \begin{tikzpicture}[scale=0.8]
       \draw (0, 0) rectangle (1, 1) node (xl) [pos=.5] {x[l]}
-            (1, 0) rectangle (5, 1) node (leq) [pos=.5] {...不大于pivot的...}
-            (5, 0) rectangle (7, 1) node (rest) [pos=.5] {...?...}
-            (7, 0) rectangle (11, 1) node (ge) [pos=.5] {...不小于pivot的...};
+            (1, 0) rectangle (5, 1) node (leq) [pos=.5] {... $\leq p$ ...}
+            (5, 0) rectangle (7, 1) node (rest) [pos=.5] {... ? ...}
+            (7, 0) rectangle (11, 1) node (ge) [pos=.5] {... $\geq p$ ...};
       \fill [black] (5, 0) rectangle (5.1, 1) node (ibar) [pos=.5] {}
                     (7, 0) rectangle (7.1, 1) node (jbar) [pos=.5] {};
-      \draw (0, 2) node (pivot) {pivot $p$}
+      \draw (0, 2) node (pivot) {基准$p$}
             (5, 2) node (i) {$i$}
             (7, 2) node (j) {$j$};
       \draw[thick, ->] (pivot) edge (xl)
                        (i) edge [bend right] (ibar)
                        (j) edge [bend right] (jbar);
       \end{tikzpicture}} \\
-   \caption{选择最左侧的元素作为pivot进行划分}
+   \caption{双向划分}
    \label{fig:partition-2-way}
 \end{figure}
 
-当左侧指针$i$和右侧指针$j$相遇或交错时，我们需要进行一次额外的交换操作，将最左侧的pivot元素交换到$j$指向的位置上。然后，我们对划分区间下界和$j$之间的数组片段，以及$i$和划分区间上界之间的片段进行递归排序。
-
-这一算法可以描述如下。
+当$i$、$j$相遇或交错时，我们需要一次额外的交换，将最左侧的基准$p$交换到$j$指向的位置上。然后，我们对划分区间下界$l$和$j$之间的数组片段$A[l ... j)$；$i$和划分区间上界$u$之间的片段$A[i ... u)$进行递归排序。
 
 \begin{algorithmic}[1]
-\Procedure{Sort}{$A, l, u$} \Comment{sort range $[l, u)$}
-  \If{$u - l > 1$} \Comment{非平凡情况下包含1个以上的元素}
+\Procedure{Sort}{$A, l, u$} \Comment{排序区间：$[l, u)$}
+  \If{$u - l > 1$} \Comment{包含1个以上的元素}
     \State $i \gets l$, $j \gets u$
-    \State $pivot \gets A[l]$
+    \State $p \gets A[l]$ \Comment{基准}
     \Loop
       \Repeat
         \State $i \gets i + 1$
-      \Until{$A[i] \geq pivot$} \Comment{忽略$i \geq u$的错误处理}
+      \Until{$A[i] \geq p$} \Comment{忽略$i \geq u$的情况}
       \Repeat
         \State $j \gets j - 1$
-      \Until{$A[j] \leq pivot$} \Comment{忽略$j < l$的错误处理}
+      \Until{$A[j] \leq p$} \Comment{忽略$j < l$的情况}
       \If{$j < i$}
         \State break
       \EndIf
       \State \textproc{Exchange} $A[i] \leftrightarrow A[j]$
     \EndLoop
-    \State \textproc{Exchange} $A[l] \leftrightarrow A[j]$ \Comment{移动pivot}
+    \State \textproc{Exchange} $A[l] \leftrightarrow A[j]$ \Comment{移动$p$}
     \State \Call{Sort}{$A, l, j$}
     \State \Call{Sort}{$A, i, u$}
   \EndIf
 \EndProcedure
 \end{algorithmic}
 
-考虑所有元素都相等的极端情况，这一原地快速排序将数组划分为两段长度相等的子数组，这里发生了$\frac{n}{2}$次不必要的交换操作。由于划分是平衡的，所以总体性能仍然为$O(n \lg n)$，而没有下降到平方级别。下面的C语言例子程序实现了这一算法。
+考虑所有元素都相等的极端情况：数组划分为两段长度相等的子数组，发生了$\frac{n}{2}$次交换。由于划分是平衡的，所以总体性能仍然为$O(n \lg n)$，而没有退化。和此前的划分实现对比，这一方法的交换次数更少。它跳过了那些在$p$正确一侧的元素不进行处理。
 
-\lstset{language=C}
-\begin{lstlisting}
-void qsort(Key* xs, int l, int u) {
-    int i, j, pivot;
-    if (l < u - 1) {
-        pivot = i = l; j = u;
-        while (1) {
-            while (i < u && xs[++i] < xs[pivot]);
-            while (j >=l && xs[pivot] < xs[--j]);
-            if (j < i) break;
-            swap(xs[i], xs[j]);
-        }
-        swap(xs[pivot], xs[j]);
-        qsort(xs, l, j);
-        qsort(xs, i, u);
-    }
-}
-\end{lstlisting}
-
-和此前介绍的Lomuto的划分算法相比，可以发现这一算法的元素交换操作次数更少。这是因为它跳过了那些最终位置在pivot正确一侧的元素不进行交换。
-
-\subsubsection{三路划分}
 \index{快速排序!三路划分}
-
 显然，我们应该避免对重复元素进行不必要的交换操作。进一步，可以利用“三分排序”（ternary sort，也称作三路划分）的思路来改进算法，所有严格小于pivot的元素被放入左侧的子序列片段，严格大于pivot的元素被放入右侧，而中间部分包含所有等于pivot的元素。使用三路划分，我们只需要对不等于pivot的元素进行递归排序。在上述的特殊情况中，由于所有的元素都相等，我们无需进行进一步的递归排序。因此整体的性能为线性时间$O(n)$。
 
 我们接下来需要考虑如何实现三路划分。Jon Bentley和Douglas McIlroy给出了一个方法：如图\ref{fig:partition-3-way} (a)所示，所有和pivot相等的元素最初保存在最左侧和最右侧\cite{3-way-part}、\cite{opt-qs}。
@@ -787,7 +751,7 @@ void qsort(Key* xs, int l, int u) {
 \end{itemize}
 \end{Exercise}
 
-\section{针对最差情况的工程实践}
+\subsubsection{最坏情况}
 
 虽然三分快速排序（使用三路划分）能处理含有很多重复元素的序列，但是仍然无法有效解决典型的最差情况。例如，如果序列中的大部分元素已序时，无论是升序还是降序，划分的结果将会是两个长度不平衡的子序列，一个包含少量的元素，另一个包含剩余的部分。
 
@@ -872,7 +836,7 @@ qsort (x:y:z:rest) = qsort (filter (< m) (s:rest)) ++ [m] ++
 
 即使在理论上无法避免最差情况，但是这些工程上的实践在实际应用中往往能够取得很好的结果。
 
-\section{其他工程实践}
+\subsubsection{其他工程实践}
 \index{快速排序!回退到插入排序}
 
 还有一些工程实践，它们不是着眼于解决划分的最差情况。Robert Sedgewick观察到如果待排序的列表较短时，快速排序引入的额外代价比较明显，此时插入排序反而更有优势\cite{Bentley}、\cite{3-way-part}。Sedgewick、Bentley和McIlroy尝试了不同的序列长度，称为“Cut-Off”。如果序列中的元素个数少于Cut-Off，就转而使用插入排序。
@@ -898,7 +862,7 @@ qsort (x:y:z:rest) = qsort (filter (< m) (s:rest)) ++ [m] ++
 \end{itemize}
 \end{Exercise}
 
-\section{其他}
+\subsection{其它}
 
 有人说只有应用了全部改进技术的实现才是“真正的快速排序”——当序列较短时转而使用插入排序，并且就地交换元素，同时用median-of-tree选择pivot，再加上三路划分。最简短的纯函数式实现，虽然完美地诠释了快速排序的思路，却没有使用上述任何改进技术。有人认为纯函数式的快速排序本质上是树排序。
 
@@ -2189,6 +2153,28 @@ void quicksort(K[] xs, Int l, Int u) {
         quicksort(xs, m, u)
     }
 }
+
+双向划分：
+
+\lstset{language=C}
+\begin{lstlisting}
+void qsort(Key* xs, int l, int u) {
+    int i, j, pivot;
+    if (l < u - 1) {
+        pivot = i = l; j = u;
+        while (1) {
+            while (i < u && xs[++i] < xs[pivot]);
+            while (j >=l && xs[pivot] < xs[--j]);
+            if (j < i) break;
+            swap(xs[i], xs[j]);
+        }
+        swap(xs[pivot], xs[j]);
+        qsort(xs, l, j);
+        qsort(xs, i, u);
+    }
+}
+\end{lstlisting}
+
 \end{lstlisting}
 
 \ifx\wholebook\relax\else
