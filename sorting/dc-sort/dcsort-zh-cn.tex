@@ -343,13 +343,13 @@ H_n = 1 + \frac{1}{2} + \frac{1}{3} + .... = \ln n + \gamma + \epsilon_n
 C(n) = \sum_{i=1}^{n-1} O(\lg n) = O(n \lg n)
 \ee
 
-第二种分析方法利用递归。令列表长度$n$时，划分后得到两个子列表，一部分长$i$，另一部分长$n-i-1$。划分过程比较基准$p$和每个元素，它自身用时$cn$。因此我们有如下递归关系：
+第二种分析方法利用递归。令列表长度$n$，划分后得到两个长度为$i$和$n-i-1$的部分。划分过程比较基准$p$和每个元素，它自身用时$cn$。我们有如下递归关系：
 
 \be
 T(n) = T(i) + T(n-i-1) + c n
 \ee
 
-其中$T(n)$是对长度为$n$的列表进行快速排序所用的时间。由于$i$以相同的概率在$0, 1, ..., n-1$中取值，通过使用数学期望，可以得到如下结果：
+其中$T(n)$是对长度为$n$的列表进行快速排序所用的时间。$i$以相同的概率在$0, 1, ..., n-1$中取值。对上述等式取数学期望：
 
 \be
 \renewcommand*{\arraystretch}{1.5}
@@ -368,26 +368,26 @@ n T(n) = 2 \sum_{i=0}^{n-1} T(i) + c n^2
 \label{eq:ntn}
 \ee
 
-将$n$用$n-1$替换，可以得到另外一个等式：
+将$n$用$n-1$替换，得到另一等式：
 
 \be
 (n-1) T(n-1) = 2 \sum_{i=0}^{n-2} T(i) + c (n-1)^2
 \label{eq:n1tn1}
 \ee
 
-用式(\ref{eq:ntn})减去式(\ref{eq:n1tn1})可以消去所有的$T(i)$，其中$0 \leq i < n-1$。
+用式(\ref{eq:ntn})减去式(\ref{eq:n1tn1})消去所有的$T(i)$，其中$0 \leq i < n-1$。
 
 \be
 n T(n) = (n + 1) T(n-1) + 2cn - c
 \ee
 
-在计算性能时，我们可以忽略掉常数时间$c$。因此上式进一步变化为：
+忽略常数$c$，上式简化为：
 
 \be
 \frac{T(n)}{n+1} = \frac{T(n-1)}{n} + \frac{2c}{n+1}
 \ee
 
-我们依次用$n-1$、$n-2$……代入$n$，可以得到$n-1$个等式。
+依次代入$n-1$、$n-2$……得到$n-1$个等式。
 
 \[
 \frac{T(n-1)}{n} = \frac{T(n-2)}{n-1} + \frac{2c}{n}
@@ -405,13 +405,13 @@ n T(n) = (n + 1) T(n-1) + 2cn - c
 \frac{T(2)}{3} = \frac{T(1)}{2} + \frac{2c}{3}
 \]
 
-将所有等式相加，消去左右两侧相同的变量，可以化简得到一个关于$n$的函数。
+将所有等式相加，消去左右相同的部分，化简得到一个关于$n$的函数。
 
 \be
 \frac{T(n)}{n+1} = \frac{T(1)}{2} + 2c \sum_{k=3}^{n+1} \frac{1}{k}
 \ee
 
-使用上面提到的调和级数，最终的结果为：
+利用调和级数，最终的结果为：
 
 \be
 O(\frac{T(n)}{n+1}) = O(\frac{T(1)}{2} + 2c \ln n + \gamma + \epsilon_n) = O(\lg n)
@@ -423,127 +423,75 @@ O(\frac{T(n)}{n+1}) = O(\frac{T(1)}{2} + 2c \ln n + \gamma + \epsilon_n) = O(\lg
 O(T(n)) = O(n \lg n)
 \ee
 
-\section{工程实践中的改进}
-\index{快速排序!工程实践中的改进}
+\section{工程中的改进}
+\index{快速排序!工程中的改进}
 
-大多数情况下快速排序性能优异。但是在最差的情况下，性能会下降到平方级别。如果待排序的数据是完全随机分布的，出现最差情况的概率会很低。尽管如此，某些常见的特殊序列却仍会引发最差情况。
+快速排序性能优异，但在最坏情况下，性能会退化到平方级别。如果数据随机分布，出现最坏情况的概率很低。尽管如此，工程上常常采用一些方法以避免或减少出现最坏情况。
 
-本节我们介绍一些工程上常用的方法，它们或者针对某些特殊的输入数据改进划分算法来避免性能下降，或者通过改变概率分布来减小出现最差情况的可能。
-
-\subsection{处理重复元素的工程方法}
-\index{快速排序!处理重复元素}
-
-如上一节的练习中所示，Lomuto的划分算法不擅长处理含有很多重复元素的序列。考虑含有$n$个相等元素的特殊序列$\{x, x, ..., x\}$，我们有两种方案来进行排序。
+\index{快速排序!三分划分}
+我们给出的划分实现\textproc{Partition}在处理大量重复元素时出现性能下降。考虑含有$n$个相等元素的特殊序列$[x, x, ..., x]$：
 
 \begin{enumerate}
-\item 普通的基本快速排序法：我们任意选择一个元素作为pivot，其值为$x$，这样分割后得到两个子序列，一个是$\{x, x, ..., x \}$，包含$n-1$个元素，另外一个子序列为空。接下来递归地对第一个子序列排序；这明显是一个$O(n^2)$的解决方法。
-\item 另外一个方法是只挑选严格小于$x$的元素，和严格大于$x$的元素进行划分。这样得到的结果是两个空序列，和$n$个等于pivot的元素。接下来我们递归地对只含有小于pivot的元素子序列和只含有大于pivot的元素的子序列进行排序，由于它们都为空，因此递归调用立即结束。剩下要做的就是将比pivot小的元素的排序结果，全部等于pivot的元素，和比pivot大的元素的排序结果连接起来。
+\item 基本快速排序：任选一个元素作为基准$p = x$，分割后得到两个序列：$[x, x, ..., x]$，长度为$n-1$，另外一个序列为空。接下来递归地对长为$n-1$的序列排序。总复杂度为$O(n^2)$。
+\item 只用严格的$< x$、$> x$进行划分。结果是两个空序列和$n$个等于$x$的元素。接下来的递归只应用到两个空列上并立即结束。结果为$[\ ] \doubleplus [x, x, ..., x] \doubleplus [\ ]$。总复杂度为$O(n)$。
 \end{enumerate}
 
-如果所有元素都相等，第二种方法只需要$O(n)$时间。这给出了划分算法的一个重要改进：相对于二分划分(binary partition，划分成两个子序列和一个pivot)，三分划分（ternary partition，划分成三个子序列）能更好地处理重复元素。
-
-我们可以这样来定义三分划分快速排序（ternary quick sort）：
+据此，我们对划分进行改进：相对于二分划分，三分划分能更好地处理重复元素。
 
 \be
-sort(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  sort(S) \cup sort(E) \cup sort(G) & otherwise
-  \end{array}
-\right.
-\ee
-
-其中$S, E, G$分别是所有小于、等于、和大于pivot的元素组成的列表。
-
-\[
-\begin{array}{l}
-S = \{ x | x \in L, x < l_1 \} \\
-E = \{ x | x \in L, x = l_1 \} \\
-G = \{ x | x \in L, l_1 < x \}
+\begin{array}{rcl}
+sort\ [\ ] & = & [\ ] \\
+sort\ (x \cons xs) & = & sort\ S \doubleplus sort\ E \doubleplus sort\ G
 \end{array}
-\]
+\ee
 
-下面的Haskell例子程序实现了基本的三分快速排序算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-sort [] = []
-sort (x:xs) = sort [a | a<-xs, a<x] ++
-              x:[b | b<-xs, b==x] ++ sort [c | c<-xs, c>x]
-\end{lstlisting}
-
-注意，元素间的比较必须支持“小于”和“等于”操作，而普通快速排序仅仅要求“小于”比较。在性能上，基本的三分快速排序需要线性时间$O(n)$将三个子列表连接起来。可以使用一个累积变量（accumulator）来改善这一性能。
-
-令函数$sort'(L, A)$表示带有累积变量的三分快速排序定义，其中$L$为待排序序列，累积变量$A$包含已排好序的部分。它最开始时为空：$sort(L) = sort'(L, \phi)$。我们可以先定义好边界条件：
+其中：
 
 \[
-sort'(L, A) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  A & L = \phi \\
-  ... & otherwise
-  \end{array}
-\right.
+\begin{cases}
+S = [ y | y \in xs, y < x ] \\
+E = [ y | y \in xs, y = x ] \\
+G = [ y | y \in xs, y > x ] \\
+\end{cases}
 \]
 
-对于递归情况，三分划分将序列分为三个子序列$S, E, G$，其中只有$S$和$G$需要递归排序，而$E$包含全部等于pivot的元素，无需进一步排序了。我们可以先使用累积变量$A$对$G$进行排序，然后将排序结果连接到$E$的后面，作为新的累积变量对$S$进行排序。
+这一实现需要线性时间将三个子列表连接起来。我们可以使用一个累积变量进行改进：$qsort = sort\ [\ ]$。其中：
 
 \be
-sort'(L, A) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  A & L = \phi \\
-  sort(S, E \cup sort(G, A)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+sort\ A\ [\ ] & = & A \\
+sort\ A\ (x \cons xs) & = & sort\ (E \doubleplus sort\ A\ G)\ S \\
+\end{array}
 \ee
 
-划分算法也可以使用累积变量来实现。这和基本的快速排序类似。注意这里我们不能只传入一个和pivot进行比较的断言，而需要传入两个：一个用于“小于”比较，另外一个用于“等于”判断。简单起见，这里我们传入pivot元素。
+我们将非空列表划分为三个子列表$S, E, G$，其中$E$中元素全相等，无需进一步排序。我们先使用累积变量$A$对$G$排序，将结果连接到$E$的后面，作为新的累积变量再对$S$排序。划分也可以使用累积变量改进：
 
 \be
-partition(p, L, S, E, G) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (S, E, G) & L = \phi \\
-  partition(p, L', \{l_1\} \cup S, E, G) & l_1 < p \\
-  partition(p, L', S, \{l_1\} \cup E, G) & l_1 = p \\
-  partition(p, L', S, E, \{ l_1 \} \cup G) & p < l_1
-  \end{array}
-\right.
+\begin{array}{rcl}
+part\ S\ E\ G\ x\ [\ ] & = & (S, E, G) \\
+part\ S\ E\ G\ x\ (y \cons ys) & = & \begin{cases}
+  y < x: & (y \cons S, E, G) \\
+  y = x: & (S, y \cons E, G) \\
+  y > x: & (S, E, y \cons G) \\
+  \end{cases} \\
+\end{array}
 \ee
 
-其中，若$L$不为空，$l_1$为$L$中的第一个元素，$L'$包含除$l_1$外的剩余部分。下面的Haskell例子程序实现了这一算法。它在划分算法的边界情况中启动递归排序。
+理查德$\cdot$伯德给出了另一种改进\cite{fp-pearls}，它不立即连接递归排序的结果，而是把排好的子列表保存起来，最终再连接在一起：
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-sort xs = sort' xs []
+\begin{Haskell}
+psort :: (Ord a) => [a] -> [a]
+psort = concat . (pass [])
 
-sort' []     r = r
-sort' (x:xs) r = part xs [] [x] [] r where
-    part [] as bs cs r = sort' as (bs ++ sort' cs r)
-    part (x':xs') as bs cs r | x' <  x = part xs' (x':as) bs cs r
-                             | x' == x = part xs' as (x':bs) cs r
-                             | x' >  x = part xs' as bs (x':cs) r
-\end{lstlisting}
-
-Richard Bird给出了另外一个改进\cite{fp-pearls}，它不对递归排序的结果立即执行连接操作，而是把排好的子列表放入一个列表中保存。最终再将这些子列表连接在一起。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-sort xs = concat $ pass xs []
-
-pass [] xss = xss
-pass (x:xs) xss = step xs [] [x] [] xss where
-    step [] as bs cs xss = pass as (bs:pass cs xss)
+pass xss [] = xss
+pass xss (x:xs) = step xs [] [x] [] xss where
+    step [] as bs cs xss = pass (bs : pass xss cs) as
     step (x':xs') as bs cs xss | x' <  x = step xs' (x':as) bs cs xss
                                | x' == x = step xs' as (x':bs) cs xss
                                | x' >  x = step xs' as bs (x':cs) xss
-\end{lstlisting} %$
+\end{Haskell}
 
-\subsubsection{双向划分（2-way partition）}
 \index{快速排序!双向划分}
-
 也可以用命令式的方法解决大量重复元素的问题。Robert Sedgewick给出了一个划分方法\cite{qsort-impl}、\cite{Bentley}，使用两个指针，一个从左向右移动，另一个从右向左移动。开始的时候两个指针指向数组的左右边界。
 
 划分开始时，选择最左侧的元素作为pivot。然后左侧指针$i$不断向右前进直到遇到一个不小于pivot的元素；另外\footnote{注意，我们没有使用“然后”一词，因为这两轮扫描可以同时并发进行。}，右侧指针$j$不断向左扫描直到遇到一个不大于pivot的元素。
