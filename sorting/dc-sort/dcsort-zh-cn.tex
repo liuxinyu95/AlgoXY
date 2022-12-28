@@ -488,8 +488,8 @@ pass xss (x:xs) = step xs [] [x] [] xss where
                                | x' >  x = step xs' as bs (x':cs) xss
 \end{Haskell}
 
-\index{快速排序!双向划分}
-我们接下来介绍的改进叫做\textbf{双向划分}，是罗伯特$\cdot$塞奇维克（Robert Sedgewick）给出的\cite{qsort-impl}\cite{Bentley}。使用两个指针$i, j$从左右两侧相向扫描。开始时$i, j$指向数组左右边界，选择最左侧的元素作为基准$p$。然后左指针$i$向右扫描直到遇到一个$\geq p$的元素；另外\footnote{两轮扫描可以并发。}右指针$j$向左扫描直到遇到一个$\leq p$的元素。此时，所有$i$左边的元素都$< p$，所有$j$右边的元素都$> p$。$i$指向一个$\geq p$的元素，而$j$指向一个$\leq p$的元素。如图\ref{fig:partition-2-way} (a)。为了将全部$\leq p$的元素划分到左侧，其余元素划分到右侧，我们交换$i$和$j$指向的两个元素。然后恢复扫描，重复上面的步骤直到$i$和$j$相遇或者交错。在划分的任何时刻，总保持着不变条件：所有$i$左侧的元素（包括$i$）都$\leq p$；所有$j$右侧的元素（包括$j$）都$\geq p$。$i$和$j$之间的元素尚未处理。如图\ref{fig:partition-2-way} (b)。
+\index{快速排序!双向扫描}
+我们接下来介绍的改进叫做\textbf{双向扫描}，是罗伯特$\cdot$塞奇维克（Robert Sedgewick）给出的\cite{qsort-impl}\cite{Bentley}。使用两个指针$i, j$从左右两侧相向扫描。开始时$i, j$指向数组左右边界，选择最左侧的元素作为基准$p$。然后左指针$i$向右扫描直到遇到一个$\geq p$的元素；另外\footnote{两轮扫描可以并发。}右指针$j$向左扫描直到遇到一个$\leq p$的元素。此时，所有$i$左边的元素都$< p$，所有$j$右边的元素都$> p$。$i$指向一个$\geq p$的元素，而$j$指向一个$\leq p$的元素。如图\ref{fig:partition-2-way} (a)。为了将全部$\leq p$的元素划分到左侧，其余元素划分到右侧，我们交换$i$和$j$指向的两个元素。然后恢复扫描，重复上面的步骤直到$i$和$j$相遇或者交错。在划分的任何时刻，总保持着不变条件：所有$i$左侧的元素（包括$i$）都$\leq p$；所有$j$右侧的元素（包括$j$）都$\geq p$。$i$和$j$之间的元素尚未处理。如图\ref{fig:partition-2-way} (b)。
 
 \begin{figure}[htbp]
    \centering
@@ -523,7 +523,7 @@ pass xss (x:xs) = step xs [] [x] [] xss where
                        (i) edge [bend right] (ibar)
                        (j) edge [bend right] (jbar);
       \end{tikzpicture}} \\
-   \caption{双向划分}
+   \caption{双向扫描}
    \label{fig:partition-2-way}
 \end{figure}
 
@@ -554,7 +554,7 @@ pass xss (x:xs) = step xs [] [x] [] xss where
 \end{algorithmic}
 
 \index{快速排序!三路划分}
-考虑所有元素都相等的极端情况：数组划分为两段长度相等的子数组，发生了$\dfrac{n}{2}$次交换。由于划分是平衡的，所以总体性能仍然为$O(n \lg n)$，而没有退化。和此前的划分实现对比，这一方法的交换次数更少。它跳过了那些在基准正确一侧的元素不进行处理。我们可以把双向划分和三路划分结合起来。只对不等于基准的元素进行递归。Jon Bentley和Douglas McIlroy给出了一个方法：如图\ref{fig:partition-3-way} (a)所示，先把所有和基准相等的元素保存在两侧\cite{3-way-part}\cite{opt-qs}。
+考虑所有元素都相等的极端情况：数组划分为两段长度相等的子数组，发生了$\dfrac{n}{2}$次交换。由于划分是平衡的，所以总体性能仍然为$O(n \lg n)$，而没有退化。和此前的划分实现对比，这一方法的交换次数更少。它跳过了那些在基准正确一侧的元素不进行处理。我们可以把双向扫描和三路划分结合起来。只对不等于基准的元素进行递归。Jon Bentley和Douglas McIlroy给出了一个方法：如图\ref{fig:partition-3-way} (a)所示，先把所有和基准相等的元素保存在两侧\cite{3-way-part}\cite{opt-qs}。
 
 \begin{figure}[htbp]
    \centering
@@ -643,44 +643,15 @@ pass xss (x:xs) = step xs [] [x] [] xss where
 \EndProcedure
 \end{algorithmic}
 
-下面的C语言例子程序实现了三路划分快速排序算法。
-
-\lstset{language=C}
-\begin{lstlisting}
-void qsort2(Key* xs, int l, int u) {
-    int i, j, k, p, q, pivot;
-    if (l < u - 1) {
-        i = p = l; j = q = u; pivot = xs[l];
-        while (1) {
-            while (i < u && xs[++i] < pivot);
-            while (j >= l && pivot < xs[--j]);
-            if (j <= i) break;
-            swap(xs[i], xs[j]);
-            if (xs[i] == pivot) { ++p; swap(xs[p], xs[i]); }
-            if (xs[j] == pivot) { --q; swap(xs[q], xs[j]); }
-        }
-        if (i == j && xs[i] == pivot) { --j, ++i; }
-        for (k = l; k <= p; ++k, --j) swap(xs[k], xs[j]);
-        for (k = u-1; k >= q; --k, ++i) swap(xs[k], xs[i]);
-        qsort2(xs, l, j + 1);
-        qsort2(xs, i, u);
-    }
-}
-\end{lstlisting}
-
-引入三路划分后，算法逐渐变得复杂了。各种边界条件都需要进行仔细的处理。回顾此前的Lomuto的划分方法，它的优势就是简单直观，我们可以考虑对它加以改进，得到一个简单的三路划分实现。
-
-我们需要调整一下不变条件（invariant）。我们仍然选择第一个元素作为pivot，如图\ref{fig:partition-3-way-lomuto}所示，任何时刻，左侧的片段包含严格小于pivot的元素；接下来的片段包含等于pivot的元素；最右侧的片段包含严格大于pivot的元素。这三个片段的边界分别为$i$、$k$和$j$。剩余在$k$和$j$之间的部分是尚未扫描的元素。
-
-我们从左向右逐一扫描元素，一开始时，严格小于pivot的部分为空；等于pivot的部分只包含一个元素，就是pivot本身。$i$此时指向数组的下界，$k$指向$i$的下一个元素。严格大于pivot的部分也为空，$j$指向数组的上界。
+双向扫描加三路划分的逻辑变得复杂了，需要仔细处理各种边界条件。此前的单向扫描具有简单、直观的特点。我们考虑直接对它进行改进。首先需要调整不变条件。选择第一个元素作为基准$p$，如图\ref{fig:partition-3-way-lomuto}所示。任何时刻，左侧片段包含$< p$的元素；接下来的片段包含$= p$的元素；最右侧片段包含$> p$的元素。三个片段的边界分别为$i$、$k$、$j$。$[k, j)$之间是尚未扫描的元素。我们从左向右逐一扫描。开始时，$< p$的部分为空；$= p$的部分只有一个元素。$i$指向数组的下界，$k$指向$i$的下一个元素。$> p$的部分也为空，$j$指向数组上界。
 
 \begin{figure}[htbp]
    \centering
       \begin{tikzpicture}[scale=0.8]
-      \draw (0, 0) rectangle (2, 1) node [pos=.5] {...小于...}
-            (2, 0) rectangle (4, 1) node [pos=.5] {...等于...}
-            (4, 0) rectangle (6, 1) node [pos=.5] {...?...}
-            (6, 0) rectangle (8, 1) node [pos=.5] {...大于...};
+      \draw (0, 0) rectangle (2, 1) node [pos=.5] {... $< p$ ...}
+            (2, 0) rectangle (4, 1) node [pos=.5] {... $= p$ ...}
+            (4, 0) rectangle (6, 1) node [pos=.5] {... ? ...}
+            (6, 0) rectangle (8, 1) node [pos=.5] {... $> p$ ...};
       \fill [black] (2, 0) rectangle (2.1, 1) node (ibar) [pos=.5] {}
                     (4, 0) rectangle (4.1, 1) node (kbar) [pos=.5] {}
                     (6, 0) rectangle (6.1, 1) node (jbar) [pos=.5] {};
@@ -691,11 +662,11 @@ void qsort2(Key* xs, int l, int u) {
                        (k) edge [bend right] (kbar)
                        (j) edge [bend left] (jbar);
       \end{tikzpicture}
-   \caption{基于Lomuto方法的三路划分}
+   \caption{单向扫描三路划分}
    \label{fig:partition-3-way-lomuto}
 \end{figure}
 
-划分过程开始后，我们逐一检查$k$指向的元素。如果它等于pivot，$k$就移动指向下一个元素；如果它大于pivot，我们将它和未处理区间的最后一个元素交换，这样严格大于的区间长度就增加一。它的边界$j$向左移动一步。由于我们不确定移动到$k$的元素是否仍然大于pivot，我们需要再次进行比较，重复上述过程。否则，如果元素小于pivot，我们将它和等于pivot区间的第一个元素交换。当$k$和$j$相遇时，划分过程结束。
+划分开始后，我们逐一检查$k$指向的元素。如果它等于$p$，就移动$k$指向下一个元素；如果$> p$，我们将$A[k]$和未处理区间的最后一个元素$A[j-1]$交换，这样$> p$的区间长度就增加一。它的边界$j$向左移动一步。由于不确定移动到位置$k$的元素是否仍然大于$p$，我们需要再次比较，重复上述过程。否则，如果元素$< p$，我们将$A[k]$和$= p$的区间的第一个元素$A[i]$交换。当$k$和$j$相遇时，划分过程结束。
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
@@ -2125,7 +2096,7 @@ def merge(xs, ys):
 
 \begin{lstlisting}[language = Bourbaki]
 Int partition(K[] xs, Int l, Int u) {
-    for (Int pivot = l, Int r = l + 1; r < u; ++r) {
+    for (Int pivot = l, Int r = l + 1; r < u; r = r + 1) {
         if xs[pivot] >= xs[r] {
             l = l + 1
             swap(xs[l], xs[r])
@@ -2134,23 +2105,20 @@ Int partition(K[] xs, Int l, Int u) {
     swap(xs[pivot], xs[l])
     return l + 1
 }
-\end{lstlisting}
 
-快速排序：
-\begin{lstlisting}[language = Bourbaki]
-void quicksort(K[] xs, Int l, Int u) {
+void sort(K[] xs, Int l, Int u) {
     if l < u {
         Int m = partition(xs, l, u)
-        quicksort(xs, l, m - 1)
-        quicksort(xs, m, u)
+        sort(xs, l, m - 1)
+        sort(xs, m, u)
     }
 }
 \end{lstlisting}
 
-双向划分：
+双向扫描：
 
 \begin{lstlisting}[language = Bourbaki]
-void qsort(K[] xs, Int l, Int u) {
+void sort(K[] xs, Int l, Int u) {
     if l < u - 1 {
         Int pivot = l, Int i = l, Int j = u
         loop {
@@ -2164,8 +2132,8 @@ void qsort(K[] xs, Int l, Int u) {
             swap(xs[i], xs[j])
         }
         swap(xs[pivot], xs[j])
-        qsort(xs, l, j)
-        qsort(xs, i, u)
+        sort(xs, l, j)
+        sort(xs, i, u)
     }
 }
 \end{lstlisting}
