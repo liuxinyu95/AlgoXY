@@ -762,60 +762,33 @@ pass xss (x:xs) = step xs [] [x] [] xss where
 \EndProcedure
 \end{algorithmic}
 
-\subsection{其它}
+\subsection{快速排序与树排序}
 
-有人说只有应用了全部改进技术的实现才是“真正的快速排序”——当序列较短时转而使用插入排序，并且就地交换元素，同时用median-of-tree选择pivot，再加上三路划分。最简短的纯函数式实现，虽然完美地诠释了快速排序的思路，却没有使用上述任何改进技术。有人认为纯函数式的快速排序本质上是树排序。
-
-事实上，快速排序和树排序有紧密的关系。Richard Bird展示了通过deforestation，从二叉树排序推导出快速排序\cite{algo-fp}。
-
-考虑一个生成二叉搜索树的算法，名为$unfold$。它将一个元素列表转换为一棵二叉搜索树。
+“真正的快速排序”复合应用了多种改进——当序列较短时转为插入排序，就地交换元素，使用三点中值选择基准，双向扫描三路划分。简短的递归定义虽然诠释了快速排序的思路，却没有使用上述任何改进。有人认这样的快速排序本质上是树排序。快速排序和树排序的确有紧密的关系。理查德$\cdot$伯德给出了如何通过“砍伐”概念\footnote{deforestation}，从二叉树排序推导出快速排序\cite{algo-fp}。定义\textit{unfold}函数将一个列表转换为二叉搜索树：
 
 \be
-unfold(L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  tree(T_l, l_1, T_r) & otherwise
-  \end{array}
-\right.
-\ee
-
-其中
-
-\be
-\begin{array}{l}
-T_l = unfold( \{ a | a \in L', a \leq l_1\} ) \\
-T_r = unfold( \{ a | a \in L', l_1 < a \} )
+\begin{array}{rcl}
+\textit{unfold}\ [\ ] & = & \nil \\
+\textit{unfold}\ (x \cons xs) & = & (\textit{unfold}\ [a | a \in xs, a \leq x], x, \textit{unfold}\ [a | a \in xs, a > x]) \\
 \end{array}
 \ee
 
-有趣的一点是，和此前二叉搜索树一章介绍的内容相比，这一算法产生树的方式大相径庭。如果要进行unfold的列表为空，结果显然为一棵空树。这是边界条件。否则，算法将列表中第一个元素$l_1$作为节点的key，然后递归地创建左右子树。用于创建左子树的元素，是列表$L'$中小于等于key的元素；而其他大于key的元素被用以创建右子树。其中$L'$是$L$中除$l_1$外的剩余部分。
-
-此前我们给出过将一棵二叉搜索树通过中序遍历转换成列表的算法：
+和二叉搜索树（见第二章）插入算法相比，\textit{unfold}产生树的方式大相径庭。如果列表为空，结果为一棵空树；否则，将列表中第一个元素$x$作为节点的值，然后递归地构造左右子树。其中左子树是$\leq x$的元素；而右子树是$> x$的元素。而将一棵二叉搜索树通过中序遍历转换成列表的定义为：
 
 \be
-toList(T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & T = \phi \\
-  toList(left(T)) \cup \{ key(T) \} \cup toList(right(T)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+\textit{toList}\ \nil & = & [\ ] \\
+\textit{toList}\ (l, k, r) & = & \textit{toList}\ l \doubleplus [k] \doubleplus \textit{toList}\ r \\
+\end{array}
 \ee
 
-我们可以将上述两个函数组合（compose）起来，定义出快速排序算法：
+我们可以将上述两个函数组合起来，定义出快速排序算法：
 
 \be
-quickSort = toList \cdot unfold
+\textit{sort} = \textit{toList} \circ \textit{unfold}
 \ee
 
-第一步，我们通过$unfold$构造一棵二叉搜索树。将其作为中间结果送入$toList$得出列表后就可以将这棵树丢弃了。如果将这一临时的中间结果树消除，就得到了基本的快速排序算法。
-
-消除临时的中间结果二叉搜索树的过程称作\underline{deforestation}。这一概念来自Burstle-Darlington的工作\cite{slpj-book-1987}。
-
-% ================================================================
-% Merge Sort
-% ================================================================
+我们先通过\textit{unfold}构造出二叉搜索树，将其作为中间结果送入\textit{toList}得出列表后就可以将树丢弃了。如果将这一临时的中间结果树消除，就得到了基本的快速排序算法\cite{slpj-book-1987}。
 
 \section{归并排序}
 \index{归并排序}
