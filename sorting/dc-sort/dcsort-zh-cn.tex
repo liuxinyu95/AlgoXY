@@ -690,57 +690,29 @@ pass xss (x:xs) = step xs [] [x] [] xss where
 \EndProcedure
 \end{algorithmic}
 
-和前面的三路划分快速排序算法相比，这一算法要相对简单，但是需要更多的交换次数。下面的C语言例子程序实现了这一算法。
+和双向扫描加三路划分相比，这一实现相对简单但需要更多的交换次数。
 
-\lstset{language=C}
-\begin{lstlisting}
-void qsort(Key* xs, int l, int u) {
-    int i, j, k; Key pivot;
-    if (l < u - 1) {
-        i = l; j = u; pivot = xs[l];
-        for (k = l + 1; k < j; ++k) {
-            while (pivot < xs[k]) { --j; swap(xs[j], xs[k]); }
-            if (xs[k] < pivot) { swap(xs[i], xs[k]); ++i; }
-        }
-        qsort(xs, l, i);
-        qsort(xs, j, u);
-    }
-}
-\end{lstlisting}
+\subsubsection{最差情况}
 
-\begin{Exercise}
-\begin{itemize}
-\item 我们给出的命令式快速排序算法都使用第一个元素作为pivot，也可以使用最后一个元素作为pivot。请修改快速的排序的基本算法，Sedgewick的改进算法，和三路快速排序算法，使用最后一个元素作为pivot。
-\end{itemize}
-\end{Exercise}
-
-\subsubsection{最坏情况}
-
-虽然三分快速排序（使用三路划分）能处理含有很多重复元素的序列，但是仍然无法有效解决典型的最差情况。例如，如果序列中的大部分元素已序时，无论是升序还是降序，划分的结果将会是两个长度不平衡的子序列，一个包含少量的元素，另一个包含剩余的部分。
-
-考虑两种极端情况：$\{ x_1 < x_2 < ... < x_n\}$和$\{ y_1 > y_2 > ... > y_n\}$。图\ref{fig:worst-cases-1}给出了划分结果。
+虽然三路划分能较好地应对大量重复元素，但仍然无法有效解决一些最差情况。例如，序列中的大部分元素已序时（无论是升序还是降序），划分结果不平衡。图\ref{fig:worst-cases-1}是两种极端情况：$[x_1 < x_2 < ... < x_n]$和$[y_1 > y_2 > ... > y_n]$的划分结果。我们可以给出更多的最差情况，例如$[x_m, x_{m-1}, ..., x_2, x_1, x_{m+1}, x_{m+2}, ... x_n]$，其中$[ x_1 < x_2 < ... < x_n]$，以及$[x_n, x_1, x_{n-1}, x_2, ... ]$。如图\ref{fig:worst-cases-2}所示。
 
 \begin{figure}[htbp]
    \centering
-   \subcaptionbox{序列$\{x_1 < x_2 < ... < x_n\}$的划分树，每次划分时，选择第一个元素为pivot，小于等于pivot的部分总为空。}{\hspace{.3\textwidth} \includegraphics[scale=0.5]{img/unbalanced} \hspace{.3\textwidth}} \\
-   \subcaptionbox{序列$\{y_1 > y_2 > ... > y_n\}$的划分树，每次划分时，选择第一个元素为pivot，大于等于pivot的部分总为空。}{\includegraphics[scale=0.5]{img/unbalanced-2}} \\
+   \subcaptionbox{$[x_1 < x_2 < ... < x_n]$的划分树。$\leq p$的部分总为空。}{\hspace{.3\textwidth} \includegraphics[scale=0.5]{img/unbalanced} \hspace{.3\textwidth}} \\
+   \subcaptionbox{$[y_1 > y_2 > ... > y_n]$的划分树，$\geq p$的部分总为空。}{\includegraphics[scale=0.5]{img/unbalanced-2}} \\
    \caption{两种最差情况}
    \label{fig:worst-cases-1}
 \end{figure}
 
-很容易给出更多的最差情况，例如$\{ x_m, x_{m-1}, ..., x_2, x_1, x_{m+1}, x_{m+2}, ... x_n\}$，其中$\{ x_1 < x_2 < ... < x_n \}$；另一个例子是$\{x_n, x_1, x_{n-1}, x_2, ... \}$。图\ref{fig:worst-cases-2}给出了它们的划分结果。
-
 \begin{figure}[htbp]
    \centering
-   \subcaptionbox{除了第一次划分结果，其他都不平衡。}{\includegraphics[scale=0.4]{img/unbalanced-3}} \\
-   \subcaptionbox{一个zig-zag形状的划分树。}{\includegraphics[scale=0.5]{img/unbalanced-zigzag}} \\
-   \caption{另两种最差情况}
+   \subcaptionbox{除了第一次划分，其它都不平衡。}{\includegraphics[scale=0.4]{img/unbalanced-3}} \\
+   \subcaptionbox{一个之字形的划分树。}{\includegraphics[scale=0.5]{img/unbalanced-zigzag}} \\
+   \caption{更多最差情况}
    \label{fig:worst-cases-2}
 \end{figure}
 
-观察可以发现，仅仅简单地选择第一个元素作为pivot，很容易使得划分的结果不平衡，Robert Sedgwick在\cite{qsort-impl}中给出了一种改进，在实际中得到了广泛的使用。这一改进不是每次在固定的位置上选择一个pivot，而是进行简单的抽样以减小引发不平衡划分的可能性。一种抽样方法是检查第一个元素，中间的元素，和末尾的元素，然后选择这三个元素的中数（median）作为pivot。在最差情况下，他保证划分后较短的序列至少含有一个元素。
-
-在实际实现中还有一个细节需要注意。由于数组的索引在实际中的字长通常是有限的，简单使用\texttt{(l + u) / 2}来计算中间元素的索引可能引发溢出错误。正确的做法是使用\texttt{l + (u - l) / 2}来索引中间位置的元素。有两种方法来寻找中数，一种最多需要三次比较操作\cite{3-way-part}；另外一种方法通过交换将三个元素中的最小值移动到第一个元素的位置，将最大值移动到最后一个元素的位置，将中数移动到中间位置。此后选在中间位置的元素作为pivot即可。下面的算法使用第二种方法确定划分的pivot。
+这几种最差情况中，选择第一个元素作为基准使得划分结果不平衡，塞奇维克给出了一种改进\cite{qsort-impl}：不在固定的位置上选择基准，而是进行简单的抽样以减小引发不平衡划分的可能性。检查第一个元素、中间元素、末尾元素，选择这三个元素的中数作为基准。在最差情况下，可以保证划分结果中至少含有一个元素。还需要注意一个细节。由于数组索引的字长是有限的，简单用\texttt{(l + u) / 2}计算中间元素索引可能溢出。为此可用\texttt{l + (u - l) / 2}来索引。有两种方法来寻找中数，一种最多需要三次比较操作\cite{3-way-part}；另外一种通过交换将三个元素中的最小值移动到第一个元素的位置，将最大值移动到最后一个位置，将中数移动到中间。
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
@@ -763,24 +735,7 @@ void qsort(Key* xs, int l, int u) {
 \EndProcedure
 \end{algorithmic}
 
-对上述4种特殊的最差情况，这一算法显然性能良好。它常常被称为“三点中值”算法（median-of-three），我们将它的命令式实现留给读者作为练习。
-
-但是，在纯函数式环境中，随机获取中间和最后的元素代价很大，我们不能直接将命令式的中数选择算法翻译过来。为了进行少量抽样，一种替代方案是在前三个元素中获取中数。如下面的Haskell例子程序所示。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-qsort [] = []
-qsort [x] = [x]
-qsort [x, y] = [min x y, max x y]
-qsort (x:y:z:rest) = qsort (filter (< m) (s:rest)) ++ [m] ++
-                     qsort (filter (>= m) (l:rest)) where
-    xs = [x, y, z]
-    [s, m, l] = [minimum xs, median xs, maximum xs]
-\end{lstlisting}
-
-但是，对于上述4种特殊的最差情况，这种替代方案都不能良好工作，本质原因是由于抽样的质量很差，我们需要在大范围内（整个列表），而不是在小范围内（前三个）进行抽样。我们稍后会介绍如果用函数式的方法解决这一划分问题。
-
-除了median-of-three方法，另一种流行的工程实践是随机选择元素作为pivot，例如下面的改进：
+对上述四种特殊的最差情况，这一实现性能良好。它被称为“三点中值”算法。另一种常见方法是随机选择元素作为基准：
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
@@ -793,16 +748,9 @@ qsort (x:y:z:rest) = qsort (filter (< m) (s:rest)) ++ [m] ++
 \EndProcedure
 \end{algorithmic}
 
-函数\textproc{Random}($l, u$返回一个在$l$和$u$之间的随机整数$l \leq i < u$。这一位置上的元素被交换到第一位置上作为pivot用以进行划分。这一算法称为\underline{随机快速排序}\cite{CLRS}。
+函数\textproc{Random}($l, u$)返回一个在$l$和$u$之间的随机整数$l \leq i < u$。这一位置上的元素被交换到最左侧作为基准。这一方法称为\textbf{随机快速排序}\cite{CLRS}。无论是三点中值还是随机快速排序都不能完全避免最差情况。如果序列随机分布，无论选择第一个还是其它位置上的元素作为基准，在效果上都是相同的。即使在理论上无法避免最差情况，但是这些方法在实际应用中往往能够取得很好的结果。
 
-理论上，无论median-of-three还是随机快速排序都不能完全避免最差情况。如果待排序序列是随机分布的，无论选择第一个作为pivot，还是任何其他位置上的元素，在效果上都是相同的。在纯函数式编程环境中，列表的底层数据结构通常是单向链表，没有简单的方法可以实现纯函数式的随机快速排序。
-
-即使在理论上无法避免最差情况，但是这些工程上的实践在实际应用中往往能够取得很好的结果。
-
-\subsubsection{其他工程实践}
-\index{快速排序!回退到插入排序}
-
-还有一些工程实践，它们不是着眼于解决划分的最差情况。Robert Sedgewick观察到如果待排序的列表较短时，快速排序引入的额外代价比较明显，此时插入排序反而更有优势\cite{Bentley}、\cite{3-way-part}。Sedgewick、Bentley和McIlroy尝试了不同的序列长度，称为“Cut-Off”。如果序列中的元素个数少于Cut-Off，就转而使用插入排序。
+还有一些工程实践，它们不是着眼于解决划分的最差情况。塞奇维克观察到在序列较短时，快速排序没有明显优势，而插入排序反而更快\cite{Bentley}\cite{3-way-part}。塞奇维克、本特利、麦基尔罗伊测试了不同的序列长度，定义了一个阈值。如果序列中的元素个数少于阈值，就转而使用插入排序。
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
@@ -813,17 +761,6 @@ qsort (x:y:z:rest) = qsort (filter (< m) (s:rest)) ++ [m] ++
   \EndIf
 \EndProcedure
 \end{algorithmic}
-
-这一改进的实现留给读者作为练习。
-
-\begin{Exercise}
-\begin{itemize}
-\item 除了本节给出的4种最差情况外，请给出更多的最差情况。
-\item 选择一门命令式编程语言，实现median-of-three方法。
-\item 选择一门命令式编程语言，实现随机快速排序。
-\item 使用命令式方法和函数式方法，实现当列表长度较短时改用插入排序的算法。
-\end{itemize}
-\end{Exercise}
 
 \subsection{其它}
 
