@@ -1,4 +1,4 @@
--- MergeSort1.hs
+-- MergeSort.hs
 -- Copyright (C) 2012 Liu Xinyu (liuxinyu95@gmail.com)
 --
 -- This program is free software: you can redistribute it and/or modify
@@ -19,15 +19,13 @@ module MergeSort where
 import Test.QuickCheck
 import Data.List
 
--- Basic version, split at the middle point
+-- Split at the middle point
 msort [] = []
 msort [x] = [x]
 msort xs = merge (msort as) (msort bs) where
   (as, bs) = splitAt (length xs `div` 2) xs
 
-
--- Basic version, split odd/even
-
+-- Split odd/even
 mergesort [] = []
 mergesort [x] = [x]
 mergesort xs = merge (mergesort as) (mergesort bs) where
@@ -45,8 +43,8 @@ merge [] ys = ys
 merge (x:xs) (y:ys) | x <= y = x : merge xs (y:ys)
                     | x >  y = y : merge (x:xs) ys
 
--- Bottom up version
--- Based on: Chris Okasaki. ``Purely functional data structures'' 6.4.3.
+-- Bottom up merge sort
+-- Chris Okasaki. ``Purely functional data structures'' 6.4.3.
 bmsort = sort' . map (\x->[x])
 
 sort' [] = []
@@ -55,11 +53,11 @@ sort' xss = sort' (mergePairs xss) where
     mergePairs (xs:ys:xss) = merge xs ys : mergePairs xss
     mergePairs xss = xss
 
--- Bottom up version using foldl
+-- Bottom up with foldl
 bmsort' = foldl merge [] . map (\x->[x]) where
 
 -- A version for performance visualization
--- This version record the number of swaps which happens during sorting.
+-- Record the number of swaps which happens during sorting.
 
 --merge :: (Ord a)=>([a], Int)->([a], Int) -> ([a], Int)
 merge' ([], n) (ys, m) = (ys, n+m)
@@ -74,7 +72,6 @@ sort'' [(xs, n)] = (xs, n)
 sort'' xss = sort'' $ mergePairs' xss where
     mergePairs' (xs:ys:xss) = merge' xs ys : mergePairs' xss
     mergeParis' xss = xss
-
 
 msort' :: (Ord a)=>[a]->([a], Int)
 msort' = sort'' . map (\x->([x], 0))

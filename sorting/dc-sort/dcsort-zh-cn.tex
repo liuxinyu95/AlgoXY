@@ -857,14 +857,15 @@ halve = foldr f ([], []) where
 \end{array}
 \ee
 
-归并排序也可以用命令式的方式实现，下面给出了基本的归并排序算法。
+对于数组，我们可以直接在中点位置分割，分别递归排序后归并：
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A$}
-  \If{$|A| > 1$}
-    \State $m \gets \lfloor \frac{|A|}{2} \rfloor$
+  \State $n \gets |A|$
+  \If{$n > 1$}
+    \State $m \gets \lfloor \dfrac{n}{2} \rfloor$
     \State $X \gets$ \Call{Copy-Array}{$A[1...m]$}
-    \State $Y \gets$ \Call{Copy-Array}{$A[m+1...|A|]$}
+    \State $Y \gets$ \Call{Copy-Array}{$A[m+1...n]$}
     \State \Call{Sort}{$X$}
     \State \Call{Sort}{$Y$}
     \State \Call{Merge}{$A, X, Y$}
@@ -872,17 +873,13 @@ halve = foldr f ([], []) where
 \EndProcedure
 \end{algorithmic}
 
-当待排序数组包含至少两个元素时，开始进行处理。首先将前一半元素复制到一个新数组$X$中，将后一半复制到数组$Y$中。然后递归对它们排序，最后将排序结果归并回$A$中。这一方法使用了和$A$大小相同的额外空间。这是由于\textproc{Merge}算法不是在原地修改元素的。我们稍后将介绍命令式的原地归并排序算法。
-
-归并过程所做的处理和此前给出的函数式定义相同。存在一个较复杂的实现，和一个使用sentinel的简化实现。
-
-较复杂的归并算法不断检查两个输入数组的元素，选择较小的一个并放回结果数组$A$，它接着继续向前处理直到任何一个数组被处理完。此后算法将另一个数组中的剩余元素添加到$A$。
+这一方法使用了和数组$A$同样大小的额外空间。这是由于\textproc{Merge}算法不是在原地修改元素的。归并时，我们不断检查数组$X$、$Y$中的元素，选择较小的一个放回数组$A$，接着继续向前处理直到处理完任一数组。最后把另一个数组中的剩余元素添加到$A$中。
 
 \begin{algorithmic}[1]
 \Procedure{Merge}{$A, X, Y$}
   \State $i \gets 1, j\gets 1, k\gets 1$
   \State $m \gets |X|, n \gets |Y|$
-  \While{$i \leq m \land j \leq n$}
+  \While{$i \leq m$ 且 $j \leq n$}
     \If{$X[i] < Y[j]$}
       \State $A[k] \gets X[i]$
       \State $i \gets i + 1$
@@ -905,53 +902,18 @@ halve = foldr f ([], []) where
 \EndProcedure
 \end{algorithmic}
 
-虽然这一算法较为繁复，但在某些具有丰富数组处理工具的编程环境中，也可以获得简洁的实现。如下面的Python例子程序所示。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def msort(xs):
-    n = len(xs)
-    if n > 1:
-        ys = [x for x in xs[:n/2]]
-        zs = [x for x in xs[n/2:]]
-        ys = msort(ys)
-        zs = msort(zs)
-        xs = merge(xs, ys, zs)
-    return xs
-
-def merge(xs, ys, zs):
-    i = 0
-    while ys != [] and zs != []:
-        xs[i] = ys.pop(0) if ys[0] < zs[0] else zs.pop(0)
-        i = i + 1
-    xs[i:] = ys if ys !=[] else zs
-    return xs
-\end{lstlisting}
-
-\subsubsection{性能}
+\subsection{性能分析}
 \index{归并排序!性能分析}
 
-在对基本归并排序进行改进前，我们先分析一下归并排序的性能。算法分为两步：分解步骤和归并步骤。在分解步骤中，待排序序列总是被分成两个长度相等的子序列。如果我们仿照快速排序的方式画一棵划分树，可以得到一棵完美平衡的二叉树，如图\ref{fig:qsort-best}所示。因此这棵树的高度为$O(\lg n)$。也就是说归并排序的递归深度为$O(\lg n)$。在递归的每一层，都会发生归并操作。归并算法的性能分析很直观，他总是成对比较输入序列的元素，当其中一个序列被处理完后，另一个序列中的元素被逐一复制到结果中，因此它是一个线性时间算法，复杂度和序列的长度成比例。根据这一事实，记$T(n)$为对长度为$n$的序列进行排序所需要的时间，我们可以写出递归的时间开销如下：
+归并排序分为两步：划分和归并。我们总把序列对半分割。划分树是一棵平衡的二叉树，如图\ref{fig:qsort-best}所示。树的高度为$O(\lg n)$。归并排序的递归深度为$O(\lg n)$。在每一层都进行归并。归并逐一比较两个序列的元素，当其中一个处理完，将另一序列中的剩余元素复制到结果中。归并的复杂度为线性时间。如果序列长度为$n$，记$T(n)$为排序所时间，我们有一下递归关系：
 
 \be
-\renewcommand*{\arraystretch}{2}
-\begin{array}{rl}
-T(n) & = \displaystyle T(\frac{n}{2}) + T(\frac{n}{2}) + c n \\
-     & = \displaystyle 2 T(\frac{n}{2}) + c n
-\end{array}
+T(n) = T(\dfrac{n}{2}) + T(\dfrac{n}{2}) + c n = 2 T(\dfrac{n}{2}) + c n
 \ee
 
-排序的时间包含三部分：对前半部分进行归并排序耗时$T(\frac{n}{2})$，对后半部分归并排序也耗时$T(\frac{n}{2})$，将两部分结果归并用时$c n$，其中$c$是某个常数。解此方程得到结果为$O(n \lg n)$。
+排序时间包含三部分：对前半部分排序$T(\dfrac{n}{2})$，对后半部分排序$T(\dfrac{n}{2})$，归并$c n$，其中$c$是某个常数。解此方程得到结果为$O(n \lg n)$。另外一个重要性能指标是空间复杂度。不同的归并方法空间消耗大相径庭。我们稍后针对几种实现给出空间复杂度分析。对上面的基本实现，每次递归时，都需要和输入数组同样大小的空间，用以复制元素和进一步的递归。递归返回后，这些空间可以释放。最大的空间消耗出现在进入最深一层递归时，为$O(n \lg n)$。
 
-这一性能结果对所有情况都适用，这是因为归并排序总是将输入序列平均分成两部分。
-
-另外一个重要的性能指标是空间消耗。但是不同的归并排序实现方法，空间消耗大相径庭。我们稍后介绍每一种具体实现时，会对空间复杂度进行详细的分析。
-
-对于前面给出的最基本的归并排序实现，在每一次递归时，都需要和输入数组同样大小的空间，用以复制元素和进一步的递归排序，这一层的递归返回后，这些空间可以释放。因此最大的空间消耗出现在进入最深一层递归时，为$O(n \lg n)$。
-
-函数式归并排序消耗的空间远远小于这一结果，这是因为序列底层的数据结构为链表。我们无需额外的空间以进行归并\footnote{我们这里忽略惰性求值引入的更复杂的因素，可以参考\cite{algo-fp}了解详细的分析。}。最主要的空间消耗来自于递归调用栈。稍后介绍奇偶分割算法时，我们会再次解释空间消耗的问题。
-
-\subsubsection{细微改进}
+\subsection{改进}
 \index{归并排序!分配工作区}
 
 我们接下来将逐步改进函数式和命令式的归并排序算法。前面给出的命令式归并算法比较冗长。我们可以使用正无穷作为sentinel来简化\cite{CLRS}。我们将$\infty$添加到两个待归并的已序数组的末尾\footnote{如果是按照单调非递增顺序排序，则使用$-\infty$}。这样就无需检查数组是否已用完。图\ref{fig:merge-with-sentinel}描述了这一思路。
@@ -1992,6 +1954,29 @@ void sort(K[] xs, Int l, Int u) {
         sort(xs, l, j)
         sort(xs, i, u)
     }
+}
+\end{lstlisting}
+
+归并排序：
+
+\begin{lstlisting}[language = Bourbaki]
+K[] sort(K[] xs) {
+    Int n = length(xs)
+    if n > 1 {
+        var ys = sort(xs[0 ... n/2 - 1])
+        var zs = sort(xs[n/2 ...])
+        xs = merge(xs, ys, zs)
+    }
+    return xs
+}
+
+K[] merge(K[] xs, K[] ys, K[] zs) {
+    Int i = 0
+    while ys != [] and zs != []:
+        xs[i] = if ys[0] < zs[0] then ys.pop(0) else zs.pop(0)
+        i = i + 1
+    xs[i...] = if ys !=[] then ys else zs
+    return xs
 }
 \end{lstlisting}
 
