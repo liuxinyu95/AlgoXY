@@ -791,55 +791,53 @@ pass xss (x:xs) = step xs [] [x] [] xss where
 我们先通过\textit{unfold}构造出二叉搜索树，将其作为中间结果送入\textit{toList}得出列表后就可以将树丢弃了。如果将这一临时的中间结果树消除，就得到了基本的快速排序算法\cite{slpj-book-1987}。
 
 \section{归并排序}
-\index{归并排序}
+\index{归并排序} \index{归并排序!定义}
 
-虽然快速排序在大多数情况下表现出众，但是在最坏情况下性能无法得到保证。即使各种工程上实践上的改进，也无法完全避免最坏情况。归并排序，能够在所有情况下都保证$O(n \lg n)$的性能。在算法的理论设计和分析上特别重要。此外，归并排序特别适于空间上链接的场景，可以对非连续存储的序列进行的排序。某些函数式编程环境和动态编程环境，往往使用归并排序作为标准库中的排序方案，包括Haskell、Python和Java（Java 7之后）。
-
-本节中，我们首先介绍归并排序的直观思想，给出基本实现。然后，我们介绍一些归并排序的变形，包括自然归并排序和自底向上的归并排序。
-
-\subsection{基本归并排序}
-\index{归并排序!基本归并排序}
-
-和快速排序一样，归并排序本质上也是使用分而治之的策略。和快速排序不同，归并排序保证划分是严格平衡的，它每次都将待排序序列从中间位置分割开。然后它递归地对子序列排序，并将两个子序列的排序结果归并。算法可以描述如下。
-
-当对序列$L$排序时，
-\begin{itemize}
-\item 边界情况：如果序列为空，则结果显然也为空；
-\item 否则，将序列从中间位置分成两部分，递归对两个子序列排序，然后将结果归并。
-\end{itemize}
-
-基本归并排序算法可以形式化为下面的公式。
+快速排序在大多数情况下性能优异，但在最差情况下出现退化。即使辅以各种改进也无法完全避免最差情况。归并排序在所有情形下都保证$O(n \lg n)$的复杂度，在算法设计和分析上具有重要意义。归并排序对数组和列表都适用，很多编程环境适用归并排序作为标准的排序方案\footnote{如Haskell, Python和Java}。归并排序本质上也利用了分而治之的策略。它保证划分是严格平衡的，每次将序列从中间位置分开，递归进行排序，然后将两个已序序列归并。
 
 \be
-sort(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  merge(sort(L_1), sort(L_2)) & L \neq \phi, (L_1, L_2) = splitAt(\lfloor \frac{|L|}{2} \rfloor, L)
-  \end{array}
-\right.
+\begin{array}{rcl}
+sort\ [\ ] & = & [\ ] \\
+sort\ xs & = & merge\ (sort\ as)\ (sort\ bs), \text{其中}: (as, bs) = \textit{halve}\ xs
+\end{array}
 \ee
+
+其中\textit{halve}将序列对半分开。对于数组，我们可以利用索引直接在中间位置分割：$\textit{splitAt}\ \lfloor \dfrac{|xs|}{2} \rfloor\ xs$。对于列表我们需要线性时间移动到中点进行分割（见第一章），例如：
+
+\be
+\textit{splitAt}\ n\ xs = \textit{shift}\ n\ [\ ]\ xs
+\ee
+
+其中：
+
+\be
+\begin{array}{rcl}
+\textit{shift}\ 0\ as\ bs & = & (as, bs) \\
+\textit{shift}\ n\ as\ (b \cons bs) & = & \textit{shift}\ (n - 1)\ (b \cons as)\ bs
+\end{array}
+\ee
+
+对半拆分并不需要保持顺序，我们可以利用奇偶位置分割进行简化。奇偶要么同样多，要么仅相差一个，总能保证平衡。$\textit{halve} = \textit{split}\ [\ ]\ [\ ]$，其中：
+
+\be
+\begin{array}{rcl}
+\textit{split}\ as\ bs\ [\ ] & = & (as, bs) \\
+\textit{split}\ as\ bs\ [x] & = & (x \cons as, bs) \\
+\textit{split}\ as\ bs\ (x \cons y \cons xs) & = & \textit{split}\ (x \cons as)\ (y \cons bs)\ xs \\
+\end{array}
+\ee
+
+我们也可以利用叠加操作进一步简化，如下面的例子程序，每次总把元素$x$添加到$as$上，然后交换$as \leftrightarrow bs$：
+
+\begin{Haskell}
+halve = foldr f ([], []) where
+  f x (as, bs) = (bs, x : as)
+\end{Haskell}
 
 \subsubsection{归并}
 \index{归并排序!归并}
 
-上面的归并排序定义中，有两个“黑盒子”。一个是$splitAt$函数，它从指定的位置将序列分割成两部分；另外一个是$merge$函数，它可以将两个已序序列合成一个。
-
-如本书附录所示，在命令式环境中，由于可以使用随机索引，实现$splitAt$非常简单。但是在函数式环境中，它通常实现为一个线性时间的算法：
-
-\be
-splitAt(n, L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, L) & n = 0 \\
-  (\{l_1\} \cup A, B) & n \neq 0, (A, B) = splitAt(n - 1, L')
-  \end{array}
-\right.
-\ee
-
-其中$l_1$是非空列表$L$的第一个元素，$L'$包含除$l_1$之外的剩余部分。
-
-归并的思想如图\ref{fig:merge}所示。考虑两队小孩，他们已经按照身高的顺序站好队。最矮的孩子在前面，最高的孩子在后面。
+归并的思想如图\ref{fig:merge}所示。考虑两队小孩，已经分别按照身高排队。最矮的孩子在前面，最高的孩子在后面。
 
 \begin{figure}[htbp]
  \centering
@@ -1119,31 +1117,6 @@ void sort(Key* xs, int l, int u) {
 
 改进后的程序运行速度明显加快。在我的测试计算机上，对100000个随机产生的元素排序时，速度能够提升20\%到25\%。
 
-函数式归并排序也可以进一步改进。前面给出的版本在列表中间位置将其分成两部分。但是，由于列表本质上是单向链表，对给定位置进行随机访问是一个线性时间的操作（详细信息可以参考附录A）。作为改进，我们可以使用奇偶位置分割列表。这样所有位于奇数位置的元素被放入一个子列表，而所有偶数位置的元素被放入另一个子列表。对于任意列表，奇偶位置的元素要么同样多，要么仅相差一个。因此这一分割策略总能保证平衡分割，总性能在任何情况下都为$O(n \lg n)$。
-
-奇偶分割算法可以定义如下：
-
-\be
-split(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, \phi) & L = \phi \\
-  (\{ l_1 \}, \phi) & |L| = 1 \\
-  (\{ l_1 \} \cup A, \{ l_2 \} \cup B) & otherwise, (A, B) = split(L'')
-  \end{array}
-\right.
-\ee
-
-如果列表为空，分割的结果为两个空列表；如果列表仅含有一个元素，我们将此位置为1的元素放入奇数位置子列表中，而偶数位置子列表为空；否则，列表中至少含有两个元素，我们将第一个元素放入奇数位置子列表，将第二个元素放入偶数位置子列表，然后递归对剩余元素进行奇偶分割。
-
-剩余的函数保持不变，下面的Haskell例子程序给出了奇偶分割算法的实现。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-split [] = ([], [])
-split [x] = ([x], [])
-split (x:y:xs) = (x:xs', y:ys') where (xs', ys') = split xs
-\end{lstlisting}
 
 \section{原地归并排序}
 \index{归并排序!原地归并排序}
