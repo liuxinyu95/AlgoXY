@@ -987,40 +987,33 @@ T(n) = T(\dfrac{n}{2}) + T(\dfrac{n}{2}) + c n = 2 T(\dfrac{n}{2}) + c n
 
 这一改进降空间复杂度从$O(n \lg n)$降低到$O(n)$。对于10万个元素排序，性能可提升20\%到25\%。
 
-\section{原地归并排序}
+\subsection{原地归并排序}
 \index{归并排序!原地归并排序}
 
-命令式归并排序的一个主要缺点是需要额外的空间以进行归并，不带优化的基本实现在高峰时需要$O(n \lg n)$的空间，使用工作区优化后也仍然需要$O(n)$的空间。
-
-这使得人们去探索原地归并排序，通过复用原待排序数组而不申请额外空间。本节中，我们将介绍实现原地归并排序的一些解法。
-
-\subsection{死板的原地归并}
-\index{归并排序!死板的原地归并}
-
-第一个想法很直观。如图\ref{fig:merge-in-place-naive}所示，子数组$A$和$B$已排序好，当进行原地归并时，我们规定一个不变性质，令$i$之前的所有元素为已归并完成的部分，它们满足非递减的顺序；每次比较第$i$个元素和第$j$个元素。如果第$i$个元素小于第$j$个元素，就将$i$向前移动一步。这种情况比较简单；否则，说明第$j$个元素应该放入下一个归并结果中，位置在$i$之前。为了达到这一点，所有$i$和$j$之间的元素，包括第$i$个元素，都要向后移动一个位置。我们重复这一步骤，直到所有$A$和$B$中的元素都置于正确的位置。
+为了避免使用额外的空间，我们考虑如何复用原数组作为工作区。如图\ref{fig:merge-in-place-naive}所示，子数组$X$和$Y$已排序好，当进行原地归并时，令$l$之前为已归并部分，所有元素已序。若$A[l] < A[m]$，就向前移动$l$一步；否则若$A[l] \geq A[m]$需要把$A[m]$放入归并结果中，位于$l$之前。为此，我们把所有$l$和$m$之间的元素（包括$l$）向后平移一个位置。
 
 \begin{figure}[htbp]
  \centering
       \begin{tikzpicture}[scale=0.8]
-      \draw (0, 0) rectangle (3, 1) node [pos=.5] {已归并部分}
-            (3, 0) rectangle (4, 1) node [pos=.5] {xs[i]}
-            (4, 0) rectangle (8, 1) node (subA) [pos=.5] {...已序子序列A...}
-            (8, 0) rectangle (9, 1) node (xsj) [pos=.5] {xs[j]}
-            (9, 0) rectangle (13, 1) node [pos=.5] {...已序子序列B...};
-      \draw[thick, ->] (subA) edge [bend right=45] node [below] {若xs[i] < xs[j]则shift子序列A} (xsj);
+      \draw (0, 0) rectangle (3, 1) node [pos=.5] {已归并}
+            (3, 0) rectangle (4, 1) node [pos=.5] {$A[l]$}
+            (4, 0) rectangle (8, 1) node (subA) [pos=.5] {...已序部分$X$...}
+            (8, 0) rectangle (9, 1) node (xsj) [pos=.5] {$A[m]$}
+            (9, 0) rectangle (13, 1) node [pos=.5] {...已序部分$Y$...};
+      \draw[thick, ->] (subA) edge [bend right=45] node [below] {若$A[l] \geq A[m]$则平移$X$} (xsj);
       \end{tikzpicture}
- \caption{死板原地归并}
+ \caption{原地平移归并}
  \label{fig:merge-in-place-naive}
 \end{figure}
 
 \begin{algorithmic}[1]
 \Procedure{Merge}{$A, l, m, u$}
-  \While{$l \leq m \land m \leq u$}
+  \While{$l \leq m \leq u$}
     \If{$A[l] < A[m]$}
       \State $l \gets l + 1$
     \Else
       \State $x \gets A[m]$
-      \For{$i \gets m $ down-to $l+1$} \Comment{Shift}
+      \For{$i \gets m $ down-to $l+1$} \Comment{平移}
         \State $A[i] \gets A[i-1]$
       \EndFor
       \State $A[l] \gets x$
@@ -1029,63 +1022,33 @@ T(n) = T(\dfrac{n}{2}) + T(\dfrac{n}{2}) + c n = 2 T(\dfrac{n}{2}) + c n
 \EndProcedure
 \end{algorithmic}
 
-但是，这一死板的解法使得归并排序的性能退化为平方级$O(n^2)$。这是因为数组的移动是一个线性时间的操作，它和第一个子数组中尚未归并的元素个数成正比。
-
-依照这一方法实现的的C语言例子程序运行速度很慢，对10000个随机生成的元素排序时，它消耗的时间比前面给出的程序多12倍。
-
-\lstset{language=C}
-\begin{lstlisting}
-void naive_merge(Key* xs, int l, int m, int u) {
-    int i; Key y;
-    for(; l < m && m < u; ++l)
-        if (!(xs[l] < xs[m])) {
-            y = xs[m++];
-            for (i = m - 1; i > l; --i) /* shift */
-                xs[i] = xs[i-1];
-            xs[l] = y;
-        }
-}
-
-void msort3(Key* xs, int l, int u) {
-    int m;
-    if (u - l > 1) {
-        m = l + (u - l) / 2;
-        msort3(xs, l, m);
-        msort3(xs, m, u);
-        naive_merge(xs, l, m, u);
-    }
-}
-\end{lstlisting}
-
-\subsection{原地工作区}
 \index{归并排序!原地工作区}
-
-为了能在$O(n \lg n)$时间内实现原地归并排序，当对子数组排序时，必须使用数组剩余的部分作为归并的工作区。对于已经在工作区内的元素，由于稍后也要进行排序，它们不能被覆盖。我们可以修改此前申请同样大小额外空间的程序来实现这一点。思路如下：当我们比较两个已序的子数组的最前面的元素时，如果要将较小的元素放入工作区中的某个位置，我们同时将工作区中的这个元素和选出的较小的元素交换。这样，当归并完成后，原来的两个子数组就保存了此前工作区中存储的内容。如图\ref{fig:merge-workarea}所示。
+但这一原地平移的时间复杂度退化成$O(n^2)$。数组的移动是一个线性时间的操作，它和$X$中的元素个数成正比。当对子数组排序时，我们使用数组剩余的部分作为工作区。对那些已在工作区内的元素，要避免它们被覆盖丢失。当比较已序子数组$A$和$B$的元素时，每当把较小的元素放入工作区中的某个位置时，我们同时将工作区中的元素交换出来。归并完成后，原来的两个子数组就保存了此前工作区的内容。如图\ref{fig:merge-workarea}所示。
 
 \begin{figure}[htbp]
  \centering
       \begin{tikzpicture}[scale=0.8]
       \draw (0, 2) rectangle (3, 3) node [pos=.5] {...复用...}
-            (3, 2) rectangle (4, 3) node (ai) [pos=.5] {A[i]}
+            (3, 2) rectangle (4, 3) node (ai) [pos=.5] {$A[i]$}
             (4, 2) rectangle (5, 3) node [pos=.5] {...}
             (7, 2) rectangle (10, 3) node [pos=.5] {...复用...}
-            (10, 2) rectangle (11, 3) node (bj) [pos=.5] {B[j]}
+            (10, 2) rectangle (11, 3) node (bj) [pos=.5] {$B[j]$}
             (11, 2) rectangle (12, 3) node [pos=.5] {...}
             (0, 0) rectangle (3, 1) node [pos=.5] {...已归并...}
-            (3, 0) rectangle (4, 1) node (ck) [pos=.5] {C[k]}
+            (3, 0) rectangle (4, 1) node (ck) [pos=.5] {$C[k]$}
             (4, 0) rectangle (5, 1) node [pos=.5] {...};
       \draw[thick, <->] (ai) edge [bend left] node [above] {比较} (bj)
-                        (ai) edge node [right] {若A[i] < B[j]，则swap(A[i], C[k])} (ck);
+                        (ai) edge node [right] {若$A[i] < B[j]$，则交换$A[i] \leftrightarrow C[k]$} (ck);
       \end{tikzpicture}
- \caption{归并时不覆盖工作区中的内容}
+ \caption{归并时将工作区内容交换出来}
  \label{fig:merge-workarea}
 \end{figure}
 
-在改进的算法中，两个已序的子数组，和用于归并的工作区都是最初的待排序数组中的一部分。归并时需要提供的参数包括：两个已序数组的起始和结束位置，可以用区间来表示它们；另外还需要提供工作区的起始位置。下面的算法使用$[a, b)$来表示左闭右开区间，它包括$a$，但不包括$b$。算法将已序区间$[i, m)$和$[j, n)$归并到从$k$开始的工作区。
+已序子数组$A$、$B$和工作区$C$都是原数组的一部分。归并时需要提供的参数包括：$A$、$B$的起始、结束位置，分别用区间$[i, m)$、$[j, n)$表示\footnote{$[a, b)$表示左闭右开区间，包括$a$，但不包括$b$。}；工作区的起始位置$k$。
 
 \begin{algorithmic}[1]
 \Procedure{Merge}{$A, [i, m), [j, n), k$}
-  \While{$i < m \land j < n$}
+  \While{$i < m$ 且 $j < n$}
     \If{$A[i] < A[j]$}
       \State \textproc{Exchange} $A[k] \leftrightarrow A[i]$
       \State $i \gets i + 1$
@@ -1108,28 +1071,14 @@ void msort3(Key* xs, int l, int u) {
 \EndProcedure
 \end{algorithmic}
 
-注意，在归并时必须满足下面的两个限制条件：
+归并工作区需要满足两个条件：
 
 \begin{enumerate}
-\item 工作区必须在数组的边界内。也就是说，工作区必须足够大，以容纳交换进来的元素而不会引起越界错误；
-\item 工作区可以和任何一个已序的子数组存在重叠，但是必须保证尚未归并的元素不会被覆盖。
+\item 工作区必须足够大，以容纳交换进来的元素而不越界；
+\item 工作区可以和任一子数组重叠，但须保证不会覆盖尚未归并的元素。
 \end{enumerate}
 
-下面的C语言例子程序实现了这一算法。
-
-\lstset{language=C}
-\begin{lstlisting}
-void wmerge(Key* xs, int i, int m, int j, int n, int w) {
-    while (i < m && j < n)
-        swap(xs, w++, xs[i] < xs[j] ? i++ : j++);
-    while (i < m)
-        swap(xs, w++, i++);
-    while (j < n)
-        swap(xs, w++, j++);
-}
-\end{lstlisting}
-
-使用这一算法，我们很容易想出一个解法，能够将数组的一半内容进行归并排序。接下来的问题是，如何处理剩下的一半尚未排序的元素？如图\ref{fig:merge-in-place-start}所示。
+我们可以用一半数组作为工作区，将另一半归并排序。如图\ref{fig:merge-in-place-start}所示。
 
 \begin{figure}[htbp]
  \centering
@@ -1137,72 +1086,66 @@ void wmerge(Key* xs, int i, int m, int j, int n, int w) {
       \draw (0, 0) rectangle (3, 1) node [pos=.5] {...未排序...}
             (3, 0) rectangle (6, 1) node [pos=.5] {...已排序...};
       \end{tikzpicture} \\
- \caption{数组中的一半被排序}
+ \caption{归并排序一半数组}
  \label{fig:merge-in-place-start}
 \end{figure}
 
-一个直观的想法是递归对工作区中的一半内容进行排序，这样就只剩下$\frac{1}{4}$的元素尚未排序了。结果如图\ref{fig:merge-in-place-quater}所示。这里关键的一点是，我们必须在某个时候将已序的$\frac{1}{4}$元素$B$和已序的$\frac{1}{2}$元素$A$归并。
+如果再递归地对一半工作区排序，就只剩下$\dfrac{1}{4}$尚未排序了。如图\ref{fig:merge-in-place-quater}所示。我们必须在某个时刻归并$\dfrac{1}{2}$数组$A$和$\dfrac{1}{4}$数组$B$。但剩余工作区大小只能容纳$\dfrac{1}{4}$的元素，不能容纳$A$和$B$的结果。
 
 \begin{figure}[htbp]
  \centering
-      \begin{tikzpicture}[scale=0.8]
-      \draw (0, 0) rectangle (3, 1) node [pos=.5] {未排序的$\frac{1}{4}$部分}
-            (3, 0) rectangle (6, 1) node [pos=.5] {已序的$\frac{1}{4}$元素$B$}
-            (6, 0) rectangle (12, 1) node [pos=.5] {...已序的$\frac{1}{2}$元素$A$...};
+      \begin{tikzpicture}[scale=1]
+      \draw (0, 0) rectangle (3, 1) node [pos=.5] {未排序的$\dfrac{1}{4}$}
+            (3, 0) rectangle (6, 1) node [pos=.5] {$B$：已序的$\dfrac{1}{4}$}
+            (6, 0) rectangle (12, 1) node [pos=.5] {$A$：已序的$\dfrac{1}{2}$};
       \end{tikzpicture} \\
- \caption{$A$和$B$必须在某个时刻归并到一起}
+ \caption{需要在某个时刻归并$A$、$B$}
  \label{fig:merge-in-place-quater}
 \end{figure}
 
-但是，剩余的工作区，其大小可以容纳$\frac{1}{4}$元素，它足够容纳$A$和$B$的归并结果么？不幸的是，在如图\ref{fig:merge-in-place-quater}所示的布局中，这一空间是不够用的。
-
-但是，上述的第二条限制条件启发我们：能否通过某种归并的设计，保证未归并的元素不被覆盖，从而利用工作区和已序子数组的重叠部分来解决这个问题？
-
-实际上，我们可以先不让工作区的后二分之一元素已序，而让前二分之一部分已序，这样工作区就位于两段已序子数组的中间，如图\ref{fig:merge-in-place-setup} (a)所示。这样的安排就使得工作区和子数组$A$产生了重叠\cite{msort-in-place}。
+工作区的第二条规则启发我们：通过某种设计，使得未归并的元素不被覆盖，从而利用工作区和子数组的重叠部分来解决问题。我们可以先对工作区的前1/2排序，这样新工作区就位于两段子数组的中间，如图\ref{fig:merge-in-place-setup} (a)所示。这样的安排使得工作区和子数组$A$产生了重叠\cite{msort-in-place}。
 
 \begin{figure}[htbp]
  \centering
  \subcaptionbox{}{
-      \begin{tikzpicture}[scale=0.8]
-      \draw (0, 0) rectangle (3, 1) node [pos=.5] {已序的$\frac{1}{4}$元素$B$}
+      \begin{tikzpicture}[scale=1.0]
+      \draw (0, 0) rectangle (3, 1) node [pos=.5] {$B$：已序的$\dfrac{1}{4}$}
             (3, 0) rectangle (6, 1) node [pos=.5] {工作区}
-            (6, 0) rectangle (12, 1) node [pos=.5] {...已序的$\frac{1}{2}$元素$A$...};
+            (6, 0) rectangle (12, 1) node [pos=.5] {$A$：已序的$\dfrac{1}{2}$};
       \end{tikzpicture}} \\
  \subcaptionbox{}{
-      \begin{tikzpicture}[scale=0.8]
-      \draw (0, 0) rectangle (3, 1) node [pos=.5] {工作区  $\frac{1}{4}$}
-            (3, 0) rectangle (12, 1) node [pos=.5] {...已归并$\frac{3}{4}$...};
+      \begin{tikzpicture}[scale=1.0]
+      \draw (0, 0) rectangle (3, 1) node [pos=.5] {工作区 $\dfrac{1}{4}$}
+            (3, 0) rectangle (12, 1) node [pos=.5] {已归并$\dfrac{3}{4}$};
       \end{tikzpicture}} \\
- \caption{利用工作区归并子数组$A$和$B$}
+ \caption{利用工作区归并子数组$A$、$B$}
  \label{fig:merge-in-place-setup}
 \end{figure}
 
 考虑两种极端情况：
 
 \begin{enumerate}
-\item 所有$B$中的元素都小于$A$中的任意元素。这种情况下，归并算法最终将$B$中的全部内容移动到工作区中；而$B$中将包括以前工作区中所保存的内容；由于工作区和$B$的大小相等，因此恰好可以交换它们的内容；
-\item 所有$A$中的元素都小于$B$中的任意元素。这种情况下，归并算法不断交换$A$和工作区中的元素。当工作区的前$\frac{1}{4}$区间被$A$中的元素填满后，算法开始覆盖$A$的前一半部分的内容。幸运的是，被覆盖的内容不是未归并的元素。工作区的边界不断向数组的末尾移动，并最终达到最右侧；此后，归并算法开始交换$B$和工作区的内容。最终工作区被移动到了数组的最左侧，如图\ref{fig:merge-in-place-setup} (b)所示。
+\item 所有$B$中元素都小于$A$中任意元素。归并后，$B$中全部内容移动到工作区中，而$B$中包括以前工作区中的内容。由于工作区和$B$的大小相等，因此恰好可以交换它们；
+\item 所有$A$中元素都小于$B$中任意元素。归并不断交换$A$和工作区中的内容。当工作区被$A$中一半元素填满后，开始覆盖$A$中的内容。幸运的是，被覆盖的是已归并的元素。工作区的右侧边界不断向数组的末尾移动到3/4的位置。此后，归并算法开始交换$B$和工作区的内容。最终工作区被移动到了数组最左侧，如图\ref{fig:merge-in-place-setup} (b)所示。
 \end{enumerate}
 
-我们可以重复这一步骤，总是对未排序部分的后二分之一排序，从而将已序结果交换到前一半，而使得新的工作区位于中间。这样就不断将工作区的大小减半，从$\frac{1}{2}$到$\frac{1}{4}$到$\frac{1}{8}$……归并的规模不断下降。当工作区中只剩下一个元素时，我们无须继续排序，因为只含有一个元素的数组自然是已序的。归并只含有一个元素的数组等价于插入元素。实际上，我们可以使用插入排序来处理最后的几个元素。
-
-完整的算法可以描述如下：
+其它情况介于两种极端情况之间，最终工作区被移动到前1/4。我们重复这一步骤，总是对未排序部分的前1/2排序，而使新工作区位于中间。不断将工作区的大小减半，从$\dfrac{1}{2}$到$\dfrac{1}{4}$到$\dfrac{1}{8}$……归并的规模不断下降。当工作区中只剩下一个元素时结束。归并只有一个元素的数组等价于插入。我们可以使用插入排序来处理最后的几个元素。
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
   \If{$u - l > 0$}
-    \State $m \gets \lfloor \frac{l + u}{2} \rfloor$
+    \State $m \gets \lfloor \dfrac{l + u}{2} \rfloor$
     \State $w \gets l + u - m$
     \State \Call{Sort'}{$A, l, m, w$} \Comment{后半部分包含已序元素}
     \While{$w - l > 1$}
       \State $u' \gets w$
-      \State $w \gets \lceil \frac{l + u'}{2} \rceil$ \Comment{保证工作区足够大}
+      \State $w \gets \lceil \dfrac{l + u'}{2} \rceil$ \Comment{保证工作区足够大}
       \State \Call{Sort'}{$A, w, u', l$} \Comment{前半部分包含已序元素}
-      \State \Call{Merge}{$A, [l, l + u' - w], [u', u], w$}
+      \State \Call{Merge}{$A, [l, l + u' - w), [u', u), w$}
     \EndWhile
     \For{$i \gets w$ down-to $l$} \Comment{改用插入排序}
       \State $j \gets i$
-      \While{$j \leq u \land A[j] < A[j-1]$}
+      \While{$j \leq u$ 且 $A[j] < A[j-1]$}
         \State \textproc{Exchange} $A[j] \leftrightarrow A[j-1]$
         \State $j \gets j + 1$
       \EndWhile
@@ -1211,17 +1154,15 @@ void wmerge(Key* xs, int i, int m, int j, int n, int w) {
 \EndProcedure
 \end{algorithmic}
 
-为了满足第一个限制条件，我们必须保证工作区足够大以容纳全部交换进来的元素，因此在对后一半排序时，我们总是使用上限取整。我们将包含结束位置的区间信息传入了\textproc{Merge}算法。
-
-接下来，我们需要定义\text{Sort'}算法，它反过来递归调用\text{Sort}来交换工作区和已序部分。
+为了保证工作区足够大，我们使用上限取整。我们将包含结束位置的区间信息传入了\textproc{Merge}算法。接下来，我们需要定义\textproc{Sort'}算法，它反过来递归调用\textproc{Sort}来交换工作区和已序部分。
 
 \begin{algorithmic}[1]
 \Procedure{Sort'}{$A, l, u, w$}
   \If{$u - l > 0$}
-    \State $m \gets \lfloor \frac{l + u}{2} \rfloor$
+    \State $m \gets \lfloor \dfrac{l + u}{2} \rfloor$
     \State \Call{Sort}{$A, l, m$}
     \State \Call{Sort}{$A, m+1, u$}
-    \State \Call{Merge}{$A, [l, m], [m+1, u], w$}
+    \State \Call{Merge}{$A, [l, m), [m+1, u), w$}
   \Else \Comment{将所有元素交换到工作区}
     \While{$l \leq u$}
       \State \textproc{Exchange} $A[l] \leftrightarrow A[w]$
@@ -1232,9 +1173,7 @@ void wmerge(Key* xs, int i, int m, int j, int n, int w) {
 \EndProcedure
 \end{algorithmic}
 
-和前面的死板原地归并排序不同，这一方法在归并中并不shift元素。未排序部分的长度不断递减：$\dfrac{n}{2}, \dfrac{n}{4}, \dfrac{n}{8}, ...$，总共需要$O(\lg n)$步完成排序。每次递归对剩余部分的一半排序，然后使用线性时间进行归并。
-
-记对$n$个元素排序所花费的时间为$T(n)$，我们有如下的等式：
+这一方法在归并中并不平移子数组。未排序部分不断递减：$\dfrac{n}{2}, \dfrac{n}{4}, \dfrac{n}{8}, ...$，总共需要$O(\lg n)$步完成排序。每次递归对剩余部分的一半排序，然后使用线性时间进行归并。令$n$个元素排序时间为$T(n)$，我们有如下递归关系：
 
 \be
 T(n) = T(\frac{n}{2}) + c \frac{n}{2} + T(\frac{n}{4}) + c \frac{3n}{4} + T(\frac{n}{8}) + c \frac{7n}{8} + ...
@@ -1260,145 +1199,10 @@ T(n) - T(\frac{n}{2}) = T(\frac{n}{2}) + c n (\frac{1}{2} + \frac{1}{2} + ... )
 T(n) = 2 T(\frac{1}{2}) + c n \lg n
 \]
 
-使用裂项求和（telescoping）方法解此方程，可以得到结果$O(n \lg^2 n)$。
+使用裂项求和法解方程，得到结果$O(n \lg^2 n)$。
 
-下面的C语言例子程序给出了这一算法的完整实现，它使用了前面给出的\texttt{wmerge}函数。
-
-\lstset{language=C}
-\begin{lstlisting}
-void imsort(Key* xs, int l, int u);
-
-void wsort(Key* xs, int l, int u, int w) {
-    int m;
-    if (u - l > 1) {
-        m = l + (u - l) / 2;
-        imsort(xs, l, m);
-        imsort(xs, m, u);
-        wmerge(xs, l, m, m, u, w);
-    }
-    else
-        while (l < u)
-            swap(xs, l++, w++);
-}
-
-void imsort(Key* xs, int l, int u) {
-    int m, n, w;
-    if (u - l > 1) {
-        m = l + (u - l) / 2;
-        w = l + u - m;
-        wsort(xs, l, m, w);  //后半部分包含了已序元素。
-        while (w - l > 2) {
-            n = w;
-            w = l + (n - l + 1) / 2; //向上取整
-            wsort(xs, w, n, l);  //前半部分包含已序元素。
-            wmerge(xs, l, l + n - w, n, u, w);
-        }
-        for (n = w; n > l; --n) //切换到插入排序
-            for (m = n; m < u && xs[m] < xs[m-1]; ++m)
-                swap(xs, m, m - 1);
-    }
-}
-\end{lstlisting}
-
-但是，和前面给出的预先分配同等大小的数组用于归并的程序相比，这一程序的运行速度并不快。在我的测试计算机上，对100000个随机产生的元素排序时，它的运行速度要慢60\%，这主要是由于大量的交换操作造成的。
-
-\subsection{原地归并排序vs.链表归并排序}
-\index{归并排序!链表归并排序}
-
-原地归并排序仍然是一个活跃的研究领域。减少归并所需的额外空间是有代价的，它增加了归并排序算法的复杂程度。但是，如果待排序的序列不是存储在数组中，而是用链表来表示，归并就无需额外的空间。如前面的奇偶归并排序算法所示。
-
-为了对比，我们可以给出一个纯命令式的链表归并排序实现。链表节点可以定义为一个结构，如下面的C语言例子所示：
-
-\lstset{language=C}
-\begin{lstlisting}
-struct Node {
-    Key key;
-    struct Node* next;
-};
-\end{lstlisting}
-
-我们可以定义一个辅助函数用于节点连接。设待连接的链表不为空，下面的C语言例子程序实现了连接函数。
-
-\lstset{language=C}
-\begin{lstlisting}
-struct Node* link(struct Node* x, struct Node* ys) {
-    x->next = ys;
-    return x;
-}
-\end{lstlisting}
-
-为了实现命令式的奇偶分割，我们初始化两个空的子列表。然后遍历待分割的列表。每次迭代，我们将当前的节点连接到第一个子列表的前面，然后交换两个子列表，这样下次迭代时，节点就会连接到第二个子列表的前面。这一方法可以描述如下：
-
-\begin{algorithmic}[1]
-\Function{Split}{$L$}
-  \State $(A, B) \gets (\phi, \phi)$
-  \While{$L \neq \phi$}
-    \State $p \gets L$
-    \State $L \gets $ \Call{Next}{$L$}
-    \State $A \gets $ \Call{Link}{$p, A$}
-    \State \textproc{Exchange} $A \leftrightarrow B$
-  \EndWhile
-  \State \Return $(A, B)$
-\EndFunction
-\end{algorithmic}
-
-下面的C语言例子程序实现了这一分割算法，并将其嵌入到排序函数中。
-
-\lstset{language=C}
-\begin{lstlisting}
-struct Node* msort(struct Node* xs) {
-    struct Node *p, *as, *bs;
-    if (!xs || !xs->next) return xs;
-
-    as = bs = NULL;
-    while(xs) {
-        p = xs;
-        xs = xs->next;
-        as = link(p, as);
-        swap(as, bs);
-    }
-    as = msort(as);
-    bs = msort(bs);
-    return merge(as, bs);
-}
-\end{lstlisting}
-
-接下来需要实现链表的命令式归并算法。思路和数组的归并类似。不断比较两个列表的第一个元素，选择较小的附加到结果列表的末尾。当任一列表变空时，将另外一个列表连接到结果的后面，而无需逐一复制。结果列表在初始化时需要额外的判断，这是因为表头要指向两个列表中首元素较小的一个。一种简化处理是使用一个dummy的sentinel的表头，最后在返回结果前将它去掉。下面的例子程序给出了详细的实现。
-
-\lstset{language=C}
-\begin{lstlisting}
-struct Node* merge(struct Node* as, struct Node* bs) {
-    struct Node s, *p;
-    p = &s;
-    while (as && bs) {
-        if (as->key < bs->key) {
-            link(p, as);
-            as = as->next;
-        }
-        else {
-            link(p, bs);
-            bs = bs->next;
-        }
-        p = p->next;
-    }
-    if (as)
-        link(p, as);
-    if (bs)
-        link(p, bs);
-    return s.next;
-}
-\end{lstlisting}
-
-\begin{Exercise}
-\begin{itemize}
-\item 证明原地归并排序的性能为$O(n \lg n)$。
-\end{itemize}
-\end{Exercise}
-
-\section{自然归并排序}
+\subsection{自然归并排序}
 \index{归并排序!自然归并排序}
-
-Knuth给出了另外一种方法来实现分而治之的归并排序。整个过程如同从两端点燃一支蜡烛\cite{TAOCP}，称为自然归并排序算法。
 
 \begin{figure}[htbp]
  \centering
@@ -1407,7 +1211,7 @@ Knuth给出了另外一种方法来实现分而治之的归并排序。整个过
  \label{fig:burn-candle}
 \end{figure}
 
-对于任何序列，可以在任何位置开始找到一个非递减子序列。作为一个特殊情况，我们总可以在最左侧找到这样的子序列。下表给出了一些例子，非递减子序列用下划线标出。
+高德纳给出了另外一种方法来实现分而治之的归并排序。整个过程如同从两端点燃一支蜡烛\cite{TAOCP}，称为自然归并排序算法。对于任何序列，可以在任何位置开始找到一个非递减子序列。作为一个特殊情况，我们总可以在最左侧找到这样的子序列。下表给出了一些例子，非递减子序列用下划线标出。
 
 \begin{table}[htbp]
 \centering
@@ -1421,9 +1225,7 @@ Knuth给出了另外一种方法来实现分而治之的归并排序。整个过
 \caption{非递减子序列的例子} %\label{}
 \end{table}
 
-表中的第一行描述了最差的情况，第二个元素小于第一个，因此非递减子序列长度为一，只包含第一个元素；表中的最后一行描述了最好的情况，整个序列已序，非递减子序列包含全部元素；表中的第二行描述了通常的情况。
-
-对称地，我们同样总是可以从序列的右端向左找到一个非递减子序列。于是，我们可以将两个非递减子序列，一个从头部开始，一个从尾部开始，归并成一个更长的序列。这一思路的最大优点是，我们可以利用子序列元素间的自然顺序，而无需递归排序。
+表中的第一行描述了最短情况，第二个元素小于第一个，因此非递减子序列长度为一，只包含第一个元素；表中的最后一行描述了最长情况，整个序列已序，非递减子序列包含全部元素。对称地，我们总是可以从右向左找到一个非递减子序列。于是，我们可以将两个非递减子序列，一个从头部开始，一个从尾部开始，归并成一个更长的序列。这一思路的最大优点是，我们可以利用元素间的自然顺序进行划分。
 
 \begin{figure}[htbp]
  \centering
@@ -1946,6 +1748,52 @@ void merge(K[] xs, K[] ys, Int l, Int m, Int u) {
 }
 \end{lstlisting}
 
+原地归并排序：
+
+\begin{lstlisting}[language = Bourbaki]
+void merge(K[] xs, Range<Int> (i, m), Range<Int> (j, n), Int w) {
+    while i < m and j < n {
+        swap(xs, w++, if xs[i] < xs[j] then i++ else j++
+    }
+    while i < m {
+        swap(xs, w++, i++)
+    }
+    while j < n {
+        swap(xs, w++, j++)
+    }
+}
+
+void wsort(K[] xs, Range<Int> (l, u), Int w) {
+    if u - l > 1 {
+        Int m = l + (u - l) / 2
+        imsort(xs, l, m)
+        imsort(xs, m, u)
+        merge(xs, (l, m), (m, u), w)
+    }
+    else {
+        while l < u { swap(xs, l++, w++) }
+    }
+}
+
+void imsort(K[] xs, Int l, Int u) {
+    if u - l > 1 {
+        Int m = l + (u - l) / 2
+        Int w = l + u - m
+        wsort(xs, l, m, w)  //后半部分包含了已序元素。
+        while w - l > 2 {
+            Int n = w
+            w = l + (n - l + 1) / 2; //向上取整
+            wsort(xs, w, n, l);  //前半部分包含已序元素。
+            merge(xs, (l, l + n - w), (n, u), w);
+        }
+        for Int n = w; n > l; --n { //切换到插入排序
+            for Int m = n; m < u and xs[m] < xs[m-1]; m++ {
+                swap(xs, m, m - 1)
+            }
+        }
+    }
+}
+\end{lstlisting}
 
 \ifx\wholebook\relax\else
 
