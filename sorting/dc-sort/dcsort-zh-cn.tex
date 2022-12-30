@@ -798,6 +798,7 @@ pass xss (x:xs) = step xs [] [x] [] xss where
 \be
 \begin{array}{rcl}
 sort\ [\ ] & = & [\ ] \\
+sort\ [x] & = & [x] \\
 sort\ xs & = & merge\ (sort\ as)\ (sort\ bs), \text{其中}: (as, bs) = \textit{halve}\ xs
 \end{array}
 \ee
@@ -837,12 +838,12 @@ halve = foldr f ([], []) where
 \subsection{归并}
 \index{归并排序!归并}
 
-归并的思想如图\ref{fig:merge}所示。考虑两队小孩，已经分别按照身高排队。我们要求孩子们依次通过一扇门，每次一人，按照身高顺序。由于两队都已序，我们比较两个排头，个子较小的一个通过门；然后重复这一步骤，直到任何一队的孩子都已经通过，此后剩下的一队中的孩子们可以逐一通过这扇门。
+归并的思想如图\ref{fig:merge}所示。考虑两队孩子，已分别按照身高排队。我们要求孩子们依次通过一扇门，每次一人，按照身高顺序。由于两队都已序，我们比较两个排头，个子较小的一个通过门；然后重复这一步骤，直到任何一队的孩子都已经通过，此后剩下的一队中的孩子们可以逐一通过这扇门。
 
 \begin{figure}[htbp]
  \centering
- \includegraphics[scale=0.3]{img/merge}
- \caption{两队孩子通过一扇门}
+ \includegraphics[scale=0.5]{img/merge2w}
+ \caption{归并}
  \label{fig:merge}
 \end{figure}
 
@@ -916,21 +917,14 @@ T(n) = T(\dfrac{n}{2}) + T(\dfrac{n}{2}) + c n = 2 T(\dfrac{n}{2}) + c n
 \subsection{改进}
 \index{归并排序!分配工作区}
 
-我们接下来将逐步改进函数式和命令式的归并排序算法。前面给出的命令式归并算法比较冗长。我们可以使用正无穷作为sentinel来简化\cite{CLRS}。我们将$\infty$添加到两个待归并的已序数组的末尾\footnote{如果是按照单调非递增顺序排序，则使用$-\infty$}。这样就无需检查数组是否已用完。图\ref{fig:merge-with-sentinel}描述了这一思路。
-
-\begin{figure}[htbp]
- \centering
- \includegraphics[scale=0.8]{img/merge-with-sentinel}
- \caption{使用$\infty$作为sentinels来简化归并}
- \label{fig:merge-with-sentinel}
-\end{figure}
+为了简化归并$X$、$Y$逻辑，我们将$\infty$添加到它们末尾\footnote{降序使用$-\infty$}。
 
 \begin{algorithmic}[1]
 \Procedure{Merge}{$A, X, Y$}
   \State \Call{Append}{$X, \infty$}
   \State \Call{Append}{$Y, \infty$}
-  \State $i \gets 1, j\gets 1$
-  \For{$k \gets$ from 1 to $|A|$}
+  \State $i \gets 1, j\gets 1, n \gets |A|$
+  \For{$k \gets$ from 1 to $n$}
     \If{$X[i] < Y[j]$}
       \State $A[k] \gets X[i]$
       \State $i \gets i + 1$
@@ -942,43 +936,17 @@ T(n) = T(\dfrac{n}{2}) + T(\dfrac{n}{2}) + c n = 2 T(\dfrac{n}{2}) + c n
 \EndProcedure
 \end{algorithmic}
 
-下面的C语言例子程序实现了这一简化。它将归并算法嵌入到了排序中。\texttt{INF}被定义为一个大常数，类型和\texttt{Key}一致。类型可以预先定义，或者将类型信息通过一个比较函数进行抽象，在将比较函数作为一个参数传入排序算法中。我们在此忽略这些语言细节。
-
-\lstset{language=C}
-\begin{lstlisting}
-void msort(Key* xs, int l, int u) {
-    int i, j, m;
-    Key *as, *bs;
-    if (u - l > 1) {
-        m = l + (u - l) / 2;  //防止int溢出
-        msort(xs, l, m);
-        msort(xs, m, u);
-        as = (Key*) malloc(sizeof(Key) * (m - l + 1));
-        bs = (Key*) malloc(sizeof(Key) * (u - m + 1));
-        memcpy((void*)as, (void*)(xs + l), sizeof(Key) * (m - l));
-        memcpy((void*)bs, (void*)(xs + m), sizeof(Key) * (u - m));
-        as[m - l] = bs[u - m] = INF;
-        for (i = j = 0; l < u; ++l)
-            xs[l] = as[i] < bs[j] ? as[i++] : bs[j++];
-        free(as);
-        free(bs);
-    }
-}
-\end{lstlisting}
-
-运行这一程序所需的时间远远超过快速排序。除了稍后会介绍的最主要原因外，在归并时反复申请和释放内存也是一个需要改进的地方。内存申请是实际应用程序中的一个常见瓶颈\cite{Bentley}。一个解决方法是一次性申请一个和待排序数组同样大小的空间作为工作区（working area）。此后，对前、后两半部分的递归排序就无需申请额外的空间，而是用工作区来进行归并。最后算法再将工作区内的结果复制回原数组。
-
-下面的算法实现了这一改进的归并排序。
+在归并时反复获取空间复制数组是一个瓶颈\cite{Bentley}。我们可以一次性准备好和数组$A$同样大小的工作区。递归时复用这个工作区进行归并。最后再把工作区的内容复制回原数组。
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{A}
-  \State $B \gets $ \Call{Create-Array}{$|A|$}
-  \State \Call{Sort$'$}{$A, B, 1, |A|$}
+  \State $n \gets |A|$
+  \State \textproc{Sort$'$}$(A$, \Call{Create-Array}{$n$}, $1, n)$
 \EndProcedure
 \Statex
 \Procedure{Sort$'$}{$A, B, l, u$}
   \If{$u - l > 0$}
-    \State $m \gets \lfloor \frac{l + u}{2} \rfloor$
+    \State $m \gets \lfloor \dfrac{l + u}{2} \rfloor$
     \State \Call{Sort$'$}{$A, B, l, m$}
     \State \Call{Sort$'$}{$A, B, m + 1, u$}
     \State \Call{Merge$'$}{$A, B, l, m, u$}
@@ -986,12 +954,12 @@ void msort(Key* xs, int l, int u) {
 \EndProcedure
 \end{algorithmic}
 
-这一算法创建了另一个同样大小的数组，并将其作为一个参数和原待排序数组一同传入\textproc{Sort$'$}算法。在实际的实现中，这一工作区最终需要人工释放，或者使用自动工具如GC（垃圾回收）释放。修改后的归并算法\textproc{Merge$'$}也接受一个工作区参数。
+我们同时需要修改\textproc{Merge$'$}使用传入的工作区：
 
 \begin{algorithmic}[1]
 \Procedure{Merge$'$}{$A, B, l, m, u$}
   \State $i \gets l, j \gets m + 1, k \gets l$
-  \While{$i \leq m \land j \leq u$}
+  \While{$i \leq m$ 且 $j \leq u$}
     \If{$A[i] < A[j]$}
       \State $B[k] \gets A[i]$
       \State $i \gets i + 1$
@@ -1017,42 +985,7 @@ void msort(Key* xs, int l, int u) {
 \EndProcedure
 \end{algorithmic}
 
-通过这一小改进，归并排序所需要的空间从$O(n \lg n)$降低到$O(n)$。下面的C语言例子程序实现了这一改进。出于示例的目的，我们在一个循环中逐一将归并结果复制会原数组。在实际中通常使用标准库中提供的工具，如\texttt{memcpy}。
-
-\lstset{language=C}
-\begin{lstlisting}
-void merge(Key* xs, Key* ys, int l, int m, int u) {
-    int i, j, k;
-    i = k = l; j = m;
-    while (i < m && j < u)
-        ys[k++] = xs[i] < xs[j] ? xs[i++] : xs[j++];
-    while (i < m)
-        ys[k++] = xs[i++];
-    while (j < u)
-        ys[k++] = xs[j++];
-    for(; l < u; ++l)
-        xs[l] = ys[l];
-}
-
-void msort(Key* xs, Key* ys, int l, int u) {
-    int m;
-    if (u - l > 1) {
-        m = l + (u - l) / 2;
-        msort(xs, ys, l, m);
-        msort(xs, ys, m, u);
-        merge(xs, ys, l, m, u);
-    }
-}
-
-void sort(Key* xs, int l, int u) {
-    Key* ys = (Key*) malloc(sizeof(Key) * (u - l));
-    kmsort(xs, ys, l, u);
-    free(ys);
-}
-\end{lstlisting}
-
-改进后的程序运行速度明显加快。在我的测试计算机上，对100000个随机产生的元素排序时，速度能够提升20\%到25\%。
-
+这一改进降空间复杂度从$O(n \lg n)$降低到$O(n)$。对于10万个元素排序，性能可提升20\%到25\%。
 
 \section{原地归并排序}
 \index{归并排序!原地归并排序}
@@ -1979,6 +1912,40 @@ K[] merge(K[] xs, K[] ys, K[] zs) {
     return xs
 }
 \end{lstlisting}
+
+使用工作区进行归并排序：
+
+\lstset{language=C}
+\begin{lstlisting}[language = Bourbaki]
+void sort(K[] xs) = msort(xs, copy(xs), 0, length(xs))
+
+void msort(K[] xs, K[] ys, Int l, Int u) {
+    if (u - l > 1) {
+        Int m = l + (u - l) / 2
+        msort(xs, ys, l, m)
+        msort(xs, ys, m, u)
+        merge(xs, ys, l, m, u)
+    }
+}
+
+void merge(K[] xs, K[] ys, Int l, Int m, Int u) {
+    Int i = l, Int k = l; Int j = m
+    while i < m and j < u {
+        ys[k++] = if xs[i] < xs[j] then xs[i++] else xs[j++]
+    }
+    while i < m {
+        ys[k++] = xs[i++]
+    }
+    while j < u {
+        ys[k++] = xs[j++]
+    }
+    while l < u {
+        xs[l] = ys[l]
+        l++
+    }
+}
+\end{lstlisting}
+
 
 \ifx\wholebook\relax\else
 
