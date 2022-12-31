@@ -1300,11 +1300,11 @@ T(n) = 2 T(\frac{1}{2}) + c n \lg n
 \EndFunction
 \end{algorithmic}
 
-归并算法和此前给出的类似，主要区别在于我们需要将归并的方向作为参数传入。
+归并时需要将归并方向作为参数传入。
 
 \begin{algorithmic}[1]
 \Function{Merge}{$A, [a, b), [c, d), B, w, \Delta$}
-  \While{$a < b \land c < d$}
+  \While{$a < b$ 且 $c < d$}
     \If{$A[a] < A[d-1]$}
       \State $B[w] \gets A[a]$
       \State $a \gets a + 1$
@@ -1328,164 +1328,58 @@ T(n) = 2 T(\frac{1}{2}) + c n \lg n
 \EndFunction
 \end{algorithmic}
 
-下面的C语言例子程序实现了两路自然归并排序算法。这里我们没有释放工作区所申请的内存。
-
-\lstset{language=C}
-\begin{lstlisting}
-int merge(Key* xs, int a, int b, int c, int d, Key* ys, int k, int delta) {
-    for(; a < b && c < d; k += delta )
-        ys[k] = xs[a] < xs[d-1] ? xs[a++] : xs[--d];
-    for(; a < b; k += delta)
-        ys[k] = xs[a++];
-    for(; c < d; k += delta)
-        ys[k] = xs[--d];
-    return k;
-}
-
-Key* sort(Key* xs, Key* ys, int n) {
-    int a, b, c, d, f, r, t;
-    if(n < 2)
-        return xs;
-    for(;;) {
-        a = b = 0;
-        c = d = n;
-        f = 0;
-        r = n-1;
-        t = 1;
-        while(b < c) {
-            do {      //扩展[a, b)
-                ++b;
-            } while( b < c && xs[b-1] <= xs[b] );
-            do{      //扩展[c, d)
-                --c;
-            } while( b < c && xs[c] <= xs[c-1] );
-            if( c < b )
-                c = b;   //消除可能的重叠
-            if( b - a >= n)
-                return xs;          //已序
-            if( t )
-                f = merge(xs, a, b, c, d, ys, f, 1);
-            else
-                r = merge(xs, a, b, c, d, ys, r, -1);
-            a = b;
-            d = c;
-            t = !t;
-        }
-        swap(&xs, &ys);
-    }
-    return xs;
-}
-\end{lstlisting}
-
-自然归并排序的性能和子数组中元素间的顺序相关。但在实际中，即使在最坏情况下，自然归并排序的性能仍然很好。假设我们运气很差，在第一轮扫描数组时，非递减子序列的长度总为1。这轮扫描结束后，工作区中归并的已序子数组的长度为2。假设接下来一轮运气仍然很差，但是此前的结果保证了非递减子序列的长度不可能小于2。这一轮过后，工作区将包含长度为4的归并结果……重复这一过程，每一轮后，归并的已序子数组的长度都加倍，因此最多进行$O(\lg n)$轮扫描和归并。在每一轮中，所有的元素都被扫描。这一最坏情况下的性能仍然为$O(n \lg n)$。我们稍后在介绍自底向上的归并排序时，会再次解释这一有趣的现象。
-
-在纯函数环境中，由于底层的数据结构是单向链表，我们无法从首尾两端扫描列表。因此需要用别的方法来实现自然归并排序。
-
-由于待排序列表总是由若干非递减子列表构成，我们可以每次取两个子列表，归并出一个更长的列表。我们重复取出列表，然后归并。这样非递减子列表的数目不断减半，最后将得到唯一的列表，也就是最终排序的结果。这一过程可以形式化为下面的等式。
+自然归并排序的性能看似和数组中元素顺序相关。假设运气不佳，第一轮扫描时，非递减子序列的长度总为1。这轮结束后，工作区中归并的已序子数组的长度为2。假设接下来一轮运气仍然很差，但是现在非递减子序列的长度已不可能小于2。这一轮后，工作区包含长度至少为4的归并结果……每一轮后，归并的已序子数组的长度都加倍，因此最多需要$O(\lg n)$轮扫描归并。每一轮扫描所有的元素，所以总性能为$O(n \lg n)$。如果元素存储在列表中，我们无法从首尾两端扫描。考虑列表由若干非递减子列表组成，我们可以每次取两个子列表归并。反复取出归并后，非递减子列表的数目不断减半，最后得到排序结果。这个过程可定义如下（柯里化）：
 
 \be
-sort(L) = sort'(group(L))
+sort = sort' \circ group
 \ee
 
-其中函数$group(L)$将列表中的元素分组成非递减子列表。它可以被描述如下，前面两条为边界条件。
-
-\begin{itemize}
-\item 若列表为空，则结果为一个列表，它包含一个空列表作为唯一的元素；
-\item 若列表中只含有一个元素，结果为一个列表，它包含一个只含有一个元素的列表；
-\item 否则，比较列表中的前两个元素，如果第一个小于等于第二个，就将第一个元素插入到对剩余元素进行递归分组的第一个子列表中的最前面；否则，创建一个只含有第一个元素的列表，接着对剩余的元素进行递归分组。
-\end{itemize}
+其中$group$将元素分组为非递减子列表：
 
 \be
-group(L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ L \} & |L| \leq 1 \\
-  \{ \{ l_1 \} \cup L_1, L_2, ... \} & l_1 \leq l_2, \{ L_1, L_2, ...\} = group(L') \\
-  \{ \{ l_1 \}, L_1, L_2, ... \} & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+\textit{group}\ [\ ] & = & [[\ ]] \\
+\textit{group}\ [x] & = & [[x]] \\
+\textit{group}\ (x \cons y \cons xs) & = & \begin{cases}
+  x < y: & (x \cons g) \cons gs, \text{其中}: (g \cons gs) = \textit{group}\ (y \cons xs) \\
+  \text{否则}: & [x] \cons g \cons gs \\
+\end{cases}
+\end{array}
 \ee
 
-也可以将分组条件抽象成一个参数，传入一个通用的分组函数中。如下面的Haskell例子代码所示\footnote{虽然Haskell的标准库Data.List中包含一个\texttt{groupBy}函数。但是这里不能使用它。这是因为它接受一个相等测试函数作为参数，必须满足自反性、传递性和对称性。但是我们的比较条件为“小于等于”，并不满足对称性。具体可以参考本书附录A。}。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-groupBy' :: (a->a->Bool) ->[a] ->[[a]]
-groupBy' _ [] = [[]]
-groupBy' _ [x] = [[x]]
-groupBy' f (x:xs@(x':_)) | f x x' = (x:ys):yss
-                         | otherwise = [x]:r
-  where
-    r@(ys:yss) = groupBy' f xs
-\end{lstlisting}
-
-和$sort$函数相比，$sort'$的参数不是一个待排序的元素列表，而是分组后的一系列子列表。
+$sort'$把分组中子列表成对归并，然后再次结对归并直到完成排序：
 
 \be
-sort'(\mathbb{L}) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & \mathbb{L} = \phi \\
-  L_1 & \mathbb{L} = \{ L_1 \} \\
-  sort'(mergePairs(\mathbb{L})) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+\textit{sort}'\ [\ ] & = & [\ ] \\
+\textit{sort}'\ [g] & = & g \\
+\textit{sort}'\ gs & = & \textit{sort}'\ (\textit{mergePairs}\ gs) \\
+\end{array}
 \ee
 
-前两条是简单边界情况。如果待排序的子列表为空，则结果显然为空；如果仅含有一个子列表，则排序结束。这一子列表就是最终的排序结果；否则，我们调用函数$mergePairs$每两个子列表一组进行归并，然后递归地调用$sort'$函数。
-
-接下来要定义$mergePairs$函数。顾名思义，它不断将成对的非递减子列表归并成更长的列表。
+其中\textit{mergePairs}定义为：
 
 \be
-mergePairs(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  L & |L| \leq 1 \\
-  \{ merge(L_1, L_2) \} \cup mergePairs(L'') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+\textit{mergePairs}\ (g_1 \cons g_2 \cons gs) & = & merge\ g_1\ g_2 : \textit{mergePairs}\ gs \\
+\textit{mergePairs}\ gs & = & gs
+\end{array}
 \ee
 
-如果剩余的子列表少于两个，则处理结束；否则，我们首先将前两个子列表$L_1$和$L_2$归并，然后递归地将剩余在$L''$中的列表对归并。$mergePairs$的结果类型是列表的列表，最终$sort'$函数会将它们连接一个列表。
-
-归并函数$merge$和此前的定义一致。下面的Haskell例子程序给出了完整的实现：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-mergesort = sort' . groupBy' (<=)
-
-sort' [] = []
-sort' [xs] = xs
-sort' xss = sort' (mergePairs xss) where
-  mergePairs (xs:ys:xss) = merge xs ys : mergePairs xss
-  mergePairs xss = xss
-\end{lstlisting}
-
-另外，我们可以先取出两个子列表，将它们归并为一个临时结果，然后不断取出下一个子列表，将其归并到临时结果中，直到所有剩余的子列表都归并完。这是一个典型的fold过程，详细介绍见附录A。
+另外我们也可以用叠加操作实现$sort'$：
 
 \be
-sort(L) = fold(merge, \phi, group(L))
+\textit{sort}' = foldr\ merge\ [\ ]
 \ee
-
-下面的Haskell例子程序实现了这一用fold定义的归并排序：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-mergesort' = foldl merge [] . groupBy' (<=)
-\end{lstlisting}
 
 \begin{Exercise}
-\begin{itemize}
-  \item 使用fold实现的自然归并排序在性能上和使用$mergePairs$的算法相同么？如果相同，请给出证明；如果不同，哪个更快？
-\end{itemize}
+\Question{使用叠加和$mergePairs$的实现复杂度相同么？如果相同，请给出证明；如果不同，哪个更快？}
 \end{Exercise}
 
-\section{自底向上归并排序}
+\subsection{自底向上归并排序}
 \index{归并排序!自底向上归并排序}
 
-从自然归并排序的最差情况分析可以引出一个有趣的内容，归并排序既可以自顶向下进行，也可以自底向上进行。自底向上带来的最大好处是可以很方便地用迭代的方式实现。
-
-为了实现自底向上归并排序，首先将待排序序列变成$n$个子列表，每个子列表只包含一个元素。然后我们将每两个相邻的子序列归并，这样就得到了$\frac{n}{2}$个长度为2的已序子序列；如果$n$是奇数，最后会剩余一个长度为1的子序列。我们重复将相邻的子序列对归并，最后就会得到排序的结果。Knuth将这种算法称为“直接两路归并排序”（straight two-way merge sort）\cite{TAOCP}。图\ref{fig:bottom-up-msort}描述了自底向上的归并排序。
+自然归并排序的复杂度分析给出了一种自底向上的排序方法，可以很方便地用迭代实现。首先将序列变成$n$个列表，每个列表包含一个元素。然后将相邻的子序列两两归并，得到$\frac{n}{2}$个长度为2的已序列表；如果$n$是奇数，会剩余一个长度为1的子序列。我们不断成对归并相邻子序列，最后得到排序的结果。高德纳称之为“直接两路归并排序”\cite{TAOCP}，如图\ref{fig:bottom-up-msort}所示。
 
 \begin{figure}[htbp]
  \centering
@@ -1494,101 +1388,43 @@ mergesort' = foldl merge [] . groupBy' (<=)
  \label{fig:bottom-up-msort}
 \end{figure}
 
-和基本归并排序算法以及奇偶归并排序算法不同，我们无需在每次递归时分割列表。整个列表在一开始时被分为$n$个只有一个元素的子列表，然后接下来不断对它们进行归并。
+我们无需在每次递归时分割列表。列表$[x_1, x_2, ..., x_n]$在一开始时被分为$n$个单一元素子列表$[[x_1], [x_2], ..., [x_n]]$，然后我们不断对它们归并。
 
 \be
-sort(L) = sort'(wraps(L))
+sort = sort' \circ map (x \mapsto [x])
 \ee
 
-\be
-wraps(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  \{ \{l_1\} \} \cup wraps(L') & otherwise
-  \end{array}
-\right.
-\ee
-
-当然$wraps$也可以使用map来实现，具体参见附录A。
-
-\be
-sort(L) = sort'(map(\lambda_x \cdot \{ x \}, L))
-\ee
-
-我们可以复用自然归并排序中定义的$sort'$函数和$mergePairs$函数。不断成对归并子列表，直到最后只剩下一个列表。
-
-下面的Haskell例子程序实现了这一算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-sort = sort' . map (\x->[x])
-\end{lstlisting}
-
-这一算法基于Okasaki在\cite{okasaki-book}中给出结果。他和自然归并排序非常类似，仅仅是分组的方法不同。本质上，它可以由自然归并排序的一种特殊情况（最差情况）推导出来：
-
-\be
-sort(L)= sort'(groupBy(\lambda_{x, y} \cdot False, L))
-\ee
-
-自然归并排序总是将非递减子列表扩展到最长，与此不同，这里的判断条件永远是False，因此子列表的长度仅扩展到1个元素。
-
-和自然归并排序类似，自底向上归并排序也可以用fold来定义。具体的实现留给读者作为练习。
-
-观察自底向上归并排序，它已经是尾递归形式了，可以很容易地消除递归，转换成纯迭代算法。
+我们复用自然归并排序中的$sort'$和\textit{mergePairs}。不断成对归并子列表，直到最后一个\cite{okasaki-book}。自底向上归并排序和自然归并排序很像，仅仅是分组方法不同。本质上，它可以由自然归并排序的特殊情况（最差情况）推导出来。自然归并排序总是将非递减子列表扩展到最长，而自底向上归并排序仅把子列表的长度扩展到1。自底向上归并排序的定义是尾递归形式。我们可以消除递归转换成迭代实现：
 
 \begin{algorithmic}[1]
 \Function{Sort}{$A$}
-  \State $B \gets \phi$
-  \For{$\forall a \in A$}
-    \State $B \gets$ \Call{Append}{$\{ a \}$}
+  \State $n \gets |A|$
+  \State $B \gets $ \Call{Create-Array}{$n$}
+  \For{$i$ from 1 to $n$}
+    \State $B[i] = [A[i]]$
   \EndFor
-  \State $N \gets |B|$
-  \While{$N > 1$}
-    \For{$i \gets $ from $1$ to $\lfloor \frac{N}{2} \rfloor$}
+  \While{$n > 1$}
+    \For{$i \gets $ from $1$ to $\lfloor \dfrac{n}{2} \rfloor$}
       \State $B[i] \gets$ \Call{Merge}{$B[2i -1], B[2i]$}
     \EndFor
-    \If{\Call{Odd}{$N$}}
-      \State $B[\lceil \frac{N}{2} \rceil] \gets B[N]$
+    \If{\Call{Odd}{$n$}}
+      \State $B[\lceil \dfrac{n}{2} \rceil] \gets B[n]$
     \EndIf
-    \State $N \gets \lceil \frac{N}{2} \rceil$
+    \State $n \gets \lceil \dfrac{n}{2} \rceil$
   \EndWhile
-  \If{$B = \phi$}
-    \State \Return $\phi$
+  \If{$B = [\ ]$}
+    \State \Return $[\ ]$
   \EndIf
   \State \Return $B[1]$
 \EndFunction
 \end{algorithmic}
 
-下面的Python例子程序实现了纯迭代式的自底向上归并排序。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def mergesort(xs):
-    ys = [[x] for x in xs]
-    while len(ys) > 1:
-        ys.append(merge(ys.pop(0), ys.pop(0)))
-    return [] if ys == [] else ys.pop()
-
-def merge(xs, ys):
-    zs = []
-    while xs != [] and ys !=[]:
-        zs.append(xs.pop(0) if xs[0] < ys[0] else ys.pop(0))
-    return zs + (xs if xs !=[] else ys)
-\end{lstlisting}
-
-和上面的伪代码相比，它每次从头部取出一对子列表，归并好后追加到尾部。这样就极大地简化了奇数个子列表的处理。
-
 \begin{Exercise}
-\begin{itemize}
-\item 使用fold实现函数式的自底向上归并排序。
-\item 只使用数组下标，实现迭代式的自底向上归并排序。不要使用标准库中提供的工具，如list或vector等。
-\end{itemize}
+\Question{使用叠加实现自底向上归并排序。}
 \end{Exercise}
 
 \section{并行处理}
-\index{并行归并排序}
-\index{并行快速排序}
+\index{并行归并排序}\index{并行快速排序}
 
 在基本快速排序的算法中，当划分完成时，可以并行对两个子序列进行排序。这一策略对归并排序也适用。实际上，并行的快速排序和归并排序算法，并不只使用两个并行的任务对划分好的子序列排序，而是将序列分割成$p$个子序列，其中$p$为处理器的个数。理想情况下，如果我们可以并行在$T'$时间内完成排序，并且满足$O(n \lg n) = p T'$，就称为“线性加速”(linear speed up)，这样的算法叫做最优化并行算法。
 
@@ -1768,6 +1604,25 @@ void imsort(K[] xs, Int l, Int u) {
             }
         }
     }
+}
+\end{lstlisting}
+
+迭代式自底向上归并排序：
+
+\begin{lstlisting}[language = Bourbaki]
+K[] sort(K[] xs) {
+    var ys = [[x] | x in xs]
+    while length(ys) > 1 {
+        append(ys, merge(ys.pop(0), ys.pop(0)))
+    return if ys == [] then [] else ys.pop(0)
+}
+
+K[] merge(K[] xs, K[] ys) {
+    K[] zs = []
+    while xs != [] and ys !=[] {
+        append(zs, if xs[0] < ys[0] then xs.pop(0) else ys.pop(0))
+    }
+    return zs ++ (if xs !=[] then xs else ys)
 }
 \end{lstlisting}
 
