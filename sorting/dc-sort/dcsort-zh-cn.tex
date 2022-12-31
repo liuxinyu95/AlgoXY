@@ -1090,57 +1090,41 @@ T(n) = T(\dfrac{n}{2}) + T(\dfrac{n}{2}) + c n = 2 T(\dfrac{n}{2}) + c n
  \label{fig:merge-in-place-start}
 \end{figure}
 
-如果再递归地对一半工作区排序，就只剩下$\dfrac{1}{4}$尚未排序了。如图\ref{fig:merge-in-place-quater}所示。我们必须在某个时刻归并$\dfrac{1}{2}$数组$A$和$\dfrac{1}{4}$数组$B$。但剩余工作区大小只能容纳$\dfrac{1}{4}$的元素，不能容纳$A$和$B$的结果。
+如果再递归地对一半工作区排序，就只剩下$\dfrac{1}{4}$尚未排序了。如图\ref{fig:merge-in-place-quater}所示。我们必须在某个时刻归并$A$（$\dfrac{1}{2}$数组）和$B$（$\dfrac{1}{4}$数组）。但剩余工作区大小只能容纳$\dfrac{1}{4}$数组，不能容纳$A + B$的结果。
 
 \begin{figure}[htbp]
  \centering
-      \begin{tikzpicture}[scale=1]
-      \draw (0, 0) rectangle (3, 1) node [pos=.5] {未排序的$\dfrac{1}{4}$}
-            (3, 0) rectangle (6, 1) node [pos=.5] {$B$：已序的$\dfrac{1}{4}$}
-            (6, 0) rectangle (12, 1) node [pos=.5] {$A$：已序的$\dfrac{1}{2}$};
-      \end{tikzpicture} \\
+ \includegraphics[scale=0.8]{img/workarea-1}
  \caption{需要在某个时刻归并$A$、$B$}
  \label{fig:merge-in-place-quater}
 \end{figure}
 
-工作区的第二条规则启发我们：通过某种设计，使得未归并的元素不被覆盖，从而利用工作区和子数组的重叠部分来解决问题。我们可以先对工作区的前1/2排序，这样新工作区就位于两段子数组的中间，如图\ref{fig:merge-in-place-setup} (a)所示。这样的安排使得工作区和子数组$A$产生了重叠\cite{msort-in-place}。
+工作区的第二条规则启发我们：通过某种设计，使得未归并的元素不被覆盖，从而利用工作区和子数组的重叠部分来解决问题。我们先对工作区的后1/2排序，结果$B$被交换到前1/2部分，新工作区就位于$A$、$B$中间，如图\ref{fig:merge-in-place-setup}上方所示。这样的安排使得工作区和子数组$A$产生了重叠\cite{msort-in-place}。考虑两种极端情况：
 
 \begin{figure}[htbp]
  \centering
- \subcaptionbox{}{
-      \begin{tikzpicture}[scale=1.0]
-      \draw (0, 0) rectangle (3, 1) node [pos=.5] {$B$：已序的$\dfrac{1}{4}$}
-            (3, 0) rectangle (6, 1) node [pos=.5] {工作区}
-            (6, 0) rectangle (12, 1) node [pos=.5] {$A$：已序的$\dfrac{1}{2}$};
-      \end{tikzpicture}} \\
- \subcaptionbox{}{
-      \begin{tikzpicture}[scale=1.0]
-      \draw (0, 0) rectangle (3, 1) node [pos=.5] {工作区 $\dfrac{1}{4}$}
-            (3, 0) rectangle (12, 1) node [pos=.5] {已归并$\dfrac{3}{4}$};
-      \end{tikzpicture}} \\
- \caption{利用工作区归并子数组$A$、$B$}
+ \includegraphics[scale=0.8]{img/workarea-2}
+ \caption{利用工作区归并$A$、$B$}
  \label{fig:merge-in-place-setup}
 \end{figure}
 
-考虑两种极端情况：
-
 \begin{enumerate}
 \item 所有$B$中元素都小于$A$中任意元素。归并后，$B$中全部内容移动到工作区中，而$B$中包括以前工作区中的内容。由于工作区和$B$的大小相等，因此恰好可以交换它们；
-\item 所有$A$中元素都小于$B$中任意元素。归并不断交换$A$和工作区中的内容。当工作区被$A$中一半元素填满后，开始覆盖$A$中的内容。幸运的是，被覆盖的是已归并的元素。工作区的右侧边界不断向数组的末尾移动到3/4的位置。此后，归并算法开始交换$B$和工作区的内容。最终工作区被移动到了数组最左侧，如图\ref{fig:merge-in-place-setup} (b)所示。
+\item 所有$A$中元素都小于$B$中任意元素。归并不断交换$A$和工作区中的内容。当工作区被$A$中一半元素填满后，开始覆盖$A$中的内容。幸运的是，被覆盖的是已归并的元素。工作区的右侧边界不断向数组的末尾移动到3/4的位置。此后，归并算法开始交换$B$和工作区的内容。最终工作区被移动到了数组最左侧，如图\ref{fig:merge-in-place-setup}下方所示。
 \end{enumerate}
 
-其它情况介于两种极端情况之间，最终工作区被移动到前1/4。我们重复这一步骤，总是对未排序部分的前1/2排序，而使新工作区位于中间。不断将工作区的大小减半，从$\dfrac{1}{2}$到$\dfrac{1}{4}$到$\dfrac{1}{8}$……归并的规模不断下降。当工作区中只剩下一个元素时结束。归并只有一个元素的数组等价于插入。我们可以使用插入排序来处理最后的几个元素。
+其它情况介于两种极端情况之间，最终工作区被移动到前1/4。我们重复这一步骤，总是对未排序部分的后1/2排序，将结果交换到前1/2，而使新工作区位于中间。不断将工作区的大小减半，从$\dfrac{1}{2}$到$\dfrac{1}{4}$到$\dfrac{1}{8}$……归并的规模不断下降。当工作区中只剩下一个元素时结束。归并只有一个元素的数组等价于插入。我们可以使用插入排序来处理最后的几个元素。
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
   \If{$u - l > 0$}
     \State $m \gets \lfloor \dfrac{l + u}{2} \rfloor$
     \State $w \gets l + u - m$
-    \State \Call{Sort'}{$A, l, m, w$} \Comment{后半部分包含已序元素}
+    \State \Call{Sort'}{$A, l, m, w$} \Comment{对一半数组排序}
     \While{$w - l > 1$}
       \State $u' \gets w$
-      \State $w \gets \lceil \dfrac{l + u'}{2} \rceil$ \Comment{保证工作区足够大}
-      \State \Call{Sort'}{$A, w, u', l$} \Comment{前半部分包含已序元素}
+      \State $w \gets \lceil \dfrac{l + u'}{2} \rceil$ \Comment{工作区减半}
+      \State \Call{Sort'}{$A, w, u', l$} \Comment{对剩余一半排序}
       \State \Call{Merge}{$A, [l, l + u' - w), [u', u), w$}
     \EndWhile
     \For{$i \gets w$ down-to $l$} \Comment{改用插入排序}
@@ -1206,26 +1190,22 @@ T(n) = 2 T(\frac{1}{2}) + c n \lg n
 
 \begin{figure}[htbp]
  \centering
- \includegraphics[scale=0.3]{img/burn-candle-2-ends}
+ \includegraphics[scale=0.25]{img/burn-candle-2-ends}
  \caption{从两端向中间燃烧的蜡烛}
  \label{fig:burn-candle}
 \end{figure}
 
 高德纳给出了另外一种方法来实现分而治之的归并排序。整个过程如同从两端点燃一支蜡烛\cite{TAOCP}，称为自然归并排序算法。对于任何序列，可以在任何位置开始找到一个非递减子序列。作为一个特殊情况，我们总可以在最左侧找到这样的子序列。下表给出了一些例子，非递减子序列用下划线标出。
 
-\begin{table}[htbp]
-\centering
-\begin{tabular}{ | l |}
+\btab{|l|}
 \hline
 \underline{15} , 0, 4, 3, 5, 2, 7, 1, 12, 14, 13, 8, 9, 6, 10, 11 \\
 \underline{8, 12, 14}, 0, 1, 4, 11, 2, 3, 5, 9, 13, 10, 6, 15, 7 \\
 \underline{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15} \\
 \hline
-\end{tabular}
-\caption{非递减子序列的例子} %\label{}
-\end{table}
+\etab
 
-表中的第一行描述了最短情况，第二个元素小于第一个，因此非递减子序列长度为一，只包含第一个元素；表中的最后一行描述了最长情况，整个序列已序，非递减子序列包含全部元素。对称地，我们总是可以从右向左找到一个非递减子序列。于是，我们可以将两个非递减子序列，一个从头部开始，一个从尾部开始，归并成一个更长的序列。这一思路的最大优点是，我们可以利用元素间的自然顺序进行划分。
+表中的第一行描述了最短情况，第二个元素小于第一个，因此非递减子序列长度为一，只包含第一个元素；表中的最后一行描述了最长情况，整个序列已序，非递减子序列包含全部元素。对称地，我们总是可以从右向左找到一个非递减子序列。于是，我们可以将两个非递减子序列，一个从头部开始，一个从尾部开始，归并成一个更长的序列。这一思路的特点是，我们可以利用元素间的自然顺序进行划分。
 
 \begin{figure}[htbp]
  \centering
@@ -1234,11 +1214,7 @@ T(n) = 2 T(\frac{1}{2}) + c n \lg n
  \label{fig:nature-merge-sort}
 \end{figure}
 
-图\ref{fig:nature-merge-sort}描述了这一思路。算法开始时，我们从两侧扫描序列，分别找到最长的非递减子序列。然后这两个子序列被归并到一个工作区。归并的结果从工作区的头部依次放置。接着，我们重复这一步骤，继续从两侧向中心进行扫描。这一次，我们将两个已序子序列的结果归并到工作区的右侧，从右向左依次放置。这样的布局可以方便下一轮的扫描。当所有的元素都被扫描并归并到工作区后，我们转而对工作区内的元素进行扫描，而使用原数组作为工作区。每轮都进行这样的切换。最后如有必要，我们将所有的元素从工作区复制到原数组。
-
-唯一的问题是何时结束这一算法。当开始新一轮的扫描时，如果发现最长的非递减子列表一直伸展到数组的末尾，也就是说整个序列已序，此时排序过程结束。
-
-由于这样的归并方式，从头尾两路处理待排序数组，并且使用了子序列的自然元素顺序，它被称为\underline{两路自然归并排序}。实现这一算法时需要仔细处理。图\ref{fig:nature-msort-invariant}描述了自然归并排序时的不变性质（invariant）。任何时候，标记$a$之前的元素和标记$d$之后的元素都已被扫描和归并了。我们要将非递减子序列$[a, b)$向右扩展到最长，同时，要将子序列$[c, d)$向左扩展到最长。工作区的不变性质如图中的第二行所示。$f$之前的元素和$r$之后的元素都已经处理过（它们可能包含若干已序的子序列）。奇数轮时（第1、3、5……轮），我们将子序列$[a, b)$和$[c, d)$从$f$起向右归并；偶数轮时（第2、4、6……轮），我们将子序列从$r$起向左归并。
+图\ref{fig:nature-merge-sort}描述了这一思路。算法开始时，我们从两侧扫描序列，分别找到最长的非递减子序列。然后这两个子序列被归并到一个工作区的左侧。接着，我们重复这一步骤，继续从两侧向中心进行扫描。这一次，我们将两个子序列归并到工作区的右侧，从右向左放置。这样左右交替向工作区中心推进。当所有元素都被扫描归并到工作区后，我们交换工作区和原数组，再次从两侧向中心扫描归并。开始新一轮的扫描时，如果发现最长的非递减子序列一直伸展到末尾，说明整个序列已序，排序结束。这一方法从左右两个方向处理数组，并且使用子序列的自然顺序，它被称为\textbf{两路自然归并}排序。如图\ref{fig:nature-msort-invariant}所示，任何时候，$a$之前$d$之后的元素已处理完。我们将非递减子序列$[a, b)$向右扩展到最长，同时将子序列$[c, d)$向左扩展到最长。对于工作区，$f$之前和$r$之后的元素都已归并好（包含若干子序列）。奇数轮时，我们将子序列$[a, b)$和$[c, d)$从$f$起向右归并；偶数轮时，我们将子序列从$r$起向左归并。
 
 \captionsetup[subfigure]{labelformat=empty, margin=10pt}
 \begin{figure}[htbp]
@@ -1246,9 +1222,9 @@ T(n) = 2 T(\frac{1}{2}) + c n \lg n
    \subcaptionbox{}{
       \begin{tikzpicture}[scale=0.8]
       \draw (0, 0) rectangle (3, 1) node [pos=.5] {...已扫描...}
-            (3, 0) rectangle (6, 1) node [pos=.5] {...$span [a, b)$...}
+            (3, 0) rectangle (6, 1) node [pos=.5] {...扩展$[a, b)$...}
             (6, 0) rectangle (8, 1) node [pos=.5] {...?...}
-            (8, 0) rectangle (11, 1) node [pos=.5] {...$span [c, d)$...}
+            (8, 0) rectangle (11, 1) node [pos=.5] {...扩展$[c, d)$...}
             (11, 0) rectangle (14, 1) node [pos=.5] {...已扫描...};
       \fill [black] (3, 0) rectangle (3.1, 1) node (abar) [pos=.5] {}
                     (6, 0) rectangle (6.1, 1) node (bbar) [pos=.5] {}
@@ -1266,7 +1242,7 @@ T(n) = 2 T(\frac{1}{2}) + c n \lg n
     \subcaptionbox{}{
       \begin{tikzpicture}[scale=0.8]
       \draw (0, 0) rectangle (3, 1) node [pos=.5] {...已归并...}
-            (3, 0) rectangle (8, 1) node [pos=.5] {...未使用的单元...}
+            (3, 0) rectangle (8, 1) node [pos=.5] {...未使用...}
             (8, 0) rectangle (11, 1) node [pos=.5] {...已归并...};
       \fill [black] (3, 0) rectangle (3.1, 1) node (fbar) [pos=.5] {}
                     (8, 0) rectangle (8.1, 1) node (rbar) [pos=.5] {};
@@ -1280,7 +1256,7 @@ T(n) = 2 T(\frac{1}{2}) + c n \lg n
 \end{figure}
 \captionsetup[subfigure]{labelformat=parens}
 
-在命令式环境中，序列用数组保存。在排序开始前，我们申请和数组同样大小的空间作为工作区。指针$a$和$b$一开始指向最左侧，指针$c$和$d$指向最右侧。指针$f$指向工作区的开头，$r$指向工作区的结尾。
+在排序开始前，我们准备好和数组同样大小的工作区。$a$和$b$指向最左侧，$c$和$d$指向最右侧。$f$、$r$指向工作区左右两端。
 
 \begin{algorithmic}[1]
 \Function{Sort}{$A$}
@@ -1290,32 +1266,32 @@ T(n) = 2 T(\frac{1}{2}) + c n \lg n
     \Loop
       \State $[a, b) \gets [1, 1)$
       \State $[c, d) \gets [n+1, n+1)$
-      \State $f \gets 1, r \gets n$ \Comment{指向工作区首尾的front和rear指针}
-      \State $t \gets $ False \Comment{从front归并还是从rear归并}
-      \While{$b < c$} \Comment{存在需要扫描的元素}
+      \State $f \gets 1, r \gets n$ \Comment{指向工作区首尾}
+      \State $t \gets 1$            \Comment{奇偶轮}
+      \While{$b < c$}               \Comment{存在需要扫描的元素}
         \Repeat \Comment{扩展$[a, b)$}
           \State $b \gets b + 1$
-        \Until{$b \geq c \lor A[b] < A[b-1]$}
+        \Until{$b \geq c$ 或 $A[b] < A[b-1]$}
 
         \Repeat \Comment{扩展$[c, d)$}
           \State $c \gets c - 1$
-        \Until{$c \leq b \lor A[c-1] < A[c]$}
+        \Until{$c \leq b$ 或 $A[c-1] < A[c]$}
 
-        \If{$c < b$} \Comment{避免overlap}
+        \If{$c < b$} \Comment{避免交错}
           \State $c \gets b$
         \EndIf
 
-        \If{$b - a \geq n$} \Comment{若$[a, b)$扩展到整个数组则结束}
+        \If{$b - a \geq n$} \Comment{$[a, b)$覆盖全数组时排序结束}
           \State \Return $A$
         \EndIf
 
-        \If{$t$} \Comment{从front归并}
+        \If{$t$是奇数} \Comment{从左归并}
           \State $f \gets$ \Call{Merge}{$A, [a, b), [c, d), B, f, 1$}
-        \Else \Comment{从rear归并}
+        \Else \Comment{从右归并}
           \State $r \gets$ \Call{Merge}{$A, [a, b), [c, d), B, r, -1$}
         \EndIf
         \State $a \gets b, d \gets c$
-        \State $t \gets \lnot t$ \Comment{切换归并的方向}
+        \State $t \gets t + 1$
       \EndWhile
       \State \textproc{Exchange} $A \leftrightarrow B$ \Comment{切换工作区}
     \EndLoop
