@@ -95,196 +95,190 @@ sort [] = []
 sort (x:xs) = sort [y | y<-xs, y <= x] ++ [x] ++ sort [y | y<-xs, x < y]
 \end{Haskell}
 
-This might be the shortest quick sort program in the world at the time when this book is written. Even
-a verbose version is still very expressive:
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-sort [] = []
-sort (x:xs) = as ++ [x] ++ bs where
-    as = sort [ a | a <- xs, a <= x]
-    bs = sort [ b | b <- xs, x < b]
-\end{lstlisting}
-
-There are some variants of this basic quick sort program, such as using explicit filtering instead of
-list comprehension. The following Python program demonstrates this for example:
-
-\lstset{language=Python}
-\begin{lstlisting}
-def sort(xs):
-    if xs == []:
-        return []
-    pivot = xs[0]
-    as = sort(filter(lambda x : x <= pivot, xs[1:]))
-    bs = sort(filter(lambda x : pivot < x, xs[1:]))
-    return as + [pivot] + bs
-\end{lstlisting}
-
-\subsection{Strict weak ordering}
-\index{Quick Sort!Strict weak ordering}
-We assume the elements are sorted in monotonic none decreasing order so far. It's quite possible to customize
-the algorithm, so that it can sort the elements in other ordering criteria. This is necessary in practice because
-users may sort numbers, strings, or other complex objects (even list of lists for example).
-
-The typical generic solution is to abstract the comparison as a parameter as we mentioned in chapters about
-insertion sort and selection sort. Although it needn't the total ordering, the comparison must satisfy
-{\em strict weak ordering} at least \cite{wiki-total-order} \cite{wiki-sweak-order}.
-
-For the sake of brevity, we only considering sort the elements by using less than or equal
-(equivalent to not greater than) in the rest of the chapter.
+We assume to sort in ascending order. We can abstract the comparison to sort different things like numbers, strings, and etc. (see chapter 3) We needn't total ordering, but at least need {\em strict weak ordering}\cite{wiki-total-order}\cite{wiki-sweak-order}(see chapter 9). We use $\leq$ as the abstract comparison.
 
 \subsection{Partition}
 \index{Quick sort!partition}
-Observing that the basic version actually takes two passes to find all elements which are greater than the pivot
-as well as to find the others which are not respectively. Such partition can be accomplished by only one pass. We explicitly define the partition as below.
+We traverse elements in two passes: first filter all elements $\leq x$ ; next filter all $> x$. We can combine them into one pass:
 
 \be
-partition(p, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, \phi) & L = \phi \\
-  (\{ l_1 \} \cup A, B) & p(l_1), (A, B) = partition(p, L') \\
-  (A, \{ l_1 \} \cup B) & \lnot p(l_1)
-  \end{array}
-\right.
+\begin{array}{rcl}
+\textit{part}\ p\ [\ ] & = & ([\ ], [\ ]) \\
+\textit{part}\ p\ (x \cons xs) & = & \begin{cases}
+ p(x): & (x \cons as, bs), \text{where}: (as, bs) = \textit{part}\ p\ xs \\
+ \text{otherwise}: & (as, x \cons bs) \\
+\end{cases} \\
+\end{array}
 \ee
 
-Note that the operation $\{x\} \cup L$ is just a `cons' operation, which only takes constant time.
-The quick sort can be modified accordingly.
+And change the quick sort definition to:
 
 \be
-sort(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  sort(A) \cup \{l_1\} \cup sort(B) & otherwise, (A, B) = partition(\lambda_x x \leq l_1, L')
-  \end{array}
-\right.
+\begin{array}{rcl}
+sort\ [\ ] & = & [\ ] \\
+sort\ (x \cons xs) & = & sort\ as \doubleplus [x] \doubleplus sort\ bs, \text{where}: (as, bs) = \textit{part}\ (\leq x)\ xs \\
+\end{array}
 \ee
 
-Translating this new algorithm into Haskell yields the below code.
+We can also define partition with fold:
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-sort [] = []
-sort (x:xs) = sort as ++ [x] ++ sort bs where
-    (as, bs) = partition (<= x) xs
+\be
+\textit{part}\ p\ = foldr\ f\ ([\ ], [\ ])
+\ee
 
-partition _ [] = ([], [])
-partition p (x:xs) = let (as, bs) = partition p xs in
-    if p x then (x:as, bs) else (as, x:bs)
-\end{lstlisting}
+Where $f$ is defined as:
 
-The concept of partition is very critical to quick sort. Partition is also very important to many
-other sort algorithms. We'll explain how it generally affects the sorting methodology by the end
-of this chapter. Before further discussion about fine tuning of quick sort specific partition, let's
-see how to realize it in-place imperatively.
+\be
+f\ (as, bs)\ x = \begin{cases}
+p(x): & (x \cons as, bs) \\
+\text{otherwise}: & (as, x \cons bs) \\
+\end{cases}
+\ee
 
-There are many partition methods. The one given by Nico Lomuto \cite{pearls} \cite{CLRS} will be used here as it's
-easy to understand. We'll show other partition algorithms soon and see how partitioning affects the performance.
+It's essentially to accumulate to $(as, bs)$. If $p(x)$ holds, then add $x$ to $as$, otherwise to $bs$. We can implement a tail recursive partition:
+
+\be
+\begin{array}{rcl}
+\textit{part}\ p\ [\ ]\ as\ bs & = & (as, bs) \\
+\textit{part}\ p\ (x \cons xs)\ as\ bs & = & \begin{cases}
+  p(x): & \textit{part}\ p\ xs\ (x \cons as)\ bs \\
+  \text{otherwise}: & \textit{part}\ p\ xs\ as\ (x \cons bs) \\
+\end{cases}
+\end{array}
+\ee
+
+To partition $x \cons xs$, we call:
+
+\[
+(as, bs) = \textit{part}\ (\leq x)\ xs\ [\ ]\ [\ ]
+\]
+
+We change concatenation $sort\ as \doubleplus [x] \doubleplus sort\ bs$ with accumulator as:
+
+\be
+\begin{array}{rcl}
+sort\ s\ [\ ] & = & s \\
+sort\ s\ (x \cons xs) & = & sort\ (x : sort\ s\ bs)\ as \\
+\end{array}
+\ee
+
+Where $s$ is the accumulator, we initialize sort with an empty list: $qsort = sort\ [\ ]$. After partition, we need recursively sort $as, bs$. We can first sort $bs$, prepend $x$, then pass it as the new accumulator to sort $as$:
+
+\begin{Haskell}
+sort = sort' []
+
+sort' acc [] = acc
+sort' acc (x:xs) = sort' (x : sort' acc bs) as where
+  (as, bs) = part xs [] []
+  part [] as bs = (as, bs)
+  part (y:ys) as bs | y <= x = part ys (y:as) bs
+                    | otherwise = part ys as (y:bs)
+\end{Haskell}
+
+\subsection{In-place sort}
+
+Figure \ref{fig:partition-1-way} gives a way to partition in-place\cite{Bentley}\cite{CLRS}. We scan from left to right. At any time, the array is consist of three parts as shown in figure \ref{fig:partition-1-way} (a):
 
 \begin{figure}[htbp]
    \centering
-   \subcaptionbox{Partition invariant}{\includegraphics[scale=0.5]{img/partition-1-way}} \\
-   \subcaptionbox{Start}{\includegraphics[scale=0.5]{img/partition-1-way-start}} \\
-   \subcaptionbox{Finish}{\includegraphics[scale=0.5]{img/partition-1-way-finish}}
-   \caption{Partition a range of array by using the left most element as pivot.}
+   \subcaptionbox{Partition invariant}{
+      \begin{tikzpicture}[scale=0.8]
+      \draw (0, 0) rectangle (1, 1) node (xl) [pos=.5] {x[l]}
+            (1, 0) rectangle (5, 1) node (leq) [pos=.5] {... $\leq p$ ...}
+            (5, 0) rectangle (9, 1) node (ge) [pos=.5] {... $> p$ ...}
+            (9, 0) rectangle (11, 1) node (rest) [pos=.5] {...?...}
+            (11, 0) rectangle (12, 1) node (xu) [pos=.5] {x[u]};
+      \fill [black] (5, 0) rectangle (5.1, 1) node (leftbar) [pos=.5] {}
+                    (9, 0) rectangle (9.1, 1) node (rightbar) [pos=.5] {};
+      \draw (0, 2) node (pivot) {$p = x[l]$}
+            (5, 2) node (left) {left $L$}
+            (9, 2) node (right) {right $R$};
+      \draw[thick, ->] (pivot) edge (xl)
+                       (left) edge [bend right] (leftbar)
+                       (right) edge [bend right] (rightbar);
+      \end{tikzpicture}} \\
+   \subcaptionbox{Initialize}{
+      \begin{tikzpicture}[scale=0.8]
+      \draw (-0.5, 0) rectangle (1, 1) node (xl) [pos=.5] {x[l]}
+            (1, 0) rectangle (2.5, 1) node (xl1) [pos=.5] {x[l+1]}
+            (2.5, 0) rectangle (4, 1) node (rest) [pos=.5] (ai) {...?...}
+            (4, 0) rectangle (5, 1) node (xu) [pos=.5] {x[u]};
+      \fill [black] (1, 0) rectangle (1.1, 1) node (leftbar) [pos=.5] {};
+      \draw (-2, 2) node (pivot) {$p$}
+            (0, 2) node (left) {$L$}
+            (2, 2) node (right) {$R$};
+      \draw[thick, ->] (pivot) edge [bend right] (xl)
+                       (left) edge [bend right] (leftbar)
+                       (right) edge [bend left] (leftbar);
+      \end{tikzpicture}} \\
+   \subcaptionbox{Terminate}{
+      \begin{tikzpicture}[scale=0.8]
+      \draw (0, 0) rectangle (1, 1) node (xl) [pos=.5] {x[l]}
+            (1, 0) rectangle (5, 1) node (leq) [pos=.5] {... $\leq p$ ...}
+            (5, 0) rectangle (6, 1) node (xleft) [pos=.5] {x[$L$] }
+            (6, 0) rectangle (10, 1) node (ge) [pos=.5] {... $> p$ ...}
+            (10, 0) rectangle (11, 1) node (xu) [pos=.5] {x[u]};
+      \fill [black] (6, 0) rectangle (6.1, 1) node (leftbar) [pos=.5] {}
+                    (11, 0) rectangle (11.1, 1) node (rightbar) [pos=.5] {};
+      \draw (0, 2) node (pivot) {$p$}
+            (6, 2) node (left) {$L$}
+            (12, 2) node (right) {$R$};
+      \draw[thick, ->] (pivot) edge (xl)
+                       (left) edge [bend right] (leftbar)
+                       (right) edge [bend left] (rightbar);
+      \draw[thick, <->] (xl) edge [bend right] node [below] {swap} (xleft);
+      \end{tikzpicture}} \\
+   \caption{In-place partition, pivot $p = x[l]$}
    \label{fig:partition-1-way}
 \end{figure}
 
-Figure \ref{fig:partition-1-way} shows the idea of this one-pass partition method. The array is processed from
-left to right. At any time, the array consists of the following parts as shown in figure \ref{fig:partition-1-way} (a):
-
 \begin{itemize}
-\item The left most cell contains the pivot; By the end of the partition process, the pivot will be moved to the
-final proper position;
-\item A segment contains all elements which are not greater than the pivot. The right boundary of this segment is
-marked as `left';
-\item A segment contains all elements which are greater than the pivot. The right boundary of this segment is marked
-as `right'; It means that elements between `left' and `right' marks are greater than the pivot;
-\item The rest of elements after `right' mark haven't been processed yet. They may be greater than the
-pivot or not.
+\item The pivot is the left element $p = x[l]$. It moves to the final position after partition;
+\item A section of elements $\leq p$, extend right to $L$;
+\item A section of elements $> p$, extend right to $R$. The elements between $L$ and $R$ $> p$;
+\item Elements after $R$ haven't been partitioned (may $>, =, <$ p).
 \end{itemize}
 
-At the beginning of partition, the `left' mark points to the pivot and the `right' mark points to the
-the second element next to the pivot in the array as in Figure
-\ref{fig:partition-1-way} (b); Then the algorithm repeatedly advances the right mark one element after the other
-till passes the end of the array.
-
-In every iteration, the element pointed by the `right' mark is compared with the
-pivot. If it is greater than the pivot, it should be among the segment between the `left' and `right' marks, so that
-the algorithm goes on to advance the `right' mark and examine the next element; Otherwise, since the element pointed
-by `right' mark is less than or equal to the pivot (not greater than), it should be put before the `left' mark.
-In order to achieve this, the `left' mark needs be advanced by one, then exchange the elements pointed by the `left'
-and `right' marks.
-
-Once the `right' mark passes the last element, it means that all the elements have been processed. The elements
-which are greater than the pivot have been moved to the right hand of `left' mark while the others are to the
-left hand of this mark. Note that the pivot should move between the two segments. An extra exchanging between the pivot and
-the element pointed by `left' mark makes this final one to the correct location. This is shown by the swap
-bi-directional arrow in figure \ref{fig:partition-1-way} (c).
-
-The `left' mark (which points the pivot finally) partitions the whole array into two parts, it is
-returned as the result. We typically increase the `left' mark by one, so that it points to the
-first element greater than the pivot for convenient. Note that the array is modified in-place.
-
-The partition algorithm can be described as the following. It takes three arguments, the array $A$, the lower
-and the upper bound to be partitioned \footnote{The partition algorithm used here is slightly different from
-the one in \cite{CLRS}. The latter uses the last element in the slice as the pivot.}.
+When partition starts, $L$ points to $p$, $R$ points to the next, as shown in figure \ref{fig:partition-1-way} (b). We advance $R$ to right till reach to the array boundary. Every time, we compare $x[R]$ and $p$. If $x[R] > p$, it should be between $L$ and $R$, we move $R$ forward; otherwise if $X[R] \leq p$, it should be on the left of $L$. We advance $L$ a step, then swap $x[L] \leftrightarrow x[R]$. When $R$ passes the last element, the partition ends. Elements $> p$ move to the right of $L$, while others on the left side. We need move $p$ to the position between the two parts. To do that, we swap $p \leftrightarrow x[L]$, as shown in \ref{fig:partition-1-way} (c). $L$ finally points to $p$, partitioned the array in two parts. We return $L + 1$ as the result, that points to the first element $> p$. Let the array be $A$, the lower, upper boundary be $l, u$. The in-place partition is defined below:
 
 \begin{algorithmic}[1]
 \Function{Partition}{A, l, u}
-  \State $p \gets A[l]$  \Comment{the pivot}
-  \State $L \gets l$ \Comment{the left mark}
-  \For{$R \in [l+1, u]$} \Comment{iterate on the right mark}
-    \If{$\lnot (p < A[R])$} \Comment{negate of $<$ is enough for strict weak order}
+  \State $p \gets A[l]$  \Comment{pivot}
+  \State $L \gets l$ \Comment{left}
+  \For{$R$ in $[l+1, u]$} \Comment{iterate right}
+    \If{$p \geq A[R]$}
       \State $L \gets L + 1$
       \State \textproc{Exchange} $A[L] \leftrightarrow A[R]$
     \EndIf
   \EndFor
   \State \textproc{Exchange} $A[L] \leftrightarrow p$
-  \State \Return $L + 1$ \Comment{The partition position}
+  \State \Return $L + 1$ \Comment{partition position}
 \EndFunction
 \end{algorithmic}
 
-Below table shows the steps of partitioning the array $\{ 3, 2, 5, 4, 0, 1, 6, 7\}$.
+Table \ref{tab:partition-steps} lists the steps to partition $[3, 2, 5, 4, 0, 1, 6, 7]$.
 
-\begin{tabular}{ | c c c c c c c c | l |}
+\begin{table}[htbp]
+\centering
+\begin{tabular}{|llllllll|l|}
 \hline
-(l) {\bf 3} & (r) 2 & 5 & 4 & 0 & 1 & 6 & 7 & initialize, $pivot = 3, l = 1, r = 2$ \\
-{\bf 3} & (l)(r) 2 & 5 & 4 & 0 & 1 & 6 & 7 & $2 < 3$, advance $l$, ($r=l$)\\
-{\bf 3} & (l) 2 & (r) 5 & 4 & 0 & 1 & 6 & 7 & $5 > 3$, move on \\
-{\bf 3} & (l) 2 & 5 & (r) 4 & 0 & 1 & 6 & 7 & $4 > 3$, move on \\
-{\bf 3} & (l) 2 & 5 & 4 & (r) 0 & 1 & 6 & 7 & $0 < 3$ \\
-{\bf 3} & 2 & (l) 0 & 4 & (r) 5 & 1 & 6 & 7 & Advance $l$, then swap with $r$ \\
-{\bf 3} & 2 & (l) 0 & 4 & 5 & (r) 1 & 6 & 7 & $1 < 3$ \\
-{\bf 3} & 2 & 0 & (l) 1 & 5 & (r) 4 & 6 & 7 & Advance $l$, then swap with $r$ \\
-{\bf 3} & 2 & 0 & (l) 1 & 5 & 4 & (r) 6 & 7 & $6 > 3$, move on \\
-{\bf 3} & 2 & 0 & (l) 1 & 5 & 4 & 6 & (r) 7 & $7 > 3$, move on \\
-1 & 2 & 0 & 3 & (l+1) 5 & 4 & 6 & 7 & $r$ passes the end, swap pivot and $l$ \\
+\underline{3}(l)  & 2(r) & 5 & 4 & 0 & 1 & 6 & 7 & start, $p = 3$、$l = 1$、$r = 2$ \\
+\underline{3} & 2(l)(r) & 5 & 4 & 0 & 1 & 6 & 7 & $2 < 3$, advance $l$（$r=l$）\\
+\underline{3} & 2(l) & 5(r) & 4 & 0 & 1 & 6 & 7 & $5 > 3$, move on \\
+\underline{3} & 2(l) & 5 & 4(r) & 0 & 1 & 6 & 7 & $4 > 3$, move on \\
+\underline{3} & 2(l) & 5 & 4 & 0(r) & 1 & 6 & 7 & $0 < 3$ \\
+\underline{3} & 2 & 0(l) & 4 & 5(r) & 1 & 6 & 7 & advance $l$, swap with $r$ \\
+\underline{3} & 2 & 0(l) & 4 & 5 & 1(r) & 6 & 7 & $1 < 3$ \\
+\underline{3} & 2 & 0 & 1(l) & 5 & 4(r) & 6 & 7 & advance $l$, swap with $r$ \\
+\underline{3} & 2 & 0 & 1(l) & 5 & 4 & 6(r) & 7 & $6 > 3$, move on \\
+\underline{3} & 2 & 0 & 1(l) & 5 & 4 & 6 & 7(r) & $7 > 3$, move on \\
+1 & 2 & 0 & 3 & 5(l+1) & 4 & 6 & 7 & terminate, swap $p$ and $l$ \\
 \hline
 \end{tabular}
+\caption{Partition array} \label{tab:partition-steps}
+\end{table}
 
-This version of partition algorithm can be implemented in ANSI C as the following.
-\lstset{language=C}
-\begin{lstlisting}
-int partition(Key* xs, int l, int u) {
-    int pivot, r;
-    for (pivot = l, r = l + 1; r < u; ++r)
-        if (!(xs[pivot] < xs[r])) {
-            ++l;
-            swap(xs[l], xs[r]);
-        }
-    swap(xs[pivot], xs[l]);
-    return l + 1;
-}
-\end{lstlisting}
-
-Where \texttt{swap(a, b)} can either be defined as function or a macro. In ISO C++, \texttt{swap(a, b)}
-is provided as a function template. the type of the elements can be defined somewhere or abstracted
-as a template parameter in ISO C++. We omit these language specific details here.
-
-With this partition method realized, the imperative in-place quick sort can be accomplished as the following.
+With \textproc{Partition} defined, we implement quick sort as below:
 
 \begin{algorithmic}[1]
 \Procedure{Quick-Sort}{$A, l, u$}
@@ -296,24 +290,11 @@ With this partition method realized, the imperative in-place quick sort can be a
 \EndProcedure
 \end{algorithmic}
 
-When sort an array, this procedure is called by passing the whole range as the lower and upper bounds.
-\textproc{Quick-Sort}($A, 1, |A|$). Note that when $l \geq u$ it means the array slice is either empty,
-or just contains only one element, both can be treated as ordered, so
-the algorithm does nothing in such cases.
+We pass the array and its boundaries, as \textproc{Quick-Sort}($A, 1, |A|$) to sort. When the array is empty or singleton, sort returns immediately.
 
-Below ANSI C example program completes the basic in-place quick sort.
-
-\lstset{language=C}
-\begin{lstlisting}
-void quicksort(Key* xs, int l, int u) {
-    int m;
-    if (l < u) {
-        m = partition(xs, l, u);
-        quicksort(xs, l, m - 1);
-        quicksort(xs, m, u);
-    }
-}
-\end{lstlisting}
+\begin{Exercise}
+\Question{Improve the basic quick sort definition when the list is singleton.}
+\end{Exercise}
 
 \subsection{Minor improvement in functional partition}
 \index{Quick Sort!One pass functional partition}
@@ -826,7 +807,7 @@ pass (x:xs) xss = step xs [] [x] [] xss where
 \subsubsection{2-way partition}
 \index{Quick Sort!2-way partition}
 The cases with many duplicated elements can also be handled imperatively. Robert Sedgewick presented a partition
-method \cite{qsort-impl}, \cite{pearls}
+method \cite{qsort-impl}, \cite{Bentley}
 which holds two pointers. One moves from left to right, the other moves from right to left. The two pointers
 are initialized as the left and right boundaries of the array.
 
@@ -1223,7 +1204,7 @@ Even with this bad news, the engineering improvement still makes sense in real w
 There is some other engineering practice which doesn't focus on solving the bad partition issue.
 Robert Sedgewick observed that when the list to be sorted is short, the overhead introduced by
 quick sort is relative expense, on the other hand, the insertion sort performs better in such
-case \cite{pearls}, \cite{3-way-part}. Sedgewick, Bentley and McIlroy tried different
+case \cite{Bentley}, \cite{3-way-part}. Sedgewick, Bentley and McIlroy tried different
 threshold, as known as `Cut-Off', that when
 there are lesson than `Cut-Off' elements, the sort algorithm falls back to insertion sort.
 
@@ -1632,7 +1613,7 @@ void msort(Key* xs, int l, int u) {
 
 Running this program takes much more time than the quick sort. Besides the major reason we'll explain later,
 one problem is that this version frequently allocates and releases memories for merging. While memory
-allocation is one of the well known bottle-neck in real world as mentioned by Bentley in \cite{pearls}.
+allocation is one of the well known bottle-neck in real world as mentioned by Bentley in \cite{Bentley}.
 One solution to address this issue is to allocate another array with the same size to the original one
 as the working area. The recursive sort for the first and second halves needn't allocate any more
 extra spaces, but use the working area when merging. Finally, the algorithm copies
@@ -2760,7 +2741,7 @@ Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest and Clifford Stein.
 \bibitem{qsort-impl}
 Robert Sedgewick. ``Implementing quick sort programs''. Communication of ACM. Volume 21, Number 10. 1978. pp.847 - 857.
 
-\bibitem{pearls}
+\bibitem{Bentley}
 Jon Bentley. ``Programming pearls, Second Edition''. Addison-Wesley Professional; 1999. ISBN-13: 978-0201657883
 
 \bibitem{3-way-part}
