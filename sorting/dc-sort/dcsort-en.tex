@@ -296,249 +296,36 @@ We pass the array and its boundaries, as \textproc{Quick-Sort}($A, 1, |A|$) to s
 \Question{Improve the basic quick sort definition when the list is singleton.}
 \end{Exercise}
 
-\subsection{Minor improvement in functional partition}
-\index{Quick Sort!One pass functional partition}
-Before exploring how to improve the partition for basic version quick sort, it's obviously that the
-one presented so far can be defined by using folding. Please refer to the appendix A of this book for
-definition of folding.
+\subsection{Performance}
+\index{Quick sort!Performance}
 
-\be
-partition(p, L) = fold(f(p), (\phi, \phi), L)
-\ee
-
-Where function $f$ compares the element to the pivot with predicate $p$ (which is passed to $f$ as a parameter, so that
-$f$ is in curried form, see appendix A for detail. Alternatively, $f$ can be a lexical closure which is in
-the scope of $partition$, so that it can access the predicate in this scope.),
-and update the result pair accordingly.
-
-\be
-f(p, x, (A, B)) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\{ x \} \cup A, B) & p(x) \\
-  (A, \{ x \} \cup B) & otherwise(\lnot p(x))
-  \end{array}
-\right.
-\ee
-
-Note we actually use pattern-matching style definition. In environment without pattern-matching support,
-the pair $(A, B)$ should be represented by a variable, for example $P$, and use access functions
-to extract its first and second parts.
-
-The example Haskell program needs to be modified accordingly.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-sort [] = []
-sort (x:xs) = sort small ++ [x] ++ sort big where
-  (small, big) = foldr f ([], []) xs
-  f a (as, bs) = if a <= x then (a:as, bs) else (as, a:bs)
-\end{lstlisting}
-
-\subsubsection{Accumulated partition}
-\index{Quick Sort!Accmulated partition}
-The partition algorithm by using folding actually accumulates to the result pair of lists $(A, B)$. That
-if the element is not greater than the pivot, it's accumulated to $A$, otherwise to $B$. We can explicitly
-express it which save spaces and is friendly for tail-recursive call optimization (refer to the appendix A
-of this book for detail).
-
-\be
-partition(p, L, A, B) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (A, B) & L = \phi \\
-  partition(p, L', \{ l_1 \} \cup A, B) & p(l_1) \\
-  partition(p, L', A, \{ l_1 \} \cup B) & otherwise
-  \end{array}
-\right.
-\ee
-
-Where $l_1$ is the first element in $L$ if $L$ isn't empty, and $L'$ contains the rest elements except for
-$l_1$, that $L' = \{ l_2, l_3, ...\}$ for example.
-The quick sort algorithm then uses this accumulated partition function by passing the $\lambda_x x \leq pivot$
-as the partition predicate.
-
-\be
-sort(L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  sort(A) \cup \{ l_1 \} \cup sort(B) & otherwise
-  \end{array}
-\right.
-\ee
-
-Where $A, B$ are computed by the accumulated partition function defined above.
-
-\[
-(A, B) = partition(\lambda_x x \leq l_1, L', \phi, \phi)
-\]
-
-\subsubsection{Accumulated quick sort}
-\index{Quick Sort!Accumulated quick sort}
-Observe the recursive case in the last quick sort definition. the list concatenation operations $sort(A) \cup \{l_1\} \cup sort(B)$
-actually are proportion to the length of the list to be concatenated. Of course we can use some general solutions
-introduced in the appendix A of this book to improve it. Another way is to change the sort algorithm to accumulated
-manner. Something like below:
-
-\[
-sort'(L, S) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  S & L = \phi \\
-  ... & otherwise
-  \end{array}
-\right.
-\]
-
-Where $S$ is the accumulator, and we call this version by passing empty list as the accumulator to start sorting:
-$sort(L) = sort'(L, \phi)$.
-The key intuitive is that after the partition finishes, the two sub lists need to be recursively sorted. We can
-first recursively sort the list contains the elements which are greater than the pivot, then link the pivot in front
-of it and use it as an {\em accumulator} for next step sorting.
-
-Based on this idea, the '...' part in above definition can be realized as the following.
-
-\[
-sort'(L, S) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  S & L = \phi \\
-  sort(A, \{l_1\} \cup sort(B, ?)) & otherwise
-  \end{array}
-\right.
-\]
-
-The problem is what's the accumulator when sorting $B$. There is an important invariant actually, that at
-every time, the accumulator $S$ holds the elements have been sorted so far. So that we should sort $B$ by
-accumulating to $S$.
-
-\be
-sort'(L, S) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  S & L = \phi \\
-  sort(A, \{l_1\} \cup sort(B, S)) & otherwise
-  \end{array}
-\right.
-\ee
-
-The following Haskell example program implements the accumulated quick sort algorithm.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-asort xs = asort' xs []
-
-asort' [] acc = acc
-asort' (x:xs) acc = asort' as (x:asort' bs acc) where
-  (as, bs) = part xs [] []
-  part [] as bs = (as, bs)
-  part (y:ys) as bs | y <= x = part ys (y:as) bs
-                    | otherwise = part ys as (y:bs)
-\end{lstlisting}
-
-\begin{Exercise}
-\begin{itemize}
-\item Implement the recursive basic quick sort algorithm in your favorite imperative programming language.
-\item Same as the imperative algorithm, one minor improvement is that besides the empty case, we needn't sort the singleton list, implement
-this idea in the functional algorithm as well.
-\item The accumulated quick sort algorithm developed in this section uses intermediate variable $A, B$. They
-can be eliminated by defining the partition function to mutually recursive call the sort function. Implement this
-idea in your favorite functional programming language. Please don't refer to the downloadable example program
-along with this book before you try it.
-\end{itemize}
-\end{Exercise}
-
-\section{Performance analysis for quick sort}
-\index{Quick Sort!Performance analysis}
-
-Quick sort performs well in practice, however, it's not easy to give theoretical analysis. It needs the tool
-of probability to prove the average case performance.
-
-Nevertheless, it's intuitive to calculate the best case and worst case performance. It's obviously that
-the best case happens when every partition divides the sequence into two slices with equal size. Thus
-it takes $O(\lg n)$ recursive calls as shown in figure \ref{fig:qsort-best}.
+Quick sort performs well in most cases. We start from the best/worst cases. For the best case, we always halve the elements into two equal sized parts. As shown in figure \ref{fig:qsort-best}, there are total $O(\lg n)$ levels of recursions. At level one, we processes $n$ elements with one partition; at level two, we partition twice, each processes $n/2$ elements, taking total $2 O(n/2) = O(n)$ time; at level three, we partition four times, each process $n/4$ elements, taking total $O(n)$ time too, ..., at the last level, there are $n$ singleton segments, taking total $O(n)$ time. Sum all levels, the time is bound to $O(n \lg n)$.
 
 \begin{figure}[htbp]
  \centering
- \includegraphics[scale=0.6]{img/qsort-best}
- \caption{In the best case, quick sort divides the sequence into two slices with same length.}
+ \includegraphics[scale=0.55]{img/qsort-best}
+ \caption{The best case, halve every time.}
  \label{fig:qsort-best}
 \end{figure}
 
-There are total $O(\lg n)$ levels of recursion. In the first level, it executes one partition, which
- processes $n$ elements; In the second level, it executes partition two times, each processes $n/2$
-elements, so the total time in the second level bounds to $2 O(n/2) = O(n)$ as well. In the third
-level, it executes partition four times, each processes $n/4$ elements. The total time in the third
-level is also bound to $O(n)$; ... In the last level, there are $n$ small slices each contains a
-single element, the time is bound to $O(n)$. Summing all the time in each level gives the total
-performance of quick sort in best case as $O(n \lg n)$.
+For the worst case, the partition is totally unbalanced, one part is of $O(1)$ length, the other is $O(n)$. The level of recursions decays to $O(n)$. Model the partition as a tree. It's balanced binary tree in the best case, while it becomes a linked-list of $O(n)$ length in the worst case. Every branch node has an empty sub-tree. At each level, we process all elements, hence the total time is bound to $O(n^2)$. This is same as insertion sort, and selection sort. We can list several worst cases, for example, there are many duplicated elements, or the sequence is largely ordered, and so on. There isn't a method can avoid the worst case completely.
 
-However, in the worst case, the partition process unluckily divides the sequence to two slices
-with unbalanced lengths in most time. That one slices with length $O(1)$, the other is $O(n)$.
-Thus the recursive time degrades to $O(n)$. If we draw a similar figure, unlike in the best
-case, which forms a balanced binary tree, the worst case degrades into a very unbalanced tree
-that every node has only one child, while the other is empty. The binary tree turns to be
-a linked list with $O(n)$ length. And in every level, all the elements are processed, so the
-total performance in worst case is $O(n^2)$, which is as same poor as insertion sort and
-selection sort.
+\subsubsection{Average case\texorpdfstring{$\bigstar$}{★}}
+\index{Quick Sort!Average case}
 
-Let's consider when the worst case will happen. One special case is that
-all the elements (or most of the elements) are same. Nico Lomuto's partition method deals
-with such sequence poor. We'll see how to solve this problem by introducing other
-partition algorithm in the next section.
-
-The other two obvious cases which lead to worst case happen when the sequence has already in
-ascending or descending order. Partition the ascending sequence makes an empty sub list
-before the pivot, while the list after the pivot contains all the rest elements.
-Partition the descending sequence gives an opponent result.
-
-There are other cases which lead quick sort performs poor. There is no completely satisfied solution
-which can avoid the worst case. We'll see some engineering practice in next section which can
-make it very seldom to meet the worst case.
-
-\subsection{Average case analysis $\star$}
-\index{Quick Sort!Average case analysis}
-In average case, quick sort performs well. There is a vivid example that even the partition
-divides the list every time to two lists with length 1 to 9. The performance is still bound
-to $O(n \lg n)$ as shown in \cite{CLRS}.
-
-This subsection need some mathematic background, reader can safely skip to next part.
-
-There are two methods to proof the average case performance, one uses an important fact
-that the performance is proportion to the total comparing operations during quick sort \cite{CLRS}.
-Different with the selections sort that every two elements have been compared. Quick sort
-avoid many unnecessary comparisons. For example suppose a partition operation on list
-$\{ a_1, a_2, a_3, ..., a_n\}$. Select $a_1$ as the pivot, the partition builds two sub lists
-$A = \{x_1, x_2, ..., x_k\}$ and $B = \{ y_1, y_2, ..., y_{n-k-1} \}$.
-In the rest time of quick sort, The element in $A$ will never be compared with any elements in $B$.
-
-Denote the final sorted result as $\{ a_1, a_2, ..., a_n \}$,
-this indicates that if element $a_i < a_j$, they will not be compared
-any longer if and only if some element $a_k$ where $a_i < a_k < a_j$ has ever been selected as pivot
-before $a_i$ or $a_j$ being selected as the pivot.
-
-That is to say, the only chance that $a_i$ and $a_j$ being compared is either $a_i$ is chosen
-as pivot or $a_j$ is chosen as pivot before any other elements in ordered range
-$a_{i+1} < a_{i+2} < ... < a_{j-1}$ are selected.
-
-Let $P(i, j)$ represent the probability that $a_i$ and $a_j$ being compared. We have:
+Quick sort performs well in average. For example, even if every partition gives two parts of 1:9, the performance still achieves $O(n \lg n)$\cite{CLRS}. We give two method to evaluate the performance. The first one is based on the fact, that the performance is proportion to the number of comparisons. In selection sort, every two elements are compared, while in quick sort, we save many comparisons. When partition sequence $[a_1, a_2, a_3, ..., a_n]$ with $a_1$ as the pivot, we obtain two sub sequences $A = [x_1, x_2, ..., x_k]$ and $B = [y_1, y_2, ..., y_{n-k-1}]$. After that, none element in $A$ will compare with any one in $B$. Let the sorted result be $[a_1, a_2, ..., a_n]$, if $a_i < a_j$, we do not compare them if and only if there is some element $a_k$, where $a_i < a_k < a_j$, is picked as the pivot before either $a_i$ or $a_j$ being the pivot. In other word, the only chance that we compare $a_i$ and $a_j$ is either $a_i$ or $a_j$ is chosen as the pivot before any other elements in $a_{i+1} < a_{i+2} < ... < a_{j-1}$ being the pivot. Let $P(i, j)$ be the probability that we compare $a_i$ and $a_j$. We have:
 
 \be
 P(i, j) = \frac{2}{j - i + 1}
 \ee
 
-Since the total number of compare operation can be given as:
+The total number of comparisons is:
 
 \be
 C(n) = \sum_{i=1}^{n-1}\sum_{j=i+1}^{n} P(i, j)
 \ee
 
-Note the fact that if we compared $a_i$ and $a_j$, we won't compare $a_j$ and $a_i$ again in
-the quick sort algorithm, and we never compare $a_i$ onto itself. That's why we set the upper
-bound of $i$ to $n-1$; and lower bound of $j$ to $i+1$.
-
-Substitute the probability, it yields:
+If we compare $a_i$ and $a_j$, we won't compare $a_j$ and $a_i$ again, and we never compare $a_i$ with itself. The upper bound of $i$ is $n-1$, and the lower bound of $j$ is $i+1$. Substitute the probability:
 
 \be
 \begin{array}{rl}
@@ -547,7 +334,7 @@ C(n) & = \displaystyle \sum_{i=1}^{n-1}\sum_{j = i+1}^{n} \frac{2}{j - i + 1} \\
 \end{array}
 \ee
 
-Using the harmonic series \cite{wiki-harmonic}
+Use the result of harmonic series\cite{wiki-harmonic}.
 
 \[
 H_n = 1 + \frac{1}{2} + \frac{1}{3} + .... = \ln n + \gamma + \epsilon_n
@@ -557,19 +344,13 @@ H_n = 1 + \frac{1}{2} + \frac{1}{3} + .... = \ln n + \gamma + \epsilon_n
 C(n) = \sum_{i=1}^{n-1} O(\lg n) = O(n \lg n)
 \ee
 
-The other method to prove the average performance is to use the recursive fact that
-when sorting list of length $n$, the partition splits the list into two
-sub lists with length $i$ and $n-i-1$. The partition process itself takes $cn$
-time because it examine every element with the pivot. So we have the following
-equation.
+The other method uses the recursion. Let the length of the sequence be $n$, we partition it into two parts of length $i$ and $n-i-1$. The partition takes $cn$ time because it compares every element with the pivot. The total time is:
 
 \be
 T(n) = T(i) + T(n-i-1) + c n
 \ee
 
-Where $T(n)$ is the total time when perform quick sort on list of length $n$.
-Since $i$ is equally like to be any of $0, 1, ..., n-1$, taking math expectation to
-the equation gives:
+Where $T(n)$ is the time to sort $n$ elements. $i$ equally distributes across $0, 1, ..., n-1$. Taking math expectation:
 
 \be
 \renewcommand*{\arraystretch}{1.5}
@@ -581,34 +362,33 @@ T(n) & = E(T(i)) + E(T(n-i-1)) + c n \\
 \end{array}
 \ee
 
-Multiply by $n$ to both sides, the equation changes to:
+Multiply $n$ to both sides:
 
 \be
 n T(n) = 2 \sum_{i=0}^{n-1} T(i) + c n^2
 \label{eq:ntn}
 \ee
 
-Substitute $n$ to $n-1$ gives another equation:
+Substitute $n$ to $n-1$:
 
 \be
 (n-1) T(n-1) = 2 \sum_{i=0}^{n-2} T(i) + c (n-1)^2
 \label{eq:n1tn1}
 \ee
 
-Subtract equation (\ref{eq:ntn}) and (\ref{eq:n1tn1}) can eliminate all the $T(i)$ for $0 \leq i < n-1$.
+Take (\ref{eq:ntn}) - (\ref{eq:n1tn1}), cancel all $T(i)$ for $0 \leq i < n-1$.
 
 \be
 n T(n) = (n + 1) T(n-1) + 2cn - c
 \ee
 
-As we can drop the constant time $c$ in computing performance. The equation can be one more step changed like
-below.
+Drop the constant $c$, we obtain:
 
 \be
 \frac{T(n)}{n+1} = \frac{T(n-1)}{n} + \frac{2c}{n+1}
 \ee
 
-Next we assign $n$ to $n-1$, $n-2$, ..., which gives us $n-1$ equations.
+Assign $n$ to $n-1$, $n-2$, ..., to give $n-1$ equations.
 
 \[
 \frac{T(n-1)}{n} = \frac{T(n-2)}{n-1} + \frac{2c}{n}
@@ -626,36 +406,26 @@ Next we assign $n$ to $n-1$, $n-2$, ..., which gives us $n-1$ equations.
 \frac{T(2)}{3} = \frac{T(1)}{2} + \frac{2c}{3}
 \]
 
-Sum all them up, and eliminate the same components in both sides, we can deduce to a function of $n$.
+Sum up and cancel the same components on both sides, we get a function of $n$.
 
 \be
 \frac{T(n)}{n+1} = \frac{T(1)}{2} + 2c \sum_{k=3}^{n+1} \frac{1}{k}
 \ee
 
-Using the harmonic series mentioned above, the final result is:
+Use the result of the harmonic series:
 
 \be
 O(\frac{T(n)}{n+1}) = O(\frac{T(1)}{2} + 2c \ln n + \gamma + \epsilon_n) = O(\lg n)
 \ee
 
-Thus
+We get the final result:
 
 \be
 O(T(n)) = O(n \lg n)
 \ee
 
-\begin{Exercise}
-\begin{itemize}
-\item Why Lomuto's methods performs poor when there are many duplicated elements?
-\end{itemize}
-\end{Exercise}
-
-% ================================================================
-% Minor Improvement for quick sort
-% ================================================================
-
-\section{Engineering Improvement}
-\index{Quick Sort!Engineering improvement}
+\subsection{Improvement}
+\index{Quick Sort!Improvement}
 
 Quick sort performs well in most cases as mentioned in previous section. However, there
 does exist the worst cases which downgrade the performance to quadratic. If the data is randomly
