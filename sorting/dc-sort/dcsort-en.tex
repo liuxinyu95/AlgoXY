@@ -491,55 +491,58 @@ pass xss (x:xs) = step xs [] [x] [] xss where
 \end{Haskell}
 
 \index{Quick Sort!2-way partition}
-The cases with many duplicated elements can also be handled imperatively. Robert Sedgewick presented a partition
-method \cite{qsort-impl}, \cite{Bentley}
-which holds two pointers. One moves from left to right, the other moves from right to left. The two pointers
-are initialized as the left and right boundaries of the array.
-
-When start partition, the left most element is selected as the pivot. Then the left pointer $i$
-keeps advancing to right until it meets any element which is not less than the pivot; On the other hand\footnote{We don't use `then' because it's quite OK to perform the two scans in parallel.}, The right pointer $j$ repeatedly scans to
-left until it meets any element which is not greater than the pivot.
-
-At this time, all elements before the left pointer $i$ are strictly less than the pivot, while all
-elements after the right pointer $j$ are greater than the pivot. $i$ points to an element which is
- either greater than or equal to the pivot; while $j$ points to an element which is either less than or
-equal to the pivot, the situation at this stage is illustrated in figure \ref{fig:partition-2-way} (a).
-
-In order to partition all elements less than or equal to the pivot to the left, and the others to the right,
-we can exchange the two elements pointed by $i$, and $j$. After that the scan can be resumed. We repeat this process until either $i$ meets $j$, or they overlap.
-
-At any time point during partition. There is invariant that all elements before $i$ (including the one
-pointed by $i$) are not greater than
-the pivot; while all elements after $j$ (including the one pointed by $j$) are not less than the pivot.
-The elements between $i$ and $j$ haven't been examined yet. This invariant is shown in figure \ref{fig:partition-2-way} (b).
+Robert Sedgewick developed two-way partition method\cite{qsort-impl}\cite{Bentley}. Use two pointers $i, j$ from left and right boundaries. Pick the first element as the pivot $p$. Advance $i$ to right till an element $\geq p$; while (in parallel) move $j$ to left till an element $\leq p$. At this time, all elements left to $i$ are less than the pivot ($< p$), while those right to $j$ are greater than the pivot ($> p$). $i$ points to one that $\geq p$, and $j$ points to one that $\leq p$, as shown in figure \ref{fig:partition-2-way} (a). To move all elements $\leq p$ to left, and the remaining to right, we exchange $x[i] \leftrightarrow x[j]$, then continue scan. We repeat this till $i$ and $j$ meet. At any time, we keep the invariant: All elements left to $i$ (include $i$) are $\leq p$; while all right to $j$ (include $j$) are $\geq p$. The elements between $i$ and $j$ are yet to scan, as shown in figure \ref{fig:partition-2-way} (b).
 
 \begin{figure}[htbp]
    \centering
-   \subcaptionbox{When pointer $i$, and $j$ stop}{\includegraphics[scale=0.5]{img/partition-2-way-inner}} \\
-   \subcaptionbox{Partition invariant}{\includegraphics[scale=0.5]{img/partition-2-way}} \\
-   \caption{Partition a range of array by using the left most element as the pivot.}
+   \subcaptionbox{When $i$ and $j$ stop}{
+      \begin{tikzpicture}[scale=0.8]
+      \draw (0, 0) rectangle (1, 1) node (xl) [pos=.5] {x[l]}
+            (1, 0) rectangle (5, 1) node (leq) [pos=.5] {... $< p$ ...}
+            (5, 0) rectangle (6, 1) node (xi) [pos=.5] {x[i]}
+            (6, 0) rectangle (8, 1) node (rest) [pos=.5] {... ? ...}
+            (8, 0) rectangle (9, 1) node (xj) [pos=.5] {x[j]}
+            (9, 0) rectangle (13, 1) node (ge) [pos=.5] {... $> p$ ...};
+      \draw (0, 2) node (pivot) {pivot $p$}
+            (5, 2) node (left) {$\geq p$}
+            (8, 2) node (right) {$\leq p$};
+      \draw[thick, ->] (pivot) edge (xl)
+                       (left) edge [bend right] (xi)
+                       (right) edge [bend right] (xj);
+      \end{tikzpicture}} \\
+   \subcaptionbox{Partition invariant}{
+      \begin{tikzpicture}[scale=0.8]
+      \draw (0, 0) rectangle (1, 1) node (xl) [pos=.5] {x[l]}
+            (1, 0) rectangle (5, 1) node (leq) [pos=.5] {... $\leq p$ ...}
+            (5, 0) rectangle (7, 1) node (rest) [pos=.5] {... ? ...}
+            (7, 0) rectangle (11, 1) node (ge) [pos=.5] {... $\geq p$ ...};
+      \fill [black] (5, 0) rectangle (5.1, 1) node (ibar) [pos=.5] {}
+                    (7, 0) rectangle (7.1, 1) node (jbar) [pos=.5] {};
+      \draw (0, 2) node (pivot) {pivot $p$}
+            (5, 2) node (i) {$i$}
+            (7, 2) node (j) {$j$};
+      \draw[thick, ->] (pivot) edge (xl)
+                       (i) edge [bend right] (ibar)
+                       (j) edge [bend right] (jbar);
+      \end{tikzpicture}} \\
+   \caption{2-way scan}
    \label{fig:partition-2-way}
 \end{figure}
 
-After the left pointer $i$ meets the right pointer $j$, or they overlap each other, we need one extra exchanging
-to move the pivot located at the first position to the correct place which is pointed by $j$. Next, the
-elements between the lower bound and $j$ as well as the sub slice between $i$ and the upper bound of the array
-are recursively sorted.
-
-This algorithm can be described as the following.
+When $i$ meets $j$, we need an extra exchange, swap the pivot $p$ to position $j$. Then recursive sort sub-array $A[l ... j)$ and $A[i ... u)$.
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$} \Comment{sort range $[l, u)$}
-  \If{$u - l > 1$} \Comment{More than 1 element for non-trivial case}
+  \If{$u - l > 1$} \Comment{At least 2 elements}
     \State $i \gets l$, $j \gets u$
     \State $pivot \gets A[l]$
     \Loop
       \Repeat
         \State $i \gets i + 1$
-      \Until{$A[i] \geq pivot$} \Comment{Need handle error case that $i \geq u$ in fact.}
+      \Until{$A[i] \geq pivot$} \Comment{Ignore $i \geq u$}
       \Repeat
         \State $j \gets j - 1$
-      \Until{$A[j] \leq pivot$} \Comment{Need handle error case that $j < l$ in fact.}
+      \Until{$A[j] \leq pivot$} \Comment{Ignore $j < l$}
       \If{$j < i$}
         \State break
       \EndIf
@@ -552,34 +555,6 @@ This algorithm can be described as the following.
 \EndProcedure
 \end{algorithmic}
 
-Consider the extreme case that all elements are equal, this in-place quick sort will partition
-the list to two equal length sub lists although it takes $\frac{n}{2}$ unnecessary swaps.
-As the partition is balanced, the overall performance is $O(n \lg n)$, which avoid downgrading
-to quadratic. The following ANSI C example program implements this algorithm.
-
-\lstset{language=C}
-\begin{lstlisting}
-void qsort(Key* xs, int l, int u) {
-    int i, j, pivot;
-    if (l < u - 1) {
-        pivot = i = l; j = u;
-        while (1) {
-            while (i < u && xs[++i] < xs[pivot]);
-            while (j >=l && xs[pivot] < xs[--j]);
-            if (j < i) break;
-            swap(xs[i], xs[j]);
-        }
-        swap(xs[pivot], xs[j]);
-        qsort(xs, l, j);
-        qsort(xs, i, u);
-    }
-}
-\end{lstlisting}
-
-Comparing this algorithm with the basic version based on N. Lumoto's partition method, we can find
-that it swaps fewer elements, because it skips those have already in proper sides of the pivot.
-
-\subsubsection{3-way partition}
 \index{Quick Sort!3-way partition}
 It's obviously that, we should avoid those unnecessary swapping for the duplicated elements. What's more,
 the algorithm can be developed with the idea of ternary sort (as known as 3-way partition in some
