@@ -453,92 +453,43 @@ G = [ y | y \in xs, y > x ] \\
 \end{cases}
 \]
 
-Note that the comparison between elements must support abstract `less-than' and
-`equal-to' operations. The basic version of ternary sort takes linear $O(n)$ time to
-concatenate the three sub lists. It can be improved by using the standard
-techniques of accumulator.
-
-Suppose function $sort'(L, A)$ is the accumulated ternary quick sort definition, that $L$ is the sequence
-to be sorted, and the accumulator $A$ contains the intermediate sorted result so far.
-We initialize the sorting with an empty accumulator: $sort(L) = sort'(L, \phi)$.
-
-It's easy to give the trivial edge cases like below.
-
-\[
-sort'(L, A) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  A & L = \phi \\
-  ... & otherwise
-  \end{array}
-\right.
-\]
-
-For the recursive case, as the ternary partition splits to three sub lists $S, E, G$, only $S$ and $G$
-need recursive sort, $E$ contains all elements equal to the pivot, which is in correct order thus
-needn't to be sorted any more. The idea is to sort $G$ with accumulator $A$, then concatenate it behind
-$E$, then use this result as the new accumulator, and start to sort $S$:
+To concatenate three lists in linear time, we can use an accumulator: $qsort = sort\ [\ ]$, where:
 
 \be
-sort'(L, A) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  A & L = \phi \\
-  sort(S, E \cup sort(G, A)) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+sort\ A\ [\ ] & = & A \\
+sort\ A\ (x \cons xs) & = & sort\ (E \doubleplus sort\ A\ G)\ S \\
+\end{array}
 \ee
 
-The partition can also be realized with accumulators. It is similar to what has been developed for the
-basic version of quick sort. Note that we can't just pass only one predication for pivot comparison.
-It actually needs two, one for less-than, the other for equality testing. For the sake of brevity,
-we pass the pivot element instead.
+We partition the list in three parts: $S, E, G$, where $E$ contains elements of same value, hence sorted. We first sort $G$ with accumulator $A$, append the result to $E$ as the new accumulator, and use it to sort $S$. We also improve the partition with accumulator:
 
 \be
-partition(p, L, S, E, G) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (S, E, G) & L = \phi \\
-  partition(p, L', \{l_1\} \cup S, E, G) & l_1 < p \\
-  partition(p, L', S, \{l_1\} \cup E, G) & l_1 = p \\
-  partition(p, L', S, E, \{ l_1 \} \cup G) & p < l_1
-  \end{array}
-\right.
+\begin{array}{rcl}
+part\ S\ E\ G\ x\ [\ ] & = & (S, E, G) \\
+part\ S\ E\ G\ x\ (y \cons ys) & = & \begin{cases}
+  y < x: & (y \cons S, E, G) \\
+  y = x: & (S, y \cons E, G) \\
+  y > x: & (S, E, y \cons G) \\
+  \end{cases} \\
+\end{array}
 \ee
 
-Where $l_1$ is the first element in $L$ if $L$ isn't empty, and $L'$ contains all rest elements except for $l_1$.
-Below Haskell program implements this algorithm. It starts the recursive sorting immediately in the edge
-case of parition.
+Richard Bird developed another improvement\cite{fp-pearls}, instead concatenate the
+recursive sort results, put them in a list and concatenate finally:
 
-\lstset{language=Haskell}
-\begin{lstlisting}
-sort xs = sort' xs []
+\begin{Haskell}
+sort :: (Ord a) => [a] -> [a]
+sort = concat . (pass [])
 
-sort' []     r = r
-sort' (x:xs) r = part xs [] [x] [] r where
-    part [] as bs cs r = sort' as (bs ++ sort' cs r)
-    part (x':xs') as bs cs r | x' <  x = part xs' (x':as) bs cs r
-                             | x' == x = part xs' as (x':bs) cs r
-                             | x' >  x = part xs' as bs (x':cs) r
-\end{lstlisting}
-
-Richard Bird developed another version in \cite{fp-pearls}, that instead of concatenating the
-recursively sorted results, it uses a list of sorted sub lists, and performs concatenation
-finally.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-sort xs = concat $ pass xs []
-
-pass [] xss = xss
-pass (x:xs) xss = step xs [] [x] [] xss where
-    step [] as bs cs xss = pass as (bs:pass cs xss)
+pass xss [] = xss
+pass xss (x:xs) = step xs [] [x] [] xss where
+    step [] as bs cs xss = pass (bs : pass xss cs) as
     step (x':xs') as bs cs xss | x' <  x = step xs' (x':as) bs cs xss
                                | x' == x = step xs' as (x':bs) cs xss
                                | x' >  x = step xs' as bs (x':cs) xss
-\end{lstlisting} %$
+\end{Haskell}
 
-\subsubsection{2-way partition}
 \index{Quick Sort!2-way partition}
 The cases with many duplicated elements can also be handled imperatively. Robert Sedgewick presented a partition
 method \cite{qsort-impl}, \cite{Bentley}
