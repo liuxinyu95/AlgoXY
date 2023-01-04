@@ -600,39 +600,26 @@ Consider the special case that all elements are equal, the array is partitioned 
    \label{fig:partition-3-way}
 \end{figure}
 
-The majority part of scan process is as same as the one developed by Robert Sedgewick, that
-$i$ and $j$ keep advancing toward each other until they meet any element which is greater then or equal
-to the pivot for $i$, or less than or equal to the pivot for $j$ respectively.
-At this time, if $i$ and $j$ don't meet each other or overlap, they are not only
-exchanged, but also examined if the elements pointed by them are identical to the pivot.
-Then necessary exchanging happens between $i$ and $p$, as well as $j$ and $q$.
-
-By the end of the partition process, the elements equal to the pivot need to be swapped to the middle
-part from the left and right ends. The number of such extra exchanging operations are proportion to the
-number of duplicated elements. It's zero operation if elements are unique which there is no overhead
-in the case. The final partition result is shown in figure \ref{fig:partition-3-way} (b). After that
-we only need recursively sort the `less-than' and `greater-than' sub slices.
-
-This algorithm can be given by modifying the 2-way partition as below.
+We scan from two sides, pause when $i$ reach an element $\geq$ the pivot, and $j$ reach one $\leq$ the pivot. If $i$ doesn't meet or pass $j$, we exchange $A[i] \leftrightarrow A[j]$, then check if $A[i]$ or $A[j]$ equals to the pivot. If yes, we exchange $A[i] \leftrightarrow A[p]$ or $A[j] \leftrightarrow A[q]$ respectively. Finally, we swap all the elements equal to the pivot to the middle. This step do nothing if all elements are unique. The partition result is shown as \ref{fig:partition-3-way} (b). We next only recursively sort the elements not equal to the pivot.
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
   \If{$u - l > 1$}
     \State $i \gets l$, $j \gets u$
-    \State $p \gets l$, $q \gets u$ \Comment{points to the boundaries for equal elements}
+    \State $p \gets l$, $q \gets u$ \Comment{point to the boundaries of duplicated elements}
     \State $pivot \gets A[l]$
     \Loop
       \Repeat
         \State $i \gets i + 1$
-      \Until{$A[i] \geq pivot$} \Comment{Skip the error handling for $i \geq u$}
+      \Until{$A[i] \geq pivot$} \Comment{Ignore $i \geq u$ case}
       \Repeat
         \State $j \gets j - 1$
-      \Until{$A[j] \leq pivot$} \Comment{Skip the error handling for $j < l$}
+      \Until{$A[j] \leq pivot$} \Comment{Ignore $j < l$ case}
       \If{$j \leq i$}
-        \State break \Comment{Note the difference form the above algorithm}
+        \State break
       \EndIf
       \State \textproc{Exchange} $A[i] \leftrightarrow A[j]$
-      \If{$A[i] = pivot$} \Comment{Handle the equal elements}
+      \If{$A[i] = pivot$} \Comment{duplicated element}
         \State $p \gets p + 1$
         \State \textproc{Exchange} $A[p] \leftrightarrow A[i]$
       \EndIf
@@ -641,10 +628,10 @@ This algorithm can be given by modifying the 2-way partition as below.
         \State \textproc{Exchange} $A[q] \leftrightarrow A[j]$
       \EndIf
     \EndLoop
-    \If{$i = j \land A[i] = pivot$} \Comment{A special case}
+    \If{$i = j$ and $A[i] = pivot$}
       \State $j \gets j - 1$, $i \gets i + 1$
     \EndIf
-    \For{$k$ from $l$ to $p$} \Comment{Swap the equal elements to the middle part}
+    \For{$k$ from $l$ to $p$} \Comment{Swap the duplicated elements to the middle}
       \State \textproc{Exchange} $A[k] \leftrightarrow A[j]$
       \State $j \gets j - 1$
     \EndFor
@@ -658,54 +645,27 @@ This algorithm can be given by modifying the 2-way partition as below.
 \EndProcedure
 \end{algorithmic}
 
-This algorithm can be translated to the following ANSI C example program.
-
-\lstset{language=C}
-\begin{lstlisting}
-void qsort2(Key* xs, int l, int u) {
-    int i, j, k, p, q, pivot;
-    if (l < u - 1) {
-        i = p = l; j = q = u; pivot = xs[l];
-        while (1) {
-            while (i < u && xs[++i] < pivot);
-            while (j >= l && pivot < xs[--j]);
-            if (j <= i) break;
-            swap(xs[i], xs[j]);
-            if (xs[i] == pivot) { ++p; swap(xs[p], xs[i]); }
-            if (xs[j] == pivot) { --q; swap(xs[q], xs[j]); }
-        }
-        if (i == j && xs[i] == pivot) { --j, ++i; }
-        for (k = l; k <= p; ++k, --j) swap(xs[k], xs[j]);
-        for (k = u-1; k >= q; --k, ++i) swap(xs[k], xs[i]);
-        qsort2(xs, l, j + 1);
-        qsort2(xs, i, u);
-    }
-}
-\end{lstlisting}
-
-It can be seen that the the algorithm turns to be a bit complex when it evolves to 3-way partition.
-There are some tricky edge cases should be handled with caution. Actually, we just need a ternary
-partition algorithm. This remind us the N. Lumoto's method, which is straightforward enough
-to be a start point.
-
-The idea is to change the invariant a bit. We still select the first element as the pivot,
-as shown in figure \ref{fig:partition-3-way-lumoto},
-at any time, the left most section contains elements which are strictly less than the pivot;
-the next section contains the elements equal to the pivot; the right most section holds all the
-elements which are strictly greater than the pivot. The boundaries of three sections are marked
-as $i$, $k$, and $j$ respectively.
-The rest part, which is between $k$ and $j$ are elements haven't been scanned yet.
-
-At the beginning of this algorithm, the `less-than' section is empty; the `equal-to' section
-contains only one element, which is the pivot; so that $i$ is initialized to the lower bound
-of the array, and $k$ points to the element next to $i$. The `greater-than' section is also
-initialized as empty, thus $j$ is set to the upper bound.
+It becomes complex when combine 2-way scan and ternary partition. We can change the one pass scan to ternary partition directly. Pick the first element as the pivot, as shown in figure \ref{fig:partition-3-way-lumoto}. At any time, the left part contains elements $< p$; the next part contains those $= p$; and the right part contains those $> p$. The boundaries are $i, k, j$. Elements between $[k, j)$ are yet to be partitioned. We scan from left to right. When start, the part $< p$ is empty; the part $= p$ has an element; $i$ points to the lower boundary, $k$ points to the next. The part $> p$ is empty too, $j$ points to the upper boundary.
 
 \begin{figure}[htbp]
    \centering
-   \includegraphics[scale=0.5]{img/partition-3-way-lumoto}
-   \caption{3-way partition based on N. Lumoto's method.}
-   \label{fig:partition-3-way-lumoto}
+      \begin{tikzpicture}[scale=0.8]
+      \draw (0, 0) rectangle (2, 1) node [pos=.5] {... $< p$ ...}
+            (2, 0) rectangle (4, 1) node [pos=.5] {... $= p$ ...}
+            (4, 0) rectangle (6, 1) node [pos=.5] {... ? ...}
+            (6, 0) rectangle (8, 1) node [pos=.5] {... $> p$ ...};
+      \fill [black] (2, 0) rectangle (2.1, 1) node (ibar) [pos=.5] {}
+                    (4, 0) rectangle (4.1, 1) node (kbar) [pos=.5] {}
+                    (6, 0) rectangle (6.1, 1) node (jbar) [pos=.5] {};
+      \draw (2, 2) node (i) {$i$}
+            (4, 2) node (k) {$k$}
+            (6, 2) node (j) {$j$};
+      \draw[thick, ->] (i) edge [bend right] (ibar)
+                       (k) edge [bend right] (kbar)
+                       (j) edge [bend left] (jbar);
+      \end{tikzpicture}
+   \caption{1 way scan ternary partition}
+   \label{fig:partition-3-way-lomuto}
 \end{figure}
 
 When the partition process starts, the element pointed by $k$ is examined. If it's equal to
