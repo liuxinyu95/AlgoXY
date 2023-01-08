@@ -714,26 +714,12 @@ Although ternary partition handles duplicated elements well, there are the worst
    \label{fig:worst-cases-2}
 \end{figure}
 
-Observing that the bad partition happens easily when blindly choose the first element as the pivot,
-there is a popular work around suggested by Robert Sedgwick in \cite{qsort-impl}. Instead of
-selecting the fixed position in the sequence, a small sampling helps to find a pivot which
-has lower possibility to cause a bad partition. One option is to examine the first element, the
-middle, and the last one, then choose the median of these three element. In the worst case,
-it can ensure that there is at least one element in the shorter partitioned sub list.
-
-Note that there is one tricky in real-world implementation. Since the index is typically represented
-in limited length words, it may cause overflow when calculating the middle index by
-the naive expression \texttt{(l + u) / 2}. In order to avoid this issue, it can be accessed
-as \texttt{l + (u - l) / 2}. There are two methods to find the median, one needs at most three
-comparisons \cite{3-way-part}; the other is to move the minimum value to the first location, the maximum value
-to the last location, and the median value to the meddle location by swapping. After that
-we can select the middle as the pivot.
-Below algorithm illustrated the second idea before calling the partition procedure.
+In these worst cases, the partition is unbalanced when choose the first element as the pivot. Robert Sedgwick improved the pivot selection\cite{qsort-impl}: Instead pick a fixed position, sample several elements to avoid bad pivot. We sample the first, the middle, and the last, pick the median as the pivot. We can either compare every two (total 3 times)\cite{3-way-part}, or swap the least one to head, swap the greatest one end, and move the median to the middle.
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
   \If{$u - l > 1$}
-    \State $m \gets \lfloor \frac{l + u}{2} \rfloor$ \Comment{Need handle overflow error in practice}
+    \State $m \gets \lfloor \dfrac{l + u}{2} \rfloor$ \Comment{or $l + \dfrac{u - l}{2}$ to void overflow}
     \If{$A[m] < A[l]$} \Comment{Ensure $A[l] \leq A[m]$}
       \State \textproc{Exchange} $A[l] \leftrightarrow A[m]$
     \EndIf
@@ -751,31 +737,7 @@ Below algorithm illustrated the second idea before calling the partition procedu
 \EndProcedure
 \end{algorithmic}
 
-It's obviously that this algorithm performs well in the 4 special worst cases given above.
-The imperative implementation of median-of-three is left as exercise to the reader.
-
-However, in purely functional settings, it's expensive to randomly access the middle and the last
-element. We can't directly translate the imperative median selection algorithm. The idea of
-taking a small sampling and then finding the median element as pivot can be realized alternatively
-by taking the first 3. For example, in the following Haskell program.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-qsort [] = []
-qsort [x] = [x]
-qsort [x, y] = [min x y, max x y]
-qsort (x:y:z:rest) = qsort (filter (< m) (s:rest)) ++ [m] ++ qsort (filter (>= m) (l:rest)) where
-    xs = [x, y, z]
-    [s, m, l] = [minimum xs, median xs, maximum xs]
-\end{lstlisting}
-
-Unfortunately, none of the above 4 worst cases can be well handled by this program, this is because
-the sampling is not good. We need telescope, but not microscope to profile the whole list to be
-partitioned. We'll see the functional way to solve the partition problem later.
-
-Except for the median-of-three, there is another popular engineering practice to get good partition
-result. instead of always taking the first element or the last one as the pivot. One alternative is
-to randomly select one. For example as the following modification.
+This implementation handles the above four worst cases well. We call it `median of three'. Alternatively, we can randomly pick pivot:
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
@@ -788,26 +750,9 @@ to randomly select one. For example as the following modification.
 \EndProcedure
 \end{algorithmic}
 
-The function \textproc{Random}($l, u$) returns a random integer $i$ between $l$ and $u$, that
-$l \leq i < u$. The element at this position is exchanged with the first one, so that it is
-selected as the pivot for the further partition. This algorithm is called {\em random quick sort} \cite{CLRS}.
+Where \textproc{Random}($l, u$) returns integer $l \leq i < u$ randomly. We swap $A[i]$ with the first element as the pivot. This method is called {\em random quick sort} \cite{CLRS}. Theoretically, neither `median of three' nor random quick sort can avoid the worst case completely. If the sequence is random, it's same to choose any one as the pivot. Nonetheless, these improvements are widely used in engineering practice.
 
-Theoretically, neither median-of-three nor random quick sort can avoid the worst case completely.
-If the sequence to be sorted is randomly distributed, no matter choosing the first one as the
-pivot, or the any other arbitrary one are equally in effect. Considering the underlying data
-structure of the sequence is singly linked-list in functional setting, it's expensive to
-strictly apply the idea of random quick sort in purely functional approach.
-
-Even with this bad news, the engineering improvement still makes sense in real world programming.
-
-\section{Other engineering practice}
-\index{Quick Sort!Insertion sort fall-back}
-There is some other engineering practice which doesn't focus on solving the bad partition issue.
-Robert Sedgewick observed that when the list to be sorted is short, the overhead introduced by
-quick sort is relative expense, on the other hand, the insertion sort performs better in such
-case \cite{Bentley}, \cite{3-way-part}. Sedgewick, Bentley and McIlroy tried different
-threshold, as known as `Cut-Off', that when
-there are lesson than `Cut-Off' elements, the sort algorithm falls back to insertion sort.
+There are other improvements besides partition. Sedgewick found quick sort had overhead when the list is short, while insert sort performed better\cite{Bentley}\cite{3-way-part}. Sedgewick, Bentley and McIlroy evaluated varies thresholds, as `cut-off'. When the elements are less than the `cut-off', then switch to insert sort.
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
@@ -819,19 +764,7 @@ there are lesson than `Cut-Off' elements, the sort algorithm falls back to inser
 \EndProcedure
 \end{algorithmic}
 
-The implementation of this improvement is left as exercise to the reader.
-
-\begin{Exercise}
-\begin{itemize}
-\item Can you figure out more quick sort worst cases besides the four given in this section?
-\item Implement median-of-three method in your favorite imperative programming language.
-\item Implement random quick sort in your favorite imperative programming language.
-\item Implement the algorithm which falls back to insertion sort when the length of list is
-small in both imperative and functional approach.
-\end{itemize}
-\end{Exercise}
-
-\section{Side words}
+\subsection{quick sort and tree sort}
 It's sometimes called `true quick sort' if the implementation equipped with most of
 the engineering practice we introduced, including insertion sort fall-back with cut-off,
 in-place exchanging, choose the pivot by median-of-three method, 3-way-partition.
