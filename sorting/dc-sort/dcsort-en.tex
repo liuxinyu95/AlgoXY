@@ -1025,63 +1025,32 @@ To avoid additional space, we consider how to reuse the array as the work area. 
 \end{algorithmic}
 
 \index{Merge Sort!Work area}
-However, this naive solution downgrades merge sort overall performance to quadratic $O(n^2)$! This is because
-that array shifting is a linear operation. It is proportion to the length of elements in
-the first sorted sub array which haven't been compared so far.
-
-The following ANSI C program based on this algorithm runs very slow, that it takes about 12 times slower than
-the previous version when sorting 10,000 random numbers.
-
-\lstset{language=C}
-\begin{lstlisting}
-void naive_merge(Key* xs, int l, int m, int u) {
-    int i; Key y;
-    for(; l < m && m < u; ++l)
-        if (!(xs[l] < xs[m])) {
-            y = xs[m++];
-            for (i = m - 1; i > l; --i) /* shift */
-                xs[i] = xs[i-1];
-            xs[l] = y;
-        }
-}
-
-void msort3(Key* xs, int l, int u) {
-    int m;
-    if (u - l > 1) {
-        m = l + (u - l) / 2;
-        msort3(xs, l, m);
-        msort3(xs, m, u);
-        naive_merge(xs, l, m, u);
-    }
-}
-\end{lstlisting}
-
-\subsection{in-place working area}
-\index{Merge Sort!In-place working area}
-In order to implement the in-place merge sort in $O(n \lg n)$ time, when sorting a sub array, the rest part of
-the array must be reused as working area for merging. As the elements stored in the working area, will be sorted
-later, they can't be overwritten. We can modify the previous algorithm, which duplicates extra spaces for merging,
-a bit to achieve this. The idea is that, every time when we compare the first elements in the two sorted sub
-arrays, if we want to put the less element to the target position in the working area, we in-turn exchange what
-sored in the working area with this element. Thus after merging, the two sub arrays store what the working area
-previously contains. This idea can be illustrated in figure \ref{fig:merge-workarea}.
+However, the in-place shift and merge downgrades the performance to $O(n^2)$ time. Array shift takes linear time, proportion to the length of $X$. When sort a sub-array, our idea is to reuse the remaining part as the work area, and avoid overwriting the elements in it. When compare elements from sorted sub-array $A$ and $B$, we chose the less one and store it in the work area, but we need exchange the element out to free up the cell. After merge, $A$ and $B$ together store the content of the original work area, as shown in figure \ref{fig:merge-workarea}.
 
 \begin{figure}[htbp]
  \centering
- \includegraphics[scale=0.8]{img/merge-workarea}
- \caption{Merge without overwriting working area.}
+      \begin{tikzpicture}[scale=0.8]
+      \draw (0, 2) rectangle (3, 3) node [pos=.5] {... reuse ...}
+            (3, 2) rectangle (4, 3) node (ai) [pos=.5] {$A[i]$}
+            (4, 2) rectangle (5, 3) node [pos=.5] {...}
+            (7, 2) rectangle (10, 3) node [pos=.5] {... reuse ...}
+            (10, 2) rectangle (11, 3) node (bj) [pos=.5] {$B[j]$}
+            (11, 2) rectangle (12, 3) node [pos=.5] {...}
+            (0, 0) rectangle (3, 1) node [pos=.5] {... merged ...}
+            (3, 0) rectangle (4, 1) node (ck) [pos=.5] {$C[k]$}
+            (4, 0) rectangle (5, 1) node [pos=.5] {...};
+      \draw[thick, <->] (ai) edge [bend left] node [above] {compare} (bj)
+                        (ai) edge node [right] {if $A[i] < B[j]$ then exchange $A[i] \leftrightarrow C[k]$} (ck);
+      \end{tikzpicture}
+ \caption{Merge and swap}
  \label{fig:merge-workarea}
 \end{figure}
 
-In our algorithm, both the two sorted sub arrays, and the working area for merging are parts of the
-original array to be sorted. we need supply the following arguments when merging: the start points and end
-points of the sorted sub arrays, which can be represented as ranges; and the start point of the working
-area. The following algorithm for example, uses $[a, b)$ to indicate the range include $a$,
-exclude $b$. It merges sorted range $[i, m)$ and range $[j, n)$ to the working area starts from $k$.
+The sorted array $A$, $B$, and work area $C$ are all part of the array. We pass the start, end positions of $A$ and $B$ as ranges $[i, m)$, $[j, n)$\footnote{range $[a, b)$ includes $a$, but excludes $b$.}. The work area starts from $k$.
 
 \begin{algorithmic}[1]
 \Procedure{Merge}{$A, [i, m), [j, n), k$}
-  \While{$i < m \land j < n$}
+  \While{$i < m$ and $j < n$}
     \If{$A[i] < A[j]$}
       \State \textproc{Exchange} $A[k] \leftrightarrow A[i]$
       \State $i \gets i + 1$
@@ -1104,37 +1073,22 @@ exclude $b$. It merges sorted range $[i, m)$ and range $[j, n)$ to the working a
 \EndProcedure
 \end{algorithmic}
 
-Note that, the following two constraints must be satisfied when merging:
+The work area satisfies below two rules:
 
 \begin{enumerate}
-\item The working area should be within the bounds of the array. In other words, it should be big
-enough to hold elements exchanged in without causing any out-of-bound error;
-\item The working area can be overlapped with either of the two sorted arrays, however, it should
-be ensured that there are not any unmerged elements being overwritten;
+\item The work area has sufficient size to hold elements swapped in;
+\item The work area can overlap with either sorted sub-arrays, but not overwrite any unmerged elements.
 \end{enumerate}
 
-This algorithm can be implemented in ANSI C as the following example.
-
-\lstset{language=C}
-\begin{lstlisting}
-void wmerge(Key* xs, int i, int m, int j, int n, int w) {
-    while (i < m && j < n)
-        swap(xs, w++, xs[i] < xs[j] ? i++ : j++);
-    while (i < m)
-        swap(xs, w++, i++);
-    while (j < n)
-        swap(xs, w++, j++);
-}
-\end{lstlisting}
-
-With this merging algorithm defined, it's easy to imagine a solution, which can sort
-half of the array; The next question is, how to deal with the rest of the unsorted part
-stored in the working area as shown in figure \ref{fig:merge-in-place-start}?
+We can use half array as the work area to sort the other half, as shown in figure \ref{fig:merge-in-place-start}.
 
 \begin{figure}[htbp]
  \centering
- \includegraphics[scale=0.8]{img/merge-in-place-start}
- \caption{Half of the array is sorted.}
+      \begin{tikzpicture}[scale=0.8]
+      \draw (0, 0) rectangle (3, 1) node [pos=.5] {... unsorted ...}
+            (3, 0) rectangle (6, 1) node [pos=.5] {... sorted ...};
+      \end{tikzpicture} \\
+ \caption{Merge and sort half array}
  \label{fig:merge-in-place-start}
 \end{figure}
 
