@@ -840,95 +840,35 @@ halve = foldr f ([], []) where
 \subsection{Merge}
 \index{Merge Sort!Merge}
 
-There are two `black-boxes' in the above merge sort definition, one is the $splitAt$ function,
-which splits a list at a given position; the other is the $merge$ function, which can
-merge two sorted lists into one.
-
-As presented in the appendix of this book, it's trivial to realize $splitAt$
-in imperative settings by using random access. However, in functional settings, it's typically
-realized as a linear algorithm:
-
-\be
-splitAt(n, L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, L) & n = 0 \\
-  (\{l_1\} \cup A, B) & otherwise, (A, B) = splitAt(n - 1, L')
-  \end{array}
-\right.
-\ee
-
-Where $l_1$ is the first element of $L$, and $L'$ represents the rest elements except of $l_1$ if $L$
-isn't empty.
-
-The idea of merge can be illustrated as in figure \ref{fig:merge}. Consider two lines of kids.
-The kids have already stood in order of their heights. that the shortest one stands at the
-first, then a taller one, the tallest one stands at the end of the line.
+Merge is demonstrated as figure \ref{fig:merge}. Consider two groups of kids, already ordered from short to tall. They need pass a gate, one kid per time. We arrange the first kid from each group to compare, the shorter one pass the gate. Repeat this till a group pass the gate, then the remaining kids pass the gate one by one.
 
 \begin{figure}[htbp]
  \centering
- \includegraphics[scale=0.3]{img/merge}
- \caption{Two lines of kids pass a door.}
+ \includegraphics[scale=0.3]{img/merge2w}
+ \caption{Merge}
  \label{fig:merge}
 \end{figure}
 
-Now let's ask the kids to pass a door one by one, every time there can be at most one kid
-pass the door. The kids must pass this door in the order of their height. The one can't
-pass the door before all the kids who are shorter than him/her.
-
-Since the two lines of kids have already been `sorted', the solution is to ask the first
-two kids, one from each line, compare their height, and let the shorter kid pass the door;
-Then they repeat this step until one line is empty, after that, all the rest kids can
-pass the door one by one.
-
-This idea can be formalized in the following equation.
-
 \be
-merge(A, B) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  A & B = \phi \\
-  B & A = \phi \\
-  \{a_1\} \cup merge(A', B) & a_1 \leq b_1 \\
-  \{b_1\} \cup merge(A, B') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+\textit{merge}\ [\ ]\ bs & = & bs \\
+\textit{merge}\ as\ [\ ] & = & as \\
+\textit{merge}\ (a \cons as)\ (b \cons bs) & = & \begin{cases}
+  a < b: & a : \textit{merge}\ as\ (b \cons bs) \\
+  \text{otherwise}: & b : \textit{merge}\ (a \cons as)\ bs
+  \end{cases}
+\end{array}
 \ee
 
-Where $a_1$ and $b_1$ are the first elements in list $A$ and $B$; $A'$ and $B'$ are the
-rest elements except for the first ones respectively. The first two cases are trivial
-edge cases. That merge one sorted list with an empty list results the same sorted list;
-Otherwise, if both lists are non-empty, we take the first elements from the two lists,
-compare them, and use the minimum as the first one of the result, then recursively
-merge the rest.
-
-With $merge$ defined, the basic version of merge sort can be implemented like the following
-Haskell example code.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-msort [] = []
-msort [x] = [x]
-msort xs = merge (msort as) (msort bs) where
-  (as, bs) = splitAt (length xs `div` 2) xs
-
-merge xs [] = xs
-merge [] ys = ys
-merge (x:xs) (y:ys) | x <= y = x : merge xs (y:ys)
-                    | x >  y = y : merge (x:xs) ys
-\end{lstlisting}
-
-Note that, the implementation differs from the algorithm definition that it treats the singleton
-list as trivial edge case as well.
-
-Merge sort can also be realized imperatively. The basic version can be developed as the below algorithm.
+For array, we directly cut at the middle position, recursively sort two halves, then merge:
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A$}
-  \If{$|A| > 1$}
-    \State $m \gets \lfloor \frac{|A|}{2} \rfloor$
+  \State $n \gets |A|$
+  \If{$n > 1$}
+    \State $m \gets \lfloor \dfrac{n}{2} \rfloor$
     \State $X \gets$ \Call{Copy-Array}{$A[1...m]$}
-    \State $Y \gets$ \Call{Copy-Array}{$A[m+1...|A|]$}
+    \State $Y \gets$ \Call{Copy-Array}{$A[m+1...n]$}
     \State \Call{Sort}{$X$}
     \State \Call{Sort}{$Y$}
     \State \Call{Merge}{$A, X, Y$}
@@ -936,26 +876,13 @@ Merge sort can also be realized imperatively. The basic version can be developed
 \EndProcedure
 \end{algorithmic}
 
-When the array to be sorted contains at least two elements, the non-trivial sorting process starts.
-It first copy the first half to a new created array $X$, and the second half to a second new array $Y$.
-Recursively sort them; and finally merge the sorted result back to $A$.
-
-This version uses the same amount of extra spaces of $A$. This is because the \textproc{Merge} algorithm
-isn't in-place at the moment. We'll introduce the imperative in-place merge sort in later section.
-
-The merge process almost does the same thing as the functional definition. There is a verbose version
-and a simplified version by using sentinel.
-
-The verbose merge algorithm continuously checks the element from the two input arrays, picks the smaller one
-and puts it back to the result array $A$, it then advances along the arrays respectively until either
-one input array is exhausted. After that, the algorithm appends the rest of the elements in the other
-input array to $A$.
+We allocated additional space of the same size of $A$ because \textproc{Merge} is not in-pace. We repeatedly compare elements from $X$ and $Y$, pick the less one to $A$. When either sub-array finish, we add all the remaining to $A$.
 
 \begin{algorithmic}[1]
 \Procedure{Merge}{$A, X, Y$}
   \State $i \gets 1, j\gets 1, k\gets 1$
   \State $m \gets |X|, n \gets |Y|$
-  \While{$i \leq m \land j \leq n$}
+  \While{$i \leq m$ and $j \leq n$}
     \If{$X[i] < Y[j]$}
       \State $A[k] \gets X[i]$
       \State $i \gets i + 1$
@@ -978,32 +905,9 @@ input array to $A$.
 \EndProcedure
 \end{algorithmic}
 
-Although this algorithm is a bit verbose, it can be short in some programming environment with enough tools
-to manipulate array. The following Python program is an example.
+\subsection{Performance}
+\index{Merge Sort!Performance}
 
-\lstset{language=Python}
-\begin{lstlisting}
-def msort(xs):
-    n = len(xs)
-    if n > 1:
-        ys = [x for x in xs[:n/2]]
-        zs = [x for x in xs[n/2:]]
-        ys = msort(ys)
-        zs = msort(zs)
-        xs = merge(xs, ys, zs)
-    return xs
-
-def merge(xs, ys, zs):
-    i = 0
-    while ys != [] and zs != []:
-        xs[i] = ys.pop(0) if ys[0] < zs[0] else zs.pop(0)
-        i = i + 1
-    xs[i:] = ys if ys !=[] else zs
-    return xs
-\end{lstlisting}
-
-\subsubsection{Performance}
-\index{Merge Sort!Performance analysis}
 Before dive into the improvement of this basic version, let's analyze the performance of merge sort.
 The algorithm contains two steps, divide step, and merge step. In divide step, the sequence to be
 sorted is always divided into two sub sequences with the same length. If we draw a similar partition tree
