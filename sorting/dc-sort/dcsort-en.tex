@@ -908,68 +908,25 @@ We allocated additional space of the same size of $A$ because \textproc{Merge} i
 \subsection{Performance}
 \index{Merge Sort!Performance}
 
-Before dive into the improvement of this basic version, let's analyze the performance of merge sort.
-The algorithm contains two steps, divide step, and merge step. In divide step, the sequence to be
-sorted is always divided into two sub sequences with the same length. If we draw a similar partition tree
-as what we did for quick sort, it can be found this tree is a perfectly balanced binary tree as shown in
-figure \ref{fig:qsort-best}. Thus the height of this tree is $O(\lg n)$. It means the recursion depth
-of merge sort is bound to $O(\lg n)$. Merge happens in every level. It's intuitive to analyze the
-merge algorithm, that it compare elements from two input sequences in pairs, after one sequence is fully examined
-the rest one is copied one by one to the result, thus it's a linear algorithm proportion to the length of
-the sequence. Based on this facts, denote $T(n)$ the time for sorting the sequence with length $n$,
-we can write the recursive time cost as below.
+Merge sort has two steps: partition and merge. We always halve the sequence. The partition tree is a balanced binary tree as shown in figure \ref{fig:qsort-best}. The height is $O(\lg n)$, so as the recursion depth. The merge happens at every level, compares elements one by one from each sorted sub-sequence. Hence merge takes linear time. For sequence of length $n$, let $T(n)$ be the merge sort time, we have below recursive breakdown:
 
 \be
-\renewcommand*{\arraystretch}{2}
-\begin{array}{rl}
-T(n) & = \displaystyle T(\frac{n}{2}) + T(\frac{n}{2}) + c n \\
-     & = \displaystyle 2 T(\frac{n}{2}) + c n
-\end{array}
+T(n) = T(\dfrac{n}{2}) + T(\dfrac{n}{2}) + c n = 2 T(\dfrac{n}{2}) + c n
 \ee
 
-It states that the cost consists of three parts: merge sort the first half takes $T(\frac{n}{2})$,
-merge sort the second half takes also $T(\frac{n}{2})$, merge the two results takes $c n$, where $c$
-is some constant. Solve this equation gives the result as $O(n \lg n)$.
+The time consists of three parts: sort the first half, sort the second half, each takes $T(\dfrac{n}{2})$ time; and merge in $c n$ time, where $c$ is a constant. Solving this equation gives $O(n \lg n)$ result. The other performance factor is space. Varies implementation differ a lot. The basic merge sort allocates the space of the same size as the array in each recursion, copies elements and sorts, then release the space. When reach to the deepest recursion, consume the largest space of $O(n \lg n)$.
 
-Note that, this performance doesn't vary in all cases, as merge sort always uniformly divides the input.
+\subsubsection{Improvement}
+\index{Merge Sort!Work area}
 
-Another significant performance indicator is space occupation. However, it varies a lot in different
-merge sort implementation. The detail space bounds analysis will be explained in every detailed variants
-later.
-
-For the basic imperative merge sort, observe that it demands same amount of spaces as the input array
-in every recursion, copies the original elements to them for recursive sort, and these spaces can
-be released after this level of recursion. So the peak space requirement happens when the recursion
-enters to the deepest level, which is $O(n \lg n)$.
-
-The functional merge sort consume much less than this amount, because the underlying data structure
-of the sequence is linked-list. Thus it needn't extra spaces for merge\footnote{The complex effects
-caused by lazy evaluation is ignored here, please refer to \cite{algo-fp} for detail}.
-The only spaces requirement is for book-keeping the stack for recursive calls. This can be
-seen in the later explanation of even-odd split algorithm.
-
-\subsubsection{Minor improvement}
-\index{Merge Sort!Work area allocation}
-We'll next improve the basic merge sort bit by bit for both the functional and imperative realizations.
-The first observation is that the imperative merge algorithm is a bit verbose. \cite{CLRS} presents
-an elegant simplification by using positive $\infty$ as the sentinel. That we append $\infty$ as
-the last element to the both ordered arrays for merging\footnote{For sorting in monotonic non-increasing order,
-$-\infty$ can be used instead}. Thus we needn't test which array is not exhausted. Figure \ref{fig:merge-with-sentinel}
-illustrates this idea.
-
-\begin{figure}[htbp]
- \centering
- \includegraphics[scale=0.8]{img/merge-with-sentinel}
- \caption{Merge with $\infty$ as sentinels.}
- \label{fig:merge-with-sentinel}
-\end{figure}
+To simplify merge, we append $\infty$ to $X$ and $Y$\footnote{$-\infty$ for descending order}.
 
 \begin{algorithmic}[1]
 \Procedure{Merge}{$A, X, Y$}
   \State \Call{Append}{$X, \infty$}
   \State \Call{Append}{$Y, \infty$}
-  \State $i \gets 1, j\gets 1$
-  \For{$k \gets$ from 1 to $|A|$}
+  \State $i \gets 1, j\gets 1, n \gets |A|$
+  \For{$k \gets$ from 1 to $n$}
     \If{$X[i] < Y[j]$}
       \State $A[k] \gets X[i]$
       \State $i \gets i + 1$
@@ -981,68 +938,30 @@ illustrates this idea.
 \EndProcedure
 \end{algorithmic}
 
-The following ANSI C program imlements this idea. It embeds the merge inside. \texttt{INF} is defined
-as a big constant number with the same type of \texttt{Key}. Where the type can either be defined elsewhere
-or we can abstract the type information by passing the comparator as parameter. We skip these
-implementation and language details here.
-
-\lstset{language=C}
-\begin{lstlisting}
-void msort(Key* xs, int l, int u) {
-    int i, j, m;
-    Key *as, *bs;
-    if (u - l > 1) {
-        m = l + (u - l) / 2;  /* avoid int overflow */
-        msort(xs, l, m);
-        msort(xs, m, u);
-        as = (Key*) malloc(sizeof(Key) * (m - l + 1));
-        bs = (Key*) malloc(sizeof(Key) * (u - m + 1));
-        memcpy((void*)as, (void*)(xs + l), sizeof(Key) * (m - l));
-        memcpy((void*)bs, (void*)(xs + m), sizeof(Key) * (u - m));
-        as[m - l] = bs[u - m] = INF;
-        for (i = j = 0; l < u; ++l)
-            xs[l] = as[i] < bs[j] ? as[i++] : bs[j++];
-        free(as);
-        free(bs);
-    }
-}
-\end{lstlisting}
-
-Running this program takes much more time than the quick sort. Besides the major reason we'll explain later,
-one problem is that this version frequently allocates and releases memories for merging. While memory
-allocation is one of the well known bottle-neck in real world as mentioned by Bentley in \cite{Bentley}.
-One solution to address this issue is to allocate another array with the same size to the original one
-as the working area. The recursive sort for the first and second halves needn't allocate any more
-extra spaces, but use the working area when merging. Finally, the algorithm copies
-the merged result back.
-
-This idea can be expressed as the following modified algorithm.
+It's expensive to allocate/release space repeatedly\cite{Bentley}. We can pre-allocate a work area of the same size as $A$. Reuse it during recursive merge, and finally release it.
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{A}
-  \State $B \gets $ \Call{Create-Array}{$|A|$}
-  \State \Call{Sort'}{$A, B, 1, |A|$}
+  \State $n \gets |A|$
+  \State \textproc{Sort$'$}$(A$, \Call{Create-Array}{$n$}, $1, n)$
 \EndProcedure
 \Statex
-\Procedure{Sort'}{$A, B, l, u$}
+\Procedure{Sort$'$}{$A, B, l, u$}
   \If{$u - l > 0$}
-    \State $m \gets \lfloor \frac{l + u}{2} \rfloor$
-    \State \Call{Sort'}{$A, B, l, m$}
-    \State \Call{Sort'}{$A, B, m + 1, u$}
-    \State \Call{Merge'}{$A, B, l, m, u$}
+    \State $m \gets \lfloor \dfrac{l + u}{2} \rfloor$
+    \State \Call{Sort$'$}{$A, B, l, m$}
+    \State \Call{Sort$'$}{$A, B, m + 1, u$}
+    \State \Call{Merge$'$}{$A, B, l, m, u$}
   \EndIf
 \EndProcedure
 \end{algorithmic}
 
-This algorithm duplicates another array, and pass it along with the original array to be sorted
-to \textproc{Sort'} algorithm. In real implementation, this working area should be released
-either manually, or by some automatic tool such as GC (Garbage collection).
-The modified algorithm \textproc{Merge'} also accepts a working area as parameter.
+We need update \textproc{Merge$'$} with the passed in work area:
 
 \begin{algorithmic}[1]
-\Procedure{Merge'}{$A, B, l, m, u$}
+\Procedure{Merge$'$}{$A, B, l, m, u$}
   \State $i \gets l, j \gets m + 1, k \gets l$
-  \While{$i \leq m \land j \leq u$}
+  \While{$i \leq m$ and $j \leq u$}
     \If{$A[i] < A[j]$}
       \State $B[k] \gets A[i]$
       \State $i \gets i + 1$
@@ -1062,109 +981,30 @@ The modified algorithm \textproc{Merge'} also accepts a working area as paramete
     \State $k \gets k + 1$
     \State $j \gets j + 1$
   \EndWhile
-  \For{$i \gets$ from $l$ to $u$} \Comment{Copy back}
+  \For{$i \gets$ from $l$ to $u$} \Comment{copy back}
     \State $A[i] \gets B[i]$
   \EndFor
 \EndProcedure
 \end{algorithmic}
 
-By using this minor improvement, the space requirement reduced to $O(n)$ from $O(n \lg n)$.
-The following ANSI C program implements this minor improvement. For illustration purpose,
-we manually copy the merged result back to the original array in a loop. This can also
-be realized by using standard library provided tool, such as \texttt{memcpy}.
+This implementation reduces the space from $O(n \lg n)$ to $O(n)$, improve performance 20\% to 25\% for 100,000 numeric elements.
 
-\lstset{language=C}
-\begin{lstlisting}
-void merge(Key* xs, Key* ys, int l, int m, int u) {
-    int i, j, k;
-    i = k = l; j = m;
-    while (i < m && j < u)
-        ys[k++] = xs[i] < xs[j] ? xs[i++] : xs[j++];
-    while (i < m)
-        ys[k++] = xs[i++];
-    while (j < u)
-        ys[k++] = xs[j++];
-    for(; l < u; ++l)
-        xs[l] = ys[l];
-}
-
-void msort(Key* xs, Key* ys, int l, int u) {
-    int m;
-    if (u - l > 1) {
-        m = l + (u - l) / 2;
-        msort(xs, ys, l, m);
-        msort(xs, ys, m, u);
-        merge(xs, ys, l, m, u);
-    }
-}
-
-void sort(Key* xs, int l, int u) {
-    Key* ys = (Key*) malloc(sizeof(Key) * (u - l));
-    kmsort(xs, ys, l, u);
-    free(ys);
-}
-\end{lstlisting}
-
-This new version runs faster than the previous one. In my test machine, it speeds up about 20\% to 25\% when sorting
-100,000 randomly generated numbers.
-
-The basic functional merge sort can also be fine tuned. Observe that, it splits the list at the middle point. However,
-as the underlying data structure to represent list is singly linked-list, random access at a given position is
-a linear operation (refer to appendix A for detail). Alternatively, one can split the list in an even-odd manner.
-That all the elements in even position are collected in one sub list, while all the odd elements are collected
-in another. As for any list, there are either same amount of elements in even and odd positions, or they
-differ by one. So this divide strategy always leads to well splitting, thus the performance can be ensured
-to be $O(n \lg n)$ in all cases.
-
-The even-odd splitting algorithm can be defined as below.
-
-\be
-split(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, \phi) & L = \phi \\
-  (\{ l_1 \}, \phi) & |L| = 1 \\
-  (\{ l_1 \} \cup A, \{ l_2 \} \cup B) & otherwise, (A, B) = split(L'')
-  \end{array}
-\right.
-\ee
-
-When the list is empty, the split result are two empty lists; If there is only one element in the list, we put this
-single element, which is at position 1, to the odd sub list, the even sub list is empty; Otherwise, it means
-there are at least two elements in the list, We pick the first one to the odd sub list, the second one to the
-even sub list, and recursively split the rest elements.
-
-All the other functions are kept same, the modified Haskell program is given as the following.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-split [] = ([], [])
-split [x] = ([x], [])
-split (x:y:xs) = (x:xs', y:ys') where (xs', ys') = split xs
-\end{lstlisting}
-
-\section{In-place merge sort}
+\subsection{In-place merge sort}
 \index{Merge Sort!In-place merge sort}
-One drawback for the imperative merge sort is that it requires extra spaces for merging, the basic version without
-any optimization needs $O(n \lg n)$ in peak time, and the one by allocating a working area needs $O(n)$.
 
-It's nature for people to seek the in-place version merge sort, which can reuse the original array without allocating
-any extra spaces. In this section, we'll introduce some solutions to realize imperative in-place merge sort.
-
-\subsection{Naive in-place merge}
-\index{Merge Sort!Naive in-place merge}
-The first idea is straightforward. As illustrated in figure \ref{fig:merge-in-place-naive}, sub list $A$, and $B$
-are sorted, when performs in-place merge, the invariant ensures that all elements before $i$ are merged, so that
-they are in non-decreasing order; every time we compare the $i$-th and the $j$-th elements. If the $i$-th is less
-than the $j$-th, the marker $i$ just advances one step to the next. This is the easy case. Otherwise, it
-means that the $j$-th element is the next merge result, which should be put in front of $i$. In order
-to achieve this, all elements between $i$ and $j$, including the $i$-th should be shift to the end by one cell.
-We repeat this process till all the elements in $A$ and $B$ are put to the correct positions.
+To avoid additional space, we consider how to reuse the array as the work area. As shown in figure \ref{fig:merge-in-place-naive}, sub-array $A$ and $B$ are sorted, when merge in-place, the part before $l$ are merged and ordered. If $A[l] < A[m]$, move $l$ to right a step; otherwise if $A[l] \geq A[m]$, we need move $A[m]$ to merge result before $l$. We need shift all elements between $l$ and $m$ (including $l$) to right a step.
 
 \begin{figure}[htbp]
  \centering
- \includegraphics[scale=0.8]{img/merge-in-place-naive}
- \caption{Naive in-place merge}
+      \begin{tikzpicture}[scale=0.8]
+      \draw (0, 0) rectangle (3, 1) node [pos=.5] {merged}
+            (3, 0) rectangle (4, 1) node [pos=.5] {$A[l]$}
+            (4, 0) rectangle (8, 1) node (subA) [pos=.5] {... sorted $X$...}
+            (8, 0) rectangle (9, 1) node (xsj) [pos=.5] {$A[m]$}
+            (9, 0) rectangle (13, 1) node [pos=.5] {... sorted $Y$...};
+      \draw[thick, ->] (subA) edge [bend right=45] node [below] {if $A[l] \geq A[m]$, then shift $X$} (xsj);
+      \end{tikzpicture}
+ \caption{In-place shift and merge}
  \label{fig:merge-in-place-naive}
 \end{figure}
 
@@ -1184,6 +1024,7 @@ We repeat this process till all the elements in $A$ and $B$ are put to the corre
 \EndProcedure
 \end{algorithmic}
 
+\index{Merge Sort!Work area}
 However, this naive solution downgrades merge sort overall performance to quadratic $O(n^2)$! This is because
 that array shifting is a linear operation. It is proportion to the length of elements in
 the first sorted sub array which haven't been compared so far.
