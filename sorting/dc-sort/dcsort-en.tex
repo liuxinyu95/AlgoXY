@@ -1140,21 +1140,16 @@ The other cases are between the above two extremes. The work area finally moves 
 \EndProcedure
 \end{algorithmic}
 
-Note that in order to satisfy the first constraint, we must ensure the working area is big enough to hold
-all exchanged in elements, that's way we round it by ceiling when sort the second half of the working area.
-Note that we actually pass the ranges including the end points to the algorithm \textproc{Merge}.
-
-Next, we develop a \text{Sort'} algorithm, which mutually recursive call \text{Sort} and exchange the result
-to the working area.
+We round up the work area to ensure sufficient size, then pass the range and work area to \textproc{Merge}. We next update \textproc{Sort'}, which calls \textproc{Sort} to swap the work area and merged part.
 
 \begin{algorithmic}[1]
 \Procedure{Sort'}{$A, l, u, w$}
   \If{$u - l > 0$}
-    \State $m \gets \lfloor \frac{l + u}{2} \rfloor$
+    \State $m \gets \lfloor \dfrac{l + u}{2} \rfloor$
     \State \Call{Sort}{$A, l, m$}
     \State \Call{Sort}{$A, m+1, u$}
-    \State \Call{Merge}{$A, [l, m], [m+1, u], w$}
-  \Else \Comment{Exchange all elements to the working area}
+    \State \Call{Merge}{$A, [l, m), [m+1, u), w$}
+  \Else \Comment{Swap elements to the work area}
     \While{$l \leq u$}
       \State \textproc{Exchange} $A[l] \leftrightarrow A[w]$
       \State $l \gets l + 1$
@@ -1164,198 +1159,47 @@ to the working area.
 \EndProcedure
 \end{algorithmic}
 
-Different from the naive in-place sort, this algorithm doesn't shift the array during merging. The main
-algorithm reduces the unsorted part in sequence of $\dfrac{n}{2}, \dfrac{n}{4}, \dfrac{n}{8}, ...$, it takes $O(\lg n)$ steps to complete
-sorting. In every step, It recursively sorts half of the rest elements, and performs linear time merging.
-
-Denote the time cost of sorting $n$ elements as $T(n)$, we have the following equation.
+This implementation needn't shift sub-array, it keeps reducing the unordered part: $\dfrac{n}{2}, \dfrac{n}{4}, \dfrac{n}{8}, ...$, completes in $O(\lg n)$ steps. Every step sorts half of the remaining, then merge in linear time. Let the time to sort $n$ elements be $T(n)$, we have the following recursive result:
 
 \be
 T(n) = T(\frac{n}{2}) + c \frac{n}{2} + T(\frac{n}{4}) + c \frac{3n}{4} + T(\frac{n}{8}) + c \frac{7n}{8} + ...
 \label{eq:in-place-sort-time}
 \ee
 
-substitute $n$ with its half, we get another one:
+For half elements, the time is:
 
 \be
 T(\frac{n}{2}) = T(\frac{n}{4}) + c \frac{n}{4} + T(\frac{n}{8}) + c \frac{3n}{8} + T(\frac{n}{16}) + c \frac{7n}{16} + ...
 \label{eq:in-place-sort-time-half}
 \ee
 
-Substract (\ref{eq:in-place-sort-time}) and (\ref{eq:in-place-sort-time-half}) we have:
+Subtract (\ref{eq:in-place-sort-time}) and (\ref{eq:in-place-sort-time-half}):
 
 \[
 T(n) - T(\frac{n}{2}) = T(\frac{n}{2}) + c n (\frac{1}{2} + \frac{1}{2} + ... )
 \]
 
-There are total $\lg n$ times $\dfrac{1}{2}$ added together, therefore, the recursive time can be expressed as:
+Add $\dfrac{1}{2}$ total $\lg n$ times, hence:
 
 \[
-T(n) = 2 T(\frac{1}{2}) + c n \lg n
+T(n) = 2 T(\frac{1}{2}) + \frac{c}{2} n \lg n
 \]
 
-Solving this equation by using telescope method, gets the result $O(n \lg^2 n)$.
-
-The following ANSI C code completes the implementation by using the example \texttt{wmerge} program given
-above.
-
-\lstset{language=C}
-\begin{lstlisting}
-void imsort(Key* xs, int l, int u);
-
-void wsort(Key* xs, int l, int u, int w) {
-    int m;
-    if (u - l > 1) {
-        m = l + (u - l) / 2;
-        imsort(xs, l, m);
-        imsort(xs, m, u);
-        wmerge(xs, l, m, m, u, w);
-    }
-    else
-        while (l < u)
-            swap(xs, l++, w++);
-}
-
-void imsort(Key* xs, int l, int u) {
-    int m, n, w;
-    if (u - l > 1) {
-        m = l + (u - l) / 2;
-        w = l + u - m;
-        wsort(xs, l, m, w); /* the last half contains sorted elements */
-        while (w - l > 2) {
-            n = w;
-            w = l + (n - l + 1) / 2; /* ceiling */
-            wsort(xs, w, n, l);  /* the first half contains sorted elements */
-            wmerge(xs, l, l + n - w, n, u, w);
-        }
-        for (n = w; n > l; --n) /*switch to insertion sort*/
-            for (m = n; m < u && xs[m] < xs[m-1]; ++m)
-                swap(xs, m, m - 1);
-    }
-}
-\end{lstlisting}
-
-However, this program doesn't run faster than the version we developed in previous section, which doubles
-the array in advance as working area. In my machine, it is about 60\% slower when sorting 100,000 random
-numbers due to many swap operations.
-
-\subsection{In-place merge sort vs. linked-list merge sort}
-\index{Merge Sort!Linked-list merge sort}
-The in-place merge sort is still a live area for research. In order to save the extra spaces for merging,
-some overhead has be introduced, which increases the complexity of the merge sort algorithm. However, if
-the underlying data structure isn't array, but linked-list, merge can be achieved without any extra spaces
-as shown in the even-odd functional merge sort algorithm presented in previous section.
-
-In order to make it clearer, we can develop a purely imperative linked-list merge sort solution.
-The linked-list can be defined as a record type as shown in appendix A like below.
-
-\lstset{language=C}
-\begin{lstlisting}
-struct Node {
-    Key key;
-    struct Node* next;
-};
-\end{lstlisting}
-
-We can define an auxiliary function for node linking. Assume the list to be linked isn't empty, it
-can be implemented as the following.
-
-\lstset{language=C}
-\begin{lstlisting}
-struct Node* link(struct Node* x, struct Node* ys) {
-    x->next = ys;
-    return x;
-}
-\end{lstlisting}
-
-One method to realize the imperative even-odd splitting, is to initialize two empty sub lists.
-Then iterate the list to be split. Every time, we link the current node in front of the
-first sub list, then exchange the two sub lists. So that, the second sub list will be linked
-at the next time iteration. This idea can be illustrated as below.
-
-\begin{algorithmic}[1]
-\Function{Split}{$L$}
-  \State $(A, B) \gets (\phi, \phi)$
-  \While{$L \neq \phi$}
-    \State $p \gets L$
-    \State $L \gets $ \Call{Next}{$L$}
-    \State $A \gets $ \Call{Link}{$p, A$}
-    \State \textproc{Exchange} $A \leftrightarrow B$
-  \EndWhile
-  \State \Return $(A, B)$
-\EndFunction
-\end{algorithmic}
-
-The following example ANSI C program implements this splitting algorithm embedded.
-
-\lstset{language=C}
-\begin{lstlisting}
-struct Node* msort(struct Node* xs) {
-    struct Node *p, *as, *bs;
-    if (!xs || !xs->next) return xs;
-
-    as = bs = NULL;
-    while(xs) {
-        p = xs;
-        xs = xs->next;
-        as = link(p, as);
-        swap(as, bs);
-    }
-    as = msort(as);
-    bs = msort(bs);
-    return merge(as, bs);
-}
-\end{lstlisting}
-
-The only thing left is to develop the imperative merging algorithm for linked-list. The idea
-is quite similar to the array merging version. As long as neither of the sub lists is exhausted,
-we pick the less one, and append it to the result list. After that, it just need link the
-non-empty one to the tail the result, but not a looping for copying. It needs some carefulness
-to initialize the result list, as its head node is the less one among the two sub lists.
-One simple method is to use a dummy sentinel head, and drop it before returning. This implementation
-detail can be given as the following.
-
-\lstset{language=C}
-\begin{lstlisting}
-struct Node* merge(struct Node* as, struct Node* bs) {
-    struct Node s, *p;
-    p = &s;
-    while (as && bs) {
-        if (as->key < bs->key) {
-            link(p, as);
-            as = as->next;
-        }
-        else {
-            link(p, bs);
-            bs = bs->next;
-        }
-        p = p->next;
-    }
-    if (as)
-        link(p, as);
-    if (bs)
-        link(p, bs);
-    return s.next;
-}
-\end{lstlisting}
-
-\begin{Exercise}
-\begin{itemize}
-\item Proof the performance of in-place merge sort is bound to $O(n \lg n)$.
-\end{itemize}
-\end{Exercise}
+Apply telescope method, obtain the result $O(n \lg^2 n)$.
 
 \section{Nature merge sort}
 \index{Merge Sort!Nature merge sort}
-Knuth gives another way to interpret the idea of divide and conquer merge sort. It just likes
-burn a candle in both ends \cite{TAOCP}. This leads to the nature merge sort algorithm.
 
 \begin{figure}[htbp]
  \centering
- \includegraphics[scale=0.3]{img/burn-candle-2-ends}
- \caption{Burn a candle from both ends}
+ \includegraphics[scale=0.25]{img/burn-candle-2-ends}
+ \caption{Burn from both ends}
  \label{fig:burn-candle}
 \end{figure}
+
+Knuth gives another way to interpret the idea of divide and conquer merge sort. It just likes
+burn a candle in both ends \cite{TAOCP}. This leads to the nature merge sort algorithm.
+
 
 For any given sequence, we can always find a non-decreasing sub sequence starts at any position.
 One particular case is that we can find such a sub sequence from the left-most position. The following
