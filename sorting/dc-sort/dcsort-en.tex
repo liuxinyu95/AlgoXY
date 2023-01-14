@@ -1197,32 +1197,15 @@ Apply telescope method, obtain the result $O(n \lg^2 n)$.
  \label{fig:burn-candle}
 \end{figure}
 
-Knuth gives another way to interpret the idea of divide and conquer merge sort. It just likes
-burn a candle in both ends \cite{TAOCP}. This leads to the nature merge sort algorithm.
+Knuth gives another implementation, called {\em nature merge sort}. It likes burning a candle from both ends\cite{TAOCP}. For any sequence, one can always find a ordered segment from any position. Particularly, we can find such a segment from left end as shown in below table.
 
+\btab{l}
+\underline{15}, 0, 4, 3, 5, 2, 7, 1, 12, 14, 13, 8, 9, 6, 10, 11 \\
+\underline{8, 12, 14}, 0, 1, 4, 11, 2, 3, 5, 9, 13, 10, 6, 15, 7 \\
+\underline{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 } \\
+\etab
 
-For any given sequence, we can always find a non-decreasing sub sequence starts at any position.
-One particular case is that we can find such a sub sequence from the left-most position. The following
-table list some examples, the non-decreasing sub sequences are in bold font.
-
-\begin{tabular}{ | l |}
-\hline
-{\bf 15 } , 0, 4, 3, 5, 2, 7, 1, 12, 14, 13, 8, 9, 6, 10, 11 \\
-{\bf 8, 12, 14 }, 0, 1, 4, 11, 2, 3, 5, 9, 13, 10, 6, 15, 7 \\
-{\bf 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 } \\
-\hline
-\end{tabular}
-
-The first row in the table illustrates the worst case, that the second element is less than the first one,
-so the non-decreasing sub sequence is a singleton list, which only contains the first element;
-The last row shows the best case, the the sequence is ordered, and the non-decreasing list is the whole;
-The second row shows the average case.
-
-Symmetrically, we can always find a non-decreasing sub sequence from the end of the sequence
-to the left. This indicates us that we can merge the two non-decreasing sub sequences, one
-from the beginning, the other form the ending to a longer sorted sequence. The advantage of
-this idea is that, we utilize the nature ordered sub sequences, so that we needn't recursive
-sorting at all.
+The first row is the extreme case of a singleton segment, the second is less than the first; the third row is the other extreme that the segment extends to the right end, the whole sequence is ordered. Symmetrically, we can always find the ordered segment from right end. We can merge the two sorted segments, one from left, another from right. The advantage is to re-use the nature ordered sub-sequences for partition.
 
 \begin{figure}[htbp]
  \centering
@@ -1231,58 +1214,61 @@ sorting at all.
  \label{fig:nature-merge-sort}
 \end{figure}
 
-Figure \ref{fig:nature-merge-sort} illustrates this idea. We starts the algorithm by scanning
-from both ends, finding the longest non-decreasing sub sequences respectively. After that,
-these two sub sequences are merged to the working area. The merged result starts from beginning.
-Next we repeat this step, which goes on scanning toward the center of the original sequence.
-This time we merge the two ordered sub sequences to the right hand of the working area toward
-the left. Such setup is easy for the next round of scanning. When all the elements
-in the original sequence have been scanned and merged to the target, we switch to use the
-elements stored in the working area for sorting, and use the previous sequence as new working area.
-Such switching happens repeatedly in each round. Finally, we copy all elements from the
-working area to the original array if necessary.
+As shown in figure \ref{fig:nature-merge-sort}, we scan from both ends, find the two longest ordered segments respectively. Then merge them to the left of the work area. Next, we repeat to scan from left and right to center. This time, we merge the two segments for the right to left of the work area. We switch the merge direction right/left in-turns. After scan all elements and merge them to the work area, we swap the original array and the work area, then start a new round of bi-directional scan and merge, terminates when the ordered segment extends to cover the whole array. This implementation process the array from both directions based on nature ordering. We called it {\em nature two-way merge sort}. As shown in figure \ref{fig:nature-msort-invariant}, elements before $a$ and after $d$ are scanned. We span the ordered segment $[a, b)$ to right, meanwhile, span $[c, d)$ to left. For the work area, elements before $f$ and after $f$ are merged (consist of multiple sub-sequences). In odd rounds, we merge $[a, b)$ and $[c, d)$ from $f$ to right; in even rounds, we merge from $r$ to left.
 
-The only question left is when this algorithm stops. The answer is that when we start
-a new round of scanning, and find that the longest non-decreasing sub list spans to the
-end, which means the whole list is ordered, the sorting is done.
-
-Because this kind of merge sort proceeds the target sequence in two ways, and uses the
-nature ordering of sub sequences, it's named {\em nature two-way merge sort}. In order
-to realize it, some carefulness must be paid. Figure \ref{fig:nature-msort-invariant}
-shows the invariant during the nature merge sort. At anytime, all elements before marker
-$a$ and after marker $d$ have been already scanned and merged. We are trying to
-span the non-decreasing sub sequence $[a, b)$ as long as possible, at the same time,
-we span the sub sequence from right to left to span $[c, d)$ as long as possible as well.
-The invariant for the working area is shown in the second row. All elements before
-$f$ and after $r$ have already been processed (Note that they may contain several
-ordered sub sequences). For the odd times (1, 3, 5, ...), we merge $[a, b)$ and $[c, d)$
-from $f$ toword right; while for the even times (2, 4, 6, ...), we merge the two
-sorted sub sequences after $r$ toward left.
-
+\captionsetup[subfigure]{labelformat=empty, margin=10pt}
 \begin{figure}[htbp]
  \centering
- \includegraphics[scale=0.8]{img/nature-msort-invariant}
- \caption{Invariant during nature merge sort}
+   \subcaptionbox{}{
+      \begin{tikzpicture}[scale=0.8]
+      \draw (0, 0) rectangle (3, 1) node [pos=.5] {... scanned ...}
+            (3, 0) rectangle (6, 1) node [pos=.5] {... span $[a, b)$ ...}
+            (6, 0) rectangle (8, 1) node [pos=.5] {... ? ...}
+            (8, 0) rectangle (11, 1) node [pos=.5] {... span $[c, d)$ ...}
+            (11, 0) rectangle (14, 1) node [pos=.5] {... scanned ...};
+      \fill [black] (3, 0) rectangle (3.1, 1) node (abar) [pos=.5] {}
+                    (6, 0) rectangle (6.1, 1) node (bbar) [pos=.5] {}
+                    (8, 0) rectangle (8.1, 1) node (cbar) [pos=.5] {}
+                    (11, 0) rectangle (11.1, 1) node (dbar) [pos=.5] {};
+      \draw (3, 2) node (a) {a}
+            (6, 2) node (b) {b}
+            (8, 2) node (c) {c}
+            (11, 2) node (d) {d};
+      \draw[thick, ->] (a) edge [bend right] (abar)
+                       (b) edge [bend right] (bbar)
+                       (c) edge [bend left] (cbar)
+                       (d) edge [bend left] (dbar);
+      \end{tikzpicture}} \\
+    \subcaptionbox{}{
+      \begin{tikzpicture}[scale=0.8]
+      \draw (0, 0) rectangle (3, 1) node [pos=.5] {... merged ...}
+            (3, 0) rectangle (8, 1) node [pos=.5] {... free cells ...}
+            (8, 0) rectangle (11, 1) node [pos=.5] {... merged ...};
+      \fill [black] (3, 0) rectangle (3.1, 1) node (fbar) [pos=.5] {}
+                    (8, 0) rectangle (8.1, 1) node (rbar) [pos=.5] {};
+      \draw (3, 2) node (f) {f}
+            (8, 2) node (r) {r};
+      \draw[thick, ->] (f) edge [bend right] (fbar)
+                       (r) edge [bend right] (rbar);
+      \end{tikzpicture}} \\
+ \caption{A status of nature merge sort}
  \label{fig:nature-msort-invariant}
 \end{figure}
+\captionsetup[subfigure]{labelformat=parens}
 
-For imperative realization, the sequence is represented by array. Before sorting starts,
-we duplicate the array to create a working area. The pointers $a, b$ are initialized to
-point the left most position, while $c, d$ point to the right most position. Pointer $f$
-starts by pointing to the front of the working area, and $r$ points to the rear
-position.
+When sort starts, we allocate a work area with the same size of the array. $a$ and $b$ point to the left side, $c$ and $d$ point to the right side. $f$ and $r$ point to the two sides of the work area respectively.
 
 \begin{algorithmic}[1]
 \Function{Sort}{$A$}
   \If{$|A| > 1$}
     \State $n \gets |A|$
-    \State $B \gets$ \Call{Create-Array}{$n$}  \Comment{Create the working area}
+    \State $B \gets$ \Call{Create-Array}{$n$}  \Comment{the work area}
     \Loop
       \State $[a, b) \gets [1, 1)$
       \State $[c, d) \gets [n+1, n+1)$
-      \State $f \gets 1, r \gets n$ \Comment{front and rear pointers to the working area}
-      \State $t \gets $ False \Comment{merge to front or rear}
-      \While{$b < c$} \Comment{There are still elements for scan}
+      \State $f \gets 1, r \gets n$ \Comment{front, rear of the work area}
+      \State $t \gets 1$            \Comment{even/odd round}
+      \While{$b < c$}               \Comment{elements yet to scan}
         \Repeat \Comment{Span $[a, b)$}
           \State $b \gets b + 1$
         \Until{$b \geq c \lor A[b] < A[b-1]$}
@@ -1295,31 +1281,30 @@ position.
           \State $c \gets b$
         \EndIf
 
-        \If{$b - a \geq n$} \Comment{Done if $[a, b)$ spans to the whole array}
+        \If{$b - a \geq n$} \Comment{Terminates if $[a, b)$ spans the whole array}
           \State \Return $A$
         \EndIf
 
-        \If{$t$} \Comment{merge to front}
+        \If{$t$ is odd} \Comment{merge to front}
           \State $f \gets$ \Call{Merge}{$A, [a, b), [c, d), B, f, 1$}
         \Else \Comment{merge to rear}
           \State $r \gets$ \Call{Merge}{$A, [a, b), [c, d), B, r, -1$}
         \EndIf
         \State $a \gets b, d \gets c$
-        \State $t \gets \lnot t$ \Comment{Switch the merge direction}
+        \State $t \gets t + 1$
       \EndWhile
-      \State \textproc{Exchange} $A \leftrightarrow B$ \Comment{Switch working area}
+      \State \textproc{Exchange} $A \leftrightarrow B$ \Comment{Switch work area}
     \EndLoop
   \EndIf
   \State \Return $A$
 \EndFunction
 \end{algorithmic}
 
-The merge algorithm is almost as same as before except that we need pass a parameter
-to indicate the direction for merging.
+We need pass the merge direction in:
 
 \begin{algorithmic}[1]
 \Function{Merge}{$A, [a, b), [c, d), B, w, \Delta$}
-  \While{$a < b \land c < d$}
+  \While{$a < b$ and $c < d$}
     \If{$A[a] < A[d-1]$}
       \State $B[w] \gets A[a]$
       \State $a \gets a + 1$
@@ -1342,56 +1327,6 @@ to indicate the direction for merging.
   \State \Return $w$
 \EndFunction
 \end{algorithmic}
-
-The following ANSI C program implements this two-way nature merge sort algorithm. Note that it
-doesn't release the allocated working area explicitly.
-
-\lstset{language=C}
-\begin{lstlisting}
-int merge(Key* xs, int a, int b, int c, int d, Key* ys, int k, int delta) {
-    for(; a < b && c < d; k += delta )
-        ys[k] = xs[a] < xs[d-1] ? xs[a++] : xs[--d];
-    for(; a < b; k += delta)
-        ys[k] = xs[a++];
-    for(; c < d; k += delta)
-        ys[k] = xs[--d];
-    return k;
-}
-
-Key* sort(Key* xs, Key* ys, int n) {
-    int a, b, c, d, f, r, t;
-    if(n < 2)
-        return xs;
-    for(;;) {
-        a = b = 0;
-        c = d = n;
-        f = 0;
-        r = n-1;
-        t = 1;
-        while(b < c) {
-            do {      /* span [a, b) as much as possible */
-                ++b;
-            } while( b < c && xs[b-1] <= xs[b] );
-            do{      /* span [c, d) as much as possible */
-                --c;
-            } while( b < c && xs[c] <= xs[c-1] );
-            if( c < b )
-                c = b;   /* eliminate overlap if any */
-            if( b - a >= n)
-                return xs;          /* sorted */
-            if( t )
-                f = merge(xs, a, b, c, d, ys, f, 1);
-            else
-                r = merge(xs, a, b, c, d, ys, r, -1);
-            a = b;
-            d = c;
-            t = !t;
-        }
-        swap(&xs, &ys);
-    }
-    return xs; /*can't be here*/
-}
-\end{lstlisting}
 
 The performance of nature merge sort depends on the actual ordering of the sub arrays. However, it in fact performs
 well even in the worst case. Suppose that we are unlucky when scanning the array, that the length of the non-decreasing
