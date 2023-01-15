@@ -1328,137 +1328,50 @@ We need pass the merge direction in:
 \EndFunction
 \end{algorithmic}
 
-The performance of nature merge sort depends on the actual ordering of the sub arrays. However, it in fact performs
-well even in the worst case. Suppose that we are unlucky when scanning the array, that the length of the non-decreasing
-sub arrays are always 1 during the first round scan. This leads to the result working area with merged ordered sub
-arrays of length 2. Suppose that we are unlucky again in the second round of scan, however, the previous results
-ensure that the non-decreasing sub arrays in this round are no shorter than 2, this time, the working area will
-be filled with merged ordered sub arrays of length 4, ... Repeat this we get the length of the non-decreasing sub arrays
-doubled in every round, so there are at most $O(\lg n)$ rounds, and in every round we scanned all the elements.
-The overall performance for this worst case is bound to $O(n \lg n)$. We'll go back to this interesting phenomena
-in the next section about bottom-up merge sort.
-
-In purely functional settings however, it's not sensible to scan list from both ends since the underlying data
-structure is singly linked-list. The nature merge sort can be realized in another approach.
-
-Observe that the list to be sorted is consist of several non-decreasing sub lists, that we can pick every two
-of such sub lists and merge them to a bigger one. We repeatedly pick and merge, so that the number of the
-non-decreasing sub lists halves continuously and finally there is only one such list, which is the sorted
-result. This idea can be formalized in the following equation.
+The performance does not depend on how ordered the elements are. In the `worst' case, the ordered sub-sequences are all singleton. After merge, the length of the new ordered sub-sequences are at least 2. Suppose we still encounter the `worst' case in the second round, the merged sub-sequences have length at least 4, ... every round double the sub-sequence length, hence we need at most $O(\lg n)$ rounds. Because we can all elements every round, the total time is bound to $O(n \lg n)$. For list, we can't scan from tail back easily as array. A list consists multiple ordered sub-lists, we can merge them in pairs. It halves the sub-lists every round, and finally build the sorted result. We can define this as below (Curried form):
 
 \be
-sort(L) = sort'(group(L))
+sort = sort' \circ group
 \ee
 
-Where function $group(L)$ groups the elements in the list into non-decreasing sub lists. This function can be described like
-below, the first two are trivial edge cases.
-
-\begin{itemize}
-\item If the list is empty, the result is a list contains an empty list;
-\item If there is only one element in the list, the result is a list contains a singleton list;
-\item Otherwise, The first two elements are compared, if the first one is less than or equal to the second,
-it is linked in front of the first sub list of the recursive grouping result; or a singleton list contains
-the first element is set as the first sub list before the recursive result.
-\end{itemize}
+Where $group$ breaks the list into ordered sub-lists:
 
 \be
-group(L) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ L \} & |L| \leq 1 \\
-  \{ \{ l_1 \} \cup L_1, L_2, ... \} & l_1 \leq l_2, \{ L_1, L_2, ...\} = group(L') \\
-  \{ \{ l_1 \}, L_1, L_2, ... \} & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+\textit{group}\ [\ ] & = & [[\ ]] \\
+\textit{group}\ [x] & = & [[x]] \\
+\textit{group}\ (x \cons y \cons xs) & = & \begin{cases}
+  x < y: & (x \cons g) \cons gs, \text{where}: (g \cons gs) = \textit{group}\ (y \cons xs) \\
+  \text{otherwise}: & [x] \cons g \cons gs \\
+\end{cases}
+\end{array}
 \ee
-
-It's quite possible to abstract the grouping criteria as a parameter to develop a generic grouping function,
-for instance, as the following Haskell code \footnote{There is a `groupBy' function provided in
-the Haskell standard library 'Data.List'. However, it doesn't fit here, because it accepts an equality
-testing function as parameter, which must satisfy the properties of reflexive, transitive, and
-symmetric. but what we use here, the less-than or equal to operation doesn't conform to symetric. Refer
-to appendix A of this book for detail.}.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-groupBy' :: (a->a->Bool) ->[a] ->[[a]]
-groupBy' _ [] = [[]]
-groupBy' _ [x] = [[x]]
-groupBy' f (x:xs@(x':_)) | f x x' = (x:ys):yss
-                         | otherwise = [x]:r
-  where
-    r@(ys:yss) = groupBy' f xs
-\end{lstlisting}
-
-Different from the $sort$ function, which sorts a list of elements, function $sort'$ accepts a list of
-sub lists which is the result of grouping.
 
 \be
-sort'(\mathbb{L}) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & \mathbb{L} = \phi \\
-  L_1 & \mathbb{L} = \{ L_1 \} \\
-  sort'(mergePairs(\mathbb{L})) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+\textit{sort}'\ [\ ] & = & [\ ] \\
+\textit{sort}'\ [g] & = & g \\
+\textit{sort}'\ gs & = & \textit{sort}'\ (\textit{mergePairs}\ gs) \\
+\end{array}
 \ee
 
-The first two are the trivial edge cases. If the list to be sorted is empty, the result is obviously empty;
-If it contains only one sub list, then we are done. We need just extract this single sub list as result;
-For the recursive case, we call a function $mergePairs$ to merge every two sub lists, then recursively call
-$sort'$.
-
-The next undefined function is $mergePairs$, as the name indicates, it repeatedly merges pairs of non-decreasing
-sub lists into bigger ones.
+Where \textit{mergePairs} is defined as:
 
 \be
-mergePairs(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  L & |L| \leq 1 \\
-  \{ merge(L_1, L_2) \} \cup mergePairs(L'') & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+\textit{mergePairs}\ (g_1 \cons g_2 \cons gs) & = & merge\ g_1\ g_2 : \textit{mergePairs}\ gs \\
+\textit{mergePairs}\ gs & = & gs
+\end{array}
 \ee
 
-When there are less than two sub lists in the list, we are done; otherwise, we merge the first two sub lists $L_1$ and $L_2$,
-and recursively merge the rest of pairs in $L''$. The type of
-the result of $mergePairs$ is list of lists, however, it will be flattened by $sort'$ function finally.
-
-The $merge$ function is as same as before. The complete example Haskell program is given as below.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-mergesort = sort' . groupBy' (<=)
-
-sort' [] = []
-sort' [xs] = xs
-sort' xss = sort' (mergePairs xss) where
-  mergePairs (xs:ys:xss) = merge xs ys : mergePairs xss
-  mergePairs xss = xss
-\end{lstlisting}
-
-Alternatively, observing that we can first pick two sub lists, merge them to an intermediate result, then repeatedly
-pick next sub list, and merge to this ordered result we've gotten so far until all the rest sub lists are merged.
-This is a typical folding algorithm as introduced in appendix A.
+Alternatively, we can define $sort'$ as fold:
 
 \be
-sort(L) = fold(merge, \phi, group(L))
+\textit{sort}' = foldr\ merge\ [\ ]
 \ee
-
-Translate this version to Haskell yields the folding version.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-mergesort' = foldl merge [] . groupBy' (<=)
-\end{lstlisting}
 
 \begin{Exercise}
-\begin{itemize}
-  \item Is the nature merge sort algorithm realized by folding is equivalent with the one by using $mergePairs$ in terms
-of performance? If yes, prove it; If not, which one is faster?
-\end{itemize}
+\Question{Is the performance of $mergePairs$ and folded merge same? If yes, prove it, if not, which one is faster?}
 \end{Exercise}
 
 \section{Bottom-up merge sort}
