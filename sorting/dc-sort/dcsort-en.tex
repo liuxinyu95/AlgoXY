@@ -1187,7 +1187,7 @@ T(n) = 2 T(\frac{1}{2}) + \frac{c}{2} n \lg n
 
 Apply telescope method, obtain the result $O(n \lg^2 n)$.
 
-\section{Nature merge sort}
+\subsection{Nature merge sort}
 \index{Merge Sort!Nature merge sort}
 
 \begin{figure}[htbp]
@@ -1374,17 +1374,10 @@ Alternatively, we can define $sort'$ as fold:
 \Question{Is the performance of $mergePairs$ and folded merge same? If yes, prove it, if not, which one is faster?}
 \end{Exercise}
 
-\section{Bottom-up merge sort}
+\subsection{Bottom-up merge sort}
 \index{Merge Sort!Bottom-up merge sort}
-The worst case analysis for nature merge sort raises an interesting topic, instead of realizing merge sort in
-top-down manner, we can develop a bottom-up version. The great advantage is that, we needn't do book keeping
-any more, so the algorithm is quite friendly for purely iterative implementation.
 
-The idea of bottom-up merge sort is to turn the sequence to be sorted into $n$ small sub sequences each contains
-only one element. Then we merge every two of such small sub sequences, so that we get $\frac{n}{2}$ ordered
-sub sequences each with length 2; If $n$ is odd number, we left the last singleton sequence untouched.
-We repeatedly merge these pairs, and finally we get the sorted result. Knuth names this variant as
-`straight two-way merge sort' \cite{TAOCP}. The bottom-up merge sort is illustrated in figure \ref{fig:bottom-up-msort}
+We can develop the bottom-up merge sort from the above performance analysis for nature merge sort. First wrap all elements as $n$ singleton sub-lists. Then merge them in pairs to obtain $\frac{n}{2}$ ordered sub-lists of length 2; If $n$ is odd, there remains a single list. Repeat this paired merge to the sort all the list. Knuth called it `straight two-way merge sort'\cite{TAOCP}, as shown in figure \ref{fig:bottom-up-msort}.
 
 \begin{figure}[htbp]
  \centering
@@ -1393,112 +1386,43 @@ We repeatedly merge these pairs, and finally we get the sorted result. Knuth nam
  \label{fig:bottom-up-msort}
 \end{figure}
 
-Different with the basic version and even-odd version, we needn't explicitly split the list to be sorted
-in every recursion. The whole list is split into $n$ singletons at the very beginning, and we merge these
-sub lists in the rest of the algorithm.
+We needn't partition the list. When start, convert $[x_1, x_2, ..., x_n]$ to $[[x_1], [x_2], ..., [x_n]]$, then apply paired merge:
 
 \be
-sort(L) = sort'(wraps(L))
+sort = sort' \circ map (x \mapsto [x])
 \ee
 
-\be
-wraps(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & L = \phi \\
-  \{ \{l_1\} \} \cup wraps(L') & otherwise
-  \end{array}
-\right.
-\ee
-
-Of course $wraps$ can be implemented by using mapping as introduced in appendix A.
-
-\be
-sort(L) = sort'(map(\lambda_x \cdot \{ x \}, L))
-\ee
-
-We reuse the function $sort'$ and $mergePairs$ which are defined in section of nature merge sort. They
-repeatedly merge pairs of sub lists until there is only one.
-
-Implement this version in Haskell gives the following example code.
-
-\lstset{language=Haskell}
-\begin{lstlisting}
-sort = sort' . map (\x->[x])
-\end{lstlisting}
-
-This version is based on what Okasaki presented in \cite{okasaki-book}. It is quite similar to the nature merge sort
-only differs in the way of grouping. Actually, it can be deduced as a special case (the worst case) of
-nature merge sort by the following equation.
-
-\be
-sort(L)= sort'(groupBy(\lambda_{x, y} \cdot False, L))
-\ee
-
-That instead of spanning the non-decreasing sub list as long as possible, the predicate always evaluates to false,
-so the sub list spans only one element.
-
-Similar with nature merge sort, bottom-up merge sort can also be defined by folding. The detailed implementation
-is left as exercise to the reader.
-
-Observing the bottom-up sort, we can find it's in tail-recursion call manner, thus it's quite easy
-to translate into purely iterative algorithm without any recursion.
+We reuse the \textit{mergePairs} defined for nature merge sort, terminates when consolidate to one list\cite{okasaki-book}. The bottom up sort is similar to the nature merge sort, different only in partition method. It can be deduced from nature merge sort as a special case (the `worst' case). Nature merge sort always span the ordered sub-sequence as long as possible; while the bottom up merge sort only span the length to 1. From the tail recursive implementation, we can eliminate the recursion and convert it to iterative way.
 
 \begin{algorithmic}[1]
 \Function{Sort}{$A$}
-  \State $B \gets \phi$
-  \For{$\forall a \in A$}
-    \State $B \gets$ \Call{Append}{$\{ a \}$}
+  \State $n \gets |A|$
+  \State $B \gets $ \Call{Create-Array}{$n$}
+  \For{$i$ from 1 to $n$}
+    \State $B[i] = [A[i]]$
   \EndFor
-  \State $N \gets |B|$
-  \While{$N > 1$}
-    \For{$i \gets $ from $1$ to $\lfloor \frac{N}{2} \rfloor$}
+  \While{$n > 1$}
+    \For{$i \gets $ from $1$ to $\lfloor \dfrac{n}{2} \rfloor$}
       \State $B[i] \gets$ \Call{Merge}{$B[2i -1], B[2i]$}
     \EndFor
-    \If{\Call{Odd}{$N$}}
-      \State $B[\lceil \frac{N}{2} \rceil] \gets B[N]$
+    \If{\Call{Odd}{$n$}}
+      \State $B[\lceil \dfrac{n}{2} \rceil] \gets B[n]$
     \EndIf
-    \State $N \gets \lceil \frac{N}{2} \rceil$
+    \State $n \gets \lceil \dfrac{n}{2} \rceil$
   \EndWhile
-  \If{$B = \phi$}
-    \State \Return $\phi$
+  \If{$B = [\ ]$}
+    \State \Return $[\ ]$
   \EndIf
   \State \Return $B[1]$
 \EndFunction
 \end{algorithmic}
 
-The following example Python program implements the purely iterative bottom-up merge sort.
-
-\lstset{language=Python}
-\begin{lstlisting}
-def mergesort(xs):
-    ys = [[x] for x in xs]
-    while len(ys) > 1:
-        ys.append(merge(ys.pop(0), ys.pop(0)))
-    return [] if ys == [] else ys.pop()
-
-def merge(xs, ys):
-    zs = []
-    while xs != [] and ys !=[]:
-        zs.append(xs.pop(0) if xs[0] < ys[0] else ys.pop(0))
-    return zs + (xs if xs !=[] else ys)
-\end{lstlisting}
-
-The Python implementation combines multiple rounds of merging by consuming
-the pair of lists on the head, and appending the merged result to the tail. This greatly simply
-the logic of handling odd sub lists case as shown in the above pseudo code.
-
 \begin{Exercise}
-\begin{itemize}
-\item Implement the functional bottom-up merge sort by using folding.
-\item Implement the iterative bottom-up merge sort only with array indexing. Don't use any library
-supported tools, such as list, vector etc.
-\end{itemize}
+\Question{Implement the bottom-up merge sort with fold}
 \end{Exercise}
 
 \section{Parallelism}
-\index{Parallel merge sort}
-\index{Parallel quick sort}
+\index{Parallel merge sort} \index{Parallel quick sort}
 We mentioned in the basic version of quick sort, that the two sub sequences can be sorted in
 parallel after the divide phase finished. This strategy is also applicable for merge sort.
 Actually, the parallel version quick sort and morege sort, do not only distribute
