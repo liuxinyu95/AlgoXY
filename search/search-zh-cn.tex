@@ -77,7 +77,7 @@ top\ k\ (x \cons xs) = \begin{cases}
 \end{cases}
 \ee
 
-和快速排序一样，最差情况下划分结果总不平衡，性能退化为$O(kn)$或$O((n-k)n)$。平均情况下可以在线性时间内找到答案。我们也可以应用快速排序划分中各种改进，如三点中值法和随机划分法：
+和快速排序一样，最差情况下划分结果总不平衡，性能退化为$O(kn)$或$O((n-k)n)$。平均情况下可以在线性时间内找到答案。我们也可以应用快速排序划分中各种改进，如三点中值法\footnote{Blum、Floyd、Pratt、Rivest和Tarjan在1973年给出了一个线性时间方法\cite{CLRS}\cite{median-of-median}。将列表划分为若干组，每组最多5个元素，总共选出$n/5$个中值。重复这一步骤选出中值的中值。}和随机划分法：
 
 \begin{algorithmic}[1]
 \Function{Top}{$k, A, l, u$}
@@ -93,43 +93,21 @@ top\ k\ (x \cons xs) = \begin{cases}
 \EndFunction
 \end{algorithmic}
 
-Blum、Floyd、Pratt、Rivest和Tarjan在1973年给出了一个方法，可以保证在最差情况下的性能仍然为$O(n)$\cite{CLRS}、\cite{median-of-median}。它将列表划分为若干小组，每组最多5个元素。每组的中值（median）可以很快确定。这样总共选出$\frac{n}{5}$个中值。我们重复这一步骤，再将选出的值分成若干不超过五个元素的组，并选出“中值的中值”（median of median）。显然可以在$O(\lg n)$时间内选出最终“真正”的中值，这是划分列表的最佳pivot。接下来，我们用这一pivot划分列表，将问题规模缩小一半，然后递归寻找第$k$小的元素。性能可以计算如下：
+我们可以调整这一方法获取全部的前$k$个值（$k$个值间的顺序是任意的），如下面的例子程序：
 
-\be
-T(n) = c_1 lg n + c_2 n + T(\frac{n}{2})
-\ee
-
-其中$c_1$是计算“中值的中值”的常数系数，$c_2$是划分的常数系数。可以使用裂项求和（telescoping）方法解此方程，或者直接用主定理（master theorem）\cite{CLRS}得到性能为$O(n)$。
-
-如果需要选出前$k$小的元素，而无需关心它们的具体顺序，我们通过可以调整上面的算法来满足这一需要：
-
-\be
-tops(k, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & k = 0 \lor L = \phi \\
-  A & |A| = k \\
-  A \cup \{ l_1 \} \cup tops(k - |A| - 1, B) & |A| < k \\
-  tops(k, A) & otherwise
-  \end{array}
-\right.
-\ee
-
-其中$A$、$B$的定义和此前一样，若$L$不为空，则：$(A, B) = partition(\lambda_x \cdot x \leq l_1, L')$。下面的Haskell例子程序实现了这一算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
+\lstset{frame = single}
+\begin{Haskell}
 tops _ [] = []
 tops 0 _  = []
-tops n (x:xs) | len ==n = as
-              | len < n  = as ++ [x] ++ tops (n-len-1) bs
+tops n (x:xs) | len == n = as
+              | len <  n = as ++ [x] ++ tops (n - len - 1) bs
               | otherwise = tops n as
     where
       (as, bs) = partition (<= x) xs
       len = length as
-\end{lstlisting}
+\end{Haskell}
 
-\subsubsection{二分查找}
+\section{二分查找}
 \index{二分查找}
 
 二分查找是另一种常见的分而治之算法。我们曾经在插入排序一章提到过。我的中学数学老师曾经表演过这样的“魔术”：我首先想好一个不大于1000的数，不说出来。然后他接下来问我一些问题，我只需要回答是或者不是。他需要在十个问题之内猜出那个数。他通常会问这样一些问题：
@@ -5190,7 +5168,6 @@ subsetsum xs s = foldl build (fromList [[] | _ <- [l..u]]) xs `idx` s where
 
 查找前$k$小元素：
 
-\lstset{frame = single}
 \begin{lstlisting}[language = Bourbaki]
 Optional<K> top(Int k, K[] xs, Int l, Int u) {
     if l < u {
