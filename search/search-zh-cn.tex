@@ -60,74 +60,28 @@ find\ k & = & (find\ (k - 1)) \circ pop
 \label{eq:kth-heap2}
 \ee
 
-我们考虑分治策略。将所有元素划分为$A$、$B$，使得$A$中元素都不大于（$\leq$）$B$中元素。令$m = |A|$为$A$的大小，比较$m$和$k$：
+我们还能找到更好的方法。使用分治策略将元素划分为$A$、$B$，使得$A$中元素都不大于（$\leq$）$B$中元素。令$m = |A|$为$A$的大小，比较$m$和$k$：
 
 \begin{enumerate}
 \item 若$k < m$，则第$k$小的元素在$A$中，我们丢弃$B$，然后在$A$中递归查找；
 \item 若$m < k$，则第$k$小的元素在$B$中，我们丢弃$A$，然后在$B$中递归查找第$(k-m)$小的元素。
 \end{enumerate}
 
-理想情况下，我们总是将序列划分为相等长度的两个子序列$A$和$B$，这样每次都将问题的规模减半，因此性能为线性时间$O(n)$。
-
-关键问题是如何实现划分，将前$m$小的元素放入一个子序列中，将剩余元素放入另一个中。
-
-回忆快速排序中的划分算法，它将所有小于pivot的元素移动到前面，将大于pivot的元素移动到后面。根据这一思路，我们可以构造一个分而治之的$k$选择算法，称为“快速选择算法”。
-
-\begin{enumerate}
-\item 随机选择一个元素（例如第一个）作为pivot；
-\item 将所有不大于pivot的元素放入子序列$A$；将剩余元素放入子序列$B$；
-\item 比较$A$的长度和$k$，若$|A| = k - 1$，则pivot就是第$k$小的元素；
-\item 若$|A| > k - 1$，递归在$A$中寻找第$k$小的元素；
-\item 否则，递归在$B$中寻找第$(k - 1 - |A|)$小的元素；
-\end{enumerate}
-
-这一算法可以形式化为下面的等式。设$0 < k \leq |L|$，其中$L$是一个非空列表。记$l_1$为$L$中的第一个元素，它被选作pivot；$L'$包含除$l_1$外的剩余元素。$(A, B) = partition(\lambda_x \cdot x \leq l_1, L')$。函数$partition$使用快速排序中介绍的算法将$L'$划分为两部分。
+理想情况下划分是平衡的，$A$、$B$大小相当，每次问题规模减半，复杂度为$O(n + n/2 + n/4 +...) = O(n)$。我们利用上一章快速排序中的划分方法\textit{part}，随机选择一个元素（如第一个）作为基准$p$。将所有$\leq p$的元素放入$A$，剩余元素放入$B$。这样若$m = k - 1$，则$p$就是第$k$小的元素，否则我们递归在$A$或$B$中查找。
 
 \be
-top(k, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  l_1 & |A| = k - 1 \\
-  top(k - 1 - |A|, B) & |A| < k - 1 \\
-  top(k, A) & otherwise
-  \end{array}
-\right.
+top\ k\ (x \cons xs) = \begin{cases}
+  m = k - 1: & x, \text{其中}: m = |A|, (A, B) = part\ (\leq x)\ xs \\
+  m < k - 1: & top\ (k - m - 1)\ B \\
+  \text{否则}: & top\ k\ A \\
+\end{cases}
 \ee
 
-\be
-partition(p, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (\phi, \phi) & L = \phi \\
-  (\{ l_1 \} \cup A, B) & p(l_1), (A, B) = partition(p, L') \\
-  (A, \{ l_1 \} \cup B) & \lnot p(l_1)
-  \end{array}
-\right.
-\ee
-
-下面的Haskell例子程序实现了这一算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-top n (x:xs) | len == n - 1 = x
-             | len < n - 1 = top (n - len - 1) bs
-             | otherwise = top n as
-    where
-      (as, bs) = partition (<=x) xs
-      len = length as
-\end{lstlisting}
-
-Haskell的标准库中提供了\texttt{partition}函数，具体实现可以参考前面关于快速排序的章节。
-
-最幸运的情况下，第$k$个元素一开始就恰好被选为pivot。划分函数检查全部列表，发现有$k-1$个元素不大于pivot，搜索在$O(n)$时间完成。最差情况下，每次都选择了待查找序列中的最大值或者最小值作为pivot。划分的结果中，$A$或者$B$之一总有一个为空。如果每次总选择最小的元素作为pivot，则性能为$O(kn)$。如果每次总选择最大的元素作为pivot，则性能为$O((n-k)n)$。
-
-最好情况（不是最幸运情况）是每次pivot恰好完美划分列表。$A$的长度和$B$的长度几乎相同。序列每次减半。这样总共需要$O(\lg n)$次划分，每次划分的时间和不断减半的序列长度成正比。因此总体性能为$O(n + \frac{n}{2} + \frac{n}{4} + ... + \frac{n}{2^m})$，其中$m$是满足不等式$\frac{n}{2^m} < k$的最小整数。对上述序列求和结果为$O(n)$。
-
-平均情况的性能分析需要使用数学期望。方法和快速排序的平均性能分析类似。我们将其作为练习留给读者。和快速排序类似，这一分而治之的选择算法在实际中的绝大部分情况下表现良好。我们可以使用和快速排序中同样的工程方法，例如三点中值法（median-of-three）或随机pivot选择来减少最差情况的发生。如下面的命令式实现所示：
+和快速排序一样，最差情况下划分结果总不平衡，性能退化为$O(kn)$或$O((n-k)n)$。平均情况下可以在线性时间内找到答案。我们也可以应用快速排序划分中各种改进，如三点中值法和随机划分法：
 
 \begin{algorithmic}[1]
 \Function{Top}{$k, A, l, u$}
-  \State \textproc{Exchange} $A[l] \leftrightarrow A[$ \Call{Random}{$l, u$} $]$ \Comment{随机在范围$[l, u]$内选择}
+  \State \textproc{Exchange} $A[l] \leftrightarrow A[$ \Call{Random}{$l, u$} $]$ \Comment{随机在$[l, u]$内选择}
   \State $p \gets$ \Call{Partition}{$A, l, u$}
   \If{$p - l + 1 = k$}
     \State \Return $A[p]$
@@ -138,53 +92,6 @@ Haskell的标准库中提供了\texttt{partition}函数，具体实现可以参�
   \State \Return \Call{Top}{$k - p + l - 1, A, p + 1, u$}
 \EndFunction
 \end{algorithmic}
-
-这一算法在数组$A$的闭区间$[l, u]$范围内（包括边界上的元素）搜索第$k$小的元素。首先随机选择一个位置，然后把这一位置上的元素作为pivot并和第一个元素交换。划分算法在数组内移动元素，并返回最终pivot所在的位置。如果pivot的最终位置恰好是$k$，则搜索结束；如果不大于pivot的元素个数多于$k-1$个，算法就递归在范围$[l, p-1]$内搜索第$k$小的元素；否则，我们从$k$中减去不大于pivot的元素个数，然后递归在$[p+1, u]$内搜索。
-
-有多种方法可以用来实现划分算法，例如下面给出的基于N. Lomuto方法的实现。其它实现我们作为练习留给读者。
-
-\begin{algorithmic}[1]
-\Function{Partition}{A, l, u}
-  \State $p \gets A[l]$
-  \State $L \gets l$
-  \For{$R \gets l+1$ to $u$}
-    \If{$\lnot (p < A[R])$}
-      \State $L \gets L + 1$
-      \State \textproc{Exchange} $A[L] \leftrightarrow A[R]$
-    \EndIf
-  \EndFor
-  \State \textproc{Exchange} $A[L] \leftrightarrow p$
-  \State \Return $L$
-\EndFunction
-\end{algorithmic}
-
-下面的C语言例子程序实现了这一算法。它处理了某些特殊的情况。一种是数组为空的情况，另一种是$k$超出了数组边界的情况。这些情况下它返回-1表示搜索失败。
-
-\lstset{language=C}
-\begin{lstlisting}
-int partition(Key* xs, int l, int u) {
-    int r, p = l;
-    for (r = l + 1; r < u; ++r)
-        if (!(xs[p] < xs[r]))
-            swap(xs, ++l, r);
-    swap(xs, p, l);
-    return l;
-}
-
-//结果保存在xs[k]中，若u - l >= k返回k，否则返回-1。
-int top(int k, Key* xs, int l, int u) {
-    int p;
-    if (l < u) {
-        swap(xs, l, rand() % (u - l) + l);
-        p = partition(xs, l, u);
-        if (p - l + 1 == k)
-            return p;
-        return (k < p - l + 1) ? top(k, xs, l, p) :
-                                 top(k- p + l - 1, xs, p + 1, u);
-    }
-    return -1;
-}
-\end{lstlisting}
 
 Blum、Floyd、Pratt、Rivest和Tarjan在1973年给出了一个方法，可以保证在最差情况下的性能仍然为$O(n)$\cite{CLRS}、\cite{median-of-median}。它将列表划分为若干小组，每组最多5个元素。每组的中值（median）可以很快确定。这样总共选出$\frac{n}{5}$个中值。我们重复这一步骤，再将选出的值分成若干不超过五个元素的组，并选出“中值的中值”（median of median）。显然可以在$O(\lg n)$时间内选出最终“真正”的中值，这是划分列表的最佳pivot。接下来，我们用这一pivot划分列表，将问题规模缩小一半，然后递归寻找第$k$小的元素。性能可以计算如下：
 
@@ -5278,6 +5185,38 @@ subsetsum xs s = foldl build (fromList [[] | _ <- [l..u]]) xs `idx` s where
 \section{小结}
 
 本章介绍了基本的搜索方法。有些方法通过扫描在数据中寻找感兴趣的信息，它们通常具有某些结构，可以在扫描中不断更新已知的信息。这可以看作是信息重用的某种特殊情况。Boyer-Moore众数问题、最大子序列和问题、以及字符串匹配算法都是这一类方法的例子。另一种常用的搜索策略是分而治之，通过不断减小搜索域的规模，直到找出期望的结果。典型的k选择问题、二分查找、以及Saddleback搜索都应用了分而治之的策略。本章还介绍了一些搜索问题解的方法，这些解往往不是待搜索的特定元素，它们可以是一系列的决策，或者是某种有组织的操作。深度优先和广度优先搜索法是最简单的两类解搜索策略。如果一个问题存在多个解，有时人们希望寻找最优解，动态规划方法被广泛用来解决含有最优子结构的问题。对于某些特殊情况，我们还可以使用简化的策略，例如贪心策略，以较小的代价获得最优解。
+
+\section{附录：例子程序}
+
+查找前$k$小元素：
+
+\lstset{frame = single}
+\begin{lstlisting}[language = Bourbaki]
+Optional<K> top(Int k, K[] xs, Int l, Int u) {
+    if l < u {
+        swap(xs, l, rand(l, u))
+        var p = partition(xs, l, u)
+        if p - l + 1 == k
+            return Optional.just(xs[p])
+        return if k < p - l + 1 then top(k, xs, l, p)
+               else top(k- p + l - 1, xs, p + 1, u)
+    }
+    return Optional.Nothing
+}
+
+Int partition(K[] xs, Int l, Int u) {
+    var p = l
+    for var r = l + 1 to u {
+        if not xs[p] < xs[r] {
+            l = l + 1
+            swap(xs, l, r)
+        }
+    }
+    swap(xs, p, l)
+    return l
+}
+\end{lstlisting}
+
 
 \ifx\wholebook\relax\else
 
