@@ -154,7 +154,7 @@ tops n (x:xs) | len == n = as
 
 \subsection{二维查找}
 
-考虑把二分查找从一维扩展到二维或更高维。令矩阵$M$的大小为$m \times n$。每行、每列的元素都是单调增加。如图\ref{fig:matrix-eg}所示。如何快速地在矩阵中找到所有等于$z$的元素呢？我们需要给出一个算法，返回一组位置$(i, j)$的列表，使得所有的$M_{i,j} = z$
+考虑把二分查找从一维扩展到二维或更高维。令矩阵$M$的大小为$m \times n$。每行、每列的元素都是单调增加的自然数。如图\ref{fig:matrix-eg}所示。如何快速地在矩阵中找到所有等于$z$的元素呢？我们需要给出一个算法，返回一组位置$(i, j)$的列表，使得所有的$M_{i,j} = z$
 
 \be
 [(x, y) | x \gets [1, 2,..., m], y \gets [1, 2,..., n], M_{x, y} = z]
@@ -178,65 +178,32 @@ tops n (x:xs) | len == n = as
 \label{fig:matrix-eg}
 \end{figure}
 
-理查德$\cdot$伯德说他曾用这一问题面试学生\cite{fp-pearls}。那些在中学就接触过计算机科学的学生往往尝试二分查找来解题，但却很容易陷入困境。按照二分查找的思路，通常先检查位于$M_{\frac{m}{2}, \frac{n}{2}}$上的元素。如果它小于$z$，我们丢弃左上区域；如果大于$z$，丢弃右下区域，如图\ref{fig:bsearch-2D}所示，灰色的区域表示可丢弃。
+理查德$\cdot$伯德说他曾用这一问题面试学生\cite{fp-pearls}。那些在中学就接触过计算机科学的学生往往尝试二分查找来解题，但却很容易陷入困境。按照二分查找的思路，通常先检查位于$M_{\frac{m}{2}, \frac{n}{2}}$上的元素。如果它小于$z$，我们丢弃左上区域；如果大于$z$，丢弃右下区域，如图\ref{fig:bsearch-2D}所示，灰色的区域表示可丢弃。两种情况下，搜索区域都从一个矩形变成了一个L形，无法直接递归。我们把这类二维搜索问题抽象为：已知函数$f(x, y)$，在某一范围内寻找整数解$(x, y)$，使得$f(x, y) = z$。矩阵搜索可以特化为下面的函数：
 
 \begin{figure}[htbp]
  \centering
  \includegraphics[scale=0.5]{img/bsearch-2D}
- \caption{左：中点的元素小于$z$。所有灰色区域的元素都小于$z$；右：中点的元素大于$z$。所有灰色区域的元素都大于$z$}
+ \caption{左：中点元素小于$z$，灰色区域都小于$z$；右：中点元素大于$z$。灰色区域都大于$z$。}
  \label{fig:bsearch-2D}
 \end{figure}
 
-两种情况下，搜索区域都从一个矩形变成了一个L形，无法直接递归。
-
-考虑严格单调增函数$f(x, y)$，例如$f(x, y) = a^x + b^y$，其中$a$和$b$都是自然数。给定自然数$z$，我们希望寻找全部的非负整数解$(x, y)$。
-
-使用这一定义，上述的矩阵搜索问题，可以特殊化为下面的函数：
-
 \[
-f(x, y) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  M_{x, y} & 1 \leq x \leq m, 1 \leq y \leq n \\
-  -1 & otherwise
-  \end{array}
-\right.
+f(x, y) = \begin{cases}
+  1 \leq x \leq m, 1 \leq y \leq n: & M_{x, y} \\
+  \text{其它}: & -1 \\
+  \end{cases}
 \]
 
-\paragraph{穷举法二维搜索}
+\index{马鞍搜索}
+如果$f(x, y)$是单调增函数，有效解法不是从左下角出发，而是从左上角出发开始查找\cite{saddle-back}。如图\ref{fig:saddleback-1}所示，搜索从$(0, z)$开始，对于每个点$(p, q)$，我们比较$f(p, q)$和$z$的关系：
 
-既然要找出$f(x, y)$的所有解，最简单的方法就是双重循环的穷举法：
+\begin{enumerate}
+\item 如果$f(p, q) < z$：由于$f$单调增，所有的$0 \leq y < q$，有$f(p, y) < z$。我们丢弃垂直线段上的所有点（红色线段）；
+\item 如果$f(p, q) > z$：所有的$p < x \leq z$，有$f(x, q) > z$。我们丢弃水平线段上的所有点（蓝色线段）；
+\item 如果$f(p, q) = z$：$(p, q)$是一个解，两条线段上的点都可以丢弃。
+\end{enumerate}
 
-\begin{algorithmic}[1]
-\Function{Solve}{$f, z$}
-  \State $A \gets \phi$
-  \For{$x \in \{0, 1, 2, ..., z\}$}
-    \For{$y \in \{0, 1, 2, ..., z\}$}
-      \If{$f(x, y) = z$}
-        \State $A \gets A \cup \{(x, y)\}$
-      \EndIf
-    \EndFor
-  \EndFor
-  \State \Return $A$
-\EndFunction
-\end{algorithmic}
-
-显然，这一方法计算了$(z+1)^2$次$f$。它可以形式化为式(\ref{eq:bsearch-brute})的定义：
-
-
-
-\paragraph{Saddleback搜索}
-\index{Saddelback搜索}
-
-我们尚未使用$f(x, y)$为严格单调增的条件。Dijkstra指出\cite{saddle-back}，有效的解法不是从左下角出发，而是从左上角出发开始查找。如图\ref{fig:saddleback-1}所示，搜索从$(0, z)$开始，对于每个点$(p, q)$，我们比较$f(p, q)$和$z$的关系：
-
-\begin{itemize}
-\item 如果$f(p, q) < z$，由于$f$单调增，对于所有的$0 \leq y < q$，必然有$f(p, y) < z$。我们可以丢弃垂直线段上的所有点（红色线段）；
-\item 如果$f(p, q) > z$，则对于所有的$p < x \leq z$，必然有$f(x, q) > z$。我们可以丢弃水平线段上的所有点（蓝色线段）；
-\item 否则，若$f(p, q) = z$，则$(p, q)$是一个解，两条线段上的点都可以丢弃。
-\end{itemize}
-
-这样，我们就可以逐步缩小矩形的搜索区域。每次要么丢弃一行，要么丢弃一列，或者同时丢弃行和列。
+这样，我们就可以逐步缩小矩形搜索区域。每次要么丢弃一行，要么丢弃一列，或者同时丢弃行、列。
 
 \begin{figure}[htbp]
  \centering
@@ -245,76 +212,18 @@ f(x, y) = \left \{
  \label{fig:saddleback-1}
 \end{figure}
 
-这一方法可以定义为一个函数$search(f, z, p, q)$，它在矩形区域内搜索方程$f(x, y) = z$的整数解，矩形的左上角为$(p, q)$，右下角为$(z, 0)$。这个矩形的左上角一开始时为$(p, q) = (0, z)$，然后启动搜索$solve(f, z) = search(f, z, 0, z)$。
+定义\textit{search}函数，并传入左上角开始搜索：$search(f, z, 0, z)$。
 
 \be
-search(f, z, p, q) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & p > z \lor q < 0 \\
-  search(f, z, p + 1, q) & f(p, q) < z \\
-  search(f, z, p, q - 1) & f(p, q) > z \\
-  \{(p, q)\} \cup search(f, z, p + 1, q - 1) & otherwise
-  \end{array}
-\right.
+\textit{search}\ f\ z\ p\ q\ =  \begin{cases}
+  p > z \text{或} q < 0: & [\ ]   \\
+  f(p, q) < z: & \textit{search}\ f\ z\ (p + 1)\ q  \\
+  f(p, q) > z: & \textit{search}\ f\ z\ p\ (q - 1)  \\
+  f(p, q) = z: & (p, q) : \textit{search}\ f\ z\ (p + 1)\ (q - 1) \\
+  \end{cases}
 \ee
 
-第一行为边界条件，如果$(p, q)$不在$(z, 0)$的左上方，则无解。下面的Haskell例子程序实现了这一算法：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-solve f z = search 0 z where
-  search p q | p > z || q < 0 = []
-             | z' < z = search (p + 1) q
-             | z' > z = search p (q - 1)
-             | otherwise = (p, q) : search (p + 1) (q - 1)
-    where z' = f p q
-\end{lstlisting}
-
-考虑到计算$f$的过程消耗可能较大，这一程序将计算结果$f(p, q)$存储在变量$z'$中。算法也可以用imperative的方式实现，在循环中不断更新搜索区域的边界。
-
-\begin{algorithmic}[1]
-\Function{Solve}{$f, z$}
-  \State $p \gets 0, q \gets z$
-  \State $S \gets \phi$
-  \While{$p \leq z \land q \geq 0$}
-    \State $z' \gets f(p, q)$
-    \If{$z' < z$}
-      \State $p \gets p + 1$
-    \ElsIf{$z' > z$}
-      \State $q \gets q - 1$
-    \Else
-      \State $S \gets S \cup \{(p, q)\}$
-      \State $p \gets p + 1, q \gets q - 1$
-    \EndIf
-  \EndWhile
-  \State \Return $S$
-\EndFunction
-\end{algorithmic}
-
-下面的Python例子程序实现了这一算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def solve(f, z):
-    (p, q) = (0, z)
-    res = []
-    while p <= z and q >= 0:
-        z1 = f(p, q)
-        if z1 < z:
-            p = p + 1
-        elif z1 > z:
-            q = q - 1
-        else:
-            res.append((p, q))
-            (p, q) = (p + 1, q - 1)
-    return res
-
-\end{lstlisting}
-
-显然在每次迭代中，$p$和$q$中至少有一个会向右下角前进一步。因此最多需要$2(z+1)$次迭代以完成搜索。这是最差情况下的结果。最好的情况又分为三种，第一种是每次迭代$p$和$q$同时前进一步，因此只需要$z+1$步就可以完成搜索；第二种是不断沿着水平方向向右前进，最后$p$超过$z$；第三种与此类似，不断沿着垂直方向向下前进，最终$q$变为负。
-
-图\ref{fig:saddleback-1-cases}描述了最好和最坏的情况。图\ref{fig:saddleback-1-cases} (a)中，对角线上的每个点$(x, z-x)$都满足$f(x, z-x) = z$，总共需要$z+1$步到达$(z, 0)$；(b)中，最上方水平线上的每个点$(x, z)$都使得$f(x, z) < z$，$z+1$步后，搜索结束；(c)中，左侧垂直线上的每个点$(0, x)$都使得$f(0, x) > z$，因此$z+1$步后，搜索结束；(d)描述的是最差情况。如果我们将搜索路径上的所有水平线段投射$x$轴上，所有垂直线段投射到$y$轴上，就可以得到总共的搜索步数为$2(z+1)$。
+每次查找后，$p$、$q$至少有一个会右下角前进一步。最多需要$2(z+1)$次查找完成搜索。最好情况又分为三种：（1）每次$p$、$q$同时前进一步，只要$z+1$步就完成搜索；（2）不断水平向右前进，最后$p$超过$z$；（3）不断垂直向下前进，最终$q$变为负。图\ref{fig:saddleback-1-cases}描述了最好和最坏的情况。图\ref{fig:saddleback-1-cases} (a)中，对角线上的每个点$(x, z-x)$都满足$f(x, z-x) = z$，总共需要$z+1$步到达$(z, 0)$；(b)中，最上方水平线上的每个点$(x, z)$都使得$f(x, z) < z$，$z+1$步后，搜索结束；(c)中，左侧垂直线上的每个点$(0, x)$都使得$f(0, x) > z$，因此$z+1$步后，搜索结束；(d)描述的是最差情况。如果我们将搜索路径上的所有水平线段投射$x$轴上，所有垂直线段投射到$y$轴上，就可以得到总共的搜索步数为$2(z+1)$。
 
 \begin{figure}[htbp]
  \centering
@@ -701,6 +610,30 @@ Richard Bird证明了，这是在$m \times n$的矩形区域内搜索一给定�
 试分析这一算法的性能。
 \end{itemize}
 \end{Exercise}
+
+\begin{Answer}
+\Question{消除递归，通过更新搜索边界实现马鞍查找。
+
+\begin{algorithmic}[1]
+\Function{Solve}{$f, z$}
+  \State $p \gets 0, q \gets z$
+  \State $S \gets \phi$
+  \While{$p \leq z \land q \geq 0$}
+    \State $z' \gets f(p, q)$
+    \If{$z' < z$}
+      \State $p \gets p + 1$
+    \ElsIf{$z' > z$}
+      \State $q \gets q - 1$
+    \Else
+      \State $S \gets S \cup \{(p, q)\}$
+      \State $p \gets p + 1, q \gets q - 1$
+    \EndIf
+  \EndWhile
+  \State \Return $S$
+\EndFunction
+\end{algorithmic}
+}
+\end{Answer}
 
 \subsection{信息复用}
 
