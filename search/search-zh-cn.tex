@@ -502,9 +502,9 @@ T(2^i, 2^j) & = j + 2 T(2^{i-1}, 2^{j-1}) \\
 \end{Answer}
 
 \section{众数问题}
-\index{Boyer-Moor众数问题}
+\index{Boyer-Moore众数问题}
 
-人们常常投票并用计算机统计结果。某个小岛正在选举总统，只有赢得半数以上选票的候选人才可当选。从投票结果序列，如A, B, A, C, B, B, D, ...统计结果。能否高效找出当选总统？可以利用map数据结构遍历选票来解决（见第2章）\footnote{2004年，人们发现了一种概率算法，称为Count-min sketch算法，使用sub-linear空间进行计数\cite{count-min-sketch}。}：
+人们常常投票并用计算机统计结果。某个小岛正在选举总统，只有赢得半数以上选票的候选人才可当选。从投票结果序列，如A, B, A, C, B, B, D, ...统计结果。能否高效找出当选总统？可以利用字典数据结构遍历选票来解决（见第2章）\footnote{2004年，人们发现了一种概率算法，称为Count-min sketch算法，使用sub-linear空间进行计数\cite{count-min-sketch}。}：
 
 \begin{lstlisting}[language = Bourbaki]
 Optional<T> majority([T] xs) {
@@ -520,146 +520,66 @@ Optional<T> majority([T] xs) {
 }
 \end{lstlisting}
 
-这段例子程序首先扫描所有选票，然后通过map累计所有候选人的票数。接着，他遍历map找到得票最多的候选人。若票数超过半数，则此人获胜，否则程序返回一个特殊值表示无人获胜。
+可以用红黑树或散列表实现的字典数据结构，如果有$m$名候选人$n$张选票，这一实现的复杂度如下表：
 
-下面的伪代码描述了这一算法。
+\btab{|l|l|l|}
+\hline
+字典 & 时间 & 空间 \\
+\hline
+红黑树 & $O(n \lg m)$ & $O(m)$ \\
+\hline
+散列表 & $O(n)$ & 最少$O(m)$ \\
+\hline
+\etab
+
+超过一半的元素叫做“众数”。鲍耶和摩尔在1980年给出了一种方法，可以扫描一遍找出众数（如果存在）。算法的时间复杂度为$O(n)$，空间复杂度为$O(1)$\cite{boyer-moore-majority}。设第一张选票上的候选人为目前的获胜者，赢得的票数为1。依次检查后继选票，若选票还投给目前的获胜者，则获胜者的得票加1，否则获胜者得票减1。若得票减到0则不再是获胜者了。选择下一张选票上的候选人为新获胜者并继续，如下表所示。若存在众数$m$，则$m$不可能被其它元素超过落选。但如果众数不存在（选举无效，未决出优胜），则最后记录的“获胜者”并无意义。需要再扫描一轮进行验证。
+
+\btab{|l|l|l|}
+\hline
+获胜者 & 得票 & 扫描位置 \\
+\hline
+A & 1 & \textbf{A}, B, C, B, B, C, A, B, A, B, B, D, B \\
+A & 0 & A, \textbf{B}, C, B, B, C, A, B, A, B, B, D, B \\
+C & 1 & A, B, \textbf{C}, B, B, C, A, B, A, B, B, D, B \\
+C & 0 & A, B, C, \textbf{B}, B, C, A, B, A, B, B, D, B \\
+B & 1 & A, B, C, B, \textbf{B}, C, A, B, A, B, B, D, B \\
+B & 0 & A, B, C, B, B, \textbf{C}, A, B, A, B, B, D, B \\
+A & 1 & A, B, C, B, B, C, \textbf{A}, B, A, B, B, D, B \\
+A & 0 & A, B, C, B, B, C, A, \textbf{B}, A, B, B, D, B \\
+A & 1 & A, B, C, B, B, C, A, B, \textbf{A}, B, B, D, B \\
+A & 0 & A, B, C, B, B, C, A, B, A, \textbf{B}, B, D, B \\
+B & 1 & A, B, C, B, B, C, A, B, A, B, \textbf{B}, D, B \\
+B & 0 & A, B, C, B, B, C, A, B, A, B, B, \textbf{D}, B \\
+B & 1 & A, B, C, B, B, C, A, B, A, B, B, D, \textbf{B} \\
+\hline
+\etab
 
 \begin{algorithmic}[1]
 \Function{Majority}{$A$}
-  \State $M \gets $ empty map
-  \For{$\forall a \in A$}
-    \State \textproc{Put}($M$, $a, 1 + $ \Call{Get}{$M, a$})
-  \EndFor
-  \State $max \gets 0$, $m \gets NIL$
-  \For{$\forall (k, v) \in M$}
-    \If{$max < v$}
-      \State $max \gets v$, $m \gets k$
-    \EndIf
-  \EndFor
-  \If{$max > |A| 50\%$}
-    \State \Return $m$
-  \Else
-    \State fail
-  \EndIf
-\EndFunction
-\end{algorithmic}
-
-对于$m$名候选人和$n$张选票，若使用自平衡树实现的map（如红黑树map），这一程序首先需要$O(n \log m)$时间来构建map；若使用散列表实现的map，则所用时间为$O(n)$。但是散列表所用的空间会更多。接下来，程序需要$O(m)$的时间来遍历map，然后寻找票数最多的候选人。表\ref{tab:map-comp}给出了使用不同种类map所需的时间和空间的对比。
-
-\begin{table}[htbp]
-\centering
-\begin{tabular}{|l|l|l|}
-\hline
-map & 时间 & 空间 \\
-\hline
-自平衡树 & $O(n \log m)$ & $O(m)$ \\
-散列 & $O(n)$ & 最少$O(m)$ \\
-\hline
-\end{tabular}
-\caption{不同种类map的性能对比} \label{tab:map-comp}
-\end{table}
-
-Boyer和Moore在1980年发现了一种巧妙的方法，如果存在超过半数的元素，可以只扫描一遍就找到它。并且这一方法只需要$O(1)$的空间\cite{boyer-moore-majority}。
-
-首先我们记录第一张选票投给的候选人为目前的获胜者，所赢得票数为1。在接下来的扫描中，若下一张选票还投给目前的获胜者，就将获胜者的票数加1；否则，下一张选票没有投给目前的获胜者，我们将获胜者的赢得的票数减1。若获胜者的净赢得的票数变为0，说明他不再是获胜者了，我们选择下一张选票上的候选人作为新的获胜者，并继续重复这一扫描过程。
-
-假设选票的序列为：A, B, C, B, B, C, A, B, A, B, B, D, B。表\ref{tab:scan-votes}给出了这一扫描处理的各个步骤。
-
-\begin{table}[htbp]
-\centering
-\begin{tabular}{|l|l|l|}
-\hline
-获胜者 & 净赢票数 & 扫描位置 \\
-\hline
-A & 1 & \underline{A}, B, C, B, B, C, A, B, A, B, B, D, B \\
-A & 0 & A, \underline{B}, C, B, B, C, A, B, A, B, B, D, B \\
-C & 1 & A, B, \underline{C}, B, B, C, A, B, A, B, B, D, B \\
-C & 0 & A, B, C, \underline{B}, B, C, A, B, A, B, B, D, B \\
-B & 1 & A, B, C, B, \underline{B}, C, A, B, A, B, B, D, B \\
-B & 0 & A, B, C, B, B, \underline{C}, A, B, A, B, B, D, B \\
-A & 1 & A, B, C, B, B, C, \underline{A}, B, A, B, B, D, B \\
-A & 0 & A, B, C, B, B, C, A, \underline{B}, A, B, B, D, B \\
-A & 1 & A, B, C, B, B, C, A, B, \underline{A}, B, B, D, B \\
-A & 0 & A, B, C, B, B, C, A, B, A, \underline{B}, B, D, B \\
-B & 1 & A, B, C, B, B, C, A, B, A, B, \underline{B}, D, B \\
-B & 0 & A, B, C, B, B, C, A, B, A, B, B, \underline{D}, B \\
-B & 1 & A, B, C, B, B, C, A, B, A, B, B, D, \underline{B} \\
-\hline
-\end{tabular}
-\caption{扫描选票的处理步骤} \label{tab:scan-votes}
-\end{table}
-
-这里关键的一点是：若存在一个超过50\%的众数，则它不可能被其它元素超越落选。但是，如果没有任何候选者赢得半数以上的选票，则最后所记录的“获胜者”并无意义。此时需要再进行一轮扫描进行验证。
-
-下面的算法实现了这一思路。
-
-\begin{algorithmic}[1]
-\Function{Majority}{$A$}
-  \State $c \gets 0$
-  \For{$i \gets$ 1 to $|A|$}
+  \State $c \gets 0, m \gets \nil$
+  \For{each $a$ in $A$}
     \If{$c = 0$}
-      \State $x \gets A[i]$
+      \State $m \gets a$
     \EndIf
-    \If{$A[i] = x$}
-      \State $c \gets c + 1$
-    \Else
-      \State $c \gets c - 1$
-    \EndIf
-  \EndFor
-  \State \Return $x$
-\EndFunction
-\end{algorithmic}
-
-若存在众数，这一算法首先扫描所有的选票。每扫描一张票，它根据此选票是支持还是反对当前的结果来增减获胜者的净赢票数。若净赢票数变为0，表明当前的获胜者已落选，算法记录下一张选票投给的候选人为新的获胜者，并继续扫描。
-
-这一过程是线性时间$O(n)$的，所用空间仅仅是两个变量。一个用以记录当前的获胜者，另一个记录净赢得的票数。
-
-当众数存在时，虽然上述算法可以将它找出。但当不存在众数时，这一算法仍会输出一个不正确的结果。下面的改进通过增加一轮扫描来进行验证。
-
-\begin{algorithmic}[1]
-\Function{Majority}{$A$}
-  \State $c \gets 0$
-  \For{$i \gets$ 1 to $|A|$}
-    \If{$c = 0$}
-      \State $x \gets A[i]$
-    \EndIf
-    \If{$A[i] = x$}
+    \If{$a = m$}
       \State $c \gets c + 1$
     \Else
       \State $c \gets c - 1$
     \EndIf
   \EndFor
   \State $c \gets 0$
-  \For{$i \gets 1$ to $|A|$}
-    \If{$A[i] = x$}
+  \For{each $a$ in $A$}
+    \If{$a = m$}
       \State $c \gets c + 1$
     \EndIf
   \EndFor
   \If{$c > \%50|A|$}
     \State \Return $x$
   \Else
-    \State fail
+    \State \Return $\nil$
   \EndIf
 \EndFunction
 \end{algorithmic}
-
-即使增加了验证的过程，这一算法的时间复杂度仍按为$O(n)$，并且所用空间为常数。下面的C++例子程序实现了这一算法\footnote{这是一个更加类似C语言例子，我们只是使用了C++的模板来抽象元素的类型。}。
-
-\lstset{language=C++}
-\begin{lstlisting}
-template<typename T>
-T majority(const T* xs, int n, T fail) {
-    T m;
-    int i, c;
-    for (i = 0, c = 0; i < n; ++i) {
-        if (!c)
-            m = xs[i];
-        c += xs[i] == m ? 1 : -1;
-    }
-    for (i = 0, c = 0; i < n; ++i, c += xs[i] == m);
-    return c * 2 > n ? m : fail;
-}
-\end{lstlisting}
 
 Boyer-Moore众数算法也可以用纯函数的方式实现。我们不再使用变量来记录和更新信息，而是使用累积器（accumulator）的方法。定义核心算法的函数为$maj(c, n, L)$，它接受一个选票列表$L$，目前的获胜者$c$，和净赢得的票数$n$。若选票列表不为空，则$c$在开始的时候为第一张选票的结果$l_1$，净赢得的票数为1，即$maj(l_1, 1, L')$，其中$L'$是除$l_1$以外的剩余选票。下面是这个函数的详细定义：
 
@@ -853,7 +773,7 @@ Knuth、Morris和Pratt根据这一思路给出了一个高效的字符串匹配�
  \label{fig:kmp-fallback}
 \end{figure}
 
-当然有可能不存在同时也是后缀的前缀。如果我们认为空串同时是任何其他字符串的前缀和后缀，则总存在一个解$k=0$。如果存在多个$k$满足，为了避免漏掉任何可能的候选位置，我们需要找到同时既是前缀又是后缀的最大的$k$。我们定义一个\underline{前缀函数}$\pi(q)$，它告诉我们当第$q+1$个字符不匹配时应该回退的位置\cite{CLRS}。
+当然有可能不存在同时也是后缀的前缀。如果我们认为空串同时是任何其他字符串的前缀和后缀，则总存在一个解$k=0$。如果存在多个$k$满足，为了避免漏掉任何可能的候选位置，我们需要找到同时既是前缀又是后缀的最大的$k$。我们定义一个\textbf{前缀函数}$\pi(q)$，它告诉我们当第$q+1$个字符不匹配时应该回退的位置\cite{CLRS}。
 
 \be
 \pi(q) = max \{ k | k < q \land P_k \sqsupset P_q \}
@@ -1420,7 +1340,7 @@ Boyer-Moore字符串匹配算法是1977年发现的另一种高效的字符串�
  \label{fig:bad-char}
 \end{figure}
 
-从这点可以得到\underline{不良字符规则}。我们可以对待搜索字符串进行预处理。如果文本中的字符集已知，我们可以找到所有不存在于待搜索串中的不良字符。在后继的扫描过程中，只要遇到不良字符，我们就可以立即向右侧移动一个待搜索串长度的距离。接下来的问题是，如果文本中不匹配的字符存在于待搜索串中要如何处理？为了不漏掉任何可能的解，我们只能向右少量移动，然后重新搜索，如图\ref{fig:good-char}所示。
+从这点可以得到\textbf{不良字符规则}。我们可以对待搜索字符串进行预处理。如果文本中的字符集已知，我们可以找到所有不存在于待搜索串中的不良字符。在后继的扫描过程中，只要遇到不良字符，我们就可以立即向右侧移动一个待搜索串长度的距离。接下来的问题是，如果文本中不匹配的字符存在于待搜索串中要如何处理？为了不漏掉任何可能的解，我们只能向右少量移动，然后重新搜索，如图\ref{fig:good-char}所示。
 
 \begin{figure}[htbp]
  \centering
@@ -1531,7 +1451,7 @@ def bmh_match(w, p):
  \label{fig:good-suffix-case2-1}
 \end{figure}
 
-以上两种情况组成了\underline{良好后缀规则}，如图\ref{fig:good-suffix-cases}所示。
+以上两种情况组成了\textbf{良好后缀规则}，如图\ref{fig:good-suffix-cases}所示。
 
 \begin{figure}[htbp]
  \centering
@@ -2698,7 +2618,7 @@ $A$ & $B$ & 操作 \\
 \item 将$A$倒入$B$，若$B$变满，则将其倒空。
 \end{enumerate}
 
-因此剩下的唯一问题是寻找整数$x$和$y$。数论中有一个强大的工具叫做\underline{扩展欧几里得算法}（Extended Euclid algorithm），可以用来解决这个问题。经典的欧几里得算法，只能找到最大公约数，而扩展欧几里得算法还可以同时得到一对整数$x$和$y$，使得：
+因此剩下的唯一问题是寻找整数$x$和$y$。数论中有一个强大的工具叫做\textbf{扩展欧几里得算法}（Extended Euclid algorithm），可以用来解决这个问题。经典的欧几里得算法，只能找到最大公约数，而扩展欧几里得算法还可以同时得到一对整数$x$和$y$，使得：
 
 \be
 (d, x, y) = gcd_{ext}(a, b)
@@ -3461,7 +3381,7 @@ R & 001 & T & 100 \\
 10101100111000101110100101000011101111
 \end{Verbatim}
 
-如果按照上述码表解码，我们不会遇到任何有歧义的字符。这是因为没有任何字符的编码是其他编码的前缀。这样的编码称为\underline{前缀码}（英文为prefix-code，读者可能会奇怪为何它不叫无前缀码non-prefix code）。使用前缀码，我们不需要任何分隔符。这样编码的长度就可以缩短。
+如果按照上述码表解码，我们不会遇到任何有歧义的字符。这是因为没有任何字符的编码是其他编码的前缀。这样的编码称为\textbf{前缀码}（英文为prefix-code，读者可能会奇怪为何它不叫无前缀码non-prefix code）。使用前缀码，我们不需要任何分隔符。这样编码的长度就可以缩短。
 
 这自然引发了一个有趣的问题：给定一个文本，我们能否找到一个码表，使得编码长度最短？1951年，还是MIT的一名学生的David A. Huffman正好遇到了这个问题\cite{Huffman}。他的老师Robert M. Fano在课上宣布，如果谁解出了这个问题，就不用参加期末考试了。Huffman尝试了很久，他几乎要放弃了，开始着手准备参加考试。恰在此时，他忽然找到了一个高效的解法。
 
@@ -3892,9 +3812,9 @@ string decode(Node* root, const char* bits) {
 }
 \end{lstlisting}
 
-Huffman编码，特别是Huffman树的构造过程展示了一种有趣的策略。每次合并都有若干选项。Huffman的方法总是从树中选取权重最小的两棵树。这是合并阶段的最好选择。特别地，这一系列\underline{局部}最优的选择，产生了一个全局最优的前缀编码。
+Huffman编码，特别是Huffman树的构造过程展示了一种有趣的策略。每次合并都有若干选项。Huffman的方法总是从树中选取权重最小的两棵树。这是合并阶段的最好选择。特别地，这一系列\textbf{局部}最优的选择，产生了一个全局最优的前缀编码。
 
-但并非局部最优选择总能带来全局最优解。在大多数情况下并非如此。Huffman编码是一个特殊情况。我们称这种每次选择局部最优选项的策略为\underline{贪心}策略。
+但并非局部最优选择总能带来全局最优解。在大多数情况下并非如此。Huffman编码是一个特殊情况。我们称这种每次选择局部最优选项的策略为\textbf{贪心}策略。
 
 贪心方法可以解决很多问题。但是判断贪心方法能否产生全局最优解却并不容易。通用的形式化证明仍然是一个活跃的研究领域。\cite{CLRS}中的第16.4节介绍了拟阵（Matroid）方法，它覆盖了可以应用贪心算法的很多问题。
 
@@ -4826,9 +4746,9 @@ subsetsum xs s = foldl build (fromList [[] | _ <- [l..u]]) xs `idx` s where
 \item 对最长公共子序列问题，另一种自底向上的解法是子表格中记录“方向”，而不是序列的长度。有三个值：‘N’代表向北，‘W’代表向西，‘NW’代表向西北。这些方向指示我们如何构建最终的结果。我们从表格的右下角开始，如果值为‘NW’，我们就沿着对角线移动到左上方的格子；如果值为‘N’，就垂直移动到上方的格子；如果为‘W’，就水平移动到左侧的格子。选择一门编程语言，实现这一算法。
 \item Levenshtein编辑距离是一种衡量两个字符串相似程度的量。它定义为从字符串$s$转换到字符串$t$所需花费的成本。它被广泛用于拼写检查，OCR纠错等场景中。Levenshtein编辑距离允许三种操作：增加一个字符、删除一个字符、替换一个字符。每种操作每次只改变一个字符，下面的例子中，给出了如何从字符串“kitten”转换到“sitting”的过程，从而得出其Levenshtein编辑距离为3。
   \begin{enumerate}
-  \item \underline{k}itten $\rightarrow$ \underline{s}itten （将k替换为s）；
-  \item sitt\underline{e}n $\rightarrow$ sitt\underline{i}n （将e替换为i）；
-  \item sitten $\rightarrow$ sittin\underline{g} （在结尾处插入g）。
+  \item \textbf{k}itten $\rightarrow$ \textbf{s}itten （将k替换为s）；
+  \item sitt\textbf{e}n $\rightarrow$ sitt\textbf{i}n （将e替换为i）；
+  \item sitten $\rightarrow$ sittin\textbf{g} （在结尾处插入g）。
   \end{enumerate}
 使用动态规划，计算两个字符串间的Levenshtein距离。
 \end{itemize}
@@ -4885,6 +4805,23 @@ bsearch f y (l, u) | u <= l = l
                    | otherwise = bsearch f y (l, m-1)
   where m = (l + u) `div` 2
 \end{Haskell}
+
+众数查找：
+
+\begin{lstlisting}[language = Bourbaki]
+Optional<T> majority([T] xs) {
+    var (m, c) = (Optional<T>.Nothing, 0)
+    for var x in xs {
+        if c == 0 then (m, c) = (Optional.of(x), 0)
+        if x == m then c++ else c--
+    }
+    c = 0
+    for var x in xs {
+        if x == m then c++
+    }
+    return if c > length(xs)/2 then m else Optional<T>.Nothing
+}
+\end{lstlisting}
 
 \ifx\wholebook\relax\else
 \section{参考答案}
