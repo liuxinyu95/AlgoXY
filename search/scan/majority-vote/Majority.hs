@@ -22,7 +22,6 @@ import qualified Data.Map.Lazy as Map
 -- Boyer-Moore majority vote algorithm based on [1]
 -- [1]. Robert Boyer, and Strother Moore. `MJRTY - A Fast Majority Vote Algorithm'. Automated Reasoning: Essays in Honor of Woody Bledsoe, Automated Reasoning Series, Kluwer Academic Publishers, Dordrecht, The Netherlands, 1991, pp. 105-117.
 
-majority :: (Eq a) => [a] -> Maybe a
 majority xs = verify $ foldr maj (Nothing, 0) xs where
   maj x (Nothing, 0) = (Just x, 1)
   maj x (Just y, v) | x == y = (Just y, v + 1)
