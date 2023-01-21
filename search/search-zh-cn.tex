@@ -554,6 +554,43 @@ B & 1 & A, B, C, B, B, C, A, B, A, B, B, D, \textbf{B} \\
 \hline
 \etab
 
+\be
+\begin{array}{rcl}
+maj\ [\ ] & = & \nil \\
+maj\ (x \cons xs) & = & scan\ (x, 1)\ xs \\
+\end{array}
+\ee
+
+其中$scan$定义为：
+
+\be
+\begin{array}{rcl}
+scan\ (m, v)\ [\ ] & = & m \\
+scan\ (m, v)\ (x \cons xs) & = & \begin{cases}
+  m = x: & scan\ (m, v + 1)\ xs \\
+  v = 0: & scan\ (x, 1)\ xs \\
+  \text{否则}: & scan\ (m, v - 1)\ xs \\
+  \end{cases}
+\end{array}
+\ee
+
+或者利用叠加实现：$maj = foldr\ f\ (\nil, 0)$，其中：
+
+\be
+f\ x\ (m, v) = \begin{cases}
+  x = m: & (m, v + 1) \\
+  v = 0: & (x, 1) \\
+  \text{否则}: & (m, v - 1) \\
+\end{cases}
+\ee
+
+最后还需要验证是否过半数：
+
+\be
+\textit{verify}\ m = \text{if}\ 2|filter\ (= m)\ xs| > |xs|\ \text{then}\ \textit{Just}\ m\ \text{else}\ \nil
+\ee
+
+下面是对应的迭代实现：
 \begin{algorithmic}[1]
 \Function{Majority}{$A$}
   \State $c \gets 0, m \gets \nil$
@@ -580,50 +617,6 @@ B & 1 & A, B, C, B, B, C, A, B, A, B, B, D, \textbf{B} \\
   \EndIf
 \EndFunction
 \end{algorithmic}
-
-Boyer-Moore众数算法也可以用纯函数的方式实现。我们不再使用变量来记录和更新信息，而是使用累积器（accumulator）的方法。定义核心算法的函数为$maj(c, n, L)$，它接受一个选票列表$L$，目前的获胜者$c$，和净赢得的票数$n$。若选票列表不为空，则$c$在开始的时候为第一张选票的结果$l_1$，净赢得的票数为1，即$maj(l_1, 1, L')$，其中$L'$是除$l_1$以外的剩余选票。下面是这个函数的详细定义：
-
-\be
-maj(c, n, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  c & L = \phi \\
-  maj(c, n + 1, L') & l_1 = c \\
-  maj(l_1, 1, L') & n = 0 \land l_1 \neq c \\
-  maj(c, n - 1, L') & otherwise
-  \end{array}
-\right.
-\ee
-
-我们还需要定义一个函数来验证所得的结果是否超过半数。最终的算法首先检查选票列表，若为空，则不存在众数，否则它通过Boyer-Moore算法找到一个结果$c$，然后再扫描一遍选票列表计算$c$总共赢得的选票是否过半。
-
-\be
-majority(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  fail & L = \phi \\
-  c & c = maj(l_1, 1, L'), |\{x | x \in L, x = c\}| > \%50 |L| \\
-  fail & otherwise
-  \end{array}
-\right.
-\ee
-
-下面的Haskell例子程序实现了这一算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-majority :: (Eq a) => [a] -> Maybe a
-majority [] = Nothing
-majority (x:xs) = let m = maj x 1 xs in verify m (x:xs)
-
-maj c n [] = c
-maj c n (x:xs) | c == x = maj c (n+1) xs
-               | n == 0 = maj x 1 xs
-               | otherwise = maj c (n-1) xs
-
-verify m xs = if 2 * (length $ filter (==m) xs) > length xs
-              then Just m else Nothing
-\end{lstlisting} %$
 
 \subsubsection{最大子序列和}
 \index{最大和问题}
@@ -4822,6 +4815,23 @@ Optional<T> majority([T] xs) {
     return if c > length(xs)/2 then m else Optional<T>.Nothing
 }
 \end{lstlisting}
+
+下面的Haskell例子程序实现了这一算法。
+
+\lstset{language=Haskell}
+\begin{lstlisting}[style=Haskell]
+majority :: (Eq a) => [a] -> Maybe a
+majority [] = Nothing
+majority (x:xs) = let m = maj x 1 xs in verify m (x:xs)
+
+maj c n [] = c
+maj c n (x:xs) | c == x = maj c (n+1) xs
+               | n == 0 = maj x 1 xs
+               | otherwise = maj c (n-1) xs
+
+verify m xs = if 2 * (length $ filter (==m) xs) > length xs
+              then Just m else Nothing
+\end{lstlisting} %$
 
 \ifx\wholebook\relax\else
 \section{参考答案}
