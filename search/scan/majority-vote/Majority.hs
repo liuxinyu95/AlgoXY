@@ -34,12 +34,13 @@ majority xs = verify $ foldr maj (Nothing, 0) xs where
 -- extended: find x that occurs > n/k times in xs, where n = length xs, k > 1 is some integer.
 majorities k xs = verify $ foldr maj Map.empty xs where
   maj :: (Eq a, Ord a) => a -> Map.Map a Int -> Map.Map a Int
-  maj x m | x `Map.member` m = Map.adjust (+ 1) x m
-          | Map.size m < k - 1 = Map.insert x 1 m
-          | otherwise = Map.filter (/=0) $ Map.map (\v -> v - 1) m
-  verify m = Map.keys $ Map.filter (> th) $ foldr cnt (Map.map (const 0) m) xs where
+  maj x m | x `Map.member` m = Map.adjust (1+) x m
+          | Map.size m < k = Map.insert x 1 m
+          | otherwise = Map.filter (/=0) $ Map.map (-1+) m
+  verify m = Map.keys $ Map.filter (> th) $ foldr cnt m' xs where
+    m' = Map.map (const 0) m
     cnt :: (Eq a, Ord a) => a -> Map.Map a Int -> Map.Map a Int
-    cnt x m = if x `Map.member` m then Map.adjust (\v -> v + 1) x m else m
+    cnt x m = if x `Map.member` m then Map.adjust (1+) x m else m
     th = (length xs) `div` k
 
 -- test

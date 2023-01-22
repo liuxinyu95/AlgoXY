@@ -625,7 +625,38 @@ f\ x\ (m, v) = \begin{cases}
 \begin{Answer}
 \Question{扩展众数算法，在$A$中寻找出现次数超过$\lfloor n/k \rfloor$的$k$个众数，其中$n = |A|$。提示：每次删掉$k$个不同元素，直到最后剩下的元素种类不足$k$个。如果某个元素是$k$-众数（多于$\lfloor n/k \rfloor$个），则一定会剩下来。
 
+\vspace{3mm}
+我们建立一个字典$Map: T \mapsto Int$，其中$T$是$A$中的元素类型。这个字典记录了候选者$a$的净胜票数。最开始字典为空$\nil$。我们一边扫描$A$一边更新字典：$foldr\ maj\ \nil\ A$，其中$maj$定义为：
 
+\be
+maj\ a\ m = \begin{cases}
+  a \in m: & m[a] \gets m[a] + 1 \\
+  |m| < k: & m[a] \gets 1 \\
+  \text{否则}: & filter\ (b \mapsto m[b] \neq 0)\ \{b \mapsto m[b] - 1 | b \in m\}
+  \end{cases}
+\ee
+对于$A$中每个元素$a$，如果$a \notin m$不在字典中，并且字典中的候选者不足$k$个，我们将$a$加入字典，并记录为1票$m[a] \gets 1$；如果$a \in m$，我们将票数加一$m[a] \gets m[a] + 1$；否则如果字典中已有$k$个后选择，我们把每个候选者的得票减1，如果票数为0则剔除。
+
+最后，我们还需把$m$中最后剩余的候选者验证一下，看看它们的个数是否超过了$n/k$，令$m' = \{(a, 0) | a \in m\}$，然后再遍历一次$A$：$foldr\ cnt\ m'\ A$，其中$cnt$定义为：
+
+\be
+cnt\ a\ m' = \text{if}\ a \in m'\ \text{then}\ m'[a] \gets m'[a] + 1\ \text{else}\ m'
+\ee
+
+这样$m'$中记录了这些候选者的票数，我们留下超过$n/k$的：$keys\ (filter\ (> n/k)\ m')$。下面的例子程序实现了这一方法：
+
+\begin{Haskell}
+majorities k xs = verify $ foldr maj Map.empty xs where
+  maj :: (Eq a, Ord a) => a -> Map.Map a Int -> Map.Map a Int
+  maj x m | x `Map.member` m = Map.adjust (1+) x m
+          | Map.size m < k = Map.insert x 1 m
+          | otherwise = Map.filter (/=0) $ Map.map (-1+) m
+  verify m = Map.keys $ Map.filter (> th) $ foldr cnt m' xs where
+    m' = Map.map (const 0) m
+    cnt :: (Eq a, Ord a) => a -> Map.Map a Int -> Map.Map a Int
+    cnt x m = if x `Map.member` m then Map.adjust (1+) x m else m
+    th = (length xs) `div` k
+\end{Haskell}
 }
 \end{Answer}
 
