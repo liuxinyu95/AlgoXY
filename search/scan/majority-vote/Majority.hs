@@ -32,13 +32,12 @@ majority xs = verify $ foldr maj (Nothing, 0) xs where
   verify (Just m, _)  = if 2 * (length $ filter (==m) xs) > length xs then Just m else Nothing
 
 -- extended: find x that occurs > n/k times in xs, where n = length xs, k > 1 is some integer.
-majorities k xs = verify $ Map.keys $ foldr maj Map.empty xs where
+majorities k xs = verify $ foldr maj Map.empty xs where
   maj :: (Eq a, Ord a) => a -> Map.Map a Int -> Map.Map a Int
   maj x m | x `Map.member` m = Map.adjust (+ 1) x m
           | Map.size m < k - 1 = Map.insert x 1 m
           | otherwise = Map.filter (/=0) $ Map.map (\v -> v - 1) m
-  verify ks = Map.keys $ Map.filter (> th) $ foldr cnt m xs where
-    m = Map.fromList $ zip ks (repeat 0)
+  verify m = Map.keys $ Map.filter (> th) $ foldr cnt (Map.map (const 0) m) xs where
     cnt :: (Eq a, Ord a) => a -> Map.Map a Int -> Map.Map a Int
     cnt x m = if x `Map.member` m then Map.adjust (\v -> v + 1) x m else m
     th = (length xs) `div` k
@@ -53,12 +52,15 @@ naive_maj xs = if v * 2 > length xs then w else Nothing where
 naive_majs k xs = Map.keys $ Map.filter (> th) $ Map.fromListWith (+) (zip xs (repeat 1)) where
   th = (length xs) `div` k
 
+--- generate votes of m candidates, and k majorities (> n/k votes)
+votesOf k m = map (\x -> ((x `mod` k) * x) `mod` m)
+
 prop_maj :: [Int] -> Bool
 prop_maj ns = naive_maj xs == majority xs where
-  xs = map (`mod` 5) ns
+  xs = votesOf 2 5 ns
 
 prop_majs :: [Int] -> Bool
 prop_majs ns = bs `Set.isSubsetOf` as where
-  xs = map (`mod` 5) ns
+  xs = votesOf 3 7 ns
   as = Set.fromList $ naive_majs 3 xs
   bs = Set.fromList $ majorities 3 xs
