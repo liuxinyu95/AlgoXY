@@ -16,8 +16,9 @@
 
 module Majority where
 
-import Test.QuickCheck
 import qualified Data.Map.Lazy as Map
+import qualified Data.Set as Set
+import Test.QuickCheck
 
 -- Boyer-Moore majority vote algorithm based on [1]
 -- [1]. Robert Boyer, and Strother Moore. `MJRTY - A Fast Majority Vote Algorithm'. Automated Reasoning: Essays in Honor of Woody Bledsoe, Automated Reasoning Series, Kluwer Academic Publishers, Dordrecht, The Netherlands, 1991, pp. 105-117.
@@ -30,6 +31,18 @@ majority xs = verify $ foldr maj (Nothing, 0) xs where
   verify (Nothing, _) = Nothing
   verify (Just m, _)  = if 2 * (length $ filter (==m) xs) > length xs then Just m else Nothing
 
+-- extended: find x that occurs > n/k times in xs, where n = length xs, k > 1 is some integer.
+majorities k xs = verify $ Map.keys $ foldr maj Map.empty xs where
+  maj :: (Eq a, Ord a) => a -> Map.Map a Int -> Map.Map a Int
+  maj x m | x `Map.member` m = Map.adjust (+ 1) x m
+          | Map.size m < k - 1 = Map.insert x 1 m
+          | otherwise = Map.filter (/=0) $ Map.map (\v -> v - 1) m
+  verify ks = Map.keys $ Map.filter (> th) $ foldr cnt m xs where
+    m = Map.fromList $ zip ks (repeat 0)
+    cnt :: (Eq a, Ord a) => a -> Map.Map a Int -> Map.Map a Int
+    cnt x m = if x `Map.member` m then Map.adjust (\v -> v + 1) x m else m
+    th = (length xs) `div` k
+
 -- test
 
 naive_maj :: (Eq a, Ord a) => [a] -> Maybe a
@@ -37,6 +50,15 @@ naive_maj xs = if v * 2 > length xs then w else Nothing where
   dict = Map.fromListWith (+) (zip (map Just xs) (repeat 1))
   (w, v) = Map.foldrWithKey (\x n (c, m) -> if n > m then (x, n) else (c, m)) (Nothing, 0) dict
 
+naive_majs k xs = Map.keys $ Map.filter (> th) $ Map.fromListWith (+) (zip xs (repeat 1)) where
+  th = (length xs) `div` k
+
 prop_maj :: [Int] -> Bool
 prop_maj ns = naive_maj xs == majority xs where
   xs = map (`mod` 5) ns
+
+prop_majs :: [Int] -> Bool
+prop_majs ns = bs `Set.isSubsetOf` as where
+  xs = map (`mod` 5) ns
+  as = Set.fromList $ naive_majs 3 xs
+  bs = Set.fromList $ majorities 3 xs
