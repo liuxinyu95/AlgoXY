@@ -802,7 +802,7 @@ max_s & = & fst \cdot foldr\ f\ ((0, [\ ]), (0, [\ ])) \\
 
 在文本$T$中搜索字符串$P$。如图\ref{fig:strstr} (a)所示，在偏移量$s=4$时，逐一检查$P$和$T$中的字符。前4个相等，第5个在$P$中是y，但在$T$中是t。此时逐一比较立即终止，将$s$加1（$P$向右移动1个位置）然后重新比较ananym和nantho……我们发现$s$的增量可以超过1。前两个字符an恰好是anan的后缀。我们可以将$s$增加2（$P$向右移动2），如图\ref{fig:strstr} (b)所示。我们复用了此前已经比较过4个字符的信息，跳过了无需比较的位置。高德纳、莫里斯、普拉特根据这一想法给出了一个高效的字符串匹配算法\cite{kmp}，人们把三人名字的首字母合在一起，称作KMP算法。
 
-记文本$T$中前$k$个字符组成的串为$T_k$（$T$的$k$个字符前缀）。为了尽可能多地把$P$向右移动$s$个位置，我们定义函数$\pi(q)$，其中$q$是已成功匹配的字符个数。例如在图\ref{fig:strstr} (a)中，$q = 4$，即第5个字符不匹配。什么情况下$s$可以大于1呢？如图\ref{fig:kmp-fallback}所示，若$P$可向右移动，则一定存在某个$k$，使得$P$中的前$k$个字符和前缀$P_q$的最后$k$个字符相同。也就是说，前缀$P_k$同时是$P_q$的后缀。
+记文本$T$中前$k$个字符组成的串为$T_k$（$T$的$k$个字符前缀）。为了尽可能多地把$P$向右移动$s$个位置，我们需要利用已成功匹配的$q$个字符。如图\ref{fig:kmp-fallback}所示，若$P$可向右移动，则一定存在某个$k$，使得$P$中的前$k$个字符和前缀$P_q$的最后$k$个字符相同。也就是说，前缀$P_k$同时是$P_q$的后缀。定义空串“”是任何串的前缀和后缀，则总存在最小的$k=0$。我们要找到同时既是前缀又是后缀的最大$k$。定义\textbf{前缀函数}$\pi(q)$，它告诉我们当第$q+1$个字符不匹配时应该回退的位置\cite{CLRS}。
 
 \begin{figure}[htbp]
  \centering
@@ -811,30 +811,27 @@ max_s & = & fst \cdot foldr\ f\ ((0, [\ ]), (0, [\ ])) \\
  \label{fig:kmp-fallback}
 \end{figure}
 
-当然有可能不存在同时也是后缀的前缀。如果我们认为空串同时是任何其他字符串的前缀和后缀，则总存在一个解$k=0$。如果存在多个$k$满足，为了避免漏掉任何可能的候选位置，我们需要找到同时既是前缀又是后缀的最大的$k$。我们定义一个\textbf{前缀函数}$\pi(q)$，它告诉我们当第$q+1$个字符不匹配时应该回退的位置\cite{CLRS}。
-
 \be
-\pi(q) = max \{ k | k < q \land P_k \sqsupset P_q \}
+\pi(q) = max \{ k | 0 \leq k < q, \text{且} P_k \text{是} P_q \text{的后缀}\}
 \label{eq:prefix-function}
 \ee
 
-其中，$A \sqsupset B$表示“$A$是$B$的后缀”。这一函数的使用方法如下：当我们在文本$T$中，以offset为$s$尝试匹配$P$时，若前$q$个字符都相同，而接下来的字符不同，我们接下来通过$\pi(q)$找到一个回退的位置$q'$，然后重新尝试比较$P[q']$和文本中的字符。根据这一思路，KMP的核心算法可以描述如下：
+当在文本$T$中偏移$s$匹配$P$时，若前$q$个字符相同，而下一个不同，我们通过$q' = \pi(q)$找到一个回退的位置$q'$。重新比较$P[q']$和文本：
 
 \begin{algorithmic}[1]
 \Function{KMP}{$T, P$}
-  \State $n \gets |T|, m \gets |P|$
-  \State build prefix function $\pi$ from $P$
-  \State $q \gets 0$ \Comment{记录已经匹配的字符个数}
+  \State $\pi \gets $ \Call{Build-Prefixes}{$P$}
+  \State $n \gets |T|, m \gets |P|, q \gets 0$
   \For{$i \gets 1$ to $n$}
-    \While{$q > 0 \land P[q+1] \neq T[i]$}
+    \While{$q > 0$ 且 $P[q+1] \neq T[i]$}
       \State $q \gets \pi(q)$
     \EndWhile
     \If{$P[q+1] = T[i]$}
       \State $q \gets q + 1$
     \EndIf
     \If{$q = m$}
-      \State found one solution at $i - m$
-      \State $q \gets \pi(q)$ \Comment{继续寻找下一个可能的位置}
+      \State 位置$i - m$是一个解
+      \State $q \gets \pi(q)$ \Comment{寻找更多的匹配位置}
     \EndIf
   \EndFor
 \EndFunction
