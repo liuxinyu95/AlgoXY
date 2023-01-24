@@ -700,15 +700,15 @@ majorities k xs = verify $ foldr maj Map.empty xs where
 \section{最大子序列和}
 \index{最大和问题}
 
-序列$A$中的一段连续的部分$A[i...j]$叫做子序列。定义子序列和$S = A[i] + A[i+1] + ... + A[j]$，空序列$[\ ]$是任何序列的子序列，它的和是0。如何找到$A$的最大的子序列和\cite{Bentley}？例如[3, -13, 19, -12, 1, 9, 18, -16, 15, -15]中子序列[19, -12, 1, 9, 18]的和最大，为35。如果序列中的元素都是正数，最大和就是全部元素和。如果所有元素都是负数，则空序列的和最大，为0。显然可以通过穷举找出答案：
+序列$V$中的一段连续的部分$V[i...j]$叫做子序列。定义子序列和$S = V[i] + V[i+1] + ... + V[j]$，空序列$[\ ]$是任何序列的子序列，它的和是0。如何找到$A$的最大的子序列和\cite{Bentley}？例如[3, -13, 19, -12, 1, 9, 18, -16, 15, -15]中子序列[19, -12, 1, 9, 18]的和最大，为35。如果序列中的元素都是正数，最大和就是全部元素和。如果所有元素都是负数，则空序列的和最大，为0。显然可以通过穷举找出答案：
 
 \begin{algorithmic}[1]
-\Function{Max-Sum}{$A$}
-  \State $m \gets 0$
-  \For{$i \gets 1$ to $|A|$}
+\Function{Max-Sum}{$V$}
+  \State $m \gets 0, n \gets |V|$
+  \For{$i \gets 1$ to $n$}
     \State $s \gets 0$
-    \For{$j \gets i$ to $|A|$}
-      \State $s \gets s + A[j]$
+    \For{$j \gets i$ to $n$}
+      \State $s \gets s + V[j]$
       \State $m \gets $ \Call{Max}{$m, s$}
     \EndFor
   \EndFor
@@ -716,122 +716,98 @@ majorities k xs = verify $ foldr maj Map.empty xs where
 \EndFunction
 \end{algorithmic}
 
-穷举法没有复用任何此前已经计算出的结果。借鉴Boyer-Moore众数算法的思路，我们可以一边扫描，一边记录下以当前位置结尾的子序列的最大和。同时我们还需要记录下目前为止所找到的最大和，图\ref{fig:max-sum-invariant}给出了扫描时所保持的不变性质。
+穷举法的复杂度为$O(n^2)$，其中$n$是序列长度。我们可以借鉴众数算法的思想，一边扫描一边记录下以当前位置$i$结尾的子序列的和$A$，同时记录下目前所找到的最大子序列和$B$，如图\ref{fig:max-sum-invariant}所示。$A$、$B$不一定相等。总保持$B \leq A$的关系。当$B$和下一个元素$V[i]$相加后超过$A$时，我们就用更大的$B$替换$A$。当$B + V[i] < 0$时，将$B$重置为0。下表给出了扫描处理$[3, -13, 19, -12, 1, 9, 18, -16, 15, -15]$时的步骤。
 
 \begin{figure}[htbp]
  \centering
       \begin{tikzpicture}[scale=0.8]
       \draw (0, 0) rectangle (1, 1) node [pos=.5] {...}
-            (1, 0) rectangle (2, 1) node [pos=.5] {max}
+            (1, 0) rectangle (2, 1) node [pos=.5] {$A$}
             (2, 0) rectangle (3, 1) node [pos=.5] {...}
-            (3, 0) rectangle (6, 1) node (rest) [pos=.5] {以i结尾的max}
+            (3, 0) rectangle (6, 1) node (rest) [pos=.5] {$B$}
             (6, 0) rectangle (7, 1) node [pos=.5] {...};
       \fill [black] (6, 0) rectangle (6.1, 1) node (ibar) [pos=.5] {};
       \draw (6, 2) node (i) {i};
       \draw[thick, ->] (i) edge [bend right] (ibar);
       \end{tikzpicture}
- \caption{扫描时的不变性质}
+ \caption{$A$是目前找到的最大子序列和，$B$是以$i$结尾的子序列和。}
  \label{fig:max-sum-invariant}
 \end{figure}
 
-在任何时候，当我们扫描到第$i$个位置时，目前找到的最大和记为$A$。同时，我们记录下以$i$结尾的子序列的最大和为$B$。$A$和$B$并不一定相等，实际上，我们总保持$B \leq A$的关系。当$B$和下一个元素相加，从而超过$A$时，我们就用这个更大的结果替换$A$。当$B$加上下一个元素后，变为负数时，我们将$B$重新设置为0。下表给出了扫描处理序列$\{3, -13, 19, -12, 1, 9, 18, -16, 15, -15\}$时的各个步骤。
-
-\begin{table}[htbp]
-\centering
-\begin{tabular}{|l|l|r|}
+\btab{|l|l|r|}
 \hline
-最大和 & 以$i$结尾的子序列最大和 & 尚未扫描的部分 \\
+最大和 & 以$i$结尾的子序列和 & 尚未扫描部分 \\
 \hline
-0 & 0 & $\{3, -13, 19, -12, 1, 9, 18, -16, 15, -15\}$ \\
-3 & 3 & $\{-13, 19, -12, 1, 9, 18, -16, 15, -15\}$ \\
-3 & 0 & $\{19, -12, 1, 9, 18, -16, 15, -15\}$ \\
-19 & 19 & $\{-12, 1, 9, 18, -16, 15, -15\}$ \\
-19 & 7 & $\{1, 9, 18, -16, 15, -15\}$ \\
-19 & 8 & $\{9, 18, -16, 15, -15\}$ \\
-19 & 17 & $\{18, -16, 15, -15\}$ \\
-35 & 35 & $\{-16, 15, -15\}$ \\
-35 & 19 & $\{15, -15\}$ \\
-35 & 34 & $\{-15\}$ \\
-35 & 19 & $\{\}$\\
+0 & 0 & $[3, -13, 19, -12, 1, 9, 18, -16, 15, -15]$ \\
+3 & 3 & $[-13, 19, -12, 1, 9, 18, -16, 15, -15]$ \\
+3 & 0 & $[19, -12, 1, 9, 18, -16, 15, -15]$ \\
+19 & 19 & $[-12, 1, 9, 18, -16, 15, -15]$ \\
+19 & 7 & $[1, 9, 18, -16, 15, -15]$ \\
+19 & 8 & $[9, 18, -16, 15, -15]$ \\
+19 & 17 & $[18, -16, 15, -15]$ \\
+35 & 35 & $[-16, 15, -15]$ \\
+35 & 19 & $[15, -15]$ \\
+35 & 34 & $[-15]$ \\
+35 & 19 & $[\ ]$\\
 \hline
-\end{tabular}
-\caption{扫描序列求最大子序列和的步骤} \label{tab:max-sum-steps}
-\end{table}
-
-这一算法可以描述如下：
+\etab
 
 \begin{algorithmic}[1]
 \Function{Max-Sum}{$V$}
-  \State $A \gets 0, B \gets 0$
-  \For{$i \gets 1$ to  $|V|$}
+  \State $A \gets 0, B \gets 0, n \gets |V|$
+  \For{$i \gets 1$ to  $n$}
     \State $B \gets $ \Call{Max}{$B + V[i], 0$}
     \State $A \gets $ \Call{Max}{$A, B$}
   \EndFor
+  \State \Return $A$
 \EndFunction
 \end{algorithmic}
 
-也可以用函数式的方式实现这一算法。我们不再更新变量$A$和$B$，而是把它们作为尾递归的累积器。为了找到序列$L$的最大子序列和，我们调用函数$max_{sum}(0, 0, L)$。
+我们也可以用叠加查找子序列最大和：$S_{max} = fst \circ foldr\ f\ (0, 0)$，其中$f$更新最大和：
 
 \be
-max_{sum}(A, B, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  A & L = \phi \\
-  max_{sum}(A', B', L') & otherwise
-  \end{array}
-\right.
+f\ x\ (S_m, S) = (S_m' = \max(S_m, S'), S' = \max(0, x + S))
 \ee
 
-其中
-\[
-\begin{array}{l}
-B' = max(l_1 + B, 0) \\
-A' = max(A, B')
-\end{array}
-\]
+\begin{Exercise}
+\Question{修改最大子序列和的实现，返回对应最大和的子序列。}
+\end{Exercise}
 
-下面的Haskell例子程序实现了这一算法。
+\begin{Answer}
+\Question{修改最大子序列和的实现，返回对应最大和的子序列。
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-maxsum = msum 0 0 where
-  msum a _ [] = a
-  msum a b (x:xs) = let b' = max (x+b) 0
-                        a' = max a b'
-                    in msum a' b' xs
-\end{lstlisting}
+如果除了最大子序列和，还希望返回子序列，我们可以在fold过程中使用两对值$P_m$和$P$，每对值都包括子序列的和与子序列本身$(S, L)$。
 
-\subsubsection{KMP}
-\index{KMP} \index{Knuth-Morris-Pratt算法}
+\blre
+max_s & = & fst \cdot foldr\ f\ ((0, [\ ]), (0, [\ ])) \\
+\text{其中}: & & f\ x\ (P_m, (S, L)) = (P_m', P') \\
+& & \text{在$f$中}:  P' = max((0, [\ ]), (x + S, x \cons L)), P_m' = max(P_m, P') \\
+\elre
+}
+\end{Answer}
 
-字符串搜索是一类很重要的问题。所有的文本编辑器软件都带有字符串搜索功能。在Trie、Patricia和后缀树章节，我们介绍了一些字符串搜索常用的数据结构。本节中，我们介绍两种利用信息复用进行字符串搜索的算法。
-
-有些编程环境提供了内置的字符串搜索工具，但是大多数是用暴力解法，包括ANSI C标准库中的\texttt{strstr}函数，C++标准模板库中的\texttt{find}，以及Java标准库JDK中的\texttt{indexOf}。图\ref{fig:strstr}描述了逐一比较字符的过程。
+\section{字符串搜索}
+字符串搜索是一类实用问题。所有文本编辑软件都带有字符串搜索功能。在基数树、前缀树中（第6章），我们利用特殊的数据结构进行搜索。我们也可以直接在字符串序列中进行搜索，如图\ref{fig:strstr}所示\footnote{编程环境一般会提供一些逐一搜索工具，如C标准库中的\texttt{strstr}，C++标准库中的\texttt{find}，以及Java标准库中的\texttt{indexOf}。}。
 
 \begin{figure}[htbp]
  \centering
- \subcaptionbox{偏移量$s = 4$，接着，连续有$q=4$个字符相同，但是第5个字符不同。}{\input{img/strstr.tex}} \\
- \subcaptionbox{比较的起始位置移动到$s = 4 + 2 = 6$。}{\input{img/kmp.tex}}
+ \subcaptionbox{偏移量$s = 4$，连续$q=4$个字符相同，但第5个字符不同。}{\input{img/strstr.tex}} \\
+ \subcaptionbox{偏移到$s = 4 + 2 = 6$。}{\input{img/kmp.tex}}
  \caption{在文本“any ananthous ananym flower”中寻找“ananym”}
  \label{fig:strstr}
 \end{figure}
 
-考虑我们在文本$T$中搜索字符串$P$，如图\ref{fig:strstr} (a)所示，在偏移量为$s=4$时，处理过程逐一检查$P$和$T$中的字符是否相等。前4个字符都是anan，但是第5个字符在$P$中是y，而在文本$T$中是t，它们不相等。
+\subsection{KMP算法}
+\index{KMP} \index{Knuth-Morris-Pratt算法}
 
-此时，逐一比较过程立即终止，我们将$s$加1，也就是把$P$向右移动1个位置，然后重新比较ananym和nantho……实际上，$s$的增量可以超过1。这是因为，当我们发现第5个字符不等的时候，已经比较过前4面个字符anan了。并且最前面的两个字符an恰好是anan的后缀。因此更有效的做法是将$s$增加2，也就是把$P$向右移动两个位置，如图\ref{fig:strstr} (b)所示。这样，我们就复用了前面已经比较过的4个字符的信息，从而跳过大量无需比较的位置。
+在文本$T$中搜索字符串$P$。如图\ref{fig:strstr} (a)所示，在偏移量$s=4$时，逐一检查$P$和$T$中的字符。前4个相等，第5个在$P$中是y，但在$T$中是t。此时逐一比较立即终止，将$s$加1（$P$向右移动1个位置）然后重新比较ananym和nantho……我们发现$s$的增量可以超过1。前两个字符an恰好是anan的后缀。我们可以将$s$增加2（$P$向右移动2），如图\ref{fig:strstr} (b)所示。我们复用了此前已经比较过4个字符的信息，跳过了无需比较的位置。高德纳、莫里斯、普拉特根据这一想法给出了一个高效的字符串匹配算法\cite{kmp}，人们把三人名字的首字母合在一起，称作KMP算法。
 
-Knuth、Morris和Pratt根据这一思路给出了一个高效的字符串匹配算法\cite{kmp}，人们把三位作者的名字合在一起，称作KMP算法。
-
-简洁起见，我们记文本$T$中的前$k$个字符组成的串为$T_k$，即$T_k$为文本$T$的$k$个字符前缀。
-
-为了把$P$高效向右移动$s$个位置，我们需要定义一个关于$q$的函数，其中$q$是成功匹配的字符个数。例如在图\ref{fig:strstr} (a)中，$q$的值为4，即第5个字符不匹配。
-
-什么情况下向右移动的距离$s$可以大于1呢？如图\ref{fig:kmp-fallback}所示，若可以将$P$向右移动，则一定存在某个$k$，使得$P$中的前$k$个字符和前缀$P_q$的最后$k$个字符相同。也就是说，前缀$P_k$同时是$P_q$的后缀。
+记文本$T$中前$k$个字符组成的串为$T_k$（$T$的$k$个字符前缀）。为了尽可能多地把$P$向右移动$s$个位置，我们定义函数$\pi(q)$，其中$q$是已成功匹配的字符个数。例如在图\ref{fig:strstr} (a)中，$q = 4$，即第5个字符不匹配。什么情况下$s$可以大于1呢？如图\ref{fig:kmp-fallback}所示，若$P$可向右移动，则一定存在某个$k$，使得$P$中的前$k$个字符和前缀$P_q$的最后$k$个字符相同。也就是说，前缀$P_k$同时是$P_q$的后缀。
 
 \begin{figure}[htbp]
  \centering
  \includegraphics[scale=0.5]{img/kmp-fallback}
- \caption{$P_k$既是$P_q$的前缀，也是$P_q$的后缀}
+ \caption{$P_k$同时是$P_q$的前缀和后缀}
  \label{fig:kmp-fallback}
 \end{figure}
 
@@ -1386,7 +1362,7 @@ kmpSearch ws txt = snd $ foldl tr (root, []) (zip txt [1..]) where
 
 在我们此前介绍的很多形况中，函数式算法通常比较简洁。但是在KMP搜索中，命令式算法却更加简单、直观。这主要是由于我们通过无穷状态转移树来模拟内置数组造成的。
 
-\subsubsection{Boyer-Moore字符串匹配算法}
+\subsection{Boyer-Moore字符串匹配算法}
 \index{Boyer-Moore算法}
 
 Boyer-Moore字符串匹配算法是1977年发现的另一种高效的字符串查找方法\cite{boyer-moore}。它的思想来自于下面的一些事实。
@@ -4896,6 +4872,16 @@ majority xs = verify $ foldr maj (Nothing, 0) xs where
   verify (Just m, _)  = if 2 * (length $ filter (==m) xs) > length xs
                         then Just m else Nothing
 \end{Haskell} %$
+
+最大子序列和：
+
+\begin{Haskell}
+maxSum :: (Ord a, Num a) => [a] -> a
+maxSum = fst . foldr f (0, 0) where
+  f x (m, mSofar) = (m', mSofar') where
+    mSofar' = max 0 (mSofar + x)
+    m' = max mSofar' m
+\end{Haskell}
 
 \ifx\wholebook\relax\else
 \section{参考答案}
