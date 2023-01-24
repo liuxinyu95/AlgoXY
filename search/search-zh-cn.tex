@@ -837,11 +837,7 @@ max_s & = & fst \cdot foldr\ f\ ((0, [\ ]), (0, [\ ])) \\
 \EndFunction
 \end{algorithmic}
 
-虽然式(\ref{eq:prefix-function})给出了前缀函数$\pi(q)$的定义，但是简单寻找最长后缀的效率很低。实际上，我们可以进一步复用信息，来快速构造前缀函数。
-
-最简单的情况是第一个字符就不相等。这种情况下，最长的前缀，同时也是后缀显然是空串，因此$\pi(1) = k = 0$。记最长的前缀为$P_k$。此时，$P_k = P_0$等于空串。
-
-此后，当我们扫描到$P$中的第$q$个字符时，我们总有，前缀函数的所有值$\pi(i)$，$i$在$\{1, 2, ..., q-1 \}$都已经算出并记录下来了，并且目前最长的前缀$P_k$同时也是$P_{q-1}$的后缀。如图\ref{fig:kmp-prefix-func}所示，若$P[q] = P[k+1]$，则我们找到了一个更大的$k$，我们将$k$的最大值加一；否则，若两个字符不等，我们使用$\pi(k)$回退到一个较短的$P_{k'}$，其中$k' = \pi(k)$，然后比较这个新前缀的下一个字符是否和第$q$个字符相等。我们需要重复这一步骤，直到$k$变成0（表示只有空串满足条件），或者和第$q$个字符相等。
+直接利用式(\ref{eq:prefix-function})构造$\pi(q)$并不实用，我们进一步复用信息，构造前缀函数。如果第一个字符就不匹配，此时最长前缀同时也是后缀的显然是空串：$\pi(1) = 0$。即：$P_k = P_0 = [\ ]$。当扫描到$P$中第$q$个字符时，前缀函数值$\pi(i)$，$i = 1, 2, ..., q-1$都已算好，并且目前最长的前缀$P_k$同时也是$P_{q-1}$的后缀。如图\ref{fig:kmp-prefix-func}所示，若$P[q] = P[k+1]$，则找到了一个更大的$k$，我们将$k$的最大值加一；否则$P[q] \neq P[k + 1]$，我们利用$\pi(k)$回退到一个较短的$P_{k'}$，其中$k' = \pi(k)$，然后比较这个新前缀的下一个字符是否和第$q$个字符相等。重复这一步骤，直到$k$变成0（空串），或者和第$q$个字符相等。下表给出了ananym的前缀函数值，$k$列是满足式(\ref{eq:prefix-function})的最大值。
 
 \begin{figure}[htbp]
  \centering
@@ -850,14 +846,25 @@ max_s & = & fst \cdot foldr\ f\ ((0, [\ ]), (0, [\ ])) \\
  \label{fig:kmp-prefix-func}
 \end{figure}
 
-KMP算法中，构建前缀函数的过程可以描述如下：
+\btab{|c|r|c|l|}
+\hline
+$q$ & $P_q$ & $k$ & $P_k$ \\
+\hline
+1 & a & 0 & ``'' \\
+2 & an & 0 & ``'' \\
+3 & ana & 1 & a \\
+4 & anan & 2 & an  \\
+5 & anany & 0 & ``'' \\
+6 & ananym & 0 & ``'' \\
+\hline
+\etab
 
 \begin{algorithmic}[1]
-\Function{Build-Prefix-Function}{$P$}
+\Function{Build-Prefixes}{$P$}
   \State $m \gets |P|, k \gets 0$
   \State $\pi(1) \gets 0$
   \For{$q \gets 2$ to $m$}
-    \While{$k > 0 \land P[q] \neq P[k+1]$}
+    \While{$k > 0$ 且 $P[q] \neq P[k+1]$}
       \State $k \gets \pi(k)$
     \EndWhile
     \If{$P[q] = P[k+1]$}
@@ -869,495 +876,9 @@ KMP算法中，构建前缀函数的过程可以描述如下：
 \EndFunction
 \end{algorithmic}
 
-下表列出了为字符串“ananym”构建前缀函数的步骤。表中的$k$实际上表示满足式(\ref{eq:prefix-function})的最大$k$。
+KMP对待搜索串预处理，构建前缀函数的分摊复杂度为$O(m)$\cite{CLRS}。搜索本身的分摊复杂度是$O(n)$。总体分摊复杂度为$O(m + n)$，并需要$O(m)$空间记录前缀函数值。待搜索串的形式并不影响KMP算法的性能。考虑在“aaa...a”（$n$个）中搜索长为$m$的子串“aaa...ab”。$m-1$个字符相同，第$m$个字符不匹配，我们只能回退一个字符，并且此后不断回退1个字符。即使在这种情况下，KMP算法依旧是线性时间的。
 
-\begin{table}[htbp]
-\centering
-\begin{tabular}{|c|r|c|l|}
-\hline
-$q$ & $P_q$ & $k$ & $P_k$ \\
-\hline
-1 & a & 0 & ``'' \\
-2 & an & 0 & ``'' \\
-3 & ana & 1 & a \\
-4 & anan & 2 & an  \\
-5 & anany & 0 & ``'' \\
-6 & ananym & 0 & ``'' \\
-\hline
-\end{tabular}
-\caption{构建前缀函数的步骤} \label{tab:kmp-prefix-func-steps}
-\end{table}
-
-下面的Python例子程序实现了完整的KMP算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def kmp_match(w, p):
-    n = len(w)
-    m = len(p)
-    fallback = fprefix(p)
-    k = 0 # how many elements have been matched so far.
-    res = []
-    for i in range(n):
-        while k > 0 and p[k] != w[i]:
-            k = fallback[k] #fall back
-        if p[k] == w[i]:
-            k = k + 1
-        if k == m:
-            res.append(i+1-m)
-            k = fallback[k-1] # look for next
-    return res
-
-def fprefix(p):
-    m = len(p)
-    t = [0]*m  # fallback table
-    k = 0
-    for i in range(2, m):
-        while k>0 and p[i-1] != p[k]:
-            k = t[k-1] #fallback
-        if p[i-1] == p[k]:
-            k = k + 1
-        t[i] = k
-    return t
-\end{lstlisting}
-
-KMP算法相当于在搜索前将待搜索的字符串进行预处理。因此它可以最大程度地复用已知的匹配结果。
-
-构建前缀函数的分摊性能为$O(m)$，可以使用势能分析法证明\cite{CLRS}。使用同样的方法可以进一步证明搜索算法本身的性能也是线性时间的。因此总体时间性能为$O(m + n)$，同时需要额外的$O(m)$空间来记录前缀函数的表格。
-
-如果不仔细分析，可能会认为不同形式的待搜索字符串会影响KMP的性能。考虑在一个长度为$n$个a的文本“aaa...a”中，搜索长度为$m$个a的字符串“aaa...a”。因为所有的字符都相同，当最后一个字符匹配完成后，我们只能回退一个字符，并且此后不断重复回退1个字符。即使在这种极端情况下，KMP算法依旧是线性时间的（为什么？）。请尝试考虑更多情况，例如$P = aaaa...b$，$T = aaaa...a$，并分析KMP的性能。
-
-\paragraph{纯函数式KMP算法}
-
-用纯函数式的方法实现KMP算法会比较困难。命令式的KMP算法大量使用数组来保存前缀函数的值。虽然可以使用纯函数式的序列数据结构来代替数组，但序列通常使用手指树来实现。与命令式环境中的数组相比，手指树随机访问元素的性能为对数时间\footnote{我们在这里不使用数组。虽然在某些函数式编程环境中，例如Haskell提供了可以在常数时间进行随机访问的数组。}。
-
-Richard Bird给出了一个使用fold fusion定理推导KMP算法的过程（\cite{fp-pearls}第17章）。本节中，我们首先给出一个暴力法的前缀函数构造方法，然后逐步改进得到KMP算法。
-
-在函数式环境中，文本和待搜索的字符串本质上都是用单向链表表示的列表。在扫描过程中，两个列表被分解，每个列表都被分成两部分。如图\ref{fig:fp-strstr}所示，待搜索的字符串的前$j$个字符都相附，接下来要比较$T[i+1]$和$P[j+1]$。如果相等，就将这一字符添加到已成功比较的部分。但是由于字符串由单向链表表示，向尾部添加的性能和其长度$j$成比例。
-
-\begin{figure}[htbp]
- \centering
- \includegraphics[scale=0.5]{img/fp-strstr}
- \caption{$P$的前$j$个字符都相符，接下来比较$P[j+1]$和$T[i+1]$}
- \label{fig:fp-strstr}
-\end{figure}
-
-记文本的前$i$个字符为$T_p$，表示$T$的前缀，剩余的字符为$T_s$，表示$T$的后缀；同样，记$P$的前$j$个字符为$P_p$，剩余字符为$P_s$；记$T_s$中的第一个字符为$t$，$P_s$中的第一个字符为$p$。我们可以得到如下的“cons”关系。
-
-\be
-\begin{array}{l}
-T_s = cons(t, T_s') \\
-P_s = cons(p, P_s')
-\end{array}
-\ee
-
-若$t = p$，则下面的更新过程需要线性时间：
-
-\be
-\begin{array}{l}
-T_p' = T_p \cup \{t\} \\
-P_p' = P_p \cup \{p\}
-\end{array}
-\ee
-
-我们在队列一章中曾经介绍过一种方法，可以解决这一问题。通过使用一对列表，一个front列表和一个rear列表，可以将线性时间的添加操作转换成常数时间的链接操作。为此，需要将前缀的部分用逆序表达。
-
-\be
-\begin{array}{l}
-T = T_p \cup T_s = reverse(reverse(T_p)) \cup T_s = reverse(\overleftarrow{T_p}) \cup T_s \\
-P = P_p \cup P_s = reverse(reverse(P_p)) \cup P_s = reverse(\overleftarrow{P_p}) \cup P_s \\
-\end{array}
-\ee
-
-我们分别用$(\overleftarrow{T_p}, T_s)$和$(\overleftarrow{P_p}, P_s)$来表达文本和待搜索的字符串。这样当$t=p$时，就可以用常数时间，快速更新前缀部分。
-
-\be
-\begin{array}{l}
-\overleftarrow{T_p'} = cons(t, \overleftarrow{T_p}) \\
-\overleftarrow{P_p'} = cons(p, \overleftarrow{P_p})
-\end{array}
-\ee
-
-KMP查找算法开始时，已成功匹配的前缀部分初始化为空串。
-
-\be
-search(P, T) = kmp(\pi, (\phi, P) (\phi, T))
-\ee
-
-其中$\pi$是此前介绍过的前缀函数。除构造前缀函数外的KMP核心算法可以定义如下。
-
-\be
-kmp(\pi, (\overleftarrow{P_p}, P_s), (\overleftarrow{T_p}, T_s)) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ |\overleftarrow{T_p}| \} & P_s = \phi \land T_s = \phi \\
-  \phi & P_s \neq \phi \land T_s = \phi \\
-  \{ |\overleftarrow{T_p} \} \cup kmp(\pi, \pi(\overleftarrow{P_p}, P_s), (\overleftarrow{T_p}, T_s)) & P_s = \phi \land T_s \neq \phi \\
-  kmp(\pi, (\overleftarrow{P_p'}, P_s'), (\overleftarrow{T_p'}, T_s')) & t = p \\
-  kmp(\pi, \pi(\overleftarrow{P_p}, P_s), (\overleftarrow{T_p'}, T_s')) & t \neq p \land \overleftarrow{P_p} = \phi \\
-  kmp(\pi, \pi(\overleftarrow{P_p}, P_s), (\overleftarrow{T_p}, T_s)) & t \neq p \land \overleftarrow{P_p} \neq \phi
-  \end{array}
-\right.
-\ee
-
-第一行表示，若同时扫描完文本和待搜索字串，则获得一个解，同时算法结束。这里我们使用文本中的右侧位置作为搜索到的位置。如果要使用左侧位置，只需要用右侧位置减去待搜索串的长度即可。简单起见，在函数式的解法中，我们使用右侧位置。
-
-第二行表示，若文本已经扫描结束，但是待搜索的字串中仍然有尚未扫描的字符，则不存在解，并且算法结束。
-
-第三行表示，如果带搜索的字串已全部扫描匹配成功，但是文本中仍然存在未扫描的字符，我们得到一个解，但是需要继续搜索。此时我们调用前缀函数$\pi$，获得下一个继续搜索的起始位置。
-
-第四行处理待搜索字串中的下一个字符和文本中的下一个字符相同的情况。此时需要同时向前移动一个字符，然后递归进行搜索。
-
-如果下一个字符不同，并且恰好是待搜索字串的第一个字符，我们只需要移动到文本中的下一个字符，然后重新查找。否则，如果不是待搜索字串中的第一个字符，我们就调用前缀函数$\pi$，获取到回退的位置，以继续进行搜索。
-
-可以用暴力方法构造前缀函数，只要简单地按照式(\ref{eq:prefix-function})的定义即可，如(\ref{eq:brute-force-prefix-func})所示。
-
-\be
-\pi(\overleftarrow{P_p}, P_s) = (\overleftarrow{P_p'}, P_s')
-\label{eq:brute-force-prefix-func}
-\ee
-
-其中
-
-\be
-\begin{array}{l}
-P_p' = longest(\{ s | s \in prefixes(P_p), s \sqsupset P_p \}) \\
-P_s' = P - P_p'
-\end{array}
-\ee
-
-每次计算回退的位置时，暴力法都简单地穷举所有$P_p$的前缀，检查它是否同时也是$P_p$的后缀，然后选择最长的一个作为结果。这里我们使用了减号表示获取列表的不同部分。
-
-这里需要避免一种特殊情况。由于任何字符串本身都同时是自己的前缀和后缀，即$P_p \sqsubset P_p$和$P_p \sqsupset P_p$总成立，因此不能将$P_p$作为一个候选的前缀。下面给出了穷举前缀算法的定义：
-
-\be
-prefixes(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{ \phi \} & L = \phi \lor |L| = 1 \\
-  cons(\phi, map(\lambda_s \cdot cons(l_1, s), prefixes(L'))) & otherwise
-  \end{array}
-\right.
-\ee
-
-下面的Haskell例子程序实现了对应的字符串查找算法。
-
-\begin{lstlisting}[style=Haskell]
-kmpSearch1 ptn text = kmpSearch' next ([], ptn) ([], text)
-
-kmpSearch' _ (sp, []) (sw, []) = [length sw]
-kmpSearch' _ _ (_, []) = []
-kmpSearch' f (sp, []) (sw, ws) = length sw : kmpSearch' f (f sp []) (sw, ws)
-kmpSearch' f (sp, (p:ps)) (sw, (w:ws))
-    | p == w = kmpSearch' f ((p:sp), ps) ((w:sw), ws)
-    | otherwise = if sp ==[] then kmpSearch' f (sp, (p:ps)) ((w:sw), ws)
-                  else kmpSearch' f (f sp (p:ps)) (sw, (w:ws))
-
-next sp ps = (sp', ps') where
-    prev = reverse sp
-    prefix = longest [xs | xs <- inits prev, xs `isSuffixOf` prev]
-    sp' = reverse prefix
-    ps' = (prev ++ ps) \\ prefix
-    longest = maximumBy (compare `on` length)
-
-inits [] = [[]]
-inits [_] = [[]]
-inits (x:xs) = [] : (map (x:) $ inits xs)
-\end{lstlisting}
-
-这一算法不仅性能差，而且也很复杂。我们可以对其略作简化。观察KMP搜索过程，它实际上是一个从左向右的对文本进行扫描的过程，因此可以使用fold来表示（参见附录A）。首先，在fold的过程中，我们可以让每一个字符对应一个索引，如下：
-
-\be
-zip(T, \{1, 2, ... \})
-\ee
-
-将文本和自然数zip起来，得到一个列表，每个元素都是一对值。例如文本“The quick brown fox jumps over the lazy dog”这样处理后的结果是：T, 1), (h, 2), (e, 3), ..., (o, 42), (g, 43)。
-
-fold起始时的状态包含两部分，第一部分是待搜索字符串$(P_p, P_s)$，其中前缀起始时为空，后缀为完成的待搜索串，即$(\phi, P)$。为了方便，我们暂时不用$(\overleftarrow{P_p}, P_s)$的表示法，在最终的定义中我们需要再次改回来。起始状态的另外一部分是已找到的解的列表，它初始为空。fold结束时，这一列表包含所有找到的解。我们需要将其取出，作为最终的结果。这样核心的KMP算法定义可简化如下：
-
-\be
-kmp(P, T) = snd(fold(search, ((\phi, P), \phi), zip(T, \{1, 2, ... \})))
-\ee
-
-这里唯一的“黑盒子”是$search$函数，它接受一个状态，和一个字符——索引对，计算后返回一个新的状态作为结果。记$P_s$中的第一个字符为$p$，剩余的字符为$P_s'$（即$P_s = cons(p, P_s')$），我们有如下的定义：
-
-\be
-search(((P_p, P_s), L), (c, i)) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  ((P_p \cup {p}, P_s'), L \cup \{i\}) & p = c \land P_s' = \phi \\
-  ((P_p \cup {p}, P_s'), L) & p = c \land P_s' \neq \phi \\
-  ((P_p, P_s), L) & P_p = \phi \\
-  search((\pi(P_p, P_s), L), (c, i)) & otherwise
-  \end{array}
-\right.
-\ee
-
-如果$P_s$中的第一个字符和当前扫描的字符$c$相等，我们需要检查是否待搜索串种的所有字符都已扫描完毕，如果已完毕，则找到了一个解，我们将这一位置$i$记录到列表$L$中；如果尚未完毕，我们向前移动一个字符，然后继续。如果$p$和$c$不同，我们需要回退到某个位置，然后重新搜索。但是有一个特殊情况，我们不能回退：当$P_p$为空时，我们需要保持当前的状态。
-
-前缀函数$\pi$的定义也可以略微简化。我们要寻找的是一个最长子串，它即是$P_p$前缀，同时也是它后缀。我们可以从右向左扫描。对于任何非空列表$L$，记表中第一个元素为$l_1$，剩余的部分为$L'$，定义函数$init(L)$返回除最后一个元素外的所有其他元素。
-
-\be
-init(L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & |L| = 1 \\
-  cons(l_1, init(L')) & otherwise
-  \end{array}
-\right.
-\ee
-
-注意，这一定义不能处理列表为空的情况。从右向左扫描$P_p$，就是首先检查$init(P_p) \sqsupset P_p$是否成立，如果是，则成功；否则我们接下来检查$init(init(P_p))$是否可以，并且重复这一过程直到最左侧。这样前缀函数的定义就可以简化如下：
-
-\be
-\pi(P_p, P_s) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (P_p, P_s) & P_p = \phi \\
-  fallback(init(P_p), cons(last(P_p), P_s)) & otherwise
-  \end{array}
-\right.
-\ee
-
-其中
-
-\be
-fallback(A, B) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (A, B) & A \sqsupset P_p \\
-  (init(A), cons(last(A), B)) & otherwise
-  \end{array}
-\right.
-\ee
-
-由于空串是任何字符串的后缀，因此函数fallback一定能结束。函数$last(L)$返回一个列表的最后一个元素，它同样是一个线性时间的操作（参见附录A）。但如果我们使用$\overleftarrow{P_p}$的表示法，则获取最后一个元素就是一个常数时间的操作。这一改进的前缀函数的复杂度为线性时间，但和命令式的算法相比，仍然很慢。因为命令式算法可以在常数时间进行前缀函数的检索。下面的Haskell例子程序实现了这一改进。
-
-\begin{lstlisting}[style=Haskell]
-failure ([], ys) = ([], ys)
-failure (xs, ys) = fallback (init xs) (last xs:ys) where
-    fallback as bs | as `isSuffixOf` xs = (as, bs)
-                   | otherwise = fallback (init as) (last as:bs)
-
-kmpSearch ws txt = snd $ foldl f (([], ws), []) (zip txt [1..]) where
-    f (p@(xs, (y:ys)), ns) (x, n) | x == y = if ys==[] then ((xs++[y], ys), ns++[n])
-                                             else ((xs++[y], ys), ns)
-                                  | xs == [] = (p, ns)
-                                  | otherwise = f (failure p, ns) (x, n)
-    f (p, ns) e = f (failure p, ns) e
-\end{lstlisting}
-
-瓶颈在于，在纯函数式的环境中，我们无法使用内置的array来记录前缀函数。实际上，前缀函数可以被看作是一个状态转移函数。它根据字符匹配成功与否将一个状态转移到另一个状态。我们可以将这样的状态转换抽象为一棵树。在支持代数数据类型（algebraic data type）的环境中，例如Haskell，这样的状态树可以定义如下：
-
-\begin{lstlisting}[style=Haskell]
-data State a = E | S a (State a) (State a)
-\end{lstlisting}
-
-一个状态或者为空，或者包含三部分：当前的状态，如果匹配失败后转移到的状态，和匹配成功后转移到的状态。这一定义和二叉树的定义很像。我们将其称为“左侧失败，右侧成功”树。这里的具体状态为$(P_p, P_s)$。
-
-在命令式的KMP算法中，我们通过待搜索字串构造前缀函数。与此类似，我们可以通过待搜索字串构造状态转移树。我们从起始状态$(\phi, P)$开始，它的两个子状态最初为空。我们调用上面定义的$\pi$获得一个新状态，用它替换掉左侧子节点，然后通过向前前进一个字符得到一个新状态并替换右侧子节点。这里有一种特殊情况，当状态转移到$(P, \phi)$时，如果匹配成功，我们无法继续前进。这样的节点只含有失败的子状态。下面定义了构造状态转移树的的函数。
-
-\be
-build((P_p, P_s), \phi, \phi) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  build(\pi(P_p, P_s), \phi, \phi) & P_s = \phi \\
-  build((P_p, P_s), L, R) & otherwise
-  \end{array}
-\right.
-\ee
-
-其中
-
-\[
-\begin{array}{l}
-L = build(\pi(P_p, P_s), \phi, \phi) \\
-R = build((P_s \cup \{p\}, P_s'), \phi, \phi))
-\end{array}
-\]
-
-其中$p$和$P_s'$的含义和此前相同，$p$是$P_s$中的第一个字符，$P_s'$是剩余部分。最有趣的一点是，build函数永远不会结束。它无休无止地构造一棵无穷树。在严格的（strict）编程环境中，调用这样的函数会陷入麻烦。但在支持惰性求值的环境中，只有被使用的节点才会被构造。Lisp方言Scheme和Haskell都可以构造这样的无穷状态树。在命令式环境中，我们通常使用指向祖先节点的指针来实现无穷状态树。
-
-\begin{figure}[htbp]
- \centering
- \includegraphics[scale=0.4]{img/fallback-tr}
- \caption{从字符串“ananym”构造的无穷状态树}
- \label{fig:fallback-tree}
-\end{figure}
-
-图\ref{fig:fallback-tree}描述了从字符串“ananym”对应的无穷状态树。其中最右侧的边对应了字符匹配一直连续成功的特殊情况。此后，由于所有的字符都匹配完毕，所有后继的右侧子树为空。根据这一点，我们可以定义一个辅助函数来判断是否一个状态代表待搜索字符串已经完全匹配成功。
-
-\be
-match((P_p, P_s), L, R) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  True & P_s = \phi \\
-  False & otherwise
-  \end{array}
-\right.
-\ee
-
-通过使用状态转移树，我们可以用一个自动机来实现KMP算法。
-
-\be
-kmp(P, T) = snd(fold(search, (Tr, []), zip(T, \{1, 2, ... \})))
-\ee
-
-其中，$Tr = build((\phi, P), \phi, \phi)$是无穷状态转移树。函数$search$根据匹配成功与否，使用这棵树进行状态转移。记$P_s$中的第一个字符为$p$，剩余部分为$P_s'$，$A$代表已找到的解的位置。
-
-\be
-search((((P_p, P_s), L, R), A), (c, i)) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (R, A \cup \{ i \}) & p = c \land match(R) \\
-  (R, A) & p = c \land \neg{match(R)} \\
-  ((((P_p, P_s), L, R), A) & P_p = \phi \\
-  search((L, A), (c, i)) & otherwise
-  \end{array}
-\right.
-\ee
-
-下面的Haskell例子程序实现了这一算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-data State a = E | S a (State a) (State a) -- state, ok-state, fail-state
-               deriving (Eq, Show)
-
-build :: (Eq a)=>State ([a], [a]) -> State ([a], [a])
-build (S s@(xs, []) E E) = S s (build (S (failure s) E E)) E
-build (S s@(xs, (y:ys)) E E) = S s l r where
-    l = build (S (failure s) E E) -- fail state
-    r = build (S (xs++[y], ys) E E)
-
-matched (S (_, []) _ _) = True
-matched _ = False
-
-kmpSearch3 :: (Eq a) => [a] -> [a] -> [Int]
-kmpSearch3 ws txt = snd $ foldl f (auto, []) (zip txt [1..]) where
-    auto = build (S ([], ws) E E)
-    f (s@(S (xs, ys) l r), ns) (x, n)
-        | [x] `isPrefixOf` ys = if matched r then (r, ns++[n])
-                                else (r, ns)
-        | xs == [] = (s, ns)
-        | otherwise = f (l, ns) (x, n)
-\end{lstlisting} %$
-
-目前的瓶颈在于构造状态转移树的时候，需要调用$\pi$函数计算回退的位置，而前缀函数$\pi$的定义效率很差。这是由于它每次都从右向左穷举所有可能前缀。
-
-由于状态树是无穷的，我们可以使用处理无穷数据结构的常见方法。典型的例子就是斐波那契数列。斐波那契数列的前两个值为0和1，其余的斐波那契数可以通过将前面的两个值相加得到：
-
-\be
-\begin{array}{l}
-F_0 = 0 \\
-F_1 = 1 \\
-F_n = F_{n-1} + F_{n-2} \\
-\end{array}
-\ee
-
-这样，就可以依次列出所有的斐波那契数。
-
-\be
-\begin{array}{l}
-F_0 = 0 \\
-F_1 = 1 \\
-F_2 = F_1 + F_0 \\
-F_3 = F_2 + F_1 \\
-...
-\end{array}
-\ee
-
-将上述等式左右两侧的所有数字汇集起来，定义无穷斐波那契数列为$F = \{ 0, 1, F_1, F_2, ... \}$，我们有下面的等式：
-
-\be
-\begin{array}{rl}
-F = & \{ 0, 1, F_1 + F_0, F_2 + F_1, ... \}  \\
-  = & \{ 0, 1 \} \cup \{ x + y | x \in \{ F_0, F_1, F_2, ...\}, y \in \{ F_1, F_2, F_3, ... \}\} \\
-  = & \{ 0, 1 \} \cup \{ x + y | x \in F, y \in F'\}
-\end{array}
-\ee
-
-其中$F' = tail(F)$是除第一个元素外的所有斐波那契数。在支持惰性求值的环境中，如Haskell，这一定义可以实现如下。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-fibs = 0 : 1 : zipWith (+) fibs (tail fibs)
-\end{lstlisting}
-
-无穷斐波那契数列的递归定义可以启发我们找到避免使用函数$\pi$进行回退的方法。记状态转移树为$T$，我们可以定义一个用这棵树匹配字符时的状态转移函数。
-
-\be
-trans(T, c) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  root & T = \phi \\
-  R & T = ((P_p, P_s), L, R), c = p \\
-  trans(L, c) & otherwise
-  \end{array}
-\right.
-\ee
-
-如果匹配一个字符时节点为空，我们转移到树的根节点。稍后我们会定义根节点。否则，我们比较字符$c$和$P_s$的第一个字符$p$。如果相等，我们就转移到右侧子树表示成功；否则，我们转移到左侧子树表示失败。
-
-通过使用状态转移函数，我们可以定义一个新的状态树构造算法。原理和前面的斐波那契序列类似。
-
-\be
-build(T, (P_p, P_s)) = ((P_p, P_s), T, build(trans(T, p), (P_p \cup \{ p \}, P_s')))
-\ee
-
-等式右侧包含三部分。第一部分是我们正在搜索的状态$(P_p, P_s)$；如果匹配失败，由于$T$本身可以处理任何失败的情况，我们直接使用它作为左侧子树；否则匹配成功，我们前进一个字符，递归构造右侧子树，并调用我们定义的状态转移函数。
-
-这里还必须处理一种特殊情况，如果$P_s$为空，表示匹配了所有的字符，根据上面的定义，将不存在后继的右侧子树。综合起来，我们可以得到下面的构造函数。
-
-\be
-build(T, (P_p, P_s)) =  \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  ((P_p, P_s), T, \phi) & P_s = \phi \\
-  ((P_p, P_s), T, build(trans(T, p), (P_p \cup \{ p \}, P_s'))) & otherwise
-  \end{array}
-\right.
-\ee
-
-最后，我们还需要定义无穷状态转移树的根节点，用以初始化构造过程。
-
-\be
-root = build(\phi, (\phi, P))
-\ee
-
-使用这一根节点定义，我们可以给出一个新的KMP搜索算法。
-
-\be
-kmp(P, T) = snd(fold(trans, (root, []), zip(T, \{1, 2, ... \})))
-\ee
-
-下面的Haskell例子程序实现了这一KMP算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-kmpSearch ws txt = snd $ foldl tr (root, []) (zip txt [1..]) where
-    root = build' E ([], ws)
-    build' fails (xs, []) = S (xs, []) fails E
-    build' fails s@(xs, (y:ys)) = S s fails succs where
-        succs = build' (fst (tr (fails, []) (y, 0))) (xs++[y], ys)
-    tr (E, ns) _ = (root, ns)
-    tr ((S (xs, ys) fails succs), ns) (x, n)
-        | [x] `isPrefixOf` ys = if matched succs then (succs, ns++[n]) else (succs, ns)
-        | otherwise = tr (fails, ns) (x, n)
-\end{lstlisting} %$
-
-图\ref{fig:lazy-fallback-tree}给出了在文本“anal”中搜索“anaym”的前4步。由于前三步的字符都匹配成功，所以这3个状态的左侧子树都没有被构造。它们被标记为“?”。在第4步，字符匹配失败，因此无需构造右侧的子树。同时，我们必须根据 $trans(right(right(right(T))), n)$ 的结果构造左侧的子树，其中函数$right(T)$返回树$T$的右侧子树。根据构造过程和状态转移的定义，这一结果最终展开到一个具体的状态$((a, nanym), L, R)$。具体的推导过程留给读者作为练习。
-
-\begin{figure}[htbp]
- \centering
- \includegraphics[scale=0.4]{img/lazy-fallback-tr}
- \caption{在文本“anal”中搜索字符串“ananym”，按需构造构造状态转移树}
- \label{fig:lazy-fallback-tree}
-\end{figure}
-
-这一算法的实现依赖于惰性求值。所有被转移到的状态都是按需构造。构造过程的分摊复杂度为$O(m)$，算法的整体分摊性能为$O(m+n)$。读者可以参考\cite{fp-pearls}了解详细的证明。
-
-在我们此前介绍的很多形况中，函数式算法通常比较简洁。但是在KMP搜索中，命令式算法却更加简单、直观。这主要是由于我们通过无穷状态转移树来模拟内置数组造成的。
+%伯德给出了一个纯环数式的KMP算法（\cite{fp-pearls}第17章）。
 
 \subsection{Boyer-Moore字符串匹配算法}
 \index{Boyer-Moore算法}
@@ -4859,6 +4380,7 @@ Optional<T> majority([T] xs) {
 \end{lstlisting}
 
 用叠加实现的众数查找：
+
 \begin{Haskell}
 majority xs = verify $ foldr maj (Nothing, 0) xs where
   maj x (Nothing, 0) = (Just x, 1)
@@ -4879,6 +4401,42 @@ maxSum = fst . foldr f (0, 0) where
     mSofar' = max 0 (mSofar + x)
     m' = max mSofar' m
 \end{Haskell}
+
+KMP字符串匹配算法：
+
+\begin{lstlisting}[language = Bourbaki]
+[Int] match([T] w, [T]p) {
+    n = length(w), m = length(p)
+    [Int] fallback = prefixes(p)
+    [Int] r = []
+    Int k = 0
+    for i = 0 to n {
+        while k > 0 and p[k] != w[i] {
+            k = fallback[k]
+        }
+        if p[k] == w[i] then k = k + 1
+        if k == m {
+            add(r, i + 1 - m)
+            k = fallback[k - 1]
+        }
+    }
+    return r
+}
+
+[Int] prefixes([T] p) {
+    m = length(p)
+    [Int] t = [0] * m  //fallback table
+    Int k = 0
+    for i = 2 to m {
+        while k > 0 and p[i-1] != p[k] {
+            k = t[k-1] #fallback
+        }
+        if p[i-1] == p[k] then k = k + 1
+        t[i] = k
+    }
+    return t
+}
+\end{lstlisting}
 
 \ifx\wholebook\relax\else
 \section{参考答案}
