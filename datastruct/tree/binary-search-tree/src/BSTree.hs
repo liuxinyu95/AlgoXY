@@ -104,6 +104,12 @@ toList::(Ord a)=>Tree a -> [a]
 toList Empty = []
 toList (Node l k r) = toList l ++ [k] ++ toList r
 
+preOrder Empty = []
+preOrder (Node l k r) = k : preOrder l ++ preOrder r
+
+postOrder Empty = []
+postOrder (Node l k r) = postOrder l ++ postOrder r ++ [k]
+
 -- Rebuild the binary tree from pre-order/in-order traverse list
 rebuild [] _ = Empty
 rebuild [c] _ = leaf c
@@ -141,8 +147,6 @@ prop_rebuild xs = tr == rebuild prs ins where
   tr = fromList xs
   prs = preOrder tr
   ins = toList tr
-  preOrder Empty = []
-  preOrder (Node l k r) = k : preOrder l ++ preOrder r
 
 testAll = do
   quickCheck (prop_build::[Int]->Bool)
