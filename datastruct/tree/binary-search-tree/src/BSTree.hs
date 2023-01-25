@@ -96,13 +96,20 @@ mapR f a b t = map' t where
                       | k > b = map' l
 
 
--- Helper to build a binary search tree from a list
+-- Convert
 fromList::(Ord a)=>[a] -> Tree a
 fromList = foldl insert Empty
 
 toList::(Ord a)=>Tree a -> [a]
 toList Empty = []
 toList (Node l k r) = toList l ++ [k] ++ toList r
+
+-- Rebuild the binary tree from pre-order/in-order traverse list
+rebuild [] _ = Empty
+rebuild [c] _ = leaf c
+rebuild (x:xs) ins = Node (rebuild prl inl) x (rebuild prr inr) where
+  (inl, _:inr) = (takeWhile (/= x) ins, dropWhile (/=x) ins)
+  (prl, prr) = splitAt (length inl) xs
 
 -- test
 prop_build :: (Show a)=>(Ord a)=>[a] -> Bool
@@ -129,6 +136,14 @@ prop_mapR :: (Ord a, Num a) =>[a] -> a -> a -> Bool
 prop_mapR xs a b = filter (\x-> a<= x && x <=b) (L.sort xs) ==
                    toList (mapR id a b (fromList xs))
 
+prop_rebuild :: (Ord a, Num a) => [a] -> Bool
+prop_rebuild xs = tr == rebuild prs ins where
+  tr = fromList xs
+  prs = preOrder tr
+  ins = toList tr
+  preOrder Empty = []
+  preOrder (Node l k r) = k : preOrder l ++ preOrder r
+
 testAll = do
   quickCheck (prop_build::[Int]->Bool)
   quickCheck (prop_map::[Int]->Bool)
@@ -137,3 +152,4 @@ testAll = do
   quickCheck (prop_max::[Int]->Property)
   quickCheck (prop_del::[Int]->Int->Bool)
   quickCheck (prop_mapR::[Int]->Int->Int->Bool)
+  quickCheck (prop_rebuild::[Int]->Bool)
