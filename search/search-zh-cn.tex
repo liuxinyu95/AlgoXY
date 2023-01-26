@@ -876,124 +876,89 @@ $q$ & $P_q$ & $k$ & $P_k$ \\
 \EndFunction
 \end{algorithmic}
 
-KMP对待搜索串预处理，构建前缀函数的分摊复杂度为$O(m)$\cite{CLRS}。搜索本身的分摊复杂度是$O(n)$。总体分摊复杂度为$O(m + n)$，并需要$O(m)$空间记录前缀函数值。待搜索串的形式并不影响KMP算法的性能。考虑在“aaa...a”（$n$个）中搜索长为$m$的子串“aaa...ab”。$m-1$个字符相同，第$m$个字符不匹配，我们只能回退一个字符，并且此后不断回退1个字符。即使在这种情况下，KMP算法依旧是线性时间的。
+KMP对待搜索串预处理，构建前缀函数的分摊复杂度为$O(m)$\cite{CLRS}。搜索本身的分摊复杂度是$O(n)$。总体分摊复杂度为$O(m + n)$，并需要$O(m)$空间记录前缀函数值。待搜索串的形式并不影响KMP算法的性能。考虑在“aaa...a”（$n$个）中搜索长为$m$的子串“aaa...ab”。第$m$个字符不匹配，我们只能回退一个字符，并且此后不断回退1个字符。即使在这种情况下，KMP算法依旧是线性时间的。
 
 %伯德给出了一个纯环数式的KMP算法（\cite{fp-pearls}第17章）。
 
-\subsection{Boyer-Moore字符串匹配算法}
+\subsection{鲍耶-摩尔算法}
 \index{Boyer-Moore算法}
 
-Boyer-Moore字符串匹配算法是1977年发现的另一种高效的字符串查找方法\cite{boyer-moore}。它的思想来自于下面的一些事实。
-
-\paragraph{不良字符（bad-character）启发条件}
-
-当匹配待搜索的字符串时，即使从左边开始有若干字符都匹配成功，如果最后一个字符不相等，最终结果仍然失败，如图\ref{fig:bad-char}所示。而且，即使我们将待搜索字符串向右侧平移1到2个单位，匹配仍然会失败。实际上，待查找的字符串“ananym”的长度为6，最后一个字符是‘m’，但是文本中对应的字符是‘h’。它根本没有出现在待搜索的字符串中。我们据此可以直接向右侧平移6个单位。
+鲍耶-摩尔在1977年给出了一种字符串匹配算法\cite{boyer-moore}。如图\ref{fig:bad-char}所示，即使按照KMP算法向右平移2仍然匹配失败。待查找字符串ananym长度为6，最后一个字符对应文本中的h。而h根本没有出现在待搜索串中。我们据此可以直接向右平移6。这一规则叫做\textbf{不良字符规则}：对$P$进行预处理。设字符集为$\Sigma$，找到所有不在$P$中的不良字符$B = {c | c \in \Sigma, c \notin P}$。扫描时遇到不良字符就向右移动距离$|P|$。如果不匹配的字符$c \in P$，为了避免漏掉解，我们只能向右移动较短的距离重新搜索，如图\ref{fig:good-char}所示。字符$c$可能在$P$中出现多次，从左向右位于$p_1, p_2, ..., p_i$。为避免遗漏，我们用最后一个位置$p_i$计算平移的距离：
 
 \begin{figure}[htbp]
  \centering
- \includegraphics[scale=0.5]{img/strstr}
- \caption{因为字符‘h’没有出现在待搜索的字符串中，向右侧平移的距离如果小于6都会匹配失败}
+ \includegraphics[scale=0.6]{img/strstr}
+ \caption{h没有出现在$P$中，应向右侧至少平移6。}
  \label{fig:bad-char}
 \end{figure}
 
-从这点可以得到\textbf{不良字符规则}。我们可以对待搜索字符串进行预处理。如果文本中的字符集已知，我们可以找到所有不存在于待搜索串中的不良字符。在后继的扫描过程中，只要遇到不良字符，我们就可以立即向右侧移动一个待搜索串长度的距离。接下来的问题是，如果文本中不匹配的字符存在于待搜索串中要如何处理？为了不漏掉任何可能的解，我们只能向右少量移动，然后重新搜索，如图\ref{fig:good-char}所示。
+\be
+s = |P| - p_i
+\label{eqn:BMH-shift}
+\ee
 
 \begin{figure}[htbp]
  \centering
- \subcaptionbox{待搜索串的最后一个字符‘e’和‘p’不匹配。但是‘p’出现在待搜索串中。}{\includegraphics[scale=0.5]{img/good-char}} \\
- \subcaptionbox{我们只能向右侧平移2个字符，然后重新检查。}{\includegraphics[scale=0.5]{img/good-char-2}}
- \caption{如果不匹配的字符出现在待搜索串中，需要向右侧少量平移}
+ \subcaptionbox{e $\neq$ p，但p $\in P$。}{\includegraphics[scale=0.5]{img/good-char}} \\
+ \subcaptionbox{向右平移2。}{\includegraphics[scale=0.5]{img/good-char-2}}
+ \caption{不匹配的字符$c \in P$。}
  \label{fig:good-char}
 \end{figure}
 
-不匹配的字符很可能多次出现在待搜索串中。记待搜索串的长度为$|P|$，该字符出现的位置依次为$p_1, p_2, ..., p_i$。此时，我们需要用最后一个位置来计算平移的距离，以避免漏掉任何可能的解。
-
-\be
-s = |P| - p_i
-\ee
-
-根据这一公式，待搜索串中的最后一个字符对应的平移距离为0。在实现时，需要跳过这种情况。另外，由于平移的距离是根据待搜索串最后一个字符计算的（从$|P|$减去相应的值），当从右向左扫描时，无论在哪里发生了不匹配，我们都要检查待搜索串中最后一个字符正对的文本中的字符，是否出现在不良字符表中。如图\ref{fig:good-char-2}所示。
+我们跳过$c$出现在$P$末尾的情况，此时$p_i = |P|$，平移$s = 0$。由于$s$是相对$P$末尾计算的，从右向左扫描时，一旦匹配失败，我们需要检查待末尾字符$r$在文本中的对应的字符是在不良字符集$B$中，如图\ref{fig:good-char-2}。
 
 \begin{figure}[htbp]
  \centering
  \subcaptionbox{}{\includegraphics[scale=0.5]{img/good-char-3}}
  \subcaptionbox{}{\includegraphics[scale=0.5]{img/good-char-4}}
- \caption{即使字符‘i’和‘a’在中间位置匹配失败，我们要使用字符‘e’来查找平移的距离。得到结果6（根据第一个‘e’出现的位置计算，需要跳过第二个‘e’出现的位置以避免平移距离为0）}
+ \caption{从右向左检查到i $\neq$ a，用末尾字符e计算平移$s = 6$（e在$P$中出现两次，第二次在末尾，此时$s=0$，需要跳过）。}
  \label{fig:good-char-2}
 \end{figure}
 
-在实际中，即使只使用不良字符规则也能够得到简单、快速的字符串查找算法，被称为Boyer-Moore-Horspool算法\cite{boyer-moore-horspool}。
+仅使用不良字符规则就可得到简单快速的查找算法，称为鲍耶-摩尔-霍斯普尔算法\cite{boyer-moore-horspool}：
 
 \begin{algorithmic}[1]
 \Procedure{Boyer-Moore-Horspool}{$T, P$}
-  \For{$\forall c \in \Sigma$}
-    \State $\pi[c] \gets |P|$
+  \State $m \gets |P|, n \gets |T|$
+  \For{each $c \in \Sigma$}
+    \State $\pi[c] \gets m$ \Comment{初始化所有平移距离为$m = |P|$}
   \EndFor
-  \For{$i \gets 1$ to $|P|-1$} \Comment{跳过最后一个位置}
-    \State $\pi[P[i]] \gets |P| - i$
+  \For{$i \gets 1$ to $m - 1$} \Comment{跳过末尾位置}
+    \State $\pi[P[i]] \gets m - i$ \Comment{定义(\ref{eqn:BMH-shift})}
   \EndFor
   \State $s \gets 0$
-  \While{$s + |P| \leq |T|$}
-    \State $i \gets |P|$
-    \While{$i \geq 1 \land P[i] = T[s+i]$} \Comment{从右侧开始扫描}
+  \While{$s + m \leq n$}
+    \State $i \gets m$
+    \While{$i \geq 1$ 且 $P[i] = T[s+i]$} \Comment{从右向左扫描}
       \State $i \gets i - 1$
     \EndWhile
     \If{$i < 1$}
-      \State found one solution at $s$
-      \State $s \gets s + 1$ \Comment{继续寻找下一个解}
+      \State 位置$s$是一个解
+      \State $s \gets s + 1$ \Comment{寻找下一个解}
     \Else
-      \State $s \gets s + \pi[T[s + |P|]]$
+      \State $s \gets s + \pi[T[s + m]]$
     \EndIf
   \EndWhile
 \EndProcedure
 \end{algorithmic}
 
-记字符集为$\Sigma$，我们首先将平移表的所有值都初始化为待搜索串的长度$|P|$。然后，我们从左向右处理待搜索串，更新相应的平移距离。如果某个字符在待搜索串中多次出现，在右侧后出现的值将覆盖此前的值。开始查找时，我们将文本和待搜索串的左侧对齐。但是对于每个对齐的位置$s$，我们都从右向左扫描，直到发生匹配失败，或者检查完待搜索串中的所有字符。后者说明我们发现了一个解；而对于前者，我们查找$\pi$并向右侧平移相应的距离。
+首先将平移表$\pi$的所有值都初始化为$m = |P|$。然后从左向右处理$P$，更新平移距离$\pi(P[i]) = m - i$。如果某个字符出现多次，后面值将覆盖此前的值。将文本和$P$的左侧对齐开始查找。但每个对齐位置$s$，我们都从右向左扫描，如果不匹配就查找$\pi$并移动相应的距离。我们首先用$O(|\Sigma| + |P|)$的时间构造平移表$\pi$。如果字符集不大，复杂度主要由$P$和文本长度决定。最坏情况下，文本和$P$中的字符相同，例如在文本“aa......a”($n$个)中搜索“aa...a”($m$个)。复杂度为$O(mn)$。当$P$较长并且有常数个解时，复杂度为线性时间。
 
-下面的Python例子程序实现了这一算法。
 
-\lstset{language=Python}
-\begin{lstlisting}
-def bmh_match(w, p):
-    n = len(w)
-    m = len(p)
-    tab = [m for _ in range(256)]  #保存不良字符规则的表
-    for i in range(m-1):
-        tab[ord(p[i])] = m - 1 - i
-    res = []
-    offset = 0
-    while offset + m <= n:
-        i = m - 1
-        while i >= 0 and p[i] == w[offset+i]:
-            i = i - 1
-        if i < 0:
-            res.append(offset)
-            offset = offset + 1
-        else:
-            offset = offset + tab[ord(w[offset + m - 1])]
-    return res
-\end{lstlisting}
-
-算法首先使用$O(|\Sigma| + |P|)$的时间构造平移表格。如果字符集很小，则性能主要由待搜索串的长度和文本的长度决定。显然，最坏的情况下，文本和待搜索串中的所有字符都相同，例如在文本“aa......a”($n$个字符‘a’，记为$a^n$)中搜索“aa...a”($m$个字符‘a’，记为$a^m$)。此时性能为$O(mn)$。当待搜索的字符较长，并且有常数个解的时候，算法的性能良好，为线性时间。这一结论和后面介绍的完整Boyer-Moore算法在最好情况下的性能相同。
-
-\paragraph{良好后缀启发条件}
-
-考虑在文本“bbbababbabab...”中搜索“abbabab”，如图\ref{fig:bad-char-2}所示。根据不良字符规则，应该向右侧平移2个单位。
+考虑在文本bbbababbabab...中搜索abbabab，如图\ref{fig:bad-char-2}所示。根据不良字符规则，应向右侧平移2。我们可以平移更长的距离。考虑已从右向左成功匹配了6个字符bbabab，由于ab既是$P$的前缀也是已匹配部分的后缀，我们向右平移对齐这个后缀，如图\ref{fig:good-suffix-case1-1}所示。
 
 \begin{figure}[htbp]
  \centering
  \subcaptionbox{}{\includegraphics[scale=0.5]{img/bad-char-1}}
  \subcaptionbox{}{\includegraphics[scale=0.5]{img/bad-char-2}}
- \caption{根据不良字符规则，应向右平移2个单位，这样，下一个字符‘b’的位置相互对齐}
+ \caption{不良字符规则：向右平移2，对齐字符b。}
  \label{fig:bad-char-2}
 \end{figure}
-
-实际上，我们可以做得更好。在匹配失败前，我们已经从右向左成功匹配了6个字符“bbabab”。由于“ab”既是待搜索串的前缀，也是已匹配部分的后缀，我们可以向右平移对齐这个后缀，如图\ref{fig:good-suffix-case1-1}所示。
 
 \begin{figure}[htbp]
  \centering
  \includegraphics[scale=0.5]{img/good-suffix-case1-1}
- \caption{由于前缀“ab”也是已匹配部分的后缀，我们可以向右平移使得“ab”对齐}
+ \caption{由于前缀ab也是已匹配部分的后缀，向右平移对齐ab}
  \label{fig:good-suffix-case1-1}
 \end{figure}
 
