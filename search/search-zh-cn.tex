@@ -969,7 +969,7 @@ s = |P| - p_i
  \label{fig:good-suffix-case2-1}
 \end{figure}
 
-以上两种情况组成了\textbf{良好后缀规则}，如图\ref{fig:good-suffix-cases}所示。下面两种情况之一可向右平移。
+以上两种情况组成了\textbf{良好后缀规则}，如图\ref{fig:good-suffix-cases}所示。下面两种情况之一可向右平移。我们优先使用规则2然后再应用规则1。
 
 \begin{enumerate}
 \item 如果已匹配部分的某个后缀也是$P$的前缀，并且这一后缀不出现在$P$的其它位置，将$P$向右平移对齐这一前缀；
@@ -983,28 +983,22 @@ s = |P| - p_i
  \label{fig:good-suffix-cases}
 \end{figure}
 
-扫描中优先使用第2条规则，然后再应用规则1。良好后缀规则仅依赖于$P$，可以在搜索前预处理。
-
-简单起见，记$P$中从第$i$个字符开始的后缀为$\overline{P_i}$。即$\overline{P_i}$为子串$P[i]P[i+1]...P[m]$。
-
-对于情况1，我们可以检查$P$的每个后缀，包括$\overline{P_m}$, $\overline{P_{m-1}}$, $\overline{P_{m-2}}$, ...,  $\overline{P_2}$，看它是否同时是$P$的前缀。可以通过从右向左进行一轮扫描实现。
-
-对于情况2，我们可以检查$P$的每个前缀，包括$P_1$, $P_2$, ..., $P_{m-1}$，看它的最长后缀是否也是$P$的后缀。可以通过从左向右的另一轮扫描实现。
+良好后缀规则仅依赖于$P$，可以在搜索前预处理。记$P$中从第$i$个字符开始的后缀为$\overline{P_i} = P[i...m]$，其中$m = |P|$。对规则1，从右向左扫描检查$P$的每个后缀：$\overline{P_m}$, $\overline{P_{m-1}}$, ...,  $\overline{P_2}$是否是$P$的前缀。对规则2，从左向右扫描$P$的每个前缀：$P_1$, $P_2$, ..., $P_{m-1}$，检查它的最长后缀是否也是$P$的后缀：
 
 \begin{algorithmic}[1]
 \Function{Good-Suffix}{$P$}
   \State $m \gets |P|$
-  \State $\pi_s \gets \{0, 0, ..., 0\}$ \Comment{初始化一个长度为$m$的表格}
-  \State $l \gets 0$ \Comment{最后的后缀也同时是$P$的前缀}
-  \For{$i \gets m-1$ down-to $1$} \Comment{第一轮循环处理情况1}
-    \If{$\overline{P_i} \sqsubset P$} \Comment{$\sqsubset$代表左侧是右侧的前缀}
+  \State $\pi_s \gets [0, 0, ..., 0]$ \Comment{$m$个}
+  \State $l \gets 0$                  \Comment{空串}
+  \For{$i \gets m-1$ down-to $1$}     \Comment{从右向左扫描规则1}
+    \If{$\overline{P_i} \sqsubset P$} \Comment{$A \sqsubset B$：$A$是$B$的前缀}
       \State $l \gets i$
     \EndIf
     \State $\pi_s[i] \gets l$
   \EndFor
-  \For{$i \gets 1$ to $m$} \Comment{第二轮循环处理情况2}
+  \For{$i \gets 1$ to $m$} \Comment{从左向右扫描规则2}
     \State $s \gets$ \Call{Suffix-Length}{$P_i$}
-    \If{$s \neq 0 \land P[i - s] \neq P[m - s]$}
+    \If{$s \neq 0$ 且 $P[i - s] \neq P[m - s]$}
       \State $\pi_s[m - s] \gets m - i$
     \EndIf
   \EndFor
@@ -1012,86 +1006,19 @@ s = |P| - p_i
 \EndFunction
 \end{algorithmic}
 
-这一算法构造良好后缀规则表$\pi_s$。它首先检查$P$的每个后缀，从最短的开始，到最长的结束。如果后缀$\overline{P_i}$同时是$P$的前缀，就将此后缀记录下来，并将其用于表格中所有的项，直到我们发现另一个后缀$\overline{P_j}$，$j < i$并且同时是$P$的前缀。
-
-然后，这一算法逐一检查$P$的所有前缀，从最短的开始，到最长的结束。它调用函数\textproc{Suffix-Length}($P_i$)，来计算$P_i$中最长的一个同时是$P$前缀的后缀的长度。如果长度$s$不等于0，说明存在一个子串，同时也是待搜索串的后缀。它表明发生了情况2。算法修改表格$\pi_s$从右侧数的第$s$项的值。为了避免再次找到已匹配的后缀，我们需要检查$P[i - s]$和$P[m - s]$是否相等。
-
-函数\textproc{Suffix-Length}的实现如下。
+为了构造良好后缀规则表$\pi_s$，首先从右向左检查$P$的每个后缀$\overline{P_i}$是否是$P$的前缀并记录。然后从左向右检查$P$的每个前缀，调用函数\textproc{Suffix-Length}($P_i$)找出同时是$P$前缀的后缀的最长长度$s$，若$s \neq 0$，则修改表格$\pi_s$中倒数第$s$项的值。为避免重复找到已匹配的后缀，需要检查$P[i - s]$和$P[m - s]$是否相等。\textproc{Suffix-Length}的实现如下：
 
 \begin{algorithmic}[1]
 \Function{Suffix-Length}{$P_i$}
-  \State $m \gets |P|$
-  \State $j \gets 0$
-  \While{$P[m - j] = P[i - j] \land j < i$}
+  \State $m \gets |P|, j \gets 0$
+  \While{$P[m - j] = P[i - j]$ 且 $j < i$}
     \State $j \gets j + 1$
   \EndWhile
   \State \Return $j$
 \EndFunction
 \end{algorithmic}
 
-下面的Python例子程序实现了良好后缀规则。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def good_suffix(p):
-    m = len(p)
-    tab = [0 for _ in range(m)]
-    last = 0
-    # 第一遍循环，针对情况1
-    for i in range(m-1, 0, -1): # m-1, m-2, ..., 1
-        if is_prefix(p, i):
-            last = i
-        tab[i - 1] = last
-    # 第二遍循环，针对情况2
-    for i in range(m):
-        slen = suffix_len(p, i)
-        if slen != 0 and p[i - slen] != p[m - 1 - slen]:
-            tab[m - 1 - slen] = m - 1 - i
-    return tab
-
-# 检查p[i...m-1]是否是p的前缀
-def is_prefix(p, i):
-    for j in range(len(p) - i):
-        if p[j] != p [i+j]:
-            return False
-    return True
-
-# 返回最长后缀p[...i]的长度，它同时也是p的后缀
-def suffix_len(p, i):
-    m = len(p)
-    j = 0
-    while p[m - 1 - j] == p[i - j] and j < i:
-        j = j + 1
-    return j
-\end{lstlisting}
-
-当匹配失败时，不良字符规则和良好后缀规则可能同时适用。Boyer-Moore算法比较这两种规则的结果，并选择较大的平移值以获得更快的速度。不良字符规则的表格可以按照如下的实现构造。
-
-\begin{algorithmic}[1]
-\Function{Bad-Character}{$P$}
-  \For{$\forall c \in \Sigma$}
-    \State $\pi_b[c] \gets |P|$
-  \EndFor
-  \For{$i \gets 1$ to $|P|-1$}
-    \State $\pi_b[P[i]] \gets |P| - i$
-  \EndFor
-  \State \Return $\pi_b$
-\EndFunction
-\end{algorithmic}
-
-下面的Python例子程序实现了不良字符规则表的构造算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def bad_char(p):
-    m = len(p)
-    tab = [m for _ in range(256)]
-    for i in range(m-1):
-        tab[ord(p[i])] = m - 1 - i
-    return tab
-\end{lstlisting}
-
-最终的Boyer-Moore算法首先从待搜索串构造出两个规则表，将待搜索串和文本的左侧对齐，对每个对齐位置，都进行从右向左的扫描。如果不匹配发生，就尝试使用两种规则，并选择较大的距离向右侧平移。
+可以同时应用不良字符规则和良好后缀规则，比较并选择较大的平移值：
 
 \begin{algorithmic}[1]
 \Function{Boyer-Moore}{$T, P$}
@@ -1101,11 +1028,11 @@ def bad_char(p):
   \State $s \gets 0$
   \While{$s + m \leq n$}
     \State $i \gets m$
-    \While{$i \geq 1 \land P[i] = T[s + i]$}
+    \While{$i \geq 1$ 且 $P[i] = T[s + i]$}
       \State $i \gets i - 1$
     \EndWhile
     \If{$i < 1$}
-      \State found one solution at $s$
+      \State 位置$s$是一个解
       \State $s \gets s + 1$ \Comment{继续寻找下一个解}
     \Else
       \State $s \gets s + max(\pi_b[T[s + m]], \pi_s[i])$
@@ -1114,45 +1041,12 @@ def bad_char(p):
 \EndFunction
 \end{algorithmic}
 
-下面的Python例子程序，完整地实现了Boyer-Moore算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def bm_match(w, p):
-    n = len(w)
-    m = len(p)
-    tab1 = bad_char(p)
-    tab2 = good_suffix(p)
-    res = []
-    offset = 0
-    while offset + m <= n:
-        i = m - 1
-        while i >= 0 and p[i] == w[offset + i]:
-            i = i - 1
-        if i < 0:
-            res.append(offset)
-            offset = offset + 1
-        else:
-            offset = offset + max(tab1[ord(w[offset + m - 1])], tab2[i])
-    return res
-\end{lstlisting}
-
-最初发表的Boyer-Moore算法，在最坏的情况下，只有当待搜索串不出现在文本中时，性能才是$O(n+m)$\cite{boyer-moore}。在1977年，Knuth、Morris和Pratt证明了这一结论。但是，当待搜索串出现在文本中时，如前所述，Boyer-Moore算法在最坏情况下的性能为$O(nm)$。
-
-我们在此略过Boyer-Moore算法的纯函数式实现，读者可以参考Richard Birds给出的纯函数式Boyer-Moore算法（\cite{fp-pearls}中的第16章，）。
+在最坏的情况下，只有当$P$不出现在文本中时复杂度才是$O(n+m)$\cite{boyer-moore}。如果$P$出现，则复杂度为$O(nm)$。伯德给出了算法的一种纯函数式实现（\cite{fp-pearls}第16章）。
 
 \begin{Exercise}
 \begin{itemize}
 \item 证明Boyer-Moore众数算法的正确性。
 \item 对于任意列表，寻找其中出现最多的元素。是否存在分而治之的解法？是否存在分而治之的数据结构，例如map可供使用？
-% see /others/problems/problems/majority-elem folder.
-\item 如何找到一个列表中出现次数超过1/3的元素？如何找到一个列表中出现次数超过1/m的元素？
-% use a map with capacity of m, the keys are the elements, the values are the occurrence.
-% scans the list and fill the map, when the map is full (contains m different keys), reduce
-% all values by 1, and remove the keys with zero occurrence.
-% After the scan completion, the elements left in the map are possible answers, We need
-% verify them by another round of scan.
-% The overall complexity is O(n) if m is small (such as 3), and O(n \lg m) for tree based map.
 \item 如果空数组不算合法的子数组，如何解决子数组最大和问题？
 %% int maxsum'(int* xs, int n) {
 %%     int i, m, sum;
@@ -4395,6 +4289,29 @@ KMP字符串匹配算法：
     }
     return t
 }
+\end{lstlisting}
+
+下面的Python例子程序，完整地实现了Boyer-Moore算法。
+
+\lstset{language=Python}
+\begin{lstlisting}
+def bm_match(w, p):
+    n = len(w)
+    m = len(p)
+    tab1 = bad_char(p)
+    tab2 = good_suffix(p)
+    res = []
+    offset = 0
+    while offset + m <= n:
+        i = m - 1
+        while i >= 0 and p[i] == w[offset + i]:
+            i = i - 1
+        if i < 0:
+            res.append(offset)
+            offset = offset + 1
+        else:
+            offset = offset + max(tab1[ord(w[offset + m - 1])], tab2[i])
+    return res
 \end{lstlisting}
 
 \ifx\wholebook\relax\else
