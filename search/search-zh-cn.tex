@@ -1132,68 +1132,46 @@ adj\ (x, y) = [(x', y') | & (x', y') \gets [(x-1, y), (x+1, y), (x, y-1), (x, y+
 \end{array}
 \ee
 
-这是一种穷举解法，搜索所有路径。为了走出迷宫，只需要找到一条路径。我们需要某种数据结构保存“面包屑”，记录此前做出的决策。我们总在最新决策基础上搜索通路，这是后进先出的顺序。可以用一个栈来实现。开始时，栈中只有起点$s$。将其弹出，找出和$s$连通的点，例如$a$、$b$……将可能的路径$\{a, s\}$、$\{b, s\}$入栈。接下来将路径$\{a, s\}$弹出，检查和$a$连通的点。然后把所有3步可达的路径入栈。重复这一过程。栈中记录了一条条逆序路径：从起点开始通向可达的最远位置，如图\ref{fig:dfs-stack}所示。
+这是一种穷举解法，搜索所有路径。为了走出迷宫，只需要找到一条路径。我们需要某种数据结构保存“面包屑”，记录此前做出的决策。我们总在最新决策基础上搜索通路，这是后进先出的顺序。可以用一个栈来实现。开始时，栈中只有起点$[s]$。将其弹出，找出和$s$连通的点，例如$a$、$b$……将可能的路径$[a, s]$、$[b, s]$入栈。接下来将路径$[a, s]$弹出，检查和$a$连通的点。然后把所有3步可达的路径入栈。重复这一过程。栈中记录了一条条逆序路径：从起点开始通向可达的最远位置，如图\ref{fig:dfs-stack}所示。当栈变为空时，我们已尝试了所有的可能，仍未找到通路，迷宫无解；否则弹出栈顶的候选路径，扩展未曾走过的连通邻点，然后入栈。
 
 \begin{figure}[htbp]
  \centering
  \includegraphics[scale=0.5]{img/dfs-stack}
- \caption{栈初始时包含一个只有一个元素的列表。这一元素为起点$s$。$s$和点$a$、$b$连通。路径$\{a, s\}$和$\{b, s\}$被推回栈。在某一步，以$p$结束的路径被弹出。$p$和点$i$、$j$和$k$连通。这3个点被扩展为不同的选项，并推回到栈中。除非所有的候选路径都失败，否则不会尝试以$q$结尾的候选路径。}
+ \caption{用栈记录路径}
  \label{fig:dfs-stack}
 \end{figure}
 
-栈可以用一个列表来实现。最新的选项可以从表头获得，新的候选路径也被添加到表头。可以通过这样的路径列表解决迷宫问题。
-
 \be
-solveMaze'(m, s, e) = reverse(solve'(\{\{s\}\}))
+\textit{solveMaze}\ M\ s\ e = \textit{solve}\ [[s]]
 \ee
 
-由于我们搜索第一个，而不是全部的解，这里我们没有使用$map$函数。当栈为空时，表示我们已经尝试了所有的可能，但仍然没有找到通路。因此迷宫无解；否则，我们弹出栈顶的候选路径，将其扩展到所有未曾走过的连通点，然后再推回栈。我们用$S$表示栈，若栈不为空，则栈顶的元素记为$s_1$，弹出栈顶元素后的新栈表示为$S'$。$s_1$为一个点的列表，代表路径$P$。记这条路径中的第一个点为$p_1$，其余的点为$P'$。这一解法可以定义如下。
+其中：
 
 \be
-solve'(S) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & S = \phi \\
-  s_1 & s_1 = e \\
-  solve'(S') & C = \{ c | c \in adj(p_1), c \not\in P' \} = \phi \\
-  solve'(\{ \{p\}\cup P | p \in C\} \cup S) & C \neq \phi
-  \end{array}
-\right.
+\begin{array}{rcl}
+\textit{solve}\ [\ ] & = & [\ ] \\
+\textit{solve}\ ((p \cons ps) \cons cs) & = & \begin{cases}
+  c = e: & \textit{reverse}\ (p \cons ps) \\
+  ks = [\ ]: & \textit{solve}\ cs, \text{其中}\ ks = filter\ (\notin ps)\ (adj\ p) \\
+  ks \neq [\ ]: & \textit{solve}\ ((map\ (:p \cons ps)\ ks) \doubleplus cs)
+  \end{cases}
+\end{array}
 \ee
 
-其中$adj$的定义和前面相同。下面的Haskell例子程序实现了这一迷宫算法\footnote{$adjacent$函数的定义完全相同，在此略过。}。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-dfsSolve m from to = reverse $ solve [[from]] where
-    solve [] = []
-    solve (c@(p:path):cs)
-        | p == to = c -- 找到第一个解后结束
-        | otherwise = let os = filter (`notElem` path) (adjacent p) in
-                          if os == []
-                          then solve cs
-                          else solve ((map (:c) os) ++ cs)
-\end{lstlisting} %$
-
-可以很容易地修改这一算法，从而找到全部的解。在第二行找到一个解后，我们不立即返回，而是将其记录下来，然后继续尝试栈中记录的其他候选路径，直到栈变为空。我们将其作为练习留给读者。
-
-也可以用命令式的方法实现这一思路。我们使用一个栈保存从起点开始的全部可能路径。每次迭代，首先弹出栈顶保存的路径，如果这一路径到达了终点，则找到了迷宫的一个解；否则，我们将尚未尝试过的所有连通点添加到路径上作为新的候选路径，并推回栈。重复这一过程直到栈中的所有候选路径都检查完毕。
-
-我们使用同样的符号$S$表示栈。但在命令式的环境中，路径使用数组来表示，这样效率更高。为此，起点保存在数组的第一个元素中，而最远到达的点保存为最右侧的元素。我们用$P_n$来表示路径$P$中的最后一个元素\textproc{Last}($P$)。命令式的算法定义如下。
+对应的迭代实现如下：
 
 \begin{algorithmic}[1]
-\Function{Solve-Maze}{$m, s, e$}
-  \State $S \gets \phi$
-  \State \Call{Push}{$S, \{ s \}$}
-  \State $L \gets \phi$ \Comment{结果列表}
-  \While{$S \neq \phi$}
+\Function{Solve-Maze}{$M, s, e$}
+  \State $S \gets [s], L = [\ ]$
+  \While{$S \neq [\ ]$}
     \State $P \gets$ \Call{Pop}{$S$}
-    \If{$e = p_n$}
-      \State \Call{Add}{$L, P$}
+    \State $p \gets$ \Call{Last}{$P$}
+    \If{$e = p$ }
+      \State \Call{Add}{$L, P$}   \Comment{找到一个解}
     \Else
-      \For{$\forall p \in $ \Call{Adjacent}{$m, p_n$}}
-        \If{$p \notin P$}
-          \State \Call{Push}{$S, P \cup \{ p \}$}
+      \For{each $k$ in \Call{Adjacent}{$M, p$}}
+        \If{$k \notin P$}
+          \State \Call{Push}{$S, P \doubleplus [k]$}
         \EndIf
       \EndFor
     \EndIf
@@ -1202,51 +1180,7 @@ dfsSolve m from to = reverse $ solve [[from]] where
 \EndFunction
 \end{algorithmic}
 
-下面的Python例子程序实现了这一迷宫算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def solve(m, src, dst):
-    stack = [[src]]
-    s = []
-    while stack != []:
-        path = stack.pop()
-        if path[-1] == dst:
-            s.append(path)
-        else:
-            for p in adjacent(m, path[-1]):
-                if not p in path:
-                    stack.append(path + [p])
-    return s
-
-def adjacent(m, p):
-    (x, y) = p
-    ds = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-    ps = []
-    for (dx, dy) in ds:
-        x1 = x + dx
-        y1 = y + dy
-        if 0 <= x1 and x1 < len(m[0]) and
-           0 <= y1 and y1 < len(m) and m[y][x] == 0:
-            ps.append((x1, y1))
-    return ps
-\end{lstlisting}
-
-同样的例子迷宫可以用这一程序解决如下。
-
-\lstset{language=Python}
-\begin{lstlisting}
-mz = [[0, 0, 1, 0, 1, 1],
-      [1, 0, 1, 0, 1, 1],
-      [1, 0, 0, 0, 0, 0],
-      [1, 1, 0, 1, 1, 1],
-      [0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 1, 1, 0]]
-
-solve(mz, (0, 0), (5,5))
-\end{lstlisting}
-
-看上去在最坏的情况下，每步都有上下左右4个选项，每个选项都被推入栈，并且最终在回溯时都被检查了。算法的复杂度看似是$O(4^n)$。实际上消耗的时间并不会这样大，这是因为我们过滤掉了已经走过的位置。在最坏情况下，所有可以到达的点都恰好被访问过一次。因此时间复杂度为$O(n)$，其中$n$是互相连通的点的数量。由于使用了一个栈来保存候选路径，空间复杂度为$O(n^2)$。
+每步有上下左右4个选项可能入栈，并且都在回溯时检查。复杂度看似是$O(4^n)$，其中$n$是路径长度。实际复杂度不会这样大，我们跳过了已走的位置。最坏情况下，所有可达点都恰好被访问过一次，复杂度为$O(n)$，其中$n$是连通点的数量。由于使用了栈来保存路径，空间复杂度为$O(n^2)$。
 
 \subsubsection{八皇后问题}
 \index{八皇后问题}
@@ -4255,6 +4189,20 @@ Int suffix_len([T] p, Int i) {
     return j
 }
 \end{lstlisting}
+
+深度优先走迷宫：
+
+\begin{Haskell}
+dfsSolve m from to = solve [[from]] where
+  solve [] = []
+  solve (c@(p:path):cs)
+      | p == to = reverse c
+      | otherwise = let os = filter (`notElem` path) (adj p) in
+                      if os == [] then solve cs
+                      else solve ((map (:c) os) ++ cs)
+  adj (x, y) = [(x', y') | (x', y') <- [(x-1, y), (x+1, y), (x, y-1), (x, y+1)],
+                           inRange (bounds m) (x', y'), m ! (x', y') == 0]
+\end{Haskell}
 
 \ifx\wholebook\relax\else
 \section{参考答案}
