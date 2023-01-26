@@ -944,8 +944,7 @@ s = |P| - p_i
 
 首先将平移表$\pi$的所有值都初始化为$m = |P|$。然后从左向右处理$P$，更新平移距离$\pi(P[i]) = m - i$。如果某个字符出现多次，后面值将覆盖此前的值。将文本和$P$的左侧对齐开始查找。但每个对齐位置$s$，我们都从右向左扫描，如果不匹配就查找$\pi$并移动相应的距离。我们首先用$O(|\Sigma| + |P|)$的时间构造平移表$\pi$。如果字符集不大，复杂度主要由$P$和文本长度决定。最坏情况下，文本和$P$中的字符相同，例如在文本“aa......a”($n$个)中搜索“aa...a”($m$个)。复杂度为$O(mn)$。当$P$较长并且有常数个解时，复杂度为线性时间。
 
-
-考虑在文本bbbababbabab...中搜索abbabab，如图\ref{fig:bad-char-2}所示。根据不良字符规则，应向右侧平移2。我们可以平移更长的距离。考虑已从右向左成功匹配了6个字符bbabab，由于ab既是$P$的前缀也是已匹配部分的后缀，我们向右平移对齐这个后缀，如图\ref{fig:good-suffix-case1-1}所示。
+考虑在文本bbbababbabab...中搜索abbabab，如图\ref{fig:bad-char-2}所示。根据不良字符规则，应向右侧平移2。我们可以平移更长的距离。考虑已从右向左成功匹配了6个字符bbabab，由于ab既是$P$的前缀也是已匹配部分的后缀，我们向右平移对齐这个后缀，如图\ref{fig:good-suffix-case1-1}所示。这类似于KMP中的预处理。但并不能总跳过这样多的字符。考虑如图\ref{fig:good-suffix-case2-1}所示的例子，已匹配了bab。虽然前缀ab也是bab的后缀，但却不能平移这么远。因为bab也在其它位置出现过（$P$中第3个字符的位置）。为了避免漏掉解，只能向右平移2。
 
 \begin{figure}[htbp]
  \centering
@@ -962,34 +961,29 @@ s = |P| - p_i
  \label{fig:good-suffix-case1-1}
 \end{figure}
 
-这和KMP算法中的预处理部分非常类似，但是我们不能总跳过这样多的字符。考虑如图\ref{fig:good-suffix-case2-1}所示的例子。在失败前，我们已匹配了“bab”。虽然前缀“ab”也是“bab”的后缀，我们却不能平移这么远。这是因为“bab”也在其它位置出现过，即待搜索串的第3个字符的位置。为了避免漏掉可能的解，我们只能向右平移2个单位。
-
 \begin{figure}[htbp]
  \centering
  \subcaptionbox{}{\includegraphics[scale=0.5]{img/good-suffix-case2-1}}
  \subcaptionbox{}{\includegraphics[scale=0.5]{img/good-suffix-case2-2}}
- \caption{已匹配的部分“bab”也在待搜索串的其它位置出现（从第3个字符到第5个字符）。我们只能向右平移2个单位以避免漏掉可能的解。}
+ \caption{bab也在$P$中其它位置出现（第3～5个字符）。只能向右平移2。}
  \label{fig:good-suffix-case2-1}
 \end{figure}
 
-以上两种情况组成了\textbf{良好后缀规则}，如图\ref{fig:good-suffix-cases}所示。
+以上两种情况组成了\textbf{良好后缀规则}，如图\ref{fig:good-suffix-cases}所示。下面两种情况之一可向右平移。
+
+\begin{enumerate}
+\item 如果已匹配部分的某个后缀也是$P$的前缀，并且这一后缀不出现在$P$的其它位置，将$P$向右平移对齐这一前缀；
+\item 如果已匹配部分的某个后缀也出现在$P$的其它位置，将$P$向右侧平移，对齐最右侧出现的位置。
+\end{enumerate}
 
 \begin{figure}[htbp]
  \centering
- \subcaptionbox{情况1，已匹配的子串中，有一部分也同时是待搜索串的前缀。}{\includegraphics[scale=0.4]{img/good-suffix-case1}} \hspace{.01\textwidth}
- \subcaptionbox{情况2，匹配部分的后缀，也出现在待搜索串的其它位置。}{\includegraphics[scale=0.4]{img/good-suffix-case2}}
- \caption{文本中浅灰色的部分代表已匹配的子串；深灰色的部分表示待搜索串中相同的内容}
+ \includegraphics[scale=0.5]{img/BM-good-suffix-rule}
+ \caption{$T$中浅灰色是已匹配部分，和$P$中深灰色的部分相同。(a) 情况1，已匹配子串中有一部分也是$P$的前缀；(b) 情况2，匹配部分的后缀，也出现在$P$中其它位置。}
  \label{fig:good-suffix-cases}
 \end{figure}
 
-良好后缀规则用来处理多个字符已成功匹配的情况。如果下面任何一种情况发生，都可以向右平移一定的距离。
-
-\begin{itemize}
-\item 情况1，如果已匹配部分的某个后缀同时也是待搜索字串的前缀，并且这一后缀不出现在待搜索字符串的其他位置，我们可以将待搜索串向右侧平移，对齐这一前缀；
-\item 情况2，如果已匹配部分的某个后缀也出现在待搜索串的其它位置，我们可以将待搜索串向右侧平移，使得最右侧出现的位置对齐。
-\end{itemize}
-
-在扫描的过程中，只要可能，要优先使用第2种情况，如果发现已匹配的后缀没有出现过，然后再检查情况1。由于良好后缀规则的两种情况都仅仅依赖于待搜索字符串，我们可以在搜索前进行预处理，构造出用于后继查询的表格。
+扫描中优先使用第2条规则，然后再应用规则1。良好后缀规则仅依赖于$P$，可以在搜索前预处理。
 
 简单起见，记$P$中从第$i$个字符开始的后缀为$\overline{P_i}$。即$\overline{P_i}$为子串$P[i]P[i+1]...P[m]$。
 
