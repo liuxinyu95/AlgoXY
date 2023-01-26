@@ -1185,99 +1185,61 @@ adj\ (x, y) = [(x', y') | & (x', y') \gets [(x-1, y), (x+1, y), (x, y-1), (x, y+
 \subsubsection{八皇后问题}
 \index{八皇后问题}
 
-八皇后问题是一个很著名的趣题。虽然国际象棋有着悠久的历史，但八皇后趣题直到1848年才由Max Bezzel提出\cite{wiki-8-queens}。皇后是国际象棋中一种威力巨大的棋子。她可以攻击在同一行、列和斜线上的任意距离的其它棋子。这道趣题要求找到一种方法，可以在棋盘上同时摆下八个皇后，而她们之间不会互相攻击。图\ref{fig:8-queens-puzzle} (a)描述了皇后可以攻击到的范围。图\ref{fig:8-queens-puzzle} (b)给出了八皇后问题的某一种解。
+虽然国际象棋历史悠久，但直到1848年贝策尔（Max Bezzel）才提出八皇后趣题\cite{wiki-8-queens}。皇后威力巨大，可以攻击同一行、列、斜线上的任意棋子。如何在棋盘上摆下八个皇后，而她们之间不互相攻击。图\ref{fig:8-queens-puzzle} (a)描述了皇后可以攻击到的范围。图\ref{fig:8-queens-puzzle} (b)给出了八皇后问题的某一种解。
 
 \begin{figure}[htbp]
  \centering
- \subcaptionbox{国际象棋中的皇后。}{\includegraphics[scale=1]{img/queen}}
- \subcaptionbox{某一种解。}{\includegraphics[scale=1]{img/queens-example}}
+ \subcaptionbox{国际象棋中的皇后}{\includegraphics[scale=1]{img/queen}}
+ \subcaptionbox{一种解}{\includegraphics[scale=1]{img/queens-example}}
  \caption{八皇后问题}
  \label{fig:8-queens-puzzle}
 \end{figure}
 
-显然，可以用暴力方法穷举解决八皇后问题，在国际象棋棋盘的64个格子中，放入8个皇后，这需要在$P^8_{64}$个可能的排列中检查。这个数字大约为$4 \times 10^{10}$。显然我们可以改进这一方法，考虑任一行中不能包含2个及以上的皇后，并且任何一个皇后都必须放在第1列到第8列中的某一列上，所以一个解的布局必然是$\{1,2,3,4,5,6,7,8\}$的某种排列。例如布局$\{6,2,7,1,3,5,8,4\}$表示，第一个皇后摆放在第1行、第6列上；第二个皇后摆在第2行、第2列上……最后一个皇后摆在第8行、第4列上。通过这一方法，我们只需要检查$8! = 40320$种可能的布局。
-
-我们可以找到更好的解法。和迷宫问题类似，我们可以从第一行开始，逐一摆放皇后。对于第一个皇后，存在8种可能的摆法，她可以被放置在八列中的某一列上。接下来摆放第二个皇后，我们检查8个可能的列。由于可能被第一个皇后攻击，因此某些列不能再摆放了。我们重复这一过程，对于第$i$个皇后，我们检查第$i$行中的8个位置，找到不被任何前$i-1$个皇后攻击的位置。如果所有8个位置都不能摆放，即这一行的8个位置都会被此前摆放过的某个皇后攻击，我们就必须向迷宫问题中一样进行回溯。当所有8个皇后都成功放入棋盘后，我们就找到了一个可行的解。为了找到所有可能解，我们需要记录下这一布局，然后继续检查其他可能的列，并进行必要的回溯。当第一行的8列都尝试完毕后，这一过程结束。下面的函数启动八皇后问题解的查找过程。
+在64个格子中放入8个皇后，共有$P^8_{64}$种排列，约为$4 \times 10^{10}$。每行、列只能摆放1个皇后，一个解的布局必然是$[1,2,3,4,5,6,7,8]$的某种排列。例如布局$[6,2,7,1,3,5,8,4]$表示第一行的皇后放在第6列；第二行的皇后摆在第2列上……第8行的皇后摆在第4列。这样我们只需要检查$8! = 40320$种布局。从第一行开始逐一摆放皇后。第一个皇后有8种摆法（八列中的某一列）。摆放第二行的皇后时，由于可能和第一个皇后相互攻击，需要避开某些列。对于第$i$行的皇后，找到8列中不被前$i-1$个皇后攻击的位置。如果8个位置都不能摆放，我们就回退调整以前$i-1$个皇后。全部8个皇后都成功放入棋盘后，就找到了一个解。为了找出所有解，我们记录下这一布局，然后继续检查其它可能的列并进行必要的回溯。我们用一个栈和一个列表启动搜索：$solve\ [[\ ]]\ [\ ]$
 
 \be
-solve(\{\phi\}, \phi)
+\begin{array}{rcl}
+solve\ [\ ]\ s & = & s \\
+solve\ (c \cons cs)\ s & = & \begin{cases}
+  |c| = 8: & solve\ cs\ (c \cons s) \\
+  \text{否则}: & solve\ ( [ x \cons c | x \gets [1..8], x \notin c, \textit{safe}\ x\ c] \doubleplus cs)\ s
+  \end{cases}
+\end{array}
 \ee
 
-和迷宫问题类似，我们使用一个栈$S$来记录可能的尝试。一开始栈中只有一个空元素。我们使用一个列表$L$来记录所有可行的解。记栈顶的元素为$s_1$，它是某种尚未完成的布局，也就是1到8中部分元素的排列。将栈顶元素$s_1$弹出后，剩下的部分记为$S'$。函数$solve$的具体定义如下。
+若栈为空，我们已经尝试所有可能，$s$记录了所有找到的解；若栈顶布局$c$长度为8，我们找到了一个解。将其记录到$s$中，然后继续查找；若$|c| < 8$，我们从8列中找出尚未被占的列（$x \notin c$），同时不能被斜线上的其它皇后攻击（通过\textit{safe} $x c$）。可行的布局入栈用于此后的搜索。
 
 \be
-solve(S, L) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  L & S = \phi \\
-  solve(S', \{s_1\} \cup L) & |s_1| = 8 \\
-  solve(\left \{
-      \begin{array}{rl}
-        \{i\} \cup s_1 | & i \in [1,8], \\
-                         & i \notin s_1, \\
-                         & safe(i, s_1)
-      \end{array}
-      \right \} \cup S', L) & otherwise
-  \end{array}
-\right.
+\textit{safe}\ x\ c = \forall (i, j) \gets zip\ \textit{reverse}\ c, [1, 2, ...] \text{有} |x - i| \neq |y - j|, \text{其中} y = 1 + |c|
 \ee
 
-若栈为空，表明所有可能都已经尝试完毕，我们已无法继续回溯了。列表$L$已记录下了所有找到的解，我们将其作为结果返回；否则，若栈顶元素所代表的布局长度为8，表明我们找到了一种可行的解。我们将其记录到$L$中，然后继续寻找其它的解；如果这一布局的长度小于8，表明我们需要继续摆放剩余的皇后。我们从第1到第8列中，找出尚未被占的列（通过$i \notin s_1$条件），同时它不能被斜线上的其他皇后攻击（通过$safe$条件）。可行的布局被推入栈中用于此后的搜索。
+\textit{safe}检查如果第$y = 1 + |c|$行，$x$列的皇后是否和$c$中任何皇后成对角线。若$c = [i_{y-1}, i_{y-2}, ..., i_1]$是前$y-1$个皇后所在的列，我们将$c$反转，并和1, 2, ...组成每个皇后的坐标：$[(i_1, 1), (i_2, 2), ..., (i_{y-1}, y-1)\}$。然后判断每个$(i, j)$是否和位置$(x, y)$构成对角线：$|x - i| \neq |y - j|$。
 
-函数$safe(x, C)$检查在位置$x$上的皇后是否会被$C$中的任意皇后从斜线方向攻击。有两种可能的情况，分别是$45^{\circ}$度和$135^{\circ}$度方向。由于这一皇后所在的行为$y = 1 + |C|$，其中$|C|$是中间布局$C$的长度，因此函数$safe$可定义如下。
-
-\be
-safe(x, C) = \forall (c, r) \in zip(reverse(C), \{1, 2, ...\}), |x - c| \neq |y - r|
-\ee
-
-其中$zip$将两个列表中的每个元素都结合成一对，组成一个新的列表。因此，若$C = \{ c_{i-1}, c_{i-2}, ..., c_2, c_1\}$代表前$i-1$个皇后分别所在的列，上述函数将检查每个皇后的行列位置$\{(c_1, 1), (c_2, 2), ..., (c_{i-1}, i-1)\}$是否会和位置$(x, y)$构成对角线。
-
-下面的Haskell例子程序实现了这一八皇后问题的解。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-solve = dfsSolve [[]] [] where
-    dfsSolve [] s = s
-    dfsSolve (c:cs) s
-             | length c == 8 = dfsSolve cs (c:s)
-             | otherwise = dfsSolve ([(x:c) | x <- [1..8] \\ c,
-                               not $ attack x c] ++ cs) s
-    attack x cs = let y = 1 + length cs in
-                  any (\(c, r) -> abs(x - c) == abs(y - r)) $
-                      zip (reverse cs) [1..]
-\end{lstlisting}
-
-观察到这一算法是尾递归的，它可以很容易地用命令式的方式实现。我们使用数组而非列表来表示皇后的布局。记栈为$S$，中间布局为$A$，命令式算法可以描述如下。
+这一实现是尾递归的，可以消除递归优化为迭代实现：
 
 \begin{algorithmic}[1]
 \Function{Solve-Queens}{}
-  \State $S \gets \{\phi\}$
-  \State $L \gets \phi$ \Comment{保存所有解的列表}
-  \While{$S \neq \phi$}
+  \State $S \gets [[\ ]]$
+  \State $L \gets [\ ]$ \Comment{保存解}
+  \While{$S \neq [\ ]$}
     \State $A \gets$ \Call{Pop}{$S$} \Comment{$A$是某一中间布局}
     \If{$|A|=8$}
       \State \Call{Add}{$L, A$}
     \Else
       \For{$i \gets 1$ to $8$}
         \If{\Call{Valid}{$i, A$}}
-          \State \Call{Push}{$S, A \cup \{i\}$}
+          \State \Call{Push}{$S, A \doubleplus [i]$}
         \EndIf
       \EndFor
     \EndIf
   \EndWhile
   \State \Return $L$
 \EndFunction
-\end{algorithmic}
-
-栈中一开始放入一个空布局。然后不断取出栈顶元素，如果还有皇后尚未摆放完毕，我们就依次检查下一行中的所有8个位置。如果该位置是安全的，也就是说它不被此前的任意皇后攻击，就将此位置添加到布局中，并推回栈。和函数式方法不同，由于使用数组，我们无需再将解的布局反转。
-
-函数\textproc{Valid}检查中间布局$A$中的下一行的$x$列位置摆放皇后是否安全。它去掉已经被占的列，然后计算对角线上是否有别的皇后。
-
-\begin{algorithmic}[1]
+\Statex
 \Function{Valid}{$x, A$}
   \State $y \gets 1 + |A|$
   \For{$i \gets 1$ to $|A|$}
-    \If{$x = A[i] \lor |y-i| = |x - A[i]|$}
+    \If{$x = A[i]$ 或 $|y-i| = |x - A[i]|$}
       \State \Return False
     \EndIf
   \EndFor
@@ -1285,34 +1247,7 @@ solve = dfsSolve [[]] [] where
 \EndFunction
 \end{algorithmic}
 
-下面的Python例子程序实现了这一命令式八皇后解法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def solve():
-    stack = [[]]
-    s = []
-    while stack != []:
-        a = stack.pop()
-        if len(a) == 8:
-            s.append(a)
-        else:
-            for i in range(1, 9):
-                if valid(i, a):
-                    stack.append(a+[i])
-    return s
-
-def valid(x, a):
-    y = len(a) + 1
-    for i in range(1, y):
-        if x == a[i-1] or abs(y - i) == abs(x - a[i-1]):
-            return False
-    return True
-\end{lstlisting}
-
-虽然摆放每个皇后时有8列可供选择，但是并非所有列都可行。只有此前没有被占的列才会被尝试。算法只检查15720种情况，这要远远小于$8^8 = 16777216$种可能\cite{wiki-8-queens}。
-
-可以很容易将这一算法加以扩展，用以解决$n$皇后问题，其中$n \geq 4$。但是随着$n$的增大，所用的时间急速增加。这一回溯算法仅仅比枚举1到8的全排列稍快（枚举全排列的时间是$o(n!)$）。此外，还存在另一种小改进，由于国际象棋棋盘是正方形的，它水平方向和垂直方向都对称。因此得到一个解后，通过旋转和翻转，可以得到其他对称的解。我们将这一改进留给读者作为练习。
+虽然每个皇后有8列选择，但只尝试尚未被占的列。总共检查15720种情况，远远小于$8^8 = 16777216$种可能\cite{wiki-8-queens}。由于正方形棋盘水平、垂直都对称，找到一个解后，通过旋转、翻转可以得到其它对称解。我们可以扩展到$n$皇后问题，其中$n \geq 4$。但随着$n$增大所用时间急速增加。回溯算法仅比枚举8的全排列稍快（枚举全排列的时间是$O(n!)$）。
 
 \subsubsection{跳棋趣题}
 \index{跳棋趣题}
@@ -4203,6 +4138,21 @@ dfsSolve m from to = solve [[from]] where
   adj (x, y) = [(x', y') | (x', y') <- [(x-1, y), (x+1, y), (x, y-1), (x, y+1)],
                            inRange (bounds m) (x', y'), m ! (x', y') == 0]
 \end{Haskell}
+
+八皇后问题：
+
+\begin{Haskell}
+solve = dfsSolve [[]] [] where
+  dfsSolve [] s = s
+  dfsSolve (c:cs) s
+           | length c == 8 = dfsSolve cs (c:s)
+           | otherwise = dfsSolve ([(x:c) | x <- [1..8] \\ c,
+                             not $ attack x c] ++ cs) s
+  attack x c = let y = 1 + length c in
+                any (\(i, j) -> abs(x - i) == abs(y - j)) $
+                    zip (reverse c) [1..]
+\end{Haskell}
+
 
 \ifx\wholebook\relax\else
 \section{参考答案}
