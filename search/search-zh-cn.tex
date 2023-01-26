@@ -771,6 +771,9 @@ f\ x\ (S_m, S) = (S_m' = \max(S_m, S'), S' = \max(0, x + S))
 
 \begin{Exercise}
 \Question{修改最大子序列和的实现，返回对应最大和的子序列。}
+\Question{\item Bentley在\cite{Bentley}中给出了一个分而治之的方法求子数组最大和。复杂度为$O(n \log n)$。思路是将列表在中点分成两份。我们可以递归地找出前半部分的最大和，和后半部分的最大和，和跨越中点部分的最大和。实现这一方法。
+}
+\Question{在$m \times n$的二维整数矩阵中寻找子矩阵，使得各元素相加后的和最大。}
 \end{Exercise}
 
 \begin{Answer}
@@ -783,6 +786,35 @@ max_s & = & fst \cdot foldr\ f\ ((0, [\ ]), (0, [\ ])) \\
 \text{其中}: & & f\ x\ (P_m, (S, L)) = (P_m', P') \\
 & & \text{在$f$中}:  P' = max((0, [\ ]), (x + S, x \cons L)), P_m' = max(P_m, P') \\
 \elre
+}
+\Question{\item Bentley在\cite{Bentley}中给出了一个分而治之的方法求子数组最大和。复杂度为$O(n \log n)$。思路是将列表在中点分成两份。我们可以递归地找出前半部分的最大和，和后半部分的最大和，和跨越中点部分的最大和。实现这一方法。
+
+\begin{algorithmic}[1]
+\Function{Max-Sum}{$A$}
+  \If{$A = \phi$}
+    \State \Return 0
+  \ElsIf{$|A| = 1$}
+    \State \Return \Call{Max}{$0, A[1]$}
+  \Else
+    \State $m \gets \lfloor \frac{|A|}{2} \rfloor$
+    \State $a \gets$ \textproc{Max-From}(\Call{Reverse}{$A[1...m]$})
+    \State $b \gets$ \Call{Max-From}{$A[m+1...|A|]$}
+    \State $c \gets$ \Call{Max-Sum}{$A[1...m]$}
+    \State $d \gets$ \Call{Max-Sum}{$A[m+1...|A|$}
+    \State \Return \textproc{Max}($a+b, c, d$)
+  \EndIf
+\EndFunction
+\Statex
+\Function{Max-From}{$A$}
+  \State $sum \gets 0, m \gets 0$
+  \For{$i \gets 1$ to $|A|$}
+    \State $sum \gets sum + A[i]$
+    \State $m \gets $ \Call{Max}{$m, sum$}
+  \EndFor
+  \State \Return $m$
+\EndFunction
+\end{algorithmic}
+复杂度存在递归关系$T(n) = 2T(n/2) + O(n)$。利用主定理可知复杂度为$O(n)$。
 }
 \end{Answer}
 
@@ -1042,61 +1074,6 @@ s = |P| - p_i
 \end{algorithmic}
 
 在最坏的情况下，只有当$P$不出现在文本中时复杂度才是$O(n+m)$\cite{boyer-moore}。如果$P$出现，则复杂度为$O(nm)$。伯德给出了算法的一种纯函数式实现（\cite{fp-pearls}第16章）。
-
-\begin{Exercise}
-\begin{itemize}
-\item 证明Boyer-Moore众数算法的正确性。
-\item 对于任意列表，寻找其中出现最多的元素。是否存在分而治之的解法？是否存在分而治之的数据结构，例如map可供使用？
-\item 如果空数组不算合法的子数组，如何解决子数组最大和问题？
-%% int maxsum'(int* xs, int n) {
-%%     int i, m, sum;
-%%     for (m = sum = xs[0], i = 1; i < n; ++i) {
-%%         sum = max(sum + xs[i], xs[i]);
-%%         m = max(m, sum);
-%%     }
-%%     return m;
-%% }
-\item Bentley在\cite{Bentley}中给出了一个分而治之的方法求子数组最大和。复杂度为$O(n \log n)$。思路是将列表在中点分成两份。我们可以递归地找出前半部分的最大和，和后半部分的最大和；但是我们还需要找出跨越中点部分的最大和，方法是从中点开始向左右两侧扫描：
-\begin{algorithmic}[1]
-\Function{Max-Sum}{$A$}
-  \If{$A = \phi$}
-    \State \Return 0
-  \ElsIf{$|A| = 1$}
-    \State \Return \Call{Max}{$0, A[1]$}
-  \Else
-    \State $m \gets \lfloor \frac{|A|}{2} \rfloor$
-    \State $a \gets$ \textproc{Max-From}(\Call{Reverse}{$A[1...m]$})
-    \State $b \gets$ \Call{Max-From}{$A[m+1...|A|]$}
-    \State $c \gets$ \Call{Max-Sum}{$A[1...m]$}
-    \State $d \gets$ \Call{Max-Sum}{$A[m+1...|A|$}
-    \State \Return \textproc{Max}($a+b, c, d$)
-  \EndIf
-\EndFunction
-\Statex
-\Function{Max-From}{$A$}
-  \State $sum \gets 0, m \gets 0$
-  \For{$i \gets 1$ to $|A|$}
-    \State $sum \gets sum + A[i]$
-    \State $m \gets $ \Call{Max}{$m, sum$}
-  \EndFor
-  \State \Return $m$
-\EndFunction
-\end{algorithmic}
-易知，这一方法存在性能关系$T(n) = 2T(n/2) + O(n)$。选择一门编程语言，实现这一算法。
-\item 任给一个$m \times n$的二维矩阵，矩阵中元素为整数，寻找其中的一个子矩阵，使得各元素相加后的和最大。
-\item 给定$n$个非负整数，用以表示一个一维等高地图，每个高度条的宽度都为1，计算降雨后这一地形的积水数量。图\ref{fig:rain-fill}给出了一个例子。
-\begin{figure}[htbp]
- \centering
- \includegraphics[scale=0.3]{scan/rain-fill/img/rain-fill}
- \caption{灰色的区域表示积水}
- \label{fig:rain-fill}
-\end{figure}
-例如，等高地图数据为$\{0,1,0,2,1,0,1,3,2,1,2,1\}$，则积水数量为6。
-\item 解释在看起来“最坏”的情况下，为何KMP算法的性能仍然为线性？
-\item 使用逆序的$P_p$以避免线性时间的添加操作，改进实现纯函数式的KMP算法。
-\item 在文本“anal”中搜索字符串“ananym”，试推导树 $left(right(right(right(T))))$ 的状态。
-\end{itemize}
-\end{Exercise}
 
 \section{解的搜索}
 
