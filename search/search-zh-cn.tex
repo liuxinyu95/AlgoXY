@@ -1411,106 +1411,91 @@ go(X, Y) :- c(X, Z), go(Z, Y)
 
 这一程序说：一个位置$X$和自己相通。任意两个不同位置$X$、$Y$，若$X$和$Z$相连，且$Z$和$Y$之间有通路，则$X$和$Y$之间存在通路。显然，$Z$的选择可能不唯一。Prolog选择一个，然后继续搜索。只有当递归搜索失败时才会尝试其它选择。回溯并更换到下一个选项上。这恰好就是深度优先的搜索策略。当只需要找到解，而并不关心步数时，深度优先搜索是很有效的方法。例如，走迷宫中找出的第一个解并不一定是最短路径。
 
-\subsubsection{狼、羊、白菜趣题}
+\subsubsection{狼、羊、白菜过河问题}
 \index{狼、羊、白菜趣题}
 
-这是一道传统趣题。有一个农夫，带着一只狼、一只羊、和一筐白菜要过河。有一条小船，只有农夫会划船。由于船很小，只能装下农夫和另外一样东西。农夫每次只能在狼、羊、白菜中任选一样和他一起过河。但是如果农夫不在，狼会吃掉羊，而羊会吃掉白菜。这道题目要求找到最快的一种方法，可以让所有的东西都渡过河。
+这是一道传统趣题。农夫带着一只狼、一只羊、一筐白菜过河。有一条小船，只有农夫会划船。小船只能装下农夫和另外一样东西。农夫每次只能在狼、羊、白菜中任选一样和他一起过河。但是如果农夫不在，狼会吃掉羊，而羊会吃掉白菜。如何用最快的方法让所有东西都渡过河？
 
-\begin{figure}[htbp]
- \centering
- \includegraphics[scale=0.3]{img/wgc-puzzle}
- \caption{狼、羊、白菜问题}
- \label{fig:wgc-puzzle}
-\end{figure}
+%% \begin{figure}[htbp]
+%%  \centering
+%%  \includegraphics[scale=0.3]{img/wgc-puzzle}
+%%  \caption{狼、羊、白菜过河问题}
+%%  \label{fig:wgc-puzzle}
+%% \end{figure}
 
-这道题目的关键是狼不会吃掉白菜。因此农夫可以安全地将羊运到河对岸，并返回。但是接下来，无论他将狼或白菜中的任何一样运过河，他必须将某一样运回以避免有东西被吃掉。为了寻找最快的解法，只要存在多种选择，我们可以并发检查所有的选项，比较哪个会更快。如果不考虑渡河的方向，只要渡过一次，就算做一步，往返算两步，我们实际上在检查渡河一次后的所有可能、渡河两次后所有可能、三次后的所有可能……直到某次后，我们发现所有的东西都到达了河对岸，这一过程结束。并且这一渡河方法在所有可能中胜出，是最快的解法。
+由于狼不会吃掉白菜，农夫可以安全地将羊运到河对岸并返回。接下来无论将狼或白菜中的任何一样运过河，他必须将某一样运回以避免有东西被吃掉。为了寻找最快的渡河方法，我们并发检查所有的选项，比较哪个更快。不考虑渡河的方向，每渡过一次算做一步，往返算两步。我们检查渡河一次后的所有可能、两次后所有可能、三次后的所有可能……直到某次后，所有的东西都到达了对岸结束。并且这一渡河方法在所有可能中胜出，是最快的解法。
 
-问题在于，我们无法真正并发检查所有可能的解法。除非使用带有多个CPU内核的超级计算机，但是对于解决这样一道简单的趣题，这相当于“高射炮打蚊子”。
-
-让我们考虑一个抽奖游戏。游戏参与者不能看，闭着眼睛从一个箱子里掏出一个球。箱子里只有一个黑色球，其余的球都是白色的。摸到黑球的人获胜；如果摸到白球，他必须把球放回箱子，然后等待下次摸球。为了使得游戏公平，我们可以指定这样一个规则：必须等待所有其他人都摸过之后，才能再摸第二次。我们可以让参与游戏的人站成一队。每次站在队伍前面的人摸球，如果他没有摸到黑球获胜，他就站到队尾等待下次摸球。这一队列可以保证游戏的公平规则。
+如何“并发”检查所有可能的解法？考虑一个抽奖游戏。参与者闭着眼睛从箱子里摸出一个球。箱子里只有一个黑球，其余的球都是白色的。摸到黑球获胜，摸到白球则放回箱子，然后等待下次摸球。为了使游戏公平，可以制定这样一个规则：必须等所有人都摸过之后才能再摸第二次。参与游戏的人站成一队。每次站在队伍前面的人摸球，如果他没有摸到黑球获胜，就站到队尾等待下次摸球。这一队列可以保证游戏的公平。
 
 \begin{figure}[htbp]
  \centering
  \includegraphics[scale=1]{img/lucky-draw}
- \caption{抽奖游戏，第$i$个人出队，摸球。如果没有摸到黑球，就站到队尾}
+ \caption{第$i$个人出队摸球。如果没有摸到黑球就站到队尾}
  \label{fig:luck-draw}
 \end{figure}
 
-我们可以用类似的思路来解决狼、羊、白菜趣题。河的两岸可以用两个集合$A$和$B$代表。开始的时候，集合$A$中包含狼、羊、白菜、和农夫；而集合$B$是空集。我们每次将农夫和另外一个元素从一个集合移动到另一个集合。每个集合中，如果不存在农夫，则不能含有相互冲突的东西。目标是用最少的次数，交换$A$和$B$的内容。
-
-我们使用一个队列，最开始只包含一个状态$A = \{w, g, c, p\}$、$B=\phi$。只要队列不为空，我们就取出队列头部的元素，将其扩展为所有可能的选择，然后将扩展后的候选状态放回队列尾部。如果队列头部的第一个元素就是最终的目标，即$A=\phi$、$B=\{w, g, c, p\}$，我们就找到了解。图\ref{fig:bfs-tree}描述了这一思路的搜索顺序。同一深度上的所有可能性都被检查了，因此无需进行回溯。
+用类似的思路来解决渡河问题。用集合$A$、$B$代表河两岸。开始时，集合$A = \{w, g, c, p\}$包含狼、羊、白菜、农夫，集合$B = \nil$。每次将农夫和另外一个元素在集合见移动。如果集合中不存在农夫，则不能含相互冲突的东西。目标是用最少的次数交换$A$、$B$的内容。使用一个队列$Q$包含起始状态$A = \{w, g, c, p\}$、$B=\nil$。只要队列不空，我们就取出头部元素，扩展所有可能的选择。然后将扩展后的状态放回队尾。如果队列头部等于$A=\nil$、$B=\{w, g, c, p\}$，我们就找到了解。图\ref{fig:bfs-tree}描述了搜索顺序。同一深度上的所有可能都被检查了，无需进行回溯。
 
 \begin{figure}[htbp]
  \centering
  \includegraphics[scale=0.5]{img/bfs-tree}
- \caption{从第一个状态开始，检查第二步的所有选项2、3、和4；然后检查第3层上的所有选项……}
+ \caption{从第一个状态开始，检查第二步的所有选项2、3、4；然后检查第3层上的所有选项……}
  \label{fig:bfs-tree}
 \end{figure}
 
-我们可以用一个4位二进制数来表示集合，每一位表示一种事物，例如狼$w=1$、羊$g=2$、白菜$c=4$、农夫$p=8$。0表示空集合，15表示包含所有事物的集合。值3表示只有狼和羊被留在了河的这一侧。此时狼会吃掉羊。同样，值6表示另外一种存在冲突的情况。每次我们将最高位（值为8）和另外一位（4、2、或1）从一个数字移动到另外一个数字上。可行的移动方法定义如下：
+可以用4位二进制数来表示集合，每一位表示一种事物，狼$w=1$、羊$g=2$、白菜$c=4$、农夫$p=8$。0表示空集，15表示包含所有事物的集合。值3表示只有狼和羊，此时狼会吃掉羊。同样，值6表示另一种冲突情况。每次我们将最高位（8）和另外一位（4、2、1）从一个数字移动到另一个数字上。可行的移动方法为：
 
 \be
-mv(A, B) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{(A - 8 - i, B + 8 + i) | i \in \{0, 1, 2, 4\}, i = 0 \lor A \overline{\land} i \neq 0 \} & B < 8 \\
-  \{(A + 8 + i, B - 8 - i) | i \in \{0, 1, 2, 4\}, i = 0 \lor B \overline{\land} i \neq 0 \} & Otherwise
-  \end{array}
-\right.
+mv\ A\ B = \begin{cases}
+  B < 8: & [(A - 8 - i, B + 8 + i) | i \gets [0, 1, 2, 4], i = 0 \text{或} A \overline{\land} i \neq 0]\\
+  \text{否则}: & [(A + 8 + i, B - 8 - i) | i \gets [0, 1, 2, 4], i = 0 \text{或} B \overline{\land} i \neq 0]
+  \end{cases}
 \ee
 
-其中$\overline{\land}$表示按位与运算。
-
-我们可以使用前面章节定义的纯函数式队列。记队列为$Q$，最开始队列包含一个列表，列表只含有一对元素\{(15, 0)\}。若$Q$不为空，则函数$DeQ(Q)$取出队列的头部元素$M$，队列中的剩余元素记为$Q'$。$M$为包含若干对元素的列表，代表在河岸间的一系列移动。表中第一个元素为$m_1=(A', B')$，是最后一次移动后的状态。函数$EnQ'(Q, L)$，是一个稍作改动的入队操作。它将$L$中所有可能的移动序列，逐一加入到队列的尾部，并返回新的队列。使用这些记号，寻找解的算法可以定义为如下的函数。
+其中$\overline{\land}$表示按位与运算。我们用队列$Q = \{[(15, 0)]\}$启动搜索：$solve\ Q$。
 
 \be
-solve(Q) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & Q = \phi \\
-  reverse(M) & A' = 0 \\
-  solve(EnQ'(Q', \left \{
-    \begin{array}{rl}
-      \{m\} \cup M | & m \in mv(m_1), \\
-                     & valid(m, M)
-    \end{array}
-    \right \})) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+solve\ \nil & = & \nil \\
+solve\ Q & = & \begin{cases}
+  A = 0: & reverse\ c, \text{其中} (A, B) = c, (c, Q') = pop\ Q \\
+  \text{否则}: & solve\ (pushAll\ (map\ (:c)\ (filter\ (valid\ c)\ (mv\ A\ B)))\ Q')
+  \end{cases}
+\end{array}
 \ee
 
-其中函数$valid(m, M)$检查新的移动结果$m=(A'', B'')$是否不存在冲突。它要求$A''$和$B''$即不能是3，也不能是6，并且$m$以前没有尝试过，它不存在于$M$中，以避免重复的尝试。
+其中函数$valid\ c$检查新的移动结果$(A, B)$是存在冲突。不能是3、6，并且尚未尝试过，不存在于$c$中:
 
 \be
-valid(m, M) = A'' \neq 3, A'' \neq 6, B'' \neq 3, B'' \neq 6, m \notin M
+valid\ c\ (A, B) = A, B \neq 3 \text{或} 6, (A, B) \notin c
 \ee
 
-下面的Haskell例子程序实现了狼、羊、白菜问题的解法。为了简单，这里我们使用了普通的列表来表示队列。严格来说应该使用前面章节介绍过的纯函数式队列。
+下面是对应的迭代实现：
 
-\begin{lstlisting}[style=Haskell]
-import Data.Bits
+\begin{algorithmic}[1]
+\Function{Solve}{}
+  \State $S \gets []$
+  \State $Q \gets \{[(15, 0)]\}$
+  \While{$Q \neq \nil$}
+    \State $C \gets $ \Call{DeQ}{$Q$}
+    \If{$C[1] = (0, 15)$}
+      \State \textproc{Add}($S$, \Call{Reverse}{$C$})
+    \Else
+      \For{each $m$ in \Call{Moves}{$C$}}
+        \If{\Call{Valid}{$m, C$}}
+          \State \Call{EnQ}{$Q, m \cons C$}
+        \EndIf
+      \EndFor
+    \EndIf
+  \EndWhile
+  \State \Return $S$
+\EndFunction
+\end{algorithmic}
 
-solve = bfsSolve [[(15, 0)]] where
-    bfsSolve :: [[(Int, Int)]] -> [(Int, Int)]
-    bfsSolve [] = [] -- 无解
-    bfsSolve (c:cs) | (fst $ head c) == 0 = reverse c
-                    | otherwise = bfsSolve (cs ++ map (:c)
-                                      (filter (`valid` c) $ moves $ head c))
-    valid (a, b) r = not $ or [ a `elem` [3, 6], b `elem` [3, 6],
-                                (a, b) `elem` r]
+下面列出了两个最优解。
 
-moves (a, b) = if b < 8 then trans a b else map swap (trans b a) where
-    trans x y = [(x - 8 - i, y + 8 + i)
-                     | i <-[0, 1, 2, 4], i == 0 || (x .&. i) /= 0]
-    swap (x, y) = (y, x)
-\end{lstlisting}
-
-可以对这一算法稍作改动，找出所有可能的解，而不是在找出最快的解后结束。作为练习，读者可以尝试这一改动。下面给出了狼、羊、白菜问题的两个最优解。
-
-第一个解：
-
-\begin{tabular}{l|c|l}
-左岸 & 河 & 右岸 \\
+\btab{l|c|l}
+左 & 河 & 右 \\
 \hline
 狼、羊、白菜、农夫 &   & \\
 狼、白菜 &   & 羊、农夫 \\
@@ -1520,12 +1505,10 @@ moves (a, b) = if b < 8 then trans a b else map swap (trans b a) where
 羊 &   & 狼、白菜、农夫 \\
 羊、农夫 &   & 狼、白菜 \\
  &  & 狼、羊、白菜、农夫
-\end{tabular}
+\etab
 
-第二个解：
-
-\begin{tabular}{l|c|l}
-左岸 & 河 & 右岸 \\
+\btab{l|c|l}
+左 & 河 & 右 \\
 \hline
 狼、羊、白菜、农夫 & & \\
 狼、白菜 & & 羊、农夫 \\
@@ -1535,66 +1518,7 @@ moves (a, b) = if b < 8 then trans a b else map swap (trans b a) where
 羊 & & 狼、白菜、农夫 \\
 羊、农夫 & & 狼、白菜 \\
  & & 狼、羊、白菜、农夫
-\end{tabular}
-
-这一问题也可以用命令式的方式解决。观察可以发现我们的解是尾递归的，我们可以将它直接转换为循环。我们使用列表$S$来记录所有找到的解。一开始把只含有一个元素的列表$\{(15, 0)\}$放入队列。只要队列不为空，我们就调用过程\textproc{DeQ}从头部取出元素$C$。检查是否到达了最终的目标状态，如果没有，就展开所有可能的移动选项，并将它们加入回队列的尾部，以便后继的搜索。
-
-\begin{algorithmic}[1]
-\Function{Solve}{}
-  \State $S \gets \phi$
-  \State $Q \gets \phi$
-  \State \Call{EnQ}{$Q, \{(15, 0)\}$}
-  \While{$Q \neq \phi$}
-    \State $C \gets $ \Call{DeQ}{$Q$}
-    \If{$c_1 = (0, 15)$}
-      \State \textproc{Add}($S$, \Call{Reverse}{$C$})
-    \Else
-      \For{$\forall m \in $ \Call{Moves}{$C$}}
-        \If{\Call{Valid}{$m, C$}}
-          \State \Call{EnQ}{$Q, \{m\} \cup C$}
-        \EndIf
-      \EndFor
-    \EndIf
-  \EndWhile
-  \State \Return $S$
-\EndFunction
-\end{algorithmic}
-
-其中过程\textproc{Moves}和\textproc{Valid}的定义与此前相同。下面的Python例子程序实现了狼、羊、白菜问题的解法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def solve():
-    s = []
-    queue = [[(0xf, 0)]]
-    while queue != []:
-        cur = queue.pop(0)
-        if cur[0] == (0, 0xf):
-            s.append(reverse(cur))
-        else:
-            for m in moves(cur):
-                queue.append([m]+cur)
-    return s
-
-def moves(s):
-    (a, b) = s[0]
-    return valid(s, trans(a, b) if b < 8 else swaps(trans(b, a)))
-
-def valid(s, mv):
-    return [(a, b) for (a, b) in mv
-        if a not in [3, 6] and b not in [3, 6] and (a, b) not in s]
-
-def trans(a, b):
-    masks = [ 8 | (1<<i) for i in range(4)]
-    return [(a ^ mask, b | mask) for mask in masks if a & mask == mask]
-
-def swaps(s):
-    return [(b, a) for (a, b) in s]
-\end{lstlisting}
-
-这一程序和前面的算法描述略有不同，它在产生可能的移动选项时，同时去掉了含有冲突的情况。
-
-每次农夫渡河时，他都有$m$个可能的选择，其中$m$是农夫所在的河岸上事物的数目。$m$总小于4，因此算法在第$n$次渡河时的运行时间不会超过$n^4$。这一估计远远超过实际的时间，我们避免尝试所有含有冲突或重复的情况。最坏情况下，我们的算法会检查所有可能到达的状态。由于需要检查记录以避免重复，算法大约使用$O(n^2)$的时间来搜索第$n$次渡河时的所有可能状态。
+\etab
 
 \subsubsection{倒水问题}
 \index{倒水问题}
@@ -4125,6 +4049,27 @@ moves s = filter (/=s) [leapLeft s, hopLeft s, leapRight s, hopRight s] where
     return a
 }
 \end{lstlisting}
+
+过河问题（用列表代替队列）：
+
+\begin{Haskell}
+import Data.Bits
+
+solve = bfsSolve [[(15, 0)]] where
+    bfsSolve :: [[(Int, Int)]] -> [(Int, Int)]
+    bfsSolve [] = []
+    bfsSolve (c:cs) | (fst $ head c) == 0 = reverse c
+                    | otherwise = bfsSolve (cs ++ map (:c)
+                                      (filter (`valid` c) $ moves $ head c))
+    valid (a, b) r = not $ or [ a `elem` [3, 6], b `elem` [3, 6],
+                                (a, b) `elem` r]
+
+moves (a, b) = if b < 8 then trans a b else map swap (trans b a) where
+    trans x y = [(x - 8 - i, y + 8 + i)
+                     | i <-[0, 1, 2, 4], i == 0 || (x .&. i) /= 0]
+    swap (x, y) = (y, x)
+\end{Haskell}
+
 
 \ifx\wholebook\relax\else
 \section{参考答案}
