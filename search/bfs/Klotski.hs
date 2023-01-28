@@ -16,11 +16,12 @@
 
 module Klotski where
 
-import qualified Data.Map as M
-import Data.Ix
-import Data.List (sort)
+import qualified Data.Map as Map
+import qualified Data.Set as Set
+import qualified Data.Sequence as Queue
+import Data.Sequence (Seq((:<|)), (><))
 import Data.Array
-import Numeric (showHex)  -- for pretty output purpose only
+import Numeric (showHex)  -- for pretty output
 
 -- `Heng Dao Li Ma' Layout
 --  1 A A 2
@@ -29,68 +30,94 @@ import Numeric (showHex)  -- for pretty output purpose only
 --  3 7 8 5
 --  6 0 0 9
 
-type Point = (Integer, Integer)
-type Layout = M.Map Integer [Point]
-type Move = (Integer, Point)
+-- piece: [1, 2, ..., 9, A = 10]; 0: free cell
+
+cellOf (y, x) = y * 4 + x
+
+posOf c = (c `div` 4, c `mod` 4)
+
+cellSet = Set.fromList . (map cellOf)
+
+-- move left, right, up, down (by 1)
+--     (dy, dx): [(0, -1), (0, 1), (-1, 0), (1, 0)]
+--     dc:       [-1, 1, -4, 4]
+
+type Layout = Map.Map Integer (Set.Set Integer) -- {piece : {cells}}
+type NormLayout = Set.Set (Set.Set Integer)  -- normalized layout, {{c1, c2}, {c3, c4}, ...}
+type Move = (Integer, Integer) -- (piece, dc)
 
 data Ops = Op Layout [Move]
 
-board = listArray ((1,1), (5,4)) (replicate 20 0)
+board = listArray ((0,0), (4,3)) (replicate 20 0)
 
-start = [(1, [(1, 1), (2, 1)]),
-         (2, [(1, 4), (2, 4)]),
-         (3, [(3, 1), (4, 1)]),
-         (4, [(3, 2), (3, 3)]),
-         (5, [(3, 4), (4, 4)]),
-         (6, [(5, 1)]), (7, [(4, 2)]), (8, [(4, 3)]), (9, [(5, 4)]),
-         (10, [(1, 2), (1, 3), (2, 2), (2, 3)])]
+start :: Layout
+start = Map.map cellSet $ Map.fromList
+        [(1, [(0, 0), (1, 0)]),
+         (2, [(0, 3), (1, 3)]),
+         (3, [(2, 0), (3, 0)]),
+         (4, [(2, 1), (2, 2)]),
+         (5, [(2, 3), (3, 3)]),
+         (6, [(4, 0)]), (7, [(3, 1)]), (8, [(3, 2)]), (9, [(4, 3)]),
+         (10, [(0, 1), (0, 2), (1, 1), (1, 2)])]
 
--- Normalize the layout. It removes the piece information and treats them equally.
--- This removes a lot of potential duplicated layout.
-layout = sort . map sort . M.elems
+end = cellSet [(3, 1), (3, 2), (4, 1), (4, 2)]
 
--- Avoid attempting mirror layout. It halves the search space.
-mirror = M.map (map (\ (y, x) -> (y, 5 - x)))
+-- The normalized the layout removes the piece information (treats pieces equally).
+normalize :: Layout -> NormLayout
+normalize = Set.fromList . Map.elems
 
-solve :: [Ops] -> [[[Point]]]-> [Move]
-solve [] _ = [] -- no solution
-solve (Op x seq : cs) visit | M.lookup 10 x == Just [(4, 2), (4, 3), (5, 2), (5, 3)] = reverse seq
-                            | otherwise = solve q visit'
-  where
-    ops = expand x visit
-    visit' = map (layout . move x) ops ++ visit
-    q = cs ++ [Op (move x op) (op:seq) | op <- ops ]
+-- mirrored layout
+mirror :: Layout -> Layout
+mirror = Map.map (Set.map f) where
+  f c = let (y, x) = posOf c in cellOf (y, 3 - x)
 
-expand :: Layout -> [[[Point]]] -> [Move]
-expand x visit = [(i, d) | i <-[1..10], d <- [(0, -1), (0, 1), (-1, 0), (1, 0)],
-                           valid i d, unique i d] where
-  valid i d = all (\p -> let p' = shift p d in
-                    inRange (bounds board) p' &&
-                    (M.keys $ M.filter (elem p') x) `elem` [[i], []])
-              (maybe [] id $ M.lookup i x)
-  unique i d = let mv = move x (i, d) in all (`notElem` visit) (map layout [mv, mirror mv])
-
-move x (i, d) = M.update (Just . map (flip shift d)) i x
-
-shift (y, x) (dy, dx) = (y + dy, x + dx)
-
--- this builds a sequence of moves, e.g. [(1, (0, 1), (3, (-1, 0)), ...]
+-- Build a sequence of moves, e.g. [(1, 1), (3, -4), ...]
 -- Which means, move 1st piece to right 1 step, then move the 3rd piece up 1 step, ...
-klotski = let x = M.fromList start in solve [Op x []] [layout x]
+klotski = solve q visited where
+  q = Queue.singleton (Op start [])
+  visited = Set.singleton (normalize start)
 
--- the followings are for pretty printing only.
+solve :: (Queue.Seq Ops) -> (Set.Set NormLayout) -> [Move]
+solve Queue.Empty _ = [] -- no solution
+solve (Op x seq :<| cs) visited | Map.lookup 10 x == Just end = reverse seq
+                                | otherwise = solve q visited'
+  where
+    q = cs >< (Queue.fromList [Op (move x op) (op:seq) | op <- ops ])
+    visited' = foldr Set.insert visited (map (normalize . move x) ops)
+    ops = expand x visited
 
--- !!! Note that this program is a bit SLOW, it takes minutes typically, please wait a
--- while for the result being printed.
+expand :: Layout -> (Set.Set NormLayout) -> [Move]
+expand x visited = [(i, d) | i <-[1..10], d <- [-1, 1, -4, 4], valid i d, unique i d]
+  where
+    valid i d = let p = trans d (maybe Set.empty id $ Map.lookup i x) in
+                  (not $ any (\c -> c < 0 || c >= 20 ||
+                         (d == 1 && c `mod` 4 == 0) || (d == -1 && c `mod` 4 == 3)) p) &&
+                  (Map.keysSet $ Map.filter (overlapped p) x) `Set.isSubsetOf` Set.singleton i
+    unique i d = let ly = move x (i, d) in all (`Set.notMember` visited) [normalize ly, normalize (mirror ly)]
 
+-- move piece i by d in layout x
+move :: Layout -> (Integer, Integer) -> Layout
+move x (i, d) = Map.update (Just . trans d) i x
+
+-- translate a piece by d
+trans :: Integer -> (Set.Set Integer) -> (Set.Set Integer)
+trans d = Set.map (d+)
+
+overlapped :: (Set.Set Integer) -> (Set.Set Integer) -> Bool
+overlapped a b = (not . Set.null) $ Set.intersection a b
+
+-- pretty print a layout
+toTable :: Layout -> [[String]]
 toTable = toTab . map (flip showHex "") . elems . toArray where
   toTab [] = []
   toTab xs = let (r, xs') = splitAt 4 xs in r : toTab xs'
-  toArray x = board // (M.foldrWithKey (\k ps assoc ->
-                                       (map (\p -> (p, k)) ps) ++ assoc) [] x)
+  toArray x = board // (Map.foldrWithKey (\k cs assoc ->
+                (map (\c -> (posOf c, k)) (Set.toList cs)) ++ assoc) [] x)
 
+-- !!! Note that this program is a bit SLOW, it takes minutes typically, please wait a
+-- while for the result being printed.
 output = do
-  mapM_ print $ scanl move (M.fromList start) seq
+  mapM_ print $ scanl move start seq
   putStrLn $ "total " ++ (show $ length seq) ++ " steps"
     where
       seq = klotski
