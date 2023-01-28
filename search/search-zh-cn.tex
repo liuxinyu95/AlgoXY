@@ -1944,126 +1944,18 @@ overlapped a b = (not . Set.null) $ Set.intersection a b
 total 116 steps
 \end{verbatim}
 
-也可以用命令式的方法实现华容道的解法。注意到$solve(Q, H)$是尾递归的，它可以很容易地翻译为循环。我们可以将每个布局链接到它的父布局上，这样就可以在全局范围内记录移动的顺序。使用这种方法可以节省空间，队列中的每个元素无需再记录移动顺序的信息。当输出结果的时候，我们只要从最终结果沿着父布局指针向上回溯即可。
-
-令函数\textproc{Link}($L', L$)将新布局$L'$链接到它的父布局$L$上。下面的算法接受一个起始布局，然后搜索最佳解法。
-
-\begin{algorithmic}[1]
-\Function{Solve}{$L_0$}
-  \State $H \gets ||L_0||$
-  \State $Q \gets \phi$
-  \State \textproc{Push}($Q$, \Call{Link}{$L_0$, NIL})
-  \While{$Q \neq \phi$}
-    \State $L \gets $ \Call{Pop}{$Q$}
-    \If{$L[10] = \{(4, 2), (4, 3), (5, 2), (5, 3)\}$}
-      \State \Return $L$
-    \Else
-      \For{each $L' \in$ \Call{Expand}{$L, H$}}
-        \State \textproc{Push}($Q$, \Call{Link}{$L', L$})
-        \State \Call{Append}{$H, ||L'||$}
-      \EndFor
-    \EndIf
-  \EndWhile
-  \State \Return NIL \Comment{无解}
-\EndFunction
-\end{algorithmic}
-
-下面的Python例子程序实现了这一解法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-class Node:
-    def __init__(self, l, p = None):
-        self.layout = l
-        self.parent = p
-
-def solve(start):
-    visit = set([normalize(start)])
-    queue = deque([Node(start)])
-    while queue:
-        cur = queue.popleft()
-        layout = cur.layout
-        if layout[-1] == [(4, 2), (4, 3), (5, 2), (5, 3)]:
-            return cur
-        else:
-            for brd in expand(layout, visit):
-                queue.append(Node(brd, cur))
-                visit.add(normalize(brd))
-    return None # no solution
-\end{lstlisting}
-
-其中\texttt{normalize}和\texttt{expand}实现如下：
-
-\lstset{language=Python}
-\begin{lstlisting}
-def normalize(layout):
-    return tuple(sorted([tuple(sorted(r)) for r in layout]))
-
-def expand(layout, visit):
-    def bound(y, x):
-        return 1 <= y and y <= 5 and 1 <= x and x <= 4
-    def valid(m, i, y, x):
-        return m[y - 1][x - 1] in [0, i]
-    def unique(brd):
-        (m, n) = (normalize(brd), normalize(mirror(brd)))
-        return m not in visit and n not in visit
-    s = []
-    d = [(0, -1), (0, 1), (-1, 0), (1, 0)]
-    m = matrix(layout)
-    for i in range(1, 11):
-        for (dy, dx) in d:
-            if all(bound(y + dy, x + dx) and valid(m, i, y + dy, x + dx)
-                    for (y, x) in layout[i - 1]):
-                brd = move(layout, (i, (dy, dx)))
-                if unique(brd):
-                    s.append(brd)
-    return s
-\end{lstlisting}
-
-和大多数编程语言一样，Python中的数组索引从0开始，在处理时需要注意。其他函数，包括\texttt{mirror}、\texttt{matrix}、和\texttt{move}的实现如下。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def mirror(layout):
-    return [[(y, 5 - x) for (y, x) in r] for r in layout]
-
-def matrix(layout):
-    m = [[0]*4 for _ in range(5)]
-    for (i, ps) in zip(range(1, 11), layout):
-        for (y, x) in ps:
-            m[y - 1][x - 1] = i
-    return m
-
-def move(layout, delta):
-    (i, (dy, dx)) = delta
-    m = dup(layout)
-    m[i - 1] = [(y + dy, x + dx) for (y, x) in m[i - 1]]
-    return m
-
-def dup(layout):
-    return [r[:] for r in layout]
-\end{lstlisting}
-
-可以修改这一算法，使得它不仅找出华容道的最优解，还能找出所有的可能解法。这种情况下，计算时间和搜索空间$V$成正比，其中$V$包含从起始状态开始可以转换到的所有状态。若将所有这些状态存储在全局空间，并使用父指针将后继状态链接起来，则这一算法的空间复杂度也是$O(V)$。
-
-\subsubsection{广度优先搜索的小结}
 \index{BFS} \index{广度优先搜索}
-
-上述三个问题：狼、羊、和白菜过河问题；倒水问题；和华容道游戏的解有着共同的结构。和深度优先搜索问题类似，它们也都有起始状态和终止状态。在“狼、羊、白菜过河”问题中，起始状态是农夫、狼、羊、和白菜都在河的一岸，而对岸为空；它的终止状态是所有这些都移动到了河对岸。倒水问题的起始状态，两个瓶子都为空，而终止状态是其中任何一个瓶子盛有指定容量的水。华容道问题的起始状态是某种布局（如“横刀立马”），终止状态是另外一个布局，其中最大的棋子移动到了指定的位置。
-
-每个问题都有一系列的规则，可以从一个状态转移到另外一个状态。和深度优先搜索不同，我们“并行“地尝试所有可能的选项。在同一步内所有选项未被尝试完之前，我们不会进一步深入搜索。这一方法保证了具有最小步骤的解可以在其他解之前找出。对比图\ref{fig:dfs-bfs-tree}可以发现这两种不同的搜索策略之间的差异。由于我们总是向水平方向扩展搜索空间，这种搜索被称为广度优先搜索（BFS）。
+过河问题、倒水问题、华容道游戏的解法有共同的结构。和深度优先类似，它们都有起始、终止状态。在过河问题中，起始状态是农夫、狼、羊、白菜在河的一岸，对岸为空；终止状态是全部渡河到了对岸。倒水问题的起始状态是两个空瓶子，而终止状态是某个瓶子盛有指定容量的水。华容道问题的起始状态是某种布局（“横刀立马”），终止状态是另外一个布局，其中最大的棋子移动到了指定的位置。每个问题都有相应的规则，可以从一个状态转移到另外一个状态。我们“并行”尝试可能选项。在同一步内的选项未尝试完之前，我们不会进一步深入搜索。这就保证了最小步骤解在其它解之前出现。由于向水平方向扩展，这种方法称为广度优先搜索。图\ref{fig:dfs-bfs-tree}给出了广度、深度优先搜索的对比。
 
 \begin{figure}[htbp]
  \centering
  \subcaptionbox{深度优先搜索}{ \includegraphics[scale=0.5]{img/dfs-tree}}
  \subcaptionbox{广度优先搜索}{ \includegraphics[scale=0.5]{img/bfs-tree}}
- \caption{深度优先搜索和广度优先搜索的顺序}
+ \caption{深度和广度优先搜索的顺序}
  \label{fig:dfs-bfs-tree}
 \end{figure}
 
-由于我们无法真正的“并行”搜索，广度优先搜索通常使用一个队列来保存已作出的尝试。尝试步骤较少的候选项被从队列的头部取出，需要较多步骤的新的候选项被加入的队列的尾部。这里要求支持常数时间的入队和出队操作，我们在前面章节介绍的队列可以符合这一需求。严格讲，上面例子程序中的队列并不满足这一条件。它们使用列表来模拟队列，因此入队操作是线性时间的，而非常数时间。读者可以使用我们前面介绍的纯函数式队列来替换它们。
-
-广度优先搜索提供了一种简单的方法来寻找最少步骤的解，但是它不能直接用来搜索其它的最优解。考虑如图\ref{fig:weighted-dag}所示的一幅有向图，每段路径的长度不同，我们无法用广度优先搜索来找出两个城市之间的最短路径。
+由于我们无法真正的“并行”搜索，广度优先搜索使用队列来记录尝试。从队列头部步骤不断取出较少的候选项，从队列尾部不断加入步骤较多的新候选项。广度优先搜索提供了一种简单的方法寻找最少步骤解，但它不能直接搜索其它最优解。考虑如图\ref{fig:weighted-dag}的有向图，每段路径长度不同，我们无法用广度优先搜索找出两个城市之间的最短路径。注意从城市$a$到城市$c$之间的最短路径并非经过最少城市的$a \to b \to c$。这条路径的总长度为22；而是经过更多城市的路径$a \to e \to f \to c$，他的总长度只有20。
 
 \begin{figure}[htbp]
  \centering
@@ -2071,8 +1963,6 @@ def dup(layout):
  \caption{带权重的有向图}
  \label{fig:weighted-dag}
 \end{figure}
-
-注意从城市$a$到城市$c$之间的最短路径并非经过最少城市的$a \to b \to c$。这条路径的总长度为22；而是经过更多城市的路径$a \to e \to f \to c$，他的总长度只有20。下一节将介绍搜索最优解的其他方法。
 
 \subsection{搜索最优解}
 
