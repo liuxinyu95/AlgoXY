@@ -46,8 +46,6 @@ type Layout = Map.Map Integer (Set.Set Integer) -- {piece : {cells}}
 type NormLayout = Set.Set (Set.Set Integer)  -- normalized layout, {{c1, c2}, {c3, c4}, ...}
 type Move = (Integer, Integer) -- (piece, dc)
 
-data Ops = Op Layout [Move]
-
 board = listArray ((0,0), (4,3)) (replicate 20 0)
 
 start :: Layout
@@ -74,15 +72,15 @@ mirror = Map.map (Set.map f) where
 -- Build a sequence of moves, e.g. [(1, 1), (3, -4), ...]
 -- Which means, move 1st piece to right 1 step, then move the 3rd piece up 1 step, ...
 klotski = solve q visited where
-  q = Queue.singleton (Op start [])
+  q = Queue.singleton (start, [])
   visited = Set.singleton (normalize start)
 
--- solve :: (Queue.Seq Ops) -> (Set.Set NormLayout) -> [Move]
+-- solve :: (Queue.Seq (Layout, [Move])) -> (Set.Set NormLayout) -> [Move]
 solve Queue.Empty _ = []
-solve (Op x seq :<| cs) visited | Map.lookup 10 x == Just end = reverse seq
+solve ((x, seq) :<| cs) visited | Map.lookup 10 x == Just end = reverse seq
                                 | otherwise = solve q visited'
   where
-    q = cs >< (Queue.fromList [Op (move x op) (op:seq) | op <- ops ])
+    q = cs >< (Queue.fromList [(move x op, op:seq) | op <- ops ])
     visited' = foldr Set.insert visited (map (normalize . move x) ops)
     ops = expand x visited
 
