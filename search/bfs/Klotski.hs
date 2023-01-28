@@ -63,11 +63,11 @@ start = Map.map cellSet $ Map.fromList
 end = cellSet [(3, 1), (3, 2), (4, 1), (4, 2)]
 
 -- The normalized the layout removes the piece information (treats pieces equally).
-normalize :: Layout -> NormLayout
+-- normalize :: Layout -> NormLayout
 normalize = Set.fromList . Map.elems
 
 -- mirrored layout
-mirror :: Layout -> Layout
+-- mirror :: Layout -> Layout
 mirror = Map.map (Set.map f) where
   f c = let (y, x) = posOf c in cellOf (y, 3 - x)
 
@@ -77,8 +77,8 @@ klotski = solve q visited where
   q = Queue.singleton (Op start [])
   visited = Set.singleton (normalize start)
 
-solve :: (Queue.Seq Ops) -> (Set.Set NormLayout) -> [Move]
-solve Queue.Empty _ = [] -- no solution
+-- solve :: (Queue.Seq Ops) -> (Set.Set NormLayout) -> [Move]
+solve Queue.Empty _ = []
 solve (Op x seq :<| cs) visited | Map.lookup 10 x == Just end = reverse seq
                                 | otherwise = solve q visited'
   where
@@ -86,21 +86,21 @@ solve (Op x seq :<| cs) visited | Map.lookup 10 x == Just end = reverse seq
     visited' = foldr Set.insert visited (map (normalize . move x) ops)
     ops = expand x visited
 
-expand :: Layout -> (Set.Set NormLayout) -> [Move]
+-- expand :: Layout -> (Set.Set NormLayout) -> [Move]
 expand x visited = [(i, d) | i <-[1..10], d <- [-1, 1, -4, 4], valid i d, unique i d]
   where
     valid i d = let p = trans d (maybe Set.empty id $ Map.lookup i x) in
-                  (not $ any (\c -> c < 0 || c >= 20 ||
-                         (d == 1 && c `mod` 4 == 0) || (d == -1 && c `mod` 4 == 3)) p) &&
+                  (not $ any (outside d) p) &&
                   (Map.keysSet $ Map.filter (overlapped p) x) `Set.isSubsetOf` Set.singleton i
+    outside d c = c < 0 || c >= 20 || (d == 1 && c `mod` 4 == 0) || (d == -1 && c `mod` 4 == 3)
     unique i d = let ly = move x (i, d) in all (`Set.notMember` visited) [normalize ly, normalize (mirror ly)]
 
 -- move piece i by d in layout x
-move :: Layout -> (Integer, Integer) -> Layout
+-- move :: Layout -> (Integer, Integer) -> Layout
 move x (i, d) = Map.update (Just . trans d) i x
 
 -- translate a piece by d
-trans :: Integer -> (Set.Set Integer) -> (Set.Set Integer)
+-- trans :: Integer -> (Set.Set Integer) -> (Set.Set Integer)
 trans d = Set.map (d+)
 
 overlapped :: (Set.Set Integer) -> (Set.Set Integer) -> Bool
