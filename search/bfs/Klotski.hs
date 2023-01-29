@@ -46,8 +46,6 @@ type Layout = Map.Map Integer (Set.Set Integer) -- {piece : {cells}}
 type NormLayout = Set.Set (Set.Set Integer)  -- normalized layout, {{c1, c2}, {c3, c4}, ...}
 type Move = (Integer, Integer) -- (piece, dc)
 
-board = listArray ((0,0), (4,3)) (replicate 20 0)
-
 start :: Layout
 start = Map.map cellSet $ Map.fromList
         [(1, [(0, 0), (1, 0)]),
@@ -77,10 +75,10 @@ klotski = solve q visited where
 
 -- solve :: (Queue.Seq (Layout, [Move])) -> (Set.Set NormLayout) -> [Move]
 solve Queue.Empty _ = []
-solve ((x, seq) :<| cs) visited | Map.lookup 10 x == Just end = reverse seq
-                                | otherwise = solve q visited'
+solve ((x, ms) :<| cs) visited | Map.lookup 10 x == Just end = reverse ms
+                               | otherwise = solve q visited'
   where
-    q = cs >< (Queue.fromList [(move x op, op:seq) | op <- ops ])
+    q = cs >< (Queue.fromList [(move x op, op:ms) | op <- ops ])
     visited' = foldr Set.insert visited (map (normalize . move x) ops)
     ops = expand x visited
 
@@ -105,6 +103,8 @@ overlapped :: (Set.Set Integer) -> (Set.Set Integer) -> Bool
 overlapped a b = (not . Set.null) $ Set.intersection a b
 
 -- pretty print a layout
+board = listArray ((0,0), (4,3)) (replicate 20 0)
+
 toTable :: Layout -> [[String]]
 toTable = toTab . map (flip showHex "") . elems . toArray where
   toTab [] = []
@@ -115,8 +115,8 @@ toTable = toTab . map (flip showHex "") . elems . toArray where
 -- !!! Note that this program is a bit SLOW, it takes minutes typically, please wait a
 -- while for the result being printed.
 output = do
-  mapM_ print $ scanl move start seq
-  putStrLn $ "total " ++ (show $ length seq) ++ " steps"
+  mapM_ print $ scanl move start ms
+  putStrLn $ "total " ++ (show $ length ms) ++ " steps"
     where
-      seq = klotski
+      ms = klotski
       print = putStrLn . unlines . map show . toTable

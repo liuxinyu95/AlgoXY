@@ -1727,9 +1727,10 @@ pr_B\ (p, q) = (\min(x + y, a), \max(0, x + y - a)) \\
  \label{fig:klotski-jp}
 \end{figure}
 
-我们用$5 \times 4$矩阵来代表棋盘，行列从0开始。1到10个数字代表棋子。0代表空位置。矩阵$M$给出了华容道的初始状态。值为$i$的格子表示有棋子占据。布局用字典$L$代表。$L[i]$棋子$i$覆盖的位置集合。例如$L[4] = \{(2, 1), (2, 2)\}$表示第4个棋子覆盖了位置$(2, 1)$、$(2, 2)$。
+我们用$5 \times 4$矩阵来代表棋盘，行列从0开始。1到10个数字代表棋子。0代表空位置。矩阵$M$给出了华容道的初始状态。值为$i$的格子表示有棋子占据。布局用字典$L$代表。$L[i]$棋子$i$覆盖的位置集合。例如$L[4] = \{(2, 1), (2, 2)\}$表示第4个棋子覆盖了位置$(2, 1)$、$(2, 2)$。我们可以把棋盘上的20个位置编号为0到19，把行列转化为编号：$c = 4y + x$。这样第四个棋子占据$L[4] = \{9, 10\}$。
 
 \[
+\begin{array}{cc}
 M = \left [
   \begin{array}{cccc}
   1 & 10 & 10 & 2 \\
@@ -1738,21 +1739,45 @@ M = \left [
   3 & 7 & 8 & 5 \\
   6 & 0 & 0 & 9
   \end{array}
-\right ]
+\right ] &
+L = \left \{
+  \begin{array}{l}
+  1 \mapsto \{0, 4\}, 2 \mapsto \{3, 7\}, 3 \mapsto \{8, 12\}, \\
+  4 \mapsto \{9, 10\}, 5 \mapsto \{11, 15\}, \\
+  6 \mapsto \{16\}, 7 \mapsto \{ 13 \}, 8 \mapsto \{ 14 \}, \\
+  9 \mapsto \{ 19 \}, 10 \mapsto \{1, 2, 5, 6\}
+  \end{array}
+\right \}
+\end{array}
 \]
 
-我们可以把棋盘上的20个位置编号为0到19，把行列转化为编号：$c = 4y + x$。这样第四个棋子占据$L[4] = \{9, 10\}$。下面是华容道的初始布局：
+我们可以定义映射$\varphi(M) \mapsto L$和逆映射$\varphi^{-1}(L) \mapsto M$在棋盘和布局间转换：
 
-\[
-    \begin{array}{l}
- \{ 1 \mapsto \{0, 4\}, 2 \mapsto \{3, 7\}, 3 \mapsto \{8, 12\}, \\
-    4 \mapsto \{9, 10\}, 5 \mapsto \{11, 15\}, \\
-    6 \mapsto \{16\}, 7 \mapsto \{ 13 \}, 8 \mapsto \{ 14 \}, 9 \mapsto \{ 19 \}, \\
-    10 \mapsto \{1, 2, 5, 6\} \}
-    \end{array}
-\]
+\begin{algorithmic}[1]
+\Function{$\varphi$}{$M$}
+  \State $L \gets \{ \}$
+  \For{$y \gets 0 \sim 4$}
+    \For{$x \gets 0 \sim 3$}
+      \State $k \gets M[y][x]$
+      \State $L[k] \gets$ \Call{Add}{$L[k], 4y + x$}
+    \EndFor
+  \EndFor
+  \State \Return $L$
+\EndFunction
+\Statex
+\Function{$\varphi^{-1}$}{$L$}
+  \State $M \gets [[0] \times 4] \times 5$
+  \For{each $(k \mapsto S)$ in $L$}
+    \For{each $c$ in $S$}
+      \State $x \gets c \bmod 4, y \gets \lfloor c / 4\rfloor$
+      \State $M[y][x] \gets k$
+    \EndFor
+  \EndFor
+  \State \Return $M$
+\EndFunction
+\end{algorithmic}
 
-我们检查全部10个棋子，看看能否在上下左右4个方向移动1格。四个方向分别表示为位移$\pm 1, \pm 4$，例如棋子$L[i] = \{c_1, c_2\}$向左移动变为$\{c_1 -1, c_2 -1\}$。考虑两个空位四周，每次最多有8种可能。例如第一步只有4种可能：第6块向右；第7或第8块向下；第9块向左。图\ref{fig:klotski-valid-move}描述列如何检查移动可行。
+我们检查全部10个棋子，看看能否在上下左右4个方向移动1格。在矩阵棋盘上，移动表示为$(\Delta y, \Delta x) = (0, \pm 1), (\pm 1, 0)$，在布局上，四个方向分别表示为位移$d = \pm 1, \pm 4$，例如棋子$L[i] = \{c_1, c_2\}$向左移动变为$\{c_1 -1, c_2 -1\}$。这里要排除两个特殊情况：$d = 1, c \bmod 4 = 3$和$d = -1, c \bmod 4 = 0$，防止棋子从一侧边界跳到另一侧。考虑两个空位四周最多有8种移动可能。例如第一步只有4种可能：第6块向右；第7或第8块向下；第9块向左。图\ref{fig:klotski-valid-move}描述列如何检查移动可行。
 
 \begin{figure}[htbp]
  \centering
@@ -1761,17 +1786,17 @@ M = \left [
  \label{fig:klotski-valid-move}
 \end{figure}
 
-为了确定可否移动，我们检查棋子$i$移动到的目标格子，如果为0或者数字相同则可移动。对于布局$L$，矩阵$M$，移动第$k$个棋子，方向为$(\Delta x, \Delta y)$，其中$|\Delta x| \leq 1$、$|\Delta y| \leq 1$。下面的函数定义了可否移动：
+为了确定可否移动，我们检查棋子$k$移动到的目标格子，如果为0或者$k$则可移动：
 
 \be
 \begin{array}{rl}
-valid\ L[k]\ (\Delta x, \Delta y): & \\
-\forall c \in L[k] \Rightarrow & i' = \lfloor c / 4 \rfloor + \Delta y, j' = (c \bmod 4) + \Delta x, \\
-& (0, 0) \leq (i', j') \leq (4, 3), M_{i'j'} \in \{k, 0\}
+valid\ L[k]\ d: & \\
+\forall c \in L[k] \Rightarrow & y = \lfloor c / 4 \rfloor + d / 4, x = (c \bmod 4) + (d \bmod 4), \\
+& (0, 0) \leq (y, x) \leq (4, 3), M[y][x] \in \{k, 0\}
 \end{array}
 \ee
 
-如果用$d = \pm 1, \pm 4$表示移动，要排除两个特殊情况：$d = 1, c' \bmod 4 = 0$和$d = -1, c' \bmod 4 = 3$，防止棋子从一侧边界跳到另一侧。经过一系列移动，我们可能回到某个布局。仅避免出现相同矩阵是不够的，虽然下面的$M_1 \neq M_2$，但它们本质上是相同的布局。
+经过一系列移动可能回到某个布局。仅避免棋盘矩阵相同是不够的，虽然下面的$M_1 \neq M_2$，但它们本质上是相同的布局。
 
 \[
 \begin{array}{cc}
@@ -1796,7 +1821,7 @@ M_2 = \left [
 \end{array}
 \]
 
-我们需要比较布局来避免重复。忽略具体棋子，定义归一化布局为集合：$\|L\| = \{ p | (k \mapsto p) \in L\}$。可以验证上面两个矩阵的归一化布局都等于$\{\{1, 2, 5, 6\}, \{0, 4\}, \{3, 7\}, \{8, 12\}, \{9, 10\}, \{11, 15\}, \{16\}, \{ 13 \}, \{ 14 \}, \{ 19 \}\}$。左右对称的布局也是一种重复，需要避免。例如下面的$M_1$和$M_2$对称。
+我们需要比较布局来避免重复。忽略具体棋子，定义归一化布局为集合：$\|L\| = \{ p | (k \mapsto p) \in L\}$，也就是字典$L$中所有值的集合。上面两个矩阵的归一化布局都等于\{\{1, 2, 5, 6\}, \{0, 4\}, \{3, 7\}, \{8, 12\}, \{9, 10\}, \{11, 15\}, \{16\}, \{13\}, \{14\}, \{19\}\}。左右对称的布局也是一种重复，需要避免。例如下面的$M_1$和$M_2$对称。
 
 \[
 \begin{array}{cc}
@@ -1821,13 +1846,13 @@ M_2 = \left [
 \end{array}
 \]
 
-它们的归一化布局也是相互对称的。下面是布局的对称变换：
+它们的归一化布局也是对称的。我们定义归一化布局的对称变换：
 
 \be
-mirror\ L = \{ k \mapsto \{ f(c) | c \in p \} | (k \mapsto p) \in L\}
+mirror(\|L\|) = \{\{ f(c) | c \in s \} | s \in \|L\|\}
 \ee
 
-其中$f(c) = 4y' + x', y' = \lfloor c / 4 \rfloor, x' = 3 - (c \bmod 4)$。我们使用一个队列进行搜索，队列中每个元素包含两部分：一系列移动和这些移动导致的布局。每次移动的形式为$(k, d)$，表示在棋盘上移动棋子$k$，方向为$d$（值为$\pm 1, \pm 4$）。队列初始化为$Q = \{(s, [\ ])\}$，其中$s$是起始布局。只要$Q \neq \nil$，我们就从头部取出一个元素，检查最大的棋子（编号10）是否到达目标位置$t = \{13, 14, 17, 18\}$，即$L[10] = t$。如果到达则结束；否则，我们尝试上下左右移动每块棋子，把所有可行的、不重复布局的移动方案$(k, d)$存入队列尾部。在搜索过程中，我们用集合$H$记录找到的归一化布局以避免重复。
+其中$f(c) = 4y' + x', y' = \lfloor c / 4 \rfloor, x' = 3 - (c \bmod 4)$。我们使用一个队列进行搜索，队列中每个元素包含两部分：一系列移动和这些移动导致的布局。每次移动为$(k, d)$，表示在棋盘上移动棋子$k$，方向为$d$（值为$\pm 1, \pm 4$）。队列初始化为$Q = \{(s, [\ ])\}$，其中$s$是起始布局。只要$Q \neq \nil$，我们就从头部取出一个元素，检查最大的棋子（编号10）是否到达目标位置$t = \{13, 14, 17, 18\}$，即$L[10] = t$。如到达则结束；否则，我们尝试上下左右移动每块棋子，把所有可行的、不重复布的局移动方案$(k, d)$入队。在搜索过程中，我们用集合$H$记录归一化布局以避免重复。
 
 \be
 \begin{array}{rcl}
@@ -1848,75 +1873,7 @@ expand\ L = \{(k, d) | & k \gets [1, 2, ..., 10], d \gets [\pm 1, \pm 4], \\
 \end{array}
 \ee
 
-$move$把布局$L$中的棋子$k$移动$d$：$move\ L\ (k, d) = map\ (+ d)\ L[k]$。这样产生的新布局$L' \notin H$且$mirror(L') \notin H$，说明没有重复，我们把它们添加到$H$中作为$H'$。下面的例子程序实现了华容道解法：
-
-\begin{Haskell}
-import qualified Data.Map as Map
-import qualified Data.Set as Set
-import qualified Data.Sequence as Queue
-import Data.Sequence (Seq((:<|)), (><))
-import Data.Array
-
-cellOf (y, x) = y * 4 + x
-posOf c = (c `div` 4, c `mod` 4)
-
-cellSet = Set.fromList . (map cellOf)
-
-type Layout = Map.Map Integer (Set.Set Integer)
-type NormLayout = Set.Set (Set.Set Integer)
-type Move = (Integer, Integer)
-
-board = listArray ((0,0), (4,3)) (replicate 20 0)
-
-start = Map.map cellSet $ Map.fromList
-        [(1, [(0, 0), (1, 0)]),
-         (2, [(0, 3), (1, 3)]),
-         (3, [(2, 0), (3, 0)]),
-         (4, [(2, 1), (2, 2)]),
-         (5, [(2, 3), (3, 3)]),
-         (6, [(4, 0)]), (7, [(3, 1)]), (8, [(3, 2)]), (9, [(4, 3)]),
-         (10, [(0, 1), (0, 2), (1, 1), (1, 2)])]
-
-end = cellSet [(3, 1), (3, 2), (4, 1), (4, 2)]
-
-normalize = Set.fromList . Map.elems
-
-mirror = Map.map (Set.map f) where
-  f c = let (y, x) = posOf c in cellOf (y, 3 - x)
-
-klotski = solve q visited where
-  q = Queue.singleton (start, [])
-  visited = Set.singleton (normalize start)
-
-solve Queue.Empty _ = []
-solve ((x, seq) :<| cs) visited | Map.lookup 10 x == Just end = reverse seq
-                                | otherwise = solve q visited'
-  where
-    q = cs >< (Queue.fromList [(move x op, op:seq) | op <- ops ])
-    visited' = foldr Set.insert visited (map (normalize . move x) ops)
-    ops = expand x visited
-
-expand x visited = [(i, d) | i <-[1..10], d <- [-1, 1, -4, 4],
-                             valid i d, unique i d]
-  where
-    valid i d = let p = trans d (maybe Set.empty id $ Map.lookup i x) in
-                  (not $ any (outside d) p) &&
-                  (Map.keysSet $ Map.filter (overlapped p) x)
-                      `Set.isSubsetOf` Set.singleton i
-    outside d c = c < 0 || c >= 20 ||
-                  (d == 1 && c `mod` 4 == 0) || (d == -1 && c `mod` 4 == 3)
-    unique i d = let ly = move x (i, d) in all (`Set.notMember` visited)
-                   [normalize ly, normalize (mirror ly)]
-
-move x (i, d) = Map.update (Just . trans d) i x
-
-trans d = Set.map (d+)
-
-overlapped :: (Set.Set Integer) -> (Set.Set Integer) -> Bool
-overlapped a b = (not . Set.null) $ Set.intersection a b
-\end{Haskell}
-
-输入华容道“横刀立马”布局，例子程序产生116步最优解，最后3步如下：
+$move$把棋子$L[k]$移动$d$成为：$move\ L\ (k, d) = map\ (+ d)\ L[k]$。$unique$判断新归一化布局$\|L'\| \notin H$，镜像$mirror(\|L'\|) \notin H$不在历史记录中。如果没有重复，更新它们到新记录$H'$用于后继搜索。“横刀立马”布局的最少步数解共116步（每步移动1格），最后3步如下：
 
 \begin{verbatim}
 
@@ -3745,6 +3702,70 @@ solve' a b g = bfs [[(0, 0)]] where
   pourB x y = (min (x + y) a, max 0 (x + y - a))
 \end{Haskell} %$
 
+华容道：
+
+\begin{Haskell}
+import qualified Data.Map as Map
+import qualified Data.Set as Set
+import qualified Data.Sequence as Queue
+import Data.Sequence (Seq((:<|)), (><))
+
+cellOf (y, x) = y * 4 + x
+posOf c = (c `div` 4, c `mod` 4)
+
+cellSet = Set.fromList . (map cellOf)
+
+type Layout = Map.Map Integer (Set.Set Integer)
+type NormLayout = Set.Set (Set.Set Integer)
+type Move = (Integer, Integer)
+
+start = Map.map cellSet $ Map.fromList
+        [(1, [(0, 0), (1, 0)]),
+         (2, [(0, 3), (1, 3)]),
+         (3, [(2, 0), (3, 0)]),
+         (4, [(2, 1), (2, 2)]),
+         (5, [(2, 3), (3, 3)]),
+         (6, [(4, 0)]), (7, [(3, 1)]), (8, [(3, 2)]), (9, [(4, 3)]),
+         (10, [(0, 1), (0, 2), (1, 1), (1, 2)])]
+
+end = cellSet [(3, 1), (3, 2), (4, 1), (4, 2)]
+
+normalize = Set.fromList . Map.elems
+
+mirror = Map.map (Set.map f) where
+  f c = let (y, x) = posOf c in cellOf (y, 3 - x)
+
+klotski = solve q visited where
+  q = Queue.singleton (start, [])
+  visited = Set.singleton (normalize start)
+
+solve Queue.Empty _ = []
+solve ((x, ms) :<| cs) visited | Map.lookup 10 x == Just end = reverse ms
+                               | otherwise = solve q visited'
+  where
+    q = cs >< (Queue.fromList [(move x op, op:ms) | op <- ops ])
+    visited' = foldr Set.insert visited (map (normalize . move x) ops)
+    ops = expand x visited
+
+expand x visited = [(i, d) | i <-[1..10], d <- [-1, 1, -4, 4],
+                             valid i d, unique i d]
+  where
+    valid i d = let p = trans d (maybe Set.empty id $ Map.lookup i x) in
+                  (not $ any (outside d) p) &&
+                  (Map.keysSet $ Map.filter (overlapped p) x)
+                      `Set.isSubsetOf` Set.singleton i
+    outside d c = c < 0 || c >= 20 ||
+                  (d == 1 && c `mod` 4 == 0) || (d == -1 && c `mod` 4 == 3)
+    unique i d = let ly = move x (i, d) in all (`Set.notMember` visited)
+                   [normalize ly, normalize (mirror ly)]
+
+move x (i, d) = Map.update (Just . trans d) i x
+
+trans d = Set.map (d+)
+
+overlapped :: (Set.Set Integer) -> (Set.Set Integer) -> Bool
+overlapped a b = (not . Set.null) $ Set.intersection a b
+\end{Haskell}
 
 \ifx\wholebook\relax\else
 \section{参考答案}
