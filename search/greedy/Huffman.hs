@@ -27,7 +27,7 @@ import qualified Heap as Heap
 
 -- Definition of Huffman tree, every character is augmented with a weight
 data HTr w a = Leaf w a | Branch w (HTr w a) (HTr w a)
-                       deriving Show
+                       deriving (Eq, Show)
 
 weight (Leaf w _) = w
 weight (Branch w _ _) = w
@@ -35,11 +35,8 @@ weight (Branch w _ _) = w
 merge x y = Branch (weight x + weight y) x y
 
 -- The Huffman tree node can be compared by weight
-instance Ord w => Ord (HTr w a) where
+instance (Ord w, Eq a) => Ord (HTr w a) where
   compare = compare `on` weight
-
-instance Eq w => Eq (HTr w a) where
-  (==) = (==) `on` weight
 
 -- Method 1, building the Huffman tree by repeatedly extracting the 2 trees with
 -- the smallest weight and merge.
@@ -54,7 +51,7 @@ extract (x:y:xs) = min2 (min x y) (max x y) xs [] where
                      | otherwise = min2 x y zs (z:xs)
 
 -- Build Huffman tree from an associcate list of character and weight
-huffman :: (Num a, Ord a) => [(b, a)] -> HTr a b
+huffman :: (Num a, Ord a, Eq b) => [(b, a)] -> HTr a b
 huffman = build . map (\(c, w) -> Leaf w c)
 
 -- Build the code table from a Huffman tree by traversing it
@@ -67,7 +64,7 @@ encode dict = concatMap (dict !)
 
 -- Method 2, build Huffman tree by using heap.
 -- Repeatedly pop 2 trees from the heap to merge.
-huffman' :: (Num a, Ord a) => [(b, a)] -> HTr a b
+huffman' :: (Num a, Ord a, Eq b) => [(b, a)] -> HTr a b
 huffman' = build' . Heap.fromList . map (\(c, w) -> Leaf w c) where
   build' h = reduce (Heap.findMin h) (Heap.deleteMin h)
   reduce x Heap.E = x
@@ -75,7 +72,7 @@ huffman' = build' . Heap.fromList . map (\(c, w) -> Leaf w c) where
 
 -- Method 3, If the symbol-weight assoc list is ordered, Huffman tree can be
 -- built in linear time with a queue.
-huffman'' :: (Num a, Ord a) => [(b, a)] -> HTr a b
+huffman'' :: (Num a, Ord a, Eq b) => [(b, a)] -> HTr a b
 huffman'' = reduce . wrap . sort . map (\(c, w) -> Leaf w c) where
   wrap xs = delMin ([], xs)
   reduce (x, ([], [])) = x
