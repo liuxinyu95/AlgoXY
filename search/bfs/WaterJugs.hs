@@ -16,6 +16,8 @@
 
 module WaterJugs where
 
+import qualified Data.Sequence as Queue
+import Data.Sequence (Seq((:<|)), (><))
 import Debug.Trace
 
 -- General solution to 2 jugs:
@@ -87,10 +89,10 @@ solve a b g | g `mod` d /= 0 = [] -- no solution
                              | otherwise = pour x ((max 0 (a' + b' - b), min (a' + b') b):ps)
 
 -- Method 2, BFS (brute-force)
-solve' a b g = bfs [[(0, 0)]] where
-  bfs [] = []
-  bfs (c:cs) | fst (head c) == g || snd (head c) == g = reverse c
-             | otherwise = bfs (cs ++ map (:c) (expand c))
+solve' a b g = bfs $ Queue.singleton [(0, 0)] where
+  bfs Queue.Empty = []
+  bfs (c@(p:_) :<| cs) | fst p == g || snd p == g = reverse c
+                       | otherwise = bfs (cs >< (Queue.fromList $ map (:c) $ expand c))
   expand ((x, y):ps) = filter (`notElem` ps) $ map (\f -> f x y)
                            [fillA, fillB, pourA, pourB, emptyA, emptyB]
   fillA _ y = (a, y)

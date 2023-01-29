@@ -1919,12 +1919,12 @@ $move$把棋子$L[k]$移动$d$成为：$move\ L\ (k, d) = map\ (+ d)\ L[k]$。$u
 
 \subsection{搜索最优解}
 
-很多情况下，需要搜索最优解。人们需要“最好”的解来节省时间、空间、成本、或是能量。但是使用有限的资源搜索最优解并不容易。有很多问题的最优解只能通过暴力方法获得。尽管如此，人们发现对于某些特定问题，存在着较简单的方法能够找到最优解。
+人们需要“最好”的解来节省时间、空间、成本、能量。使用有限的资源搜索最优解并不容易。有很多问题不存在多项式时间的解法。仅对一些特定问题存在简单方法找到最优解。
 
 \subsubsection{贪心算法}
 \index{贪心算法}
 
-本节介绍“贪心策略”，也称“贪心算法”。对于某些特定问题，贪心策略能够以较小的代价，相对容易地获得最优解。我们首先介绍信息论中著名的Huffman编码问题；然后介绍在特定的币值系统中的换零钱问题。它们都是贪心算法的典型问题。
+“贪心策略”也称“贪心算法”。我们首先介绍信息论中著名的哈夫曼编码问题；然后介绍在特定的币值系统中的换零钱问题。
 
 \paragraph{Huffman编码}
 \index{Huffman编码}
@@ -3645,19 +3645,21 @@ moves s = filter (/=s) [leapLeft s, hopLeft s, leapRight s, hopRight s] where
 }
 \end{lstlisting}
 
-过河问题（用列表代替队列）：
+过河问题：
 
 \begin{Haskell}
 import Data.Bits
+import qualified Data.Sequence as Queue
+import Data.Sequence (Seq((:<|)), (><))
 
-solve = bfsSolve [[(15, 0)]] where
-    bfsSolve :: [[(Int, Int)]] -> [(Int, Int)]
-    bfsSolve [] = []
-    bfsSolve (c:cs) | (fst $ head c) == 0 = reverse c
-                    | otherwise = bfsSolve (cs ++ map (:c)
-                                      (filter (`valid` c) $ moves $ head c))
-    valid (a, b) r = not $ or [ a `elem` [3, 6], b `elem` [3, 6],
-                                (a, b) `elem` r]
+solve = bfsSolve $ Queue.singleton [(15, 0)] where
+  bfsSolve Queue.Empty = [] -- no solution
+  bfsSolve (c@(p:_) :<| cs)
+    | fst p == 0 = reverse c
+    | otherwise = bfsSolve (cs >< (Queue.fromList $ map (:c)
+                                    (filter (`valid` c) $ moves p)))
+
+valid (a, b) r = not $ or [ a `elem` [3, 6], b `elem` [3, 6], (a, b) `elem` r]
 
 moves (a, b) = if b < 8 then trans a b else map swap (trans b a) where
     trans x y = [(x - 8 - i, y + 8 + i)
@@ -3688,10 +3690,14 @@ solve a b g | g `mod` d /= 0 = []
 倒水问题的广度优先解法：
 
 \begin{Haskell}
-solve' a b g = bfs [[(0, 0)]] where
-  bfs [] = []
-  bfs (c:cs) | fst (head c) == g || snd (head c) == g = reverse c
-             | otherwise = bfs (cs ++ map (:c) (expand c))
+import qualified Data.Sequence as Queue
+import Data.Sequence (Seq((:<|)), (><))
+
+solve' a b g = bfs $ Queue.singleton [(0, 0)] where
+  bfs Queue.Empty = []
+  bfs (c@(p:_) :<| cs)
+    | fst p == g || snd p == g = reverse c
+    | otherwise = bfs (cs >< (Queue.fromList $ map (:c) $ expand c))
   expand ((x, y):ps) = filter (`notElem` ps) $ map (\f -> f x y)
                            [fillA, fillB, pourA, pourB, emptyA, emptyB]
   fillA _ y = (a, y)
