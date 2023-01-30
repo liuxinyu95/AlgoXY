@@ -18,82 +18,98 @@
 
 
 # `Heng Dao Li Ma' layout
-# 1 A A 2
-# 1 A A 3
-# 3 4 4 5
-# 3 7 8 5
-# 6 0 0 9
+# 1 A A 2       0  1  2  3
+# 1 A A 2       4  5  6  7
+# 3 4 4 5       8  9  10 11
+# 3 7 8 5       12 13 14 15
+# 6 0 0 9       16 17 18 19
 
 from collections import deque
+from copy import deepcopy
 
-START = [[(1, 1), (2, 1)],
-         [(1, 4), (2, 4)],
-         [(3, 1), (4, 1)],
-         [(3, 2), (3, 3)],
-         [(3, 4), (4, 4)],
-         [(5, 1)], [(4, 2)], [(4, 3)], [(5, 4)],
-         [(1, 2), (1, 3), (2, 2), (2, 3)]]
+START = [frozenset({0, 4}), frozenset({3, 7}), frozenset({8, 12}),
+         frozenset({9, 10}), frozenset({11, 15}), frozenset({16}),
+         frozenset({13}), frozenset({14}), frozenset({19}),
+         frozenset({1, 2, 5, 6})]
+
+END = frozenset({13, 14, 17, 18})
+
+def posof(c):
+    return (c // 4, c % 4)
+
+def mirror(c):
+    (y, x) = posof(c)
+    return 4 * y + 3 - x
+
+def matrix(layout):
+    m = [[0]*4 for _ in range(5)]
+    for i, p in enumerate(layout):
+        for c in p:
+            y, x = posof(c)
+            m[y][x] = i + 1
+    return m
 
 class Node:
     def __init__(self, l, p = None):
         self.layout = l
         self.parent = p
 
-def solve(start):
-    visit = set([normalize(start)])
+def solve(start, end):
+    visit = {frozenset(start)}
     queue = deque([Node(start)])
     while queue:
         cur = queue.popleft()
-        layout = cur.layout
-        if layout[-1] == [(4, 2), (4, 3), (5, 2), (5, 3)]:
+        if cur.layout[-1] == end:
             return cur
         else:
-            for brd in expand(layout, visit):
-                queue.append(Node(brd, cur))
-                visit.add(normalize(brd))
+            lys = expand(cur.layout, visit)
+            for ly in lys:
+                queue.append(Node(ly, cur))
+                visit.add(frozenset(ly))
     return None # no solution
 
 def expand(layout, visit):
-    def bound(y, x):
-        return 1 <= y and y <= 5 and 1 <= x and x <= 4
-    def valid(m, i, y, x):
-        return m[y - 1][x - 1] in [0, i]
-    def unique(brd):
-        (m, n) = (normalize(brd), normalize(mirror(brd)))
-        return m not in visit and n not in visit
-    s = []
-    d = [(0, -1), (0, 1), (-1, 0), (1, 0)]
+    def bound(piece, d):
+        for c in piece:
+            if c + d < 0 or c + d >= 20:
+                return False
+            if d == 1 and c % 4 == 3:
+                return False
+            if d == -1 and c % 4 == 0:
+                return False
+        return True
+
     m = matrix(layout)
-    for i in range(1, 11):
-        for (dy, dx) in d:
-            if all(bound(y + dy, x + dx) and valid(m, i, y + dy, x + dx)
-                    for (y, x) in layout[i - 1]):
-                brd = move(layout, (i, (dy, dx)))
-                if unique(brd):
-                    s.append(brd)
+    def valid(piece, d, i):
+        for c in piece:
+            y, x = posof(c + d)
+            if m[y][x] not in [0, i + 1]:
+                return False
+        return True
+
+    def unique(ly):
+        n = frozenset(ly)
+        m = frozenset(frozenset(mirror(c) for c in p) for p in ly)
+        return (n not in visit) and (m not in visit)
+
+    s = []
+    for i, p in enumerate(layout):
+        for d in [-1, 1, -4, 4]:
+            if bound(p, d) and valid(p, d, i):
+                ly = move(layout, i, d)
+                if unique(ly):
+                    s.append(ly)
     return s
 
-def dup(layout):
-    return [r[:] for r in layout]
+def move(layout, i, d):
+    ly = [deepcopy(p) for p in layout]
+    ly[i] = frozenset(c + d for c in layout[i])
+    return ly
 
-def matrix(layout):
-    m = [[0]*4 for _ in range(5)]
-    for (i, ps) in zip(range(1, 11), layout):
-        for (y, x) in ps:
-            m[y - 1][x - 1] = i
-    return m
-
-def move(layout, delta):
-    (i, (dy, dx)) = delta
-    m = dup(layout)
-    m[i - 1] = [(y + dy, x + dx) for (y, x) in m[i - 1]]
-    return m
-
-def mirror(layout):
-    return [[(y, 5 - x) for (y, x) in r] for r in layout]
-
-def normalize(layout):
-    return tuple(sorted([tuple(sorted(r)) for r in layout]))
+def print_layout(ly):
+    for r in matrix(ly):
+        print(["%X" % x for x in r])
+    print("\n")
 
 # pretty print
 def output(node):
@@ -102,10 +118,8 @@ def output(node):
         seq = [node.layout] + seq
         node = node.parent
     for layout in seq:
-        for r in matrix(layout):
-            print ["%X" % x for x in r]
-        print "\n",
-    print "total", len(seq) - 1, "steps"
+        print_layout(layout)
+    print("total", len(seq) - 1, "steps")
 
 if __name__ == "__main__":
-    output(solve(START))
+    output(solve(START, END))
