@@ -37,10 +37,6 @@ END = frozenset({13, 14, 17, 18})
 def posof(c):
     return (c // 4, c % 4)
 
-def mirror(c):
-    (y, x) = posof(c)
-    return 4 * y + 3 - x
-
 def matrix(layout):
     m = [[0]*4 for _ in range(5)]
     for i, p in enumerate(layout):
@@ -88,6 +84,7 @@ def expand(layout, visit):
         return True
 
     def unique(ly):
+        mirror = lambda c : 4 * (c // 4) + 3 - (c % 4)
         n = frozenset(ly)
         m = frozenset(frozenset(mirror(c) for c in p) for p in ly)
         return (n not in visit) and (m not in visit)
@@ -111,7 +108,6 @@ def print_layout(ly):
         print(["%X" % x for x in r])
     print("\n")
 
-# pretty print
 def output(node):
     seq = []
     while node is not None:
