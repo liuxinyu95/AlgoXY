@@ -2024,7 +2024,7 @@ weight\ (w, l, r) & = & w \\
 \be
 \begin{array}{rcl}
 build\ [t] & = & t \\
-build\ ts & = & build\ (merge\ t_1, t_2)\ ts', \text{其中} (t_1, t_2, ts') = extract\ ts
+build\ ts & = & build\ (merge\ t_1 t_2)\ ts', \text{其中} (t_1, t_2, ts') = extract\ ts
 \end{array}
 \ee
 
@@ -2062,198 +2062,7 @@ min_2\ t\ (t_1, t_2, ts) = \begin{cases}
 \EndFunction
 \end{algorithmic}
 
-可以用堆代替数组，每次取出堆顶两次，合并后放回堆中。
-
-\be
-build(H) = reduce(top(H), pop(H))
-\ee
-
-当堆变空时，算法结束；否则，它从堆顶取出另一棵树进行合并。
-
-\be
-reduce(T, H) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  T & H = \phi \\
-  build(insert(merge(T, top(H)), pop(H))) & otherwise
-  \end{array}
-\right.
-\ee
-
-函数$build$和$reduce$互相递归调用。下面的Haskell例子程序实现了这一算法。它使用前面章节定义的堆数据结构。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-huffman' :: (Num a, Ord a) => [(b, a)] -> HTr a b
-huffman' = build' . Heap.fromList . map (\(c, w) -> Leaf w c) where
-  build' h = reduce (Heap.findMin h) (Heap.deleteMin h)
-  reduce x Heap.E = x
-  reduce x h = build' $ Heap.insert (Heap.deleteMin h) (merge x (Heap.findMin h))
-\end{lstlisting} %$
-
-也可以用命令式的方式，使用堆来构造Huffman树。首先将全部叶子转换成堆，权重最小的一个置于堆顶。若堆中的元素多于1个，我们就取出最小的两个，合并成一棵较大的树，然后放回堆中。重复这一步骤直到堆中剩下最后一棵树，它就是最终的Huffman树。
-
-\begin{algorithmic}[1]
-\Function{Huffman'}{$A$}
-  \State \Call{Build-Heap}{$A$}
-  \While{$|A| > 1$}
-    \State $T_a \gets$ \Call{Heap-Pop}{$A$}
-    \State $T_b \gets$ \Call{Heap-Pop}{$A$}
-    \State \textproc{Heap-Push}($A$, \Call{Merge}{$T_a, T_b$})
-  \EndWhile
-  \State \Return \Call{Heap-Pop}{$A$}
-\EndFunction
-\end{algorithmic}
-
-下面的C++例子程序实现了这一使用堆的构建方法。这里使用了标准库中提供的堆。由于缺省情况下是一个最大堆，而非最小堆，因此我们需要传入一个“大于”的比较条件作为参数。
-
-\lstset{language=C++}
-\begin{lstlisting}
-bool greaterp(Node* a, Node* b) { return b->w < a->w; }
-
-Node* pop(Nodes& h) {
-    Node* m = h.front();
-    pop_heap(h.begin(), h.end(), greaterp);
-    h.pop_back();
-    return m;
-}
-
-void push(Node* t, Nodes& h) {
-    h.push_back(t);
-    push_heap(h.begin(), h.end(), greaterp);
-}
-
-Node* huffman1(Nodes ts) {
-    make_heap(ts.begin(), ts.end(), greaterp);
-    while (ts.size() > 1) {
-        Node* t1 = pop(ts);
-        Node* t2 = pop(ts);
-        push(merge(t1, t2), ts);
-    }
-    return ts.front();
-}
-\end{lstlisting}
-
-如果字符已经按照权重排序，则存在一个线性时间的构造Huffman树的方法。观察Huffman树的构造过程，它实际上合并出一系列按照权重递增的树。我们可以用一个队列来管理这些合并好的树。每次我们从队列和树的列表中各取出一棵树，将他们合并起来并放入队列的尾部。处理完列表中的所有树后，队列中将只剩下一棵树。它就是最终的Huffman树。在构造过程刚开始的时候，队列为空。
-
-\be
-build'(A) = reduce'(extract''(\phi, A))
-\ee
-
-这里$A$包含按照权重递增顺序排好序的叶子节点。任何时间，权重最小的树要么在队列的头部，要么是列表中的第一棵树。当队列不空时，记队列头部的树为$T_a$，出队后，队列变为$Q'$；记$A$中第一棵树为$T_b$，剩余的树记为$A'$。函数$extract''$可以定义如下。
-
-\be
-extract''(Q, A) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (T_b, (Q, A')) & Q = \phi \\
-  (T_a, (Q', A)) & A = \phi \lor T_a < T_b \\
-  (T_b, (Q, A')) & otherwise
-  \end{array}
-\right.
-\ee
-
-实际上，队列和树的列表在整体上可以看作是某种特殊的堆。算法不断将权重最小的树取出然后合并。
-
-\be
-\begin{array}{l}
-reduce'(T, (Q, A)) = \\
-\left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  T & Q = \phi \land A = \phi \\
-  reduce'(extract''(push(Q'', merge(T, T')), A'')) & otherwise
-  \end{array}
-\right.
-\end{array}
-\ee
-
-其中$(T', (Q'', A'')) = extract''(Q, A)$，表示取出另一棵权重最小的树。下面的Haskell例子程序实现了这一算法。注意这一程序中，它首先将全部叶子按照权重排序。如果输入的叶子是已序的，就无需这一步。同样，这里使用了列表而并非真正意义上的函数式队列。列表在入队操作时需要线性时间，具体请参考前面关于队列的一章。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-huffman'' :: (Num a, Ord a) => [(b, a)] -> HTr a b
-huffman'' = reduce . wrap . sort . map (\(c, w) -> Leaf w c) where
-  wrap xs = delMin ([], xs)
-  reduce (x, ([], [])) = x
-  reduce (x, h) = let (y, (q, xs)) = delMin h in
-                  reduce $ delMin (q ++ [merge x y], xs)
-  delMin ([], (x:xs)) = (x, ([], xs))
-  delMin ((q:qs), []) = (q, (qs, []))
-  delMin ((q:qs), (x:xs)) | q < x = (q, (qs, (x:xs)))
-                          | otherwise = (x, ((q:qs), xs))
-\end{lstlisting} %$
-
-这一算法也可以用命令式的方式实现。
-
-\begin{algorithmic}[1]
-\Function{Huffman''}{$A$} \Comment{$A$已按照权重排序}
-  \State $Q \gets \phi$
-  \State $T \gets$ \Call{Extract}{$Q, A$}
-  \While{$Q \neq \phi \lor A \neq \phi$}
-    \State \textproc{Push}($Q$, \textproc{Merge}($T$, \Call{Extract}{$Q, A$}))
-    \State $T \gets$ \Call{Extract}{$Q, A$}
-  \EndWhile
-  \State \Return $T$
-\EndFunction
-\end{algorithmic}
-
-其中函数\textproc{Extract}($Q, A$)从队列和数组中取出权重最小的树。它根据需要会改变队列或者数组。记队列头部的树为$T_a$，数组的第一个元素为$T_b$。
-
-\begin{algorithmic}[1]
-\Function{Extract}{$Q, A$}
-  \If{$Q \neq \phi \land (A = \phi \lor T_a < T_b)$}
-    \State \Return \Call{Pop}{$Q$}
-  \Else
-    \State \Return \Call{Detach}{$A$}
-  \EndIf
-\EndFunction
-\end{algorithmic}
-
-其中过程\textproc{Detach}($A$)将数组$A$的第一个元素取出返回，并从数组中移除。在大多数命令式环境中，从数组中移除第一个元素通常是一个较慢的线性时间操作。我们可以将树按照权重降序存储，这样要移除的就是最后一个元素。速度为常数时间。下面的C++例子程序实现了这一思路。
-
-\lstset{language=C++}
-\begin{lstlisting}
-Node* extract(queue<Node*>& q, Nodes& ts) {
-    Node* t;
-    if (!q.empty() && (ts.empty() || lessp(q.front(), ts.back()))) {
-        t = q.front();
-        q.pop();
-    } else {
-        t = ts.back();
-        ts.pop_back();
-    }
-    return t;
-}
-
-Node* huffman2(Nodes ts) {
-    queue<Node*> q;
-    sort(ts.begin(), ts.end(), greaterp);
-    Node* t = extract(q, ts);
-    while (!q.empty() || !ts.empty()) {
-        q.push(merge(t, extract(q, ts)));
-        t = extract(q, ts);
-    }
-    return t;
-}
-\end{lstlisting}
-
-如果传入的数组是已序的，则无需进行排序。若数组是按照升序传入的，我们可以在线性时间内将其反转。
-
-我们介绍了三种Huffman树的构造方法。虽然他们都符合Huffman提出的策略，但是构造结果却不尽相同。图\ref{fig:huffman-vars}给出了用三种不同方法构造的Huffman树。
-
-\begin{figure}[htbp]
- \centering
- \subcaptionbox{使用扫描方法构造的结果。}{ \includegraphics[scale=0.3]{img/huffman-tr-v1}}
- \subcaptionbox{使用堆方法构造的结果。}{ \includegraphics[scale=0.3]{img/huffman-tr}} \\
- \subcaptionbox{对于已序列表，线性时间方法的构造结果。}{ \includegraphics[scale=0.3]{img/huffman-tr-v3}} \\
- \caption{同样的字符列表构造出的不同Huffman树}
- \label{fig:huffman-vars}
-\end{figure}
-
-虽然这三棵树不同，但是他们都可以产生最高效的编码。这里略过具体的证明，读者可以参考\cite{Huffman}或者\cite{CLRS}的第16.3节了解详细的信息。
-
-Huffman树的构造过程是Huffman编码的核心。可以通过Huffman树取得各种结果。例如，通过遍历Huffman树可以构造码表。我们用一个空前缀$p$，从根节点开始遍历。对于任何分支，如果向左转，我们就在前缀后添加一个0，如果向右转，就添加一个1。当到达叶子节点时，就将叶子中的字符和此时的前缀记入码表。记叶子节点中的字符为$c$，树$T$的两个分支分别为$T_l$和$T_r$。构造码表的函数$code(T, \phi)$定义如下。
+可以通过Huffman树取得各种结果。例如，通过遍历Huffman树可以构造码表。我们用一个空前缀$p$，从根节点开始遍历。对于任何分支，如果向左转，我们就在前缀后添加一个0，如果向右转，就添加一个1。当到达叶子节点时，就将叶子中的字符和此时的前缀记入码表。记叶子节点中的字符为$c$，树$T$的两个分支分别为$T_l$和$T_r$。构造码表的函数$code(T, \phi)$定义如下。
 
 \be
 code(T, p) = \left \{
@@ -2430,6 +2239,62 @@ def change(x, coins):
 对文本中的每个词$w$，该算法使用贪心策略在一行中放入尽可能多的词直到超出行宽限制。很多文本处理软件使用了类似的算法来进行折行处理。
 
 也有很多情况，我们必须要找到严格的最优解，而不是近似最优解。可以使用动态规划方法来解决此类问题。
+
+\begin{Exercise}
+\Question{使用堆来构造哈夫曼树：不断从堆顶取出两颗子树，合并后放回堆中。}
+\Question{如果字符已按权重排序成列表$A$，存在一个线性时间的构造哈夫曼树的方法：用队列$Q$保存合并结果。不断从$Q$和$A$头部取出较小的树，合并后入队。处理完列表中所有树后，队列中将只剩下一棵树。即最终的哈夫曼树。请实现这一方法。}
+\end{Exercise}
+
+\begin{Answer}
+\Question{使用堆来构造哈夫曼树：不断从堆顶取出两颗子树，合并后放回堆中。
+
+\[
+\textit{Huffman}\ H = \begin{cases}
+  H = \nil: & \nil \\
+  |H| = 1: & pop\ H \\
+  \text{否则}: & \textit{Huffman}\ (push\ (merge\ t_a\ t_b)\ H'') \\
+\end{cases}
+\]
+
+其中：$(t_a, H') = pop\ H, (t_b, H'') = pop\ H'$
+
+\begin{algorithmic}[1]
+\Function{Huffman}{$H$}
+  \While{$|H| > 1$}
+    \State $t_a \gets$ \Call{Pop}{$H$}
+    \State $t_b \gets$ \Call{Pop}{$H$}
+    \State \textproc{Push}($H$, \Call{Merge}{$t_a, t_b$})
+  \EndWhile
+  \State \Return \Call{Pop}{$H$}
+\EndFunction
+\end{algorithmic}
+}
+\Question{如果字符已按权重排序成列表$A$，存在一个线性时间的构造哈夫曼树的方法：用队列$Q$保存合并结果。不断从$Q$和$A$头部取出较小的树，合并后入队。处理完列表中所有树后，队列中将只剩下一棵树。即最终的哈夫曼树。请实现这一方法。
+
+$\textit{Huffman}\ (t \cons ts) = build\ (t, (ts, \nil))$，其中：
+
+\[
+\begin{array}{rcl}
+build\ (t, ([\ ], \nil)) & = & t \\
+build\ (t, h) & = & build\ (extract\ (ts, push\ (merge\ t\ t')\ q)) \\
+\end{array}
+\]
+
+其中：$(t', (ts, q)) = extract\ h$
+
+\[
+\begin{array}{rcl}
+extract\ (t \cons ts, \nil)) & = & (t, (ts, \nil)) \\
+extract\ ([\ ], q) & = & (t, ([\ ], q'), \text{其中}: (t, q') = pop\ q \\
+extract\ (t \cons ts, q) & = & \begin{cases}
+  t' < t: & (t', (t \cons ts, q')), \text{其中}: (t', q') = pop\ q \\
+  t < t': & (t, (ts, q)) \\
+  \end{cases}
+\end{array}
+\]
+
+}
+\end{Answer}
 
 \subsubsection{动态规划}
 \index{动态规划}
