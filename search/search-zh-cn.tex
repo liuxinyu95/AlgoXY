@@ -2043,15 +2043,16 @@ min_2\ t\ (t_1, t_2, ts) = \begin{cases}
 \end{cases}
 \ee
 
-也可以用命令式的方法实现Huffman树的构造过程。我们使用一个数组来存储Huffman树，最后两个元素是权重最小的树的候选。然后我们从右向左扫描剩余的树，当遇到一个权重更小树，我们就将其和最后两个元素中，权重较大的一个互换。当所有的树都检查完毕后，我们将最后的两棵树合并，并丢弃掉最后一个数组的元素。这样数组的空间就减小1个单位。我们重复这一过程直到只剩下最后一棵树。
+为了迭代构造哈夫曼树，我们用数组$A$存储$n$棵子树。从右向左扫描$A$，如果$A[i]$的权重小于$A[n-1], A[n]$，就交换$A[i]$和\textproc{MAX}($A[n-1], A[n]$)。扫描后合并$A[n]$到$A[n-1]$。这样数组缩小一。重复此过程得到最终的哈夫曼树：
 
 \begin{algorithmic}[1]
 \Function{Huffman}{$A$}
   \While{$|A|>1$}
     \State $n \gets |A|$
     \For{$i \gets n - 2 $ down to $1$}
-      \If{$A[i] <$ \Call{Max}{$A[n], A[n-1]$}}
-        \State \textproc{Exchange} $A[i]$ $\leftrightarrow$ \Call{Max}{$A[n], A[n-1]$}
+      \State $T \gets$ \Call{Max}{$A[n], A[n-1]$}
+      \If{$A[i] < T$}
+        \State \textproc{Exchange} $A[i]$ $\leftrightarrow T$
       \EndIf
     \EndFor
     \State $A[n-1] \gets$ \Call{Merge}{$A[n], A[n-1]$}
@@ -2061,34 +2062,7 @@ min_2\ t\ (t_1, t_2, ts) = \begin{cases}
 \EndFunction
 \end{algorithmic}
 
-下面的C++例子程序实现了这一算法。在这一程序中，我们不要求最后两棵树已序。
-
-\lstset{language=C++}
-\begin{lstlisting}
-typedef vector<Node*> Nodes;
-
-bool lessp(Node* a, Node* b) { return a->w < b->w; }
-
-Node* max(Node* a, Node* b) { return lessp(a, b) ? b : a; }
-
-void swap(Nodes& ts, int i, int j, int k) {
-    swap(ts[i], ts[ts[j] < ts[k] ? k : j]);
-}
-
-Node* huffman(Nodes ts) {
-    int n;
-    while((n = ts.size()) > 1) {
-        for (int i = n - 3; i >= 0; --i)
-            if (lessp(ts[i], max(ts[n-1], ts[n-2])))
-                swap(ts, i, n-1, n-2);
-        ts[n-2] = merge(ts[n-1], ts[n-2]);
-        ts.pop_back();
-    }
-    return ts.front();
-}
-\end{lstlisting}
-
-这一算法合并所有的叶子，它在每个迭代都需要扫描列表，因此性能是平方级别的。它可以被进一步提高。观察到每次迭代，只有权重最小的两棵树被合并。为此我们可以使用堆这种数据结构。堆可以保证快速地访问到最小的元素。我们可以将所有的叶子节点放入一个堆中。对于二叉堆，这一个过程需要线性时间。然后我们连续两次从堆顶取出最小元素，将其合并后，再放回堆中。对于二叉堆，这一操作的性能为$O(\lg n)$。因此，总体性能为$O(n \lg n)$。这要比上面平方级别的算法要好。下面的算法从堆顶取出元素，然后开始构建Huffman树。
+可以用堆代替数组，每次取出堆顶两次，合并后放回堆中。
 
 \be
 build(H) = reduce(top(H), pop(H))
