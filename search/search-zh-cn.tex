@@ -3702,6 +3702,100 @@ overlapped :: (Set.Set Integer) -> (Set.Set Integer) -> Bool
 overlapped a b = (not . Set.null) $ Set.intersection a b
 \end{Haskell}
 
+华容道的迭代式解：
+
+\begin{lstlisting}[language = Bourbaki]
+type Layout = [Set<Int>]
+
+Layout START = [{0, 4}, {3, 7}, {8, 12}, {9, 10},
+    {11, 15},{16},{13}, {14}, {19}, {1, 2, 5, 6}]
+
+Set<Int> END = {13, 14, 17, 18}
+
+(Int, Int) pos(Int c) = (y = c / 4, x = c mod 4)
+
+[[Int]] matrix(Layout layout) {
+    [[Int]] m = replicate(replicate(0, 4), 5)
+    for Int i, var p in (zip([1, 2, ...], layout)) {
+        for var c in p {
+            y, x = pos(c)
+            m[y][x] = i
+        }
+    }
+    return m
+}
+
+data Node {
+    Node parent
+    Layout layout
+
+    Node(Layout l, Node p = null) {
+        layout = l, parent = p
+    }
+}
+
+//usage: solve(START, END)
+Optional<Node> solve(Layout start, Set<Int> end) {
+    var visit = {Set(start)}
+    var queue = Queue.of(Node(start))
+    while not empty(queue) {
+        cur = pop(queue)
+        if last(cur.layout) == end {
+            return Optional.of(cur)
+        } else {
+            for ly in expand(cur.layout, visit) {
+                push(queue, Node(ly, cur))
+                add(visit, Set(ly))
+            }
+        }
+    }
+    return Optional.None
+}
+
+[Layout] expand(Layout layout, Set<Set<Layout>> visit):
+    Bool bound(Set<Int> piece, Int d) {
+        for c in piece {
+            if c + d < 0 or c + d >= 20 then return False
+            if d == 1 and c mod 4 == 3 then return False
+            if d == -1 and c mod 4 == 0 then return False
+        }
+        return True
+    }
+
+    var m = matrix(layout)
+    Bool valid(Set<Int> piece, Int d, Int i) {
+        for c in piece {
+            y, x = pos(c + d)
+            if m[y][x] not in [0, i] then return False
+        }
+        return True
+    }
+
+    Bool unique(Layout ly) {
+        n = Set(ly)
+        Set<Set<Int>> m = map(map(c -> 4 * (c / 4) + 3 - (c mod 4), p), n)
+        return (n not in visit) and (m not in visit)
+    }
+
+    [Layout] s = []
+    for i, p in zip([1, 2, ...], layout) {
+        for d in [-1, 1, -4, 4] {
+            if bound(p, d) and valid(p, d, i) {
+                ly = move(layout, i - 1, d)
+                if unique(ly) then s.append(ly)
+            }
+        }
+    }
+    return
+}
+
+Layout move(Layout layout, Int i, Int d) {
+    ly = clone(layout)
+    ly[i] = map((d+), layout[i])
+    return ly
+}
+\end{lstlisting}
+
 \ifx\wholebook\relax\else
 \section{参考答案}
 \shipoutAnswer
