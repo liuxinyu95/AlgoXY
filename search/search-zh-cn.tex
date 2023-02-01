@@ -2062,29 +2062,16 @@ min_2\ t\ (t_1, t_2, ts) = \begin{cases}
 \EndFunction
 \end{algorithmic}
 
-可以通过Huffman树取得各种结果。例如，通过遍历Huffman树可以构造码表。我们用一个空前缀$p$，从根节点开始遍历。对于任何分支，如果向左转，我们就在前缀后添加一个0，如果向右转，就添加一个1。当到达叶子节点时，就将叶子中的字符和此时的前缀记入码表。记叶子节点中的字符为$c$，树$T$的两个分支分别为$T_l$和$T_r$。构造码表的函数$code(T, \phi)$定义如下。
+我们可以从哈夫曼树$T$构造码表。令$p = [\ ]$。从根节点遍历树。左转时$p \gets p \doubleplus [0]$，右转时$p \gets p \doubleplus [1]$。到达叶节点字符$c$时，记录$c \mapsto p$到码表。定义$code\ T = \text{traverse}\ [\ ]\ T$，其中：
 
 \be
-code(T, p) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{(c, p)\} & leaf(T) \\
-  code(T_l, p \cup \{0\}) \cup code(T_r, p \cup \{1\}) & otherwise
-  \end{array}
-\right.
+\begin{array}{rcl}
+\textit{traverse}\ p\ (w, c)\ & = & [c \mapsto reverse\ p] \\
+\textit{traverse}\ p\ (w, l, r)\ & = & \textit{traverse}\ (0 \cons p)\ l \doubleplus \textit{traverse}\ (1 \cons p)\ l \\
+\end{array}
 \ee
 
-其中函数$leaf(T)$检查$T$是一个叶子节点还是分支节点。下面的Haskell例子程序根据这一算法产生一个码表的映射。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-code tr = Map.fromList $ traverse [] tr where
-  traverse bits (Leaf _ c) = [(c, bits)]
-  traverse bits (Branch _ l r) = (traverse (bits ++ [0]) l) ++
-                                 (traverse (bits ++ [1]) r)
-\end{lstlisting} %$
-
-我们把命令式的码表构造算法留给读者作为练习。编码过程中，我们扫描文本，然后查询码表来输出二进制序列，我们略过其具体的实现。
+编码过程中，我们扫描文本，然后查询码表来输出二进制序列，我们略过其具体的实现。
 
 解码时，我们根据二进制序列查询Huffman树。从根节点开始，遇到0向左转，遇到1向右转。到达叶子节点时，就输出其代表的字符，然后从根节点开始继续解码。当所有二进制序列都消耗完时，解码过程结束。记二进制序列为$B = \{b_1, b_2, ...\}$，除第一位外的剩余部分为$B'$，解码算法可以定义如下。
 
@@ -3653,6 +3640,14 @@ Layout move(Layout layout, Int i, Int d) {
     return ly
 }
 \end{lstlisting}
+
+从哈夫曼树构造码表：
+
+\begin{Haskell}
+code tr = fromList $ traverse [] tr where
+  traverse bits (Leaf _ c) = [(c, reverse bits)]
+  traverse bits (Branch _ l r) = traverse (0:bits) l ++ traverse (1:bits) r
+\end{Haskell} %$
 
 \ifx\wholebook\relax\else
 \section{参考答案}

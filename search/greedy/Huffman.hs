@@ -56,8 +56,8 @@ huffman = build . map (\(c, w) -> Leaf w c)
 
 -- Build the code table from a Huffman tree by traversing it
 code tr = fromList $ traverse [] tr where
-  traverse bits (Leaf _ c) = [(c, bits)]
-  traverse bits (Branch _ l r) = (traverse (bits ++ [0]) l) ++ (traverse (bits ++ [1]) r)
+  traverse bits (Leaf _ c) = [(c, reverse bits)]
+  traverse bits (Branch _ l r) = traverse (0:bits) l ++ traverse (1:bits) r
 
 -- Encode text with a code table
 encode dict = concatMap (dict !)
