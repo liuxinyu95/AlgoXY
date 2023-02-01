@@ -55,7 +55,7 @@ huffman :: (Num a, Ord a, Eq b) => [(b, a)] -> HTr a b
 huffman = build . map (\(c, w) -> Leaf w c)
 
 -- Build the code table from a Huffman tree by traversing it
-code tr = fromList $ traverse [] tr where
+code = fromList . (traverse []) where
   traverse bits (Leaf _ c) = [(c, reverse bits)]
   traverse bits (Branch _ l r) = traverse (0:bits) l ++ traverse (1:bits) r
 

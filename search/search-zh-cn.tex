@@ -2062,7 +2062,7 @@ min_2\ t\ (t_1, t_2, ts) = \begin{cases}
 \EndFunction
 \end{algorithmic}
 
-我们可以从哈夫曼树$T$构造码表。令$p = [\ ]$。从根节点遍历树。左转时$p \gets p \doubleplus [0]$，右转时$p \gets p \doubleplus [1]$。到达叶节点字符$c$时，记录$c \mapsto p$到码表。定义$code\ T = \text{traverse}\ [\ ]\ T$，其中：
+我们可以从哈夫曼树$T$构造码表。令$p = [\ ]$。从根节点遍历树。左转时$p \gets 0 \cons p$，右转时$p \gets 1 \cons p $。到达叶节点字符$c$时，记录$c \mapsto reverse\ p$到码表。定义（柯里化）$code\ = \textit{traverse}\ [\ ]$，其中：
 
 \be
 \begin{array}{rcl}
@@ -2071,75 +2071,23 @@ min_2\ t\ (t_1, t_2, ts) = \begin{cases}
 \end{array}
 \ee
 
-编码过程中，我们扫描文本，然后查询码表来输出二进制序列，我们略过其具体的实现。
-
-解码时，我们根据二进制序列查询Huffman树。从根节点开始，遇到0向左转，遇到1向右转。到达叶子节点时，就输出其代表的字符，然后从根节点开始继续解码。当所有二进制序列都消耗完时，解码过程结束。记二进制序列为$B = \{b_1, b_2, ...\}$，除第一位外的剩余部分为$B'$，解码算法可以定义如下。
+编码过程一边扫描文本$w$一边查询码表$dict$产生二进制序列：
 
 \be
-decode(T, B) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{c\} & B = \phi \land leaf(T) \\
-  \{c\} \cup decode(root(T), B) & leaf(T) \\
-  decode(T_l, B') & b_1 = 0 \\
-  decode(T_r, B') & otherwise
-  \end{array}
-\right.
+encode\ dict\ w = \textit{concatMap}\ (c \mapsto dict[c])\ w, \text{其中} dict = code\ T
 \ee
 
-其中$root(T)$返回Huffman树的根节点。下面的Haskell例子程序实现了解码算法。
+解码过程相反，一边扫描二进制序列$bs$一边查询哈夫曼树。从根节点开始，0向左、1向右，到达叶子节点时输出字符$c$，然后回到根节点继续解码。$\textit{decode}\ bs\ T = lookup\ bs\ T$，其中：
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-decode tr cs = find tr cs where
-  find (Leaf _ c) [] = [c]
-  find (Leaf _ c) bs = c : find tr bs
-  find (Branch _ l r) (b:bs) = find (if b == 0 then l else r) bs
-\end{lstlisting}
+\be
+\begin{array}{rcl}
+lookup\ [\ ]\ (w, c) & = & [c] \\
+lookup\ bs\ (w, c) & = & c : lookup\ bs\ T \\
+lookup\ (b \cons bs)\ (w, l, r) & = & lookup\ bs\ (\text{if}\ b = 0\ \text{then}\ l\ \text{else}\ r)
+\end{array}
+\ee
 
-这是一个在线（on-line）解码算法，性能为线性时间。它每次消耗一个二进制位。这一点可以清楚地从下面的命令式实现中看出，其中的索引每次递增1。
-
-\begin{algorithmic}[1]
-\Function{Decode}{$T, B$}
-  \State $W \gets \phi$
-  \State $n \gets |B|, i \gets 1$
-  \While{$i < n$}
-    \State $R \gets T$
-    \While{$\lnot$ \Call{Leaf}{$R$}}
-      \If{$B[i] = 0$}
-        \State $R \gets$ \Call{Left}{$R$}
-      \Else
-        \State $R \gets$ \Call{Right}{$R$}
-      \EndIf
-      \State $i \gets i + 1$
-    \EndWhile
-    \State $W \gets W \cup$ \Call{Symbol}{$R$}
-  \EndWhile
-  \State \Return $W$
-\EndFunction
-\end{algorithmic}
-
-下面的C++例子程序实现了这一命令式Huffman解码算法。
-
-\lstset{language=C++}
-\begin{lstlisting}
-string decode(Node* root, const char* bits) {
-    string w;
-    while (*bits) {
-        Node* t = root;
-        while (!isleaf(t))
-            t = '0' == *bits++ ? t->left : t->right;
-        w += t->c;
-    }
-    return w;
-}
-\end{lstlisting}
-
-Huffman编码，特别是Huffman树的构造过程展示了一种有趣的策略。每次合并都有若干选项。Huffman的方法总是从树中选取权重最小的两棵树。这是合并阶段的最好选择。特别地，这一系列\textbf{局部}最优的选择，产生了一个全局最优的前缀编码。
-
-但并非局部最优选择总能带来全局最优解。在大多数情况下并非如此。Huffman编码是一个特殊情况。我们称这种每次选择局部最优选项的策略为\textbf{贪心}策略。
-
-贪心方法可以解决很多问题。但是判断贪心方法能否产生全局最优解却并不容易。通用的形式化证明仍然是一个活跃的研究领域。\cite{CLRS}中的第16.4节介绍了拟阵（Matroid）方法，它覆盖了可以应用贪心算法的很多问题。
+哈夫曼树的构造过程采取了一种特殊策略：每次合并有若干选项，总是选取权重最小的两棵树合并。这一系列\textbf{局部}最优选择，产生了全局最优的前缀编码。局部最优一般不产生全局最优解。哈夫曼编码是个例外。我们称这种每次选择局部最优选项的方法为\textbf{贪心}策略。贪心算法可以解决、简化很多问题。但判断贪心策略能否产生全局最优解并不容易。通用的形式化证明仍然是一个活跃的研究领域\cite{CLRS}。
 
 \paragraph{换零钱问题}
 \index{换零钱问题}
@@ -3641,12 +3589,19 @@ Layout move(Layout layout, Int i, Int d) {
 }
 \end{lstlisting}
 
-从哈夫曼树构造码表：
+从哈夫曼树构造码表，编解码：
 
 \begin{Haskell}
-code tr = fromList $ traverse [] tr where
+code = Map.fromList . (traverse []) where
   traverse bits (Leaf _ c) = [(c, reverse bits)]
   traverse bits (Branch _ l r) = traverse (0:bits) l ++ traverse (1:bits) r
+
+encode dict = concatMap (dict !)
+
+decode tr cs = find tr cs where
+  find (Leaf _ c) [] = [c]
+  find (Leaf _ c) bs = c : find tr bs
+  find (Branch _ l r) (b:bs) = find (if b == 0 then l else r) bs
 \end{Haskell} %$
 
 \ifx\wholebook\relax\else
