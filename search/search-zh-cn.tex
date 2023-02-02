@@ -1936,10 +1936,13 @@ $move$把棋子$L[k]$移动$d$成为：$move\ L\ (k, d) = map\ (+ d)\ L[k]$。$u
  \label{fig:weighted-dag}
 \end{figure}
 
-\subsection{搜索最优解}
+\subsection{贪心算法}
+\index{贪心算法}
 
-\index{贪心算法} \index{哈夫曼编码}
-人们需要“最好”的解来节省时间、空间、成本、能量。使用有限的资源搜索最优解并不容易。有很多问题不存在多项式时间的解法。仅对一些特定问题存在简单方法找到最优解。哈夫曼编码是一种用最小长度对信息编码的方法。早期的ASCII码使用7位二进制数对字母、数字、符号编码，可以表达$2^7 = 128$个字符。只用0、1，我们至少需要$\log_2 n$位分辨$n$个不同字符。下面是大写英文字母的码表，将字母A到Z映射为0到25。每个编码5位。零被扩充到5位00000而非0。这样的编码方式称为定长编码。
+人们需要“最好”的解来节省时间、空间、成本、能量。使用有限的资源搜索最优解并不容易。有很多问题不存在多项式时间的解法。仅对一些特定问题存在简单方法找到最优解。
+
+\subsubsection{哈夫曼编码} \index{哈夫曼编码}
+哈夫曼编码是一种用最小长度对信息编码的方法。早期的ASCII码使用7位二进制数对字母、数字、符号编码，可以表达$2^7 = 128$个字符。只用0、1，我们至少需要$\log_2 n$位分辨$n$个不同字符。下面是大写英文字母的码表，将字母A到Z映射为0到25。每个编码5位。零被扩充到5位00000而非0。这样的编码方式称为定长编码。
 
 \btab{l|l||l|l}
 字符 & 编码 & 字符 & 编码 \\
@@ -2077,19 +2080,37 @@ min_2\ t\ (t_1, t_2, ts) = \begin{cases}
 encode\ dict\ w = \textit{concatMap}\ (c \mapsto dict[c])\ w, \text{其中} dict = code\ T
 \ee
 
-解码过程相反，一边扫描二进制序列$bs$一边查询哈夫曼树。从根节点开始，0向左、1向右，到达叶子节点时输出字符$c$，然后回到根节点继续解码。$\textit{decode}\ bs\ T = lookup\ bs\ T$，其中：
+解码过程相反，一边扫描二进制序列$bs$一边查询哈夫曼树。从根节点开始，0向左、1向右，到达叶子节点时输出字符$c$，然后回到根节点继续解码。$\textit{decode}\ T\ bs = lookup\ T\ bs$，其中：
 
 \be
 \begin{array}{rcl}
-lookup\ [\ ]\ (w, c) & = & [c] \\
-lookup\ bs\ (w, c) & = & c : lookup\ bs\ T \\
-lookup\ (b \cons bs)\ (w, l, r) & = & lookup\ bs\ (\text{if}\ b = 0\ \text{then}\ l\ \text{else}\ r)
+lookup\ (w, c)\ [\ ] & = & [c] \\
+lookup\ (w, c)\ bs & = & c : lookup\ T\ bs \\
+lookup\ (w, l, r)\ (b \cons bs) & = & lookup\ (\text{if}\ b = 0\ \text{then}\ l\ \text{else}\ r)\ bs
 \end{array}
 \ee
 
 哈夫曼树的构造过程采取了一种特殊策略：每次合并有若干选项，总是选取权重最小的两棵树合并。这一系列\textbf{局部}最优选择，产生了全局最优的前缀编码。局部最优一般不产生全局最优解。哈夫曼编码是个例外。我们称这种每次选择局部最优选项的方法为\textbf{贪心}策略。贪心算法可以解决、简化很多问题。但判断贪心策略能否产生全局最优解并不容易。通用的形式化证明仍然是一个活跃的研究领域\cite{CLRS}。
 
-\paragraph{换零钱问题}
+\begin{Exercise}
+\Question{给定哈夫曼树$T$，用左侧叠加实现哈夫曼解码。}
+\end{Exercise}
+
+\begin{Answer}
+\Question{给定哈夫曼树$T$，用左侧叠加实现哈夫曼解码。
+
+$decode = snd \circ (foldl\ lookup\ (T, [\ ]))$, 其中：
+
+\[
+\begin{array}{rcl}
+lookup\ ((w, c), cs)\ b & = & (T, c \cons cs) \\
+lookup\ ((w, l, r), cs)\ b & = & \text{if}\ b = 0\ \text{then}\ (l, cs)\ \text{else}\ (r, cs) \\
+\end{array}
+\]
+}
+\end{Answer}
+
+\subsubsection{换零钱问题}
 \index{换零钱问题}
 
 去其他国家前，我们经常要换汇。人们越来越多地使用信用卡了，信用卡很方便，买东西时可以不担心零钱问题。如果使用现金，旅行结束时，往往会剩余一些钱。有些钱币爱好者会把钱换成硬币，收集起来。有没有什么办法，能把指定数量的钱换成最少数量的硬币呢？
@@ -2231,7 +2252,7 @@ extract\ (t \cons ts, q) & = & \begin{cases}
 }
 \end{Answer}
 
-\subsubsection{动态规划}
+\subsection{动态规划}
 \index{动态规划}
 
 在介绍换零钱问题时，我们发现贪心方法有时无法得到最优解。对于任何的硬币体系，有没有一种方法，可以保证找到最优解呢？
