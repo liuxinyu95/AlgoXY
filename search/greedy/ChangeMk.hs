@@ -16,17 +16,14 @@
 
 module ChangeMk where
 
+import qualified Data.Set as Set
 import Data.List (group)
 
 -- Greedy method to solve the change making problem.
 
 solve x = assoc . change x where
   change 0 _ = []
-  change x cs = let c = head $ filter (<= x) cs in c : change (x - c) cs
+  change x cs = let c = Set.findMax $ Set.filter (<= x) cs in c : change (x - c) cs
+  assoc = (map (\cs -> (head cs, length cs))) . group
 
-assoc = (map (\cs -> (head cs, length cs))) . group
-
-coinsUSA = reverse [1, 5, 25, 50, 100]
-
--- example:
--- solve 142 coinsUSA
+example = solve 142 $ Set.fromList [1, 5, 25, 50, 100]

@@ -2092,93 +2092,21 @@ lookup\ (w, l, r)\ (b \cons bs) & = & lookup\ (\text{if}\ b = 0\ \text{then}\ l\
 
 哈夫曼树的构造过程采取了一种特殊策略：每次合并有若干选项，总是选取权重最小的两棵树合并。这一系列\textbf{局部}最优选择，产生了全局最优的前缀编码。局部最优一般不产生全局最优解。哈夫曼编码是个例外。我们称这种每次选择局部最优选项的方法为\textbf{贪心}策略。贪心算法可以解决、简化很多问题。但判断贪心策略能否产生全局最优解并不容易。通用的形式化证明仍然是一个活跃的研究领域\cite{CLRS}。
 
-\begin{Exercise}
-\Question{给定哈夫曼树$T$，用左侧叠加实现哈夫曼解码。}
-\end{Exercise}
-
-\begin{Answer}
-\Question{给定哈夫曼树$T$，用左侧叠加实现哈夫曼解码。
-
-$decode = snd \circ (foldl\ lookup\ (T, [\ ]))$, 其中：
-
-\[
-\begin{array}{rcl}
-lookup\ ((w, c), cs)\ b & = & (T, c \cons cs) \\
-lookup\ ((w, l, r), cs)\ b & = & \text{if}\ b = 0\ \text{then}\ (l, cs)\ \text{else}\ (r, cs) \\
-\end{array}
-\]
-}
-\end{Answer}
-
 \subsubsection{换零钱问题}
 \index{换零钱问题}
 
-去其他国家前，我们经常要换汇。人们越来越多地使用信用卡了，信用卡很方便，买东西时可以不担心零钱问题。如果使用现金，旅行结束时，往往会剩余一些钱。有些钱币爱好者会把钱换成硬币，收集起来。有没有什么办法，能把指定数量的钱换成最少数量的硬币呢？
-
-我们用美国的钱币系统作为例子。总共有5种不同面额的硬币：1美分、5美分、25美分、50美分、和1美元。1美元等于100美分。使用前面介绍的贪心方法，我们每次总挑选不超过余额的最大面值硬币。记硬币价值列表为$C = \{1, 5, 25, 50, 100\}$。给定任何钱数$X$，兑换硬币的方法可以定义如下。
+如果用现金购物，如何用最少的硬皮找零钱？假设有5种面额的硬币：1分、5分、2.5角、5角、1元。1角合10分，1元合10角，记为：$C = \{1, 5, 25, 50, 100\}$。需要找零$x$分。使用贪心策略，每次总挑选最大面值硬币：
 
 \be
-change(X, C) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & X = 0 \\
-  \{ c_m \} \cup change(X-c_m, C) & c_m = max(\{c \in C, c \leq X\})
-  \end{array}
-\right.
+\begin{array}{rcl}
+change\ C\ 0 & = & [\ ] \\
+change\ C\ x & = & c_m : change\ (x - c_m)\ C, \text{其中}: c_m = \max\ \{c | c \in C, c \leq x\} \\
+\end{array}
 \ee
 
-如果$C$按照降序排列，$c_m$就是第一个不大于$X$的硬币。如果要兑换1.42美元，这一函数会生成硬币列表：$\{100, 25, 5, 5, 5, 1, 1\}$。可以很容易地将这一列表变换为一组面值——数量对$\{(100, 1), (25, 1), (5, 3), (1, 2)\}$。也就是说，我们需要一枚1美元硬币、一枚25美分硬币、三枚5美分硬币、两枚1美分硬币。下面的Haskell例子程序实现了这一最少兑换算法。
+例如兑换1.42元，函数$change$生成硬币列表：$[100, 25, 5, 5, 5, 1, 1]$。我们可以将其转换为$[(100, 1), (25, 1), (5, 3), (1, 2)]$，表示一枚1元、一枚2.5角、三枚5分、两枚1分硬币。对于例子$C$这些面额，贪心策略可找出最优解。贪心算法对大多数国家的硬币系统都有效。但也有例外：如$C = \{1, 3, 4 \}$。兑换$x = 6$分钱，最优解是2枚3分硬币。但贪心策略给出是6 = 4 + 1 + 1，共3枚硬币。
 
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-solve x = assoc . change x where
-  change 0 _ = []
-  change x cs = let c = head $ filter (<= x) cs in c : change (x - c) cs
-
-assoc = (map (\cs -> (head cs, length cs))) . group
-\end{lstlisting} %$
-
-这一程序假设硬币按照降序排列，例如：
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-solve 142 [100, 50, 25, 5, 1]
-\end{lstlisting}
-
-这一算法是尾递归的，他可以很容易地转换为命令式的循环。
-
-\begin{algorithmic}[1]
-\Function{Change}{$X, C$}
-  \State $R \gets \phi$
-  \While{$X \neq 0$}
-    \State $c_m = max(\{c \in C, c \leq X\})$
-    \State $R \gets \{c_m\} \cup R$
-    \State $X \gets X - c_m$
-  \EndWhile
-  \State \Return $R$
-\EndFunction
-\end{algorithmic}
-
-下面的Python例子程序实现了这一命令式算法，结果以一个字典输出。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def change(x, coins):
-    cs = {}
-    while x != 0:
-        m = max([c for c in coins if c <= x])
-        cs[m] = 1 + cs.setdefault(m, 0)
-        x = x - m
-    return cs
-\end{lstlisting}
-
-对于美国这样的硬币系统，贪心方法可以找到最优解。硬币的数量是最少的。幸运的是，贪心算法对于大多数国家的硬币系统都有效。但是也有一些例外。例如，假设某国的硬币体系中包含的币值为1、3、和4。如果要兑换价值为6的钱，最好的解是使用两个面值为3的硬币。但是，贪心方法给出的结果却是3枚硬币：一枚面值为4，两枚面值为1。这并非最优解。
-
-\paragraph{贪心方法的小结}
-
-如换零钱问题所示，贪心方法并不一定能给出最优解。为了找到最优解，我们需要使用后面将要介绍的动态规划方法。
-
-但在实际中，贪心方法得出的解往往还是不错的。举例来说，折行（word-wrap）是现代编辑器、和浏览器等软件中常见的功能。如果文本太长，在一行显示不下，就在某些位置将其拆成若干行显示。使用折行功能，用户就无需在输入时人为加入换行符。虽然动态规划方法能够给出使用最少行的解，但是它过于复杂了。反之，贪心算法能够给出接近最优的折行方案，并且实现起来简单、高效。如下面的算法所示，给定文本$T$，每行不能超出宽度$W$，每个单词件的间隔为$s$。
+尽管不是最优解，贪心策略通常实现简单，效果差强人意，因而应用广泛。例如英文折行功能，如果文本$T$长度超过页面宽度$W$，需要拆成若干行。令单词间隔为$s$，贪心算法可以给出接近最优的折行方案：在一行中尽可能多放入单词。
 
 \begin{algorithmic}[1]
 \State $L \gets W$
@@ -2192,13 +2120,10 @@ def change(x, coins):
 \EndFor
 \end{algorithmic}
 
-对文本中的每个词$w$，该算法使用贪心策略在一行中放入尽可能多的词直到超出行宽限制。很多文本处理软件使用了类似的算法来进行折行处理。
-
-也有很多情况，我们必须要找到严格的最优解，而不是近似最优解。可以使用动态规划方法来解决此类问题。
-
 \begin{Exercise}
 \Question{使用堆来构造哈夫曼树：不断从堆顶取出两颗子树，合并后放回堆中。}
 \Question{如果字符已按权重排序成列表$A$，存在一个线性时间的构造哈夫曼树的方法：用队列$Q$保存合并结果。不断从$Q$和$A$头部取出较小的树，合并后入队。处理完列表中所有树后，队列中将只剩下一棵树。即最终的哈夫曼树。请实现这一方法。}
+\Question{给定哈夫曼树$T$，用左侧叠加实现哈夫曼解码。}
 \end{Exercise}
 
 \begin{Answer}
@@ -2249,6 +2174,17 @@ extract\ (t \cons ts, q) & = & \begin{cases}
 \end{array}
 \]
 
+}
+\Question{给定哈夫曼树$T$，用左侧叠加实现哈夫曼解码。
+
+$decode = snd \circ (foldl\ lookup\ (T, [\ ]))$, 其中：
+
+\[
+\begin{array}{rcl}
+lookup\ ((w, c), cs)\ b & = & (T, c \cons cs) \\
+lookup\ ((w, l, r), cs)\ b & = & \text{if}\ b = 0\ \text{then}\ (l, cs)\ \text{else}\ (r, cs) \\
+\end{array}
+\]
 }
 \end{Answer}
 
@@ -3624,6 +3560,21 @@ decode tr cs = find tr cs where
   find (Leaf _ c) bs = c : find tr bs
   find (Branch _ l r) (b:bs) = find (if b == 0 then l else r) bs
 \end{Haskell} %$
+
+使用贪心策略兑换硬币：
+
+\begin{Haskell}
+import qualified Data.Set as Set
+import Data.List (group)
+
+solve x = assoc . change x where
+  change 0 _ = []
+  change x cs = let c = Set.findMax $ Set.filter (<= x) cs in c : change (x - c) cs
+  assoc = (map (\cs -> (head cs, length cs))) . group
+
+example = solve 142 $ Set.fromList [1, 5, 25, 50, 100]
+\end{Haskell} %$
+
 
 \ifx\wholebook\relax\else
 \section{参考答案}
