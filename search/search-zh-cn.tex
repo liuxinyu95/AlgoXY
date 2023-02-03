@@ -2293,72 +2293,15 @@ $x$ & 0 & 1 & 2 & 3 & 4 & 5 \\
 \EndFunction
 \end{algorithmic}
 
-若兑换值$x = n$，算法循环$n$次。每次最多检查$k = |C|$个币值。复杂度为$\Theta(nk)$\footnote{上界}，并需要$O(n)$的空间保存$T$。
+若兑换值$x = n$，算法循环$n$次。每次最多检查$k = |C|$个币值。复杂度为$\Theta(nk)$\footnote{上界}，并需要$O(n)$的空间保存$T$。不管是自底向上还是自顶向下的方法，都需要记录最优化子问题的解。在计算整体的最优解时，反复多次使用子问题的结果。这一特性称为重叠子问题。解决换零钱问题的方法叫做动态规划，是贝尔曼于1940年提出的。动态规划问题具备两个性质：
 
-记录最优解的表格，实际上为一棵finger树，它初始为$T = \{(0, 0)\}$。表示兑换价值为0的钱，无需任何硬币。我们对列表$\{1, 2, ..., X\}$进行fold，传入初始表格。fold使用的二元函数是$change(T, i)$。fold结束后，我们获得最终的最优解表格，然后再通过函数$make(X, T)$，从这一表格构造出兑换硬币的列表。
+\begin{enumerate}
+\item 最优化子结构。问题可以被分解为若干规模较小的子问题，最优解可以从子问题解中构造出；
+\item 重叠子问题。子问题的解可被反复使用以寻找整体上的解。
+\end{enumerate}
 
-\be
-makeChange(X) = make(X, fold(change, \{(0, 0)\}, \{1, 2, ..., X\}))
-\ee
-
-在函数$change(T, i)$中，我们检查所有价值不大于$i$的硬币，选出导致最优解的一个。所需硬币的最少数量，和选中的硬币组成一对值，插入到finger树中，最后返回新的表格作为结果。
-
-\be
-change(T, i) = insert(T, fold(sel, (\infty, 0), \{c | c \in C, c \leq i\}))
-\ee
-
-我们再次使用fold来选择硬币数最少的兑换方案。fold起始时的值为$(\infty, 0)$，列表为所有面值不大于$i$的硬币。函数$sel((n, c), c')$接受两个参数，第一个参数是一对值，包含所需硬币数量和选中的硬币。它是目前为止找到的最优解；另一个参数是一枚新硬币，我们需要检查这枚新硬币是否可以导致更好的解。
-
-\be
-sel((n, c), c') = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  (1 + n', c') & 1 + n' < n, (n', c') = T[i-c'] \\
-  (n, c) & otherwise
-  \end{array}
-\right.
-\ee
-
-构造好最优解表格后，兑换所需的所有硬币就可以通过它逐一找出。
-
-\be
-make(X, T) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \phi & X = 0 \\
-  \{c\} \cup make(X-c, T) & (n, c) = T[X]
-  \end{array}
-\right.
-\ee
-
-下面的Haskell例子程序实现了兑换硬币算法。它使用了标准库中的\texttt{Data.Sequence}，其实现为finger树。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-import Data.Sequence (Seq, singleton, index, (|>))
-
-changemk x cs = makeChange x $ foldl change (singleton (0, 0)) [1..x] where
-  change tab i = let sel c = min (1 + fst (index tab (i - c)), c)
-                 in tab |> (foldr sel ((x + 1), 0) $ filter (<=i) cs)
-  makeChange 0 _ = []
-  makeChange x tab = let c = snd $ index tab x in c : makeChange (x - c) tab
-\end{lstlisting} %$
-
-不管是自底向上的方法，还是自顶向下的方法，都需要记录最优化子问题的解。这是因为在计算整体的最优解时，需要反复多次使用子问题的结果。这一特性称为重叠子问题（overlapping sub problems）。
-
-\paragraph{动态规划的性质}
-
-动态规划最早在1940年代由Richard Bellman提出。它是搜索最优解的有利武器，它要求问题要具备两个性质。
-
-\begin{itemize}
-\item 最优化子结构。问题可以被分解为若干规模较小的子问题，最优解可以高效地从这些子问题的解中构造出来；
-\item 重叠子问题。问题可以被分解为若干子问题，子问题的解被多次反复使用以寻找整体上的解。
-\end{itemize}
-
-兑换硬币问题，同时拥有最优化子结构和重叠子问题的性质。
-
-\paragraph{最长公共子序列问题}
-\index{LCS} \index{最长公共子序列问题}
+\subsubsection{最长公共子序列}
+\index{LCS} \index{最长公共子序列}
 
 最长公共子序列问题和最长公共子串问题不同。在后缀树一章中，我们给出了如何寻找最长公共子串的方法。最长公共子序列无需是原序列中的连续部分。
 
@@ -3451,6 +3394,16 @@ example = solve 142 $ Set.fromList [1, 5, 25, 50, 100]
     return s
 }
 \end{lstlisting}
+
+\begin{Haskell}
+import Data.Sequence (Seq, singleton, index, (|>))
+
+changemk x cs = makeChange x $ foldl change (singleton (0, 0)) [1..x] where
+  change tab i = let sel c = min (1 + fst (index tab (i - c)), c)
+                 in tab |> (foldr sel ((x + 1), 0) $ filter (<=i) cs)
+  makeChange 0 _ = []
+  makeChange x tab = let c = snd $ index tab x in c : makeChange (x - c) tab
+\end{Haskell} %$
 
 \ifx\wholebook\relax\else
 \section{参考答案}
