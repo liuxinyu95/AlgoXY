@@ -16,38 +16,25 @@
 
 module ChangeMk where
 
-import Data.List (group, minimumBy)
-import Data.Function (on)
-import Data.Sequence (Seq, singleton, index, (|>))
+import qualified Data.Set as Set
+import Data.Sequence ((|>), singleton, index)
 
 -- [1] ``Dynamic Programming Solution to the Coin Changing Problem''.
 --   2004, open course. CSG 713 Advanced algorithms
 -- http://www.ccs.neu.edu/home/jaa/CSG713.04F/Information/Handouts/dyn_prog.pdf
 
+-- Bottom-up dynamic programming solution with finger tree.[1]
 
--- Method 1, Top-down recursive solution without store the sub optimal solutions
-
-solve cs = assoc . change cs
-
-change _ 0 = []
-change cs x = minimumBy (compare `on` length) [c:change cs (x - c) | c <- cs, c <= x]
-
-assoc = (map (\cs -> (head cs, length cs))) . group
-
--- Method 2, Bottom-up dynamic programming solution with finger tree.[1]
-
-changemk x cs = makeChange x $ foldl change' (singleton (0, 0)) [1..x] where
-  change' tab i = let sel c = min (1 + fst (index tab (i - c)), c)
-                  in tab |> (foldr sel ((x + 1), 0) $ filter (<=i) cs)
+changemk x cs = makeChange x $ foldl fill (singleton (0, 0)) [1..x] where
+  fill tab i = tab |> (n, c) where
+    (n, c) = minimum $ Set.map lookup $ Set.filter (<= i) cs
+    lookup c  = (1 + fst (tab `index` (i - c)), c)
   makeChange 0 _ = []
-  makeChange x tab = let c = snd $ index tab x in c : makeChange (x - c) tab
+  makeChange x tab = let c = snd $ tab `index` x in c : makeChange (x - c) tab
 
-
-coinsUSA = reverse [1, 5, 25, 50, 100]
-coinsTest = [1, 2, 4]
+cs1 = (Set.fromList [1, 5, 25, 50, 100])
+cs2 = (Set.fromList [1, 2, 4])
 
 -- example:
--- solve coinsUSA 142 -- Don't do this it's takes too long time
--- solve [1, 2, 4] 6 ==> [(2,1),(4,1)]
-testChange1 = changemk 142 [1, 5, 25, 50, 100]
-testChange2 = changemk 6 [1, 2, 4]
+testChange1 = changemk 142 cs1
+testChange2 = changemk 6 cs2

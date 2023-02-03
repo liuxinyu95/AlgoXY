@@ -2293,6 +2293,21 @@ $x$ & 0 & 1 & 2 & 3 & 4 & 5 \\
 \EndFunction
 \end{algorithmic}
 
+最优解表格$T$也可以用左侧叠加构建：$\textit{foldl}\ fill\ [(0, 0)]\ [1, 2, ...]$，其中：
+
+\be
+fill\ T\ x = T \rhd \min\ \{(\textit{fst}\ T[x - c], c) | c \in C, c \leq x\}
+\ee
+
+其中$s \rhd a$把元素$a$加入到序列$s$右侧（见第12章手指树）。然后利用$T$反演出最优解列表：
+
+\be
+\begin{array}{rcl}
+change\ 0\ T & = & [\ ] \\
+change\ x\ T & = & c : change\ (x - c)\ T, \text{其中}: c = \textit{snd}\ T[x] \\
+\end{array}
+\ee
+
 若兑换值$x = n$，算法循环$n$次。每次最多检查$k = |C|$个币值。复杂度为$\Theta(nk)$\footnote{上界}，并需要$O(n)$的空间保存$T$。不管是自底向上还是自顶向下的方法，都需要记录最优化子问题的解。在计算整体的最优解时，反复多次使用子问题的结果。这一特性称为重叠子问题。解决换零钱问题的方法叫做动态规划，是贝尔曼于1940年提出的。动态规划问题具备两个性质：
 
 \begin{enumerate}
@@ -3396,13 +3411,15 @@ example = solve 142 $ Set.fromList [1, 5, 25, 50, 100]
 \end{lstlisting}
 
 \begin{Haskell}
-import Data.Sequence (Seq, singleton, index, (|>))
+import qualified Data.Set as Set
+import Data.Sequence ((|>), singleton, index)
 
-changemk x cs = makeChange x $ foldl change (singleton (0, 0)) [1..x] where
-  change tab i = let sel c = min (1 + fst (index tab (i - c)), c)
-                 in tab |> (foldr sel ((x + 1), 0) $ filter (<=i) cs)
+changemk x cs = makeChange x $ foldl fill (singleton (0, 0)) [1..x] where
+  fill tab i = tab |> (n, c) where
+    (n, c) = minimum $ Set.map lookup $ Set.filter (<= i) cs
+    lookup c  = (1 + fst (tab `index` (i - c)), c)
   makeChange 0 _ = []
-  makeChange x tab = let c = snd $ index tab x in c : makeChange (x - c) tab
+  makeChange x tab = let c = snd $ tab `index` x in c : makeChange (x - c) tab
 \end{Haskell} %$
 
 \ifx\wholebook\relax\else
