@@ -2209,15 +2209,13 @@ change\ x & = & \min\ [c : change\ (x -c) | c \in C, c < x] \\
 其中$\max$选出长度最短的列表。但这一定义不能直接转化为可用的程序。自顶向下递归中有大量重复计算。若$C = {1, 2, 25, 50, 100}$，兑换$change(142)$时，需要计算$change(141)$、$change(137)$、$change(117)$、$change(92)$、$change(42)$。在计算$change(141)$时，将141分别减去1、2、25、50、100。这样就会再次计算137、117、92、42。搜索空间以$5^n$指数膨胀。参考计算斐波那契数列的方法，我们用表格$T$记录最优兑换子问题的解。$T$初始时空白。兑换$y$时先查询$T[y]$获取子问题最优解，如果$T[y] = \nil$，则递归计算子问题。子问题计算好后存入$T[y]$。
 
 \begin{algorithmic}[1]
-\State $T \gets [[\ ], \phi, \phi, ...]$ \Comment{$T[0] = [\ ]$}
+\State $T \gets [[\ ], \nil, \nil, ...]$ \Comment{$T[0] = [\ ]$}
 \Function{Change}{$x$}
-  \If{$x > 0$ 且 $T[x] = \phi$}
-    \For{each $c$ in $C$}
-      \If{$c \leq x$}
-        \State $C_m \gets c :$ \Call{Change}{$x-c$}
-        \If{$T[x] = \phi$或 $|C_m| < |T[x]|$}
-          \State $T[x] \gets C_m$
-        \EndIf
+  \If{$x > 0$ 且 $T[x] = \nil$}
+    \For{each $c$ in $C$ 且 $c \leq x$}
+      \State $C_m \gets c :$ \Call{Change}{$x-c$}
+      \If{$T[x] = \nil$或 $|C_m| < |T[x]|$}
+        \State $T[x] \gets C_m$
       \EndIf
     \EndFor
   \EndIf
@@ -2225,7 +2223,7 @@ change\ x & = & \min\ [c : change\ (x -c) | c \in C, c < x] \\
 \EndFunction
 \end{algorithmic}
 
-我们还可以自底向上产生、记录兑换子问题的最优解。从$T[0] = [\ ]$开始，依次产生$T[1] = [1], T[2] = [1, 1], T[3] = [1, 1, 1], T[4] = [1, 1, 1, 1]$，如表\ref{tab:change-money}(a)所示。当兑换$x = 5$时有两个选择：5个1分或1枚5分硬币。显然后者更优。最优解表格更新为表\ref{tab:change-money}(b)。接下来兑换$x = 6$，1分、5分都小于6，有两个选择：
+我们还可以自底向上产生、记录兑换子问题的最优解。从$T[0] = [\ ]$开始，依次产生$T[1] = [1], T[2] = [1, 1], T[3] = [1, 1, 1], T[4] = [1, 1, 1, 1]$，如表\ref{tab:change-money}(a)所示。兑换$T[5]$有两个选择：5个1分或1枚5分硬币。显然后者更优。最优解表格更新为表\ref{tab:change-money}(b)，$T[5] = [5]$。接下来兑换$x = 6$，1分、5分都小于6，有两个选择：(1) 1分加$T[5]$得$[1, 5]$；(2) 5分加$T[1]$得$[5, 1]$。这两个解等价，任选$T[6] = [1, 5]$。每次迭代产生$T[i]$，其中$i \leq x$时，逐一检查所有$c \leq i$的币值。查询表格获取子问题$T[i-c]$的最优解，再加上$c$得到一个兑换方案。选择硬币最少的一个作为$T[i]$。
 
 \begin{table}[htbp]
 \centering
@@ -2250,103 +2248,52 @@ $x$ & 0 & 1 & 2 & 3 & 4 & 5 \\
 \label{tab:change-money}
 \end{table}
 
-\begin{enumerate}
-\item 如果选择使用1美分，我们接下来需要兑换剩余的价值5。由于我们已经在表格中记录了兑换5的最优解$\{ 5 \}$，使用1枚5美分硬币。这样我们就得到一个兑换价值为6的一个解$\{5, 1\}$；
-\item 如果选择使用5美分，我们接下来需要兑换剩余的价值1。通过查表，我们发现兑换1的最优解$\{ 1 \}$，这样我们就得到了兑换价值为6的另外一个解$\{1, 5\}$。
-\end{enumerate}
-
-恰巧两个选项获得解都只需要两枚硬币，我们可以选择任何一个作为最优解。原则上说，我们每次选择所需硬币最少的解填入表格中。
-
-在任何一次迭代中，当寻找价值$i < X$的兑换方案时，我们逐一检查所有的币值。对于任何不大于$i$的硬币，我们从表格中查找项$T[i-c]$来获取子问题的解。用这一解所需的硬币再加上一枚硬币$c$，就是兑换$i$的一个方案选项。我们选择所需硬币最少的一个，记录到表格中。
-
-下面的算法实现了这一自底向上的思路。
-
 \begin{algorithmic}[1]
-\Function{Change}{$X$}
-  \State $T \gets \{ \phi, \phi, ... \}$
-  \For{$i \gets 1$ to $X$}
-    \For{$c \in C, c \leq i$}
-      \If{$T[i] = \phi \lor 1 + |T[i - c]| < |T[i]|$}
-        \State $T[i] \gets \{ c \} \cup T[i-c]$
+\Function{Change}{$x$}
+  \State $T \gets [[\ ], \nil, ... ]$
+  \For{$i \gets 1$ to $x$}
+    \For{each $c$ in $C$ 且 $c \leq i$}
+      \If{$T[i] = \nil$ 或 $1 + |T[i - c]| < |T[i]|$}
+        \State $T[i] \gets  c : T[i-c]$
       \EndIf
     \EndFor
   \EndFor
-  \State \Return $T[X]$
+  \State \Return $T[x]$
 \EndFunction
 \end{algorithmic}
 
-下面的Python例子程序实现了这一算法。
+最优解表格（如下）中有大量重复内容。父问题的解包含着子问题的解。可以只记录相对子问题的变化部分：兑换$T[i]$所选择的硬币$c$以及需要的硬币数量$n$。即$T[i] = (n, c)$。为了获得兑换$x$的硬币列表，我们从表格$T[x]$中找到c, 然后再从$T[x -c]$中找到$c'$……直到$T[0]$。
 
-\lstset{language=Python}
-\begin{lstlisting}
-def changemk(x, cs):
-    s = [[] for _ in range(x+1)]
-    for i in range(1, x+1):
-        for c in cs:
-            if c <= i and (s[i] == [] or 1 + len(s[i-c]) < len(s[i])):
-                s[i] = [c] + s[i-c]
-    return s[x]
-\end{lstlisting}
-
-观察保存解的表格，会发现其中有大量重复的内容。
-
-\begin{table}[htbp]
-\centering
-\begin{tabular}{c||c|c|c|c|c|c|}
+\btab{c||c|c|c|c|c|c|}
 \hline
 价值 & 6 & 7 & 8 & 9 & 10 & ... \\
 \hline
-最优解 & $\{ 1, 5 \}$ & $\{1, 1, 5\}$ & $\{1, 1, 1, 5\}$ & $\{1, 1, 1, 1, 5\}$ & $\{ 5, 5 \}$ & ... \\
+最优解 & $[1, 5]$ & $[1, 1, 5]$ & $[1, 1, 1, 5]$ & $[1, 1, 1, 1, 5]$ & $[5, 5]$ & ... \\
 \hline
-\end{tabular}
-\caption{最优解的表格中存在重复内容} %\label{}
-\end{table}
-
-这是因为最优子问题的解，被完全复制到父问题的解中。为了减少空间的消耗，我们可以仅记录相对子问题变化的部分。对于兑换硬币问题，我们只需要记录下为了兑换$i$，所选择的那一枚硬币。
+\etab
 
 \begin{algorithmic}[1]
-\Function{Change'}{$X$}
-  \State $T \gets \{ 0, \infty, \infty, ... \}$
-  \State $S \gets \{ NIL, NIL, ... \}$
-  \For{$i \gets 1$ to $X$}
-    \For{$c \in C, c \leq i$}
-      \If{$1 + T[i - c] < T[i]$}
-        \State $T[i] \gets 1 + T[i-c]$
-        \State $S[i] \gets c$
+\Function{Change}{$x$}
+  \State $T \gets [(0, \nil), (\infty, \nil), (\infty, \nil), ... ]$
+  \For{$i \gets 1$ to $x$}
+    \For{each $c$ in $C$ 且 $c \leq i$}
+      \State $(n, \_) \gets T[i - c], (m, \_) \gets T[i]$
+      \If{$1 + n < m$}
+        \State $T[i] \gets (1 + n, c)$
       \EndIf
     \EndFor
   \EndFor
-  \While{$X > 0$}
-    \State \Call{Print}{$S[X]$}
-    \State $X \gets X - S[X]$
+  \State $s \gets [\ ]$
+  \While{$x > 0$}
+    \State $(\_, c) \gets T[x]$
+    \State $s \gets c : s$
+    \State $x \gets x - c$
   \EndWhile
+  \State \Return $s$
 \EndFunction
 \end{algorithmic}
 
-为了避免记录完整的兑换硬币列表，这一新算法使用了两个表格$T$和$S$。$T$记录了兑换价值0、1、2……所需的最少硬币数量，而$S$记录了最优解所选择的第一个币值。为了获得兑换$X$的完整硬币列表，第一个选择的硬币为$S[X]$，接下来的最优化子问题是兑换$X' = X - S[X]$。我们查询表格$S[X']$获得下一个硬币。我们不断查询最优化子问题所需选择的硬币，直到表格的最初位置。下面的Python例子程序实现了这一算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def chgmk(x, cs):
-    cnt = [0] + [x+1] * x
-    s = [0]
-    for i in range(1, x+1):
-        coin = 0
-        for c in cs:
-            if c <= i and 1 + cnt[i-c] < cnt[i]:
-                cnt[i] = 1 + cnt[i-c]
-                coin = c
-        s.append(coin)
-    r = []
-    while x > 0:
-        r.append(s[x])
-        x = x - s[x]
-    return r
-\end{lstlisting}
-
-给定需要兑换的值$n$，这一算法循环$n$次。每次迭代，算法最多检查全部的硬币。总体运行时间为$\Theta(nk)$，其中$k$是指定硬币系统中不同面值硬币的数量。最后改进的算法，需要额外$O(n)$的空间。它使用表格$T$和$S$来记录最优化子问题的解。
-
-在纯函数式的环境中，我们无法更改记录解的表格，或者在常数时间内查询。一种办法是使用前面章节介绍的finger树\footnote{某些纯函数式编程环境，如Haskell，提供了内置的数组；而其他的一些近似纯函数式环境，如ML，提供了可改变的数组。}。我们可以把所需的最少硬币数，和选择的硬币成对保存在树中。
+若兑换值$x = n$，算法循环$n$次。每次最多检查$k = |C|$个币值。复杂度为$\Theta(nk)$\footnote{上界}，并需要$O(n)$的空间保存$T$。
 
 记录最优解的表格，实际上为一棵finger树，它初始为$T = \{(0, 0)\}$。表示兑换价值为0的钱，无需任何硬币。我们对列表$\{1, 2, ..., X\}$进行fold，传入初始表格。fold使用的二元函数是$change(T, i)$。fold结束后，我们获得最终的最优解表格，然后再通过函数$make(X, T)$，从这一表格构造出兑换硬币的列表。
 
@@ -3485,6 +3432,25 @@ solve x = assoc . change x where
 example = solve 142 $ Set.fromList [1, 5, 25, 50, 100]
 \end{Haskell} %$
 
+动态规划法求换零钱问题最优解：
+
+\begin{lstlisting}[language = Bourbaki]
+[Int] change(Int x, Set<Int> cs) {
+    t = [(0, None)] ++ [(x + 1, None)] * x
+    for i = 1 to x {
+        for c in cs {
+            if c <= i {
+                (n, _) = t[i - c]
+                (m, _) = t[i]
+                if 1 + n < m then t[i] = (1 + n, c)
+    s = []
+    while x > 0:
+        (_, c) = t[x]
+        s += c
+        x = x - c
+    return s
+}
+\end{lstlisting}
 
 \ifx\wholebook\relax\else
 \section{参考答案}
