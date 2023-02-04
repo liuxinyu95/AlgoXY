@@ -2375,26 +2375,30 @@ LCS(x \cons xs, y \cons ys) & = & \begin{cases}
       \EndIf
     \EndFor
   \EndFor
-  \State \Return \Call{Get}{$T, xs, ys, m, n$}  \Comment{反演结果}
+  \State \Return \Call{Fetch}{$T, xs, ys$}  \Comment{反演结果}
 \EndFunction
 \end{algorithmic}
 
-此后就可以从$T$反演出最长公共子序列。从右下方开始，如果末尾$xs[m] = ys[n]$，则$xs[m]$就是LCS的末尾，我们接续检查$xs[m-1], ys[n-1]$，否则我们选择$T[m-1][n]$和$T[m][n-1]$较大的继续反演。
+接下来从$T$反演最长公共子序列。从右下方开始，如果末尾$xs[m] = ys[n]$，则$xs[m]$就是LCS的末尾，接下来检查$xs[m-1], ys[n-1]$，否则我们选择$T[m-1][n]$和$T[m][n-1]$较大的继续反演。
 
 \begin{algorithmic}[1]
-\Function{Get}{$T, xs, ys, i, j$}
-  \If{$i = 0$ 或 $j = 0$}
-    \State \Return $[\ ]$
-  \ElsIf{$xs[i] = ys[j]$}
-    \State \Return \textproc{Append}(\Call{Get}{$T, xs, ys, i-1, j-1$}, $xs[i]$)
-  \ElsIf{$T[i-1][j] > T[i][j-1]$}
-    \State \Return \Call{Get}{$T, xs, ys, i-1, j$}
-  \Else
-    \State \Return \Call{Get}{$T, xs, ys, i, j-1$}
-  \EndIf
+\Function{Fetch}{$T, xs, ys$}
+  \State $m \gets |xs|, n \gets |ys|$
+  \State $r \gets [\ ]$
+  \While{$m > 0$ 且 $n > 0$}
+    \If{$xs[m - 1] = ys[n - 1]$}
+      \State $r \gets xs[m - 1] : r$
+      \State $m \gets m - 1$
+      \State $n \gets n - 1$
+    \ElsIf{$T[m - 1][n] > T[m][n - 1]$}
+      \State $m \gets m - 1$
+    \Else
+      \State $n \gets n - 1$
+    \EndIf
+  \EndWhile
+  \State \Return $r$
 \EndFunction
 \end{algorithmic}
-
 
 也可以用纯函数式的方法定义自底向上的动态规划解法。我们还是用finger树作为表格。第一行填入$n+1$个0。通过对序列$X$进行fold来构造表格。然后再从表格中构造最长公共子序列。
 
@@ -3316,27 +3320,30 @@ changemk x cs = makeChange x $ foldl fill (singleton (0, 0)) [1..x] where
 \lstset{language=Python}
 \begin{lstlisting}
 def lcs(xs, ys):
-    m = len(xs)
-    n = len(ys)
-    c = [[0]*(n+1) for _ in xrange(m+1)]
-    for i in xrange(1, m+1):
-        for j in xrange(1, n+1):
+    m, n = len(xs), len(ys)
+    c = [[0]*(n + 1) for _ in range(m + 1)]
+    for i in range(1, m+1):
+        for j in range(1, n+1):
             if xs[i-1] == ys[j-1]:
                 c[i][j] = c[i-1][j-1] + 1
             else:
                 c[i][j] = max(c[i-1][j], c[i][j-1])
+    return fetch(c, xs, ys)
 
-    return get(c, xs, ys, m, n)
-
-def get(c, xs, ys, i, j):
-    if i==0 or j==0:
-        return []
-    elif xs[i-1] == ys[j-1]:
-        return get(c, xs, ys, i-1, j-1) + [xs[i-1]]
-    elif c[i-1][j] > c[i][j-1]:
-        return get(c, xs, ys, i-1, j)
-    else:
-        return get(c, xs, ys, i, j-1)
+def fetch(c, xs, ys):
+    r = []
+    m, n = len(xs), len(ys)
+    while m > 0 and n > 0:
+        if xs[m - 1] == ys[n - 1]:
+            r.append(xs[m - 1])
+            m = m - 1
+            n = n - 1
+        elif c[m - 1][n] > c[m][n - 1]:
+            m = m - 1
+        else:
+            n = n - 1
+    r.reverse()
+    return r
 \end{lstlisting}
 
 \ifx\wholebook\relax\else
