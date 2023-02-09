@@ -2499,41 +2499,26 @@ $x_2$ & F & F & ... & T & ... & T & ... & T & ... & T & ... & F \\
 \EndFunction
 \end{algorithmic}
 
-表格的列索引$j$不从0开始，而是从$l$到$u$。在实际编程环境中可以用$j - l$转换。接下来要利用$T$反演出所有$S$满足$\sum S = s$。首先查询表格中最后一行代表$s$的一项。如果最后一个元素$x_n = s$，则子集$\{x_n\}$显然是一个解。我们接下来查找上一行中$s$对应的项，并递归地从$\{x_1, x_2, x_3, ..., x_{n-1}\}$中构造所有和为$s$的子集。最后，我们检查倒数第二行，对应$s - x_n$的项。对于所有和为这一值的子集，我们加入$x_n$后构造一个新的集合，其和为$s$。
+表格的列索引$j$不从0开始，而是从$l$到$u$。在实际编程环境中可以用$j - l$转换。接下来要利用$T$反演出所有$S$满足$\sum S = s$。若$T[n][s] = $F则无解；否则有两种情况：（1）如果$x_n = s$，则子集$\{x_n\}$是一个解。我们接下来检查$T[n - 1][s]$的真假，如果为$T$，就递归从$\{x_1, x_2, x_3, ..., x_{n-1}\}$中反演和为$s$的所有子集。（2）令$s' = s - x_n$，如果$l \leq s' \leq u$，并且$T[n - 1][s']$为真，我们递归从$\{x_1, x_2, x_3, ..., x_{n-1}\}$反演和$s'$，然后将$x_n$加入到每个子集中。
 
 \begin{algorithmic}[1]
 \Function{Get}{$X, s, T, n$}
-  \State $S \gets \phi$
+  \State $r \gets [\ ]$
   \If{$X[n] = s$}
-    \State $S \gets S \cup \{X[n]\}$
+    \State $r \gets \{X[n]\} : r$
   \EndIf
   \If{$n > 1$}
     \If{$T[n-1][s]$}
-      \State $S \gets S \cup $ \Call{Get}{$X, s, T, n-1$}
+      \State $r \gets r \doubleplus $ \Call{Get}{$X, s, T, n-1$}
     \EndIf
-    \If{$T[n-1][s-X[n]]$}
-      \State $S \gets S \cup \{\{X[n]\} \cup S' | S' \in $ \Call{Get}{$X, s-X[n], T, n-1$} $\}$
+    \State $s' \gets s - X[n]$
+    \If{$l \leq s' \leq u$ 且 $T[n-1][s']$}
+      \State $r \gets r \doubleplus [X[n] \cons r' | r' \gets $ \Call{Get}{$X, s', T, n-1$} $]$
     \EndIf
   \EndIf
-  \State \Return $S$
+  \State \Return $r$
 \EndFunction
 \end{algorithmic}
-
-下面的Python例子程序实现了这一算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def get(xs, s, tab, n):
-    r = []
-    if xs[n] == s:
-        r.append([xs[n]])
-    if n > 0:
-        if tab[n-1][s]:
-            r = r + get(xs, s, tab, n-1)
-        if tab[n-1][s - xs[n]]:
-            r = r + [[xs[n]] + ys for ys in get(xs, s - xs[n], tab, n-1)]
-    return r
-\end{lstlisting}
 
 这一子集和问题的动态规划解法循环了$O(n(s_u - s_l + 1))$次以构建表格，然后递归$O(n)$次从这一表格构造最后的解。它所用的空间也为$O(n(s_u - s_l + 1))$。
 
