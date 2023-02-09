@@ -35,29 +35,27 @@ def solve(xs, s):
     def col(j):
         return j - low
     n = len(xs)
-    tab = [[False]*(up - low + 1) for _ in range(n)]
-    for i in range(n):
-        tab[i][col(0)] = True
-        tab[i][col(xs[i])] = True
-    for i in range(1, n):
+    tab = [[False]*(up - low + 1) for _ in range(n + 1)]
+    tab[0][col(0)] = True
+    for i, x in enumerate(xs, start = 1):
+        tab[i][col(x)] = True
         for j in range(low, up + 1):
             tab[i][col(j)] = tab[i][col(j)] or tab[i-1][col(j)]
-            j1 = j - xs[i]
+            j1 = j - x
             if low <= j1 and j1 <= up:
                 tab[i][col(j)] = tab[i][col(j)] or tab[i-1][col(j1)]
     def fetch(s, i):
         r = []
-        if xs[i] == s:
-            r.append([xs[i]])
-        if i > 0:
-            if tab[i-1][col(s)]:
+        if xs[i - 1] == s:
+            r.append([xs[i - 1]])
+        if i > 1:
+            if tab[i - 1][col(s)]:
                 r = r + fetch(s, i - 1)
-            s = s - xs[i]
+            s = s - xs[i - 1]
             if low <= s and s <= up and tab[i-1][col(s)]:
-                r = r + [[xs[i]] + ys for ys in fetch(s, i-1)]
+                r = r + [[xs[i - 1]] + ys for ys in fetch(s, i-1)]
         return r
-    return fetch(s, n - 1) #existence: tab[-1][s]
-
+    return fetch(s, n) #existence: tab[-1][s]
 
 def get(xs, s, tab, n):
     r = []
