@@ -2520,21 +2520,21 @@ $x_2$ & F & F & ... & T & ... & T & ... & T & ... & T & ... & F \\
 \EndFunction
 \end{algorithmic}
 
-动态规划法循环了$O(n(u - l + 1))$次以构建表格$T$，然后递归$O(n)$层反演解。二维表格需要$O(n(u - l + 1))$的空间。我们可以用一维$u - l + 1$元列表$V$代替二维表格。每一项$V[j] = [S_1, S_2, ...]$存储子集列表，满足$\sum S_1 = \sum S_2 = ... = j$。$V$中所有项初始为空。对每个$x_i$更新一轮$V$，记录加入$x_i$后能得到的子集之和。最终答案在$V[s]$中。
+动态规划法循环了$O(n(u - l + 1))$次以构建表格$T$，然后递归$O(n)$层反演解。二维表格需要$O(n(u - l + 1))$的空间。我们可以用一维$u - l + 1$元列表$V$代替二维表格。每一项$V[j] = \{S_1, S_2, ...\}$存储不同的子集，满足$\sum S_1 = \sum S_2 = ... = j$。$V$中所有项初始为空。对每个$x_i$更新一轮$V$，记录加入$x_i$后能得到的子集之和。最终答案在$V[s]$中。
 
 \begin{algorithmic}[1]
 \Function{Subset-Sum}{$X, s$}
   \State $l \gets \sum \{x \in X, x < 0\}, u \gets \sum \{x \in X, x > 0\}$
-  \State $V \gets [[\ ], [\ ], ...]$   \Comment{$u - l + 1$}
+  \State $V \gets [\nil, \nil, ...]$   \Comment{$u - l + 1$}
   \For{each $x$ in $X$}
     \State $U \gets$ \Call{Copy}{$V$}
     \For{$j \gets l$ to $u$}
       \If{$x = j$}
-        \State $U[j] \gets \{x\} \cons U[j]$
+        \State $U[j] \gets \{\{x\}\} \cup U[j]$
       \EndIf
       \State $j' \gets j - x$
-      \If{$l \leq j' \leq u$ 且 $V[j'] \neq [\ ]$}
-        \State $U[j] \gets U[j] \doubleplus [(x \cons S) | S \gets V[j']]$
+      \If{$l \leq j' \leq u$ 且 $V[j'] \neq \nil$}
+        \State $U[j] \gets U[j] \cup \{(\{x\} \cup S) | S \in V[j']\}$
       \EndIf
     \EndFor
     \State $V \gets U$
@@ -2543,62 +2543,21 @@ $x_2$ & F & F & ... & T & ... & T & ... & T & ... & T & ... & F \\
 \EndFunction
 \end{algorithmic}
 
-这一命令式算法含有一个清晰的结构，通过逐一处理每个元素，最终构造出保存解的表格。这可以通过fold以纯函数式的方式实现。我们仍然使用手指树作为向量，从$s_l$伸展到$s_u$。最开始时所有项均为空。
+我们可以用左侧叠加构建解列表$V = foldl\ bld\ (replicate (u - l + 1)\ \nil)\ X$，其中$\textit{replicate}\ n\ a$产生长度为$n$的列表：$[a, a, ..., a]$。$bld$用$X$中每个元素更新$V$。
 
 \be
-subsetsum(X, s) = fold(build, \{\phi, \phi, ..., \}, X)[s]
+bld\ V\ x = foldl\ f\ V\ [l, l + 1..., u]
 \ee
 
-经过fold后，解表格就构造好了，通过查询第$s$项就可以得到最终的答案\footnote{这里，我们再次跳过了$s < s_l$或$s > s_u$的错误处理，如果$s$不在上下限范围内，则无解。}。
-
-对于每一元素$x \in X$，函数$build$对列表$\{s_l, s_l + 1, ..., s_u\}$进行fold，对于每个值$j$，检查它是否等于$x$，并且将只有1个元素的集合$\{x\}$加入第$j$项。注意这里索引从$s_l$开始，而不是从0开始。如果对应值$j - x$的项不为空，则复制其中的所有子集，并将元素$x$加入到每个集合中。
+其中：
 
 \be
-build(T, x) = fold(f, T, \{s_l, s_l+1, ..., s_u\})
+f\ V\ j = \begin{cases}
+  j = x: & V[j] \cup \{\{x\}\} \\
+  l \leq j' \leq u \text{且} T[j'] \neq \nil: & V[j] \cup \{ \{x\} S | S \in T[j']\}, \text{其中}j' = j - x \\
+  \text{否则}: & V
+  \end{cases}
 \ee
-
-\be
-f(T, j) = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  T'[j] \cup \{\{x\} \cup Y | Y \in T[j']\} & s_l \leq j' \leq s_u \land T[j'] \neq \phi, j' = j - x \\
-  T' & otherwise
-  \end{array}
-\right.
-\label{eq:mutate1}
-\ee
-
-这里函数$f$对$T'$进行调整，而$T'$的定义如下：
-
-\be
-T' = \left \{
-  \begin{array}
-  {r@{\quad:\quad}l}
-  \{x\} \cup T[j] & x = j \\
-  T & otherwise
-  \end{array}
-\right.
-\label{eq:mutate2}
-\ee
-
-式(\ref{eq:mutate1})和(\ref{eq:mutate2})的第一行都返回一个新表格，其中的某些项根据给定值进行了更新。
-
-下面的Haskell例子程序实现了这一算法。
-
-\lstset{language=Haskell}
-\begin{lstlisting}[style=Haskell]
-subsetsum xs s = foldl build (fromList [[] | _ <- [l..u]]) xs `idx` s where
-  l = sum $ filter (< 0) xs
-  u = sum $ filter (> 0) xs
-  idx t i = index t (i - l)
-  build tab x = foldl (\t j -> let j' = j - x in
-                   adjustIf (l <= j' && j' <= u && tab `idx` j' /= [])
-                            (++ [(x:ys) | ys <- tab `idx` j']) j
-                            (adjustIf (x == j) ([x]:) j t)) tab [l..u]
-  adjustIf pred f i seq = if pred then adjust f (i - l) seq else seq
-\end{lstlisting}
-
-一些材料，如\cite{algo-fp}针对动态规划抽象出了一些公共结构。为了解决具体的问题，只需要向通用解中提供特定的前置条件，定义好如何决定一个解优于另一个，以及如何将子问题的解合并。但是在实际中，问题往往多种多样，十分复杂。我们需要仔细地分析问题的各种性质。
 
 \begin{Exercise}
 \Question{对于子集和的上下限，一定有$l \leq 0 \leq u$成立么？上下限能进一步缩小么？}
@@ -3252,25 +3211,39 @@ Bool subsetsum([Int] xs, Int s) {
 }
 \end{lstlisting}
 
-下面的Python例子程序实现了这一改进的算法。
+用一维列表求子集和问题的解：
 
-\lstset{language=Python}
-\begin{lstlisting}
-def subsetsum(xs, s):
+\begin{lstlisting}[language = Bourbaki]
+{{Int}} subsetsum(xs, s) {
     low = sum([x for x in xs if x < 0])
     up  = sum([x for x in xs if x > 0])
-    tab = [[] for _ in xrange(low, up+1)]
+    tab = [set([]) for _ in range(low, up+1)]
     for x in xs:
         tab1 = tab[:]
-        for j in xrange(low, up+1):
+        for j in range(low, up+1):
             if x == j:
-                tab1[j].append([x])
+                tab1[j] = tab1[j] | {frozenset([x])}
             j1 = j - x
-            if low <= j1 and j1 <= up and tab[j1] != []:
-                tab1[j] = tab1[j] + [[x] + ys for ys in tab[j1]]
+            if low <= j1 and j1 <= up and tab[j1]:
+                tab1[j] = tab1[j] | frozenset(ys | frozenset([x]) for ys in tab[j1])
         tab = tab1
     return tab[s]
+}
 \end{lstlisting}
+
+用左侧叠加求解子集和问题：
+
+\begin{Haskell}
+subsetsum xs s = foldl build (fromList [[] | _ <- [l..u]]) xs `idx` s where
+  l = sum $ filter (< 0) xs
+  u = sum $ filter (> 0) xs
+  idx t i = index t (i - l)
+  build tab x = foldl (\t j -> let j' = j - x in
+                   adjustIf (l <= j' && j' <= u && tab `idx` j' /= [])
+                            (++ [(x:ys) | ys <- tab `idx` j']) j
+                            (adjustIf (x == j) ([x]:) j t)) tab [l..u]
+  adjustIf pred f i seq = if pred then adjust f (i - l) seq else seq
+\end{Haskell}
 
 \ifx\wholebook\relax\else
 \section{参考答案}
