@@ -48,46 +48,33 @@ def solve(xs, s):
         r = []
         if xs[i - 1] == s:
             r.append([xs[i - 1]])
-        if i > 1:
+        if i > 0:
             if tab[i - 1][col(s)]:
                 r = r + fetch(s, i - 1)
             s = s - xs[i - 1]
             if low <= s and s <= up and tab[i-1][col(s)]:
                 r = r + [[xs[i - 1]] + ys for ys in fetch(s, i-1)]
         return r
-    return fetch(s, n) #existence: tab[-1][s]
-
-def get(xs, s, tab, n):
-    r = []
-    if xs[n] == s:
-        r.append([xs[n]])
-    if n > 0:
-        if tab[n-1][s]:
-            r = r + get(xs, s, tab, n-1)
-        if tab[n-1][s - xs[n]]:
-            r = r + [[xs[n]] + ys for ys in get(xs, s - xs[n], tab, n-1)]
-    return r
+    return fetch(s, n)
 
 # Method 2: Use a vector instead of a 2D table.
 def subsetsum(xs, s):
     low = sum([x for x in xs if x < 0])
     up  = sum([x for x in xs if x > 0])
-    tab = [[] for _ in range(low, up+1)]
+    tab = [set([]) for _ in range(low, up+1)]
     for x in xs:
         tab1 = tab[:]
         for j in range(low, up+1):
             if x == j:
-                tab1[j].append([x])
+                tab1[j] = tab1[j] | {frozenset([x])}
             j1 = j - x
-            if low <= j1 and j1 <= up and tab[j1] != []:
-                tab1[j] = tab1[j] + [[x] + ys for ys in tab[j1]]
+            if low <= j1 and j1 <= up and tab[j1]:
+                tab1[j] = tab1[j] | frozenset(ys | frozenset([x]) for ys in tab[j1])
         tab = tab1
-    return tab[s]
+    return list(tab[s])
 
 # Verification
 def test():
-    def sum1st(xss):
-        return sum(xss[0]) if xss else 0
     num = 100
     for i in range(num):
         n = random.randint(1, 10)
@@ -96,11 +83,13 @@ def test():
         u = sum([x for x in xs if x>0])
         s = random.randint(l, u)
         exist = brute_force(xs, s)
+        s1 = solve(xs, s)
+        s2 = subsetsum(xs, s)
+        #print(s1, s2, s, xs)
         if exist:
-            s1 = solve(xs, s)
-            s2 = subsetsum(xs, s)
-            print(xs, s, "==>", s1, sum1st(s1), s2, sum1st(s2))
-            assert(exist and sum1st(s1) == s and sum1st(s2) == s)
+            assert(s1 and all(sum(st) == s for st in (s1 + s2)) and len(s1) == len(s2))
+        else:
+            assert(s1 == [] and s2 == [])
     print(num, "test passed")
 
 if __name__ == "__main__":
