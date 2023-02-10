@@ -2513,58 +2513,35 @@ $x_2$ & F & F & ... & T & ... & T & ... & T & ... & T & ... & F \\
     \EndIf
     \State $s' \gets s - X[n]$
     \If{$l \leq s' \leq u$ 且 $T[n-1][s']$}
-      \State $r \gets r \doubleplus [X[n] \cons r' | r' \gets $ \Call{Get}{$X, s', T, n-1$} $]$
+      \State $r \gets r \doubleplus [(X[n] \cons r') | r' \gets $ \Call{Get}{$X, s', T, n-1$} $]$
     \EndIf
   \EndIf
   \State \Return $r$
 \EndFunction
 \end{algorithmic}
 
-这一子集和问题的动态规划解法循环了$O(n(s_u - s_l + 1))$次以构建表格，然后递归$O(n)$次从这一表格构造最后的解。它所用的空间也为$O(n(s_u - s_l + 1))$。
-
-我们可以使用一个向量来代替含有$n$行的表格。向量中的每一项对应一个可能的和，其中存储了子集的列表。开始时，向量中的所有项都为空。对于$X$中的每一个元素，我们不断更新向量，它记录了所有可能得到的和。当所有的元素都处理完毕后，对应$s$的那一项包含了最终的答案。
+动态规划法循环了$O(n(u - l + 1))$次以构建表格$T$，然后递归$O(n)$层反演解。二维表格需要$O(n(u - l + 1))$的空间。我们可以用一维$u - l + 1$元列表$V$代替二维表格。第$j$项对应和$j$，$V[j] = [S_1, S_2, ...]$，它存储子集的列表，并且$\sum S_1 = \sum S_2 = ... = j$。$V$中所有项初始为空。我们对$X$迭代，对每个$x_i$更新一轮$V$，记录加入$x_i$后能得到的子集之和。最终答案在$V[s]$中。
 
 \begin{algorithmic}[1]
 \Function{Subset-Sum}{$X, s$}
-  \State $s_l \gets \sum \{x \in X, x < 0\}$
-  \State $s_u \gets \sum \{x \in X, x > 0\}$
-  \State $T \gets \{\phi, \phi, ...\}$ \Comment{$s_u - s_l + 1$}
-  \For{$x \in X$}
-    \State $T' \gets$ \Call{Duplicate}{$T$}
-    \For{$j \gets s_l$ to $s_u$}
-      \State $j' \gets j - x$
+  \State $l \gets \sum \{x \in X, x < 0\}, u \gets \sum \{x \in X, x > 0\}$
+  \State $V \gets [[\ ], [\ ], ...]$   \Comment{$u - l + 1$}
+  \For{each $x$ in $X$}
+    \State $V' \gets$ \Call{Copy}{$V$}
+    \For{$j \gets l$ to $u$}
       \If{$x = j$}
-        \State $T'[j] \gets T'[j] \cup \{x\}$
+        \State $V'[j] \gets \{x\} \cons V'[j]$
       \EndIf
-      \If{$s_l \leq j' \leq s_u \land T[j'] \neq \phi$}
-        \State $T'[j] \gets T'[j] \cup \{\{x\} \cup S | S \in T[j']\}$
+      \State $j' \gets j - x$
+      \If{$l \leq j' \leq u$ 且 $V[j'] \neq [\ ]$}
+        \State $V'[j] \gets V'[j] \doubleplus [(x \cons S) | S \gets V[j']]$
       \EndIf
     \EndFor
-    \State $T \gets T'$
+    \State $V \gets V'$
   \EndFor
-  \State \Return $T[s]$
+  \State \Return $V[s]$
 \EndFunction
 \end{algorithmic}
-
-下面的Python例子程序实现了这一改进的算法。
-
-\lstset{language=Python}
-\begin{lstlisting}
-def subsetsum(xs, s):
-    low = sum([x for x in xs if x < 0])
-    up  = sum([x for x in xs if x > 0])
-    tab = [[] for _ in xrange(low, up+1)]
-    for x in xs:
-        tab1 = tab[:]
-        for j in xrange(low, up+1):
-            if x == j:
-                tab1[j].append([x])
-            j1 = j - x
-            if low <= j1 and j1 <= up and tab[j1] != []:
-                tab1[j] = tab1[j] + [[x] + ys for ys in tab[j1]]
-        tab = tab1
-    return tab[s]
-\end{lstlisting}
 
 这一命令式算法含有一个清晰的结构，通过逐一处理每个元素，最终构造出保存解的表格。这可以通过fold以纯函数式的方式实现。我们仍然使用手指树作为向量，从$s_l$伸展到$s_u$。最开始时所有项均为空。
 
@@ -3273,6 +3250,26 @@ Bool subsetsum([Int] xs, Int s) {
     }
     return tab[n][s - l]
 }
+\end{lstlisting}
+
+下面的Python例子程序实现了这一改进的算法。
+
+\lstset{language=Python}
+\begin{lstlisting}
+def subsetsum(xs, s):
+    low = sum([x for x in xs if x < 0])
+    up  = sum([x for x in xs if x > 0])
+    tab = [[] for _ in xrange(low, up+1)]
+    for x in xs:
+        tab1 = tab[:]
+        for j in xrange(low, up+1):
+            if x == j:
+                tab1[j].append([x])
+            j1 = j - x
+            if low <= j1 and j1 <= up and tab[j1] != []:
+                tab1[j] = tab1[j] + [[x] + ys for ys in tab[j1]]
+        tab = tab1
+    return tab[s]
 \end{lstlisting}
 
 \ifx\wholebook\relax\else
