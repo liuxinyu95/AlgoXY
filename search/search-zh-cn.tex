@@ -1677,37 +1677,50 @@ pr_B\ (p, q) = (\min(x + y, a), \max(0, x + y - a)) \\
 \end{cases}
 \ee
 
-这一方法总返回最快的步骤。我们无需在队列的每个元素中保存操作步骤，可以利用一个全局历史记录，如图\ref{fig:water-jugs}。初始状态为(0, 0)。只有fill A和fill B可行。接下来在记录(3, 0)的基础上尝试fill B，记录新结果(3, 5)。在(3, 0)的基础上尝试empty A将回到初始状态(0, 0)。我们跳过这一选项。图中灰色状态是重复的。通过这样的设计，我们无需在队列的每个元素中记录操作的序列。我们可以给图\ref{fig:water-jugs}中的每个节点增加一个父引用，利用它回溯到初始状态。
+这一方法总返回最快的步骤。我们无需在队列的每个元素中保存操作步骤，可以利用一个全局历史记录，如图\ref{fig:water-jugs}。初始状态为(0, 0)。只有fill A和fill B可行。接下来在记录(3, 0)的基础上尝试fill B，记录新结果(3, 5)。在(3, 0)的基础上尝试empty A将回到初始状态(0, 0)。我们跳过这一选项。图中灰色状态是重复的。我们可以给图\ref{fig:water-jugs}中的每个节点增加一个父引用，利用它回溯到初始状态。
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.5]{img/water-jugs}
-  \caption{全局列表}
+  \caption{全局记录}
   \label{fig:water-jugs}
 \end{figure}
 
 \begin{algorithmic}[1]
 \Function{Solve}{$a, b, g$}
-  \State $Q \gets \nil$
-  \State \Call{Push-and-record}{$Q$, (0, 0)}
+  \State $Q \gets \{(0, 0, \text{NIL})\}$
+  \State $V \gets \{(0, 0, \text{NIL})\}$  \Comment{全局记录集合}
   \While{$Q \neq \nil$}
     \State $s \gets$ \Call{Pop}{$Q$}
     \If{$p(s) = g$ 或 $q(s) = g$}
-      \State \Return $s$
+      \State \Return \Call{Back-track}{$s$}
     \Else
-      \State $C \gets$ \Call{Expand}{$s$}
-      \For{each $c$ in $C$}
-        \If{$c \neq s$ 且 ($not$ \Call{Visited}{$c$})}
-          \State \Call{Push-and-record}{$Q, c$}
+      \For{each $c$ in \Call{Expand}{$s, a, b$}}
+        \If{$c \neq s$ 且 $c \notin V$}
+          \State \Call{Push}{$Q, c$}
+          \State \Call{Add}{$V, c$}
         \EndIf
       \EndFor
     \EndIf
   \EndWhile
-  \State \Return $\nil$
+  \State \Return NIL
+\EndFunction
+\Statex
+\Function{Expand}{$s, a, b$}
+  \State $p \gets p(s), q \gets q(s)$
+  \State \Return $[(a, q, s), (p, b, s), (0, q, s), (p, 0, s), (\max(0, p + q - b), \min(p + q, b), s), (\min(p + q, a), \max(0, p + q - a), s)]$
+\EndFunction
+\Statex
+\Function{Back-track}{$s$}
+  \State $r \gets [\ ]$
+  \While{$s \neq$ NIL}
+    \State $(p, q, s') = s$
+    \State $r \gets (p, q) \cons r$
+    \State $s \gets s'$
+  \EndWhile
+  \State \Return $r$
 \EndFunction
 \end{algorithmic}
-
-其中\textproc{Push-and-record}将元素入队并记录入访问列表中。出队时并不删除元素，而是将队列头部向后移动。
 
 \begin{Exercise}
 \Question{给出完整的扩展欧几里得算法以解决倒水问题。}
@@ -2939,6 +2952,59 @@ solve' a b g = bfs $ Queue.singleton [(0, 0)] where
   pourA x y = (max 0 (x + y - b), min (x + y) b)
   pourB x y = (min (x + y) a, max 0 (x + y - a))
 \end{Haskell} %$
+
+倒水问题的迭代式广度优先实现：
+
+\begin{lstlisting}[language = Bourbaki]
+data Step {
+    Pair<Int> (p, q)
+    Step parent
+    Step(Pair<Int>(x, y), Step p = null) {
+      (p, q) = (x, y), parent = p
+    }
+}
+
+Bool (==) (Step a, Step b) = {a.(p, q) == b.(p, q)}
+Bool (!=) (Step a, Step b) = not . (==)
+
+[Step] expand(Step s, Int a, Int b) {
+    var (p, q) = s.(p, q)
+    return [Step(a, q, s), /*fill A*/
+            Step(p, b, s), /*fill B*/
+            Step(0, q, s), /*empty A*/
+            Step(p, 0, s), /*empty B*/
+            Step(max(0, p + q - b), min(p + q, b), s), /*pour A into B*/
+            Step(min(p + q, a), max(0, p + q - a), s)] /*pour B into A*/
+}
+
+Optional<[Step]> solve(Int a, Int b, Int g) {
+    q = Queue<Step>(Step(0, 0))
+    Set<Step> visited = {head(q)}
+    while not empty(q) {
+        var cur = pop(q)
+        if cur.p == g || cur.q == g {
+            return Optional.of(backtrack(cur))
+        } else {
+            for s in expand(cur, a, b) {
+                if cur != s and s not in visited {
+                    push(q, s)
+                    visited += s
+                }
+            }
+        }
+    }
+    return Optional.Nothing
+}
+
+[Step] backtrack(Step s) {
+    [Step] seq
+    while s != null {
+        seq = s : seq
+        s = s.parent
+    }
+    return seq
+}
+\end{lstlisting}
 
 华容道：
 
