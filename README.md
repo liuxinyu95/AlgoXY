@@ -12,7 +12,7 @@ This book introduces about elementary algorithms and data structure. It includes
 Contents
 --------
 
-I am re-writing this book from 2020/12. As of 2023/02, I rewrote all chapters except for the last one in English. The PDF can be downloaded for preview ([EN](https://github.com/liuxinyu95/AlgoXY/files/10804129/algoxy-en.pdf), [中文](https://github.com/liuxinyu95/AlgoXY/files/10804132/algoxy-zh-cn.pdf)). As the next step, I'll give answers, and add more exercises. The 1st edition in Chinese ([中文](http://www.ituring.com.cn/book/1907)) was published in 2017. I recently switched my focus to the Mathematics of programming, the new book is also available in ([github](https://github.com/liuxinyu95/unplugged))
+I am adding exercises and answers to the second edition from 2023/03. I rewrote the book from 2020/12 to 2022/02. The PDF can be downloaded for preview ([EN](https://github.com/liuxinyu95/AlgoXY/files/10804129/algoxy-en.pdf), [中文](https://github.com/liuxinyu95/AlgoXY/files/10804132/algoxy-zh-cn.pdf)). The 1st edition in Chinese ([中文](http://www.ituring.com.cn/book/1907)) was published in 2017. I recently switched my focus to the Mathematics of programming, the new book is also available in ([github](https://github.com/liuxinyu95/unplugged))
 
 
 - Preface
