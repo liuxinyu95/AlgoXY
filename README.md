@@ -1,9 +1,9 @@
 Elementary Algorithms
 ====
 
-Edition: $\varphi = \dfrac{1 + \sqrt{5}}{2} = 1.6180339887498949$
+Edition: $\displaystyle e = \sum \limits _{n=0}^{\infty }{\frac {1}{n!}} = 1 + {\frac {1}{1}}+{\frac {1}{1\cdot 2}}+{\frac {1}{1\cdot 2\cdot 3}}+\cdots . = 2.718283$
 
-2023/02
+2023/03
 
 This book introduces about elementary algorithms and data structure. It includes side-by-side comparison about purely functional realization and their imperative counterpart.
 
