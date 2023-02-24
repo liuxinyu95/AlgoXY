@@ -21,20 +21,22 @@
 
 \markboth{Preface}{Elementary Algorithms}
 
-Programmers learn elementary algorithms at school. Except for programming contest, code interview, they seldom use algorithms in commercial software development. When talking about algorithms in AI and machine learning, it actually means scientific modeling, but not about data structure or elementary algorithm. Even when programmers need them, they have already been provided in libraries. It seems quite enough to know about how to use the library as a tool but not `re-invent the wheel'.
+\chapter*{Preface}
+\phantomsection  % so hyperref creates bookmarks
+\addcontentsline{toc}{chapter}{Preface}
 
-I would say elementary algorithms are critical in solving `interesting problems', the usefulness of the problem set aside. Let's start with two problems.
+Programmers learn elementary algorithms at school. Except for programming contest or code interview, they seldom use algorithms in commercial software development. When talking about algorithms in AI and machine learning, people actually mean scientific modeling, but not about data structure or elementary algorithm. Even when programmers need them, they have already been provided in libraries. It seems quite enough to know about how to use the library as a tool but not `re-invent the wheel'. Elementary algorithms are fundamental things, Let's start with two problems.
 
-\section{The smallest free number}
+\section*{The smallest free number}
 \label{min-free} \index{minimum free number}
 
-Richard Bird gives an interesting programming problem to find the minimum number that not appears in a given list(Chapter 1, \cite{Bird-book}). It's common to use a number as the identifier (Id) to index entities. At any time, a number is either occupied or free. When client tries to acquire a new number as index, we want to always allocate the smallest available one. Suppose numbers are non-negative integers and those being occupied are recorded in a list, for example:
+Richard Bird gives an interesting problem to find the minimum number that not appears in a given list (Chapter 1, \cite{Bird-book}). People often use number to index entities. A number is either occupied or free. When acquires, we want to always allocate the smallest available one. Suppose numbers are non-negative integers and those being occupied are recorded in a list, for example:
 
-\begin{verbatim}
+\begin{Verbatim}[fontsize=\footnotesize]
 [18, 4, 8, 9, 16, 1, 14, 7, 19, 3, 0, 5, 2, 11, 6]
-\end{verbatim}
+\end{Verbatim}
 
-How can we find the smallest free number, which is 10, from the list? It seems quite easy to figure out the solution.
+How can we find the smallest free number, 10 from the list? It seems quite easy with exhaustive search:
 
 \begin{algorithmic}[1]
 \Function{Min-Free}{$A$}
@@ -62,39 +64,27 @@ Where the $\notin$ is realized like below.
 \EndFunction
 \end{algorithmic}
 
-Some environments have built-in implementation to test if an element is in a list. Below is an example program.
+Where $|X|$ is the length of $X$. Some environments have built-in implementation to test existence of an element. When there are millions of numbers, this solution performs poor. The time spent is quadratic to the length of the list. In a computer with 2 cores of 2.10 GHz CPU, and 2G RAM, the C implementation takes 5.4s to search the minimum free number among 100,000 numbers, and takes more than 8 minutes to handle a million numbers.
 
-\lstset{language=Python, frame=single}
-\begin{lstlisting}
-def minfree(lst):
-    i = 0
-    while True:
-        if i not in lst:
-            return i
-        i = i + 1
-\end{lstlisting}
-
-However, when there are millions of numbers being used, this solution performs poor. The time spent is quadratic to the length of the list. In a computer with 2 cores of 2.10 GHz CPU, and 2G RAM, the C implementation takes 5.4s to search the minimum free number among 100,000 numbers, and takes more than 8 minutes to handle a million numbers.
-
-\subsection{Improvement}
-The key idea to improve the solution is based on the fact that, for $n$ numbers $x_1, x_2, ..., x_n$, if there exists free number, some $x_i$ must be outside the range $[0, n)$; otherwise the list is exactly some permutation of $0, 1, ..., n - 1$ hence $n$ should be returned as the minimum free number. In summary:
+\subsection*{Improvement}
+For $n$ numbers $x_1, x_2, ..., x_n$, if there exists free number, some $x_i$ must be out of the range $[0, n)$; otherwise the list is exactly some permutation of $0, 1, ..., n - 1$ hence $n$ should be returned as the minimum free number.
 
 \be
 \textit{minfree}(x_1, x_2, ..., x_n) \leq n
 \label{min-free}
 \ee
 
-A better solution is to use an array of $n + 1$ flags to mark whether a number in range $[0, n]$ is free.
+We use an array $F$ of $n + 1$ flags to mark whether a number is free in $[0, n]$.
 
 \begin{algorithmic}[1]
 \Function{Min-Free}{$A$}
-  \State $F \gets $[False, False, ..., False] where $|F| = n+1$
-  \For{$\forall x \in A$}
+  \State $F \gets $[False, False, ..., False] \Comment{$n+1$}
+  \For{$x$ in $A$}
     \If{$x < n$}
       \State $F[x] \gets$ True
     \EndIf
   \EndFor
-  \For{$i \gets [0, n]$}
+  \For{$i \gets 0$ to $n$}
     \If{$F[i] =$ False}
       \State \Return $i$
     \EndIf
@@ -102,57 +92,42 @@ A better solution is to use an array of $n + 1$ flags to mark whether a number i
 \EndFunction
 \end{algorithmic}
 
-Line 2 initializes a flag array all of False values. Then we scan all numbers in $A$ and mark the corresponding flag to True if the value is less than $n$. Finally, we iterate to find the first False flag. This program takes time proportion to $n$. It uses $n + 1$ flags to cover the special case that $sorted(A) = [0, 1, 2, ..., n-1]$. This solution is much faster than the brute force one. In the same computer, the Python implementation takes 0.02s when dealing with 100,000 numbers.
+Initializes $F$ with all False values. For every number $x$ in $A$, mark the flag $F[x]$ true if $x < n$. Finally, scan $F$ to find the first false flag. This program takes time proportion to $n$. It uses $n + 1$ flags to cover the special case that $sort(A) = [0, 1, 2, ..., n-1]$. It needs $O(n)$ space to store the flags $F$, then release it when finish. To avoid repeated allocation and release, we can allocate a sufficient big one in advance for reusing, and change to bit-wise flags instead of array. The C implementation handles 1 million numbers in 0.023s in the same computer.
 
-Although this solution only takes $O(n)$ time, it needs additional $O(n)$ space to store the flags. We haven't tuned it yet. Each time the program allocates memory to create an array of $n + 1$ flags, then releases it when finish. Such memory allocation and release is expensive and cost a lot of processing time.
+%% \begin{lstlisting}[language=C]
+%% #define N 1000000
+%% #define WORD_LENGTH (sizeof(int) * 8)
 
-To improve it, we can allocate the memory in advance for later reusing, and change to bit-wise flags instead of array. For example as the following C program:
+%% void setbit(unsigned int* bits, unsigned int i) {
+%%     bits[i / WORD_LENGTH] |= 1 << (i % WORD_LENGTH);
+%% }
 
-\begin{lstlisting}[language=C]
-#define N 1000000
-#define WORD_LENGTH (sizeof(int) * 8)
+%% int testbit(unsigned int* bits, unsigned int i) {
+%%     return bits[i / WORD_LENGTH] & (1 << (i % WORD_LENGTH));
+%% }
 
-void setbit(unsigned int* bits, unsigned int i) {
-    bits[i / WORD_LENGTH] |= 1 << (i % WORD_LENGTH);
-}
+%% unsigned int bits[N / WORD_LENGTH + 1];
 
-int testbit(unsigned int* bits, unsigned int i) {
-    return bits[i / WORD_LENGTH] & (1 << (i % WORD_LENGTH));
-}
+%% int minfree(int* xs, int n) {
+%%   int i, len = N/WORD_LENGTH + 1;
+%%   for (i = 0; i < len; ++i) {
+%%       bits[i]=0;
+%%   }
+%%   for (i=0; i < n; ++i) {
+%%       if(xs[i] < n) {
+%%           setbit(bits, xs[i]);
+%%       }
+%%   }
+%%   for (i=0; i <= n; ++i) {
+%%       if (!testbit(bits, i)) {
+%%           return i;
+%%       }
+%%   }
+%% }
+%% \end{lstlisting}
 
-unsigned int bits[N / WORD_LENGTH + 1];
-
-int minfree(int* xs, int n) {
-  int i, len = N/WORD_LENGTH + 1;
-  for (i = 0; i < len; ++i) {
-      bits[i]=0;
-  }
-  for (i=0; i < n; ++i) {
-      if(xs[i] < n) {
-          setbit(bits, xs[i]);
-      }
-  }
-  for (i=0; i <= n; ++i) {
-      if (!testbit(bits, i)) {
-          return i;
-      }
-  }
-}
-\end{lstlisting}
-
-This program can handle 1 million numbers in 0.023s in the same computer.
-
-\subsection{Divide and Conquer}
-The above improvement costs $O(n)$ additional space for flags, can we eliminate it? The divide and conquer strategy is to break the problem into smaller ones, then solve them separately to get the answer.
-
-We can put numbers $x_i \leq \lfloor n/2 \rfloor$ into a sub-list $A'$ and put the rest into another sub-list $A''$. According to (\ref{min-free}), if the length of $A'$ equals to $\lfloor n/2 \rfloor$, it means $A'$ is `full'. The minimum free number must be in $A''$. We can recursively search in $A''$ which is shorter the original list. Otherwise, it means the minimum free number is in $A'$, which again leads to a smaller problem.
-
-When search in $A''$, the conditions change a bit. We do not start from $0$, but from $\lfloor n/2 \rfloor + 1$ as the new lower bound. We define the algorithm as $search(A, l, u)$, where $l$ is
-the lower bound and $u$ is the upper bound index. For the empty list as a special case, we return the $l$ as the result.
-
-\[
-minfree(A) = search(A, 0, |A|-1)
-\]
+\subsection*{Divide and Conquer}
+The divide and conquer strategy breaks the problem into smaller ones, then solve them separately. Collect the numbers $x_i \leq \lfloor n/2 \rfloor$ into a sub-list $A'$ and the rest into another sub-list $A''$. According to (\ref{min-free}), if the length of $A'$ equals to $\lfloor n/2 \rfloor$, it means $A'$ is `full'. The minimum free number must be in $A''$, otherwise in $A'$. Both cases lead to a smaller problem. When search in $A''$, the boundaries change. We do not start from $0$, but from $\lfloor n/2 \rfloor + 1$. We define the algorithm as $search(A, l, u)$, where $l$ is the lower bound and $u$ is the upper bound. When start $l = 0$, $u = |A| - 1$, i.e., $minfree(A) = search(A, 0, |A|-1)$
 
 \[
 \begin{array}{rcl}
@@ -164,13 +139,14 @@ search(A, l, u) & = & \begin{cases}
 \end{array}
 \]
 
-where
+where:
 
-\[ \begin{array}{rcl}
-m & = & \displaystyle \lfloor \frac{l+u}{2} \rfloor \\
-A' & = & [ x | x \in A, x \leq m ] \\
-A''& = & [ x | x \in A, x > m ] \\
-\end{array} \]
+\[
+\begin{cases}
+m = \lfloor \dfrac{l + u}{2} \rfloor \\
+A' = [x \in A, x \leq m ], A'' = [x \in A, x > m ] \\
+\end{cases}
+\]
 
 This algorithm doesn't need additional space\footnote{The recursion takes $O(\lg n)$ stack spaces, but it can be eliminated through tail recursion optimization}. Each recursive call performs $O(|A|)$ comparisons to build $A'$ and $A''$. After that the problem scale halves. Therefore, the time is bound to $T(n) = T(n/2) + O(n)$, which reduce to $O(n)$ according to master theorem. Alternatively, observe that the first call takes $O(n)$ to build $A'$ and $A''$ and the second call takes $O(n/2)$, and $O(n/4)$ for the third... The total time is $O(n + n/2 + n/4 + ...) = O(2n) = O(n)$. We use $[a | a \in A, p(a)]$ for list. It is different with $\{a | a \in A, p(a) \}$, which is a set.
 
