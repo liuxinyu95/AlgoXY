@@ -148,10 +148,9 @@ A' = [x \in A, x \leq m ], A'' = [x \in A, x > m ] \\
 \end{cases}
 \]
 
-This algorithm doesn't need additional space\footnote{The recursion takes $O(\lg n)$ stack spaces, but it can be eliminated through tail recursion optimization}. Each recursive call performs $O(|A|)$ comparisons to build $A'$ and $A''$. After that the problem scale halves. Therefore, the time is bound to $T(n) = T(n/2) + O(n)$, which reduce to $O(n)$ according to master theorem. Alternatively, observe that the first call takes $O(n)$ to build $A'$ and $A''$ and the second call takes $O(n/2)$, and $O(n/4)$ for the third... The total time is $O(n + n/2 + n/4 + ...) = O(2n) = O(n)$. We use $[a | a \in A, p(a)]$ for list. It is different with $\{a | a \in A, p(a) \}$, which is a set.
+This algorithm doesn't need additional space\footnote{The recursion takes $O(\lg n)$ stack spaces, but it can be eliminated through tail recursion optimization}. Each recursive call performs $O(|A|)$ comparisons to partition $A'$ and $A''$, hence halves the problem as $T(n) = T(n/2) + O(n)$. We can reduce it to $O(n)$ according to the master theorem. Alternatively, the first call takes $O(n)$ time to partition $A'$ and $A''$, the second call takes $O(n/2)$ time, the third call takes $O(n/4)$ time ... The total time is $O(n + n/2 + n/4 + ...) = O(2n) = O(n)$. Below example Haskell program implements this algorithm.
 
-Below example Haskell program implements this algorithm.
-
+\lstset{frame = single}
 \begin{Haskell}
 minFree xs = bsearch xs 0 (length xs - 1)
 
@@ -163,8 +162,7 @@ bsearch xs l u | xs == [] = l
       (as, bs) = partition (<=m) xs
 \end{Haskell}
 
-\subsection{Expressiveness and performance}
-One may concern the performance of this divide and conquer algorithm. There are $O(\lg n)$ recursive calls, which need additional stack space. If wanted, we can eliminate the recursion:
+There are $O(\lg n)$ recursive calls. We can eliminate the recursion with loops:
 
 \begin{algorithmic}[1]
 \Function{Min-Free}{$A$}
@@ -174,7 +172,7 @@ One may concern the performance of this divide and conquer algorithm. There are 
     \State $left \gets l$
     \For{$right \gets l$ to $u - 1$}
       \If{$A[right] \leq m$}
-        \State $A[left] \leftrightarrow A[right]$
+        \State Exchange $A[left] \leftrightarrow A[right]$
         \State $left \gets left + 1$
       \EndIf
     \EndFor
@@ -192,18 +190,17 @@ As shown in figure \ref{fig:divide}, this program re-arranges the array such tha
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.7]{img/divide-by-m}
-  \caption{Divide the array, all $A[i] \leq m$ where $0 \leq i < left$; while all $A[i] > m$ where $left \leq i < right$. The rest elements haven't been processed yet.} \label{fig:divide}
+  \caption{All $A[i] \leq m$ where $0 \leq i < left$; while $A[i] > m$ where $left \leq i < right$. The rest elements are yet to be scanned.}
+  \label{fig:divide}
 \end{figure}
 
-This solution is fast and needn't extra stack space. However, compare to the previous recursive one, there is some expressiveness drops. Depends on individual taste, one may prefer one over the other.
-
-\section{Regular number}
+\section*{Regular number}
 
 The second puzzle is to find the 1,500-th number, which only contains factor 2, 3 or 5. Such numbers are called regular number, also known as 5-smooth indicating the greatest prime factor is at most 5, or Hamming numbers named after Richard Hamming in computer science. 2, 3, and 5 are of course regular numbers. $60 = 2^23^15^1$ is the 25-th number. $21 = 2^03^17^1$ is not valid because it has a factor 7. We consider $1=2^03^05^0$ be the 0-th regular number. The first 10 regular numbers are:
 
 1, 2, 3, 4, 5, 6, 8, 9, 10, 12, ...
 
-\subsection{The brute-force solution}
+\subsection*{The brute-force solution}
 The straightforward way is to check numbers one by one from 1, extract all factors of 2, 3 and 5 to see if the left part is 1:
 
 \begin{algorithmic}[1]
@@ -234,7 +231,7 @@ The straightforward way is to check numbers one by one from 1, extract all facto
 
 This `brute-force' algorithm works for small $n$. However, to find the 1500-th regular number (which is 860934420), its C implementation takes 40.39s in above computer. When $n$ increases to 15,000, it can't terminate after 10 minutes.
 
-\subsection{Improvement}
+\subsection*{Improvement}
 Modular and divide calculations are very expensive \cite{Bentley}. And they are executed a lot in loops. Instead of checking if a number only contains 2, 3, or 5 as factors, we can construct regular number from these three factors. We can start from 1, multiply it with 2, 3, or 5 to generate the rest numbers. The problem turns to be how to generate regular numbers in order? One method is to utilize the queue data structure.
 
 A queue allows to add element to one end (called enqueue), and delete from the other (called dequeue). The element enqueued first will be dequeued first. This nature is called FIFO (First In First Out). The idea is to add 1 as the first number to the queue. We repeatedly dequeue a number, multiply it with 2, 3, and 5, to generate 3 new numbers; then add them back to the queue in order. A new generated number may already exist in the queue. In such case, we drop the duplicated number. Because the new number may be smaller than the others in the queue, we must put them at the correct position. Figure \ref{fig:queues} shows this idea.
@@ -317,7 +314,7 @@ merge (x:xs) (y:ys) | x < y = x : merge xs (y:ys)
 
 The 1500th number 860934420 is given by \texttt{ns !! 1500}. In the same computer, it takes about 0.03s to output the answer.
 
-\subsection{Queues}
+\subsection*{Queues}
 Although the improved solution is much faster than the original brute-force one, it generates duplicated numbers, and they are eventually dropped. In order to keep numbers ordered, it needs linear time scan and insertion, which degrades the enqueue operation from constant time to $O(|Q|)$. To avoid duplication, we can separate all regular numbers into 3 disjoint buckets: $Q_2 = \{2^i | i > 0\}$, $Q_{23} = \{ 2^i3^j | i \geq 0, j > 0 \}$, and $Q_{235} = \{ 2^i3^j5^k | i,j \geq 0, k > 0\}$. The constraints that $j \neq 0$ in $Q_{23}$, and $k \neq 0$ in $Q_{235}$ ensure there is no overlap. The bucket is realized as a queue. They are initialized as $Q_2 = \{ 2 \}$, $Q_{23} = \{ 3\}$, and $Q_{235} = \{ 5 \}$. Starting from 1, each time we extract the smallest number $x$ from the three queues as the next regular number. Then do the following:
 
 \begin{itemize}
