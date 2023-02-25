@@ -1040,51 +1040,38 @@ map (floor . sqrt) [1..100]
 \subsection{反转}
 \index{列表!反转} \label{sec:reverse}
 
-如何用最小的空间反转一个单向链表是一道经典题目，需要仔细操作节点的引用。其实存在一个简单的策略：
-
-\begin{enumerate}
-\item 先写出一个纯递归解；
-\item 转换为尾递归；
-\item 将尾递归转换为命令式操作。
-\end{enumerate}
-
-纯递归解很直观，为了反转列表$L$。
-
-\begin{itemize}
-\item 若$L$为空，反转结果也为空；
-\item 否则，递归地反转子列表$L'$，然后将第一个元素添加到尾部。
-\end{itemize}
+如何用最小的空间反转一个单向链表是一道经典题目，需要仔细操作节点的引用。有一个简单的策略：（1）先写出一个纯递归解；（2）转换为尾递归；（3）将尾递归转换为命令式操作。纯递归解很直观，为了反转列表$X$。若$X$为空，反转结果也为空；否则，递归地反转子列表$X'$，然后将第一个元素添加到尾部。
 
 \be
 \begin{array}{rcl}
-reverse(\nil) & = & \nil \\
-reverse(x:xs) & = & append(reverse(xs), x) \\
+reverse [\ ] & = & [\ ] \\
+reverse (x \cons xs) & = & append\ (reverse\ xs)\ x \\
 \end{array}
 \ee
 
-但是这一方法的性能不佳。每次需要遍历列表以在尾部添加元素。总体时间复杂度是平方级的。可以将其优化为尾递归形式。我们使用一个累积器来记录中间的反转结果，并传入空列表来启动反转$reverse = reverse'(\nil)$。
+但是这一方法的性能不佳。每次需要遍历列表以在尾部添加元素。总体时间复杂度是平方级的。可以将其优化为尾递归形式。我们使用一个累积器来记录中间的反转结果，并传入空列表来启动反转$reverse = reverse'\ [\ ]$。
 
 \be
 \begin{array}{rcl}
-reverse'(A,\ \nil) & = & A \\
-reverse'(A,\ x:xs) & = & reverse'(x:A,\ xs) \\
+reverse'\ a\ [\ ] & = & a \\
+reverse'\ a\ (x \cons xs) & = & reverse'\ (x \cons a)\ xs \\
 \end{array}
 \ee
 
 不同于在尾部添加，cons是常数时间操作。我们不断从列表的头部逐一取出元素，将其置于累积结果的前面。这相当于将全部元素压入一个堆栈，然后再依次弹出。整体上是线性时间的。由于尾递归无需记录上下文环境，我们可以将其优化为循环迭代：
 
 \begin{algorithmic}[1]
-\Function{Reverse}{$L$}
+\Function{Reverse}{$X$}
   \State $A \gets$ NIL
-  \While{$L \neq$ NIL}
-    \State $A \gets $ \textproc{Cons}(\Call{First}{$L$}, $A$)
-    \State $L \gets$ \Call{Rest}{$L$}
+  \While{$X \neq$ NIL}
+    \State $A \gets $ \textproc{Cons}(\Call{First}{$X$}, $A$)
+    \State $X \gets$ \Call{Rest}{$X$}
   \EndWhile
   \State \Return $A$
 \EndFunction
 \end{algorithmic}
 
-但是，这一算法生成了一个新的反转列表，而不是在原列表上直接修改。我们接下来要通过重用$L$将其改为就地修改的形式。如下面的例子程序：
+但是，这一算法生成了一个新的反转列表，而不是在原列表上直接修改。我们接下来要通过重用$X$将其改为就地修改的形式。如下面的例子程序：
 
 \begin{lstlisting}[language=Bourbaki]
 List<T> reverse(List<T> xs) {
@@ -1112,50 +1099,48 @@ List<T> reverse(List<T> xs) {
 \subsection{截取、丢弃、分割}
 \index{列表!截取} \index{列表!丢弃} \index{列表!分割}
 
-从列表中取出前$n$个元素，相当于获取从第1到第$n$个元素的的子列表：$sublist(1, n, L)$。如果$n$为0或$L = \nil$，则子列表为空；否则，递归地在$L'$中取出$n-1$个元素，再将原头部元素置于最前。
+从列表中取出前$n$个元素，相当于获取从第1到第$n$个元素的的子列表：$sublist\ 1\ n\ X$。如果$n$为0或$X = [\ ]$，则子列表为空；否则，递归地在$X'$中取出$n-1$个元素，再将原头部元素置于最前。
 
 \be
 \begin{array}{rcl}
-take(0, L) & = & \nil \\
-take(n, \nil) & = & \nil \\
-take(n, x:xs) & = & x : take(n - 1, xs) \\
+take\ 0\ xs & = & [\ ] \\
+take\ n\ [\ ] & = & [\ ] \\
+take\ n\ (x \cons xs) & = & x : take\ (n - 1)\ xs \\
 \end{array}
 \ee
 
-这一算法是这样处理越界情况的：如果$n > |L|$或$n$为负数，最终转化为$L$为空的边界情况，返回整个列表作为结果。
-
-从列表中丢弃前$n$个元素，等价于从右侧获取子列表$sublist(n+1, |L|, L)$，其中$|L|$是列表的长度。它的实现和$take$是对称的：
+这一算法是这样处理越界情况的：如果$n > |X|$或$n$为负数，最终转化为$X$为空的边界情况，返回整个列表作为结果。从列表中丢弃前$n$个元素，等价于从右侧获取子列表$sublist\ (n+1)\ |X|\ X$，其中$|X|$是列表的长度。它的实现和$take$是对称的：
 
 \be
 \begin{array}{rcl}
-drop(0, L) & = & L \\
-drop(n, \nil) & = & \nil \\
-drop(n, x:xs) & = & drop(n - 1, xs) \\
+drop\ 0\ xs & = & xs \\
+drop\ n\ [\ ] & = & [\ ] \\
+drop\ n\ (x \cons xs) & = & drop\ (n - 1)\ xs \\
 \end{array}
 \ee
 
 我们把对应的迭代实现留作本节的练习。使用取出和丢弃操作，可以在列表的任何位置获取指定长度的子列表。
 
 \be
-sublist(from, cnt, L) = take(cnt, drop(from - 1, L))
+sublist\ from\ cnt\ X = take\ cnt\ (drop\ (from - 1)\ X)
 \ee
 
 另外一种形式，是传入左侧和右侧的边界：
 
 \be
-slice(from, to, L) = drop(from - 1, take(to, L))
+slice\ from\ to\ X = drop\ (from - 1)\ (take\ to\ X)
 \ee
 
 \index{List!split at}
 边界的定义为闭区间$[from, to]$，包括两端。我们也可以在指定位置把列表分割开：
 
 \be
-splitAt(i, L) = (take(i, L), drop(i, L))
+splitAt\ i\ X = (take\ i\ X, drop\ i\ X)
 \label{eq:split-at}
 \ee
 
 \begin{Exercise}
-\Question{将$sublist$和$slice$改写为柯里化形式，从而无需$L$作为参数。}
+\Question{将$sublist$和$slice$改写为柯里化形式，无需$X$作为参数。}
 \end{Exercise}
 
 \subsubsection{条件截取和丢弃}
