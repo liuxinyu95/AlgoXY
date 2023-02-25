@@ -72,7 +72,7 @@ data List<A> {
 \subsection{分解}
 \index{列表!头} \index{列表!尾} \index{列表!构造} \index{列表!cons}
 
-给定一个非空列表$X$，我们定义两个函数\footnote{本书通常将函数调用$f(x)$记为$f\ x$，多元函数$f(x, y, z)$记为$f\ x\ y\ z$。}来分别获取头部元素和子列表。它们通常被命名为\textit{first}\ $X$和\textit{rest}\ $X$，或者$head\ X$和$tail\ X$\footnote{在Lisp中，由于历史原因，它们被命名为\texttt{car}和\texttt{cdr}用以代表当时机器中的寄存器\cite{SICP}}。反之，我们可以从一个元素$x$和列表$xs$（可为空）构造出另一个列表，记为$x \cons xs$。这一构造过程也叫作cons。我们有如下关系：
+给定一个非空列表$X$，我们定义两个函数\footnote{本书通常将函数调用$f(x)$记为$f\ x$，多元函数$f(x, y, ..., z)$记为$f\ x\ y\ ...\ z$。}来分别获取头部元素和子列表。它们通常被命名为\textit{first}\ $X$和\textit{rest}\ $X$，或者$head\ X$和$tail\ X$\footnote{在Lisp中，由于历史原因，它们被命名为\texttt{car}和\texttt{cdr}用以代表当时机器中的寄存器\cite{SICP}}。反之，我们可以从一个元素$x$和列表$xs$（可为空）构造出另一个列表，记为$x \cons xs$。这一构造过程也叫作cons。我们有如下关系：
 
 \be
 \begin{cases}
@@ -525,103 +525,78 @@ X \doubleplus [\ ] & = & X \\
 
 \subsection{和与积}
 \index{列表!和} \index{列表!积}
-我们常常需要计算列表中数字的和与积。它们有着共同的计算结构，在第\ref{sec:fold}节中，我们介绍如何对它们进行抽象。
-
-\subsubsection{递归求和与求积}
-
-为了计算列表中元素的和：
-
-\begin{itemize}
-\item 若列表为空，则结果为0；
-\item 否则，结果为第一个元素加上剩余元素的和。
-\end{itemize}
-
-\be
-\begin{array}{rcl}
-sum(\nil) & = & 0 \\
-sum(x:xs) & = & x + sum(xs) \\
-\end{array}
-\ee
-
-求积时，不能简单地将加法替换为乘法，否则结果总为0。我们需要定义空列表的积为1。
-
-\be
-\begin{array}{rcl}
-product(\nil) & = & 1 \\
-product(x:xs) & = & x \cdot product(xs) \\
-\end{array}
-\ee
-
-两个算法都需要遍历整个列表，它们的性能为$O(n)$，其中$n$为长度。
-
-\subsubsection{尾递归}
-\index{尾递归} \index{尾调用} \index{尾递归调用}
-\label{sec:tail-call}
-
-求和、求积算法都从右向左计算。我们可以将其改成从左向右\textbf{累积计算}。求和时，结果从0开始累积，逐一将元素加到结果上。求积时，从1开始累积，逐一将元素乘到结果上。累积过程定义如下：
-
-\begin{itemize}
-\item 若列表为空，返回当前累积结果；
-\item 否则，取出表头元素，将其累积到结果上，然后继续处理剩余列表。
-\end{itemize}
-
-下面是求和、求积的累积计算：
+我们常常需要计算列表中数字的和与积。它们有着共同的计算结构，在第\ref{sec:fold}节中，我们介绍如何对它们进行抽象。若列表为空，则和为0；否则，列表和为为第一个元素加上剩余元素的和。求积时不能简单地将加法替换为乘法，否则结果总为0。定义空列表的积为1。
 
 \be
 \begin{array}{cc}
-  \begin{array}{rl}
-  sum'(A,\ \nil) = & A \\
-  sum'(A,\ x:xs) = & sum(x + A, xs) \\
+  \begin{array}{rcl}
+  sum\ [\ ] & = & 0 \\
+  sum\ (x \cons xs) & = & x + sum\ xs \\
   \end{array}
   &
-  \begin{array}{rl}
-  prod'(A,\ \nil) = & A \\
-  prod'(A,\ x:xs) = & prod'(x \cdot A, xs) \\
+  \begin{array}{rcl}
+  product\ [\ ] & = & 1 \\
+  product(x:xs) & = & x \cdot product\ xs \\
+  \end{array}
+\end{array}
+\ee
+
+\index{尾递归} \index{尾调用} \index{尾递归调用}
+\label{sec:tail-call}
+两个算法都需要遍历整个列表，复杂度为$O(n)$，其中$n$为长度。求和、求积都从右向左计算。我们可以将其改成从左向右\textbf{累积计算}。求和时从0开始累积，逐一将元素加到结果上。求积时从1开始累积，逐一将元素乘到结果上。累积过程定义为：若列表为空，返回当前累积结果；否则，取出表头元素，将其累积到结果上，然后继续处理剩余列表。下面是求和、求积的累积计算：
+
+\be
+\begin{array}{cc}
+  \begin{array}{rcl}
+  sum'\ a\ [\ ] & = & a \\
+  sum'\ a\ (x \cons xs) & = & sum\ (x + a)\ xs \\
+  \end{array}
+  &
+  \begin{array}{rcl}
+  prod'\ a\ [\ ] & = & a \\
+  prod'\ a\ (x \cons xs) & = & prod'\ (x \cdot a)\ xs \\
   \end{array} \\
 \end{array}
 \ee
 
-给定数字列表，我们以0为累积起始值调用$sum'$，以1为累积起始值调用$prod'$：
+给定列表，我们以0为累积起始值调用$sum'$，以1为累积起始值调用$prod'$：
 
 \be
-sum(X) = sum'(0, X)
+sum\ xs = sum'\ 0\ xs
 \quad \quad \quad
-product(X) = prod'(1, X)
+product\ xs = prod'\ 1\ xs
 \ee
 
 或使用柯里化形式：
 
 \[
-sum = sum'(0) \quad \quad \quad product = prod'(1)
+sum = sum'\ 0 \quad \quad \quad product = prod'\ 1
 \]
 
 \index{柯里化形式} \index{柯里化}
+\textbf{柯里化}是肖芬格尔(Schönfinkel, 1889 - 1942)在1924年提出的。哈斯克尔·柯里在1958年后广泛使用\cite{slpj-book-1987}。考虑二元函数$f(x, y)$，如果只传入$x$，它就转换为一个关于$y$的一元函数：$g(y) = f(x, y)$，记为$g = f\ x$。推广到多元函数$f(x, y, ..., z)$，通过依次传入参数，可以转换为一系列函数：$f, f\ x, f\ x\ y, ...$。我们称这样的转换为柯里化。它可以把多元函数转化为一系列一元函数，即：$f(x, y, ..., z) = f(x)(y)...(z) = f\ x\ y\ ...\ z$。
 
-\textbf{柯里化}是由肖芬格尔(Schönfinkel, 1889 - 1942)在1924年提出，后来经哈斯克尔 · 柯里在1958 年后被广泛使用的\cite{slpj-book-1987}。考虑二元函数$f(x, y)$，如果只传入一个参数$x$，它就转换为一个关于$y$的一元函数：$g(y) = f(x, y)$，记为$g = f\ x$。推广到多元函数$f(x, y, ..., z)$，通过依次传入参数，可以转换为一系列函数：$f, f\ x, f\ x\ y, ...$。我们称这样的转换为柯里化。它可以把多元函数转化为一系列一元函数，即：$f(x, y, ..., z) = f(x)(y)...(z) = f\ x\ y\ ...\ z$。
-
-采用累积法后，不仅计算顺序变为从左向右，并且无需记录任何中间结果或者状态用于递归。所有的状态或作为参数（例如$A$）传入，或丢弃不用（例如已处理过的元素）。这样的递归可进一步优化为循环。我们称这样的函数为“尾递归”（或“尾调用”），称这种消除递归的优化为“尾递归优化”\cite{wiki-tail-call}。顾名思义，在这类函数中，递归发生在计算的尾部。尾递归优化可以极大地提高性能，并避免由于递归过深造成的调用栈溢出。
-
-在第\ref{sec:isort}节关于插入排序的部分，其递归实现从右向左对元素排序。我们也可以将其优化为尾递归：
+采用累积法后，计算顺序变为从左向右，并且无需记录中间结果、状态用于递归。所有状态或作为参数（例如$a$）传入，或丢弃不用（例如已处理过的元素）。这样的递归可进一步转化为循环。我们称这样的函数为“尾递归”（或“尾调用”），称这种消除递归的优化为“尾递归优化”\cite{wiki-tail-call}。顾名思义，在这类函数中，递归发生在计算尾部。尾递归优化可以极大地提高性能，并避免由于递归过深造成的调用栈溢出。在第\ref{sec:isort}节关于插入排序的部分，其递归实现从右向左对元素排序。我们也可以将其转化为尾递归：
 
 \be
 \begin{array}{rcl}
-sort'(A,\ \nil) & = & A \\
-sort'(A,\ x:xs) & = & sort'(insert(x, A), xs) \\
+sort'\ a\ [\ ] & = & a \\
+sort'\ a\ (x \cons xs) & = & sort'\ (insert\ x\ a)\ xs \\
 \end{array}
 \ee
 
-这样排序可以定义为传入$\nil$作为起始值的柯里化形式：
+这样排序可以定义为传入$[\ ]$作为起始值的柯里化形式：
 
 \be
-sort = sort'(\nil)
+sort = sort'\ [\ ]
 \ee
 
-作为尾递归的典型例子，我们考虑如何高效地计算幂$b^n$？（\cite{SICP}，1.16节。）最直接的方法是从1开始重复乘以$b$共$n$次，这是一个$O(n)$时间的方法：
+作为尾递归的典型例子，我们考虑如何高效地计算幂$b^n$（\cite{SICP}，1.16节。）。最直接的方法是从1开始重复乘以$b$共$n$次，这是一个$O(n)$时间的方法：
 
 \begin{algorithmic}[1]
 \Function{Pow}{$b, n$}
   \State $x \gets 1$
-  \Loop{ $n$ times}
+  \Loop{ $n$次}
     \State $x \gets x \cdot b$
   \EndLoop
   \State \Return $x$
@@ -637,13 +612,7 @@ b^n & = & (b^{\frac{n}{2}})^2 \\
 \end{array}
 \]
 
-继续这一分而治之的想法，我们可以将$n$推广到任意的非负整数：
-
-\begin{itemize}
-\item 若$n = 0$，定义$b^0 = 1$；
-\item 若$n$为偶数，将$n$减半，先计算$b^{\frac{n}{2}}$，然后再将结果平方；
-\item 若$n$为奇数，因为$n-1$是偶数，可以先递归计算$b^{n-1}$，然后再将结果乘以$b$。
-\end{itemize}
+继续这一分治策略，我们可以将$n$推广到任意的非负整数：若$n = 0$，定义$b^0 = 1$；若$n$为偶数，将$n$减半，先计算$b^{\frac{n}{2}}$，然后再将结果平方；若$n$为奇数，因为$n-1$是偶数，可以先递归计算$b^{n-1}$，然后再将结果乘以$b$。
 
 \be
 \begin{array}{rcl}
@@ -671,17 +640,15 @@ b^n & = & \begin{cases}
 
 \be
 \begin{array}{rcl}
-pow(b, 0, A) & = & A \\
-pow(b, n, A) & = & \begin{cases}
-  2 | n : & pow(b^2, \dfrac{n}{2}, A) \\
-  \text{否则}: & pow(b, n - 1, b \cdot A) \\
+pow(b, 0, a) & = & a \\
+pow(b, n, a) & = & \begin{cases}
+  2 | n : & pow(b^2, \dfrac{n}{2}, a) \\
+  \text{否则}: & pow(b, n - 1, ab) \\
 \end{cases}
 \end{array}
 \ee
 
-和最初的方法相比，其性能提高到了$O(\lg n)$。我们还可以继续改进，如果将$n$表示成二进制数$n = (a_ma_{m-1}...a_1a_0)_2$，如果$a_i = 1$，我们清楚地知道，需要计算$b^{2^i}$。这和二项式堆的情况很类似（\autoref{sec:binomial-heap}）。将所有二进制位为1的幂计算出，再累乘到一起就得到最后的结果。
-
-例如，当计算$b^{11}$时，11写成二进制为$11 = (1011)_2 = 2^3 + 2 +1$，因此$b^{11} = b^{2^3} \times b^2 \times b$。我们可以通过以下的步骤进行计算：
+这一方法的性能为$O(\lg n)$。我们还可以继续改进，如果将$n$表示成二进制数$n = (a_ma_{m-1}...a_1a_0)_2$，如果$a_i = 1$，我们清楚地知道，需要计算$b^{2^i}$。这和二项式堆的情况很类似（第10章\autoref{sec:binomial-heap}）。将所有二进制位为1的幂计算出，再累乘到一起就得到最后的结果。例如，当计算$b^{11}$时，11写成二进制为$11 = (1011)_2 = 2^3 + 2 +1$，因此$b^{11} = b^{2^3} \times b^2 \times b$。我们可以通过以下的步骤进行计算：
 
 \begin{enumerate}
 \item 计算$b^1$，得$b$；
@@ -690,45 +657,43 @@ pow(b, n, A) & = & \begin{cases}
 \item 将第3步的结果平方，得到$b^{2^3}$。
 \end{enumerate}
 
-最后，我们将第1、2、和第4步的结果乘到一起，得到$b^{11}$。综上，我们可以进一步将算法改进如下。
+最后，我们将第1、2、和第4步的结果乘到一起，得到$b^{11}$。综上，我们可以改进如下：
 
 \be
 \begin{array}{rcl}
-pow(b, 0, A) & = & A \\
-pow(b, n, A) & = & \begin{cases}
-  2 | n : & pow(b^2, \dfrac{n}{2}, A) \\
-  \text{否则}: & pow(b^2, \lfloor \dfrac{n}{2} \rfloor, b \cdot A) \\
+pow(b, 0, a) & = & a \\
+pow(b, n, a) & = & \begin{cases}
+  2 | n : & pow(b^2, \dfrac{n}{2}, a) \\
+  \text{否则}: & pow(b^2, \lfloor \dfrac{n}{2} \rfloor, ab) \\
   \end{cases}
 \end{array}
 \ee
 
-这一算法本质上每次将$n$向右移动一个二进制位（通过将$n$除以2）。若LSB(Least Significant Bit，即最低位)为0，$n$为偶数。我们将底数平方，继续递归，无需改变累积结果$A$。这对应上面例子的第3步；若LSB为1，$n$为奇数。除了将底数平方，还要将$b$乘到累积结果$A$上；当$n$为0时，我们已处理完$n$中的所有位，最终结果就是累积值$A$。在任何时候，更新的底数$b'$，移位后的指数$n'$，和累积结果$A$总满足不变条件$b^n = A \cdot (b')^{n'}$。
-
-此前的算法当$n$为奇数时，仅仅将其减一转化为偶数进行处理；这一改进每次都将$n$减半。若$n$的二进制表示中有$m$位，这一算法只计算$m$轮。当然它的复杂度仍然为$O(\lg n)$。我们将这一算法的命令式实现作为本节练习。
+这一算法本质上每次将$n$向右移动一个二进制位（通过将$n$除以2）。若最低位(LSB: Least Significant Bit)为0，$n$为偶数。我们将底数平方，继续递归，无需改变累积结果$a$。这对应上面例子的第3步；若LSB为1，$n$为奇数。除了将底数平方，还要将$b$乘到累积结果$a$上；当$n$为0时，我们已处理完$n$中的所有位，最终结果就是累积值$a$。在任何时候，更新的底数$b'$，移位后的指数$n'$，和累积结果$a$总满足不变条件$b^n = a (b')^{n'}$。此前的算法当$n$为奇数时，仅仅将其减一转化为偶数进行处理；这一改进每次都将$n$减半。若$n$的二进制表示中有$m$位，这一算法只计算$m$轮。当然它的复杂度仍然为$O(\lg n)$。我们将这一算法的命令式实现作为练习。
 
 回到求和、求积问题。在迭代实现中，我们一边遍历，一边应用加法或乘法累积结果：
 
 \begin{algorithmic}[1]
-\Function{Sum}{$L$}
+\Function{Sum}{$X$}
   \State $s \gets 0$
-  \While{$L \neq$ NIL}
-    \State $s \gets s +$ \Call{First}{$L$}
-    \State $L \gets$ \Call{Rest}{$L$}
+  \While{$X \neq$ NIL}
+    \State $s \gets s +$ \Call{First}{$X$}
+    \State $X \gets$ \Call{Rest}{$X$}
   \EndWhile
   \State \Return $s$
 \EndFunction
 \Statex
-\Function{Product}{$L$}
+\Function{Product}{$X$}
   \State $p \gets 1$
-  \While{$L \neq$ NIL}
-    \State $p \gets p\ \cdot$ \Call{First}{$L$}
-    \State $L \gets$ \Call{Rest}{$L$}
+  \While{$X \neq$ NIL}
+    \State $p \gets p\ \cdot$ \Call{First}{$X$}
+    \State $X \gets$ \Call{Rest}{$X$}
   \EndWhile
   \State \Return $p$
 \EndFunction
 \end{algorithmic}
 
-利用求积算法，我们可以将递归的阶乘实现转换为递推的方式$n! = product([1..n])$。
+利用求积算法，我们可以将阶乘实现为递推方式：$n! = product\ [1..n]$。
 
 \subsection{最大值和最小值}
 \index{列表!最大值} \index{列表!最小值}
