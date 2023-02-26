@@ -1624,38 +1624,38 @@ filter\ p = foldr\ (f\ p)\ [\ ]
 \index{列表!匹配}
 \index{列表!前缀} \index{列表!后缀} \index{列表!中缀}
 
-匹配一般是指在一个结构中寻找某一模式。即使限定为列表和字符串，匹配仍是一个广泛、深入的内容。本书专门有章节介绍字符串匹配。这里我们仅仅考虑给定一个列表$A$，检查它是否出现在另一个列表$B$中的情况。这里有两个特殊情况：判断$A$是否是$B$的前缀和后缀。式(\ref{eq:span})介绍的$span$算法寻找符合某个条件的最长前缀。我们可以使用类似的方法：逐一比较$A$、$B$中的每个元素直到遇到不同元素或到达任一列表尾部。若$A$是$B$的前缀，则记为：$A \subseteq B$。
+匹配一般是指在一个结构中寻找某一模式。即使限定为列表和字符串，匹配仍是一个广泛、深入的内容（第14章）。我们仅考虑检查列表$as$是否出现在列表$bs$中的问题。这里有两个特例：判断$as$是否是$bs$的前缀、后缀。$span$寻找符合某个条件的最长前缀。使用类似的方法逐一比较$as$、$bs$中每个元素。若$as$是$bs$的前缀，记为：$as \subseteq bs$。
 
 \be
 \begin{array}{rcl}
-[\ ] \subseteq B & = & True \\
-(a:as) \subseteq [\ ] & = & False \\
-(a:as) \subseteq (b:bs) & = & \begin{cases}
+[\ ] \subseteq bs & = & True \\
+(a \cons as) \subseteq [\ ] & = & False \\
+(a \cons as) \subseteq (b \cons bs) & = & \begin{cases}
   a \neq b: & False \\
   a = b: & as \subseteq bs \\
   \end{cases}
 \end{array}
 \ee
 
-由于扫描列表，前缀检查是线性时间的。但是我们不能用同样的方法来检查后缀：对齐两个列表的尾部，然后从右向左倒序比较。这样的代价很大。这一点与数组不同。为了实现线性时间的后缀检查，我们可以将两个列表都反转，然后使用前缀检查进行判断：
+由于扫描列表，前缀检查是线性时间的。但我们不能用同样的方法来检查后缀：对齐尾部，然后从右向左比较。这一点与数组不同。为了实现线性时间的后缀检查，可以反转两个列表，转换为前缀检查：
 
 \be
 A \supseteq B = reverse(A) \subseteq reverse(B)
 \ee
 
-使用$\subseteq$，就可以判断一个列表是否是另外一个的子列表。称作中缀检查。方法就是遍历目标列表，不断进行前缀检查：
+使用$\subseteq$，可以解决子列表问题（中缀检查）。定义空列表是任何列表的中缀，遍历列表$B$不断进行前缀检查：
 
 \be
 \begin{array}{rcl}
-infix?(a:as,\ [\ ]) & = & False \\
-infix?(A,\ B) & = & \begin{cases}
+infix?\ A\ [\ ] & = & False \\
+infix?\ A\ B & = & \begin{cases}
   A \subseteq B: & True \\
-  \text{否则}: & infix?(A, B') \\
+  \text{否则}: & infix?\ A\ B' \\
   \end{cases}
 \end{array}
 \ee
 
-若$A$为空，定义空列表是任何列表的中缀。由于$[\ ] \subseteq B$总成立，因此算法给出正确结果。对于$infix?([\ ], [\ ])$，结果也是正确的。下面是对应的迭代实现：
+下面是对应的迭代实现：
 
 \begin{algorithmic}[1]
 \Function{Is-Infix}{$A, B$}
@@ -1663,7 +1663,7 @@ infix?(A,\ B) & = & \begin{cases}
     \State \Return TRUE
   \EndIf
   \State $n \gets |A|$
-  \While{$B \neq$ NIL and $n \leq |B|$}
+  \While{$B \neq$ NIL 且 $n \leq |B|$}
     \If{$A \subseteq B$}
       \State \Return TRUE
     \EndIf
@@ -1673,12 +1673,10 @@ infix?(A,\ B) & = & \begin{cases}
 \EndFunction
 \end{algorithmic}
 
-由于前缀检测需要线性时间，并且在遍历时被不断调用，这一算法的复杂度为$O(nm)$，其中$n$和$m$分别是两个列表的长度。即使替换成数组，如何将这种逐一比较的算法优化成线性时间仍是一个专门问题。第13章介绍了一些巧妙的方法，例如KMP（Knuth-Morris-Pratt）算法，Boyer-Moore算法。附录C介绍了后缀树方法。
-
-对称地，我们可以枚举出$B$的所有后缀，然后检查$A$是否是某个后缀的前缀：
+由于前缀检测需要线性时间，并且在遍历时被不断调用，这一算法的复杂度为$O(nm)$，其中$n$和$m$分别是两个列表的长度。对称地，我们可以枚举出$B$的所有后缀，然后检查$A$是否是某个后缀的前缀：
 
 \be
-infix?(A, B) = \exists S \in \textit{suffixes}(B), A \subseteq S
+infix?\ A\ B = \exists S \in \textit{suffixes}\ B, A \subseteq S
 \ee
 
 下面的Haskell例子程序使用列表解析实现了这一方法：
@@ -1687,7 +1685,7 @@ infix?(A, B) = \exists S \in \textit{suffixes}(B), A \subseteq S
 isInfixOf a b = (not . null) [ s | s <- tails(b), a `isPrefixOf` s]
 \end{Haskell}
 
-其中\texttt{isPrefixOf}进行前缀检查。\texttt{tails}枚举一个列表的所有后缀。我们将其实现作为练习。
+其中\texttt{isPrefixOf}进行前缀检查。\texttt{tails}枚举一个列表的所有后缀（本节练习）。
 
 \begin{Exercise}
 \Question{实现线性时间的属于（存在检查）算法。}
@@ -1697,38 +1695,20 @@ isInfixOf a b = (not . null) [ s | s <- tails(b), a `isPrefixOf` s]
 \Question{给定一个列表，枚举出它的所有后缀。}
 \end{Exercise}
 
-\section{zip和unzip}
+\section{关联和分解}
 \index{列表!zip} \index{列表!unzip}
 
-关联列表常被作为一种字典的简易实现，用以处理少量数据。相对于树或者堆，其实现简单，但查询的性能是线性的而非对数的。在$n$盏灯趣题中，我们用下列方法创建关联列表：
-
-\[
-map(i \mapsto (i, 0),\ [1, 2, ..., n])
-\]
-
-我们经常需要将两个列表“关联”起来，为此可以定义一个$zip$函数：
+关联列表是一种简易映射（字典），用以处理少量数据。它比树、堆简单，但性能是线性的。在$n$盏灯趣题中，我们用逐一映射创建关联列表：$map\ (i \mapsto (i, 0))\ [1, 2, ..., n]$。为了“关联”两个列表，定义$zip$函数：
 
 \be
 \begin{array}{rcl}
-zip(A,\ [\ ]) & = & [\ ] \\
-zip([\ ],\ B) & = & [\ ] \\
-zip(a:as,\ b:bs) & = & (a, b) : zip(as, bs) \\
+zip\ as\ [\ ] & = & [\ ] \\
+zip\ [\ ]\ bs & = & [\ ] \\
+zip\ (a \cons as)\ (b \cons bs) & = & (a, b) : zip\ as\ bs \\
 \end{array}
 \ee
 
-这一算法可以处理长度不同的列表。关联结果的长度将和较短的一个相同。我们甚至可以关联无穷列表（如果两个列表都是无穷的，则需要惰性求值），例如\footnote{在Haskell中：\texttt{zip (repeat 0) [1..n]}}：
-
-\[
-zip([0, 0, ...], [1, 2, ..., n])
-\]
-
-给定单词列表，我们可以给每个单词顺序编号如下。
-
-\[
-zip([1, 2, ...], [a, an, another, ...])
-\]
-
-$zip$从右向左构建结果。我们可以用$foldr$定义它。算法的时间复杂度为$O(m)$，其中$m$是较短列表的长度。在迭代实现时，如果使用$append$操作，其性能会下降为平方时间，除非使用尾部引用优化。
+这一定义可处理长度不同的列表。关联结果的长度将和较短的一个相同。我们甚至可以关联无穷列表（利用惰性求值），例如\footnote{或$zip\ (repeat\ 0)\ [1..n]$，其中$repeat\ x = x : repeat\ x$}：$zip\ [0, 0, ...]\ [1, 2, ..., n]$。给定单词列表，我们可以给每个单词顺序编号为：$zip\ [1, 2, ...]\ [a, an, another, ...]$。$zip$从右向左构建结果。我们可以用$foldr$定义它。复杂度为$O(m)$，其中$m$是较短列表的长度。在迭代实现时，如果使用\textproc{Append}，其性能会下降为平方时间。可以使用\textproc{Cons}再反转结果。但无法处理无穷列表。在命令式环境中，可以复用$A$来存储结果（视为一种映射：将一列元素映射为一列元素对）。
 
 \begin{algorithmic}[1]
 \Function{Zip}{$A, B$}
@@ -1742,62 +1722,30 @@ $zip$从右向左构建结果。我们可以用$foldr$定义它。算法的时�
 \EndFunction
 \end{algorithmic}
 
-为了避免$append$，我们可以使用cons，然后再把结果反转。但这样无法处理两个无穷列表。在命令式环境中，我们可以复用$A$来存储结果（视为一种映射：将一列元素映射为一列元素对）。
-
-我们可以进一步扩展$zip$关联多个列表。有些编程库提供了\texttt{zip}、\texttt{zip3}、\texttt{zip4}……直到\texttt{zip7}。有些情况下，我们不是要构建元素对，而是要应用某种组合函数。例如，给定每种水果单价的列表，对于苹果、橙子、香蕉……其单价为$[1.00, 0.80, 10.05, ...]$（单位是元）；顾客购买水果数量为：$[3, 1, 0, ...]$，表示购买了3个苹果，1个橙子、0个香蕉。下面的程序计算应付金额：
+进一步扩展$zip$关联多个列表，有些编程环境提供了\texttt{zip}、\texttt{zip3}、\texttt{zip4}……。有时我们要应用某种组合函数，而不仅是构建元素对。例如，给定水果单价的列表：苹果、橙子、香蕉……单价为$[1.00, 0.80, 10.05, ...]$（元）；顾客购买数量为：$[3, 1, 0, ...]$，表示购买了3个苹果，1个橙子、0个香蕉。下面的程序计算应付金额：
 
 \[
 \begin{array}{rcl}
-pays(U,\ [\ ]) & = & [\ ] \\
-pays([\ ],\ Q) & = & [\ ] \\
-pays(u:us,\ q:qs) & = & (u \cdot q) : pays(us, qs) \\
+pays\ us\ [\ ] & = & [\ ] \\
+pays\ [\ ]\ qs & = & [\ ] \\
+pays\ (u \cons us)\ (q \cons qs) & = & uq : pays\ us\ qs \\
 \end{array}
 \]
 
-除了用乘法代替cons，其计算结构和$zip$相同。我们将组合函数抽象为$f$并传给$zip$，就定义出一个一般算法：
+除了用乘法代替cons，其计算结构和$zip$相同。我们将组合函数抽象为$f$并传给$zip$定义出一般关联操作：
 
 \be
 \begin{array}{rcl}
-zipWith(f, A,\ [\ ]) & = & [\ ] \\
-zipWith(f, [\ ],\ B) & = & [\ ] \\
-zipWith(f, a:as,\ b:bs) & = & f(a, b) : zipWith(f, as, bs) \\
+zipWith\ f\ as\ [\ ] & = & [\ ] \\
+zipWith\ f\ [\ ]\ bs & = & [\ ] \\
+zipWith\ f\ (a \cons as)\ (b \cons bs) & = & (f\ a\ b) : zipWith\ f\ as\ bs \\
 \end{array}
 \ee
 
-下面是利用$zipWith$定义内积（也称作点积）\cite{wiki-dot-product}的例子：
+利用$zipWith$可以定义内积（点积）\cite{wiki-dot-product}：$A \cdot B = sum\ (zipWith\ (\cdot)\ A\ B)$。$zipWith$结合惰性求值还可以定义无穷斐波那契数列：
 
 \be
-A \cdot B = sum(zipWith(\cdot, A, B))
-\ee
-
-$zip$的逆运算是$unzip$，将关联列表分解成两个列表。下面使用$foldr$给出的柯里化定义：
-
-\be
-unzip = foldr((a, b), (A, B) \mapsto (a : A, b : B), ([\ ], [\ ]))
-\ee
-
-我们从一对空列表开始叠加，不断将元素对分解为$a, b$并置于两个结果列表之前。分解过程也可以用$fst$、$snd$表达如下：
-
-\[
-(p, P) \mapsto (fst(p) : fst(P), snd(p) : snd(P))
-\]
-
-对于买水果的例子，若单价信息以关联列表的形式给出：
-
-\[
-U = [(apple, 1.00), (orange, 0.80), (banana, 10.05), ...]
-\]
-
-这样可用水果查到单价，如：$lookup(melon, U)$。购买数量也是关联列表：$Q = [(apple, 3), (orange, 1), (banana, 0), ...]$。计算总金额时，我们从两个关联列表中分解出单价和数量，然后计算其内积：
-
-\be
-pay = sum(zipWith(\cdot, snd(unzip(U)), snd(unzip(Q))))
-\ee
-
-$zipWith$结合惰性求值还可以定义无穷斐波那契数列：
-
-\be
-F = 0 : 1 : zipWith(+, F, F')
+F = 0 : 1 : zipWith\ (+)\ F\ F'
 \ee
 
 它的含义是$F$是无穷的斐波那契数列，第一个元素是0，第二个元素是1。$F'$是去掉头部元素的无穷斐波那契数列。从第三个元素起，每个斐波那契数，都是$F$和$F'$中对应元素的和。下面的例子程序列出了前15个斐波那契数：
@@ -1809,7 +1757,21 @@ take 15 fib
 [0,1,1,2,3,5,8,13,21,34,55,89,144,233,377]
 \end{Haskell}
 
-$zip$和$unzip$的概念也是抽象的。我们可以扩展$zip$以关联两棵树，节点中的数据是成对元素，分别来自两棵树中。抽象的$zip$和$unzip$还可以用于跟踪复杂结构的遍历路径，从而模拟命令式环境中的父节点引用（\cite{learn-haskell}的最后一章）。
+$zip$的逆运算是$unzip$，将关联列表分解成两个列表。可以使用$foldr$定义分解（柯里化）：
+
+\be
+unzip = foldr\ ((a, b)\ (as, bs) \mapsto (a \cons as, b \cons bs))\ ([\ ], [\ ])
+\ee
+
+对于买水果的例子，若单价信息以关联列表的形式给出：$U$ = [(apple, 1.00), (orange, 0.80), (banana, 10.05), ...]，购买数量也是关联列表：$Q$ = [(apple, 3), (orange, 1), (banana, 0), ...]。计算总金额时，从两个关联列表中分解出单价和数量，然后计算其内积：
+
+\be
+pay = sum\ (zipWith\ (\cdot)\ snd(unzip\ U)\ snd(unzip\ Q))
+\ee
+
+$zip$和$unzip$的概念是抽象的。我们可以扩展$zip$以关联两棵树，节点中的数据是元素对，分别来自两棵树中。抽象的$zip$和$unzip$还可以用于跟踪复杂结构的遍历路径，从而模拟命令式环境中的父节点引用（\cite{learn-haskell}的最后一章）。
+
+列表是构建复杂数据结构和算法的基础，对于函数式编程尤为重要。我们介绍了构建、分解、更改、变换列表的基本算法；介绍了如何在列表中搜索、过滤、进行计算。尽管大多数编程环境都提供了工具来支持列表，我们不应仅把它们看作黑盒子。Rabhi和Lapalme\cite{algo-fp}介绍了关于列表的许多函数式算法。Haskell标准库提供了关于基础算法的详细文档。伯德\cite{fp-pearls}给出了很多与叠加相关的例子，并介绍了“叠加融合定律”。
 
 \begin{Exercise}
 \Question{设计iota算法（$I$）其用法如下：
@@ -1820,7 +1782,7 @@ $zip$和$unzip$的概念也是抽象的。我们可以扩展$zip$以关联两棵
   \item $iota(m, m, ...) = repeat(m) = [m, m, m, ...]$;
   \item $iota(m, ...) = [m, m + 1, m + 2, ... ]$.
   \end{itemize}
-  其中最后两个例子涉及无穷序列。可以通过流和惰性求值实现（\cite{SICP}和\cite{learn-haskell}）。}
+}
 \Question{实现线性时间的命令式$zip$算法。}
 \Question{用$foldr$定义$zip$。}
 \Question{对于买水果的例子，如果购买数量的关联列表只包含非零的物品。不是
@@ -1831,26 +1793,16 @@ Q = [(apple, 3), (banana, 0), (orange, 1), ...]
 \[
 Q = [(apple, 3), (orange, 1), ...]
 \]
-由于没有买香蕉，所以列表中没有香蕉相关的数据。编写程序计算总金额。}
+编写程序计算总金额。}
+
 \Question{使用$zip$实现$lastAt$。} % lastAt k xs = (fst . last) $ zip xs  (drop k xs)
-\end{Exercise}
 
-\section{扩展阅读}
-
-列表是构建复杂数据结构和算法的基础，对于函数式编程尤为重要。我们介绍了构建、分解、更改、变换列表的基本算法；介绍了如何在列表中搜索、过滤、进行计算。尽管大多数编程环境都提供了预置的工具来支持列表，我们不应该仅仅把它们当作一些黑盒子。Rabhi和Lapalme在\cite{algo-fp}中介绍了关于列表的许多函数式算法。Haskell标准库提供了关于基础算法的详细文档。伯德在\cite{fp-pearls}中给出了很多与叠加相关的例子，并介绍了“叠加融合定律”。
-
-
-\begin{Exercise}
 \Question{编写一个程序从列表中去除重复的元素。在命令式环境中，请用就地修改的方式删除这些重复元素。在纯函数环境中，构建一个只含有不同元素的新列表。结果列表中的元素顺序应保持和原列表中的一致。这一算法的复杂度是怎样的？如果允许使用额外的数据结构，可以如何简化实现？}
 
-\Question{可以用列表来表示十进制的非负整数。例如1024可以表示为：“$4 \rightarrow 2 \rightarrow 0 \rightarrow 1$”。一般来说，$n = d_m...d_2d_1$可以表示为：“$d_1 \rightarrow d_2 \rightarrow ... \rightarrow d_m$”。任给两个用列表表示的数$a$和$b$。实现它们的基本算数运算，例如加和减。}
+\Question{可以用列表来表示十进制的非负整数。例如1024可以表示为：“$4 \rightarrow 2 \rightarrow 0 \rightarrow 1$”。一般来说，$n = d_m...d_2d_1$可以表示为：“$d_1 \rightarrow d_2 \rightarrow ... \rightarrow d_m$”。任给两个用列表表示的数$a$和$b$。实现它们的算数运算（加减乘除）。}
 
-\Question{在命令式环境中，循环列表是一种有缺陷的列表：某个节点指向了以前的位置，如图\ref{fig:circular-list}所示。当遍历的时候，会陷入无限循环。设计一个算法检查某个列表是否含有循环。在此基础上，设计算法找到循环开始的节点（被两个不同祖先指向的节点）。}
-
-\end{Exercise}
-
-\begin{figure}[htbp]
-\centering
+\Question{在命令式环境中，循环列表是一种有缺陷的列表：某个节点指向了以前的位置，如图\ref{fig:circular-list}所示。当遍历的时候，会陷入无限循环。设计一个算法检查某个列表是否含有循环。在此基础上，设计算法找到循环开始的节点（被两个不同祖先指向的节点）。
+\begin{center}
 \begin{tikzpicture}[scale=2]
   % trace
   \draw[dashed, very thin] (-2cm, 1cm) -- (0, 1cm);
@@ -1871,9 +1823,11 @@ Q = [(apple, 3), (orange, 1), ...]
     \draw[thick, ->] (\deg : 1cm) -- +(\rot : 0.2);
   }
 \end{tikzpicture}
-\caption{带有循环的列表}
+\captionof{figure}{带有循环的列表}
 \label{fig:circular-list}
-\end{figure}
+\end{center}
+}
+\end{Exercise}
 
 \ifx\wholebook\relax \else
 \begin{thebibliography}{99}
