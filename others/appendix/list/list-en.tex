@@ -134,120 +134,103 @@ We leave the empty list not handled. The behavior when $[\ ]$ is undefined. As s
 \end{algorithmic}
 
 \begin{Exercise}
-\Question{In the iterative \textproc{Get-At}($i, L$) algorithm, what is the behavior when $L$ is empty? what is the behavior when $i$ is out of the bound or negative?}
+\Question{In the iterative \textproc{Get-At}($i, X$) implementation, what is the behavior when $X$ is empty? what if $i$ is out of the bound or negative?}
 \end{Exercise}
 
 \subsection{Last}
 \index{List!last} \index{List!init}
-There is a pair of symmetric operations to `first/rest'. They are called `last/init'. For a none empty list $X = [x_1, x_2, ..., x_n]$, function $last$ returns the last element $x_n$, while $init$ returns the sub-list of $[x_1, x_2, ..., x_{n-1}]$. Although they are symmetric pairs left to right, `last/init' need linear time, because we need traverse the whole list to tail.
 
-
-When access the last element of list $X$:
-\begin{itemize}
-\item If the $X$ contains only one element as $[x_1]$, then $x_1$ is the last one;
-\item Otherwise, the result is the last element of the sub-list $X'$.
-\end{itemize}
+There is a pair of symmetric operations to `first/rest', namely `last/init'. For a none empty list $X = [x_1, x_2, ..., x_n]$, function $last$ returns the tail element $x_n$, while $init$ returns the sub-list of $[x_1, x_2, ..., x_{n-1}]$. Although they are symmetric pairs left to right, `last/init' need traverse the list, hence are linear time.
 
 \be
-\begin{array}{rcl}
-last([x]) & = & x \\
-last(x:xs) & = & last(xs) \\
+\begin{array}{cc}
+  \begin{array}{rcl}
+  last\ [x] & = & x \\
+  last\ (x \cons xs) & = & last\ xs \\
+  \end{array}
+&
+  \begin{array}{rcl}
+  init\ [x] & = & [\ ] \\
+  init\ (x:xs) & = & x : init\ xs \\
+  \end{array}
 \end{array}
 \label{eq:list-last}
 \ee
 
-Similarly, when extract the sub-list of $X$ contains all elements without the last one:
-
-\begin{itemize}
-\item If $X$ is a singleton $[x_1]$, the result is empty $[\ ]$;
-\item Otherwise, we recursively get the initial sub-list for $X'$, then prepend $x_1$ to it as the result.
-\end{itemize}
-
-\be
-\begin{array}{rcl}
-init([x]) & = & [\ ] \\
-init(x:xs) & = & x : init(xs) \\
-\end{array}
-\ee
-
-We leave the empty list not handled for both operations. The behavior is undefined if pass $[\ ]$ in. Below are the iterative implementation:
+Both do not handle the empty list. The behavior is undefined with $[\ ]$. Below are the iterative implementation:
 
 \begin{algorithmic}[1]
-\Function{Last}{$L$}
+\Function{Last}{$X$}
   \State $x \gets $ NIL
-  \While{$L \neq$ NIL}
-    \State $x \gets $ \Call{First}{$L$}
-    \State $L \gets $ \Call{Rest}{$L$}
+  \While{$X \neq$ NIL}
+    \State $x \gets $ \Call{First}{$X$}
+    \State $X \gets $ \Call{Rest}{$X$}
   \EndWhile
   \State \Return $x$
 \EndFunction
 \Statex
-\Function{Init}{$L$}
-  \State $L' \gets $ NIL
-  \While{\Call{Rest}{$L$} $\neq$ NIL} \Comment{Raise error when $L$ is NIL}
-    \State $L' \gets$ \textproc{Cons}(\Call{First}{$L$}, $L'$)
-    \State $L \gets $ \Call{Rest}{$L$}
+\Function{Init}{$X$}
+  \State $X' \gets $ NIL
+  \While{\Call{Rest}{$X$} $\neq$ NIL} \Comment{Error when $X$ is NIL}
+    \State $X' \gets$ \textproc{Cons}(\Call{First}{$X$}, $X'$)
+    \State $X \gets $ \Call{Rest}{$X$}
   \EndWhile
-  \State \Return \Call{Reverse}{$L'$}
+  \State \Return \Call{Reverse}{$X'$}
 \EndFunction
 \end{algorithmic}
 
-As advancing towards the tail, this algorithm accumulates the `init' result through `cons'. However, such result is in the reversed order. We need apply reverse (defined in section \ref{sec:reverse}) again to return the correct result. There is a question to ask if we can use `append' instead of `cons' in the exercise.
+\textproc{Init} accumulates the result through \textproc{Cons}. However, the order is reversed. We need reverse (section \ref{sec:reverse}) it back.
 
-\subsection{Reverse index}
-\index{List!Reverse index} \index{List!rindex}
-$last$ is a special case of reverse index. The generic case is to find the last $i$-th element of a given list. The naive implementation takes two rounds of traverse: Determine the length $n$ through the first round; then access the $(n - i - 1)$-th element through the second round:
+\subsection{Right index}
+\index{List!Right index} \index{List!rindex}
 
-\be
-  lastAt(i, L) = getAt(|L| - i - 1, L)
-\ee
+$last$ is a special case of right index. The generic case is to find the last $i$-th element (from right). The naive implementation traverses two rounds: count the length $n$ first, then access the $(n - i - 1)$-th element from left:
 
-There actually exists better solution. The idea is to keep two pointers $p_1, p_2$ with the distance $i$ between them. The equation $rest^i(p_2) = p_1$ holds, where $rest^i(p_2)$ means repleatedly apply $rest()$ function $i$ times. When succeed $p_2$ by $i$ steps gets $p_1$. We start by pointing $p_2$ to the list head, and advance both pointers in parallel till $p_1$ arrives at tail. At that time point, $p_2$ exactly points to the $i$-th element from right. Figure \ref{fig:list-rindex} shows this idea. As $p_1, p_2$ form a window, this method is also called `sliding window' solution.
+\[
+  lastAt\ i\ X = getAt\ (|X| - i - 1)\ L
+\]
+
+The better solution uses two pointers $p_1, p_2$ with the distance if $i$, i.e., $rest^i(p_2) = p_1$, where $rest^i(p_2)$ means repeatedly apply $rest$ for $i$ times. When advance $p_2$ by $i$ steps, it meets $p_1$. $p_2$ starts from the head. Advance both pointers in parallel till $p_1$ arrives at tail. At this time point, $p_2$ exactly points to the $i$-th element from right. as shown in figure \ref{fig:list-rindex}. $p_1$ and $p_2$ form a sliding window of width $i$.
 
 \begin{figure}[htbp]
   \centering
   \subcaptionbox{$p_2$ starts from the head, behind $p_1$ in $i$ steps.}{\includegraphics[scale=0.8]{img/list-rindex}} \\
   \subcaptionbox{When $p_1$ reaches the tail, $p_2$ points to the $i$-th element from right.}{\includegraphics[scale=0.8]{img/list-rindex-2}}
-  \caption{Sliding window formed by two pointers}
+  \caption{Sliding window}
   \label{fig:list-rindex}
 \end{figure}
 
 \begin{algorithmic}[1]
-\Function{Last-At}{$i, L$}
-  \State $p \gets L$
+\Function{Last-At}{$i, X$}
+  \State $p \gets X$
   \While{$i > 0$}
-    \State $L \gets $ \Call{Rest}{$L$} \Comment{Raise error if out of bound}
+    \State $X \gets $ \Call{Rest}{$X$} \Comment{Error if out of bound}
     \State $i \gets i - 1$
   \EndWhile
-  \While{\Call{Rest}{$L$} $\neq$ NIL}
-    \State $L \gets$ \Call{Rest}{$L$}
+  \While{\Call{Rest}{$X$} $\neq$ NIL}
+    \State $X \gets$ \Call{Rest}{$X$}
     \State $p \gets$ \Call{Rest}{$p$}
   \EndWhile
   \State \Return \Call{First}{$p$}
 \EndFunction
 \end{algorithmic}
 
-The functional implementation need special consideration as we cannot update pointers directly. Instead, we advance two lists $X = [x_1, x_2, ..., x_n]$ and $Y = [x_i, x_{i+1}, ..., x_n]$ simultaneously, where $Y$ is the sub-list without the first $i - 1$ elements.
-
-\begin{itemize}
-\item If $Y$ is a singleton list, i.e. $[x_n]$, then the last $i$-th element is the head of $X$;
-\item Otherwise, we drop the first element from both $X$ and $Y$, then recursively check $X'$ and $Y'$.
-\end{itemize}
+We can't alter the pointers in purely functional settings. Instead, we advance two lists $X = [x_1, x_2, ..., x_n]$ and $Y = [x_i, x_{i+1}, ..., x_n]$ simultaneously, where $Y$ is the sub-list without the first $i - 1$ elements.
 
 \be
-lastAt(i, X) = slide(X, drop(i, X))
+lastAt\ i\ X\ = slide\ X\ (drop\ i\ X)
 \ee
 
-where function $slide(X, Y)$ drops the heads for both lists:
+Where:
 
 \be
 \begin{array}{rcl}
-slide(x:xs,\ [y]) & = & x \\
-slide(x:xs,\ y:ys) & = & slide(xs, ys) \\
+slide\ (x \cons xs)\ [y] & = & x \\
+slide\ (x \cons xs)\ (y \cons ys) & = & slide\ xs\ ys \\
 \end{array}
 \ee
 
-Function $drop(m, X)$ discards the first $m$ elements from list $X$. It can be implemented by advancing $X$ by $m$ steps:
+Function $drop\ m\ X$ discards the first $m$ elements.
 
 \be
 \begin{array}{rcl}
