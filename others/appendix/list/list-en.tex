@@ -539,41 +539,33 @@ Both need traverse the list, hence the performance is $O(n)$, where $n$ is the l
 \end{array}
 \ee
 
-Given a list, we can call $sum'$ with 0, and $prod'$ with 1:
+Given a list, we call $sum'$ with 0, and $prod'$ with 1 as the accumulators:
 
 \be
-sum(X) = sum'(0, X)
+sum\ xs = sum'\ 0\ xs
 \quad \quad \quad
-product(X) = prod'(1, X)
+product\ xs = prod'\ 1\ xs
 \ee
 
-Or merely simplify it to Curried form:
+Or in Curried form:
 
 \[
-sum = sum'(0) \quad \quad \quad product = prod'(1)
+sum = sum'\ 0 \quad \quad \quad product = prod'\ 1
 \]
 
 \index{Curried Form} \index{Currying}
-Curried form was introduced by Schönfinkel (1889 - 1942) in 1924, then widely used by Haskell Curry from 1958. It is known as {\em Currying}\cite{slpj-book-1987}. For a function taking 2 parameters $f(x, y)$, when pass one argument $x$, it ends up to another function of $y$: $g(y) = f(x, y)$ or $g = f\ x$. We can further extend it to multiple variables, that $f(x, y, ..., z)$ can be Curried to a series of functions: $f, f\ x, f\ x\ y, ...$. No matter how many variables, we can treat them as a series of Curried function, each has only one parameter: $f(x, y, ..., z) = f(x)(y)...(z) = f\ x\ y\ ...\ z$.
+Curried form was introduced by Schönfinkel (1889 - 1942) in 1924, then widely used by Haskell Curry from 1958. It is known as {\em Currying}\cite{slpj-book-1987}. For a function taking 2 parameters $f(x, y)$, when fix $x$ with a value, it becomes a function of $y$: $g(y) = f(x, y)$ or $g = f\ x$. For multiple variables of $f(x, y, ..., z)$, we convert it to a series of Curried functions: $f, f\ x, f\ x\ y, ...$, each takes one parameter: $f(x, y, ..., z) = f(x)(y)...(z) = f\ x\ y\ ...\ z$.
 
-The accumulated sum does not only calculate the result from left to right, it needn't book keeping any context, state, or intermediate result for recursion. All such states are either passed as argument (i.e. $A$), or can be dropped (the previous element in the list). Such recursive calls are often optimized as pure loops in practice. We call this kind of function as {\em tail recursion} (or `tail call'), and the optimization to eliminate recursion is called 'tail recursion optimization'\cite{wiki-tail-call}, because the recursion happens at the tail place in the function. The performance of tail call can be greatly improved after optimization, and we can avoid the issue of stack overflow in deep recursions.
-
-In section \ref{sec:isort} about insertion sort, we mentioned the recursive algorithm sorts elements form right. We can also optimize it to tail call:
+The accumulated implementation computes from left to right, needn't book keeping any context, state, or intermediate result for recursion. All states are either passed as argument (for example $a$), or dropped (for example the previous element). We can further optimize such recursive calls to loops. Because the recursion happens at the tail of the function, we call them {\em tail recursion} (or `tail call'), and the process to eliminate recursion as `tail recursion optimization'\cite{wiki-tail-call}. It greatly improves the performance and avoid stack overflow due to deep recursions. In section \ref{sec:isort} about insertion sort, the recursive implementation sorts elements form right. We also optimize it to tail call:
 
 \be
 \begin{array}{rcl}
-sort'(A,\ [\ ]) & = & A \\
-sort'(A,\ x:xs) & = & sort'(insert(x, A), xs) \\
+sort'\ a\ [\ ] & = & a \\
+sort'\ a\ (x \cons xs) & = & sort'\ (insert\ x\ a)\ xs \\
 \end{array}
 \ee
 
-And the sort is defined in Curried form with $[\ ]$ as the start value:
-
-\be
-sort = sort'([\ ])
-\ee
-
-As a typical tail call problem, let's consider how to compute $b^n$ effectively? (refer to problem 1.16 in \cite{SICP}.) A brute-force solution is to repeatedly multiplying $b$ for $n$ times from 1. This algorithm is bound to $O(n)$:
+We pass $[\ ]$ to start sorting (Curried form): $sort = sort'\ [\ ]$. As a typical tail call example, consider how to compute $b^n$ effectively? (problem 1.16 in \cite{SICP}.) A direct implementation repeatedly multiplies $b$ for $n$ times from 1, which is bound to $O(n)$ time:
 
 \begin{algorithmic}[1]
 \Function{Pow}{$b, n$}
@@ -585,10 +577,7 @@ As a typical tail call problem, let's consider how to compute $b^n$ effectively?
 \EndFunction
 \end{algorithmic}
 
-Actually, the solution can be greatly improved. When compute $b^8$, after the first 2 loops, we get $x = b^2$. At this stage, we
-needn't multiply $x$ with $b$ to get $b^3$, but directly compute $x^2$, which gives $b^4$. If do this again, we get $(b^4)^2 = b^8$. Thus we only need loop 3 times, but not 8 times.
-
-Based on this idea, if $n = 2^m$ for some none negative integer $m$, we can design below algorithm to compute $b^n$:
+When compute $b^8$, after the first 2 loops, we get $x = b^2$. At this stage, we needn't multiply $x$ with $b$ to get $b^3$, but directly compute $x^2$, which gives $b^4$. If do this again, we get $(b^4)^2 = b^8$. We only need loop 3 times, but not 8 times. If $n = 2^m$ for some none negative integer $m$, we can compute $b^n$ fast as below:
 
 \[
 \begin{array}{rcl}
@@ -597,44 +586,38 @@ b^n & = & (b^{\frac{n}{2}})^2 \\
 \end{array}
 \]
 
-We next extend this divide and conquer method for any none negative integer $n$:
-
-\begin{itemize}
-\item If $n = 0$, define $b^0 = 1$;
-\item If $n$ is even, we halve $n$, to compute $b^{\frac{n}{2}}$. Then square it;
-\item Otherwise $n$ is odd. Since $n-1$ is even, we recursively compute $b^{n-1}$, the multiply $b$ atop it.
-\end{itemize}
+We next extend this divide and conquer method to any none negative integer $n$: if $n = 0$, define $b^0 = 1$; if $n$ is even, we halve $n$, to compute $b^{\frac{n}{2}}$. Then square it; if $n$ is odd, since $n-1$ is even, we recursively compute $b^{n-1}$, then multiply $b$ atop it.
 
 \be
 \begin{array}{rcl}
 b^0 & = & 1 \\
 b^n & = & \begin{cases}
 2 | n : & (b^{\frac{n}{2}})^2 \\
-otherwise : & b \cdot b^{n-1} \\
+\text{otherwise}: & b \cdot b^{n-1} \\
 \end{cases}
 \end{array}
 \ee
 
-However, the 2nd clause blocks us to turn it tail recursive. Alternatively, we can square the base number, and halve the exponent.
+However, the 2nd clause blocks us from turning it to tail recursive. Alternatively, we square the base number, and halve the exponent.
 
 \be
 \begin{array}{rcl}
 b^0 & = & 1 \\
 b^n & = & \begin{cases}
 2 | n : & (b^2)^{\frac{n}{2}} \\
-otherwise : & b \cdot b^{n-1} \\
+\text{otherwise}: & b \cdot b^{n-1} \\
 \end{cases}
 \end{array}
 \ee
 
-With this change, we can develop a tail recursive algorithm to compute $b^n = pow(b, n, 1)$.
+With this change, we get a tail recursive function to compute $b^n = pow(b, n, 1)$.
 
 \be
 \begin{array}{rcl}
-pow(b, 0, A) & = & A \\
-pow(b, n, A) & = & \begin{cases}
-  2 | n : & pow(b^2, \dfrac{n}{2}, A) \\
-  otherwise: & pow(b, n - 1, b \cdot A) \\
+pow(b, 0, a) & = & a \\
+pow(b, n, a) & = & \begin{cases}
+  2 | n : & pow(b^2, \dfrac{n}{2}, a) \\
+  \text{otherwise}: & pow(b, n - 1, ab) \\
 \end{cases}
 \end{array}
 \ee
