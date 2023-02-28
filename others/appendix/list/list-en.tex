@@ -247,80 +247,62 @@ drop\ m\ (x \cons xs) & = & drop\ (m - 1)\ xs \\
 
 \subsection{Mutate}
 \index{List!mutate}
-Mutate operations include append, insert, update, and delete. Some functional environments actually implement mutate by creating a new list, while the original one is persisted for later reuse, or released at sometime (chapter 2 in \cite{okasaki-book}).
+Mutate includes append, insert, update, and delete. The functional environment actually implements mutate by creating a new list for the changed part, while keeps (persists) the original one for reuse, or release at sometime (chapter 2 in \cite{okasaki-book}).
 
-\subsubsection{Append}
 \index{List!append}
-Append is the symmetric operation of $cons$, it adds element on the tail instead of head. Because of this, it is also called `snoc'. For linked-list, it means we need traverse to the tail, hence it takes $O(n)$ time, where $n$ is the length. To avoid repeatedly traverse, we can record the tail reference as a variable, and keep updating it upon changes.
+Append is the symmetric operation of $cons$, it appends element to the tail, while $cons$ add from head. It is also known as `snoc' (reverse of `cons'). As it need traverse the list to the tail, the performance is $O(n)$, where $n$ is the length. To avoid repeatedly traverse, we can persist the tail reference, and update it for changes.
 
 \be
 \begin{array}{rcl}
-append([\ ], x) & = & [x] \\
-append(y:ys, x) & = & y : append(ys, x) \\
+append\ [\ ]\  x & = & [x] \\
+append\ (y \cons ys)\ x & = & y : append\ ys\ x \\
 \end{array}
 \ee
 
-\begin{itemize}
-\item If append $x$ to the empty list, the result is $[x]$;
-\item Otherwise, we firstly recursive append $x$ to the rest sub-list, then prepend the original head to form the result.
-\end{itemize}
-
-The corresponding iterative implementation is as the following:
+Below is the corresponding iterative implementation\footnote{The parameter orders are also symmetric: $cons\ x\ xs$ and $append\ xs\ x$}:
 
 \begin{algorithmic}[1]
-\Function{Append}{$L, x$}
-  \If{$L = $ NIL}
+\Function{Append}{$X, x$}
+  \If{$X = $ NIL}
     \State \Return \Call{Cons}{$x$, NIL}
   \EndIf
-  \State $H \gets L$ \Comment{save the head}
-  \While{\Call{Rest}{$L$} $\neq$ NIL}
-    \State $L \gets$ \Call{Rest}{$L$}
+  \State $H \gets X$ \Comment{Copy of the head}
+  \While{\Call{Rest}{$X$} $\neq$ NIL}
+    \State $X \gets$ \Call{Rest}{$X$}
   \EndWhile
-  \State \Call{Rest}{$L$} $\gets$ \Call{Cons}{$x$, NIL}
+  \State \Call{Rest}{$X$} $\gets$ \Call{Cons}{$x$, NIL}
   \State \Return $H$
 \EndFunction
 \end{algorithmic}
 
-Update the \textproc{Rest} is typically implemented by setting the \texttt{next} reference field as shown in below example program.
+To update the \textproc{Rest}, it is typically implemented by updating the \texttt{next} reference, for example:
 
 \begin{lstlisting}[language=Bourbaki]
-List<A> append(List<A> xs, T x) {
-    if (xs == null) {
-        return cons(x, null)
-    }
-    List<A> head = xs
-    while (xs.next != null) {
+List<A> append(List<A> xs, A x) {
+    if xs == null then return cons(x, null)
+    var head = xs
+    while xs.next != null {
         xs = xs.next
     }
     xs.next = cons(x, null)
     return head
 }
-\end{lstlisting}
 
-\begin{Exercise}
-\Question{Add a `tail' field in list definition, optimize the append algorithm to constant time.}
-\Question{With the additional `tail' field, when need we update the tail variable? How does it affect the performance?}
-\end{Exercise}
-
-\subsubsection{Set value}
 \index{List!set at}
-Similar to $getAt$, we need advance to the target position, then change the element there. To define function $setAt(i, x, L)$:
-
-\begin{itemize}
-\item If $i = 0$, it means we are changing the first element, the result is $x : L'$;
-\item Otherwise, we need recursively set the value at position $i-1$ for the sub-list $L'$.
-\end{itemize}
+Similar to $getAt$, we need advance to the target position and change the element.
 
 \be
 \begin{array}{rcl}
-setAt(0, x,\ y:ys) & = & x : ys \\
-setAt(i, x,\ y:ys) & = & y : setAt(i - 1, x, ys) \\
+setAt\ 0\ x\ (y \cons ys) & = & x : ys \\
+setAt\ i\ x\ (y \cons ys) & = & y : setAt\ (i - 1)\ x\ ys \\
 \end{array}
 \ee
 
-This algorithm is bound to $O(i)$ time, where $i$ is the position to update.
+The $setAt$ is bound to $O(i)$ time, where $i$ is the position for update.
 
 \begin{Exercise}
+\Question{Add the `tail' reference, optimize the $append$ to constant time.}
+\Question{When need update the tail reference? How does it affect the performance?}
 \Question{Handle the empty list and out of bound error for $setAt$.}
 \end{Exercise}
 
