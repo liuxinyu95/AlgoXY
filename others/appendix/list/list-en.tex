@@ -287,6 +287,7 @@ List<A> append(List<A> xs, A x) {
     xs.next = cons(x, null)
     return head
 }
+\end{lstlisting}
 
 \index{List!set at}
 Similar to $getAt$, we need advance to the target position and change the element.
@@ -388,123 +389,101 @@ We can eliminate the recursion to implement the iterative implementation. Scan t
 \EndFunction
 \end{algorithmic}
 
-At any time during the loop, the result is sorted. There is a major difference between the recursive and the iterative implementations. The recursive one processes the list from right, while the iterative one is from left. We'll introduce `tail-recursion' in section \ref{sec:tail-call} to eliminate this difference. Chapter 3 introduces insertion sort in detail, including performance analysis and optimization.
+At any time during loop, the $S$ is sorted. The recursive implementation processes the list from right, while the iterative one is from left. We'll use `tail-recursion' in section \ref{sec:tail-call} to eliminate this difference. Chapter 3 is about insertion sort in detail, including performance analysis and optimization.
 
 \begin{Exercise}
-\Question{Handle the out-of-bound case in insertion, and treat it as append.}
-\Question{Design the insertion algorithm for array. When insert at position $i$, all elements after $i$ need shift to the end by one.}
-\Question{Implement the insertion sort only with less than ($<$) defined.}
+\Question{Handle the out-of-bound case when insert, treat it as append.}
+\Question{Implement insert for array. When insert at position $i$, all elements after $i$ need shift to the end.}
 \end{Exercise}
 
 \subsubsection{delete}
 \index{List!delete} \index{List!delete at}
-Symmetric to insert, delete also has two cases. One is to delete the element at a position; the other is to look up, then delete the element of a given value. The first case is defined as $delAt(i, L)$, the second case is defined as $delete(x, L)$.
-
-To delete the element at position $i$, we need advance $i$ steps to the target position, then by pass the element, and link the rest sub-list.
-\begin{itemize}
-\item If $L$ is empty, then the result is empty too;
-\item If $i = 0$, we are deleting the head, the result is $L'$;
-\item Otherwise, recursively delete the $(i-1)$-th element from $L'$, then prepend the original head as the result.
-\end{itemize}
+Symmetric to insert, there are two cases for deletion: (1). delete the element at a position $delAt\ i\ X$; (2) look up then delete the element of a given value $delete\ x\ X$. To delete the element at position $i$, we advance $i$ steps to the target position, then by pass the element, and link the rest sub-list.
 
 \be
 \begin{array}{rcl}
-delAt(i,\ [\ ]) & = & [\ ] \\
-delAt(0,\ x:xs) & = & xs \\
-delAt(i,\ x:xs) & = & x : delAt(i - 1, xs) \\
+delAt\ i\ [\ ] & = & [\ ] \\
+delAt\ 0\ (x \cons xs) & = & xs \\
+delAt\ i\ (x \cons xs) & = & x : delAt\ (i - 1)\ xs \\
 \end{array}
 \ee
 
-This algorithm is bound to $O(i)$ as we need advance $i$ steps to perform deleting. Below is the iterative implementation:
+It is bound to $O(i)$ time as we need advance $i$ steps to delete. Below is the iterative implementation.
 
 \begin{algorithmic}[1]
-\Function{Del-At}{$i, L$}
-  \State $S \gets$ \Call{Cons}{$\perp, L$} \Comment{A sentinel node}
+\Function{Del-At}{$i, X$}
+  \State $S \gets$ \Call{Cons}{$\perp, X$} \Comment{Sentinel node}
   \State $p \gets S$
-  \While{$i > 0$ and $L \neq$ NIL}
+  \While{$i > 0$ and $X \neq$ NIL}
     \State $i \gets i - 1$
-    \State $p \gets L$
-    \State $L \gets $ \Call{Rest}{$L$}
+    \State $p \gets X$
+    \State $X \gets $ \Call{Rest}{$X$}
   \EndWhile
-  \If{$L \neq$ NIL}
-    \State \Call{Rest}{$p$} $\gets$ \Call{Rest}{$L$}
+  \If{$X \neq$ NIL}
+    \State \Call{Rest}{$p$} $\gets$ \Call{Rest}{$X$}
   \EndIf
   \State \Return \Call{Rest}{$S$}
 \EndFunction
 \end{algorithmic}
 
-To simplify the implementation, we introduce a sentinel node $S$, it contains a special value $\perp$, and its next reference points to $L$. With $S$, we are save to cut-off any node in $L$ even for the first one. Finally, we return the list after $S$ as the result, and $S$ itself can be discarded.
-
-For the `find and delete' case, there are two options. We can either find and delete the first occurrence of a value; or remove all the occurrences. The later is more generic, we leave it as an exercise. When delete $x$ from list $L$:
-
-\begin{itemize}
-\item If the list is empty, the result is $[\ ]$;
-\item Otherwise, we compare the head and $x$, if they are equal, then the result is $L'$;
-\item If the head does not equal to $x$, we keep the head, and recursively delete $x$ in $L'$.
-\end{itemize}
+To simplify the implementation, we introduce a sentinel node $S$, it contains a special value $\perp$, and points to $X$. With $S$, we are save to cut-off any node in $X$ even for the head. Finally, we return the list after $S$ as the result, and discard $S$. For `find and delete', there are two sub-cases: (1) find and delete the first occurrence of a value; (2) remove all the occurrences. The later is more generic (see the exercise).
 
 \be
 \begin{array}{rcl}
-delete(x,\ [\ ]) & = & [\ ] \\
-delete(x,\ y:ys) & = & \begin{cases}
+delete\ x\ [\ ] & = & [\ ] \\
+delete\ x\ (y \cons ys) & = & \begin{cases}
   x = y : & ys \\
-  x \neq y : & y : delete(x, ys) \\
+  x \neq y : & y : delete\ x\  ys \\
   \end{cases} \\
 \end{array}
 \label{eq:list-delete}
 \ee
 
-This algorithm is bound to $O(n)$ time, where $n$ is the length, as it need scan the list to find the target element. For the iterative implementation, we also introduce a sentinel node to simplify the logic:
+Because we scan the lit to find the target element, the time is bound to $O(n)$, where $n$ is the length. We use a sentinel node to simplify the iterative implementation too:
 
 \begin{algorithmic}[1]
-\Function{Delete}{$x, L$}
-  \State $S \gets$ \Call{Cons}{$\perp, L$}
-  \State $p \gets$ L
-  \While{$L \neq$ NIL and \Call{First}{$L$} $\neq x$}
-    \State $p \gets L$
-    \State $L \gets$ \Call{Rest}{$L$}
+\Function{Delete}{$x, X$}
+  \State $S \gets$ \Call{Cons}{$\perp, X$}
+  \State $p \gets X$
+  \While{$X \neq$ NIL and \Call{First}{$X$} $\neq x$}
+    \State $p \gets X$
+    \State $X \gets$ \Call{Rest}{$X$}
   \EndWhile
-  \If{$L \neq$ NIL}
-    \State \Call{Rest}{$p$} $\gets$ \Call{Rest}{$L$}
+  \If{$X \neq$ NIL}
+    \State \Call{Rest}{$p$} $\gets$ \Call{Rest}{$X$}
   \EndIf
   \State \Return \Call{Rest}{$S$}
 \EndFunction
 \end{algorithmic}
 
 \begin{Exercise}
-\Question{Design the algorithm to find and delete all occurrences of a given value.}
-\Question{Design the delete algorithm for array, all elements after the delete position need shift to front by one.}
+\Question{Implement the algorithm to find and delete all occurrences of a given value.}
+\Question{Design the delete algorithm for array, all elements after the delete position need shift to front.}
 \end{Exercise}
 
 \subsubsection{concatenate}
 \label{concat} \index{List!concat}
-Append is a special case for concatenation. Append only adds one element, while concatenation adds multiple ones. However, the performance would be quadratic if repeatedly appending as below:
+
+Append is a special case for concatenation. It adds only one element, while concatenation adds multiple. However, the performance would be quadratic if repeatedly append. Let $|xs| = n$, $|ys| = m$ be the lengths, we need advance to the tail of $xs$ for $m$ times, the performance is $O(n + (n + 1) + ... + (n + m)) = O(nm + m^2)$.
+
+\[
+\begin{array}{rcl}
+xs \doubleplus [\ ] & = & xs \\
+xs \doubleplus (y \cons ys) & = & append\ xs\ y \doubleplus ys \\
+\end{array}
+\]
+
+While the `cons' is fast (constant time), we can traverse to the tail of $xs$ only once, then link to $ys$.
 
 \be
 \begin{array}{rcl}
-X \doubleplus [\ ] & = & X \\
-X \doubleplus (y:ys) & = & append(X, y) \doubleplus ys \\
+[\ ] \doubleplus ys & = & ys \\
+xs \doubleplus [\ ] & = & xs \\
+(x \cons xs) \doubleplus ys & = & x : (xs \doubleplus ys) \\
 \end{array}
 \ee
 
-In this implementation when concatenate $X$ and $Y$, each append operation traverses to the tail, and we do this for $|Y|$ times. the total time is bound to $O(|X| + (|X| + 1) + ... + (|X| + |Y|)) = O(|X||Y| + |Y|^2)$. Consider the link (cons) operation is fast (constant time), we can traverse to the tail of $X$ only once, then link $Y$ to the tail.
-
-\begin{itemize}
-\item If $X$ is empty, the result is $Y$;
-\item Otherwise, we concatenate the sub-list $X'$ with $Y$, then prepend the head as the result.
-\end{itemize}
-
-We can further improve it a bit: when $Y$ is empty, we needn't traverse, but directly return $X$:
-
-\be
-\begin{array}{rcl}
-[\ ] \doubleplus Y & = & Y \\
-X \doubleplus [\ ] & = & X \\
-(x:xs) \doubleplus Y & = & x : (xs \doubleplus Y) \\
-\end{array}
-\ee
-
-The modified algorithm only traverse list $X$, then link its tail to $Y$, hence it is bound $O(|X|)$ time. In imperative settings, concatenation can be realized in constant time with the additional tail variable. We leave its implementation as exercise. Below is the iterative implementation without using the tail variable:
+This improvement has the performance of $O(n)$. In imperative settings, we can implement concatenation in constant time with the tail reference variable (see exercise).
 
 \begin{algorithmic}[1]
 \Function{Concat}{$X, Y$}
