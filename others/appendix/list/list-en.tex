@@ -894,84 +894,68 @@ We use a sentinel node in the iterative \textproc{Map} implementation.
 \subsubsection{For each}
 \index{List!for each}
 
-Sometimes we only need to traverse the list, repeatedly process the elements one by one without building the new list. Here is an example that print every element out:
+Sometimes we only need process the elements one by one without building the new list, for example, print every element:
 
 \begin{algorithmic}[1]
-\Function{Print}{$L$}
-  \While{$L \neq$ NIL}
-    \State print \Call{First}{$L$}
-    \State $L \gets$ \Call{Rest}{$L$}
+\Function{Print}{$X$}
+  \While{$X \neq$ NIL}
+    \State print \Call{First}{$X$}
+    \State $X \gets$ \Call{Rest}{$X$}
   \EndWhile
 \EndFunction
 \end{algorithmic}
 
-More generally, we can pass a procedure $P$, then traverse the list and apply $P$ to each element.
+More generally, we pass a procedure $P$, then apply $P$ to each element.
 
 \begin{algorithmic}[1]
-\Function{For-Each}{$P, L$}
-  \While{$L \neq$ NIL}
-    \State \textproc{P}(\Call{First}{$L$})
-    \State $L \gets$ \Call{Rest}{$L$}
+\Function{For-Each}{$P, X$}
+  \While{$X \neq$ NIL}
+    \State \textproc{P}(\Call{First}{$X$})
+    \State $X \gets$ \Call{Rest}{$X$}
   \EndWhile
 \EndFunction
 \end{algorithmic}
 
-\subsubsection{Examples}
-
-As an example, let's see a ``$n$-lights puzzle''\cite{poj-drunk-jailer}. There are $n$ lights in a room, all of them are off. We execute the following $n$ rounds:
+For example, let us solve the ``$n$-lights puzzle''\cite{poj-drunk-jailer} with map. There are $n$ lights in a room, all are off. We execute the following $n$ rounds:
 
 \begin{enumerate}
-\item Switch all the lights in the room (all on);
-\item Switch lights with number 2, 4, 6, ... , that every other light is switched, if the light is on, it will be off;
+\item Switch all lights on;
+\item Switch lights of number 2, 4, 6, ... , that every other light is switched;
 \item Switch every third lights, number 3, 6, 9, ... ;
 \item ...
 \end{enumerate}
 
-And at the last round, only the last light (the $n$-th light) is switched. The question is how many lights are on in the end?
-
-Let's start with a brute-force solution, then improve it step by step. We represent the state of $n$ lights as a list of 0/1 numbers. 0 is off, 1 is on. The initial state are all zeros: [0, 0, ..., 0]. We label the light from 1 to $n$, then map them to ($i$, on/off) pairs:
+At the last round, only the $n$-th light is switched. How many lights are on in the end? We start with a brute-force solution. Represent the $n$ lights as a list of 0/1 numbers (0: off, 1: on). Start from all zeros: [0, 0, ..., 0]. Label the light from 1 to $n$, then map them to ($i$, on/off) pairs:
 
 \[
-lights = map(i \mapsto (i, 0),\ [1, 2, 3, ... n])
+lights = map\ (i \mapsto (i, 0))\ [1, 2, ..., n]
 \]
 
-It binds each number to zero, the result is a list of pairs: $L = [(1, 0), (2, 0), ..., (n, 0)]$. Next we operate this list of pairs for $n$ rounds. In the $i$-th round, switch the second value in this pair if its label is divided by $i$. Consider $1 - 0 = 1$, and $1 - 1 = 0$, we can switch 0/1 value of $x$ by $1 - x$. For light $(j, x)$, if $i | j$, (i.e. $j \bmod i = 0$), then switch, otherwise leave the light untouched.
+It binds each number to zero, i.e., a list of pairs: $L$ = [(1, 0), (2, 0), ..., (n, 0)]. We operate this list of pairs $n$ rounds. In the $i$-th round, for every pair $(j, x)$, if $i | j$ (meaning $j \bmod i = 0$), then switch it on/off. As $1 - 0 = 1$ and $1 - 1 = 0$, we switch $x$ to $1 - x$.
 
 \be
-switch(i, (j, x)) = \begin{cases}
+switch\ i\ (j, x)) = \begin{cases}
   j \bmod i = 0 : & (j, 1 - x) \\
-  otherwise: & (j, x) \\
+  \text{否则}: & (j, x) \\
   \end{cases}
 \ee
 
-The $i$-th round for all lights can be realized as map:
-
-\be
-map(switch(i), L)
-\ee
-
-Here we use the Curried form of $switch$, which is equivalent to:
-
-\[
-map((j, x) \mapsto switch(i, (j, x)), L)
-\]
-
-Next, we define a function $op()$, which performs above mapping on $L$ over and over by $n$ rounds. We call this function with $op([1, 2, ..., n], L)$.
+Realize the $i$-th round of operation as $map\ (switch\ i)\ L$ (we use the Curried form of $switch$). Next, define a function $op()$, which performs mapping on $L$ over and over for $n$ rounds: $op\ [1, 2, ..., n]\ L$.
 
 \be
 \begin{array}{rcl}
-op([\ ],\ L) & = & L \\
-op(i:is,\ L) & = & op(is, map(switch(i), L)) \\
+op\ [\ ]\ L & = & L \\
+op\ (i \cons is)\ L & = & op\ is\ (map\ (switch\ i)\ L) \\
 \end{array}
 \ee
 
-At this stage, we can sum the second value of each pair in list $L$ to get the answer.
+Finally, sum the second value of each pair to get the answer.
 
 \be
-solve(n) = sum(map(snd, op([1, 2, ..., n], lights)))
+solve\ n = sum\ (map\ snd\ (op\ [1, 2, ..., n]\ L))
 \ee
 
-Below is the example Haskell implementation of this brute-force solution:
+Below is the example Haskell implementation:
 
 \begin{Haskell}
 solve = sum . (map snd) . proc  where
@@ -979,13 +963,12 @@ solve = sum . (map snd) . proc  where
     proc n = operate [1..n] lights
     operate [] xs = xs
     operate (i:is) xs = operate is (map (switch i) xs)
+    switch i (j, x) = if j `mod` i == 0 then (j, 1 - x) else (j, x)
+\end{Haskell}
 
-switch i (j, x) = if j `mod` i == 0 then (j, 1 - x) else (j, x)
-\end{Haskell} %$
+Run this program from 1 to 100 lights, below are the answers (added line breaks):
 
-Run this program from 1 light to 100 lights, let's see what the answers are (we added line breaks):
-
-\begin{verbatim}
+\begin{Verbatim}[fontsize=\footnotesize]
 [1,1,1,
  2,2,2,2,2,
  3,3,3,3,3,3,3,
@@ -995,23 +978,12 @@ Run this program from 1 light to 100 lights, let's see what the answers are (we 
  7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
  8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,
  9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,10]
-\end{verbatim}
+\end{Verbatim}
 
-This result is interesting:
-
-\begin{itemize}
-\item the first 3 answers are 1;
-\item the 4-th to the 8-th answers are 2;
-\item the 9-th to the 15-th answers are 3;
-\item ...
-\end{itemize}
-
-It seems that the $i^2$-th to the $((i+1)^2-1)$-th answers are $i$. Actually, we can prove it:
+They form a pattern: the first 3 answers are 1; the 4-th to the 8-th answers are 2; the 9-th to the 15-th answers are 3; ... It seems that the $i^2$-th to the $((i+1)^2-1)$-th answers are $i$. Let's prove it:
 
 \begin{proof}
-Given $n$ lights labeled from 1 to $n$, consider which lights are on finally. Since the initial states for all lights are off, we can say that, the lights which are manipulated odd times are on. For every light $i$, it will be switched at the $j$ round if $i$ can be divided by $j$ (denote as $j | i$). Only the lights which have odd number of factors are on in the end.
-
-The key point to solve this puzzle, is to find all numbers which have odd number of factors. For any positive integer $n$, let $S$ be the set of all factors of $n$. $S$ is initialized to $\varnothing$. If $p$ is a factor of $n$, there must exist a positive integer $q$ such that $n = p q$ holds. It means $q$ is also a factor of $n$. We add 2 different factors to set $S$ if and only if $p \neq q$, which keeps $|S|$ even all the time unless $p = q$. In such case, $n$ is a square number. We can only add 1 factor to set $S$, which leads to odd number of factors.
+Given $n$ lights labeled from 1 to $n$, consider which lights are on finally. Since the initial states for all lights are off, we can say that, the lights which are manipulated odd times are on. For every light $i$, it will be switched at the $j$ round if $i$ can be divided by $j$ (denote as $j | i$). Only the lights which have odd number of factors are on in the end. The key point to solve this puzzle, is to find all numbers which have odd number of factors. For any positive integer $n$, let $S$ be the set of all factors of $n$. $S$ is initialized to $\varnothing$. If $p$ is a factor of $n$, there must exist a positive integer $q$ such that $n = p q$ holds. It means $q$ is also a factor of $n$. We add 2 different factors to set $S$ if and only if $p \neq q$, which keeps $|S|$ even all the time unless $p = q$. In such case, $n$ is a square number. We can only add 1 factor to set $S$, which leads to odd number of factors.
 \end{proof}
 
 At this stage, we can design a fast solution by finding the number of square numbers under $n$.
