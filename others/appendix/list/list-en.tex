@@ -622,198 +622,190 @@ pow(b, n, a) & = & \begin{cases}
 \end{array}
 \ee
 
-Compare to the brute-force implementation, this one improves to $O(\lg n)$ time. Actually, we can improve it further. If represent $n$ in binary format $n = (a_ma_{m-1}...a_1a_0)_2$, we clearly know that the computation for $b^{2^i}$ is necessary if $a_i = 1$. This is quite similar to the idea of Binomial heap (\autoref{sec:binomial-heap}). We can multiplying all of them for bits of 1.
-
-For example, when compute $b^{11}$, as $11 = (1011)_2 = 2^3 + 2 +1$, thus $b^{11} = b^{2^3} \times b^2 \times b$. We get the result by these steps:
+This implementation is bound to $O(\lg n)$ time. We can improve it further. Represent $n$ in binary format $n = (a_ma_{m-1}...a_1a_0)_2$. We need compute $b^{2^i}$ if $a_i = 1$, similar to the Binomial heap (\autoref{sec:binomial-heap}, chapter 10) algorithm. Finally, we multiplying them together. For example, when compute $b^{11}$, as $11 = (1011)_2 = 2^3 + 2 +1$, gives $b^{11} = b^{2^3} \times b^2 \times b$. We follow these steps:
 
 \begin{enumerate}
-\item calculate $b^1$, which is $b$;
-\item Square to $b^2$ from the previous result;
-\item Square again to $b^{2^2}$ from step 2;
-\item Square to $b^{2^3}$ from step 3.
+\item compute $b^1$, which is $b$;
+\item Square to $b^2$;
+\item Square to $b^{2^2}$;
+\item Square to $b^{2^3}$.
 \end{enumerate}
 
-Finally, we multiply the result of step 1, 2, and 4 to get $b^{11}$. Summarize this idea, we improve the algorithm as below.
+Finally, multiply the result of step 1, 2, and 4 to get $b^{11}$.
 
 \be
 \begin{array}{rcl}
-pow(b, 0, A) & = & A \\
-pow(b, n, A) & = & \begin{cases}
-  2 | n : & pow(b^2, \dfrac{n}{2}, A) \\
-  otherwise: & pow(b^2, \lfloor \dfrac{n}{2} \rfloor, b \cdot A) \\
+pow(b, 0, a) & = & a \\
+pow(b, n, a) & = & \begin{cases}
+  2 | n : & pow(b^2, \dfrac{n}{2}, a) \\
+  \text{otherwise}: & pow(b^2, \lfloor \dfrac{n}{2} \rfloor, ab) \\
   \end{cases}
 \end{array}
 \ee
 
-This algorithm essentially shifts $n$ to right 1 bit each time (divide $n$ by 2). If the LSB (Least Significant Bit, the lowest) is 0, $n$ is even. It squares the base and keeps the accumulator $A$ unchanged; If the LSB is 1, $n$ is odd. It squares the base and accumulates it to $A$; When $n$ is zero, we exhaust all bits, $A$ is the final result. At any time, the updated base number $b'$, the shifted exponent number $n'$, and the accumulator $A$ satisfy the invariant $b^n = A \cdot (b')^{n'}$.
+This algorithm essentially shifts $n$ to right 1 bit a time (divide $n$ by 2). If the LSB (the least significant bit) is 0, $n$ is even, squares the base and keeps the accumulator $a$ unchanged. If the LSB is 1, $n$ is odd, squares the base and accumulates it to $a$. When $n$ is zero, we exhaust all bits, $a$ is the final result. At any time, the updated base $b'$, the shifted exponent $n'$, and the accumulator $a$ satisfy the invariant $b^n = a (b')^{n'}$.The previous implementation minus one for odd $n$, the improvement halves $n$ every time. It exactly runs $m$ rounds, where $m$ is the number of bits. We leave the imperative implementation as exercise.
 
-Compare to previous implementation, which minus by one for odd $n$, this algorithm halves $n$ every time. It exactly runs $m$ rounds, where $m$ is the number of bits. We leave the imperative implementation as exercise.
-
-Back to the sum and product. The iterative implementation applies plus and multiply while traversing:
+Back to the sum and product, the iterative implementation applies plus and multiply while traversing:
 
 \begin{algorithmic}[1]
-\Function{Sum}{$L$}
+\Function{Sum}{$X$}
   \State $s \gets 0$
-  \While{$L \neq$ NIL}
-    \State $s \gets s +$ \Call{First}{$L$}
-    \State $L \gets$ \Call{Rest}{$L$}
+  \While{$X \neq$ NIL}
+    \State $s \gets s +$ \Call{First}{$X$}
+    \State $X \gets$ \Call{Rest}{$X$}
   \EndWhile
   \State \Return $s$
 \EndFunction
 \Statex
-\Function{Product}{$L$}
+\Function{Product}{$X$}
   \State $p \gets 1$
-  \While{$L \neq$ NIL}
-    \State $p \gets p\ \cdot$ \Call{First}{$L$}
-    \State $L \gets$ \Call{Rest}{$L$}
+  \While{$X \neq$ NIL}
+    \State $p \gets p\ \cdot$ \Call{First}{$X$}
+    \State $X \gets$ \Call{Rest}{$X$}
   \EndWhile
   \State \Return $p$
 \EndFunction
 \end{algorithmic}
 
-One interesting usage of product is to calculate factorial of $n$ as: $n! = product([1..n])$.
+With product, we can define factorial of $n$ as: $n! = product\ [1..n]$.
 
 \subsection{maximum and minimum}
 \index{List!maximum} \index{List!minimum}
 
-For a list of comparable elements (we can define order for any two elements), there is the maximum and minimum. The algorithm structure of $max/min$ is same. For a none empty list:
-
-\begin{itemize}
-\item If there is only one element (a singleton) $[x_1]$, the result is $x_1$;
-\item Otherwise, we recursively find the min/max of the sub-list, then compare it with the first element to determine the result.
-\end{itemize}
+For a list of comparable elements (we can define order for any two elements), there is the maximum and minimum. $max/min$ share the same structure:
 
 \be
+\resizebox{\linewidth}{!}{\ensuremath{
+\begin{array}{cc}
   \begin{array}{rcl}
-  min([x]) & = & x \\
-  min(x:xs) & = & \begin{cases}
-    x < min(xs) : & x \\
-    otherwise: & min(xs) \\
+  \min\ [x] & = & x \\
+  \min\ (x \cons xs) & = & \begin{cases}
+    x < \min\ xs : & x \\
+    \text{otherwise}: & \min\ xs \\
   \end{cases}
   \end{array}
-\ee
-and
-\be
+&
   \begin{array}{rcl}
-  max([x]) & = & x \\
-  max(x:xs) & = & \begin{cases}
-    x > max(xs) : & x \\
-    otherwise: & max(xs) \\
+  \max\ [x] & = & x \\
+  \max\ (x \cons xs) & = & \begin{cases}
+    x > \max\ xs : & x \\
+    \text{otherwise}: & \max\ xs \\
   \end{cases}
   \end{array}
+\end{array}
+}}
 \ee
 
-Both process the list from right to left. We can modify them to tail recursive. It also brings us the `on-line' feature, that at any time, the accumulator is the min/max so far processed. Use $min$ for example:
+Both process the list from right. We can change them to tail recursive. It also makes the computation `on-line', that at any time, the accumulator is the min/max so far. Use $min$ for example:
 
 \be
 \begin{array}{rcl}
-min'(a,\ [\ ]) & = & a \\
-min'(a,\ x:xs) & = & \begin{cases}
-  x < a : & min'(x, xs) \\
-  otherwise : & min'(a, xs) \\
+\min'\ a\ [\ ] & = & a \\
+\min'\ a\ (x \cons xs) & = & \begin{cases}
+  x < a : & \min'\ x\ xs \\
+  \text{否则} : & \min'\ a\ xs \\
   \end{cases}
 \end{array}
 \ee
 
-Different from $sum'/prod'$, we can't pass a fixed starting value to the tail recursive $min'/max'$, unless we use $\pm \infty$ in below Curried form:
+Different from $sum'/prod'$, we can't pass a fixed starting value to $min'/max'$, unless $\pm \infty$ (Curried form):
 
 \[
-  min = min'(\infty) \quad \quad \quad max = max'(- \infty)
+  \textstyle \min = \min'\ \infty \quad \quad \quad \max = \max'\ -\infty
 \]
 
-Alternatively, we can pass the first element as the accumulator given min/max only takes none empty list:
+We can pass the first element given min/max only takes none empty list:
 
 \be
-  min(x:xs) = min'(x,\ xs)
+  \textstyle
+  \min\ (x \cons xs) = \min'\ x\ xs
   \quad \quad \quad
-  max(x:xs) = max'(x,\ xs)
+  \max\ (x \cons xs) = \max'\ x\ xs
 \ee
 
-The optimized tail recursive algorithm can be further changed to purely iterative implementation. We give the \textproc{Min} example, and skip \textproc{Max}.
+We can optimize the tail recursive implementation with loops. Use the \textproc{Min} for example.
 
 \begin{algorithmic}[1]
-\Function{Min}{$L$}
-  \State $m \gets$ \Call{First}{$L$}
-  \State $L \gets$ \Call{Rest}{$L$}
-  \While{$L \neq$ NIL}
-    \If{\Call{First}{$L$} $< m$ }
-      \State $m \gets$ \Call{First}{$L$}
+\Function{Min}{$X$}
+  \State $m \gets$ \Call{First}{$X$}
+  \State $X \gets$ \Call{Rest}{$X$}
+  \While{$X \neq$ NIL}
+    \If{\Call{First}{$X$} $< m$ }
+      \State $m \gets$ \Call{First}{$X$}
     \EndIf
-    \State $L \gets$ \Call{Rest}{$L$}
+    \State $X \gets$ \Call{Rest}{$X$}
   \EndWhile
   \State \Return $m$
 \EndFunction
 \end{algorithmic}
 
-There is a way to realize the tail recursive algorithm without using accumulator explicitly. The idea is to re-use the first element as the accumulator. Every time, we compare the head with the next element; then drop the greater one for $min$, and drop the less one for $max$.
+Alternatively, we can re-use the first element as the accumulator. Every time, we compare the first two elements, and drop one. Below is the example for $min$. $max$ is symmetric.
 
 \be
 \begin{array}{rcl}
-min([x]) & = & x \\
-min(x_1:x_2:xs) & = & \begin{cases}
-  x_1 < x_2 : & min(x_1:xs) \\
-  otherwise: & min(x_2:xs) \\
+\min\ [x] & = & x \\
+\min\ (x_1 \cons x_2 \cons xs) & = & \begin{cases}
+  x_1 < x_2 : & \min\ (x_1 \cons xs) \\
+  \text{otherwise}: & \min\ (x_2 \cons xs) \\
   \end{cases}
 \end{array}
 \ee
 
-We skip the definition for $max$ as it is symmetric.
-
 \begin{Exercise}
-\Question{Change the $length$ to tail call.}
-\Question{Change the insertion sort to tail call.}
-\Question{Implement the $O(\lg n)$ algorithm to calculate $b^n$ by represent $n$ in binary.}
+\Question{Change $length$ to tail recursive.}
+\Question{Change the insertion sort to tail recursive.}
+\Question{Compute $b^n$ through the binary format of $n$.}
 \end{Exercise}
 
 \section{Transform}
 \index{List!Transform}
-From algebraic perspective, there are two types of transform: one keeps the list structure, but only change the elements; the other alter the list structure, hence the result is not isomorphic to the original list. Particularly, we call the former {\em map}.
+
+In algebra, there are two types of transformation: one keeps the list structure, but only transforms the elements; the other alter the list structure, hence the result is not isomorphic. Particularly, we call the former {\em map}.
 
 \subsection{map and for-each}
 \index{List!map}
-The first example is to convert a list of numbers to their represented strings, like to change [3, 1, 2, 4, 5] to [``three'', ``one'', ``two'', ``four'', ``five'']
+
+The first example converts a list of numbers to strings. Transform [3, 1, 2, 4, 5] to [``three'', ``one'', ``two'', ``four'', ``five'']
 
 \be
 \begin{array}{rcl}
-toStr([\ ]) & = & [\ ] \\
-toStr(x:xs) & = & str(x) : toStr(xs) \\
+toStr\ [\ ] & = & [\ ] \\
+toStr\ (x \cons xs) & = & (str\ x) : toStr\ xs \\
 \end{array}
 \label{eq:tostr}
 \ee
 
-For the second example, consider a dictionary, which is a list of words grouped by initial letter. Like:
+For the second example, given a dictionary, which is a list of words grouped by their initials:
 
-\begin{verbatim}
+\begin{Verbatim}[fontsize=\footnotesize]
 [[a, an, another, ... ],
  [bat, bath, bool, bus, ...],
  ...,
  [zero, zoo, ...]]
-\end{verbatim}
+\end{Verbatim}
 
-Next we process a text ({\em Hamlet} for example), and augment each word with their number of occurrence, like:
+Next process a text ({\em Hamlet} for example), augment each word with the number of occurrence, like:
 
-\begin{verbatim}
+\begin{Verbatim}[fontsize=\footnotesize]
 [[(a, 1041), (an, 432), (another, 802), ... ],
  [(bat, 5), (bath, 34), (bool, 11), (bus, 0), ...],
  ...,
  [(zero 12), (zoo, 0), ...]]
-\end{verbatim}
+\end{Verbatim}
 
-Now for every initial letter, we want to figure out which word occurs most. How to write a program to do this work? The output is a list of words, that every one has the most occurrences in the group, something like \texttt{[a, but, can, ...]}. We need develop a program that transform \textbf{a list of groups of word-number pairs} into \textbf{a list of words}.
-
-First, we need define a function. It takes a list of word-number pairs, finds the word paired with the biggest number. Sort is overkill. What we need is a special max function $maxBy(cmp, L)$, where $cmp$ compares two elements abstractly.
+Now for every initial letter, which word does occur most? The answer is a list of words, that every one has the most occurrences in the group, like \texttt{[a, but, can, ...]}. We need a program that transforms \textbf{a list of groups of word-number pairs} into \textbf{a list of words}. First, define a function, which takes a list of word-number pairs, finds the word paired with the biggest number. Sort is overkill. We need a special max function $maxBy\ cmp\ xs$, where $cmp$ is the generic compare function.
 
 \be
 \begin{array}{rcl}
-maxBy(cmp,\ [x]) & = & x \\
-maxBy(cmp,\ x_1 : x_2 : xs) & = & \begin{cases}
-  cmp(x_1, x_2) : & maxBy(cmp, x_2 : xs) \\
-  otherwise : & maxBy(cmp, x_1 : xs) \\
+maxBy\ cmp\ [x] & = & x \\
+maxBy\ cmp\ (x_1 \cons x_2 \cons xs) & = & \begin{cases}
+  cmp\ x_1\ x_2 : & maxBy\ cmp\ (x_2 \cons xs) \\
+  \text{otherwise} : & maxBy\ cmp\ (x_1 \cons xs) \\
   \end{cases}
 \end{array}
 \ee
 
-For a pair $p = (a, b)$ we define two access functions:
+For a pair $p = (a, b)$ we define two functions:
 
 \be
 \begin{cases}
@@ -822,71 +814,63 @@ snd\ (a, b) = & b \\
 \end{cases}
 \ee
 
-Instead of embedded parenthesis $fst((a, b)) = a$, we omit one layer, and use a space. Generally, we treat $f\ x = f(x)$ when the context is clear. Then we can define a special compare function for word-count pairs:
+Then define a special compare function for word-count pairs:
 
 \be
-less(p_1, p_2) = snd(p_1) < snd(p_2)
+less\ p_1\ p_2 = snd\ p_1 < snd\ p_2
 \ee
 
-Then pass $less$ to $maxBy$ to finalize our definition (in Curried form):
-
-\be
-max'' = maxBy(less)
-\ee
-
-With $max''()$ defined, we can develop the solution to process the whole list.
+Then pass $less$ to $maxBy$ (in Curried form): $\max'' = maxBy\ less$. Finally, call $max''$ to process the list:
 
 \be
 \begin{array}{rcl}
-solve([\ ]) & = & [\ ] \\
-solve(x:xs) & = & fst(max''(x)) : solve(xs) \\
+solve\ [\ ] & = & [\ ] \\
+solve\ (x \cons xs) & = & (fst\ (\max''\ x)) : solve\ xs \\
 \end{array}
 \label{eq:solve}
 \ee
 
-\subsubsection{Map}
 \index{List!map}
 
-The $solve()$ and $toStr()$ functions reveal the same structure, although they are developed for different problems. We can abstract this common structure as {\em map}:
+$solve$ and $toStr$ share the same structure for different problems. We abstract this common structure as {\em map}:
 
 \be
 \begin{array}{rcl}
-map(f,\ [\ ]) & = & [\ ] \\
-map(f,\ x:xs) & = & f(x) : map(f, xs) \\
+map\ f\ [\ ] & = & [\ ] \\
+map\ f\ (x \cons xs) & = & (f\ x) : map\ f\ xs \\
 \end{array}
 \ee
 
-$map$ takes the function $f$ as argument, applies it to every element to form a new list. A function that computes with other functions is called {\em high-order} function. If the type of $f$ is $A \to B$, which means it sends an element of $A$ to the result of $B$, then the type of map is:
+$map$ takes a function $f$, applies it to every element to form a new list. A function that computes with other functions is called {\em high-order} function. Let the type of $f$ is $A \to B$. It sends an element of $A$ to the result of $B$, the type of map is:
 
 \be
 map :: (A \to B) \to [A] \to [B]
 \ee
 
-We read it as: map takes a function of $A \to B$, then convert a list $[A]$ to another list $[B]$. The two examples in previous section can be defined with map as (in Curried form):
+Read as: map takes a function of $A \to B$, converts a list $[A]$ to another list $[B]$. We can define the above two examples with map as below (in Curried form):
 
 \[
-\begin{array}{l}
-toStr  = map\ str \\
-solve = map \ (fst \circ max'')
-\end{array}
+\textstyle
+toStr = map\ str \quad \quad \quad
+solve = map\ (fst \circ \max'')
 \]
 
-Where $f \circ g$ means function composite, i.e. first apply $g$ then apply $f$. $(f \circ g)\ x = f(g(x))$, Read as $f$ after $g$. Map can also be defined from the domain theory point of view. Function $y = f(x)$ defines the map from $x$ in set $X$ to $y$ in set $Y$:
+Where $f \circ g$ is function composition, i.e. first apply $g$ then apply $f$. $(f \circ g)\ x = f(g(x))$, read as $f$ after $g$. From the set theory point of view. Function $y = f(x)$ defines the map from $x$ in set $X$ to $y$ in set $Y$:
 
 \be
 Y = \{ f(x) | x \in X \}
 \ee
 
-This type of set definition is called Zermelo-Frankel set abstraction (known as ZF expression) \cite{algo-fp}. The different
-is that the mapping is from a list (but not set) to another: $Y = [f(x) | x \in Y]$. There can be duplicated elements. For list, such ZF style expression is called {\em list comprehension}.
-
-List comprehension is a powerful tool. As an example, let us see how to realize the permutation algorithm. Extend from generating all-permutations as \cite{algo-fp} and \cite{erlang}, we define a generic $perm(L, r)$, that permutes $r$ out of the total $n$ elements in the list $L$. There are total $P_n^r = \dfrac{n!}{(n-r)!}$ solutions.
+\index{List!ZF expression} \index{List!list comprehension}
+This type of set definition is called Zermelo-Frankel set abstraction (known as ZF expression) \cite{algo-fp}. The difference is that the mapping is from a list (but not set) to another: $Y = [f(x) | x \gets Y]$. There can be duplicated elements. For list, such ZF style expression is called {\em list comprehension}. It is a powerful tool. let us see how to realize the permutation algorithm for example. Extend from full-permutations\cite{algo-fp}\cite{erlang}, we define a generic $perm\ X\ r$, that permutes $r$ out of the total $n$ elements in list $X$. There are total $P_n^r = \dfrac{n!}{(n-r)!}$ permutations.
 
 \be
-perm(L, r) = \begin{cases}
-  |L| < r\ \text{or}\ r = 0: & [[\ ]] \\
-  otherwise: & [x:ys\ |\ x \in L, ys \in perm(delete(x,L), r-1)] \\
+\resizebox{\linewidth}{!}{\ensuremath{
+perm\ X\ r = \begin{cases}
+  |X| < r\ \text{or}\ r = 0: & [[\ ]] \\
+  \text{otherwise}: & [ x\cons ys \ |\ x \gets X, ys \gets perm\ (delete\ x\ X)\ (r - 1)] \\
   \end{cases}
+}}
 \ee
 
 If pick zero element for permutation, or there are too few (less than $r$), the result is a list of empty list; otherwise, we recursively pick $r-1$ out of the rest $n-1$ elements; then prepend $x$ before each. Below Haskell example program utilizes the list comprehension feature:
