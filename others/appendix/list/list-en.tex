@@ -1003,56 +1003,43 @@ Map is abstract, does not limit to list, but applies to many complex algebraic s
 \subsection{reverse}
 \index{List!reverse} \label{sec:reverse}
 
-It's a classic exercise to reverse a singly linked-list with constant space. One must carefully manipulate the node reference, however, there exists easy method to implement reverse:
+It's a good exercise to reverse a singly linked-list with constant space. One must carefully manipulate the node reference, while there exists an easy method: (1) Write a purely recursive solution; (2) Change it to tail recursive; (3) Convert to imperative implementation. The purely recursive solution is direct:
 
-\begin{enumerate}
-\item Write a purely recursive solution;
-\item Change it to tail-call;
-\item Translate the tail-call solution to imperative operations.
-\end{enumerate}
+\[
+\begin{array}{rcl}
+reverse [\ ] & = & [\ ] \\
+reverse (x \cons xs) & = & append\ (reverse\ xs)\ x \\
+\end{array}
+\]
 
-The purely recursive solution is straightforward. To reverse a list $L$.
-
-\begin{itemize}
-\item If $L$ is empty, the reversed result is empty;
-\item Otherwise, recursively reverse sub-list $L'$, then append the first element to the end.
-\end{itemize}
+Next convert it to tail recursive. Use an accumulator to store the reversed part, start from an empty list: $reverse = reverse'\ [\ ]$
 
 \be
 \begin{array}{rcl}
-reverse([\ ]) & = & [\ ] \\
-reverse(x:xs) & = & append(reverse(xs), x) \\
+reverse'\ a\ [\ ] & = & a \\
+reverse'\ a\ (x \cons xs) & = & reverse'\ (x \cons a)\ xs \\
 \end{array}
 \ee
 
-However, the performance is poor. As it need traverse to the end to append, this algorithm is bound to quadratic time. We can optimize it with tail call, use an accumulator to store the reversed part so far. We initialize the accumulator as empty: $reverse = reverse'([\ ])$.
-
-\be
-\begin{array}{rcl}
-reverse'(A,\ [\ ]) & = & A \\
-reverse'(A,\ x:xs) & = & reverse'(x:A,\ xs) \\
-\end{array}
-\ee
-
-Different from appending, cons (:) is a constant time operation. The idea is to repeatedly take the elements from the head, and prepend them to the accumulator. It essentially likes to store elements in a stack, then pop them out. The overall performance is $O(n)$, where $n$ is the length. Since tail call need not keep the context, we can optimize it to purely iterative loops:
+Different from appending, cons (:) takes constant time. We repeatedly extract the head element, and prepend to the accumulator. It likes to store the elements in a stack, then pop them out. The overall performance is $O(n)$, where $n$ is the length. Since tail call need not keep the context, we next convert it to iterative loops:
 
 \begin{algorithmic}[1]
-\Function{Reverse}{$L$}
+\Function{Reverse}{$X$}
   \State $A \gets$ NIL
-  \While{$L \neq$ NIL}
-    \State $A \gets $ \textproc{Cons}(\Call{First}{$L$}, $A$)
-    \State $L \gets$ \Call{Rest}{$L$}
+  \While{$X \neq$ NIL}
+    \State $A \gets $ \textproc{Cons}(\Call{First}{$X$}, $A$)
+    \State $X \gets$ \Call{Rest}{$X$}
   \EndWhile
   \State \Return $A$
 \EndFunction
 \end{algorithmic}
 
-However, this algorithm creates a new reversed list, but not mutate the original one. We need change it to in-place mutate $L$ as the below example program:
+However, this implementation creates a new reversed list, but not reverses in-place. We change it further:
 
 \begin{lstlisting}[language=Bourbaki]
 List<T> reverse(List<T> xs) {
   List<T> p, ys = null
-  while (xs != null) {
+  while xs != null {
     p = xs
     xs = xs.next
     p.next = ys
@@ -1063,37 +1050,30 @@ List<T> reverse(List<T> xs) {
 \end{lstlisting}
 
 \begin{Exercise}
-\Question{Given a number from 0 to 1 billion, write a program to give its English representation. For e.g. 123 is `one hundred and twenty three'. What if there is decimal part?}
-\Question{Implement the algorithm to find the maximum value in a list of pairs $[(k, v)]$ in tail call.}
+\Question{Given a number from 0 to 1 billion, write a program to `read' it out. for example, output string `one hundred and twenty three' for 123. What if there is decimal part?}
+\Question{Find the maximum $v$ in a list of pairs $[(k, v)]$ in tail recursive way.}
 \end{Exercise}
 
 \section{Sub-list}
-\index{List!Extract sub-list}
-Different from array which is capable to slice a continuous segment fast, it typically need linear time to traverse and extract sub-list.
-
-\subsection{take, drop, and split-at}
-\index{List!take} \index{List!drop} \index{List!split at}
-
-Taking the first $n$ elements is essentially to slice the list from 1 to $n$: $sublist(1, n, L)$. If either $n = 0$ or $L = [\ ]$, the sub-list is empty; otherwise, we recursively take the first $n - 1$ elements from the $L'$, then prepend the first element.
+\index{List!Extract sub-list} \index{List!take} \index{List!drop} \index{List!split at}
+One can slice an array fast, but need linear time to traverse and extract sub-list. $take$ extracts the first $n$ elements, it is equivalent get a sub-list from 1 to $n$: $sublist\ 1\ n\ X$. $drop$ discards the first $n$ elements. It is equivalent to get a sub-list from right: $sublist\ (n+1)\ |X|\ X$, which is symmetric to $take$:
 
 \be
-\begin{array}{rcl}
-take(0, L) & = & [\ ] \\
-take(n, [\ ]) & = & [\ ] \\
-take(n, x:xs) & = & x : take(n - 1, xs) \\
+\resizebox{\linewidth}{!}{\ensuremath{
+\begin{array}{cc}
+  \begin{array}{rcl}
+  take\ 0\ xs & = & [\ ] \\
+  take\ n\ [\ ] & = & [\ ] \\
+  take\ n\ (x \cons xs) & = & x : take\ (n - 1)\ xs \\
+  \end{array}
+&
+  \begin{array}{rcl}
+  drop\ 0\ xs & = & xs \\
+  drop\ n\ [\ ] & = & [\ ] \\
+  drop\ n\ (x \cons xs) & = & drop\ (n - 1)\ xs \\
+  \end{array}
 \end{array}
-\ee
-
-This algorithm handles the out of bound case like this: if $n > |L|$ or $n$ is negative, it ends up to the edge case that $L$ becomes empty, hence returns the whole list as the result.
-
-Drop, on the other hand, discards the first $n$ elements and returns the rest. It is equivalent to slice the sub-list from right: $sublist(n + 1, |L|, L)$, where $|L|$ is the length. Its implementation is symmetric:
-
-\be
-\begin{array}{rcl}
-drop(0, L) & = & L \\
-drop(n, [\ ]) & = & [\ ] \\
-drop(n, x:xs) & = & drop(n - 1, xs) \\
-\end{array}
+}}
 \ee
 
 We leave the imperative implementation for $take/drop$ as exercise. As the next step, we can develop a algorithm to extract sub-list at any position for a given length:
