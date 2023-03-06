@@ -1640,57 +1640,33 @@ This implementation works when the two lists have different lengths. The result 
 \EndFunction
 \end{algorithmic}
 
-We can extend to $zip$ multiple lists to one. Some programming libraries provide, \texttt{zip}, \texttt{zip3}, \texttt{zip4}, ..., till \texttt{zip7}. Sometimes, we don't want to build a list of pairs, but apply a combinator function. For example, given a list of unit prices $[1.00, 0.80, 10.05, ...]$ for fruits: apple, orange, banana, ... When customer has a list of quantities, like $[3, 1, 0, ...]$, means this customer, buys 3 apples, 1 orange, 0 banana, ... Below program generates a payment list:
+We can extend to $zip$ multiple lists. Some programming environments provide, \texttt{zip}, \texttt{zip3}, \texttt{zip4}, ... Sometimes, we want to apply a binary function to combine elements, but not just form a pair. For example, given a list of unit prices $[1.00, 0.80, 10.05, ...]$ for fruits: apple, orange, banana, ... and a list of quantities, like $[3, 1, 0, ...]$, meaning, buy 3 apples, 1 orange, 0 banana, ... Below program generates the payment list:
 
 \[
 \begin{array}{rcl}
-pays(U,\ [\ ]) & = & [\ ] \\
-pays([\ ],\ Q) & = & [\ ] \\
-pays(u:us,\ q:qs) & = & (u \cdot q) : pays(us, qs) \\
+pays\ us\ [\ ] & = & [\ ] \\
+pays\ [\ ]\ qs & = & [\ ] \\
+pays\ (u \cons us)\ (q \cons qs) & = & uq : pays\ us\ qs \\
 \end{array}
 \]
 
-It is same as the $zip$ function except uses multiply but not 'cons' to combine elements. We can abstract the combinator as a function $f$, and pass it to $zip$ to build a generic algorithm:
+It has the same structure as $zip$ except using multiply but not `cons'. We can abstract the binary function as $f$:
 
 \be
 \begin{array}{rcl}
-zipWith(f, A,\ [\ ]) & = & [\ ] \\
-zipWith(f, [\ ],\ B) & = & [\ ] \\
-zipWith(f, a:as,\ b:bs) & = & f(a, b) : zipWith(f, as, bs) \\
+zipWith\ f\ as\ [\ ] & = & [\ ] \\
+zipWith\ f\ [\ ]\ bs & = & [\ ] \\
+zipWith\ f\ (a \cons as)\ (b \cons bs) & = & (f\ a\ b) : zipWith\ f\ as\ bs \\
 \end{array}
 \ee
 
-Here is an example that defines the inner-product (or dot-product)\cite{wiki-dot-product} through $zipWith$:
+For example, we can define the inner-product (or dot-product)\cite{wiki-dot-product} as: $A \cdot B = sum\ (zipWith\ (\cdot)\ A\ B)$, or define the infinite Fibonacci sequence with lazy evaluation:
 
 \be
-A \cdot B = sum(zipWith(\cdot, A, B))
+F = 0 : 1 : zipWith\ (+)\ F\ F'
 \ee
 
-$unzip$ is the inverse operation of $zip$. It converts a list of pairs to two separated lists. Below is its definition with $foldr$ in Curried form:
-
-\be
-unzip = foldr((a, b), (A, B) \mapsto (a : A, b : B), ([\ ], [\ ]))
-\ee
-
-We fold from a pair of empty lists, break $a, b$ from the pairs and prepend them to the two intermediate lists respectively. We can also use $fst$ and $snd$ explicitly as:
-
-\[
-(p, P) \mapsto (fst(p) : fst(P), snd(p) : snd(P))
-\]
-
-For the fruits example, suppose the unit price is stored in a assoc list: $U = [(apple, 1.00), (orange, 0.80), (banana, 10.05), ...]$ for lookup, for example $lookup(melon, U)$. The purchase quantity is a assoc list: $Q = [(apple, 3), (orange, 1), (banana, 0), ...]$. How to calculate the total payment? The straight forward way is to extract the unit price and the quantity lists, then compute their inner-product:
-
-\be
-pay = sum(zipWith(\cdot, snd(unzip(U)), snd(unzip(Q))))
-\ee
-
-As an example, let's see how to use $zipWith$ to define infinite Fibonacci numbers with lazy evaluation:
-
-\be
-F = 0 : 1 : zipWith(+, F, F')
-\ee
-
-Where $F$ is the infinite list of Fibonacci numbers, starts from 0 and 1. $F'$ is the rest Fibonacci numbers without the first one. From the third, every Fibonacci number is the sum of numbers from $F$ and $F'$ at the same position. Below example program list the first 15 Fibonacci numbers:
+Let $F$ be the infinite Fibonacci numbers, starts from 0 and 1. $F'$ drops the head. From the third number, every Fibonacci number is the sum of the corresponding numbers from $F$ and $F'$ at the same position. Below example program takes the first 15 Fibonacci numbers:
 
 \begin{Haskell}
 fib = 0 : 1 : zipWith (+) fib (tail fib)
@@ -1698,6 +1674,18 @@ fib = 0 : 1 : zipWith (+) fib (tail fib)
 take 15 fib
 [0,1,1,2,3,5,8,13,21,34,55,89,144,233,377]
 \end{Haskell}
+
+$unzip$ is the inverse of $zip$. It converts a list of pairs to two separated lists. Define it with $foldr$ in Curried form:
+
+\be
+unzip = foldr\ ((a, b)\ (as, bs) \mapsto (a \cons as, b \cons bs))\ ([\ ], [\ ])
+\ee
+
+For the fruits example, given the unit price as an assoc list: $U$ = [(apple, 1.00), (orange, 0.80), (banana, 10.05), ...], the purchased quantity is also an assoc list: $Q$ = [(apple, 3), (orange, 1), (banana, 0), ...]. We extract the unit prices and the quantities, then compute their inner-product:
+
+\be
+pay = sum\ (zipWith\ (\cdot)\ snd(unzip\ U)\ snd(unzip\ Q))
+\ee
 
 $zip$ and $unzip$ are generic. We can expand to $zip$ two trees, where the nodes contain paired elements from both. When traverse a collection of elements, we can also use the generic $zip$ and $unzip$ to track the path, this is a method to mimic the `parent' reference in imperative implementation (last chapter of \cite{learn-haskell}).
 
