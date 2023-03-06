@@ -167,7 +167,26 @@ insert k (Node l x r) | k < x = Node (insert k l) x r
 \EndFunction
 \end{algorithmic}
 
-这一实现虽然没有函数式算法简洁，但执行速度更快，并且可以处理深度很大的树。
+我们可以连续插入，将一组元素转变成二叉搜索树：
+
+\[
+\begin{array}{rcl}
+fromList\ [\ ] & = & \nil \\
+fromList\ (x \cons xs) & = & insert\ x\ (fromList\ xs) \\
+\end{array}
+\]
+
+或通过叠加\cite{wiki-fold}（第1章）将$fromList$定义为（柯里化）：$fromList = foldr\ insert\ \nil$。我们特意将函数式和命令式的参数顺序设计为对称的$insert\ k\ t$和\textproc{Insert}($T, k$)。前者可以用$foldr$，后者用$foldl$（或等价的for循环）将一列元素转换成二叉搜索树：
+
+\begin{algorithmic}[1]
+\Function{From-List}{$X$}
+  \State $T \gets $ NIL
+  \For{each $x$ in $X$}
+    \State $T \gets$ \Call{Insert}{$T, x$}
+  \EndFor
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
 
 \section{遍历}
 \index{二叉树!遍历}
@@ -191,19 +210,12 @@ insert k (Node l x r) | k < x = Node (insert k l) x r
 \item 后序遍历：2, 1, 3, 7, 9, 14, 10, 16, 8, 4
 \end{itemize}
 
-特别地，中序遍历会按照从小到大的顺序输出元素。二叉搜索树的定义保证了这一性质。我们把相应的证明留作练习。中序遍历的算法可以描述为：
-
-\begin{itemize}
-\item 如果树为空，返回；
-\item 否则先中序遍历左子树，然后访问根节点，最后再中序遍历右子树。
-\end{itemize}
-
-这一描述本身是递归的。我们可以进一步定义一个$map$函数，按照中序遍历的顺序将函数$f$应用的每个元素上，从而映射成另一棵同构的树。
+特别地，中序遍历会按照从小到大的顺序输出元素。二叉搜索树的定义保证了这一性质。我们把相应的证明留作练习。我们可以进一步定义一个$map$函数，按照中序遍历的顺序将函数$f$应用的每个元素上，从而映射成另一棵同构的树。
 
 \be
 \begin{array}{rcl}
-map(f, \nil) & = & \nil \\
-map(f, Node(T_l, k, T_r)) & = & Node(map(f, T_l), f(k), map(f, T_r))
+map\ f\ \nil & = & \nil \\
+map\ f\ (l, k, r) & = & (map\ f\ l, f\ k, map\ f\ r)
 \end{array}
 \ee
 
@@ -223,42 +235,21 @@ map(f, Node(T_l, k, T_r)) & = & Node(map(f, T_l), f(k), map(f, T_r))
 
 \be
 \begin{array}{rcl}
-toList(\nil) & = & [\ ] \\
-toList(Node(T_l, k, T_r)) & = & toList(T_l) \doubleplus [ k ] \doubleplus toList(T_r) \\
+toList\ \nil & = & [\ ] \\
+toList\ (l, k, r) & = & toList\ l \doubleplus [k] \doubleplus toList\ r \\
 \end{array}
 \ee
 
-我们据此可以得到一个排序的方法：先把一个无序的列表转化为一个二叉搜索树，然后再用中序遍历把树转换回列表。该方法被称为“树排序”。记待排序列表为$X = [x_1, x_2, x_3, ..., x_n]$。
+我们据此可以得到一个排序的方法：先把一个无序的列表转化为一个二叉搜索树，然后再用中序遍历把树转换回列表。该方法被称为“树排序”。
 
 \be
-  sort(X) = toList(fromList(X))
+  sort\ X = toList\ (fromList\ X)
 \ee
 
-我们也可以写成函数组合\cite{func-composition}的形式：
+或写成函数组合\cite{func-composition}的形式：
 
 \[
   sort = toList \circ fromList
-\]
-
-其中函数$fromList$不断地将元素从列表中插入到一棵树中，它可以递归地定义如下：
-
-\[
-\begin{array}{rcl}
-fromList([\ ]) & = & \nil \\
-fromList(X) & = & insert(fromList(X'), x_1) \\
-\end{array}
-\]
-
-如果列表为空，则产生的树也是空；否则它把第一个元素$x_1$插入树中，然后递归地插入剩余元素$X' = [x_2, x_3, ..., x_n]$。通过使用列表叠加\cite{wiki-fold}（详见附录A.6），我们也可以将$fromList$定义为：
-
-\be
-  fromList(X)= \fold_l(insert, \nil, X)
-\ee
-
-我们也可以进一步把它简写为柯里化的形式\cite{curry}（也称为部分应用）从而省略掉参数$X$：
-
-\[
-  fromList = \fold_l\ insert\ \nil
 \]
 
 \begin{Exercise}
