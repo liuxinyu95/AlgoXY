@@ -19,65 +19,65 @@
 
 module BSTree where
 
-import Test.QuickCheck -- QuickCheck v1 is used when this program created.
-import qualified Data.List as L -- for verification purpose only
-import Prelude hiding(lookup, min, max)
+import Test.QuickCheck
+import qualified Data.List as L -- for verification purpose
+import Prelude hiding(min, max)
+
+-- alternative to define tree Foldable:
+--   {-# LANGUAGE DeriveFoldable #-}
+--   This provide null, fold, elem automatically
 
 data Tree a = Empty
             | Node (Tree a) a (Tree a) deriving (Show, Eq)
 
--- Helper functions for tree
-leaf::a -> Tree a
 leaf a = Node Empty a Empty
 
-left::Tree a -> Tree a
 left (Node l _ _) = l
 left _ = Empty
 
-right::Tree a -> Tree a
 right (Node _ _ r) = r
 right _ = Empty
 
-key::Tree a -> Maybe a
 key (Node _ k _) = Just k
 key _ = Nothing
 
-isEmpty::Tree a -> Bool
 isEmpty Empty = True
 isEmpty _ = False
 
--- in-order tree traverse
-mapT::(a->b) -> Tree a -> Tree b
-mapT _ Empty = Empty
-mapT f (Node l x r)= Node (mapT f l) (f x) (mapT f r)
+foldt _ _ z Empty = z
+foldt f g z (Node l k r) = g (foldt f g z l) (f k) (foldt f g z r)
 
--- Lookup in tree
-lookup::(Ord a)=> Tree a -> a -> Tree a
-lookup Empty _ = Empty
-lookup t@(Node l k r) x | k == x = t
-                        | x < k = lookup l x
-                        | otherwise = lookup r x
+-- in-order traverse
+mapt _ Empty = Empty
+mapt f (Node l x r)= Node (mapt f l) (f x) (mapt f r)
 
--- Tree Min
-min::Tree a -> a
+maptr :: (a -> b) -> Tree a -> Tree b
+maptr f = foldt f Node Empty
+
+member _ Empty = False
+member x (Node l k r) | x == k = True
+                     | x < k = member x l
+                     | otherwise = member x r
+
+-- lookupt :: (Eq a, Ord a) => a -> Tree (a, b) -> Maybe b
+lookupt _ Empty = Nothing
+lookupt x (Node l (k, v) r) | k == x = Just v
+                            | x < k = lookupt x l
+                            | otherwise = lookupt x r
+
 min (Node Empty k _) = k
 min (Node l _ _) = min l
 
--- Tree Max
-max::Tree a -> a
 max (Node _ k Empty) = k
 max (Node _ _ r) = max r
 
--- Insert an element into a tree
-insert::(Ord a) => Tree a -> a -> Tree a
-insert Empty x = Node Empty x Empty
-insert (Node l k r) x | x < k = Node (insert l x) k r
-                      | otherwise = Node l k (insert r x)
+insert x Empty = Node Empty x Empty
+insert x (Node l k r) | x < k = Node (insert x l) k r
+                      | otherwise = Node l k (insert x r)
 
 -- Delete an element from a tree
 --   if x has only one child: just splice x out
---   if x has two children: use min(right) to replce x
-delete::(Ord a)=> Tree a -> a -> Tree a
+--   if x has two children: use min(right) to replace x
 delete Empty _ = Empty
 delete (Node l k r) x | x < k = Node (delete l x) k r
                       | x > k = Node l k (delete r x)
@@ -88,21 +88,21 @@ delete (Node l k r) x | x < k = Node (delete l x) k r
     del l r = let k' = min r in Node l k' (delete r k')
 
 -- Traverse a part of tree inside a range [a, b]
-mapR :: (Ord a)=>(a->b) -> a -> a -> Tree a -> Tree b
 mapR f a b t = map' t where
     map' Empty = Empty
     map' (Node l k r) | k < a = map' r
                       | a <= k && k <= b = Node (map' l) (f k) (map' r)
                       | k > b = map' l
 
+fromList::(Ord a) => [a] -> Tree a
+fromList = foldr insert Empty
 
--- Convert
-fromList::(Ord a)=>[a] -> Tree a
-fromList = foldl insert Empty
-
-toList::(Ord a)=>Tree a -> [a]
 toList Empty = []
 toList (Node l k r) = toList l ++ [k] ++ toList r
+
+-- tree sort
+tsort :: (Eq a, Ord a) => [a] -> [a]
+tsort = toList . fromList
 
 preOrder Empty = []
 preOrder (Node l k r) = k : preOrder l ++ preOrder r
@@ -118,16 +118,21 @@ rebuild (x:xs) ins = Node (rebuild prl inl) x (rebuild prr inr) where
   (prl, prr) = splitAt (length inl) xs
 
 -- test
-prop_build :: (Show a)=>(Ord a)=>[a] -> Bool
-prop_build xs = L.sort xs == (toList $ fromList xs)
+prop_build :: (Ord a) => [a] -> Bool
+prop_build xs = L.sort xs == tsort xs
 
 prop_map :: (Ord a) => [a] -> Bool
-prop_map xs = mapT id (fromList xs) == fromList xs
+prop_map xs = mapt id (fromList xs) == fromList xs
+
+prop_map1 :: (Ord a) => [a] -> Bool
+prop_map1 xs = maptr id (fromList xs) == fromList xs
+
+prop_elem :: (Ord a) => [a] -> a -> Bool
+prop_elem xs x = (x `elem` xs) == (x `member` (fromList xs))
 
 prop_lookup :: (Ord a) => [a] -> a -> Bool
-prop_lookup xs x = f $ key $ lookup (fromList xs) x where
-    f Nothing  = not $ elem x xs
-    f (Just y) = x == y
+prop_lookup xs x = (lookupt x (fromList kvs)) == (lookup x kvs) where
+  kvs = zip (L.nub xs) [1..]
 
 prop_min :: (Ord a, Num a) => [a] -> Property
 prop_min xs = not (null xs) ==> minimum xs == min (fromList xs)
@@ -151,6 +156,8 @@ prop_rebuild xs = tr == rebuild prs ins where
 testAll = do
   quickCheck (prop_build::[Int]->Bool)
   quickCheck (prop_map::[Int]->Bool)
+  quickCheck (prop_map1::[Int]->Bool)
+  quickCheck (prop_elem::[Int]->Int->Bool)
   quickCheck (prop_lookup::[Int]->Int->Bool)
   quickCheck (prop_min::[Int]->Property)
   quickCheck (prop_max::[Int]->Property)
