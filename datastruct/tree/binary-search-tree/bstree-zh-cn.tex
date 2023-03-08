@@ -240,17 +240,37 @@ toList\ (l, k, r) & = & toList\ l \doubleplus [k] \doubleplus toList\ r \\
 \end{array}
 \ee
 
-我们据此可以得到一个排序的方法：先把一个无序的列表转化为一个二叉搜索树，然后再用中序遍历把树转换回列表。该方法被称为“树排序”。
+我们据此可以得到一个排序的方法：先把一个无序的列表转化为一个二叉搜索树，然后再用中序遍历把树转换回列表。该方法被称为“树排序”。$sort\ X = toList\ (fromList\ X)$。或写成函数组合\cite{func-composition}的形式：
 
 \be
-  sort\ X = toList\ (fromList\ X)
+  sort = toList \circ fromList
 \ee
 
-或写成函数组合\cite{func-composition}的形式：
+我们可以对二叉树进行中序叠加。
 
-\[
-  sort = toList \circ fromList
-\]
+\be
+\begin{array}{rcl}
+foldt\ f\ g\ z\ \nil & = & z \\
+foldt\ f\ g\ z\ (l, k, r) & = & g\ (foldt\ f\ g\ z\ l)\ (f\ k)\ (foldt\ f\ g\ z\ r) \\
+\end{array}
+\ee
+
+这里$f: A \to B$，将树中类型为$A$的元素映射为$B$，这样$f(k) = m$。它递归地对左右子树叠加（从$z$开始）得到$x$和$y$，然后用$g$将三个值组合起来$g\ x\ m\ y$。利用$foldt$，我们可以定义二叉树的映射$map$为：
+
+\be
+map\ f = foldt\ f\ (x\ m\ y\ \mapsto (x, m, y))\ \nil
+\ee
+
+$foldt$在叠加时利用三元函数$g$保存了二叉树的结构，如果不关心结构，可以利用二元函数$f : A \times B \to B$实现叠加，将类型为$Tree\ A$的树叠加为类型为$B$的值：
+
+\be
+\begin{array}{rcl}
+fold\ f\ z\ \nil & = & z \\
+fold\ f\ z\ (l, k, r) & = & fold\ f\ (f\ k\ (fold\ f\ z\ r))\ l\\
+\end{array}
+\ee
+
+例如：$sum = fold\ (+)\ 0$将二叉树中所有的元素累加起来。$length = fold\ (x n \mapsto n + 1)\ 0$可以统计树中元素个数。但是$fold$无法定义$map$，因为二元函数$f$丢失了树结构。
 
 \begin{Exercise}
 \Question{给定如下前序遍历和中序遍历的结果，请重建出二叉树，并给出后序遍历的结果。
@@ -267,6 +287,8 @@ toList\ (l, k, r) & = & toList\ l \doubleplus [k] \doubleplus toList\ r \\
 \Question{证明对二叉搜索树进行中序遍历可以将全部元素按照从小到大的顺序输出。}
 
 \Question{对于$n$个元素，树排序的算法复杂度是什么？}
+
+\Question{使用叠加定义$toList$}
 \end{Exercise}
 
 \begin{Answer}
@@ -325,16 +347,21 @@ Node<T> rebuild([T] pre, [T] ins, Int l = 0, Int r = length(ins)) {
 \Question{证明对二叉搜索树进行中序遍历可以将全部元素按照从小到大的顺序输出。}
 
 \Question{对于$n$个元素，树排序的算法复杂度是什么？}
+
+\Question{使用叠加定义$toList$
+\[
+\begin{array}{rcl}
+toList & = & foldt\ id\ (as\ b\ bs \mapsto as \doubleplus b : bs)\ [\ ] \\
+       & = & fold\ (:)\ [\ ] \\
+\end{array}
+\]
+}
 \end{Answer}
 
-\section{搜索}
-\index{二叉搜索树!搜索}
+\section{查找}
+
 \index{二叉搜索树!查找}
-
-由于二叉搜索树中的元素是按序递归存储的，它可以方便地支持各种搜索。这也是人们将其命名为“搜索树”的原因。有三种不同类型的搜索：1）在树中查找一个键；2）寻找最大或最小元素；3）查找某一元素的前驱（上一个）或后继（下一个）元素。
-
-\subsection{查找}
-二叉搜索树的递归特性非常适合自顶向下的查找。考虑在类型为$Tree\ (K, V)$的二叉搜索树中查找某个键$x$对应的值：
+由于二叉搜索树中的元素是按序递归存储的，它可以方便地支持各种搜索。这也是人们将其命名为“搜索树”的原因。有三种不同类型的搜索：1）在树中查找一个键；2）寻找最大或最小元素；3）查找某一元素的前驱（上一个）或后继（下一个）元素。考虑在类型为$Tree\ (K, V)$的二叉搜索树中查找某个键$x$对应的值：
 
 \begin{itemize}
 \item 如果树为空，$x$不存在；
@@ -368,64 +395,44 @@ lookup\ x\ (l, (k, v), r), x) & = & \begin{cases}
 \EndFunction
 \end{algorithmic}
 
-\begin{Exercise}
-\Question{判断某个值$k$是否存在于类型为$Tree\ K$的二叉搜索树$t$中。}
-\end{Exercise}
-
-\begin{Answer}
-\Question{判断某个值$k$是否存在于类型为$Tree\ K$的二叉搜索树$t$中。
-\begin{Haskell}
-member x (Node l k r) | x == k = True
-             | x < k = member x l
-             | otherwise = member x r
-\end{Haskell}
-}
-\end{Answer}
-
-\subsection{最小和最大元素}
 \index{二叉搜索树!最小元素/最大元素}
-
-在二叉搜索树中，较小的元素总是位于左侧分支，而较大的元素总是位于右侧分支。可以利用这一特性来定位最大和最小元素。为了找到最小元素，我们可以不断向左侧前进，直到左侧分支为空。对称地，我们可以通过不断向右侧前进找到最大元素。
+在二叉搜索树中，较小的元素总是位于左侧分支，而较大的元素总是位于右侧分支。可以利用这一特性来定位最大和最小元素。为了找到最小元素，我们可以不断向左侧前进，直到左侧分支为空。对称地，我们可以通过不断向右侧前进找到最大元素。这两个函数的性能都是$O(h)$，其中$h$是树的高度。
 
 \be
-\begin{array}{rcl}
-min(Node(\nil, k, T_r)) & = & k \\
-min(Node(T_l, k, T_r)) & = & min(T_l) \\
+\begin{array}{cc}
+  \begin{array}{rcl}
+  \min\ (\nil, k, r) & = & k \\
+  \min\ (l, k, r) & = & \min\ l \\
+  \end{array}
+&
+  \begin{array}{rcl}
+  \max\ (l, k, \nil) & = & k \\
+  \max\ (l, k, r) & = & \max\ r \\
+  \end{array}
 \end{array}
 \ee
 
-\be
-\begin{array}{rcl}
-max(Node(T_l, k, \nil)) & = & k \\
-max(Node(T_l, k, T_r)) & = & max(T_r) \\
-\end{array}
-\ee
-
-这两个函数的性能都是$O(h)$，其中$h$是树的高度。
-
-\subsection{前驱和后继}
 \index{二叉搜索树!前驱/后继}
-
-有时需要把二叉搜索树当作通用容器，使用迭代器进行遍历。例如从最小的元素开始，逐一向前移动到最大元素，或者按需先后移动。下面的例子程序升序输出树中的元素：
+有时需要把二叉搜索树当作容器，并进行遍历。例如从最小的元素开始，逐一向前移动到最大元素，或者按需先后移动。下面的例子程序升序输出树中的元素：
 
 \lstset{language=Bourbaki}
 \begin{lstlisting}
 void printTree (Node<T> t) {
-    for (var it = Iterator(t), it.hasNext(); it = it.next()) {
-        print(it.get(), ", ");
+    for var it = Iterator(t), it.hasNext(), it = it.next() {
+        print(it.get(), ", ")
     }
 }
 \end{lstlisting}
 
-这就需要查找一个给定节点的前驱或后继元素。$x$的后继定义为全部满足$x < y$中的最小的一个$y$。如果$x$的右子树不为空，则右子树中的最小值就是后继。图\ref{fig:bst-succ}中8的后继元素为9，它是8的右子树中的最小值。如果$x$的右子树为空，我们需要向上回溯，找到最近的一个祖先，使得该祖先的左子树也是$x$的祖先。在图\ref{fig:bst-succ}中，元素2所在的节点没有右侧分支，我们向上回溯一步找到元素1，但是1没有左侧分支，因此需要继续向上查找，这次我们到达了元素3所在的节点。而3的左子树也是2的祖先。至此，我们找到了2的后继元素3。
+这需要查找一个节点的前驱或后继元素。$x$的后继定义为满足$x < y$的最小$y$。如果$x$的右子树不为空，则右子树中的最小值就是后继。图\ref{fig:bst-succ}中8的后继元素为9，它是8的右子树中的最小值。如果$x$的右子树为空，需要向上回溯，找到最近的一个祖先$p$，使得$p$的左子树也是$x$的祖先。在图\ref{fig:bst-succ}中，元素2所在的节点没有右侧分支，向上回溯一步到元素1，但是1没有左侧分支，继续向上查找到元素3。3的左子树也是2的祖先。这样2的后继为3。
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.45]{img/bst-1}
-  \caption{8的后继为其右侧分支的最小值9；为了获得2的后继，首先向上找到1，它没有左子树，所以继续向上找到3，3的左子树也是2的祖先，故而后继为3。} \label{fig:bst-succ}
+  \caption{8的后继为其右侧分支的最小值9；为了获得2的后继，首先向上找到1，它没有左子树，继续向上找到3，3的左子树也是2的祖先，故而后继为3。} \label{fig:bst-succ}
 \end{figure}
 
-如果沿着父节点引用一直回溯到了根节点，但是仍然没有找到位于右侧的祖先，这说明$x$没有后继（它是树中最后一个元素）。下面的算法实现了后继的查找：
+如果沿着父节点引用一直回溯到了根节点，仍然没有找到位于右侧的祖先，这说明$x$没有后继（树中最后一个元素）。下面的算法实现了后继的查找：
 
 \begin{algorithmic}[1]
 \Function{Succ}{$x$}
@@ -433,7 +440,7 @@ void printTree (Node<T> t) {
     \State \Return \textproc{Min}(\Call{Right}{$x$})
   \Else
     \State $p \gets $ \Call{Parent}{$x$}
-    \While{$p \neq $ NIL and $x =$ \Call{Right}{$p$}}
+    \While{$p \neq $ NIL 且 $x =$ \Call{Right}{$p$}}
       \State $x \gets p$
       \State $p \gets $ \Call{Parent}{$p$}
     \EndWhile
@@ -450,7 +457,7 @@ void printTree (Node<T> t) {
     \State \Return \textproc{Max}(\Call{Left}{$x$})
   \Else
     \State $p \gets $ \Call{Parent}{$x$}
-    \While{$p \neq $ NIL and $x =$ \Call{Left}{$p$}}
+    \While{$p \neq $ NIL 且 $x =$ \Call{Left}{$p$}}
       \State $x \gets p$
       \State $p \gets $ \Call{Parent}{$p$}
     \EndWhile
@@ -459,26 +466,49 @@ void printTree (Node<T> t) {
 \EndFunction
 \end{algorithmic}
 
-似乎很难找到纯函数式算法实现前驱和后继的查找。这主要是因为在缺少指向父节点的引用\footnote{ML或OCaml中有\texttt{ref}引用概念，这里我们限于纯函数式环境。}。一种折衷的方案是在遍历树的时候，留下一些“面包屑”作为标记。用以将来回溯甚至重建整棵树。这种同时包含树和“面包屑”信息的数据结构称为zipper(\cite{learn-haskell}最后一章)。
-
-查找前驱和后继的初衷是“作为一个通用容器，遍历树中的全部元素”。而在纯函数式环境中，我们通常用$map$函数中序遍历所有元素。前驱和后续的查找，仅在命令式环境中才有意义。另外一个这样仅在命令式环境中才有引起关注的例子是红黑树中元素的删除\cite{okasaki-blog}。
+纯函数式环境中缺少指向父节点的引用\footnote{ML或OCaml中有\texttt{ref}引用概念，这里我们限于纯函数式环境。}。一种折衷的方案是在遍历树的时候，留下一些“面包屑”作为标记。用以将来回溯甚至重建整棵树。这种同时包含树和“面包屑”信息的数据结构称为zipper(\cite{learn-haskell}最后一章)。查找前驱和后继的初衷是“作为一个通用容器，遍历树中的全部元素”。在纯函数式环境中，我们通常用$map$函数中序遍历所有元素。前驱和后续的查找，仅在命令式环境中才有意义。另外一个仅在命令式环境中才引起关注的例子是红黑树中的删除\cite{okasaki-blog}。
 
 \begin{Exercise}
+\Question{判断某个值$k$是否存在于类型为$Tree\ K$的二叉搜索树$t$中。}
 
 \Question{使用\textproc{Pred}和\textproc{Succ}实现一个二叉搜索树的迭代器。用它遍历一棵含有$n$个元素的树的复杂度是什么？}
 
 \Question{下面程序可以遍历一个区间$[a, b]$内的元素：
 
-\texttt{for\_each (m.lower\_bound(12), m.upper\_bound(26), f);}
+\texttt{for\_each (m.lower\_bound(12), m.upper\_bound(26), f)}
 
 试用纯函数式的方法解决这一问题
 \index{区间遍历}
 }
 \end{Exercise}
 
-% ================================================================
-%                 Deletion
-% ================================================================
+\begin{Answer}
+\Question{判断某个值$k$是否存在于类型为$Tree\ K$的二叉搜索树$t$中。
+\begin{Haskell}
+member x (Node l k r) | x == k = True
+             | x < k = member x l
+             | otherwise = member x r
+\end{Haskell}
+}
+
+\Question{使用\textproc{Pred}和\textproc{Succ}实现一个二叉搜索树的迭代器。用它遍历一棵含有$n$个元素的树的复杂度是什么？}
+
+\Question{下面程序可以遍历一个区间$[a, b]$内的元素：
+
+\texttt{for\_each (m.lower\_bound(12), m.upper\_bound(26), f)}
+
+试用纯函数式的方法解决这一问题
+
+\begin{Haskell}
+mapR f a b t = map' t where
+    map' Empty = Empty
+    map' (Node l k r) | k < a = map' r
+                      | a <= k && k <= b = Node (map' l) (f k) (map' r)
+                      | k > b = map' l
+\end{Haskell}
+}
+\end{Answer}
+
 \section{删除}
 \index{二叉搜索树!删除}
 在二叉搜索树中删除元素需要额外的处理。我们必须保证删除后树的有序性质不能被破坏：对于任何节点，所有左侧分支的元素仍然小于节点中的元素，并且所有右侧分支的元素仍然大于节点中的元素。而删除节点会破坏这一性质。
@@ -673,6 +703,22 @@ Optional<Node<T>> lookup (Node<T> t, T x) {
     return Optional.of(t);
 }
 \end{lstlisting}
+
+叠加和映射：
+\begin{Haskell}
+foldt _ _ z Empty = z
+foldt f g z (Node l k r) = g (foldt f g z l) (f k) (foldt f g z r)
+
+mapt _ Empty = Empty
+mapt f (Node l x r)= Node (mapt f l) (f x) (mapt f r)
+
+maptr :: (a -> b) -> Tree a -> Tree b
+maptr f = foldt f Node Empty
+
+-- plain fold, drop the tree structure, can't implement map
+fold _ z Empty = z
+fold f z (Node l k r) = fold f (k `f` (fold f z r)) l
+\end{Haskell}
 
 迭代寻找最小元素：
 

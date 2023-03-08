@@ -54,6 +54,10 @@ mapt f (Node l x r)= Node (mapt f l) (f x) (mapt f r)
 maptr :: (a -> b) -> Tree a -> Tree b
 maptr f = foldt f Node Empty
 
+-- plain fold, drop the tree structure, i.e. can't implement map
+fold _ z Empty = z
+fold f z (Node l k r) = fold f (k `f` (fold f z r)) l
+
 member _ Empty = False
 member x (Node l k r) | x == k = True
                      | x < k = member x l
@@ -127,6 +131,9 @@ prop_map xs = mapt id (fromList xs) == fromList xs
 prop_map1 :: (Ord a) => [a] -> Bool
 prop_map1 xs = maptr id (fromList xs) == fromList xs
 
+prop_fold :: (Ord a, Num a) => [a] -> Bool
+prop_fold xs = fold (+) 0 (fromList xs) == sum xs
+
 prop_elem :: (Ord a) => [a] -> a -> Bool
 prop_elem xs x = (x `elem` xs) == (x `member` (fromList xs))
 
@@ -157,6 +164,7 @@ testAll = do
   quickCheck (prop_build::[Int]->Bool)
   quickCheck (prop_map::[Int]->Bool)
   quickCheck (prop_map1::[Int]->Bool)
+  quickCheck (prop_fold::[Int]->Bool)
   quickCheck (prop_elem::[Int]->Int->Bool)
   quickCheck (prop_lookup::[Int]->Int->Bool)
   quickCheck (prop_min::[Int]->Property)
