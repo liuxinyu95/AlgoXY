@@ -82,14 +82,14 @@ insert x (Node l k r) | x < k = Node (insert x l) k r
 -- Delete an element from a tree
 --   if x has only one child: just splice x out
 --   if x has two children: use min(right) to replace x
-delete Empty _ = Empty
-delete (Node l k r) x | x < k = Node (delete l x) k r
-                      | x > k = Node l k (delete r x)
+delete _ Empty = Empty
+delete x (Node l k r) | x < k = Node (delete x l) k r
+                      | x > k = Node l k (delete x r)
                       | otherwise = del l r
   where
     del Empty r = r
     del l Empty = l
-    del l r = let k' = min r in Node l k' (delete r k')
+    del l r = let k' = min r in Node l k' (delete k' r)
 
 -- Traverse a part of tree inside a range [a, b]
 mapR f a b t = map' t where
@@ -148,7 +148,7 @@ prop_max :: (Ord a, Num a) => [a] -> Property
 prop_max xs = not (null xs) ==> maximum xs == max (fromList xs)
 
 prop_del :: (Ord a, Num a) => [a] -> a -> Bool
-prop_del xs x = L.sort (L.delete x xs) == toList (delete (fromList xs) x)
+prop_del xs x = L.sort (L.delete x xs) == toList (delete x (fromList xs))
 
 prop_mapR :: (Ord a, Num a) =>[a] -> a -> a -> Bool
 prop_mapR xs a b = filter (\x-> a<= x && x <=b) (L.sort xs) ==

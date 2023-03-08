@@ -511,22 +511,13 @@ mapR f a b t = map' t where
 
 \section{删除}
 \index{二叉搜索树!删除}
-在二叉搜索树中删除元素需要额外的处理。我们必须保证删除后树的有序性质不能被破坏：对于任何节点，所有左侧分支的元素仍然小于节点中的元素，并且所有右侧分支的元素仍然大于节点中的元素。而删除节点会破坏这一性质。
-
-从二叉搜索树中删除节点$x$的方法如下\cite{sgi-stl}：
-\begin{itemize}
-\item 如果$x$没有非空子树（叶子）或者只有一棵非空子树，直接将$x$“切下”；
-\item 否则，$x$有棵非空子树，我们用其右子树中的最小值$y$替换掉$x$，然后将原先的$y$“切掉”。
-\end{itemize}
-
-这一简洁的方法利用了这样一条特性：右子树中的最小值不可能有两个非空子树。所以上面的第二种情形转化为第一种情况，因而可以直接将原最小值节点“切掉”。
-
-图\ref{fig:del-leaf}、\ref{fig:del-1child}、\ref{fig:del-branch}描述了删除时的各种情况。
+我们必须保证删除后二叉搜索树仍保持有序：任何节点的左侧分支元素仍小于节点中元素，右侧分支元素仍然大于节点中元素。直接删除节点会破坏这一性质。删除节点$x$的方法如下\cite{sgi-stl}：（1）如果$x$是叶子节点或只有一棵非空子树，直接将$x$“切掉”；（2）如果$x$有两棵非空子树，用右子树中的最小值$y$替换掉$x$，然后将原先的$y$“切掉”。我们利用了这样的特性：右子树中的最小值不可能有两棵非空子树。这样就把第二种情况转化为第一种，从而直接将原最小节点“切掉”。如同图\ref{fig:del-leaf}、\ref{fig:del-1child}、\ref{fig:del-branch}所示。
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.5]{img/del-leaf}
-  \caption{叶子节点$x$可以直接“切下”} \label{fig:del-leaf}
+  \caption{直接“切掉”叶子节点$x$。}
+  \label{fig:del-leaf}
 \end{figure}
 
 \begin{figure}[htbp]
@@ -547,43 +538,28 @@ mapR f a b t = map' t where
   \label{fig:del-branch}
 \end{figure}
 
-根据这个思路，我们定义下面的$delete$函数:
-
 \be
 \begin{array}{rcl}
-delete(\nil, x) & = & \nil\\
-delete(Node(T_l, k, T_r), x) & = & \begin{cases}
-  x < k: & Node(delete(T_l, x), k, T_r) \\
-  x > k: & Node(T_l, k, delete(T_r, x)) \\
-  x = k: & del(T_l, T_r) \\
+delete\ x\ \nil & = & \nil\\
+delete\ x\ (l, k, r) & = & \begin{cases}
+  x < k: & (delete\ x l, k, r) \\
+  x > k: & (l, k, delete\ x r) \\
+  x = k: & del\ l\ r \\
 \end{cases}
 \end{array}
 \ee
 
-算法先通过序关系找到待删除节点，然后调用$del$函数处理，$del$会根据情况递归调用$delete$以删除右子树中的最小值。
+其中：
 
 \be
 \begin{array}{rcl}
-del(\nil, T_r) & = & T_r \\
-del(T_l, \nil) & = & T_l \\
-del(T_l, T_r) & = & Node(T_l, y, delete(T_r, y)) \\
+del\ \nil\ r & = & r \\
+del\ l\ \nil & = & l \\
+del\ l\ r & = & (l, y, delete\ y\ r), y = \min\ r \\
 \end{array}
 \ee
 
-其中$y = min(T_r)$是右子树中的最小元素。下面是相应的例子程序：
-
-\begin{Haskell}
-delete Empty _ = Empty
-delete (Node l k r) x | x < k = Node (delete l x) k r
-                      | x > k = Node l k (delete r x)
-                      | otherwise = del l r
-  where
-    del Empty r = r
-    del l Empty = l
-    del l r = let k' = min r in Node l k' (delete r k')
-\end{Haskell}
-
-如果树的高度为$h$，则删除算法的复杂度为$O(h)$。命令式算法需要在删除后，把父节点设置正确。下面的算法返回删除后树的根节点。
+删除算法的复杂度为$O(h)$，其中$h$是树的高度。命令式算法需要在删除后设置父节点。
 
 \begin{algorithmic}[1]
 \Function{Delete}{$T, x$}
@@ -689,6 +665,22 @@ Node<T> insert (Node<T> t, T x) {
 }
 \end{lstlisting}
 
+映射和叠加：
+\begin{Haskell}
+mapt _ Empty = Empty
+mapt f (Node l x r)= Node (mapt f l) (f x) (mapt f r)
+
+foldt _ _ z Empty = z
+foldt f g z (Node l k r) = g (foldt f g z l) (f k) (foldt f g z r)
+
+maptr :: (a -> b) -> Tree a -> Tree b
+maptr f = foldt f Node Empty
+
+-- plain fold, drop the tree structure, can't implement map
+fold _ z Empty = z
+fold f z (Node l k r) = fold f (k `f` (fold f z r)) l
+\end{Haskell}
+
 消除递归的查找算法：
 
 \begin{lstlisting}
@@ -703,22 +695,6 @@ Optional<Node<T>> lookup (Node<T> t, T x) {
     return Optional.of(t);
 }
 \end{lstlisting}
-
-叠加和映射：
-\begin{Haskell}
-foldt _ _ z Empty = z
-foldt f g z (Node l k r) = g (foldt f g z l) (f k) (foldt f g z r)
-
-mapt _ Empty = Empty
-mapt f (Node l x r)= Node (mapt f l) (f x) (mapt f r)
-
-maptr :: (a -> b) -> Tree a -> Tree b
-maptr f = foldt f Node Empty
-
--- plain fold, drop the tree structure, can't implement map
-fold _ z Empty = z
-fold f z (Node l k r) = fold f (k `f` (fold f z r)) l
-\end{Haskell}
 
 迭代寻找最小元素：
 
@@ -749,6 +725,19 @@ Optional<Node<T>> succ (Node<T> x) {
     }
 }
 \end{lstlisting}
+
+删除：
+
+\begin{Haskell}
+delete Empty _ = Empty
+delete (Node l k r) x | x < k = Node (delete l x) k r
+                      | x > k = Node l k (delete r x)
+                      | otherwise = del l r
+  where
+    del Empty r = r
+    del l Empty = l
+    del l r = let k' = min r in Node l k' (delete r k')
+\end{Haskell}
 
 %% 删除节点：
 
