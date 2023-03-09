@@ -495,81 +495,54 @@ mapR f a b t = map' t where
 
 \section{Delete}
 \index{binary search tree!delete}
-We need special consideration when delete an element from the binary search tree. This is because we must keep the ordering property, that for any node, all keys in left sub-tree are less than the key of this node, and they are all less than any keys in right sub tree. Blindly deleting a node may break this constraint.
-
-To delete a node $x$ from a binary search tree\cite{sgi-stl}.
-\begin{itemize}
-\item If $x$ has no sub-trees (a leaf) or only one sub-tree, splice $x$ out;
-\item Otherwise ($x$ has two sub-trees), use the minimum element $y$ of its right sub-tree to replace $x$, and splice the original $y$ out.
-\end{itemize}
-
-The simplicity comes from the fact that, for the node to be deleted, if the right sub-tree is not empty, then the minimum element is some node in it. It can't have two none empty children, and end up in the trivial case. Therefore, the node can be directly splice out from the tree.
-
-Figure \ref{fig:del-leaf}, \ref{fig:del-1child}, and \ref{fig:del-branch} illustrate different cases for deletion.
+We need maintain the ordering while delete: for any node $(l, k, r)$, all left are still less than $k$, all right are still greater than $k$. Blindly deleting a node may break it. To delete $x$\cite{sgi-stl}: (1) if $x$ is a leaf or only has a none empty sub-tree, cut $x$ off; (2) if $x$ has two none empty sub-trees, use the minimum $y$ of its right sub-tree to replace $x$, then cut the original $y$ off. We use the fact that, the minimum of the right sub-tree can not have two none empty children. Hence we convert case 2 to 1, directly cut the minimum node off, as shown in figure \ref{fig:del-leaf}, \ref{fig:del-1child}, and \ref{fig:del-branch}.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.5]{img/del-leaf}
-  \caption{$x$ can be spliced out.} \label{fig:del-leaf}
+  \caption{Cut the leaf $x$ off.} \label{fig:del-leaf}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
   \subcaptionbox{Before delete $x$.}{\includegraphics[scale=0.5]{img/del-lc-before}}
-  \subcaptionbox{After delete $x$, $x$ is spliced out, and replaced by its left child.}{\includegraphics[scale=0.5]{img/del-lc-after}} \\
+  \subcaptionbox{After delete $x$, cut $x$ off, replace it with the left sub-tree.}{\includegraphics[scale=0.5]{img/del-lc-after}} \\
   \subcaptionbox{Before delete $x$.}{\includegraphics[scale=0.5]{img/del-rc-before}}
-  \subcaptionbox{After delete $x$, $x$ is spliced out, and replaced by its right sub-tree.}{\includegraphics[scale=0.5]{img/del-rc-after}}
-  \caption{Delete a node with only one none empty sub-tree.}
+  \subcaptionbox{After delete $x$, cut $x$ off, replace it with the right sub-tree.}{\includegraphics[scale=0.5]{img/del-rc-after}}
+  \caption{Delete a node with only a none empty sub-tree.}
   \label{fig:del-1child}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
   \subcaptionbox{Before delete $x$.}{\includegraphics[scale=0.5]{img/del-branch-before}}
-  \subcaptionbox{After delete $x$, $x$ is replaced by splicing the minimum element from its right sub-tree.}{ \includegraphics[scale=0.5]{img/del-branch-after}}
+  \subcaptionbox{After delete $x$, replace $x$ with the minimum from its right sub-tree.}{ \includegraphics[scale=0.5]{img/del-branch-after}}
   \caption{Delete a node with two none empty sub-trees.}
   \label{fig:del-branch}
 \end{figure}
 
-Based on this idea, we can define the $delete$ algorithm as below:
-
 \be
 \begin{array}{rcl}
-delete(\nil, x) & = & \nil\\
-delete(Node(T_l, k, T_r), x) & = & \begin{cases}
-  x < k: & Node(delete(T_l, x), k, T_r) \\
-  x > k: & Node(T_l, k, delete(T_r, x)) \\
-  x = k: & del(T_l, T_r) \\
+delete\ x\ \nil & = & \nil\\
+delete\ x\ (l, k, r) & = & \begin{cases}
+  x < k: & (delete\ x l, k, r) \\
+  x > k: & (l, k, delete\ x r) \\
+  x = k: & del\ l\ r \\
 \end{cases}
 \end{array}
 \ee
 
-Function $del$ performs slicing, and mutually call $delete$ recursively to cut off the minimum from the right sub-tree.
+Where:
 
 \be
 \begin{array}{rcl}
-del(\nil, T_r) & = & T_r \\
-del(T_l, \nil) & = & T_l \\
-del(T_l, T_r) & = & Node(T_l, y, delete(T_r, y)) \\
+del\ \nil\ r & = & r \\
+del\ l\ \nil & = & l \\
+del\ l\ r & = & (l, y, delete\ y\ r), y = \min\ r \\
 \end{array}
 \ee
 
-Where $y = min(T_r)$ is the minimum element in the right sub-tree. Here is the corresponding example program:
-
-\begin{Haskell}
-delete Empty _ = Empty
-delete (Node l k r) x | x < k = Node (delete l x) k r
-                      | x > k = Node l k (delete r x)
-                      | otherwise = del l r
-  where
-    del Empty r = r
-    del l Empty = l
-    del l r = let k' = min r in Node l k' (delete r k')
-\end{Haskell}
-
-This algorithm firstly looks up the node to be deleted, then executes the deletion. It takes $O(h)$ time where $h$ is the height of the tree.
-
-The imperative deletion algorithm needs set the parent properly in addition. The following one returns the root of the result tree.
+The performance of delete is $O(h)$, where $h$ is the height of the tree. The imperative implementation needs set the parent reference in addition.
 
 \begin{algorithmic}[1]
 \Function{Delete}{$T, x$}
@@ -581,10 +554,10 @@ The imperative deletion algorithm needs set the parent properly in addition. The
   \ElsIf{\Call{Right}{$x$} $= $ NIL}
     \State $x \gets $ \Call{Left}{$x$}
   \Else
-    \Comment{neither children is empty}
+    \Comment{neither sub-tree is empty}
     \State  $y \gets $ \textproc{Min}(\Call{Right}{$x$})
     \State \Call{Key}{$x$} $\gets$ \Call{Key}{$y$}
-    \State Copy other satellite data from $y$ to $x$
+    \State \Call{Value}{$x$} $\gets$ \Call{Value}{$y$}
     \If{\Call{Parent}{$y$} $\neq x$}
       \Comment{$y$ does not have left sub-tree}
       \State \textproc{Left}(\Call{Parent}{$y$}) $\gets$ \Call{Right}{$y$}
@@ -616,32 +589,27 @@ The imperative deletion algorithm needs set the parent properly in addition. The
 \EndFunction
 \end{algorithmic}
 
-We assume the node to be deleted is not empty. This algorithm first records the root, creates copy reference to $x$, and its parent. If either sub-tree is empty, then we splice $x$ out. Otherwise, the node has two none empty sub-trees. We first located the minimum node $y$ in its right sub-tree, then replace the key of $x$ with the one in $y$, copy the satellite data, and finally, splice $y$ out. We also need handle the special case, that $y$ is the root of the right sub-tree.
-
-At last, we need reset the stored parent if $x$ has only one none empty sub-tree. If the parent pointer we copied is empty, it means that we are deleting the root. In this case, we need return the new root. After the parent is set properly, we can safely remove $x$. The deletion algorithm is bound to $O(h)$ time, where $h$ is the height of the tree.
+Assume $x$ is not empty, first record the root, copy reference to $x$ and its parent. If either sub-tree is empty, then cut $x$ off. If neither sub-tree is empty, we locate the minimum node $y$ of the right sub-tree, replace the content of $x$ with $y$, then cut $y$ off. We also need handle the special case, that $y$ is the root of the right sub-tree. Finally, we need reset the stored parent if $x$ has only one none empty sub-tree. If the copied parent is empty, we are deleting the root. We return the new root in this case. After setting the parent, we can safely remove $x$. The deletion algorithm is bound to $O(h)$ time, where $h$ is the height of the tree.
 
 \begin{Exercise}
-
-\Question{There is a symmetric deletion algorithm. When neither sub-tree is empty, we can replace the key by splicing the maximum node off the left sub-tree. Write a program to implement this solution.}
-
+\Question{There is a symmetric deletion algorithm. When neither sub-tree is empty, we replace with the maximum of the left sub-tree, then cut the maximum off. Write a program to implement this solution.}
 \end{Exercise}
 
 \section{Random build}
 \index{binary search tree!random build}
-All binary search tree algorithms we give so far are bound bound to $O(h)$ time. The height $h$ of the tree impacts the performance. For a poor unbalanced tree, $O(h)$ tends to be $O(n)$. It leads to the worst case. While for well balanced tree, $O(h)$ close to $O(\lg n)$. We can gain good performance.
-
-We'll see two well designed solutions to keep the tree balanced in chapter 4 and 5. There exists a simple method, to build the binary search tree randomly\cite{CLRS}. It decreases the possibility of giving a unbalanced binary tree. The idea is to randomly shuffle the elements before building the tree.
+The performance of the binary search tree algorithms depends on the height $h$ of the tree. When unbalanced, $O(h)$ is close to $O(n)$, while for well balanced tree, $O(h)$ is close to $O(\lg n)$. Chapter 4 and 5 introduce self-balanced solution, there is another simple method to balance the tree: shuffle the elements, then build the tree\cite{CLRS}. It decreases the possibility of poorly balanced tree.
 
 \begin{Exercise}
 \Question{Write a randomly building algorithm for binary search tree.}
+\Question{How to find the two nodes with the greatest distance in a binary tree?}
 \end{Exercise}
 
 \section{Map}
-We can use binary search tree to realize the map data structure (also known as associative data structure or dictionary). A finite map is a collection of key-value pairs. The keys are unique, that every key is mapped to a value. For keys of type $K$, values of type $V$, the map is $Map\ K\ V$ or \texttt{Map<K, V>}. For none empty map, it contains $n$ mappings of $k_1 \mapsto v_1, k_2 \mapsto v_2, ..., k_n \mapsto v_n$. When use the binary search tree to implement map, we constrain $K$ to be ordered set. Every node stores both key and value. We use the tree insert/update operation to bind a key to a value. Given a key $k$, we use the tree lookup to find the mapped value, or returns nothing when $k$ does not exist. The red-black tree and AVL tree introduced in later chapters can also be used to implement map.
+We can use binary search tree to realize the map data structure (also known as associative data structure or dictionary). A finite map is a collection of key-value pairs. Each key is unique, and is mapped to some value. For keys of type $K$, values of type $V$, the type of the map is $Map\ K\ V$ or \texttt{Map<K, V>}. For none empty map, it contains $n$ mappings of $\{k_1 \mapsto v_1, k_2 \mapsto v_2, ..., k_n \mapsto v_n\}$. When use the binary search tree to implement map, we constrain $K$ to be ordered set. Every node stores a pair of key and value. The type of the tree is $Tree\ (K, V)$. We use the tree insert/update operation to associate a key with a value. Given a key $k$, we use $lookup$ to find the mapped value $v$, or returns nothing or $\nil$ when $k$ does not exist. The red-black tree and AVL tree in chapter 4 and 5 can also implement map.
 
 \section{Appendix: Example programs}
 
-Definition of binary search tree node with parent field.
+Definition of binary search tree node with parent reference.
 
 \lstset{language=Bourbaki, frame=single}
 \begin{lstlisting}
@@ -661,7 +629,7 @@ data Node<T> {
 }
 \end{lstlisting}
 
-Example program of recursive insertion. It does not use pattern matching.
+Recursive insert without using pattern matching.
 
 \begin{lstlisting}
 Node<T> insert (Node<T> t, T x) {
@@ -675,7 +643,23 @@ Node<T> insert (Node<T> t, T x) {
 }
 \end{lstlisting}
 
-Example program to look up a key. Purely iterative without recursion.
+Map and fold:
+
+\begin{Haskell}
+mapt _ Empty = Empty
+mapt f (Node l x r)= Node (mapt f l) (f x) (mapt f r)
+
+foldt _ _ z Empty = z
+foldt f g z (Node l k r) = g (foldt f g z l) (f k) (foldt f g z r)
+
+maptr :: (a -> b) -> Tree a -> Tree b
+maptr f = foldt f Node Empty
+
+fold _ z Empty = z
+fold f z (Node l k r) = fold f (k `f` (fold f z r)) l
+\end{Haskell}
+
+Iterative lookup without recursion:
 
 \begin{lstlisting}
 Optional<Node<T>> lookup (Node<T> t, T x) {
@@ -701,7 +685,8 @@ Optional<Node<T>> min (Node<T> t) {
 }
 \end{lstlisting}
 
-Example program to find the successor of a node.
+Iterative find the successor.
+
 \begin{lstlisting}
 Optional<Node<T>> succ (Node<T> x) {
     if (x == null) {
@@ -719,44 +704,18 @@ Optional<Node<T>> succ (Node<T> x) {
 }
 \end{lstlisting}
 
-%% Example program to delete a node imperatively from the tree.
+delete:
 
-%% \begin{lstlisting}
-%% Node<T> delete(Node<T> t, Node<T> x) {
-%%     if (x == null) {
-%%         return t
-%%     }
-%%     root, x0, parent = t, x, x.parent
-%%     if (x.left == null) {
-%%         x = x.right
-%%     } else if (x.right == null) {
-%%         x = x.left
-%%     } else {
-%%         y = min(x.right)
-%%         x.key = y.key
-%%         if (y.parent != x) {
-%%             y.parent.left = y.right
-%%         } else {
-%%             x.right = y.right
-%%         }
-%%         if (y.right != null) {
-%%             y.right.parent = y.parent
-%%         }
-%%         return root
-%%     if (x != null) {
-%%         x.parent = parent
-%%     }
-%%     if (parent == null) {
-%%         root = x
-%%     } else {
-%%         if (parent.left == x0) {
-%%             parent.left = x
-%%         } else {
-%%             parent.right = x
-%%         }
-%%     return root
-%% }
-%% \end{lstlisting}
+\begin{Haskell}
+delete _ Empty = Empty
+delete x (Node l k r) | x < k = Node (delete x l) k r
+                      | x > k = Node l k (delete x r)
+                      | otherwise = del l r
+  where
+    del Empty r = r
+    del l Empty = l
+    del l r = let k' = min r in Node l k' (delete k' r)
+\end{Haskell}
 
 \ifx\wholebook\relax \else
 \section{Answers}
