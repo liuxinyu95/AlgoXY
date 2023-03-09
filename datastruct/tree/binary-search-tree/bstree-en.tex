@@ -54,19 +54,19 @@ The \texttt{map} is a binary search tree. Here we use the word as the key, and i
 
 \begin{figure}[htbp]
   \centering
-  \subcaptionbox{Binary tree structure}{\includegraphics[scale=0.5]{img/lvr}} \\
+  \subcaptionbox{Binary tree structure}{\includegraphics[scale=0.4]{img/lvr}} \\
   \subcaptionbox{A binary tree}{\includegraphics[scale=0.35]{img/btexample}}
   \caption{Binary tree}
   \label{fig:binary-tree-example}
 \end{figure}
 
 \index{binary search tree}
-A binary search tree is a special binary tree that its elements are comparable\footnote{It is abstract ordering, not limit to magnitude, but like precedence, subset of etc. the `less than' (<) is abstract.}, and satisfies: for any non empty node $(l, k, r)$, all the keys in the left sub-tree $< k$; $k <$ any key in the right sub-tree. Figure \ref{fig:bst-example} shows an example of binary search tree. Comparing with figure \ref{fig:binary-tree-example}, we can see the differences in ordering. To highlight the element in binary search tree is comparable, we call it {\em key}, and name the augmented satellite data as {\em value}. The type is $Tree\ (K, V)$.
+A binary search tree is a special binary tree that its elements are comparable\footnote{It is abstract ordering, not limit to magnitude, but like precedence, subset of etc. the `less than' (<) is abstract.}, and satisfies: for any non empty node $(l, k, r)$, all the keys in the left sub-tree $< k$; $k <$ any key in the right sub-tree. Figure \ref{fig:bst-example} shows an example of binary search tree. Comparing with figure \ref{fig:binary-tree-example}, we can see the differences in ordering. For this reason, we call the comparable element as {\em key}, and the augmented data as {\em value}. The type is $Tree\ (K, V)$.
 
 \begin{figure}[htbp]
   \begin{center}
    \includegraphics[scale=0.35]{img/bst-1}
-   \caption{A Binary Search Tree} \label{fig:bst-example}
+   \caption{A binary search tree} \label{fig:bst-example}
   \end{center}
 \end{figure}
 
@@ -88,35 +88,25 @@ data Tree a = Empty | Node (Tree a) a (Tree a)
 \section{Insert}
 \index{binary search tree!insert}
 
-When insert a key $k$ (or along with a value) to binary search tree $T$, we need ensure the key ordering property is always hold:
-
-\begin{itemize}
-\item If the tree is empty, construct a leaf node with key = $k$;
-\item If $k$ is less than the key of root, insert it to the left sub-tree;
-\item Otherwise, insert it in the right sub-tree.
-\end{itemize}
-
-There is an exceptional case that $k$ is equal to the key of root. It means $k$ already exists in the tree. We can overwrite it, or append data, or do nothing. We'll skip such case handling. This algorithm is simple and straightforward. We can define it as a recursive function:
+When insert a key $k$ (with the value) to the binary search tree $T$, we need maintain the ordering. If the tree is empty, create a leaf of $k$. Otherwise, let the tree be $(l, x, r)$. If $k < x$, insert it to the left sub-tree $l$; otherwise, insert to the right $r$. If $k = x$, it already exists in the tree. We overwrite the value (update). Alternatively, we cab append the data or do nothing. We skip this case. Below is the recursive definition and example program:
 
 \be
 \begin{array}{rcl}
-insert(\nil, k) & = & Node(\nil, k, \nil) \\
-insert(Node(T_l, k', T_r), k) & = & \begin{cases}
-  k < k': & Node(insert(T_l, k), k', T_r) \\
-  otherwise: & Node(T_l, k', insert(T_r, k)) \\
+insert\ k\ \nil & = & (\nil, k, \nil) \\
+insert\ k\ (l, x, r) & = & \begin{cases}
+  k < x: & (insert\ k\ l, x, r) \\
+  \text{otherwise}: & (l, x, insert\ k\ r) \\
   \end{cases}
 \end{array}
 \ee
 
-For the none empty node, $T_l$ denotes the left sub-tree, $T_r$ denotes the right sub-tree, and $k'$ is the key. The function $Node(l, k, r)$ creates a node from two sub-trees and a key. $\nil$ means empty (also known as NIL. ). Below is the corresponding example program in Haskell for insertion.
-
 \begin{Haskell}
-insert Empty k = Node Empty k Empty
-insert (Node l x r) k | k < x = Node (insert l k) x r
-                      | otherwise = Node l x (insert r k)
+insert k Empty = Node Empty k Empty
+insert k (Node l x r) | k < x = Node (insert k l) x r
+                      | otherwise = Node l x (insert k r)
 \end{Haskell}
 
-This example program utilizes the {\em pattern matching} features. The appendix of this chapter provides another example without using this feature. Insertion can also be implemented without recursion. Here is a pure iterative algorithm:
+This implementation uses the {\em pattern matching} feature. We give another example without pattern matching in the appendix. We can eliminate the recursion with iterative loops:
 
 \begin{algorithmic}[1]
 \Function{Insert}{$T, k$}
@@ -132,7 +122,7 @@ This example program utilizes the {\em pattern matching} features. The appendix 
     \EndIf
   \EndWhile
   \State \Call{Parent}{$x$} $\gets parent$
-  \If{$parent = $ NIL} \Comment{tree $T$ is empty}
+  \If{$parent = $ NIL} \Comment{$T$ in empty}
     \State \Return $x$
   \ElsIf{$k <$ \Call{Key}{$parent$}}
     \State \Call{Left}{$parent$} $\gets x$
@@ -152,12 +142,31 @@ This example program utilizes the {\em pattern matching} features. The appendix 
 \EndFunction
 \end{algorithmic}
 
-While a bit more complex than the functional one, the iterative implementation runs faster, and it is capable to process very deep tree.
+We can repeat insert every element from a list, convert the list to a binary search tree:
+
+\[
+\begin{array}{rcl}
+\textit{fromList}\ [\ ] & = & \nil \\
+\textit{fromList}\ (x \cons xs) & = & insert\ x\ (\textit{fromList}\ xs) \\
+\end{array}
+\]
+
+Or define it with fold (chapter 1) in Curried form: \textit{fromList} = $foldr\ insert\ \nil$. We arrange the input arguments in symmetric order: $insert\ k\ t$ and \textproc{Insert}($T, k$) for functional and imperative implementations. Such that to use $foldr$ for the former, and $foldl$ (or for-loop) for the latter:
+
+\begin{algorithmic}[1]
+\Function{From-List}{$X$}
+  \State $T \gets $ NIL
+  \For{each $x$ in $X$}
+    \State $T \gets$ \Call{Insert}{$T, x$}
+  \EndFor
+  \State \Return $T$
+\EndFunction
+\end{algorithmic}
 
 \section{Traverse}
 \index{binary search tree!traverse}
 
-Traverse is to visit every element one by one. There are 3 different ways to walk through a binary tree: (1) pre-order tree walk, (2) in-order tree walk, (3) and post-order tree walk. They are named to highlight the order of visiting key before/after sub-trees.
+Traverse is to visit every element in the binary search tree. There are 3 ways: pre-order, in-order, and post-order tree walk. They are named to highlight the order of visiting key between/before/after sub-trees.
 
 \begin{itemize}
 \item pre-order: \textbf{key} - left - right;
@@ -167,7 +176,7 @@ Traverse is to visit every element one by one. There are 3 different ways to wal
 
 \index{pre-order traverse} \index{in-order traverse} \index{post-order traverse}
 
-Each `visit' operation is recursive, for example in pre-order traverse, when visit the left sub-tree, we recursively traverse it if it is not empty. For the tree shown in figure \ref{fig:bst-example}, the corresponding visiting orders are as below:
+The `visit' is recursive. For the tree in figure \ref{fig:bst-example}, the corresponding visiting orders are as below:
 
 \begin{itemize}
 \item pre-order: 4, 3, 1, 2, 8, 7, 16, 10, 9, 14
@@ -175,78 +184,70 @@ Each `visit' operation is recursive, for example in pre-order traverse, when vis
 \item post-order: 2, 1, 3, 7, 9, 14, 10, 16, 8, 4
 \end{itemize}
 
-It is not by accident that the in-order traverse lists the elements one by one increasingly. The definition of the binary search tree ensures it is always true. We leave the proof as an exercise. Specifically, the in-order traverse algorithm is defined as:
-
-\begin{itemize}
-\item If the tree is empty, stop and return;
-\item Otherwise, in-order traverse the left sub-tree; then visit the key; finally in-order traverse the right sub-tree.
-\end{itemize}
-
-We can further define a generic $map$ to apply any given function $f$ to every element in the tree along the in-order traverse. The result is a new tree mapped by $f$.
+It is not by accident that the in-order traverse gives an ascending list, but is guaranteed by the definition of the binary search tree (see exercise \label{ex:BST-in-order-sort}). Define $map$ that in-order traverses and applies function $f$ to every element of the tree. It transforms a tree to another tree of the same structure (isomorphic).
 
 \be
 \begin{array}{rcl}
-map(f, \nil) & = & \nil \\
-map(f, Node(T_l, k, T_r)) & = & Node(map(f, T_l), f(k), map(f, T_r))
+map\ f\ \nil & = & \nil \\
+map\ f\ (l, k, r) & = & (map\ f\ l, f\ k, map\ f\ r)
 \end{array}
 \ee
 
-If we only need manipulate keys but not to transform the tree, we can implement this algorithm imperatively.
+If we only need manipulate keys but not transform the tree, we can implement in-order traverse as below:
 
 \begin{algorithmic}[1]
-\Function{In-Order-Traverse}{$T, f$}
+\Function{Traverse}{$T, f$}
   \If{$T \neq$ NIL}
-    \State \textproc{In-Order-Traverse}(\Call{Left}{$T, f$})
+    \State \textproc{Traverse}(\Call{Left}{$T$}, $f$)
     \State $f$(\Call{Key}{$T$})
-    \State \textproc{In-Order-Traverse}(\Call{Right}{$T, f$})
+    \State \textproc{Traverse}(\Call{Right}{$T$, $f$})
   \EndIf
 \EndFunction
 \end{algorithmic}
 
-Leverage in-order traverse, we can change the $map$ function to convert a binary search tree to a sorted list. Instead building the tree in recursive case, we concatenate the result to a list:
+We can change the $map$ function, convert a binary search tree to a sorted list.
 
 \be
 \begin{array}{rcl}
-toList(\nil) & = & [\ ] \\
-toList(Node(T_l, k, T_r)) & = & toList(T_l) \doubleplus [ k ] \doubleplus toList(T_r) \\
+toList\ \nil & = & [\ ] \\
+toList\ (l, k, r) & = & toList\ l \doubleplus [k] \doubleplus toList\ r \\
 \end{array}
 \ee
 
-We can develop a method to sort a list of elements: first build a binary search tree from the list, then turn it back to list through in-order traversing. This method is called as `tree sort'. For a given list $X = [x_1, x_2, x_3, ..., x_n]$.
+We can develop a sort algorithm: convert a list to a binary search tree, then convert the tree back to ordered list, namely `tree sort': $sort\ X = toList\ (\textit{fromList}\ X)$, or write as function composition\cite{func-composition}:
 
 \be
-  sort(X) = toList(fromList(X))
+  sort = toList \circ \textit{fromList}
 \ee
 
-And we can write it in point-free form\cite{func-composition}.
+We define the generic fold for binary trees (see chapter 1 for fold):
 
-\[
-  sort = toList \circ fromList
-\]
-
-Where function $fromList$ repeatedly inserts elements from a list to a tree. It can be defined to recursively process the list.
-
-\[
+\be
 \begin{array}{rcl}
-fromList([\ ]) & = & \nil \\
-fromList(X) & = & insert(fromList(X'), x_1) \\
+foldt\ f\ g\ z\ \nil & = & z \\
+foldt\ f\ g\ z\ (l, k, r) & = & g\ (foldt\ f\ g\ z\ l)\ (f\ k)\ (foldt\ f\ g\ z\ r) \\
 \end{array}
-\]
-
-When the list is empty, the result is an empty tree; otherwise, it inserts the first element $x_1$ to the tree, then recursively inserts the rests $X' = [x_2, x_3, ..., x_n]$. By using list folding\cite{wiki-fold} (see appendix A.6), we can also define $fromList$ as the following:
-
-\be
-  fromList(X)= \fold_l(insert, \nil, X)
 \ee
 
-We can also rewrite it in Curried form\cite{curry} (also known as partial application) such as to omit parameter $X$:
+Where $f: A \to B$, sends the key $k$ of type $A$ in the tree to $m = f(k)$ of type $B$. It recursively folds the left and right sub-trees (from $z$) to get $x$ and $y$ respectively, then combines the three things together as $g\ x\ m\ y$. We can define $map$ with $foldt$:
 
-\[
-  fromList = \fold_l\ insert\ \nil
-\]
+\be
+map\ f = foldt\ f\ (x\ m\ y\ \mapsto (x, m, y))\ \nil
+\ee
+
+$foldt$ preserves the tree structure with the ternary function $g$. If don't care about the tree structure, we can use a binary function $f : A \times B \to B$ to simplify, fold a tree of type $Tree\ A$ to a value of type $B$:
+
+\be
+\begin{array}{rcl}
+fold\ f\ z\ \nil & = & z \\
+fold\ f\ z\ (l, k, r) & = & fold\ f\ (f\ k\ (fold\ f\ z\ r))\ l\\
+\end{array}
+\ee
+
+For example: $sum = fold\ (+)\ 0$ sums all elements of the tree; $length = fold\ (x\ n \mapsto n + 1)\ 0$ counts the number of elements in the tree. However, $fold$ can not define $map$, as the binary function $f$ loss the tree structure.
 
 \begin{Exercise}
-\Question{Given the in-order and pre-order traverse results, re-construct the tree, and output the post-order traverse result. For example:
+\Question{Given the in-order and pre-order traverse results, rebuild the tree, and output the post-order traverse result. For example:
 
 \begin{itemize}
 \item Pre-order: 1, 2, 4, 3, 5, 6;
@@ -256,15 +257,19 @@ We can also rewrite it in Curried form\cite{curry} (also known as partial applic
 \index{tree reconstruction}
 }
 
-\Question{Write a program to re-construct the binary tree from the pre-order and in-order traverse lists.}
+\Question{Write a program to rebuild the binary tree from the pre-order and in-order traverse lists.}
 
-\Question{For binary search tree, prove that the in-order traverse always visits elements in increase order}
+\Question{For binary search tree, prove that the in-order traverse always gives ordered list.
+\label{ex:BST-in-order-sort}
+}
 
-\Question{Consider the performance of tree sort algorithm, what is its complexity for $n$ elements?}
+\Question{What is its complexity of tree sort for $n$ elements?}
+
+\Question{Define $toList$ with fold.}
 \end{Exercise}
 
 \begin{Answer}
-\Question{Given the in-order and pre-order traverse results, re-construct the tree, and output the post-order traverse result. For example:
+\Question{Given the in-order and pre-order traverse results, rebuild the tree, and output the post-order traverse result. For example:
 
 \begin{itemize}
 \item Pre-order: 1, 2, 4, 3, 5, 6;
@@ -275,7 +280,7 @@ We can also rewrite it in Curried form\cite{curry} (also known as partial applic
 [4, 2, 5, 6, 3, 1]
 }
 
-\Question{Write a program to re-construct the binary tree from the pre-order and in-order traverse lists.
+\Question{Write a program to rebuild the binary tree from the pre-order and in-order traverse lists.
 
 \vspace{3mm}
 Let $P$ be the pre-order traverse result, $I$ be the in-order result. If$P = I = [\ ]$, then the binary tree is empty $\nil$. Otherwise, the pre-order is recursive `key - left - right', hence the first element $m$ in $P$ is the key of the root. The in-order is recursive `left - key - right', we can find $m$ in $I$, which splits $I$ into three parts: $[a_1, a_2, ..., a_{i-1}, m, a_{i+1}, a_{a+2}, ..., a_n]$. Let $I_l = I[1, i), I_r = I[i+1, n]$, where $[l, r)$ includes $l$, but excludes $r$. Either can be empty $[\ ]$. In these three parts $I_l, m, I_r$, $I_l$ is the in-order traverse result of the left sub-tree, $I_r$ is the in-order result of the right sub-tree. Let $k = |I_l|$ be the size of the left sub-tree, we can split $P[2, n]$ at $k$ to two parts: $P_l, P_r$, where $P_l$ contains the first $k$ elements. We next recursively rebuild the left sub-tree from $(P_l, I_l)$, rebuild the right sub-tree from $(P_r, I_r)$:
@@ -299,7 +304,7 @@ Where:
 Below is the example program:
 \begin{Haskell}
 rebuild [] _ = Empty
-rebuild [c] _ = leaf c
+rebuild [c] _ = Node Empty c Empty
 rebuild (x:xs) ins = Node (rebuild prl inl) x (rebuild prr inr) where
   (inl, _:inr) = (takeWhile (/= x) ins, dropWhile (/=x) ins)
   (prl, prr) = splitAt (length inl) xs
@@ -318,16 +323,27 @@ Node<T> rebuild([T] pre, [T] ins, Int l = 0, Int r = length(ins)) {
 \end{lstlisting}
 }
 
-\Question{For binary search tree, prove that the in-order traverse always visits elements in increase order}
+\Question{For binary search tree, prove that the in-order traverse always gives ordered list.
+\begin{proof}
+Use proof with absurdity. Suppose there exits (finite sized) binary search tree, the in-order result is not ordered. Among all such trees, select the smallest $T$. First $T$ can't be $\nil$, as the in-order result is $[\ ]$, which is ordered. Second, $T$ can't be singleton $(\nil, k, \nil)$, as the in-order result is $[k]$, which is ordered. Hence $T$ must be a branch node of $(l, k, r)$. The in-order result is $toList\ l \doubleplus [x] \doubleplus toList\ r$. Because $T$ is the smallest tree that the in-order result is not ordered, while $l$ and $r$ are smaller than $T$, hence both $toList\ l$ and $toList\ r$ are ordered. According to the binary search tree definition, for every $x \in l, x < k$, and every $y \in r, y > k$. Hence the in-order result $toList\ l \doubleplus [x] \doubleplus toList\ r$ is ordered, which conflicts with the assumption, that the in-order result of $T$ is not ordered.
 
-\Question{Consider the performance of tree sort algorithm, what is its complexity for $n$ elements?}
+Therefore, for any binary search tree, the in-order result is ordered.
+\end{proof}
+}
+
+\Question{What is its complexity of tree sort for $n$ elements?}
+
+\Question{Define $toList$ with fold.
+\[
+\begin{array}{rcl}
+toList & = & foldt\ id\ (as\ b\ bs \mapsto as \doubleplus b : bs)\ [\ ] \\
+       & = & fold\ (:)\ [\ ] \\
+\end{array}
+\]
+}
 \end{Answer}
 
-% ================================================================
-% Query
-% ================================================================
 \section{Query}
-\index{binary search tree!search}
 \index{binary search tree!looking up}
 
 Because the elements stored in binary search tree is well ordered and organized recursively. It supports varies of search effectively. This is one of the reasons people name it as binary search tree. There are mainly three types of querying: (1) look up a key; (2) find the minimum or maximum element; (3) given any node, find its predecessor or successor.
