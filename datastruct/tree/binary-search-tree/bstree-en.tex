@@ -346,46 +346,29 @@ toList & = & foldt\ id\ (as\ b\ bs \mapsto as \doubleplus b : bs)\ [\ ] \\
 \section{Query}
 \index{binary search tree!looking up}
 
-Because the elements stored in binary search tree is well ordered and organized recursively. It supports varies of search effectively. This is one of the reasons people name it as binary search tree. There are mainly three types of querying: (1) look up a key; (2) find the minimum or maximum element; (3) given any node, find its predecessor or successor.
-
-\subsection{Look up}
-Because binary search tree is recursive and all elements satisfy the ordering property, we can look up a key $k$ top-down from the root as the following:
+Because the binary search tree organises element ordered recursively, it supports varies of query efficiently. This is reason we name it `search' tree. There are three types of query: (1) lookup a key; (2) find the minimum or maximum element; (3) given a node, find its predecessor or successor. Consider lookup the value of some key $x$ in a tree of type $Tree\ (K, V)$:
 
 \begin{itemize}
-\item If the tree is empty, terminate. The key does not exist;
-\item Compare $k$ with the key of root, if equal, we are done. The key is stored in the root;
-\item If $k$ is less than the key of root, then recursively look up the left sub-tree;
-\item Otherwise, look up the right sub-tree.
+\item If the tree is empty, $x$ does not exist;
+\item For tree $(l, (k, v), r)$, if $k = x$, returns $v$;
+\item If $x < k$, then recursively lookup $l$, otherwise, lookup $r$.
 \end{itemize}
-
-We can define the recursive $lookup$ function for this algorithm as below.
 
 \be
 \begin{array}{rcl}
-lookup(\nil, x) & = & \nil \\
-lookup(Node(T_l, k, T_r), x) & = & \begin{cases}
-  k = x: & T \\
-  x < k: & lookup(T_l, x) \\
-  otherwise: & lookup(T_r, x) \\
+lookup\ x\ \nil & = & \textit{Nothing} \\
+lookup\ x\ (l, (k, v), r), x) & = & \begin{cases}
+  k = x: & \textit{Just}\ v \\
+  x < k: & lookup\ x\ l \\
+  \text{否则}: & lookup\ x\ r \\
   \end{cases}
 \end{array}
 \ee
 
-This function returns the tree node being located or empty if not found. One may instead return the value that bound to the key. However, in search implementation, we need consider using $Maybe$ type (also known as \texttt{Optional<T>}) to handle the not found case, for example:
-
-\begin{Haskell}
-lookup Empty _ = Nothing
-lookup t@(Node l k r) x | k == x = Just k
-                        | x < k = lookup l x
-                        | otherwise = lookup r x
-\end{Haskell}
-
-If the binary search tree is well balanced, which means almost all branch nodes have both none empty sub-trees except for leaves. This is not the formal definition of balance. We'll define it in chapter 4. For a balanced tree of $n$ elements, the algorithm takes $O(\lg n)$ time to look up a key. If the tree is poor balanced, the worst case is bound to $O(n)$ time. If denote the height of the tree as $h$, we can represent the performance of look up as $O(h)$.
-
-We can also implement looking up purely iterative without recursion:
+We use the $Maybe$ type\footnote{Also known as \texttt{Optional<T>} type, see chapter 1.} to handle the `not found' case. If the tree is balanced (see chapter 4), the performance is $O(\lg n)$, where $n$ is the number of elements. It decreases to $O(n)$ time in the worse case for extremely unbalanced tree. Let the height of the tree be $h$, the performance of $lookup$ is $O(h)$. Below implementation eliminates the recursion with loops:
 
 \begin{algorithmic}[1]
-\Function{Search}{$T, x$}
+\Function{Lookup}{$T, x$}
   \While{$T \neq $ NIL and \Call{Key}{$T$} $ \neq x$}
     \If{$x <$ \Call{Key}{$T$}}
       \State $T \gets $ \Call{Left}{$T$}
@@ -393,54 +376,49 @@ We can also implement looking up purely iterative without recursion:
       \State $T \gets $ \Call{Right}{$T$}
     \EndIf
   \EndWhile
-  \State \Return $T$
+  \State \Return \Call{Value}{$T$}  \Comment{returns $\nil$ if $T = $NIL}
 \EndFunction
 \end{algorithmic}
 
-\subsection{Minimum and maximum}
 \index{binary search tree!min/max}
-
-From the definition, we know that less keys are always on the left. To locate the minimum element, we can keep traversing along the left sub-trees till reach to a node, where its left sub-tree is empty. In a symmetric way, keep traversing along the right sub-trees gives the maximum.
+In binary search tree, the less keys are on the left, while the greater keys are on the right. To locate the minimum element, we keep going to the left till the left sub-tree is empty. Symmetrically, we keep going to the right to find the maximum. Both $\min/\max$ are bound to $O(h)$ time, where $h$ is the height of the tree.
 
 \be
-\begin{array}{rcl}
-min(Node(\nil, k, T_r)) & = & k \\
-min(Node(T_l, k, T_r)) & = & min(T_l) \\
+\begin{array}{cc}
+  \begin{array}{rcl}
+  \min\ (\nil, k, r) & = & k \\
+  \min\ (l, k, r) & = & \min\ l \\
+  \end{array}
+&
+  \begin{array}{rcl}
+  \max\ (l, k, \nil) & = & k \\
+  \max\ (l, k, r) & = & \max\ r \\
+  \end{array}
 \end{array}
 \ee
 
-\be
-\begin{array}{rcl}
-max(Node(T_l, k, \nil)) & = & k \\
-max(Node(T_l, k, T_r)) & = & max(T_r) \\
-\end{array}
-\ee
-
-Both functions are bound to $O(h)$ time, where $h$ is the height of the tree.
-
-\subsection{Successor and predecessor}
 \index{binary search tree!succ/pred}
 
-When treat binary search tree as a generic container (a collection of elements), it is common to traverse it with a bi-directional iterator. Start from the minimum element, one can keep moving forward with the iterator towards the maximum, or go back and forth. Below example program prints elements in sorted order.
+We sometimes need traverse a binary search tree as a container. Start from the minimum element, keep moving forward step by step towards the maximum, or go back and forth. Below example program prints elements in sorted order.
 
 \lstset{language=Bourbaki}
 \begin{lstlisting}
 void printTree (Node<T> t) {
-    for (var it = Iterator(t), it.hasNext(); it = it.next()) {
-        print(it.get(), ", ");
+    for var it = Iterator(t), it.hasNext(), it = it.next() {
+        print(it.get(), ", ")
     }
 }
 \end{lstlisting}
 
-Such use cases demand us to design algorithm to find the successor or predecessor of any node. The successor of element $x$ is defined as the smallest element $y$ that satisfies $x < y$. If the node of $x$ has none empty right sub-tree, then minimum element of the right sub-tree is the successor. As shown in figure \ref{fig:bst-succ}, to find the successor of 8, we search the minimum element in its right sub-tree, which is 9. If the right sub-tree of node $x$ is empty, we need back-track along the parent field till the closest ancestor whose left sub-tree is also an ancestor of $x$. In figure \ref{fig:bst-succ}, since node 2 does not have right sub-tree, we go up to its parent of node 1. However, node 1 does not have left sub-tree, we need go up again, hence reach to node 3. As the left sub-tree of node 3 is also an ancestor of node 2, node 3 is the successor of node 2.
+Such use case need to find the successor or predecessor of a node. Define the successor of $x$ as the minimum $y$ that $x < y$. If $x$ has none empty right sub-tree $r$, the minimum element of $r$ is the successor. As shown in figure \ref{fig:bst-succ}, to find the successor of 8, we search the minimum in its right, which is 9. If the right sub-tree of $x$ is empty, we need back-track along the parent till the closest ancestor whose left sub-tree is also an ancestor of $x$. In figure \ref{fig:bst-succ}, since node 2 does not have right sub-tree, we go up to its parent of node 1. However, node 1 does not have left sub-tree, we need go up again, hence reach to node 3. As the left sub-tree of node 3 is also an ancestor of node 2, node 3 is the successor of node 2.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.45]{img/bst-1}
-  \caption{The successor of 8, is the minimum one in its right sub-tree, 9; In order to find the successor of 2, we go up to its parent 1, then 3. } \label{fig:bst-succ}
+  \caption{The successor of 8 is 9, the minimum of its right; for the successor of 2, we go up to its parent 1, then 3.} \label{fig:bst-succ}
 \end{figure}
 
-If we finally reach to the root when back-track along the parent, but still can not find an ancestor on the right, then the node does not have a successor. Below algorithm finds the successor of a given node $x$:
+If we finally reach to the root along the parent path, but still can not find an ancestor on the right, then the node does not have the successor (the last element). Below algorithm finds the successor of $x$:
 
 \begin{algorithmic}[1]
 \Function{Succ}{$x$}
@@ -457,7 +435,7 @@ If we finally reach to the root when back-track along the parent, but still can 
 \EndFunction
 \end{algorithmic}
 
-This algorithm returns NIL when $x$ does not has successor. The predecessor finding algorithm is symmetric:
+This algorithm returns NIL when $x$ hasn't the successor. The predecessor algorithm is symmetric:
 
 \begin{algorithmic}[1]
 \Function{Pred}{$x$}
@@ -474,11 +452,10 @@ This algorithm returns NIL when $x$ does not has successor. The predecessor find
 \EndFunction
 \end{algorithmic}
 
-It seems hard to find the purely functional solution, because there is no pointer like field linking to the parent node\footnote{There is \texttt{ref} in ML and OCaml, we limit to the purely functional settings.}. One solution is to left `breadcrumbs' when we visit the tree, and use these information to back-track or even re-construct the whole tree. Such data structure, that contains both the tree and `breadcrumbs' is called zipper\cite{zipper-hbook}.
-
-Our original purpose to develop $succ$ and $pred$ functions is `to traverse all the elements' as a generic container. However, in functional settings, we typically traverse the tree in-order through $map$. We'll meet similar situations in the rest of this book. A problems valid in imperative settings may not be necessarily meaningful in functional settings. For example, to delete an element from red-black tree\cite{okasaki-blog}.
+The purely functional settings don't use parent reference\footnote{There is \texttt{ref} in ML and OCaml, we limit to the purely functional settings.}. Some implementation records the visited paths for back-track or tree rebuilding, called zipper\cite{zipper-hbook}. The original purpose for \textproc{Succ} and \textproc{Pred} is `to traverse all the elements' in the tree as a container. However, in functional settings, we typically in-order traverse the tree through $map$. It only meaningful to find the successor and predecessor in imperative settings.
 
 \begin{Exercise}
+\Question{How to test whether an element $k$ of type $K$ exists in the tree $t$ of type $Tree\ K$?}
 
 \Question{Use \textproc{Pred} and \textproc{Succ} to write an iterator to traverse the binary search tree as a generic container. What's the time complexity to traverse a tree of $n$ elements?}
 
@@ -489,10 +466,34 @@ Our original purpose to develop $succ$ and $pred$ functions is `to traverse all 
 Write an equivalent functional program for binary search tree\index{range traverse}.}
 \end{Exercise}
 
-% ================================================================
-%                 Deletion
-% ================================================================
-\section{Deletion}
+\begin{Answer}
+\Question{How to test whether an element $k$ of type $K$ exists in the tree $t$ of type $Tree\ K$?
+\begin{Haskell}
+member x (Node l k r) | x == k = True
+             | x < k = member x l
+             | otherwise = member x r
+\end{Haskell}
+}
+
+\Question{Use \textproc{Pred} and \textproc{Succ} to write an iterator to traverse the binary search tree as a generic container. What's the time complexity to traverse a tree of $n$ elements?}
+
+\Question{One can traverse elements inside a range $[a, b]$ for example:
+
+\texttt{for\_each (m.lower\_bound(12), m.upper\_bound(26), f);}
+
+Write an equivalent functional program for binary search tree\index{range traverse}.
+
+\begin{Haskell}
+mapR f a b t = map' t where
+    map' Empty = Empty
+    map' (Node l k r) | k < a = map' r
+                      | a <= k && k <= b = Node (map' l) (f k) (map' r)
+                      | k > b = map' l
+\end{Haskell}
+}
+\end{Answer}
+
+\section{Delete}
 \index{binary search tree!delete}
 We need special consideration when delete an element from the binary search tree. This is because we must keep the ordering property, that for any node, all keys in left sub-tree are less than the key of this node, and they are all less than any keys in right sub tree. Blindly deleting a node may break this constraint.
 
