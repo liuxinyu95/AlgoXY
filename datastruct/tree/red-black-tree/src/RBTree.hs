@@ -27,49 +27,34 @@ data RBTree a = Empty
               | Node Color (RBTree a) a (RBTree a)
               | BBEmpty -- doubly black empty
 
--- Tree min, same as the one defined in BST
-min::RBTree a -> a
 min (Node _ Empty x _) = x
 min (Node _ l _ _) = min l
 
-isEmpty :: (RBTree a) -> Bool
 isEmpty Empty = True
 isEmpty _ = False
 
--- Insertion/Deletion
-insert::(Ord a)=>RBTree a -> a -> RBTree a
-insert t x = makeBlack $ ins t where  --[1]
-    ins Empty = Node R Empty x Empty  --[2]
-    ins (Node color l k r)
-        | x < k     = balance color (ins l) k r
-        | otherwise = balance color l k (ins r) --[3]
-    makeBlack(Node _ l k r) = Node B l k r
+insert x = makeBlack . (ins x) where
+    ins x Empty = Node R Empty x Empty
+    ins x (Node color l k r)
+        | x < k     = balance color (ins x l) k r
+        | otherwise = balance color l k (ins x r)
+    makeBlack (Node _ l k r) = Node B l k r
 
-{- footnotes
-[1]: Always set the root color as black;
-[2]: new node is inserted as a red leaf,
-     to reserve property 1, 3, 5, only property 2, 4 may be violated
-[3]: All keys should be identical -}
-
--- Core function for insert, to make the tree balanced after insertion.
--- refer to paper of [Chris Okasaki]
-balance::Color -> RBTree a -> a -> RBTree a -> RBTree a
 balance B (Node R (Node R a x b) y c) z d = Node R (Node B a x b) y (Node B c z d) -- case 1
 balance B (Node R a x (Node R b y c)) z d = Node R (Node B a x b) y (Node B c z d) -- case 2
 balance B a x (Node R b y (Node R c z d)) = Node R (Node B a x b) y (Node B c z d) -- case 3
 balance B a x (Node R (Node R b y c) z d) = Node R (Node B a x b) y (Node B c z d) -- case 4
 balance color l k r = Node color l k r
 
-delete :: (Ord a) => RBTree a -> a -> RBTree a
-delete t x = makeBlack $ del t x where
-    del Empty _ = Empty
-    del (Node color l k r) x
-        | x < k = fixDB color (del l x) k r
-        | x > k = fixDB color l k (del r x)
+delete x = makeBlack . (del x) where
+    del x Empty = Empty
+    del x (Node color l k r)
+        | x < k = fixDB color (del x l) k r
+        | x > k = fixDB color l k (del x r)
         -- x == k, delete this node
         | isEmpty l = if color == B then shiftBlack r else r
         | isEmpty r = if color == B then shiftBlack l else l
-        | otherwise = fixDB color l k' (del r k') where k'= min r
+        | otherwise = fixDB color l m (del m r) where m = min r
     makeBlack (Node _ l k r) = Node B l k r
     makeBlack _ = Empty
 
@@ -82,8 +67,7 @@ isDB (Node BB _ _ _) = True
 isDB BBEmpty = True
 isDB _ = False
 
--- Core function for delete, to solve the uniform black height violation.
--- refer to CLRS
+-- To solve the uniform black height violation.
 fixDB::Color -> RBTree a -> a -> RBTree a -> RBTree a
 -- Case 1: The sibling of the doubly-black nod is black, and it has a red sub-tree.
 fixDB color a@(Node BB _ _ _) x (Node B (Node R b y c) z d) = Node color (Node B (shiftBlack a) x b) y (Node B c z d)
@@ -111,7 +95,7 @@ fixDB color l k r = Node color l k r
 -- Auxiliary functions
 
 fromList::(Ord a)=>[a] -> RBTree a
-fromList = foldl insert Empty
+fromList = foldr insert Empty
 
 toList :: (Ord a) => RBTree a -> [a]
 toList Empty = []
@@ -160,11 +144,11 @@ prop_insert_redblack = isRedBlack . fromList . L.nub
 
 prop_del :: (Ord a, Num a) => [a] -> a -> Bool
 prop_del xs x = let xs' = L.nub xs in
-  L.sort (L.delete x xs') == toList (delete (fromList xs') x)
+  L.sort (L.delete x xs') == toList (delete x (fromList xs'))
 
 prop_del_redblack :: (Ord a, Num a) => [a] -> a -> Bool
 prop_del_redblack xs x = let xs' = L.nub xs in
-  isRedBlack $ delete (fromList xs') x
+  isRedBlack $ delete x (fromList xs')
 
 testAll = do
   quickCheck (prop_bst::[Int]->Bool)
