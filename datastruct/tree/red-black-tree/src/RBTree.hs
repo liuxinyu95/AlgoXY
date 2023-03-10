@@ -33,7 +33,7 @@ min (Node _ l _ _) = min l
 isEmpty Empty = True
 isEmpty _ = False
 
-insert x = makeBlack . (ins x) where
+insert x = makeBlack . ins x where
     ins x Empty = Node R Empty x Empty
     ins x (Node color l k r)
         | x < k     = balance color (ins x l) k r
@@ -46,7 +46,7 @@ balance B a x (Node R b y (Node R c z d)) = Node R (Node B a x b) y (Node B c z 
 balance B a x (Node R (Node R b y c) z d) = Node R (Node B a x b) y (Node B c z d) -- case 4
 balance color l k r = Node color l k r
 
-delete x = makeBlack . (del x) where
+delete x = makeBlack . del x where
     del x Empty = Empty
     del x (Node color l k r)
         | x < k = fixDB color (del x l) k r
