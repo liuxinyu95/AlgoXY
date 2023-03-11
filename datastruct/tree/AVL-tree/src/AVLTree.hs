@@ -26,34 +26,32 @@ data AVLTree a = Empty
 isEmpty Empty = True
 isEmpty _ = False
 
-min :: AVLTree a -> a
 min (Br Empty x _ _) = x
 min (Br l _ _ _) = min l
 
-insert::(Ord a)=>AVLTree a -> a -> AVLTree a
-insert t x = fst $ ins t where
+insert x  = fst . ins x where
     -- result of ins is a pair (t, d), t: tree, d: increment of height
-    ins Empty = (Br Empty x Empty 0, 1)
-    ins (Br l k r d)
-        | x < k     = node (ins l) k (r, 0) d
+    ins x Empty = (Br Empty x Empty 0, 1)
+    ins x (Br l k r d)
+        | x < k     = tree (ins x l) k (r, 0) d
         | x == k    = (Br l k r d, 0)
-        | otherwise = node (l, 0) k (ins r) d
+        | otherwise = tree (l, 0) k (ins x r) d
 
-delete::(Ord a) => AVLTree a -> a -> AVLTree a
-delete t x = fst $ del t x where
+delete :: (Ord a) => a -> AVLTree a -> AVLTree a
+delete x = fst . del x where
   -- result is a pair (t, d), t: tree, d: decrement in height
-  del Empty _ = (Empty, 0)
-  del (Br l k r d) x
-    | x < k = node (del l x) k (r, 0) d
-    | x > k = node (l, 0) k (del r x) d
+  del _ Empty = (Empty, 0)
+  del x (Br l k r d)
+    | x < k = tree (del x l) k (r, 0) d
+    | x > k = tree (l, 0) k (del x r) d
     -- x == k, delete this node
     | isEmpty l = (r, -1)
     | isEmpty r = (l, -1)
-    | otherwise = node (l, 0) k' (del r k') d where k' = min r
+    | otherwise = tree (l, 0) m (del m r) d where m = min r
 
 -- params: (left, increment on left) key (right, increment on right)
-node::(AVLTree a, Int) -> a -> (AVLTree a, Int) -> Int -> (AVLTree a, Int)
-node (l, dl) k (r, dr) d = balance (Br l k r d') deltaH where
+-- tree::(AVLTree a, Int) -> a -> (AVLTree a, Int) -> Int -> (AVLTree a, Int)
+tree (l, dl) k (r, dr) d = balance (Br l k r d') deltaH where
     d' = d + dr - dl
     deltaH | d >=0 && d' >=0 = dr
            | d <=0 && d' >=0 = d+dr
@@ -87,10 +85,8 @@ checkDelta :: (AVLTree a) -> Bool
 checkDelta Empty = True
 checkDelta (Br l _ r d) = and [checkDelta l, checkDelta r, d == (height r - height l)]
 
--- Auxiliary functions to build tree from a list, as same as BST
-
-fromList::(Ord a)=>[a] -> AVLTree a
-fromList = foldl insert Empty
+fromList :: (Ord a) => [a] -> AVLTree a
+fromList = foldr insert Empty
 
 toList :: (AVLTree a) -> [a]
 toList Empty = []
@@ -109,24 +105,24 @@ prop_avl = isAVL . fromList . L.nub
 prop_insert :: (Ord a, Num a) => [a] -> Bool
 prop_insert = snd . (foldl verifyInsert (Empty, True)) . L.nub where
   verifyInsert (_, False) _ = (Empty, False)
-  verifyInsert (t, _) x = let t' = insert t x in (t', isAVL t')
+  verifyInsert (t, _) x = let t' = insert x t in (t', isAVL t')
 
 prop_del :: (Ord a, Num a) => [a] -> Bool
 prop_del = verifyDel . L.nub where
   verifyDel [] = True
-  verifyDel xs@(x:xs') = (toList $ delete (fromList xs) x) == L.sort xs'
+  verifyDel xs@(x:xs') = (toList $ delete x (fromList xs)) == L.sort xs'
 
 prop_del_avl :: (Ord a, Num a) => [a] -> Bool
 prop_del_avl = verifyDelAVL . L.nub where
   verifyDelAVL [] = True
-  verifyDelAVL xs@(x:_) = isAVL $ delete (fromList xs) x
+  verifyDelAVL xs@(x:_) = isAVL $ delete x (fromList xs)
 
 prop_delete :: (Ord a, Num a) => [a] -> Bool
 prop_delete xs = snd $ foldl verifyDel (tr, isAVL tr) xs' where
   xs' = L.nub xs
   tr = fromList xs'
   verifyDel (_, False) _ = (Empty, False)
-  verifyDel (t, _) x = let t' = delete t x in (t', isAVL t')
+  verifyDel (t, _) x = let t' = delete x t in (t', isAVL t')
 
 testAll = do
   quickCheck (prop_bst::[Int]->Bool)
@@ -137,7 +133,6 @@ testAll = do
   quickCheck (prop_del_avl::[Int]->Bool)
   quickCheck (prop_delete::[Int]->Bool)
 
--- Helper function for pretty printing
 instance Show a => Show (AVLTree a) where
     show Empty = "."
     show (Br l k r d) = "(" ++ show l ++ " " ++

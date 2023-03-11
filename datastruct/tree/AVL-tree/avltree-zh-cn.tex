@@ -171,8 +171,8 @@ ins\ x\ (l, k, r, \delta) & = & \begin{cases}
 \be
 \begin{array}{rcl}
   \Delta H & = & |T'| - |T| \\
-           & = & 1 + max(|r'|, |l'|) - (1 + max(|r|, |l|)) \\
-           & = & max(|r'|, |l'|) - max(|r|, |l|) \\
+           & = & 1 + \max(|r'|, |l'|) - (1 + \max(|r|, |l|)) \\
+           & = & \max(|r'|, |l'|) - \max(|r|, |l|) \\
            & = & \begin{cases}
 \delta \geq 0, \delta' \geq 0: & \Delta r \\
 \delta \leq 0, \delta' \geq 0: & \delta + \Delta r \\
@@ -203,11 +203,11 @@ tree\ (l', \Delta l)\ k\ (r', \Delta r)\ \delta =
 下面的例子程序实现了目前给出的结论：
 
 \begin{Haskell}
-insert t x = fst $ ins t where
-    ins Empty = (Br Empty x Empty 0, 1)
-    ins (Br l k r d)
-        | x < k = tree (ins l) k (r,  0) d
-        | x > k = tree (l,  0) k (ins r) d
+insert x  = fst . ins x where
+    ins x Empty = (Br Empty x Empty 0, 1)
+    ins x (Br l k r d)
+        | x < k = tree (ins x l) k (r, 0) d
+        | x > k = tree (l, 0) k (ins x r) d
 
 tree (l, dl) k (r, dr) d = balance (Br l k r d') deltaH where
     d' = d + dr - dl
@@ -215,7 +215,7 @@ tree (l, dl) k (r, dr) d = balance (Br l k r d') deltaH where
            | d <=0 && d' >=0 = d+dr
            | d >=0 && d' <=0 = dl - d
            | otherwise = dl
-\end{Haskell} %$
+\end{Haskell}
 
 \subsection{平衡调整}
 \index{AVL树!平衡调整}
@@ -230,28 +230,28 @@ tree (l, dl) k (r, dr) d = balance (Br l k r d') deltaH where
 
 我们称这4种情况为左－左、右－右、右－左、左－右。记调整前的平衡因子为$\delta(x)$、$\delta(y)$、$\delta(z)$；调整后的平衡因子为$\delta'(x)$、$\delta'(y) = 0$、$\delta'(z)$。它们的关系如下。附录B给出了证明。
 
-左－左：
+\begin{center}
+左－左 \quad \quad \quad 右－右
+\end{center}
 
 \be
-  \begin{array}{l}
-  \delta'(x) = \delta(x) \\
-  \delta'(y) = 0 \\
-  \delta'(z) = 0
-  \end{array}
+\begin{array}{cc}
+  \begin{cases}
+    \delta'(x) & = \delta(x) \\
+    \delta'(y) & = 0 \\
+    \delta'(z) & = 0 \\
+  \end{cases}
+&
+  \begin{cases}
+    \delta'(x) & = 0 \\
+    \delta'(y) & = 0 \\
+    \delta'(z) & = \delta(z) \\
+  \end{cases}
+\end{array}
+\label{eq:rr-result}
 \ee
 
-右－右：
-
-\be
-  \begin{array}{l}
-  \delta'(x) = 0 \\
-  \delta'(y) = 0 \\
-  \delta'(z) = \delta(z)
-  \end{array}
-  \label{eq:rr-result}
-\ee
-
-右－左和左－右：
+右－左和左－右相同：
 
 \be
   \begin{array}{l}
@@ -268,7 +268,7 @@ tree (l, dl) k (r, dr) d = balance (Br l k r d') deltaH where
   \label{eq:rl-result}
 \ee
 
-利用模式匹配，可将修复定义如下：
+利用模式匹配，定义修复为：
 
 \be
 \resizebox{\textwidth}{!}{\ensuremath{
@@ -282,7 +282,7 @@ balance\ T\ \Delta H & = & (T, \Delta H) \\
 }}
 \ee
 
-其中$\delta'(x)$和$\delta'(z)$按照式(\ref{eq:rl-result})定义。如果没有匹配任何模式，最后一行保持树不变。下面是相应的例子程序：
+其中$\delta'(x)$和$\delta'(z)$按照式(\ref{eq:rl-result})定义。如果没有匹配任何模式，则保持树不变。下面是相应的例子程序：
 
 \begin{Haskell}
 balance (Br (Br (Br a x b dx) y c (-1)) z d (-2)) dH =
@@ -302,15 +302,15 @@ balance t d = (t, d)
 
 插入算法的复杂度和树的高度成正比，根据式(\ref{eq:AVL-height})，对于$n$个节点的树，$insert$的复杂度为$O(\lg n)$。
 
-\subsubsection{验证}
-\index{AVL树!验证}
+\subsection{检验}
+\index{AVL树!检验}
 
-为了验证AVL树，我们需要检查两点：是否是二叉搜索树；对于每棵子树$T$，式(\ref{eq:avl-rule})：$\delta(T) \leq 1$是否成立。下面的函数递归地检查子树间的高度差：
+判断一棵树是否是AVL树需要检查两点：（1）是否是二叉搜索树；（2）对于每棵子树$T$，式(\ref{eq:avl-rule})：$\delta(T) \leq 1$是否成立。下面的函数递归地检查子树间的高度差：
 
 \be
 \begin{array}{rcl}
 avl?\ \nil & = & \textit{True} \\
-avl?\ T & = & avl?\ l\ \land avl?\ r\ \land ||r| - |l|| \leq 1 \\
+avl?\ T & = & avl?\ l\ \text{且}\ avl?\ r\ \text{且}\ ||r| - |l|| \leq 1 \\
 \end{array}
 \ee
 
@@ -319,24 +319,24 @@ avl?\ T & = & avl?\ l\ \land avl?\ r\ \land ||r| - |l|| \leq 1 \\
 \be
 \begin{array}{rcl}
 |\nil| & = & 0 \\
-|T| & = & 1 + max(|r|, |l|) \\
+|T| & = & 1 + \max(|r|, |l|) \\
 \end{array}
 \ee
 
-下面的例子程序实现了AVL树高度的检查：
+下面的例子程序实现了AVL树的高度检查：
 \begin{Haskell}
 isAVL Empty = True
 isAVL (Br l _ r _) = isAVL l && isAVL r && abs (height r - height l) <= 1
 
 height Empty = 0
-height (Br l _ r _) = 1 + max (height l) (height r)
+height (Br l _ r _) = 1 + \max (height l) (height r)
 \end{Haskell}
 
 \begin{Exercise}
 \Question{我们只验证了AVL树的高度性质，完成验证程序检查一棵二叉树是否是AVL树。}
 \end{Exercise}
 
-\section{AVL树的命令式算法$\bigstar$}
+\section{命令式算法$\bigstar$}
 \index{AVL树!命令式插入}
 
 为了完整，本节给出AVL树的命令式算法。和红黑树的命令式算法相似，我们先按二叉搜索树将新元素插入，然后再通过旋转操作恢复平衡。
@@ -449,8 +449,7 @@ height (Br l _ r _) = 1 + max (height l) (height r)
 
 除了旋转，还需要更新平衡因子$\delta$。右－右和左－左情况需要进行一次旋转；而右－左和左－右需要进行两次旋转。我们略过了AVL树的删除算法，附录B给出了删除的实现。
 
-\section{小结}
-AVL树是1962年由Adelson-Velskii和Landis\cite{wiki-avl}、\cite{TFATP}提出的，并以两位作者的名字命名。它比红黑树更早。AVL树和红黑树都是自平衡二叉搜索树，大多数操作的复杂度都是$O(\lg n)$。式(\ref{eq:AVL-height})使得AVL树的平衡性更为严格。在大量查询的情况下，其表现要好于红黑树\cite{wiki-avl}。但红黑树在频繁插入和删除的情况下性能更佳。很多程序库使用红黑树作为自平衡二叉搜索树的内部实现，AVL树同样也可以直观、高效地解决平衡问题。
+AVL树是1962年由Adelson-Velskii和Landis\cite{wiki-avl}、\cite{TFATP}提出的，并以两位作者的名字命名。它比红黑树更早。AVL树和红黑树都是自平衡二叉树，大多数操作的复杂度都是$O(\lg n)$。式(\ref{eq:AVL-height})使得AVL树的平衡性更为严格。在大量查询的情况下，其表现要好于红黑树\cite{wiki-avl}。但红黑树在频繁插入和删除的情况下性能更佳。很多程序库使用红黑树作为自平衡二叉搜索树的内部实现，AVL树同样也可以直观、高效地解决平衡问题。
 
 \section{附录：例子程序}
 
