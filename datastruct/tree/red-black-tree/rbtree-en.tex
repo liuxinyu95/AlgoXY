@@ -305,23 +305,20 @@ The $insert$ performs top-down recursive fixing. It is bound to $O(h)$ time, whe
 \section{Delete}
 \index{red-black tree!delete}
 
-Delete is more complex than insert. We can also use pattern matching and recursion to simplify the $delete$ algorithm for red-black tree\footnote{Actually, the tree is rebuilt in purely functional setting, although the common part is reused. This feature is called `persist'}. There are alternatives to mimic delete. Sometimes, we build the read-only tree, then use it for frequently looking up\cite{okasaki-blog}. When delete, we mark the deleted node with a flag, and later rebuild the tree if such nodes exceeds 50\%. Delete may also violate the red-black tree coloring rules. We use the same idea to apply fixing after delete. The coloring violation only happens when delete a black node according to rule 5. The black nodes along the path decreases by one, hence not all paths contain the same number of black nodes.
-
-To resume the blackness, we introduce a special `doubly-black' node(\cite{CLRS}, pp290). One such node is counted as 2 black nodes. When delete a black node $x$, we can move the blackness either up to its parent or down to one sub-tree. Let this node be $y$ that accepts the blackness. If $y$ was red, we turn it black; if $y$ was already black, we make it `doubly-black', denoted as $\mathcal{B}^2$. Below example program adds the `doubly-black' support:
+Delete is more complex than insert. We can simplify the recursive implementation with pattern matching\footnote{Actually, we reuse the unchanged part to rebuild the tree in purely functional settings, known as the `persist' feature}. There are alternative implementation to mimic delete. Build a read-only tree for frequently looking up\cite{okasaki-blog}. When delete a node, mark it with a flag, and trigger tree rebuilding if such nodes exceeds 50\%. Delete may also violate the red-black tree coloring rules, hence need fixing. The violation only happens when delete a black node according to rule 5. The black nodes along the path decreases by one, causing not all paths contain the same number of black nodes. To resume the blackness, we introduce a special `doubly-black' node(\cite{CLRS}, pp290). Such a node is counted as 2 black nodes. When delete a black node $x$, move the blackness up to parent or down to a sub-tree. Let node $y$ accept the blackness. If $y$ was red, turn it black; if $y$ was already black, turn it `doubly-black' as $\mathcal{B}^2$. Below example program adds the `doubly-black' color.
 
 \begin{Haskell}
 data Color = R | B | BB
-data RBTree a = Empty | BBEmpty
-              | Node Color (RBTree a) a (RBTree a)
+data RBTree a = Empty | BBEmpty | Node Color (RBTree a) a (RBTree a)
 \end{Haskell}
 
-Because all empty leaves are black, when push the blackness down to a leaf, it becomes `doubly-black' empty (\texttt{BBEmpty}, or bold $\pmb{\varnothing}$). The first step is to perform the normal binary search tree delete; then if the cut off node is black, we shift the blackness, and fix the tree coloring.
+Because ever NIL is black, when push the blackness down to NIL, it becomes `doubly-black' empty (\texttt{BBEmpty}, or bold $\pmb{\varnothing}$). The first step is normal binary search tree delete; then as the second step, if cut a black node off, shift the blackness, and fix the coloring.
 
 \be
-delete = makeBlack \circ del
+delete\ x = makeBlack \circ del\ x
 \ee
 
-This definition is in Curried form. When delete the only element, the tree becomes empty. To cover this case, we modify $makeBlack$ as below:
+This is Curried definition. When delete a singleton tree, it becomes empty. To cover this case, we modify $makeBlack$ as below:
 
 \be
 \begin{array}{rcl}
@@ -330,28 +327,26 @@ makeBlack\ (\mathcal{C}, l, k, r) & = & (\mathcal{B}, l, k, r) \\
 \end{array}
 \ee
 
-Where $del$ accepts the tree and $k$ to be deleted:
+Where $del$ accepts $x$ and the tree:
 
 \be
+\resizebox{\linewidth}{!}{\ensuremath{
 \begin{array}{rcl}
-del\ \nil\ k & = & \nil \\
-del\ (\mathcal{C}, l, k', r)\ k & = & \begin{cases}
-  k < k': & fixB^2(\mathcal{C}, (del\ l\ k), k', r) \\
-  k > k': & fixB^2(\mathcal{C}, l, k', (del\ r\ k)) \\
-  k = k': & \begin{cases}
-    l = \nil: & (\mathcal{C} = \mathcal{B} \mapsto shiftB\ r, r) \\
-    r = \nil: & (\mathcal{C} = \mathcal{B} \mapsto shiftB\ l, l) \\
-    else: & fixB^2(\mathcal{C}, l, k'', (del\ r\ k'')) \\
-    & \text{where}\ k'' = min(r) \\
+del\ x\ \nil\ & = & \nil \\
+del\ x\ (\mathcal{C}, l, k, r) & = & \begin{cases}
+  x < k: & fixB^2(\mathcal{C}, (del\ x\ l), k, r) \\
+  x > k: & fixB^2(\mathcal{C}, l, k, (del\ x\ r)) \\
+  x = k: & \begin{cases}
+    l = \nil: & \text{if}\ \mathcal{C} = \mathcal{B}\ \text{then}\ shiftB\ r\ \text{else}\ r \\
+    r = \nil: & \text{if}\ \mathcal{C} = \mathcal{B}\ \text{then}\ shiftB\ l\ \text{else}\ l \\
+    \text{otherwise}: & fixB^2(\mathcal{C}, l, m, (del\ m\ r)), \text{where}: m = min(r) \\
   \end{cases}
 \end{cases}
 \end{array}
+}}
 \ee
 
-When the tree is empty, the result is $\nil$; otherwise, we compare the key $k'$ in the tree with $k$. If $k < k'$, we recursively
-delete $k$ from the left sub-tree; if $k > k'$ then delete from the right. Because the recursive result may contain doubly-black node, we need apply $fixB^2$ to fix it. When $k = k'$, we need splice it out. If either sub-tree is empty, we replace it with the other, then shift the blackness if the spliced node is black. This is represented with McCarthy form $(p \mapsto a, b)$, which is equivalent to `(if $p$ then $a$ else $b$)'. If neither sub-tree is empty, we cut the minimum element $k'' = min(r)$, and use $k''$ to replace $k$.
-
-To reserve the blackness, $shiftB$ makes a black node doubly-black, and forces it black for other cases. It flips doubly-black to normal black when applied twice.
+When the tree is empty, the result is $\nil$; otherwise, we compare $x$ and $k$. If $x < k$, we recursively delete from left; otherwise delete from right. Because the recursive result may contain doubly-black node, we apply $fixB^2$ to fix. When $x = k$, we locate the node to cut. If either sub-tree is empty, we replace the node with the none empty sub-tree, then shift the blackness if the node is black. If neither sub-tree is empty, we cut the minimum $m = \min\ r$ off, and use $m$ to replace $k$. To reserve the blackness, $shiftB$ makes a black node doubly-black, and forces it black for other cases. It flips doubly-black to normal black when applied twice.
 
 \be
 \begin{array}{rcl}
@@ -365,17 +360,19 @@ shiftB\ \pmb{\nil} & = & \nil \\
 Below is the example program (except the doubly-black fixing part).
 
 \begin{Haskell}
-delete :: (Ord a) => RBTree a -> a -> RBTree a
-delete t k = makeBlack $ del t k where
-    del Empty _ = Empty
-    del (Node color l k' r) k
-        | k < k' = fixDB color (del l k) k' r
-        | k > k' = fixDB color l k' (del r k)
+delete x = makeBlack . (del x) where
+    del x Empty = Empty
+    del x (Node color l k r)
+        | x < k = fixDB color (del x l) k r
+        | x > k = fixDB color l k (del x r)
         | isEmpty l = if color == B then shiftBlack r else r
         | isEmpty r = if color == B then shiftBlack l else l
-        | otherwise = fixDB color l k'' (del r k'') where k''= min r
+        | otherwise = fixDB color l m (del m r) where m = min r
     makeBlack (Node _ l k r) = Node B l k r
     makeBlack _ = Empty
+
+isEmpty Empty = True
+isEmpty _ = False
 
 shiftBlack (Node B l k r) = Node BB l k r
 shiftBlack (Node _ l k r) = Node B  l k r
@@ -383,18 +380,16 @@ shiftBlack Empty = BBEmpty
 shiftBlack BBEmpty = Empty
 \end{Haskell}
 
-The $fixB^2$ function eliminates the doubly-black node by rotation and re-coloring. The doubly-black node can be branch node or empty $\pmb{\varnothing}$. There are three cases:
+The $fixB^2$ function eliminates the doubly-black by rotation and re-coloring. The doubly-black node can be branch node or empty $\pmb{\varnothing}$. There are three cases:
 
-\textbf{Case 1}. {\em The sibling of the doubly-black node is black, and it has a red sub-tree.} We can fix this case with a rotation. There are 4 sub-cases, all can be transformed to a uniformed pattern, as shown in figure \ref{fig:del-case1}.
+\textbf{Case 1}. {\em The sibling of the doubly-black node is black, and it has a red sub-tree.} We can fix this case with a rotation. There are 4 sub-cases, all can transform to the same pattern, as shown in figure \ref{fig:del-case1}.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.4]{img/del-case1}
-  \caption{4 sub-cases share the uniformed fixing pattern}
+  \caption{Transform 4 sub-cases to the same pattern}
   \label{fig:del-case1}
 \end{figure}
-
-The fixing for these 4 sub-cases can be realized with pattern matching.
 
 \be
 \resizebox{\textwidth}{!}{\ensuremath{
@@ -412,9 +407,9 @@ fixB^2\ \mathcal{C}\ (\mathcal{B}, (\mathcal{R}, a, x, b), y, c)\ z\ d_{\mathcal
 \label{eq:db-case-1}
 \ee
 
-Where $a_{\mathcal{B}^2}$ means node $a$ is doubly-black, it can be branch or $\pmb{\varnothing}$.
+Where $a_{\mathcal{B}^2}$ means node $a$ is doubly-black.
 
-\textbf{Case 2}. {\em The sibling of the doubly-black is red.} We can rotate the tree to turn it into case 1 or 3, as shown in figure \ref{fig:del-case2}.
+\textbf{Case 2}. {\em The sibling of the doubly-black is red.} We can rotate the tree to turn it into case 1 or 3, as shown in figure \ref{fig:del-case2}. We add this fixing as additional 2 rows in equation (\ref{eq:db-case-1}):
 
 \begin{figure}[htbp]
   \centering
@@ -422,8 +417,6 @@ Where $a_{\mathcal{B}^2}$ means node $a$ is doubly-black, it can be branch or $\
   \caption{The sibling of the doubly-black is red.}
   \label{fig:del-case2}
 \end{figure}
-
-We add this fixing as additional 2 rows in equation (\ref{eq:db-case-1}):
 
 \be
 %\resizebox{\textwidth}{!}{\ensuremath{
@@ -438,8 +431,7 @@ fixB^2\ \mathcal{B}\ (\mathcal{R}, a, x, b)\ y\ c_{\mathcal{B}^2} & = & fixB^2\ 
 \label{eq:db-case-2}
 \ee
 
-\textbf{Case 3}. {\em The sibling of the doubly-black node, and its two sub-trees are all black.} In this case, we change the sibling to red, flip the
-doubly-black node to black, and propagate the doubly-blackness a level up to parent as shown in figure \ref{fig:del-case3}.
+\textbf{Case 3}. {\em The sibling of the doubly-black node, and its two sub-trees are all black.} In this case, we change the sibling to red, flip the doubly-black node to black, and propagate the doubly-blackness a level up to parent as shown in figure \ref{fig:del-case3}. There are two symmetric sub-cases. For the upper case, $x$ was either red or black. $x$ changes to black if it was red, otherwise changes to doubly-black; Same coloring changes to $y$ in the lower case. We add this fixing to equation (\ref{eq:db-case-2}):
 
 \begin{figure}[htbp]
   \centering
@@ -447,8 +439,6 @@ doubly-black node to black, and propagate the doubly-blackness a level up to par
   \caption{move the blackness up.}
   \label{fig:del-case3}
 \end{figure}
-
-There are two symmetric sub-cases. For the upper case, $x$ was either red or black. $x$ changes to black if it was red, otherwise changes to doubly-black; Same coloring changes to $y$ in the lower case. We add this fixing to equation (\ref{eq:db-case-2}):
 
 \be
 %\resizebox{\textwidth}{!}{\ensuremath{
@@ -468,7 +458,6 @@ fixB^2\ \mathcal{C}\ l\ k\ r\ & = & (\mathcal{C}, l, k, r) \\
 If none of the patterns match, the last row keeps the node unchanged. The doubly-black fixing is recursive. It terminates in two ways: One is \textbf{Case 1}, the doubly-black node is eliminated. Otherwise the blackness may move up till the root. Finally the we force the root be black. Below example program puts all three cases together:
 
 \begin{Haskell}
--- the sibling is black, and has a red sub-tree
 fixDB color a@(Node BB _ _ _) x (Node B (Node R b y c) z d)
       = Node color (Node B (shiftBlack a) x b) y (Node B c z d)
 fixDB color BBEmpty x (Node B (Node R b y c) z d)
@@ -485,7 +474,6 @@ fixDB color (Node B (Node R a x b) y c) z d@(Node BB _ _ _)
       = Node color (Node B a x b) y (Node B c z (shiftBlack d))
 fixDB color (Node B (Node R a x b) y c) z BBEmpty
       = Node color (Node B a x b) y (Node B c z Empty)
--- the sibling is red
 fixDB B a@(Node BB _ _ _) x (Node R b y c)
       = fixDB B (fixDB R a x b) y c
 fixDB B a@BBEmpty x (Node R b y c)
@@ -494,7 +482,6 @@ fixDB B (Node R a x b) y c@(Node BB _ _ _)
       = fixDB B a x (fixDB R b y c)
 fixDB B (Node R a x b) y c@BBEmpty
       = fixDB B a x (fixDB R b y c)
--- the sibling and its 2 children are all black, move the blackness up
 fixDB color a@(Node BB _ _ _) x (Node B b y c)
       = shiftBlack (Node color (shiftBlack a) x (Node R b y c))
 fixDB color BBEmpty x (Node B b y c)
@@ -503,17 +490,16 @@ fixDB color (Node B a x b) y c@(Node BB _ _ _)
       = shiftBlack (Node color (Node R a x b) y (shiftBlack c))
 fixDB color (Node B a x b) y BBEmpty
       = shiftBlack (Node color (Node R a x b) y Empty)
--- otherwise
 fixDB color l k r = Node color l k r
 \end{Haskell}
 
 The delete algorithm is bound to $O(h)$ time, where $h$ is the height of the tree. As red-black tree maintains the balance, $h = O(\lg n)$ for $n$ nodes.
 
 \begin{Exercise}
-\Question{Implement the alternative delete algorithm: mark the node as deleted without actually removing it. When the marked nodes exceed 50\%, re-build the tree.}
+\Question{Implement the `mark-rebuild' delete algorithm: mark the node as deleted without actually removing it. When the marked nodes exceed 50\%, rebuild the tree.}
 \end{Exercise}
 
-\section{Imperative red-black tree algorithm $\star$}
+\section{Imperative red-black tree$\star$}
 \index{red-black tree!imperative insertion}
 
 We simplify the red-black tree implementation with pattern matching. In this section, we give the imperative algorithm for completeness. When insert, the first step is as same as the binary search tree, then as the second step, we fix the balance through tree rotations.
@@ -595,14 +581,11 @@ This algorithm takes $O(\lg n)$ time to insert a key, where $n$ is the number of
    \label{fig:imperative-insert}
 \end{figure}
 
-We provide the imperative delete algorithm in Appendix A of this book.
-
-\section{Summary}
-Red-black tree is a popular implementation of balanced binary search tree. We introduce another one, called AVL tree in the next chapter. Red-black tree is a good start for more data structures. If extend the number of children from 2 to $k$, and maintain the balance, it leads to B-tree; If store the data along with the edge but not inside node, it leads to Radix tree. To maintain the balance, we need handle multiple cases. Okasaki's developed a method that makes the red-black tree easy to implement. There are many implementations based on this idea\cite{rosetta}. We also provide AVL tree and Splay tree implementation based on pattern matching in this book.
+We provide the imperative delete algorithm in Appendix A of the book. Red-black tree is a popular self-balancing binary search tree. We introduce another one, AVL tree in the next chapter. Red-black tree is a good start for more complex data structures. If extend from 2 to $k$ sub-trees and maintain the balance, we obtain B-tree; If store the data along with the edge but not in node, we obtain the Radix tree. To maintain the balance, we need handle multiple cases. Okasaki's developed a method that makes the red-black tree easy to implement. There are many implementations based on this idea\cite{rosetta}. We also implement AVL tree and Splay tree based on pattern matching in this book.
 
 \section{Appendix: Example programs}
 
-Definition of red-black tree node with parent field. When not explicitly defined, the color of the new node is red by default.
+Definition of red-black tree node with parent reference. Set the color red by default.
 
 \begin{lstlisting}[language = Bourbaki]
 data Node<T> {
@@ -703,6 +686,9 @@ Node<T> insertFix(Node<T> t, Node<T> x) {
 \end{lstlisting}
 
 \ifx\wholebook\relax \else
+\section{Answer}
+\shipoutAnswer
+
 \begin{thebibliography}{99}
 
 \bibitem{CLRS}
