@@ -32,7 +32,6 @@
 \numberwithin{Exercise}{chapter}
 \fi
 
-\section{Introduction}
 \label{introduction} \index{AVL tree}
 
 The idea of red-black tree is to limit the number nodes along a path within a range. AVL tree takes a direct approach: quantify the difference between branches. For a node $T$, define:
@@ -77,7 +76,7 @@ Figure \ref{fig:N-h-relation} shows an AVL tree $T$ of height $h$. It contains t
 \end{figure}
 
 \be
-  h = max(|l|, |r|) + 1
+  h = \max(|l|, |r|) + 1
 \ee
 
 There must be a sub-tree of height $h - 1$. From the definition. we have $||l|-|r|| \leq 1$ holds. Hence the height of the other tree can not be lower than $h - 2$. The total number of the nodes in $T$ is the sum of both sub-trees plus 1 (for the root):
@@ -114,7 +113,7 @@ For the induction case, assume $N'(h) \geq \phi^h$.
 \[
   \begin{array}{rll}
   N'(h+1) & = N'(h) + N'(h-1) & \{\text{Fibonacci}\} \\
-          & \geq \phi^h + \phi^{h-1} & \\
+          & \geq \phi^h + \phi^{h-1} & \{\text{induction hypothesis}\}\\
           & = \phi^{h-1}(\phi + 1) & \{\phi + 1 = \phi^2 = \dfrac{\sqrt{5}+3}{2}\} \\
           & = \phi^{h+1}
  \end{array}
@@ -128,17 +127,14 @@ From Lemma \ref{lemma:N-phi}, we immediately obtain:
   \label{eq:AVL-height}
 \ee
 
-We prove the height of AVL tree is proportion to $O(\lg n)$, indicating AVL tree is balanced.
-
-When insert or delete, the balance factor may exceed the valid value range, we need fix to resume $|\delta|<1$. Traditionally, the fixing is through tree rotations. We give the simplified implementation based on pattern matching. The idea is similar to the functional red-black tree(Okasaki, \cite{okasaki}). Because of this `modify-fix' approach, AVL tree is also self-balanced binary search tree. We can re-use the binary search tree definition. Although the balance factor $\delta$ can be computed recursively, we record it inside each node as $T = (l, k, r, \delta)$, and update it when mutate the tree\footnote{Alternatively, we can record the height instead of $\delta$\cite{py-avl}.}. Below example program adds $\delta$ as an \texttt{Int}:
+The height of AVL tree is proportion to $O(\lg n)$, indicating AVL tree is balanced. When insert or delete, the balance factor may exceed the valid value range, we need fix to resume $|\delta|<1$. Traditionally, the fixing is through tree rotations. We give the simplified implementation based on pattern matching. The idea is similar to the functional red-black tree\cite{okasaki}. Because of this `modify-fix' approach, AVL tree is also self-balancing binary search tree. We can re-use the binary search tree definition. Although the balance factor $\delta$ can be computed recursively, we record it inside each node as $T = (l, k, r, \delta)$, and update it when mutate the tree\footnote{Alternatively, we can record the height instead of $\delta$\cite{py-avl}.}. Below example program adds $\delta$ as an \texttt{Int}:
 
 \lstset{frame = single}
 \begin{Haskell}
-data AVLTree a = Empty
-               | Br (AVLTree a) a (AVLTree a) Int
+data AVLTree a = Empty | Br (AVLTree a) a (AVLTree a) Int
 \end{Haskell}
 
-For AVL tree, $lookup$, $max$, $min$ are as same as the binary search tree. We focus on $insert$ and $delete$ algorithms.
+For AVL tree, $lookup$, $\max$, $\min$ are as same as the binary search tree. We focus on $insert$ and $delete$ algorithms.
 
 \section{Insert}
 \index{AVL tree!insert}
@@ -146,23 +142,23 @@ For AVL tree, $lookup$, $max$, $min$ are as same as the binary search tree. We f
 When insert a new element, $|\delta(T)|$ may exceed 1. We can use pattern matching similar to red-black tree to develop a simplified solution. After insert element $x$, for those sub-trees which are the ancestors of $x$, the height may increase at most by 1. We need recursively update the balance factor along the path of insertion. Define the insert result as a pair $(T', \Delta H)$, where $T'$ is the updated tree and $\Delta H$ is the increment of height. We modify the binary search tree $insert$ function as below:
 
 \be
-insert = \textit{fst} \circ ins
+insert\ x = \textit{fst} \circ ins\ x
 \ee
 
-Where $\textit{fst}\ (a, b) = a$ returns the first element in a pair. $ins(T, k)$ does the actual work to insert element $k$ into tree $T$:
+Where $\textit{fst}\ (a, b) = a$ returns the first element in a pair. $ins\ x\ T$ inserts element $x$ into tree $T$:
 
 \be
 \begin{array}{rcl}
-ins\ \nil\ k & = & ((\nil, k, \nil, 0), 1) \\
-ins\ (l, k', r, \delta)\ k & = & \begin{cases}
-  k < k': tree\ (ins\ l\ k)\ k'\ (r, 0)\ \delta \\
-  k > k': tree\ (l, 0)\ k'\ (ins\ r, k)\ \delta \\
+ins\ x\ \nil & = & ((\nil, x, \nil, 0), 1) \\
+ins\ x\ (l, k, r, \delta) & = & \begin{cases}
+  x < k: tree\ (ins\ x\ l)\ k\ (r, 0)\ \delta \\
+  x > k: tree\ (l, 0)\ k\ (ins\ x\ r)\ \delta \\
 \end{cases}
 \end{array}
 \label{eq:ins}
 \ee
 
-If the tree is empty $\nil$, the result is a leaf of $k$ with balance factor 0. The height increases to 1. Otherwise let $T = (l, k', r, \delta)$. We compare the new element $k$ with $k'$. If $k < k'$, we recursively insert $k$ it to the left sub-tree $l$, otherwise insert to $r$. As the recursive insert result is a pair of $(l', \Delta l)$ or $(r', \Delta r)$, we need adjust the balance factor and update tree height through function $tree$, it takes 4 parameters: $(l', \Delta l)$, $k'$, $(r', \Delta r)$, and $\delta$. The result is $(T', \Delta H)$, where $T'$ is the new tree, and $\Delta H$ is defined as:
+If the tree is empty $\nil$, the result is a leaf of $x$ with balance factor 0. The height increases to 1. Otherwise let $T = (l, k, r, \delta)$. We compare $x$ with $k$. If $x < k$, we recursively insert $x$ to $l$, otherwise insert to $r$. As the recursive insert result is a pair of $(l', \Delta l)$ or $(r', \Delta r)$, we need adjust the balance factor and update tree height through function $tree$, it takes 4 parameters: $(l', \Delta l)$, $k'$, $(r', \Delta r)$, and $\delta$. The result is $(T', \Delta H)$, where $T'$ is the new tree, and $\Delta H$ is defined as:
 
 \be
   \Delta H = |T'| - |T|
@@ -173,8 +169,8 @@ We can further break it down into 4 cases:
 \be
 \begin{array}{rcl}
   \Delta H & = & |T'| - |T| \\
-           & = & 1 + max(|r'|, |l'|) - (1 + max(|r|, |l|)) \\
-           & = & max(|r'|, |l'|) - max(|r|, |l|) \\
+           & = & 1 + \max(|r'|, |l'|) - (1 + \max(|r|, |l|)) \\
+           & = & \max(|r'|, |l'|) - \max(|r|, |l|) \\
            & = & \begin{cases}
 \delta \geq 0, \delta' \geq 0: & \Delta r \\
 \delta \leq 0, \delta' \geq 0: & \delta + \Delta r \\
@@ -205,11 +201,11 @@ tree\ (l', \Delta l)\ k\ (r', \Delta r)\ \delta =
 Below example programs implements what we deduced so far:
 
 \begin{Haskell}
-insert t x = fst $ ins t where
-    ins Empty = (Br Empty x Empty 0, 1)
-    ins (Br l k r d)
-        | x < k = tree (ins l) k (r,  0) d
-        | x > k = tree (l,  0) k (ins r) d
+insert x  = fst . ins x where
+    ins x Empty = (Br Empty x Empty 0, 1)
+    ins x (Br l k r d)
+        | x < k = tree (ins x l) k (r, 0) d
+        | x > k = tree (l, 0) k (ins x r) d
 
 tree (l, dl) k (r, dr) d = balance (Br l k r d') deltaH where
     d' = d + dr - dl
@@ -232,28 +228,28 @@ There are 4 cases need fix as shown in figure \ref{fig:avl-insert-fix}. The bala
 
 We call the 4 cases: left-left, right-right, right-left, and left-right. Denote the balance factors before fixing as $\delta(x), \delta(y)$, and $\delta(z)$; after fixing, they change to $\delta'(x), \delta'(y) = 0$, and $\delta'(z)$ respectively. The values of $\delta'(x)$ and $\delta'(z)$ can be given as below. Appendix B gives the proof.
 
-Left-left:
+\begin{center}
+Left-left \quad \quad \quad Right-right
+\end{center}
 
 \be
-  \begin{array}{l}
-  \delta'(x) = \delta(x) \\
-  \delta'(y) = 0 \\
-  \delta'(z) = 0
-  \end{array}
+\begin{array}{cc}
+  \begin{cases}
+    \delta'(x) & = \delta(x) \\
+    \delta'(y) & = 0 \\
+    \delta'(z) & = 0 \\
+  \end{cases}
+&
+  \begin{cases}
+    \delta'(x) & = 0 \\
+    \delta'(y) & = 0 \\
+    \delta'(z) & = \delta(z) \\
+  \end{cases}
+\end{array}
+\label{eq:rr-result}
 \ee
 
-Right-right:
-
-\be
-  \begin{array}{l}
-  \delta'(x) = 0 \\
-  \delta'(y) = 0 \\
-  \delta'(z) = \delta(z)
-  \end{array}
-  \label{eq:rr-result}
-\ee
-
-Right-left and Left-right:
+Right-left and Left-right are same:
 
 \be
   \begin{array}{l}
@@ -284,7 +280,7 @@ balance\ T\ \Delta H & = & (T, \Delta H) \\
 }}
 \ee
 
-Where $\delta'(x)$ and $\delta'(z)$ are defined in (\ref{eq:rl-result}). If none of the pattern matches, the last row keeps the tree unchanged. Below is the example program implements $balance$:
+Where $\delta'(x)$ and $\delta'(z)$ are defined in (\ref{eq:rl-result}). If none of the pattern matches, keep the tree unchanged. Below is the example program implements $balance$:
 
 \begin{Haskell}
 balance (Br (Br (Br a x b dx) y c (-1)) z d (-2)) dH =
@@ -302,17 +298,16 @@ balance (Br a x (Br (Br b y c dy) z d (-1))    2) dH =
 balance t d = (t, d)
 \end{Haskell}
 
-The performance of $insert$ is proportion to the height of the
-tree. From (\ref{eq:AVL-height}), it is bound to is $O(\lg n)$ where $n$ is the number of elements in the tree.
+The performance of $insert$ is proportion to the height of the tree. From (\ref{eq:AVL-height}), it is bound to is $O(\lg n)$ where $n$ is the number of elements in the tree.
 
-\subsubsection{Verification}
+\subsection{Verification}
 \index{AVL tree!verification}
-To test an AVL tree, we need verify two things: It is a binary search tree; and for every sub-tree $T$, equation (\ref{eq:avl-rule}): $\delta(T) \leq 1$ holds. Below function examines the height difference between the two sub-trees recursively:
+To validate an AVL tree, we need verify two things: (1) It is a binary search tree; (2) For every sub-tree $T$, equation (\ref{eq:avl-rule}): $\delta(T) \leq 1$ holds. Below function examines the height difference between the two sub-trees recursively:
 
 \be
 \begin{array}{rcl}
 avl?\ \nil & = & \textit{True} \\
-avl?\ T & = & avl?\ l\ \land avl?\ r\ \land ||r| - |l|| \leq 1 \\
+avl?\ T & = & avl?\ l\ \text{and}\ avl?\ r\ \text{and}\ ||r| - |l|| \leq 1 \\
 \end{array}
 \ee
 
@@ -321,7 +316,7 @@ Where $l$, $r$ are the left and right sub-trees. The height is calculated recurs
 \be
 \begin{array}{rcl}
 |\nil| & = & 0 \\
-|T| & = & 1 + max(|r|, |l|) \\
+|T| & = & 1 + \max(|r|, |l|) \\
 \end{array}
 \ee
 
@@ -338,7 +333,7 @@ height (Br l _ r _) = 1 + max (height l) (height r)
 \Question{We only give the algorithm to test AVL height. Complete the program to test if a binary tree is AVL tree.}
 \end{Exercise}
 
-\section{Imperative AVL tree algorithm $\bigstar$}
+\section{Imperative algorithm $\bigstar$}
 \index{AVL tree!imperative insert}
 
 This section gives the imperative algorithm for completeness. Similar to the red-black tree algorithm, we first re-use the binary search tree insert, then fix the balance through tree rotations.
@@ -451,7 +446,6 @@ After insert, the balance factor $\delta$ may change because of the tree growth.
 
 Besides rotation, we also need update $\delta$ for the impacted nodes. The right-right and left-left cases need one rotation, while the right-left and left-right case need two rotations. We skip the AVL tree delete algorithm in this chapter. Appendix B provides the delete implementation.
 
-\section{Summary}
 AVL tree was developed in 1962 by Adelson-Velskii and Landis\cite{wiki-avl}, \cite{TFATP}. It is named after the two authors. AVL tree was developed earlier than the red-black tree. Both are self-balance binary search trees. Most tree operations are bound $O(\lg n)$ time. From (\ref{eq:AVL-height}), AVL tree is more rigidly balanced, and performs faster than red-black tree in looking up intensive applications \cite{wiki-avl}. However, red-black tree performs better in frequently insertion and removal cases. Many popular self-balance binary search tree libraries are implemented on top of red-black tree. AVL tree also provides the intuitive and effective solution to the balance problem.
 
 \section{Appendix: Example programs}
@@ -518,6 +512,9 @@ Node<T> insertFix(Node<T> t, Node<T> x) {
 \end{lstlisting}
 
 \ifx\wholebook\relax \else
+\section{Answers}
+\shipoutAnswer
+
 \begin{thebibliography}{99}
 
 \bibitem{hackage}

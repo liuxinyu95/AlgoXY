@@ -50,7 +50,6 @@ delete x = fst . del x where
     | otherwise = tree (l, 0) m (del m r) d where m = min r
 
 -- params: (left, increment on left) key (right, increment on right)
--- tree::(AVLTree a, Int) -> a -> (AVLTree a, Int) -> Int -> (AVLTree a, Int)
 tree (l, dl) k (r, dr) d = balance (Br l k r d') deltaH where
     d' = d + dr - dl
     deltaH | d >=0 && d' >=0 = dr
@@ -58,7 +57,7 @@ tree (l, dl) k (r, dr) d = balance (Br l k r d') deltaH where
            | d >=0 && d' <=0 = dl - d
            | otherwise = dl
 
-balance :: AVLTree a -> Int -> (AVLTree a, Int)
+-- balance :: AVLTree a -> Int -> (AVLTree a, Int)
 balance (Br (Br (Br a x b dx) y c (-1)) z d (-2)) dH = (Br (Br a x b dx) y (Br c z d 0) 0, dH-1)
 balance (Br a x (Br b y (Br c z d dz)    1)    2) dH = (Br (Br a x b 0) y (Br c z d dz) 0, dH-1)
 balance (Br (Br a x (Br b y c dy)    1) z d (-2)) dH = (Br (Br a x b dx') y (Br c z d dz') 0, dH-1) where
@@ -72,7 +71,7 @@ balance (Br (Br a x b dx) y c (-2)) dH = (Br a x (Br b y c (-1)) (dx+1), dH)
 balance (Br a x (Br b y c dy)    2) dH = (Br (Br a x b    1) y c (dy-1), dH)
 balance t d = (t, d)
 
--- vaidate a tree is AVL tree
+-- validate AVL tree
 isAVL :: (AVLTree a) -> Bool
 isAVL Empty = True
 isAVL (Br l _ r d) = and [isAVL l, isAVL r, d == (height r - height l), abs d <= 1]
