@@ -87,7 +87,7 @@ insert\ k\ x\ (l, v, r) & = & \begin{cases}
 \end{array}
 \ee
 
-如果$k = 0$，我们将$v$存入节点。如果$T = \nil$，结果为$(\nil, \textit{Just}\ v, \nil)$。只要$k \neq 0$，我们就根据$k$的奇偶性前进，遇到$\nil$就建立一个空叶子节点$(\nil, \textit{Nothing}, \nil)$。如果$k$已经存在，这一算法覆盖以前的值。我们也可以用一个列表存储多个值，并将$v$添加到列表中。图\ref{int-trie}的例子是依次插入映射\{$ 1 \rightarrow a, 4 \rightarrow b, 5 \rightarrow c, 9 \rightarrow d$\}的结果。下面的例子程序实现了$insert$函数：
+如果$k = 0$，我们将$x$存入节点。如果$T = \nil$，结果为$(\nil, \textit{Just}\ x, \nil)$。只要$k \neq 0$，我们就根据$k$的奇偶性前进，遇到$\nil$就建立一个空叶子节点$(\nil, \textit{Nothing}, \nil)$。如果$k$已经存在，这一算法覆盖以前的值。我们也可以用一个列表存储多个值，并将$x$添加到列表中。图\ref{int-trie}的例子是依次插入映射\{$ 1 \rightarrow a, 4 \rightarrow b, 5 \rightarrow c, 9 \rightarrow d$\}的结果。下面的例子程序实现了$insert$函数：
 
 \begin{figure}[htbp]
   \centering
@@ -98,17 +98,16 @@ insert\ k\ x\ (l, v, r) & = & \begin{cases}
 \end{figure}
 
 \begin{Haskell}
-insert Empty k x = insert (Branch Empty Nothing Empty) k x
-insert (Branch l v r) 0 x = Branch l (Just x) r
-insert (Branch l v r) k x | even k    = Branch (insert l (k `div` 2) x) v r
-                          | otherwise = Branch l v (insert r (k `div` 2) x)
+insert k x Empty = insert k x (Branch Empty Nothing Empty)
+insert 0 x (Branch l v r) = Branch l (Just x) r
+insert k x (Branch l v r) | even k    = Branch (insert (k `div` 2) x l) v r
+                          | otherwise = Branch l v (insert (k `div` 2) x r)
 \end{Haskell}
 
 为了判定一个数的奇偶性，我们可以判断它除以2的余数（模2）是否为0：$even(k) = (k \bmod 2 = 0)$，或者使用位运算，如：\texttt{(k \& 0x1) == 0}。我们也可以消除递归用循环实现插入算法：
 
-%\begin{algorithm}
 \begin{algorithmic}[1]
-\Function{Insert}{$T, k, v$}
+\Function{Insert}{$T, k, x$}
   \If{$T =$ NIL}
     \State $T \gets$ \Call{Empty-Node}{}  \Comment{(NIL, Nothing, NIL)}
   \EndIf
@@ -127,13 +126,23 @@ insert (Branch l v r) k x | even k    = Branch (insert l (k `div` 2) x) v r
     \EndIf
     \State $k \gets \lfloor k/2 \rfloor$
   \EndWhile
-  \State \Call{Value}{$p$} $\gets v$
+  \State \Call{Value}{$p$} $\gets x$
   \State \Return $T$
 \EndFunction
 \end{algorithmic}
 %\end{algorithm}
 
-\textproc{Insert}接受3个参数：trie树$T$、要插入的键$k$和相应的数据$v$。对于有$m$位的二进制整数$k$，这一算法访问trie中的$m$层，时间复杂度为$O(m)$。
+\textproc{Insert}接受3个参数：trie树$T$、要插入的键$k$和相应的数据$x$。对于有$m$位的二进制整数$k$，这一算法访问trie中的$m$层，时间复杂度为$O(m)$。我们将$insert\ k\ x\ T$和\textproc{Insert}($T, k, x$)的参数顺序设计为对称的。前者用$foldr$、后者用$foldl$（或for循环）从键、值对列表构造树。如：
+
+\be
+fromList = foldr\ (uncurry\ insert)\ \nil
+\ee
+
+用法为：$fromList$\ [(1, a), (4, b), (5, c), (9, d)]，其中$uncurry$为柯里化的逆运算，它把键、值对拆开送入$insert$，其定义为：
+
+\be
+uncurry\ f\ (a, b) = f\ a\ b
+\ee
 
 \subsection{查找}
 \index{整数trie!查找}
