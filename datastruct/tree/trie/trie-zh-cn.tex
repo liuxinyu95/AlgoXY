@@ -464,56 +464,39 @@ lookup\ k\ (p, m, l, r) & = & \begin{cases}
 
 并非所有的26棵子树都包含数据。在图\ref{fig:trie-of-26}的根节点分枝中，只有代表a、b、z的3棵子树不为空。其它分枝，例如代表c的子树，全部是空的。我们可以将这些空子树隐藏起来。如果区分大小写或者需要进一步将类型从字符串扩展到抽象列表，我们可以使用map等数据结构来处理动态数目的分枝。
 
-一棵trie或者为空，或者是一个节点，包含以下两种情况：
+一棵类型为$Trie\ K\ V$的trie树或者为空$\nil$，或者是一个节点，包含以下两种情况：
 
 \begin{enumerate}
-\item 值为$v$的叶子节点，不含有子树；
-\item 分枝节点，包含值$v$和多棵子树。每棵子树对应类型$K$中的某个值$k$。
+\item 值为$v$的叶子节点，不含有子树，记为$(v, \nil)$，其中$v$的类型为$V$；
+\item 分枝节点，包含值$v$和多棵子树。每棵子树对应类型$K$中的某个值$k$，记为$(v, ts)$。其中$ts = \{ k_1 \mapsto T_1, k_2 \mapsto T_2, ..., k_m \mapsto T_m \}$包含$k_i$和子树$T_i$间的映射。类型为$Map\ K\ (Trie\ K\ V)$。可以使用关联列表或者自平衡树实现映射（见第4、5章）。
 \end{enumerate}
 
-若值的类型为$V$，我们记trie的类型为$Trie\ K\ V$。下面的例子程序定义了trie：
+定义内容为空的树为：$(\textit{Nothing}, \nil)$。下面的例子程序定义了trie：
 
 \begin{Haskell}
 data Trie k v = Trie { value :: Maybe v
-                     , subTrees :: [(k, Trie k v)]}
+                     , subTrees :: Map k (Trie k v)}
 \end{Haskell}
-
-内容为空的树被定义为：$(\textit{Nothing}, \nil)$
 
 \subsection{插入}
 \index{trie!插入}
 
-考虑插入一对键、值到trie中，其中键为若干元素的列表。令trie为$T = (v, ts)$，其中$v$是树中存储的值，$ts = \{ c_1 \mapsto T_1, c_2 \mapsto T_2, ..., c_m \mapsto T_m \}$包含字符和子树间的映射。元素$c_i$映射到子树$T_i$。我们可以使用关联列表$[(c_1, T_1), (c_2, T_2), ..., (c_m, T_m)]$或者自平衡树实现映射（见第4、5章）。
+考虑插入一对键、值到trie中，其中键为若干元素的列表。令trie为$T = (v, ts)$。记$ts[k]$在映射$ts$中查找键$k$对应的值，记$ts[k] \gets v$在映射$ts$中插入键$k$、值$v$，如果存在则覆盖，并返回更新后的映射。
 
 \be
 \begin{array}{rcl}
-insert\ (v, ts)\ \nil\ v' & = & (v', ts) \\
-insert\ (v, ts)\ (k:ks)\ v' & = & (v, ins\ ts) \\
+insert\ \nil\ v\ (v', ts)\  & = & (\textit{Just}\ v, ts) \\
+insert\ (k \cons ks)\ v\ (v', ts)\  & = & (v', ts[k] \gets insert\ ks\ v\ ts[k]) \\
 \end{array}
 \ee
 
-如果键为空，我们覆盖掉以前的值；否则，我们取出第一个元素$k$，找到映射到$k$的子树，并递归将$ks$和$v'$插入：
-
-\be
-\begin{array}{rcl}
-ins\ \nil & = & [k \mapsto insert\ (\textit{Nothing}, \nil)\ ks\ v'] \\
-ins\ ((c \mapsto t) : ts) & = & \begin{cases}
-  c = k: & (k \mapsto insert\ t\ ks\ v') : ts \\
-  otherwise: & (c \mapsto t) : (ins\ ts) \\
-  \end{cases}
-\end{array}
-\ee
-
-如果没有子树映射到$k$，我们就新建一棵空子树$t = (\textit{Nothing}, \nil)$，并将$k$映射到其上；否则，我们找到映射到$k$的子树$t$，递归地向$t$中插入$ks$和$v'$。下面的例子程序实现了$insert$函数，它使用关联列表保存映射。
-
+对应的例子程序：
 \begin{Haskell}
-insert (Trie _ ts) [] x = Trie (Just x) ts
-insert (Trie v ts) (k:ks) x = Trie v (ins ts) where
-    ins [] = [(k, insert empty ks x)]
-    ins ((c, t) : ts) = if c == k then (k, insert t ks x) : ts
-                        else (c, t) : (ins ts)
-
-empty = Trie Nothing []
+insert [] x (Trie _ ts) = Trie (Just x) ts
+insert (k:ks) x (Trie v ts) = Trie v (Map.insert k (insert ks x t) ts) where
+    t = case Map.lookup k ts of
+         Nothing -> Trie Nothing Map.empty
+         (Just t) -> t
 \end{Haskell}
 
 我们也可以消除递归，实现迭代方式的$insert$函数：

@@ -30,21 +30,20 @@ data MapTrie k v = MapTrie { value :: Maybe v
 
 empty = MapTrie Nothing Map.empty
 
-insert :: Ord k => MapTrie k v -> [k] -> v -> MapTrie k v
-insert (MapTrie _ ts) [] x = MapTrie (Just x) ts
-insert (MapTrie v ts) (k:ks) x = MapTrie v (Map.insert k (insert t ks x) ts)
+-- insert :: (Ord k) => [k] -> v -> MapTrie k v -> MapTrie k v
+insert [] x (MapTrie _ ts) = MapTrie (Just x) ts
+insert (k:ks) x (MapTrie v ts) = MapTrie v (Map.insert k (insert ks x t) ts)
   where
     t = maybe empty id (Map.lookup k ts)
 
-lookup :: Ord k => [k] -> MapTrie k v -> Maybe v
+-- lookup :: (Ord k) => [k] -> MapTrie k v -> Maybe v
 lookup [] (MapTrie v _) = v
 lookup (k:ks) (MapTrie _ ts) = case Map.lookup k ts of
                   Nothing -> Nothing
                   Just t' -> lookup ks t'
 
-fromList :: Ord k => [([k], v)] -> MapTrie k v
-fromList xs = foldl ins empty xs where
-  ins t (k, v) =  insert t k v
+-- fromList :: Ord k => [([k], v)] -> MapTrie k v
+fromList = foldr (uncurry insert) empty where
 
 fromString :: (Enum v, Num v) => String -> MapTrie Char v
 fromString = fromList . (flip zip [1..]) . words
@@ -59,7 +58,7 @@ keys t = map reverse $ keys' t [] where
       ks = concatMap (\(k, t') -> keys' t' (k : prefix)) (Map.toAscList ts)
 
 -- example
-example = insert (fromString "a place where animals are for public to see") "zoo" 0
+example = insert "zoo" 0 (fromString "a place where animals are for public to see")
 
 -- test data
 assocs = [[("a", 1), ("an", 2), ("another", 7), ("boy", 3), ("bool", 4), ("zoo", 3)],
