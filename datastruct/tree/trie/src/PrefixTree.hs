@@ -34,8 +34,8 @@ empty = PrefixTree Nothing []
 
 leaf v = PrefixTree (Just v) []
 
-insert (PrefixTree _ ts) [] v = PrefixTree (Just v) ts
-insert (PrefixTree v' ts) k v = PrefixTree v' (ins ts) where
+insert [] v (PrefixTree _ ts) = PrefixTree (Just v) ts
+insert k v (PrefixTree v' ts) = PrefixTree v' (ins ts) where
     ins [] = [(k, leaf v)]
     ins ((k', t) : ts) | match k k' = (branch k v k' t) : ts
                        | otherwise  = (k', t) : ins ts
@@ -46,7 +46,7 @@ match (a:_) (b:_) = a == b
 
 branch a v b t = case lcp a b of
   (c, [], b') -> (c, PrefixTree (Just v) [(b', t)])
-  (c, a', []) -> (c, insert t a' v)
+  (c, a', []) -> (c, insert a' v t)
   (c, a', b') -> (c, PrefixTree Nothing [(a', leaf v), (b', t)])
 
 -- longest common prefix
@@ -62,8 +62,7 @@ lookup ks (PrefixTree v ts) = case find (\(s, t) -> s `isPrefixOf` ks) ts of
   Just (s, t) -> lookup (drop (length s) ks) t
 
 fromList :: Eq k => [([k], v)] -> PrefixTree k v
-fromList = foldl ins empty where
-    ins t (k, v) = insert t k v
+fromList = foldr (uncurry insert) empty
 
 fromString :: (Enum v, Num v) => String -> PrefixTree Char v
 fromString = fromList . (flip zip [1..]) . words
@@ -107,7 +106,7 @@ findT9 (PrefixTree _ ts) k = concatMap find pfx where
 get n k t = take n $ startsWith k t
 
 --
-example = insert (fromString "a place where animals are for public to see") "zoo" 0
+example = insert "zoo" 0 (fromString "a place where animals are for public to see")
 
 -- test data
 assocs = [[("a", 1), ("an", 2), ("another", 7), ("boy", 3), ("bool", 4), ("zoo", 3)],
