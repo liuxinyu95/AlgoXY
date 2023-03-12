@@ -37,32 +37,26 @@ data IntTrie a = Empty
 
 type Key = Int
 
--- accessors
-left :: IntTrie a -> IntTrie a
 left (Branch l _ _) = l
 left Empty = Empty
 
-right :: IntTrie a -> IntTrie a
 right (Branch _ _ r) = r
 right Empty = Empty
 
-value :: IntTrie a -> Maybe a
 value (Branch _ v _) = v
 value Empty = Nothing
 
 -- override the value if key already exits
--- usage: insert trie key value
 insert :: Key -> a -> IntTrie a -> IntTrie a
 insert k x Empty = insert k x (Branch Empty Nothing Empty)
 insert 0 x (Branch l v r) = Branch l (Just x) r
 insert k x (Branch l v r) | even k    = Branch (insert (k `div` 2) x l) v r
                           | otherwise = Branch l v (insert (k `div` 2) x r)
 
-lookup :: IntTrie a -> Key -> Maybe a
-lookup Empty _ = Nothing
-lookup (Branch _ v _) 0 = v
-lookup (Branch l _ r) k | even k    = lookup l (k `div` 2)
-                        | otherwise = lookup r (k `div` 2)
+lookup _ Empty = Nothing
+lookup 0 (Branch _ v _) = v
+lookup k (Branch l _ r) | even k    = lookup (k `div` 2) l
+                        | otherwise = lookup (k `div` 2) r
 
 fromList :: [(Key, a)] -> IntTrie a
 fromList xs = foldr (uncurry insert) Empty xs where
@@ -87,13 +81,13 @@ instance Arbitrary Sample where
 
 prop_build :: Sample -> Bool
 prop_build (S kvs ks') = let t = fromList kvs in
-  (all (\(k, v) -> Just v == lookup t k) kvs ) &&
-  (all (isNothing . lookup t) ks')
+  (all (\(k, v) -> Just v == lookup k t) kvs ) &&
+  (all (isNothing . (flip lookup) t) ks')
 
 example = do
   let t = fromList [(1, 'a'), (4, 'b'), (5, 'c'), (9, 'd')]
   putStrLn $ show $ toList t
-  putStrLn "lookup t 4"
-  putStrLn $ show $ lookup t 4
-  putStrLn "lookup t 0"
-  putStrLn $ show $ lookup t 0
+  putStrLn "lookup 4 t"
+  putStrLn $ show $ lookup 4 t
+  putStrLn "lookup 0 t"
+  putStrLn $ show $ lookup 0 t
