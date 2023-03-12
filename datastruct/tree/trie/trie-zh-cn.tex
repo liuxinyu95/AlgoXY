@@ -241,13 +241,13 @@ data IntTree a = Empty
 \be
 \resizebox{\textwidth}{!}{\ensuremath{
 \begin{array}{rcl}
-insert\ \nil\ k\ v\ & = & (k, v) \\
-insert\ (k, v')\ k\ v\ & = & (k, v) \\
-insert\ (k', v')\ k\ v\ & = & join\ k\ (k, v)\ k'\ (k', v') \\
-insert\ (p, m, l, r)\ k\ v\ & = & \begin{cases}
+insert\ k\ v\ \nil & = & (k, v) \\
+insert\ k\ v\ (k, v') & = & (k, v) \\
+insert\ k\ v\ (k', v') & = & join\ k\ (k, v)\ k'\ (k', v') \\
+insert\ k\ v\ (p, m, l, r) & = & \begin{cases}
   match(k, p, m): & \begin{cases}
-    zero(k, m): & (p, m, insert\ l\ k\ v) \\
-    otherwise:  & (p, m, insert\ r\ k\ v) \\
+    zero(k, m): & (p, m, insert\ k\ v\ l, r) \\
+    otherwise:  & (p, m, l, insert\ k\ v\ r) \\
   \end{cases} \\
   otherwise: & join\ k\ (k, v)\ p\ (p, m, l, r) \\
 \end{cases} \\
@@ -255,17 +255,17 @@ insert\ (p, m, l, r)\ k\ v\ & = & \begin{cases}
 }}
 \ee
 
-当$T = \nil$为空时，我们创建一个叶子节点；如果键相同，我们用新值覆盖此前的值。函数$match(k, p, m)$检查整数$k$和最长公共前缀$p$在掩码$m$下是否相同：$mask(k, m) = p$，其中$mask(k, m) = \overline{m-1} \& k$。它先对$m - 1$按位取反，然后和$k$按位与。函数$zero(k, m)$检查掩码$m$之后的二进制位是0还是1。我们将$m$向右移动1位，然后和$k$按位与：
+当$T = \nil$时，创建一个叶子节点$(k, v)$；如果键相同则覆盖。函数$match(k, p, m)$检查整数$k$和最长公共前缀$p$在掩码$m$下是否相同：$mask(k, m) = p$，其中$mask(k, m) = \overline{m-1} \& k$。它先对$m - 1$按位取反，然后和$k$按位与。函数$zero(k, m)$检查掩码$m$之后的二进制位是0还是1。我们将$m$向右移动1位，然后和$k$按位与：
 
 \be
-zero(k, m) = k \& (m >> 1)
+zero(k, m) = k \& (m \gg 1)
 \ee
 
-函数$join(p_1, T_1, p_2, T_2)$接受两个前缀和两棵树。它从$p_1$、$p_2$抽出最长公共前缀$(p, m) = LCP(p_1, p_2)$，创建一个新分枝，并将$T_1$、$T_2$设为子树：
+函数$join(p_1, T_1, p_2, T_2)$接受两个前缀和两棵树。从$p_1$、$p_2$抽出最长公共前缀$(p, m) = LCP(p_1, p_2)$，创建一个新分枝，并将$T_1$、$T_2$设为子树：
 
 \be
 join(p_1, T_1, p_2, T_2) = \begin{cases}
-  zero(p1, m): & (p, m, T_1, T_2) \\
+  zero(p_1, m): & (p, m, T_1, T_2) \\
   otherwise: & (p, m, T_2, T_1) \\
 \end{cases}
 \ee
@@ -275,22 +275,22 @@ join(p_1, T_1, p_2, T_2) = \begin{cases}
 \[
 \begin{array}{rcl}
 highest(0) & = & 0 \\
-highest(n) & = & 1 + highest(n >> 1) \\
+highest(n) & = & 1 + highest(n \gg 1) \\
 \end{array}
 \]
 
 接下来我们产生掩码$m = 2^{highest(xor(p_1,p_2))}$。最长公共前缀$p$可以用掩码$m$和$p_1$、$p_2$中的任何一个得出。例如$p = mask(p_1, m)$。下面的例子程序实现了$insert$函数：
 
 \begin{Haskell}
-insert t k x
+insert k x t
    = case t of
        Empty -> Leaf k x
        Leaf k' x' -> if k == k' then Leaf k x
                      else join k (Leaf k x) k' t
        Branch p m l r
           | match k p m -> if zero k m
-                           then Branch p m (insert l k x) r
-                           else Branch p m l (insert r k x)
+                           then Branch p m (insert k x l) r
+                           else Branch p m l (insert k x r)
           | otherwise -> join k (Leaf k x) p t
 
 join p1 t1 p2 t2 = if zero p1 m then Branch p m t1 t2
@@ -403,27 +403,20 @@ match k p m = (mask k m) == p
 
 \be
 \begin{array}{rcl}
-lookup\ \nil\ k & = & \textit{Nothing} \\
-lookup\ (k', v)\ k & = & \begin{cases}
+lookup\ k\ \nil & = & \textit{Nothing} \\
+lookup\ k\ (k', v) & = & \begin{cases}
   k = k': & \textit{Just}\ v \\
   otherwise: & \textit{Nothing} \\
   \end{cases} \\
-lookup\ (p, m, l, r)\ k & = & \begin{cases}
+lookup\ k\ (p, m, l, r) & = & \begin{cases}
   match(k, p, m): & \begin{cases}
-    zero(k, m): & lookup\ l\ k \\
-    otherwise: &  lookup\ r\ k \\
+    zero(k, m): & lookup\ k\ l \\
+    otherwise: &  lookup\ k\ r \\
     \end{cases} \\
   otherwise: & \textit{Nothing} \\
   \end{cases}\\
 \end{array}
 \ee
-
-%% \begin{Haskell}
-%% lookup Empty _ = Nothing
-%% lookup (Leaf k' v) k = if k == k' then Just v else Nothing
-%% lookup (Branch p m l r) k | match k p m = if zero k m then lookup l k else lookup r k
-%%                           | otherwise = Nothing
-%% \end{Haskell}
 
 我们也可以消除递归改用迭代的方式实现查找。
 
