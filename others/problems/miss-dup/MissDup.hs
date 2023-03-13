@@ -14,7 +14,7 @@ import Test.QuickCheck
 
 -- Divide and Conquer
 
-missDup xs = solve xs 1 (toInteger $ length xs) where
+missDup xs = solve xs 1 (length xs) where
   solve xs@(_:_:_) l u | k < m - l + 1 = (sl - sl', sr' - sr)
                        | k > m - l + 1 = (sr - sr', sl' - sl)
                        | sl == sl' = solve bs (m + 1) u
@@ -22,7 +22,7 @@ missDup xs = solve xs 1 (toInteger $ length xs) where
       where
           m = (l + u) `div` 2
           (as, bs) = partition (<=m) xs
-          k = toInteger $ length as
+          k = length as
           sl = (l + m) * (m - l + 1) `div` 2
           sr = (m + 1 + u) * (u - m) `div` 2
           (sl', sr') = (sum as, sum bs)
@@ -35,14 +35,15 @@ missDup' xs = ((b `div` a - a) `div` 2, (b `div` a + a) `div` 2) where
 
 -- Verification
 
-data Sample = Sample [Integer] (Integer, Integer) deriving (Show)
+data Sample = Sample [Int] (Int, Int) deriving (Show)
 
 instance Arbitrary Sample where
   arbitrary = do
-    n <- choose (2, 100)
-    (x:y:xs) <- shuffle [1..n]
-    xs' <- shuffle (y:y:xs)
-    return $ Sample xs' (x, y)
+    n <- chooseInt (2, 100)
+    xs <- shuffle [1..n]
+    case xs of
+      (x:y:ys) -> do zs <- shuffle (y:y:ys)
+                     return $ Sample zs (x, y)
 
 prop_solve :: Sample -> Bool
 prop_solve (Sample xs (x, y)) = let (x', y') = missDup xs in x == x' && y == y'
