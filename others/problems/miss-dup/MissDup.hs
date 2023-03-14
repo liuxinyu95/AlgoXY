@@ -40,6 +40,10 @@ data Sample = Sample [Int] (Int, Int) deriving (Show)
 instance Arbitrary Sample where
   arbitrary = do
     n <- chooseInt (2, 100)
+    -- below changed from some version of GHC
+    -- (x:y:ys) <- shuffle [1..n]
+    -- zs <- shuffle (y:y:ys)
+    -- return $ Sample zs (x, y)
     xs <- shuffle [1..n]
     case xs of
       (x:y:ys) -> do zs <- shuffle (y:y:ys)
