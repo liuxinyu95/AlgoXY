@@ -15,7 +15,7 @@ maxDistance (Node l _ r) = maximum [depth l + depth r, maxDistance l, maxDistanc
 
 maxPath Empty = []
 maxPath (Node Empty k Empty) = [k]
-maxPath (Node l k r) = longest [depthPath l ++ k : depthPath r, maxPath l, maxPath r] where
+maxPath (Node l k r) = longest [(reverse depthPath l) ++ k : depthPath r, maxPath l, maxPath r] where
   longest = maximumBy (compare `on` length)
   depthPath = foldt id (\xs k ys -> k : longest [xs, ys]) []
 
