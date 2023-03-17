@@ -30,9 +30,18 @@ maxDist = extract . mapTr where
     pairof Empty = (0, 0)
     pairof (Node _ k _) = k
 
+maxDist' = snd . pair . foldt id g Empty where
+  g l _ r = Node l (1 + max d1 d2, maximum [d1 + d2, m1, m2]) r where
+    (d1, m1) = pair l
+    (d2, m2) = pair r
+  pair = (maybe (0, 0) id) . key
+
 prop_maxdistance :: (Ord a) => [a] -> Bool
 prop_maxdistance xs = maxDistance t == max 0 (length (maxPath t) - 1) where
   t = fromList xs
 
 prop_maxdist :: (Ord a) => [a] -> Bool
 prop_maxdist xs = maxDistance t == maxDist t where t = fromList xs
+
+prop_maxdist' :: (Ord a) => [a] -> Bool
+prop_maxdist' xs = maxDistance t == maxDist' t where t = fromList xs
