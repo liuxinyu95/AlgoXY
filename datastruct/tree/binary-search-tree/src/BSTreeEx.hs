@@ -17,13 +17,12 @@ maxPath Empty = []
 maxPath (Node Empty k Empty) = [k]
 maxPath (Node l k r) = longest [(reverse $ depthPath l) ++ k : depthPath r, maxPath l, maxPath r] where
   longest = maximumBy (compare `on` length)
-  depthPath = foldt id (\xs k ys -> k : longest [xs, ys]) []
+  depthPath = foldt id (\ xs k ys -> k : longest [xs, ys]) []
 
 maxDist = extract . mapTr where
   extract Empty = 0
   extract (Node _ (_, m) _) = m
   mapTr Empty = Empty
-  mapTr (Node Empty _ Empty) = Node Empty (1, 0) Empty
   mapTr (Node l _ r) = f (mapTr l) (mapTr r)
   f l r = Node l (1 + max d1 d2, maximum [d1 + d2, m1, m2]) r where
     (d1, m1) = pairof l
