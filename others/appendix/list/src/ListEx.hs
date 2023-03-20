@@ -46,6 +46,19 @@ comb xs 1 = [[x] | x <- xs]
 comb xs@(x:xs') r | length xs < r = []
                   | otherwise = [x:ys | ys <- comb xs' (r-1)] ++ comb xs' r
 
+-- speakInt n = map speak (reverse $ zip ds ["", "thousand", "million", "billion"]) where
+--   ds = reverse (digits n)
+--   words = ["", "one", "two", "three", "four"]
+--   speak (n, unit) | n < 20
+
+digits = dec [] where
+  dec ds n | n == 0 = ds
+           | otherwise = dec ((n `mod` 1000) : ds) (n `div` 1000)
+
+sublist from cnt = take cnt . drop (from - 1)
+
+slice from to = drop (from - 1) . take to
+
 prop_rindex :: [Int] -> Bool
 prop_rindex xs = xs == (map (atR xs) $ reverse [0..length xs -1])
 
