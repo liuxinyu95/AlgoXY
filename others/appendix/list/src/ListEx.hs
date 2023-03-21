@@ -55,6 +55,14 @@ digits = dec [] where
   dec ds n | n == 0 = ds
            | otherwise = dec ((n `mod` 1000) : ds) (n `div` 1000)
 
+safeTake n [] = []
+safeTake n (x:xs) | n <= 0 = []
+                  | otherwise = x : safeTake (n - 1) xs
+
+safeDrop n [] = []
+safeDrop n (x:xs) | n <= 0 = x:xs
+                  | otherwise = drop (n - 1) xs
+
 sublist from cnt = take cnt . drop (from - 1)
 
 slice from to = drop (from - 1) . take to
