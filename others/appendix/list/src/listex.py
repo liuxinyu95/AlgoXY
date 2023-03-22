@@ -2,17 +2,17 @@
 
 # list-imp.py
 # Copyright (C) 2012 Liu Xinyu (liuxinyu95@gmail.com)
-# 
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -41,6 +41,23 @@ def append(xs, x):
         xs = xs.next
     xs.next = List(x)
     return r.next
+
+def takeM(n, xs):
+    d = len(xs) - n
+    while d > 0 and xs:
+        xs.pop()
+        d = d - 1
+    return xs
+
+def dropM(n, xs):
+    if n <= 0:
+        return xs
+    for i in range(n, len(xs)):  # shift all elements ahead n
+        xs[i - n] = xs[i]
+    while n > 0 and xs:
+        xs.pop()
+        n = n - 1
+    return xs
 
 def mapL(f, xs):
     ys = prev = List()
@@ -100,14 +117,20 @@ def toList(xs):
     return ys
 
 # testing
+def randlist(n):
+    return random.sample(range(n), random.randint(0, n))
+
 def test_map():
+    negate = lambda x: -x
+    inc = lambda x: 1 + x
     for _ in range(100):
-        lst = random.sample(range(100), random.randint(0, 100))
-        assert toList(mapL(lambda x: -x, fromList(lst))) == map(lambda x: -x, lst)
+        lst = randlist(100)
+        assert all([toList(mapL(f, fromList(lst))) == list(map(f, lst)) for f in [negate, inc, abs]])
+    print("tested map")
 
 def test_span():
     for _ in range(100):
-        lst = range(100)
+        lst = list(range(100))
         random.shuffle(lst)
         (xs, ys) = span(lambda x: x < 50, fromList(lst))
         if xs is not None:
@@ -115,25 +138,36 @@ def test_span():
         if ys is not None:
             assert not ys.key < 50
         assert length(xs) + length(ys) == len(lst)
+    print("tested span")
 
 def test_find():
     for _ in range(100):
-        lst = random.sample(range(100), random.randint(0, 100))
+        lst = randlist(100)
         x = random.randint(0, 100)
         if x in lst:
             assert x == find(lambda a : x == a, fromList(lst)).key
         else:
             assert None == find(lambda a : x == a, fromList(lst))
+    print("tested find")
 
 def test_group1():
     gs = group1(lambda x, y: x == y, fromList("mississipi"))
     while gs is not None:
-        print toList(gs.key),
+        print(toList(gs.key), end = '')
         gs = gs.next
-    print
+    print("tested groupping")
+
+def test_sublist():
+    for _ in range(100):
+        xs = randlist(100)
+        n = random.randint(-10, 110)
+        assert takeM(n, xs) == xs[:n]
+        assert dropM(n, xs) == xs[n:]
+    print("tested sublist")
 
 if __name__ == "__main__":
     test_map()
     test_span()
     test_group1()
     test_find()
+    test_sublist()
