@@ -67,8 +67,15 @@ sublist from cnt = take cnt . drop (from - 1)
 
 slice from to = drop (from - 1) . take to
 
+concats [] = []
+concats ([]:xss) = concat xss
+concats ((x:xs):xss) = x : concat (xs:xss)
+
 prop_rindex :: [Int] -> Bool
 prop_rindex xs = xs == (map (atR xs) $ reverse [0..length xs -1])
 
 prop_insertAt :: [Int] -> Int -> Int -> Property
 prop_insertAt xs i x = (0 <= i) ==> (insertAt xs i x) == (let (as, bs) = splitAt i xs in as ++ x:bs)
+
+prop_concat :: [[Int]] -> Bool
+prop_concat xss = concat xss == concats xss
