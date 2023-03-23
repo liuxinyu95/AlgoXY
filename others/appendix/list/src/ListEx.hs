@@ -67,6 +67,9 @@ sublist from cnt = take cnt . drop (from - 1)
 
 slice from to = drop (from - 1) . take to
 
+suffixes [] = [[]]
+suffixes xs@(_:ys) =  xs : suffixes ys
+
 concats [] = []
 concats ([]:xss) = concat xss
 concats ((x:xs):xss) = x : concat (xs:xss)
@@ -79,3 +82,6 @@ prop_insertAt xs i x = (0 <= i) ==> (insertAt xs i x) == (let (as, bs) = splitAt
 
 prop_concat :: [[Int]] -> Bool
 prop_concat xss = concat xss == concats xss
+
+prop_tails :: [Int] -> Bool
+prop_tails xs = suffixes xs == tails xs
