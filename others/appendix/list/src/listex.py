@@ -102,7 +102,27 @@ def find(p, xs):
         xs = xs.next
     return None
 
-# auxiliar functions
+def filterL(p, xs):
+    ys = None
+    while xs:
+        if p(xs.key):
+            ys = cons(xs.key, ys)
+        xs = xs.next
+    return reverse(ys)
+
+def reverse(xs):
+    ys = None
+    while xs:
+        ys = cons(xs.key, ys)
+        xs = xs.next
+    return ys
+
+def lookupAssoc(x, assoc):
+    for k, v in assoc:
+        if x == k:
+            return v
+    return None
+
 def fromList(xs):
     ys = None
     for x in reversed(xs):
@@ -119,6 +139,13 @@ def toList(xs):
 # testing
 def randlist(n):
     return random.sample(range(n), random.randint(0, n))
+
+def test_filter():
+    even = lambda x: x % 2 == 0
+    for _ in range(100):
+        lst = randlist(100)
+        assert toList(filterL(even, fromList(lst))) == list(filter(even, lst))
+    print("tested filter")
 
 def test_map():
     negate = lambda x: -x
@@ -171,3 +198,4 @@ if __name__ == "__main__":
     test_group1()
     test_find()
     test_sublist()
+    test_filter()
