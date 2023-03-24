@@ -123,6 +123,14 @@ def lookupAssoc(x, assoc):
             return v
     return None
 
+def zipL(xs, ys):
+    zs = None
+    while xs and ys:
+        zs = cons((xs.key, ys.key), zs)
+        xs = xs.next
+        ys = ys.next
+    return reverse(zs)
+
 def fromList(xs):
     ys = None
     for x in reversed(xs):
@@ -139,6 +147,13 @@ def toList(xs):
 # testing
 def randlist(n):
     return random.sample(range(n), random.randint(0, n))
+
+def test_zip():
+    for _ in range(100):
+        xs = randlist(100)
+        ys = randlist(100)
+        assert toList(zipL(fromList(xs), fromList(ys))) == list(zip(xs, ys))
+    print("tested zip")
 
 def test_filter():
     even = lambda x: x % 2 == 0
@@ -199,3 +214,4 @@ if __name__ == "__main__":
     test_find()
     test_sublist()
     test_filter()
+    test_zip()
