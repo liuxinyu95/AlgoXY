@@ -2026,12 +2026,12 @@ $zip$和$unzip$的概念是抽象的。我们可以扩展$zip$以关联两棵树
 
 列表是构建复杂数据结构和算法的基础，对于函数式编程尤为重要。我们介绍了构建、分解、更改、变换列表的基本算法；介绍了如何在列表中搜索、过滤、进行计算。尽管大多数编程环境都提供了工具来支持列表，我们不应仅把它们看作黑盒子。Rabhi和Lapalme\cite{algo-fp}介绍了关于列表的许多函数式算法。Haskell标准库提供了关于基础算法的详细文档。伯德\cite{fp-pearls}给出了很多与叠加相关的例子，并介绍了“叠加融合定律”。
 
-\begin{Exercise}
-\Question{设计iota算法（$I$）其用法如下：
+\begin{Exercise}\label{ex:list-others}
+\Question{设计iota算法（希腊字母$I$）其用法如下：
   \begin{itemize}
   \item $iota(..., n) = [1, 2, 3, ..., n]$;
   \item $iota(m, n) = [m, m + 1, m + 2, ..., n]$，其中 $m \leq n$;
-  \item $iota(m, m+a, ..., n) = [m, m + a, m + 2a, ..., n]$;
+  \item $iota(m, m+a, ..., n) = [m, m + a, m + 2a, ..., m + ka]$; $k$是使得$m + ka \leq n$的最大整数。
   \item $iota(m, m, ...) = repeat(m) = [m, m, m, ...]$;
   \item $iota(m, ...) = [m, m + 1, m + 2, ... ]$.
   \end{itemize}
@@ -2083,6 +2083,108 @@ Q = [(apple, 3), (orange, 1), ...]
 \end{center}
 }
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:list-others}]
+\Question{设计iota算法（希腊字母$I$）其用法如下：
+  \begin{itemize}
+  \item $iota(..., n) = [1, 2, 3, ..., n]$;
+  \item $iota(m, n) = [m, m + 1, m + 2, ..., n]$，其中 $m \leq n$;
+  \item $iota(m, m+a, ..., n) = [m, m + a, m + 2a, ..., m + ka]$; $k$是使得$m + ka \leq n$的最大整数。
+  \item $iota(m, m, ...) = repeat(m) = [m, m, m, ...]$;
+  \item $iota(m, ...) = [m, m + 1, m + 2, ... ]$.
+  \end{itemize}
+
+首先是尾递归的$[1, 2, ..., n]$：
+\begin{Haskell}
+iota = iota' [] where
+  iota' ns n | n < 1 = ns
+             | otherwise = iota' (n : ns) (n - 1)
+\end{Haskell}
+
+其次规定起始值：$[m, m + 1, ..., n]$，我们只需要把下限从1改为$m$即可：
+\begin{Haskell}
+iota m n = iota' [] n where
+  iota' ns n | n < m = ns
+             | otherwise = iota' (n : ns) (n - 1)
+\end{Haskell}
+
+其次规定步长：$[m, m + a, m + 2a, ..., m + ka]$，其中$k$是使$m + ka \leq n$的最大整数。
+
+\begin{Haskell}
+iota m n a | m <= n = m : iota (m + a) n a
+           | otherwise = []
+\end{Haskell}
+
+为了产生$n = \infty$的开放序列：$[m, m + 1, ...]$，可以去掉上面的递归终止条件：
+\begin{Haskell}
+iota m = m : iota (m + 1)
+\end{Haskell}
+
+例如\texttt{take 10 (iota 1)}产生前10个自然数
+
+把$+1$去掉就可以得到$repeat$
+\begin{Haskell}
+repeat m = m : repeat m
+\end{Haskell}
+
+综上，我们可以定义一个$iterate$函数，包含全部$iota$功能：
+\begin{Haskell}
+iterate f x = x : iterate f (f x)
+
+iota1 n = take n $ iterate (+1) 1
+iota2 m n = takeWhile (<=n) $ iterate (+1) m
+iota3 m n a = takeWhile (<=n) $ iterate (+a) m
+repeat m = iterate id m
+iota5 m = iterate (+1) m
+\end{Haskell}
+}
+\Question{实现线性时间的命令式$zip$算法。}
+\Question{用$foldr$定义$zip$。}
+\Question{对于买水果的例子，如果购买数量的关联列表只包含非零的物品。不是
+\[
+Q = [(apple, 3), (banana, 0), (orange, 1), ...]
+\]
+而是
+\[
+Q = [(apple, 3), (orange, 1), ...]
+\]
+编写程序计算总金额。}
+
+\Question{使用$zip$实现$lastAt$。} % lastAt k xs = (fst . last) $ zip xs  (drop k xs)
+
+\Question{编写一个程序从列表中去除重复的元素。在命令式环境中，请用就地修改的方式删除这些重复元素。在纯函数环境中，构建一个只含有不同元素的新列表。结果列表中的元素顺序应保持和原列表中的一致。这一算法的复杂度是怎样的？如果允许使用额外的数据结构，可以如何简化实现？}
+
+\Question{可以用列表来表示十进制的非负整数。例如1024可以表示为：“$4 \rightarrow 2 \rightarrow 0 \rightarrow 1$”。一般来说，$n = d_m...d_2d_1$可以表示为：“$d_1 \rightarrow d_2 \rightarrow ... \rightarrow d_m$”。任给两个用列表表示的数$a$和$b$。实现它们的算数运算（加减乘除）。}
+
+\Question{给定一个0到10亿以内的数，编程将其转换为英文表示，例如123转换为“one hundred and twenty three”，如果带有小数部分呢？}
+
+\Question{在命令式环境中，循环列表是一种有缺陷的列表：某个节点指向了以前的位置，如图\ref{fig:circular-list}所示。当遍历的时候，会陷入无限循环。设计一个算法检查某个列表是否含有循环。在此基础上，设计算法找到循环开始的节点（被两个不同祖先指向的节点）。
+\begin{center}
+\begin{tikzpicture}[scale=2]
+  % trace
+  \draw[dashed, very thin] (-2cm, 1cm) -- (0, 1cm);
+  \draw[dashed, very thin] (0,0) circle [radius=1cm];
+
+  % leading nodes
+  \foreach \x in {-2, -1.7, ..., -1.4} {
+    \draw[thick] (\x cm, 1cm) +(-0.1, -0.1) rectangle ++(0.1, 0.1);
+    \draw[thick, ->] (\x cm, 1cm) -- +(0.2, 0);
+  }
+
+  % cricular starting points
+  \draw[thick, ->] (-0.3cm, 1cm) -- (-0.1cm, 1cm);
+
+  % circular nodes
+  \foreach \deg/\rot in {90/0, 60/-30, 30/-60, 0/-90, 180/90, 150/60, 120/30} {
+    \draw[thick] (\deg : 1cm) +(-0.1, -0.1) rectangle ++(0.1, 0.1);
+    \draw[thick, ->] (\deg : 1cm) -- +(\rot : 0.2);
+  }
+\end{tikzpicture}
+\captionof{figure}{带有循环的列表}
+\label{fig:circular-list}
+\end{center}
+}
+\end{Answer}
 
 \ifx\wholebook\relax \else
 \section{参考答案}

@@ -77,6 +77,17 @@ concats [] = []
 concats ([]:xss) = concat xss
 concats ((x:xs):xss) = x : concat (xs:xss)
 
+iota1 = iota2 1
+
+iota2 m n = iota' [] n where
+  iota' ns n | n < m = ns
+             | otherwise = iota' (n : ns) (n - 1)
+
+iota m n a | m <= n = m : iota (m + a) n a
+           | otherwise = []
+
+iota4 m = m : iota4 (m + 1)
+
 prop_rindex :: [Int] -> Bool
 prop_rindex xs = xs == (map (atR xs) $ reverse [0..length xs -1])
 
@@ -89,3 +100,20 @@ prop_concat xss = concat xss == concats xss
 prop_tails :: [Int] -> Bool
 prop_tails xs = suffixes xs == xss && sufs xs == xss where
   xss = tails xs
+
+prop_iota1 :: Int -> Bool
+prop_iota1 z = let n = abs z in iota1 n == (take n $ iterate (+1) 1)
+
+prop_iota2 :: Int -> Int -> Bool
+prop_iota2 x y = iota2 m n == (take (n - m + 1) $ iterate (+1) m) where
+  m = min (abs x) (abs y)
+  n = max (abs x) (abs y)
+
+prop_iota3 :: Int -> Int -> Bool
+prop_iota3 x y = all (\a -> iota m n a == (takeWhile (<= n) $ iterate (+a) m)) [1..(n - m)]
+  where
+    m = min (abs x) (abs y)
+    n = max (abs x) (abs y)
+
+prop_iota4 :: Int -> Bool
+prop_iota4 z = let m = abs z in take 10 (iota4 m) == (take 10 $ iterate (+1) m)
