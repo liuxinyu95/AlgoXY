@@ -70,6 +70,9 @@ slice from to = drop (from - 1) . take to
 suffixes [] = [[]]
 suffixes xs@(_:ys) =  xs : suffixes ys
 
+sufs = foldr f [[]] where
+  f x xss@(xs:_) = (x:xs) : xss
+
 concats [] = []
 concats ([]:xss) = concat xss
 concats ((x:xs):xss) = x : concat (xs:xss)
@@ -84,4 +87,5 @@ prop_concat :: [[Int]] -> Bool
 prop_concat xss = concat xss == concats xss
 
 prop_tails :: [Int] -> Bool
-prop_tails xs = suffixes xs == tails xs
+prop_tails xs = suffixes xs == xss && sufs xs == xss where
+  xss = tails xs
