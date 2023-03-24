@@ -77,6 +77,13 @@ concats [] = []
 concats ([]:xss) = concat xss
 concats ((x:xs):xss) = x : concat (xs:xss)
 
+foldr2 f z [] ys = z
+foldr2 f z xs [] = z
+foldr2 f z (x:xs) (y:ys) = foldr2 f (f x y z) xs ys
+
+zip2 = foldr2 f [] where
+  f x y xys = (x, y) : xys
+
 iota1 = iota2 1
 
 iota2 m n = iota' [] n where
