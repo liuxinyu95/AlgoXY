@@ -144,9 +144,31 @@ def toList(xs):
         xs = xs.next
     return ys
 
+def dedup(xs):
+    n = len(xs)
+    i = 0
+    while i < n:
+        j = i + 1
+        while j < n:
+            if xs[i] == xs[j]:
+                (xs[j], xs[n - 1]) = (xs[n - 1], xs[j])
+                n = n - 1
+            else:
+                j = j + 1
+        i = i + 1
+    for _ in range(len(xs) - n):
+        xs.pop()
+    return xs
+
 # testing
 def randlist(n):
     return random.sample(range(n), random.randint(0, n))
+
+def test_dedup():
+    for _ in range(100):
+        xs = randlist(100)
+        assert sorted(set(xs)) == sorted(dedup(xs))
+    print("tested dedup")
 
 def test_zip():
     for _ in range(100):
