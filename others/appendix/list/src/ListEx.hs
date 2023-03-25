@@ -95,6 +95,9 @@ iota m n a | m <= n = m : iota (m + a) n a
 
 iota4 m = m : iota4 (m + 1)
 
+dedup  = foldr f [] where
+  f x xs = x : filter (x /=) xs
+
 prop_rindex :: [Int] -> Bool
 prop_rindex xs = xs == (map (atR xs) $ reverse [0..length xs -1])
 
@@ -124,3 +127,6 @@ prop_iota3 x y = all (\a -> iota m n a == (takeWhile (<= n) $ iterate (+a) m)) [
 
 prop_iota4 :: Int -> Bool
 prop_iota4 z = let m = abs z in take 10 (iota4 m) == (take 10 $ iterate (+1) m)
+
+prop_nub :: [Int] -> Bool
+prop_nub xs = nub xs == dedup xs
