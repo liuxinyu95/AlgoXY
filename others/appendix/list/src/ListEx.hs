@@ -25,7 +25,7 @@ atR xs i = get xs (drop i xs) where
   get (_:xs) (_:ys) = get xs ys
 
 -- lastAt with zip
-lastAt k xs = (fst . last) $ zip xs  (drop k xs)
+lastAt k xs = (fst . last) $ zip xs (drop k xs)
 
 insertAt :: [a] -> Int -> a -> [a]
 insertAt xs 0 y = y:xs
