@@ -17,7 +17,7 @@
 module ListEx where
 
 import Data.List
-import Test.QuickCheck -- for verification purpose only
+import Test.QuickCheck -- for verification
 
 atR :: [a] -> Int -> a
 atR xs i = get xs (drop i xs) where
@@ -97,6 +97,8 @@ iota4 m = m : iota4 (m + 1)
 
 dedup  = foldr f [] where
   f x xs = x : filter (x /=) xs
+
+-- test
 
 prop_rindex :: [Int] -> Bool
 prop_rindex xs = xs == (map (atR xs) $ reverse [0..length xs -1])
