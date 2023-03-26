@@ -2036,25 +2036,16 @@ $zip$和$unzip$的概念是抽象的。我们可以扩展$zip$以关联两棵树
   \item $iota(m, ...) = [m, m + 1, m + 2, ... ]$.
   \end{itemize}
 }
+
 \Question{实现线性时间的命令式$zip$算法。}
+
 \Question{用叠加定义$zip$（提示：定义两个列表的叠加$foldr2\ f\ z\ xs\ ys$）。}
-\Question{对于买水果的例子，如果购买数量的关联列表只包含非零的物品。不是
-\[
-Q = [(apple, 3), (banana, 0), (orange, 1), ...]
-\]
-而是
-\[
-Q = [(apple, 3), (orange, 1), ...]
-\]
-编写程序计算总金额。}
 
 \Question{使用$zip$实现$lastAt$。} % lastAt k xs = (fst . last) $ zip xs  (drop k xs)
 
 \Question{编写一个程序从列表中去除重复的元素。在命令式环境中，请用就地修改的方式删除这些重复元素。在纯函数环境中，构建一个只含有不同元素的新列表。结果列表中的元素顺序应保持和原列表中的一致。这一算法的复杂度是怎样的？如果允许使用额外的数据结构，可以如何简化实现？}
 
 \Question{可以用列表来表示十进制的非负整数。例如1024可以表示为：“$4 \rightarrow 2 \rightarrow 0 \rightarrow 1$”。一般来说，$n = d_m...d_2d_1$可以表示为：“$d_1 \rightarrow d_2 \rightarrow ... \rightarrow d_m$”。任给两个用列表表示的数$a$和$b$。实现它们的算数运算（加减乘除）。}
-
-\Question{给定一个0到10亿以内的数，编程将其转换为英文表示，例如123转换为“one hundred and twenty three”，如果带有小数部分呢？}
 
 \Question{在命令式环境中，循环列表是一种有缺陷的列表：某个节点指向了以前的位置，如图\ref{fig:circular-list}所示。当遍历的时候，会陷入无限循环。设计一个算法检查某个列表是否含有循环。在此基础上，设计算法找到循环开始的节点（被两个不同祖先指向的节点）。
 \begin{center}
@@ -2221,7 +2212,52 @@ dedup = Set.toList . Set.fromList
 \end{Bourbaki}
 }
 
-\Question{可以用列表来表示十进制的非负整数。例如1024可以表示为：“$4 \rightarrow 2 \rightarrow 0 \rightarrow 1$”。一般来说，$n = d_m...d_2d_1$可以表示为：“$d_1 \rightarrow d_2 \rightarrow ... \rightarrow d_m$”。任给两个用列表表示的数$a$和$b$。实现它们的算数运算（加减乘除）。}
+\Question{可以用列表来表示十进制的非负整数。例如1024可以表示为：“$4 \rightarrow 2 \rightarrow 0 \rightarrow 1$”。一般来说，$n = d_m...d_2d_1$可以表示为：“$d_1 \rightarrow d_2 \rightarrow ... \rightarrow d_m$”。任给两个用列表表示的数$a$和$b$。实现它们的算数运算（加减乘除）。
+
+把一个十进制自然数的各位上的数字放入列表，个位在左，高位在右。$n = (d_m...d_2d_1)_{10}$表示为[$d_1$, $d_2$, ..., $d_m$]。例如1024表示为[4, 2, 0, 1]。我们可以从这样的列表，通过$foldr\ (c\ d \mapsto 10d + c)\ 0$转换回自然数。反之，可以利用下面的函数将任意自然数转换成列表：
+
+\begin{Haskell}
+toList n | n < 10 = [n]
+         | otherwise = (n `mod` 10) : toList (n `div` 10)
+\end{Haskell}
+
+首先实现加法，0是加法的单位元，即$0 + a = a + 0 = a$，其中$0$可以表示为$[\ ]$或$[0]$，所以：
+
+\[
+\begin{array}{rcl}
+\left[ \ \right] + bs & = & bs \\
+\left[ 0 \right] + bs & = & bs \\
+as + \left[\ \right] & = & as \\
+as + \left[ 0 \right] & = & as \\
+\end{array}
+\]
+
+将各位相加$d = (a + b) \bmod 10$，进位为$c = \lfloor \dfrac{a + b}{10} \rfloor$，加到后续位上：
+
+\[
+(a \cons as) + (b \cons bs) = d \cons (as + bs + [c])
+\]
+
+下面是对应的例子程序：
+\begin{Haskell}
+add [] bs = bs
+add as [] = as
+add as [0] = as
+add (a:as) (b:bs) = ((a + b) `mod` 10) : add as (add bs [(a + b) `div` 10])
+\end{Haskell}
+
+\begin{Haskell}
+minus as [] = as
+minus (a:as) (b:bs) | a < b = (10 + a - b) : minus (minus as [1]) bs
+                    | otherwise = (a - b) : minus as bs
+
+mul as = foldr (\ b cs -> add (mul1 b as) (0:cs)) [] where
+  mul1 0 _ = []
+  mul1 1 bs = bs
+  mul1 n [] = []
+  mul1 n (b:bs) = (n * b `mod` 10) : add [n * b `div` 10] (mul1 n bs)
+\end{Haskell}
+}
 
 %% \Question{给定一个0到10亿以内的数，编程将其转换为英文表示，例如123转换为“one hundred and twenty three”，如果带有小数部分呢？}
 

@@ -27,21 +27,36 @@ toList n | n < 10 = [n]
 
 add [] bs = bs
 add as [] = as
-add (a:as) (b:bs) = if c > 0 then d : add as (add bs [c])
-                    else d : add as bs
-  where d = (a + b) `mod` 10
-        c = (a + b) `div` 10
+add as [0] = as
+add (a:as) (b:bs) = ((a + b) `mod` 10) : add as (add bs [(a + b) `div` 10])
 
 minus as [] = as
 minus (a:as) (b:bs) | a < b = (10 + a - b) : minus (minus as [1]) bs
                     | otherwise = (a - b) : minus as bs
 
+mul as = foldr (\b cs -> add (mul1 b as) (0:cs)) [] where
+  mul1 0 _ = []
+  mul1 1 bs = bs
+  mul1 n [] = []
+  mul1 n (b:bs) = (n * b `mod` 10) : add [n * b `div` 10] (mul1 n bs)
+
 -- test
+
+-- both f (a, b) = (f a, f b)
+both = fmap
+
+minMax (a, b) = if a < b then (a, b) else (b, a)
+
 prop_add :: Int -> Int -> Bool
-prop_add x y = (a + b) == (dec $ add (toList a) (toList b)) where
-  (a, b) = (abs x, abs y)
+prop_add x y = a + b == (dec $ add (toList a) (toList b)) where
+  (a, b) = both abs (x, y)
 
 prop_minus :: Int -> Int -> Bool
-prop_minus x y = (a - b) == (dec $ minus (toList a) (toList b)) where
-  a = max (abs x) (abs y)
-  b = min (abs x) (abs y)
+prop_minus x y = a - b == (dec $ minus (toList a) (toList b)) where
+  (b, a) = minMax $ both abs (x, y)
+
+prop_mul :: Int -> Int -> Bool
+prop_mul x y = a * b == (dec $ mul (toList a) (toList b)) where
+  (a, b) = both abs (x, y)
+
+testAll = mapM quickCheck [prop_add, prop_minus, prop_mul]
