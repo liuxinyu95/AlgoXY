@@ -36,9 +36,9 @@ minus (a:as) (b:bs) | a < b = (10 + a - b) : minus (minus as [1]) bs
 
 mul as = foldr (\b cs -> add (mul1 b as) (0:cs)) [] where
   mul1 0 _ = []
-  mul1 1 bs = bs
-  mul1 n [] = []
-  mul1 n (b:bs) = (n * b `mod` 10) : add [n * b `div` 10] (mul1 n bs)
+  mul1 1 as = as
+  mul1 b [] = []
+  mul1 b (a:as) = (b * a `mod` 10) : add [b * a `div` 10] (mul1 b as)
 
 -- test
 
