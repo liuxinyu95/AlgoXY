@@ -27,22 +27,23 @@ toList n | n < 10 = [n]
 
 isZero = all (==0)
 
-eq [] [] = True
-eq [] bs = isZero bs
-eq as [] = isZero as
-eq (a:as) (b:bs) = a == b && eq as bs
+cmp [] [] = EQ
+cmp [] bs = if isZero bs then EQ else LT
+cmp as [] = if isZero as then EQ else GT
+cmp (a:as) (b:bs) = case cmp as bs of EQ -> compare a b
+                                      r -> r
 
-lt [] bs = (not . isZero) bs
-lt as [] = False
-lt (a:as) (b:bs) | as `eq` bs = a < b
-                 | otherwise = as `lt` bs
+eq as bs = EQ == cmp as bs
+
+lt as bs = LT == cmp as bs
+
 
 -- trim0 = reverse . (dropWhile (==0)) . reverse
 
 add [] bs = bs
-add [0] bs = add [] bs
+add [0] bs = bs
 add as [] = as
-add as [0] = add as []
+add as [0] = as
 add (a:as) (b:bs) = ((a + b) `mod` 10) : add as (add bs [(a + b) `div` 10])
 
 minus as [] = as

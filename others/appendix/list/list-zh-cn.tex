@@ -2243,20 +2243,22 @@ as + \left[ 0 \right] & = & as \\
 下面是对应的例子程序：
 \begin{Haskell}
 add [] bs = bs
+add [0] bs = bs
 add as [] = as
 add as [0] = as
 add (a:as) (b:bs) = ((a + b) `mod` 10) : add as (add bs [(a + b) `div` 10])
 \end{Haskell}
 
-其次实现减法。$as - 0 = as$，表示为$as - [\ ] = as$。如果某一位上$a < b$，则需要借位：$d = 10 + a - b$，而剩余位$as' = as - [1]$。
+其次实现减法。$as - 0 = as$。否则从个位起按位对$as$、$bs$相减。如果某一位上$a < b$，则需要借位：$d = 10 + a - b$，而剩余位$as' = as - [1]$。
 
 \begin{Haskell}
 minus as [] = as
+minus as [0] = as
 minus (a:as) (b:bs) | a < b = (10 + a - b) : minus (minus as [1]) bs
                     | otherwise = (a - b) : minus as bs
 \end{Haskell}
 
-接下来实现乘法$as \times bs$，我们将$bs$中的每一位$b$乘以$as$，将结果乘以10后累加起来$cs' = 10 \times cs + (b \times as)$。计算$b \times as$时，如果$b = 0, 1$，结果为$0 \times as = 0$，$1 \times as = as$，其它情况下，用$b$乘以首位$a$得到$d = ab \bmod 10$，进位$c = \lfloor \dfrac{ab}{10} \rfloor$加到后继位乘法的结果上：
+接下来实现乘法$as \times bs$，我们将$bs$中的每一位$b$乘以$as$，将结果乘以10后累加起来$cs' = 10 \times cs + (b \times as)$。计算$b \times as$时，如果$b = 0$，结果为$0$；其它情况下，用$b$乘以首位$a$得到$d = ab \bmod 10$，进位$c = \lfloor \dfrac{ab}{10} \rfloor$加到后继位乘法的结果上：
 
 \[
 b \times (a \cons as) = d : ([c] + (b \times as))
@@ -2265,11 +2267,53 @@ b \times (a \cons as) = d : ([c] + (b \times as))
 对应的例子程序为：
 
 \begin{Haskell}
-mul as = foldr (\ b cs -> add (mul1 b as) (0:cs)) [] where
-  mul1 0 _ = []
-  mul1 1 as = as
-  mul1 n [] = []
-  mul1 n (a:as) = (n * a `mod` 10) : add [n * a `div` 10] (mul1 n as)
+mul as = foldr (\ b cs -> add (mul1 b as) (0:cs)) []
+
+mul1 0 _ = []
+mul1 b [] = []
+mul1 b (a:as) = (b * a `mod` 10) : add [b * a `div` 10] (mul1 b as)
+\end{Haskell}
+
+最后实现带余数的除法。首先需要定义如何判断一个数等于0，以及自然数之间的比较关系。如果列表为空或者所有位都是0则这个列表代表的数等于0：
+
+\begin{Haskell}
+isZero = all (== 0)
+\end{Haskell}
+
+比较$as$、$bs$大小时，0小于任何非零自然数，否则从高位向低位进行比较：
+
+\begin{Haskell}
+cmp [] [] = EQ
+cmp [] bs = if isZero bs then EQ else LT
+cmp as [] = if isZero as then EQ else GT
+cmp (a:as) (b:bs) = case cmp as bs of EQ -> compare a b
+                                      r -> r
+\end{Haskell}
+
+这样，小于判断、等于判断都可以用$cmp$定义：
+
+\begin{Haskell}
+eq as bs = EQ == cmp as bs
+lt as bs = LT == cmp as bs
+\end{Haskell}
+
+除法可以用穷举的方式实现（设除数$bs \neq 0$）：
+
+\[
+\lfloor as / bs \rfloor = \begin{cases}
+as < bs: & 0 \\
+\text{否则}: & 1 + \lfloor (as - bs) / bs \rfloor \\
+\end{cases}
+\]
+
+但是我们可以做得更好。考虑$as = q \cdot bs + r$，其中$q$是商，$0 \leq q < bs$是余数。令$as = (a_m...a_2a_1)_{10}$，我们先用穷举法求$a_m$除以$bs$的商$q_m$和余数$r_m = a_m - q_m \cdot bs$。然后附加上下一位$a_{m-1}$，求$10 r_{m} + a_{m-1}$除以$bs$的商$q_{m-1}$和余数$r_{m-1}$。最后把商的各位连接起来。这恰好是$foldr$的过程：
+
+\begin{Haskell}
+ldiv as bs | isZero bs = error "divide by 0"
+           | otherwise = foldr f ([], []) as where
+  f a (qs, rs) = (q:qs, (a:rs) `minus` (q `mul1` bs)) where
+    q =  ndec (a:rs)
+  ndec as = if as `lt` bs then 0 else 1 + ndec (as `minus` bs)
 \end{Haskell}
 }
 
