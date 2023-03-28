@@ -1668,9 +1668,8 @@ For example: $concat\ [[1], [2, 3, 4], [5, 6, 7, 8, 9]] \Rightarrow [1, 2, 3, 4,
 foldr :: (A \to B \to B) \to B \to [A] \to B
 \]
 Where its first parameter $f$ has the type of $A \to B \to B$, the initial value $z$ has the type $B$. It folds a list of $A$, and builds the result of $B$. How to define the insertion-sort with $foldl$? What is the type of $foldl$?}
-\Question{ What's the performance of $concat$?}
-\Question{Design a linear time $concat$ algorithm}
-\Question{Define $map$ in $foldr$}
+\Question{What's the performance of $concat$? Design a linear time $concat$ algorithm.}
+\Question{Define $map$ in $foldr$.}
 \end{Exercise}
 
 \begin{Answer}[ref = {ex:list-fold}]
@@ -1694,9 +1693,9 @@ flip\ f\ x\ y = f\ y\ x
 
 Then define the insertion sort as: $sort = foldl\ (flip\ insert)\ [\ ]$
 }
-\Question{$concat$的时间复杂度是什么？设计一个线性时间的$concat$算法。
+\Question{What's the performance of $concat$? Design a linear time $concat$ algorithm.
 
-使用$foldl$和$foldr$定义$concat$的结果大相径庭。$as \doubleplus bs$的复杂度是$O(m)$，其中$m = |as|$，使用$foldl$实现$xs_1 \doubleplus xs_2 \doubleplus ... \doubleplus xs_n$时，$as$的长度越来越长，复杂度为：$O(m_1 + (m_1 + m_2) + ... + \sum_1^{n-1} m_i)$。使用$foldr$实现$xs_1 \doubleplus (xs_2 \doubleplus (... \doubleplus xs_n)...)$时，$as$的长度不会越来越长，而是每个$xs_i$的长度，其复杂度为$O(m_{n-1} + ... + m_2 + m_1)$是线性时间的。我们可以展开定义一算法：
+The performance varies when define $concat$ with $foldl$ and $foldr$. $as \doubleplus bs$ takes $O(m)$ time, where $m = |as|$. When using $foldl$ for $xs_1 \doubleplus xs_2 \doubleplus ... \doubleplus xs_n$, $as$ gets longer and longer, the performance is $O(m_1 + (m_1 + m_2) + ... + \sum_1^{n-1} m_i)$. While using $foldr$ for $xs_1 \doubleplus (xs_2 \doubleplus (... \doubleplus xs_n)...)$, the length of $as$ doesn't keep increasing, but is the length of every $xs_i$. The performance is $O(m_{n-1} + ... + m_2 + m_1)$, bound to linear time. We can expand its definition:
 
 \begin{Haskell}
 concat [] = []
@@ -1704,7 +1703,7 @@ concat ([]:xss) = concat xss
 concat ((x:xs):xss) = x : concat (xs:xss)
 \end{Haskell}
 }
-\Question{使用$foldr$来定义$map$。
+\Question{Define $map$ in $foldr$.
 \be
 map\ f = foldr\ (x\ xs \mapsto (f\ x) \cons xs)\ [\ ]
 \ee
@@ -1877,12 +1876,54 @@ isInfixOf a b = (not . null) [s | s <- tails b, a `isPrefixOf` s]
 
 Where \texttt{isPrefixOf} does the prefixing testing, \texttt{tails} generates all suffixes of a given list (exercise of this section).
 
-\begin{Exercise}
-\Question{Implement the iterative lookup algorithm.}
+\begin{Exercise}\label{ex:list-query}
 \Question{Implement the linear time filter algorithm through $reverse$.}
-\Question{Implement the iterative prefix testing algorithm.}
 \Question{Enumerate all suffixes of a list.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:list-query}]
+\Question{Implement the linear time filter algorithm through $reverse$.
+\begin{Bourbaki}
+List<K> filterL((K -> Bool) p, List<K> xs) {
+    List<K> ys = null
+    while xs != null {
+        if p(xs.key) then ys = cons(xs.key, ys)
+        xs = xs.next
+    }
+    return reverse(ys)
+}
+
+List<K> reverse(List<K> xs) {
+    List<K> ys = null
+    while xs != null {
+        ys = cons(xs.key, ys)
+        xs = xs.next
+    }
+    return ys
+}
+\end{Bourbaki}
+}
+
+\Question{Enumerate all suffixes of a list.
+
+Method 1: repeat drop the head of $xs$:
+\[
+[xs, tail\ xs, tail\ (tail\ xs), ..., [\ ]]
+\]
+
+Method 2: use pattern matching to drop the head:
+\begin{Haskell}
+tails [] = [[]]
+tails xs@(_:ys) =  xs : tails ys
+\end{Haskell}
+
+Method 3: use $foldr$, start from $[[\ ]]$, add element to right to build the suffixes:
+\begin{Haskell}
+tails = foldr f [[]] where
+  f x xss@(xs:_) = (x:xs) : xss
+\end{Haskell}
+}
+\end{Answer}
 
 \section{zip and unzip}
 \index{List!zip} \index{List!unzip}
@@ -1962,12 +2003,12 @@ $zip$ and $unzip$ are generic. We can expand to $zip$ two trees, where the nodes
 
 List is fundamental to build more complex data structures and algorithms particularly in functional settings. We introduced elementary algorithms to construct, access, update, and transform list; how to search, filter data, and compute with list. Although most programming environments provide pre-defined tools and libraries to support list, we should not simply treat them as black-boxes. Rabhi and Lapalme introduce many functional algorithms about list\cite{algo-fp}. Haskell library provides detailed documentation about basic list algorithms. Bird gives good examples of folding\cite{fp-pearls}, and introduces about the {\em fold fusion law}.
 
-\begin{Exercise}
-\Question{Design the iota ($I$) operator for list, below are the use cases:
+\begin{Exercise}\label{ex:list-others}
+\Question{Design the iota (the Greek letter $I$) operator for list, below are the use cases:
   \begin{itemize}
   \item $iota(..., n) = [1, 2, 3, ..., n]$;
   \item $iota(m, n) = [m, m + 1, m + 2, ..., n]$, where $m \leq n$;
-  \item $iota(m, m+a, ..., n) = [m, m + a, m + 2a, ..., n]$;
+  \item $iota(m, m+a, ..., n) = [m, m + a, m + 2a, ..., m + ka]$, where $k$ is the maximum integer satisfying $m + ka \leq n$;
   \item $iota(m, m, ...) = repeat(m) = [m, m, m, ...]$;
   \item $iota(m, ...) = [m, m + 1, m + 2, ... ]$.
   \end{itemize}
@@ -1975,17 +2016,7 @@ List is fundamental to build more complex data structures and algorithms particu
 
 \Question{Implement the linear time imperative $zip$.}
 
-\Question{Define $zip$ with $foldr$.}
-
-\Question{For the fruits example, suppose the quantity assoc list only contains the items without zero quantity. i.e. instead of
-\[
-Q = [(apple, 3), (banana, 0), (orange, 1), ...]
-\]
-but
-\[
-Q = [(apple, 3), (orange, 1), ...]
-\]
-Write a program to calculate the total payment.}
+\Question{Define $zip$ with fold (hint: define fold for two lists $foldr2\ f\ z\ xs\ ys$).}
 
 \Question{Implement $lastAt$ with $zip$.} % lastAt k xs = (fst . last) $ zip xs  (drop k xs)
 
@@ -2021,6 +2052,371 @@ Write a program to calculate the total payment.}
 \end{center}
 }
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:list-others}]
+\Question{Design the iota (the Greek letter $I$) operator for list, below are the use cases:
+  \begin{itemize}
+  \item $iota(..., n) = [1, 2, 3, ..., n]$;
+  \item $iota(m, n) = [m, m + 1, m + 2, ..., n]$, where $m \leq n$;
+  \item $iota(m, m+a, ..., n) = [m, m + a, m + 2a, ..., m + ka]$, where $k$ is the maximum integer satisfying $m + ka \leq n$;
+  \item $iota(m, m, ...) = repeat(m) = [m, m, m, ...]$;
+  \item $iota(m, ...) = [m, m + 1, m + 2, ... ]$.
+  \end{itemize}
+
+1. Tail recursive way to generate $[1, 2, ..., n]$:
+\begin{Haskell}
+iota = iota' [] where
+  iota' ns n | n < 1 = ns
+             | otherwise = iota' (n : ns) (n - 1)
+\end{Haskell}
+
+2. With start value: $[m, m + 1, ..., n]$. Change the lower limit from 1 to $m$:
+\begin{Haskell}
+iota m n = iota' [] n where
+  iota' ns n | n < m = ns
+             | otherwise = iota' (n : ns) (n - 1)
+\end{Haskell}
+
+3. With step: $[m, m + a, m + 2a, ..., m + ka]$, where $k$ is the maximum integer satisfying $m + ka \leq n$.
+
+\begin{Haskell}
+iota m n a | m <= n = m : iota (m + a) n a
+           | otherwise = []
+\end{Haskell}
+
+4. Remove the termination condition to generate open sequence of $n = \infty$: $[m, m + 1, ...]$.
+\begin{Haskell}
+iota m = m : iota (m + 1)
+\end{Haskell}
+
+For example, generate the first 10 natural numbers: \texttt{take 10 (iota 1)}.
+
+5. Remove $+1$, to implement $repeat$:
+\begin{Haskell}
+repeat m = m : repeat m
+\end{Haskell}
+
+Summarize above, we define the $iterate$ function that covers all $iota$ use cases:
+\begin{Haskell}
+iterate f x = x : iterate f (f x)
+
+iota1 n = take n $ iterate (+1) 1
+iota2 m n = takeWhile (<=n) $ iterate (+1) m
+iota3 m n a = takeWhile (<=n) $ iterate (+a) m
+repeat m = iterate id m
+iota5 m = iterate (+1) m
+\end{Haskell}
+}
+
+\Question{Implement the linear time imperative $zip$.
+\begin{Bourbaki}
+[(A, B)] zip([A] xs, [B] ys) {
+    [(A, B)] zs = null
+    while xs != null and ys != null {
+        zs = cons((xs.key, ys.key), zs)
+        xs = xs.next
+        ys = ys.next
+    }
+    return reverse(zs)
+}
+\end{Bourbaki}
+}
+
+\Question{Define $zip$ with fold (hint: define fold for two lists $foldr2\ f\ z\ xs\ ys$).
+
+Define fold for two lists:
+
+\be
+\begin{array}{rcl}
+foldr2\ f\ z\ [\ ]\ ys & = & z \\
+foldr2\ f\ z\ xs\ [\ ] & = & z \\
+foldr2\ f\ z\ (x \cons xs)\ (y \cons ys) & = & foldr2\ f\ (f\ x\ y\ z)\ xs\ ys \\
+\end{array}
+\ee
+
+Then define $zip$ with $foldr2$ (Curried form):
+
+\[
+zip = foldr2\ f\ [\ ], \text{其中}: f\ x\ y\ xys = (x, y) \cons xys
+\]
+}
+
+\Question{Implement $lastAt$ with $zip$.
+
+To index the right $k$-th element, we drop the first $k$ elements of $xs = [x_0, x_1, ..., x_{n-1}]$ to get $ys = drop\ k\ xs$. Then zip $xs$ and $ys$ as $zip\ xs\ ys$, the last pair is $(x_{n-k-1}, x_{n-1})$.
+\[
+lastAt\ k\ xs = (fst \circ last)\ (zip\ xs\ (drop\ k\ xs))
+\]
+}
+
+\Question{Write a program to remove the duplicated elements in a list while maintain the original order. For imperative implementation, the elements should be removed in-place. What is the complexity? How to simplify it with additional data structure?
+
+\begin{Haskell}
+dedup [] = []
+dedup (x : xs) = x : dedup (filter (x /=) xs)
+\end{Haskell}
+
+We can define $dedup$ with $foldr$:
+
+\begin{Haskell}
+dedup  = foldr f [] where
+  f x xs = x : filter (x /=) xs
+\end{Haskell}
+
+Because we $filter$ for every element, the time is bound to $O(n^2)$. We can use set (see chapter 3, 4) to implement $dedup$ in $O(n \lg n)$ time:
+
+\begin{Haskell}
+dedup = Set.toList . Set.fromList
+\end{Haskell}
+
+The corresponding iterative in-place implementation:
+\begin{Bourbaki}
+[K] dedup([K] xs) {
+    Int n = length(xs)
+    for Int i = 0, i < n, i++ {
+        Int j = i + 1
+        while j < n {
+            if xs[i] == xs[j] {
+                swap(xs[j], xs[n - 1])
+                n--
+            } else {
+                j++
+            }
+        }
+    }
+    Int m = length(xs) - n
+    loop m { pop(xs) }
+    return xs
+}
+\end{Bourbaki}
+}
+
+\Question{List can represent decimal non-negative integer. For example 1024 as list is $4 \rightarrow 2 \rightarrow 0 \rightarrow 1$. Generally, $n = d_m...d_2d_1$ can be represented as $d_1 \rightarrow d_2 \rightarrow ... \rightarrow d_m$. Given two numbers $a$, $b$ in list form. Realize arithmetic operations such as add and subtraction.
+
+\vspace{3mm}
+
+Wrap every digit of a decimal natural number into a list, the higher digit is on the right. Convert $n = (d_m...d_2d_1)_{10}$ to list of [$d_1$, $d_2$, ..., $d_m$]. For example, 1024 is represented as [4, 2, 0, 1]. We can convert such a list back to number, by: $foldr\ (c\ d \mapsto 10d + c)\ 0$. Conversely, below function convert a natural number to list:
+
+\begin{Haskell}
+toList n | n < 10 = [n]
+         | otherwise = (n `mod` 10) : toList (n `div` 10)
+\end{Haskell}
+
+1. Add. 0 is the unit element, i.e., $0 + as = as + 0 = as$, where $0$ is represented as empty list $[\ ]$ or list of all zeros $[0]$.
+
+\[
+\begin{array}{rcl}
+\left[ \ \right] + bs & = & bs \\
+\left[ 0 \right] + bs & = & bs \\
+as + \left[\ \right] & = & as \\
+as + \left[ 0 \right] & = & as \\
+\end{array}
+\]
+
+Add every digit together $d = (a + b) \bmod 10$, and add the carry $c = \lfloor \dfrac{a + b}{10} \rfloor$ to the next digit:
+
+\[
+(a \cons as) + (b \cons bs) = d \cons (as + bs + [c])
+\]
+
+Below is the example program:
+\begin{Haskell}
+add [] bs = bs
+add [0] bs = bs
+add as [] = as
+add as [0] = as
+add (a:as) (b:bs) = ((a + b) `mod` 10) : add as (add bs [(a + b) `div` 10])
+\end{Haskell}
+
+2. Minus. $as - 0 = as$, otherwise subtract each digit of $as$ and $bs$. If the digit $a < b$, we need carry out: $d = 10 + a - b$, and the remaining $as' = as - [1]$.
+
+\begin{Haskell}
+minus as [] = as
+minus as [0] = as
+minus (a:as) (b:bs) | a < b = (10 + a - b) : minus (minus as [1]) bs
+                    | otherwise = (a - b) : minus as bs
+\end{Haskell}
+
+3. Multiply. For $as \times bs$, we multiply every digit $b$ in $bs$ to $as$, then times the by 10 and accumulate the result: $cs' = 10 \times cs + (b \times as)$. When compute $b \times as$, if $b = 0$, the it's $0$; otherwise, multiply $b$ with the first digit $a$ to get $d = ab \bmod 10$, add the carry $c = \lfloor \dfrac{ab}{10} \rfloor$ to the further result:
+
+\[
+b \times (a \cons as) = d : ([c] + (b \times as))
+\]
+
+Below is the corresponding example program:
+
+\begin{Haskell}
+mul as = foldr (\ b cs -> add (mul1 b as) (0:cs)) []
+
+mul1 0 _ = []
+mul1 b [] = []
+mul1 b (a:as) = (b * a `mod` 10) : add [b * a `div` 10] (mul1 b as)
+\end{Haskell}
+
+4. Divide (with remainder). First, define how to test zero, how to compare two numbers. A number is zero if it's an empty list or all digits are 0:
+
+\begin{Haskell}
+isZero = all (== 0)
+\end{Haskell}
+
+To compare $as$ and $bs$, 0 is less than any none zero number; otherwise, compare from the highest bit to the lowest (EQ: equal, LT: less than, GT: greater than):
+
+\begin{Haskell}
+cmp [] [] = EQ
+cmp [] bs = if isZero bs then EQ else LT
+cmp as [] = if isZero as then EQ else GT
+cmp (a:as) (b:bs) = case cmp as bs of EQ -> compare a b
+                                      r -> r
+\end{Haskell}
+
+Then we can define equal, and less than test with $cmp$:
+
+\begin{Haskell}
+eq as bs = EQ == cmp as bs
+lt as bs = LT == cmp as bs
+\end{Haskell}
+
+The brute-force way to implement divide is to repeat minus $bs \neq 0$ from $as$:
+
+\[
+\lfloor as / bs \rfloor = \begin{cases}
+as < bs: & 0 \\
+\text{otherwise}: & 1 + \lfloor (as - bs) / bs \rfloor \\
+\end{cases}
+\]
+
+To improve it, consider $as = q \cdot bs + r$, where $q$ is the quotient, $0 \leq r < bs$ is the remainder. Let $as = (a_m...a_2a_1)_{10} = [a_1, a_2, ..., a_m]$, we first use the brute force way to divide $a_m$ by $bs$ to get the quotient $q_m$ and the remainder $r_m = a_m - q_m \cdot bs$. Then add the next digit $a_{m-1}$, to divide $10 r_{m} + a_{m-1}$ by $bs$ to get the quotient $q_{m-1}$ and the remainder $r_{m-1}$. Finally, put all digits together. This is exactly the $foldr$ process:
+
+\begin{Haskell}
+ldiv as bs | isZero bs = error "divide by 0"
+           | otherwise = foldr f ([], []) as where
+  f a (qs, rs) = (q:qs, (a:rs) `minus` (q `mul1` bs)) where
+    q =  ndec (a:rs)
+  ndec as = if as `lt` bs then 0 else 1 + ndec (as `minus` bs)
+\end{Haskell}
+}
+
+\Question{In imperative settings, a circular linked-list is corrupted, that some node points back to previous one, as shown in figure \ref{fig:circular-list}. When traverse, it falls into infinite loops. Design an algorithm to detect if a list is circular. On top of that, improve it to find the node where loop starts (the node being pointed by two precedents).
+\begin{center}
+\begin{tikzpicture}[scale=2]
+  % trace
+  \draw[dashed, very thin] (-2cm, 1cm) -- (0, 1cm);
+  \draw[dashed, very thin] (0,0) circle [radius=1cm];
+
+  % leading nodes
+  \foreach \x in {-2, -1.7, ..., -1.4} {
+    \draw[thick] (\x cm, 1cm) +(-0.1, -0.1) rectangle ++(0.1, 0.1);
+    \draw[thick, ->] (\x cm, 1cm) -- +(0.2, 0);
+  }
+
+  % cricular starting points
+  \draw[thick, ->] (-0.3cm, 1cm) -- (-0.1cm, 1cm);
+
+  % circular nodes
+  \foreach \deg/\rot in {90/0, 60/-30, 30/-60, 0/-90, 180/90, 150/60, 120/30} {
+    \draw[thick] (\deg : 1cm) +(-0.1, -0.1) rectangle ++(0.1, 0.1);
+    \draw[thick, ->] (\deg : 1cm) -- +(\rot : 0.2);
+  }
+\end{tikzpicture}
+\captionof{figure}{List with cycle}
+\label{fig:circular-list}
+\end{center}
+
+If a list has cycle, the traverse will not stop. Consider two runners in a circle, the faster runner will catch, meet, surpass the slower one again and again\footnote{Strictly speaking, it's limit to continuous situation. For discrete case like linked-list, they meet if the two speed integers co-prime.}. We use two pointers to traverse the list: $p$ moves 1 node a time, $q$ moves 2 nodes a time. If they meet at sometime, then there is a circle.
+
+\begin{Bourbaki}
+Bool hasCycle(List<K> h) {
+    var p = h, q = h
+    while p != null and q != null {
+        p = p.next
+        q = q.next
+        if q == null then return False
+        q = q.next
+        if p == q return True
+    }
+    return False
+}
+\end{Bourbaki}
+
+Robert W. Folyd called this method `tortoise and hare' algorithm. We can further find the node where the circle starts. As shown in figure \ref{fig:circular-catching}, let OA has $k$ nodes. The loop starts from A. The circle contains $n$ nodes. When $p$ arrives at $A$, the faster pointer (doubled speed) $q$ will arrives at $B$. From this time point, the two pointers loop. $p$ is behind $q$ by $k$ nodes. From circle perspective, it equivalent to $q$ is going to catch up $p$, which is ahead of $n - k$ nodes. It takes time of:
+
+\[
+ t = \dfrac{n - k}{2v - v} = \dfrac{n - k}{v}
+\]
+
+\begin{center}
+\begin{tikzpicture}[scale=2]
+  % trace
+  \draw[dashed, very thin] (-2cm, 1cm) -- (0, 1cm);
+  \draw[dashed, very thin] (0,0) circle [radius=1cm];
+
+  % label line
+  \draw[very thin] (0, 0) -- (0, 1.4cm);
+  \draw[very thin] (0, 0) -- (15:1.4cm);
+  \draw[very thin] (-2cm, 1cm) -- +(0, 0.4cm);
+
+  % label and arrows
+  \draw[very thin, <->] (-2cm, 1.2cm) node[above]{$O$} -- (-1cm, 1.2cm) node[above]{$k$} -- (0, 1.2cm) node[above]{$A\ p$};
+  \draw[very thin, <->] (0, 1.2cm) arc [start angle = 90, end angle = 15, radius=1.2cm] node[right]{$B\ q$};
+  \draw (45:1.2cm) node[above]{$k$};
+  \draw[very thin, <->] (15:0.5cm) arc [start angle = 15, end angle = -270, radius=0.5cm];
+  \draw (-135:0.5cm) node[left]{$n-k$};
+
+  % leading nodes
+  \foreach \x in {-2, -1.7, ..., -1.4} {
+    \draw[thick] (\x cm, 1cm) +(-0.1, -0.1) rectangle ++(0.1, 0.1);
+    \draw[thick, ->] (\x cm, 1cm) -- +(0.2, 0);
+  }
+
+  % cricular starting points
+  \draw[thick, ->] (-0.3cm, 1cm) -- (-0.1cm, 1cm);
+
+  % circular nodes
+  \foreach \deg/\rot in {90/0, 60/-30, 30/-60, 0/-90, 180/90, 150/60, 120/30} {
+    \draw[thick] (\deg : 1cm) +(-0.1, -0.1) rectangle ++(0.1, 0.1);
+    \draw[thick, ->] (\deg : 1cm) -- +(\rot : 0.2);
+  }
+\end{tikzpicture}
+\captionof{figure}{Tortoise and hare}
+\label{fig:circular-catching}
+\end{center}
+
+When meet, $p$ moves from $A$ by distance of $v\dfrac{n-k}{v} = n - k$. $p$ will arrive at $A$ again after moving forward $k$ nodes. At this time, if reset $q$ to the head $O$, let it move 1 node a time. Then $q$ will arrive at $A$ after $k$ nodes too, i.e., $p$ and $q$ meet at $A$. Although we assumed $k < n$, it's true also for $k \geq n$.
+
+\begin{proof}
+$p$ and $q$ start from the head. When $p$ arrives at $A$, $q$ will arrive at a place in the circle pass A by $k \bmod n$ nodes. Convert to $q$ will catch up $p$ ahead of $n - (k \bmod n)$ nodes. It takes time:
+
+\[
+t = \dfrac{n - (k \bmod n)}{2v - v} = \dfrac{n - (k \bmod n)}{v}
+\]
+
+When meet, $p$ moves from $A$ by distance of $v\dfrac{n - (k \bmod n)}{v} = n - (k \bmod n)$. If $p$ further moves forward $k$, it will arrives at the place of $(k \bmod n) + n - (k \bmod n) = n$, it's exactly at $A$ again. At this time after $p$ and $q$ meet, if reset $q$ to the head $O$, let it move 1 node a time. Then $a$ will arrive at $A$ after $k$ nodes too, i.e., $p$ and $q$ meet at $A$ again.
+\end{proof}
+
+We can implement a program to find A:
+
+\begin{Bourbaki}
+Optional<List<K>> findCycle(List<K> h) {
+    var p = h, q = h
+    while p != null and q != null {
+        p = p.next
+        q = q.next
+        if q == null then return Optional.Nothing
+        q = q.next
+        if p == q {
+            q = h
+            while p != q {
+                p = p.next
+                q = q.next
+            }
+            return Optional.of(p)
+        }
+    }
+    return Optional.Nothing
+}
+\end{Bourbaki}
+}
+\end{Answer}
 
 \ifx\wholebook\relax \else
 \section{Answers}
