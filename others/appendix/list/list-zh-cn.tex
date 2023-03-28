@@ -2345,7 +2345,7 @@ ldiv as bs | isZero bs = error "divide by 0"
 \label{fig:circular-list}
 \end{center}
 
-如果列表带有环，从表头开始遍历会陷入循环。如果在环形跑道上有两名选手，跑得快的会不断追上、遇到、超过跑得慢的选手\footnote{严格来说，这只适用于连续情况，对于离散列表，当两个速度互素时，一定会套圈相遇。}。我们可以利用两个指针遍历列表：$p$每次前进1个节点，$q$每次前进两个节点。如果它们在某个时刻相遇，则说明有环。
+如果列表带有环，从表头开始遍历会陷入循环。如果在环形跑道上有两名选手，跑得快的会不断追上、遇到、超过跑得慢的选手\footnote{严格来说，这只适用于连续情况，对于离散列表，当两个速度互素时，一定会套圈相遇。}。我们可以利用两个指针遍历列表：$p$每次前进1个节点，$q$每次前进2个节点。如果它们在某个时刻相遇，则说明有环。
 
 \begin{Bourbaki}
 Bool hasCycle(List<K> h) {
@@ -2361,7 +2361,11 @@ Bool hasCycle(List<K> h) {
 }
 \end{Bourbaki}
 
-弗洛伊德乘这种方法叫做“龟兔赛跑”。我们还可以进一步求出循环开始的位置。考虑下图：
+罗伯特$\cdot$弗洛伊德把这种方法叫做“龟兔赛跑”。我们还可以进一步求出循环开始的位置。考虑下图\ref{fig:circular-catching}，令OA长度为$k$个节点，从A开始循环，周长为$n$个节点。当$p$到达$A$时，速度为2倍的$q$已经到达位置$B$。此时两个指针开始转圈。$p$落后$q$距离$k$，从环上看等价于$q$要追上在它前面$n-k$距离的$p$。这需要用时：
+
+\[
+ t = \dfrac{n - k}{2v - v} = \dfrac{n - k}{v}
+\]
 
 \begin{center}
 \begin{tikzpicture}[scale=2]
@@ -2375,8 +2379,8 @@ Bool hasCycle(List<K> h) {
   \draw[very thin] (-2cm, 1cm) -- +(0, 0.4cm);
 
   % label and arrows
-  \draw[very thin, <->] (-2cm, 1.2cm) node[above]{$O$} -- (-1cm, 1.2cm) node[above]{$k$} -- (0, 1.2cm) node[above]{$A, v_s$};
-  \draw[very thin, <->] (0, 1.2cm) arc [start angle = 90, end angle = 15, radius=1.2cm] node[right]{$B, v_f = 2v_s$};
+  \draw[very thin, <->] (-2cm, 1.2cm) node[above]{$O$} -- (-1cm, 1.2cm) node[above]{$k$} -- (0, 1.2cm) node[above]{$A\ p$};
+  \draw[very thin, <->] (0, 1.2cm) arc [start angle = 90, end angle = 15, radius=1.2cm] node[right]{$B\ q$};
   \draw (45:1.2cm) node[above]{$k$};
   \draw[very thin, <->] (15:0.5cm) arc [start angle = 15, end angle = -270, radius=0.5cm];
   \draw (-135:0.5cm) node[left]{$n-k$};
@@ -2400,6 +2404,40 @@ Bool hasCycle(List<K> h) {
 \label{fig:circular-catching}
 \end{center}
 
+此时$p$从$A$前进了：$v\dfrac{n-k}{v} = n - k$。也就是说$p$再前进$k$就将回到$A$。如果这时让$q$回到表头再次出发，一次前进1个节点。$q$前进$k$后也将到达$A$，即$p$和$q$在$A$相遇。上述分析假设了$k < n$。我们可以证明$k \geq n$时结论也是对的：
+
+\begin{proof}
+$p$、$q$从表头出发后，当$p$到达$A$时，$q$到达了圆周上A后面$k \bmod n$的位置。此时转换为追及问题：$q$要追上前面距离$n - (k \bmod n)$的$q$，用时：
+
+\[
+t = \dfrac{n - (k \bmod n)}{2v - v} = \dfrac{n - (k \bmod n)}{v}
+\]
+
+此时$p$从$A$前进了：$v\dfrac{n - (k \bmod n)}{v} = n - (k \bmod n)$，如果$p$再前进$k$将到达位置：$(k \bmod n) + n - (k \bmod n) = n$，恰好回到了$A$。因此如果让$q$在追上$p$后回到表头再次出发，一次前进一个节点，经过$k$后也将到达$A$和$p$再次相遇。
+\end{proof}
+
+根据上述分析，下面的例子程序求出A所在的位置：
+
+\begin{Bourbaki}
+Optional<List<K>> findCycle(List<K> h) {
+    var p = h, q = h
+    while p != null and q != null {
+        p = p.next
+        q = q.next
+        if q == null then return Optional.Nothing
+        q = q.next
+        if p == q {
+            q = h
+            while p != q {
+                p = p.next
+                q = q.next
+            }
+            return Optional.of(p)
+        }
+    }
+    return Optional.Nothing
+}
+\end{Bourbaki}
 }
 \end{Answer}
 
