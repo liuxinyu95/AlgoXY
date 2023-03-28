@@ -82,9 +82,22 @@ tail\ (x \cons xs) & = xs
 
 For a none empty list $X$, we also denote the first element as $x_1$, and the rest sub-list as $X'$. For example, when $X = [x_1, x_2, x_3, ...]$, then $X' = [x_2, x_3, ...]$.
 
-\begin{Exercise}
-\Question{For list of type $A$, suppose we can test if any two elements $x, y \in A$ are equal, define an algorithm to test if two lists are identical.}
+\begin{Exercise}\label{ex:list-eq}
+\Question{For list of type $A$, suppose we can test if any two elements $x, y \in A$ are equal, define the algorithm to test if two lists are equal.}
 \end{Exercise}
+
+\begin{Answer}[ref={ex:list-eq}]
+\Question{For list of type $A$, suppose we can test if any two elements $x, y \in A$ are equal, define the algorithm to test if two lists are equal.
+
+\begin{Haskell}
+(==) :: [a] -> [a] -> Bool
+[] == [] = True
+(x:xs) == (y:ys) = x == y && (xs == ys)
+xs == ys = False
+\end{Haskell}
+}
+\end{Answer}
+
 
 \section{Basic operations}
 \index{List!length}
@@ -133,9 +146,25 @@ We leave the empty list not handled. The behavior when $[\ ]$ is undefined. As s
 \EndFunction
 \end{algorithmic}
 
-\begin{Exercise}
-\Question{In the iterative \textproc{Get-At}($i, X$) implementation, what is the behavior when $X$ is empty? what if $i$ is out of the bound or negative?}
+\begin{Exercise}\label{ex:list-get-at}
+\Question{For the iterative \textproc{Get-At}($i, X$), what is the behavior when $X$ is empty? what if $i$ is out of bound?}
 \end{Exercise}
+
+\begin{Answer}[ref={ex:list-get-at}]
+\Question{For the iterative \textproc{Get-At}($i, X$), what is the behavior when $X$ is empty? what if $i$ is out of bound?
+
+The behavior is undefined. We can handle it with \texttt{Optional<T>}:
+\begin{Bourbaki}
+Optional<T> getAt(List<T> xs, Int i) {
+    while i != 0 and xs != null {
+        xs = xs.next
+        i--
+    }
+    return if xs != null then Optional.of(xs.key) else Optional.Nothing
+}
+\end{Bourbaki}
+}
+\end{Answer}
 
 \subsection{Last}
 \index{List!last} \index{List!init}
@@ -240,10 +269,36 @@ drop\ m\ (x \cons xs) & = & drop\ (m - 1)\ xs \\
 \end{array}
 \ee
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:list-init-last}
 \Question{In the \textproc{Init} algorithm, can we use \textproc{Append}($X'$, \textproc{First}($X$)) instead of \textproc{Cons}?}
 \Question{How to handle empty list or out of bound error in \textproc{Last-At}?}
 \end{Exercise}
+
+\begin{Answer}[ref={ex:list-init-last}]
+\Question{In the \textproc{Init} algorithm, can we use \textproc{Append}($X'$, \textproc{First}($X$)) instead of \textproc{Cons}?
+
+\textproc{Append} need traverse to the tail every time, hence degrade the performance from $O(n)$ to $O(n^2)$, where $n$ is the length.
+}
+
+\Question{How to handle empty list or out of bound error in \textproc{Last-At}?
+
+\begin{Bourbaki}
+Optional<T> lastAt(List<T> xs, Int i) {
+    List<T> p = xs
+    while i != 0 and xs != null {
+        xs = xs.next
+        i--
+    }
+    if xs == null then return Optional.Nothing
+    while xs.next != null {
+        xs = xs.next
+        p = p.next
+    }
+    return Optional.of(p.key)
+}
+\end{Bourbaki}
+}
+\end{Answer}
 
 \subsection{Mutate}
 \index{List!mutate}
@@ -301,11 +356,51 @@ setAt\ i\ x\ (y \cons ys) & = & y : setAt\ (i - 1)\ x\ ys \\
 
 The $setAt$ is bound to $O(i)$ time, where $i$ is the position for update.
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:list-append}
 \Question{Add the `tail' reference, optimize the $append$ to constant time.}
 \Question{When need update the tail reference? How does it affect the performance?}
 \Question{Handle the empty list and out of bound error for $setAt$.}
 \end{Exercise}
+
+\begin{Answer}[ref={ex:list-append}]
+\Question{Add the `tail' reference, optimize the $append$ to constant time.
+
+We need wrap the linked-list with the head and tail variables:
+
+\begin{Bourbaki}
+data List<A> {
+    data Node<A> {
+        A key
+        Node<A> next
+    }
+
+    Node<A> head = null
+    Node<A> tail = null
+    Int length = 0
+}
+
+List<A> append(List<A> xs, A x) {
+    List.Node<A> tl = xs.tail
+    xs.tail = List.Node<A>(x, null)
+    if tl == null {
+        xs.head = xs.tail
+    } else {
+        tl.next = xs.tail
+    }
+    xs.length++
+    return xs
+}
+\end{Bourbaki}
+}
+\Question{When need update the tail reference? How does it affect the performance?
+
+We need update the tail reference when append to, delete from the tail, add to empty list, delete the element from a singleton list, and split the list. All operations are in constant time except for the splitting $as = bs \doubleplus cs$. We need linear time to reach the tail of $bs$.
+}
+\Question{Handle the empty list and out of bound error for $setAt$.
+
+$setAt\ 0\ x\ [\ ]$ means $x : [\ ]$. Let $|xs| = n$, we treat $setAt\ n\ x\ xs$ same as $xs \doubleplus [x]$. Other out of bound cases will raise exception.
+}
+\end{Answer}
 
 \subsubsection{insert}
 \index{List!insert} \index{List!insert at}
@@ -391,10 +486,31 @@ We can eliminate the recursion to implement the iterative implementation. Scan t
 
 At any time during loop, the $S$ is sorted. The recursive implementation processes the list from right, while the iterative one is from left. We'll use `tail-recursion' in section \ref{sec:tail-call} to eliminate this difference. Chapter 3 is about insertion sort in detail, including performance analysis and optimization.
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:list-insert}
 \Question{Handle the out-of-bound case when insert, treat it as append.}
 \Question{Implement insert for array. When insert at position $i$, all elements after $i$ need shift to the end.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:list-insert}]
+\Question{Handle the out-of-bound case when insert, treat it as append.
+\begin{Haskell}
+insert n x [] = [x]
+insert n x (y:ys) | n <= 0 = x : y : ys
+                  | otherwise y : insert (n - 1) x ys
+\end{Haskell}
+}
+\Question{Implement insert for array. When insert at position $i$, all elements after $i$ need shift to the end.
+\begin{Bourbaki}
+[K] insert([K] xs, Int i, K x) {
+    append(xs, x)
+    for Int j = length(xs) - 1, j > i, j-- {
+        swap(xs[j], xs[j-1])
+    }
+    return xs
+}
+\end{Bourbaki}
+}
+\end{Answer}
 
 \subsubsection{delete}
 \index{List!delete} \index{List!delete at}
@@ -456,10 +572,40 @@ Because we scan the list to find the target element, the time is bound to $O(n)$
 \EndFunction
 \end{algorithmic}
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:list-delete}
 \Question{Implement the algorithm to find and delete all occurrences of a given value.}
 \Question{Design the delete algorithm for array, all elements after the delete position need shift to front.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:list-delete}]
+\Question{Implement the algorithm to find and delete all occurrences of a given value.
+\begin{Haskell}
+delAll x [] = []
+delAll x (y:ys) | x == y = delAll x ys
+                | otherwise = y : delAll x ys
+\end{Haskell}
+Or use $foldr$:
+\begin{Haskell}
+delAll x = foldr f [] where
+  f y ys = if x == y then ys else y : ys
+\end{Haskell}
+}
+\Question{Design the delete algorithm for array, all elements after the delete position need shift to front.
+\begin{Bourbaki}
+[K] delAt(Int i, [K] xs) {
+    Int n = length(xs)
+    if 0 <= i and i < n {
+        while i < n - 1 {
+            xs[i] = xs[i + 1]
+            i++
+        }
+        popLast(xs)
+    }
+    return xs
+}
+\end{Bourbaki}
+}
+\end{Answer}
 
 \subsubsection{concatenate}
 \label{concat} \index{List!concat}
@@ -751,11 +897,35 @@ Alternatively, we can re-use the first element as the accumulator. Every time, w
 \end{array}
 \ee
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:list-tail-recursive}
 \Question{Change $length$ to tail recursive.}
-\Question{Change the insertion sort to tail recursive.}
 \Question{Compute $b^n$ through the binary format of $n$.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:list-tail-recursive}]
+\Question{Change $length$ to tail recursive.
+\begin{Haskell}
+length  = len 0 where
+  len n [] = n
+  len n (x:xs) = len (n + 1) xs
+\end{Haskell}
+}
+\Question{Compute $b^n$ through the binary format of $n$.
+
+$b$ needn't necessarily be integer, it can be real, or any element in a set that defines the unit $e$ (e.g. 1) and binary operation (e.g. multiply). We call such set monoid in mathematics.
+
+\begin{Bourbaki}
+Monoid pow(Monoid b, Int n) {
+    Monoid a = Monoid.e
+    while n != 0 {
+        if n & 1 == 1 then a = a * b
+        b = b * b
+        n = n >> 1
+    return a
+}
+\end{Bourbaki}
+}
+\end{Answer}
 
 \section{Transform}
 \index{List!Transform}
@@ -1049,10 +1219,19 @@ List<T> reverse(List<T> xs) {
 }
 \end{lstlisting}
 
-\begin{Exercise}
-\Question{Given a number from 0 to 1 billion, write a program to `read' it out. for example, output string `one hundred and twenty three' for 123. What if there is decimal part?}
+\begin{Exercise}\label{ex:list-transform}
 \Question{Find the maximum $v$ in a list of pairs $[(k, v)]$ in tail recursive way.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:list-transform}]
+\Question{Find the maximum $v$ in a list of pairs $[(k, v)]$ in tail recursive way.
+\begin{Haskell}
+maxValue ((k, v):kvs) = maxV v kvs where
+  maxV m [] = m
+  maxV m ((_, v):kvs) = maxV (max m v) kvs
+\end{Haskell}
+}
+\end{Answer}
 
 \section{Sub-list}
 \index{List!Extract sub-list} \index{List!take} \index{List!drop} \index{List!split at}
@@ -1120,10 +1299,6 @@ We can extend $take/drop$ to keep taking or dropping as far as some condition is
 \end{array}
 }}
 \ee
-
-\begin{Exercise}
-\Question{Define $sublist$ and $slice$ in Curried Form without $X$ as parameter.}
-\end{Exercise}
 
 \subsection{break and group}
 \index{List!break} \index{List!span}
@@ -1235,10 +1410,10 @@ Although the new function groups string correctly, it can't group numbers descen
 
 When group ``Mississippi'', the equal ($=$) operator satisfies the three axioms, and generates the correct result. However, the Curried ($\geq$) as an equivalent relationship, violets both reflexive and symmetric axioms, hence generates unexpected result. The second implementation via $span$, limits its use case to strict equivalence; while the first one does not. It only tests the predication for every two elements matches, which is weaker than equivalence.
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:list-take-drop}
 \Question{Change the $take/drop$ implementation. When $n$ is negative, returns $[\ ]$ for $take$, and the entire list for $drop$.}
 \Question{Implement the in-place imperative $take/drop$.}
-\Question{Implement the iterative `take while' and `drop while'.}
+\Question{Define $sublist$ and $slice$ in Curried Form without $X$ as parameter.}
 \Question{Consider the below $span$ implementation:
 \[
 \begin{array}{rcl}
@@ -1251,6 +1426,65 @@ span\ p\ (x \cons xs) & = & \begin{cases}
 \]
 What is the difference here?}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:list-take-drop}]
+\Question{Change the $take/drop$ implementation. When $n$ is negative, returns $[\ ]$ for $take$, and the entire list for $drop$.
+\begin{Haskell}
+safeTake n [] = []
+safeTake n (x:xs) | n <= 0 = []
+                  | otherwise = x : safeTake (n - 1) xs
+
+safeDrop n [] = []
+safeDrop n (x:xs) | n <= 0 = x:xs
+                  | otherwise = drop (n - 1) xs
+\end{Haskell}
+}
+\Question{Implement the in-place imperative $take/drop$.
+
+We need append to/delete from the tail of array, otherwise, need shift elements. Let the length of array $xs$ be $n$, we implement $take(m, xs)$ by deleting $n - m$ elements from tail. For $drop(m, xs)$, we start from $xs[m]$, move every element $xs[i]$ ahead to $xs[i - m]$. Finally remove $m$ elements from the tail.
+\begin{Bourbaki}
+[K] take(Int m, [K] xs) {
+    Int d = length(xs) - m
+    while d > 0 and xs != [] {
+        pop(xs)
+        d--
+    }
+    return xs
+}
+
+[K] drop(Int m, xs) {
+    if m <= 0 then return xs
+    for Int i = m to length(xs) { xs[i - n] = xs[i] }
+    while m > 0 and xs != [] {
+        pop(xs)
+        m--
+    }
+    return xs
+}
+\end{Bourbaki}
+}
+\Question{Define $sublist$ and $slice$ in Curried Form without $X$ as parameter.
+\begin{Haskell}
+sublist from cnt = take cnt . drop (from - 1)
+
+slice from to = drop (from - 1) . take to
+\end{Haskell}
+}
+\Question{Consider the below $span$ implementation:
+\[
+\begin{array}{rcl}
+span\ p\ [\ ] & = & ([\ ], [\ ]) \\
+span\ p\ (x \cons xs) & = & \begin{cases}
+  (p\ x) : & (x:as, bs), \text{where}: (as, bs) = span(p, xs) \\
+  \text{otherwise}: & (as, x:bs) \\
+\end{cases}
+\end{array}
+\]
+What is the difference here?
+
+It separates $xs$ into two: all elements satisfying $p$ and the others: $as = [p(a), a \gets xs]$ and $bs = [not\ p(b), b \gets xs]$. $as$ is not necessarily the longest prefix that satisfies $p$, but the longest sub-sequence satisfying $p$.
+}
+\end{Answer}
 
 \section{Fold}
 \label{sec:fold}
@@ -1428,7 +1662,7 @@ concat = fold_r\ (\doubleplus)\ [\ ]
 
 For example: $concat\ [[1], [2, 3, 4], [5, 6, 7, 8, 9]] \Rightarrow [1, 2, 3, 4, 5, 6, 7, 8, 9]$.
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:list-fold}
 \Question{To define insertion-sort with $foldr$, we design the insert function as $insert\ x\ X$, and sort as $sort = foldr\ insert\ [\ ]$. The type for $foldr$ is:
 \[
 foldr :: (A \to B \to B) \to B \to [A] \to B
@@ -1438,6 +1672,44 @@ Where its first parameter $f$ has the type of $A \to B \to B$, the initial value
 \Question{Design a linear time $concat$ algorithm}
 \Question{Define $map$ in $foldr$}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:list-fold}]
+\Question{To define insertion-sort with $foldr$, we design the insert function as $insert\ x\ X$, and sort as $sort = foldr\ insert\ [\ ]$. The type for $foldr$ is:
+\[
+foldr :: (A \to B \to B) \to B \to [A] \to B
+\]
+Where its first parameter $f$ has the type of $A \to B \to B$, the initial value $z$ has the type $B$. It folds a list of $A$, and builds the result of $B$. How to define the insertion-sort with $foldl$? What is the type of $foldl$?
+
+\vspace{3mm}
+
+$foldl$ has the type of $foldl :: (B \to A \to B) \to B \to [A] \to B$. We need swap the arguments of insert for $foldl$:
+\[
+sort = foldl\ (xs\ x \mapsto insert\ x\ xs)\ [\ ]
+\]
+
+Or define a $flip$ function:
+\be
+flip\ f\ x\ y = f\ y\ x
+\ee
+
+Then define the insertion sort as: $sort = foldl\ (flip\ insert)\ [\ ]$
+}
+\Question{$concat$的时间复杂度是什么？设计一个线性时间的$concat$算法。
+
+使用$foldl$和$foldr$定义$concat$的结果大相径庭。$as \doubleplus bs$的复杂度是$O(m)$，其中$m = |as|$，使用$foldl$实现$xs_1 \doubleplus xs_2 \doubleplus ... \doubleplus xs_n$时，$as$的长度越来越长，复杂度为：$O(m_1 + (m_1 + m_2) + ... + \sum_1^{n-1} m_i)$。使用$foldr$实现$xs_1 \doubleplus (xs_2 \doubleplus (... \doubleplus xs_n)...)$时，$as$的长度不会越来越长，而是每个$xs_i$的长度，其复杂度为$O(m_{n-1} + ... + m_2 + m_1)$是线性时间的。我们可以展开定义一算法：
+
+\begin{Haskell}
+concat [] = []
+concat ([]:xss) = concat xss
+concat ((x:xs):xss) = x : concat (xs:xss)
+\end{Haskell}
+}
+\Question{使用$foldr$来定义$map$。
+\be
+map\ f = foldr\ (x\ xs \mapsto (f\ x) \cons xs)\ [\ ]
+\ee
+}
+\end{Answer}
 
 \section{Search and filter}
 
@@ -1751,6 +2023,9 @@ Write a program to calculate the total payment.}
 \end{Exercise}
 
 \ifx\wholebook\relax \else
+\section{Answers}
+\shipoutAnswer
+
 \begin{thebibliography}{99}
 
 \bibitem{fp-pearls}
