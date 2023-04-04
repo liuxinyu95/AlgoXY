@@ -598,7 +598,7 @@ fixDB color l k r = Node color l k r
 \begin{Answer}[ref = {ex:mark-rebuild}]
 \Question{实现“标记——重建”删除算法：标记被删除的节点，但不进行真正的移除。当被标记的节点数目超过50\%时重建树。
 
-我们把每个值和一个标记存入节点中，树的类型为：$Tree\ (K, Bool)$，插入$x$时，使用$insert\ (x, True)$将节点标记为存在。删除时将标记变为False。然后统计已删除节点个数，并启动重建。
+我们把每个值$x$和一个标记$a$存入节点中，树的类型为：$Tree\ (K, Bool)$，插入$x$时，使用$insert\ (x, True)$将节点标记为存在。删除时将标记$a$变为False。然后统计已删除节点个数，并启动重建。
 
 \[
 delete\ x\ = rebuild \circ del\ x
@@ -620,13 +620,107 @@ del\ x\ (c, l, (k, a), r) & = & \begin{cases}
 
 \[
 rebuild\ t = \begin{cases}
-  cnt\ t > \dfrac{1}{2} (size\ t): & (fromList \circ (filter\ 2nd) \circ toList)\ t \\
+  size\ t < \dfrac{1}{2} (cap\ t): & (fromList \circ toList)\ t \\
   \text{否则}: & t
 \end{cases}
 \]
 
-为了方便，我们可以在节点中缓存子树的大小：
+其中$toList$在中序遍历时，忽略标记为删除的节点：
 
+\[
+\begin{array}{rcl}
+toList\ \nil & = & [\ ] \\
+toList\ (c, l, (k, a), r) & = &
+  \begin{cases}
+    a: & toList\ l \doubleplus [k] \doubleplus toList\ r \\
+    \text{否则}: & toList\ l \doubleplus toList\ r \\
+  \end{cases}
+\end{array}
+\]
+
+为了避免每次遍历整棵树统计节点，需要在节点中缓存树的大小（$cap$）和未删除节点个数（$size$）。将树的类型扩充为：$Tree\ (K, Bool, Int, Int)$。并定义$node$函数填充节点数目：
+
+\[
+\begin{array}{rcl}
+node\ \nil & = & \nil \\
+node\ c\ l\ (k, a, \_, \_)\ r & = & (c, l, (k, a, sz, ca), r) \\
+\end{array}
+\]
+
+其中：
+
+\[
+\begin{cases}
+sz = size\ l + size\ r + (\text{if}\ a\ \text{then}\ 1\ \text{else}\ 0) \\
+ca = 1 + cap\ l + cap\ r \\
+\end{cases}
+\]
+
+函数$size$和$cap$从节点中取出缓存的内容：
+
+\[
+\begin{array}{cc}
+  \begin{array}{rcl}
+  size\ \nil & = & 0 \\
+  size\ (\_, (\_, \_, sz, \_), \_) & = & sz \\
+  \end{array}
+&
+  \begin{array}{rcl}
+  cap\ \nil & = & 0 \\
+  cap\ (\_, (\_, \_, \_, ca), \_) & = & ca \\
+  \end{array}
+\end{array}
+\]
+最后，我们用$node$函数替换红黑树插入和删除中的$(c, l, k, r)$，如下面的例子程序：
+\begin{Haskell}
+data Elem a = Elem a Bool Int Int deriving (Eq)
+
+active (Elem _ a _ _) = a
+getElem (Elem x _ _ _) = x
+
+instance Ord a => Ord (Elem a) where
+  compare = compare `on` getElem
+
+insert x = makeBlack . ins (Elem x True 1 1) where
+    ins e Empty = Node R Empty e Empty
+    ins e (Node color l k r)
+        | e < k     = balance color (ins e l) k r
+        | otherwise = balance color l k (ins e r)
+    makeBlack (Node _ l k r) = Node B l k r
+
+balance B (Node R (Node R a x b) y c) z d = node R (node B a x b) y (node B c z d)
+balance B (Node R a x (Node R b y c)) z d = node R (node B a x b) y (node B c z d)
+balance B a x (Node R b y (Node R c z d)) = node R (node B a x b) y (node B c z d)
+balance B a x (Node R (Node R b y c) z d) = node R (node B a x b) y (node B c z d)
+balance color l k r = node color l k r
+
+node c l (Elem k a _ _) r = Node c l (Elem k a sz ca) r where
+  sz = size l + size r + if a then 1 else 0
+  ca = cap l + cap r + 1
+
+size Empty = 0
+size (Node _ _ (Elem _ _ sz _) _) = sz
+
+cap Empty = 0
+cap (Node _ _ (Elem _ _ _ ca) _) = ca
+
+delete x = rebuild . del x where
+  del _ Empty = Empty
+  del x (Node c l e@(Elem k a sz ca) r)
+    | x < k = node c (del x l) e r
+    | x > k = node c l e (del x r)
+    | x == k = node c l (Elem k False 0 0) r
+
+rebuild t | 2 * size t < cap t = (fromList . toList) t
+          | otherwise = t
+
+fromList :: (Ord a) => [a] -> RBTree (Elem a)
+fromList = foldr insert Empty
+
+toList Empty = []
+toList (Node _ l e r) | active e = toList l ++ [getElem e] ++ toList r
+                      | otherwise = toList l ++ toList r
+\end{Haskell}
 }
 \end{Answer}
 
