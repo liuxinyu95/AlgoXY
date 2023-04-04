@@ -565,9 +565,141 @@ fixDB color l k r = Node color l k r
 
 The delete algorithm is bound to $O(h)$ time, where $h$ is the height of the tree. As red-black tree maintains the balance, $h = O(\lg n)$ for $n$ nodes.
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:mark-rebuild}
 \Question{Implement the `mark-rebuild' delete algorithm: mark the node as deleted without actually removing it. When the marked nodes exceed 50\%, rebuild the tree.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:mark-rebuild}]
+\Question{Implement the `mark-rebuild' delete algorithm: mark the node as deleted without actually removing it. When the marked nodes exceed 50\%, rebuild the tree.
+
+We augment each key $x$ with a flag $a$ in the node. The type of the tree is $Tree\ (K, Bool)$. When insert $x$, call $insert\ (x, True)$ to mark the node active. When delete, flip $a$ to False, then count the active node number and trigger rebuild if exceeds half.
+
+\[
+delete\ x\ = rebuild \circ del\ x
+\]
+
+Where:
+
+\[
+\begin{array}{rcl}
+del\ x\ \nil & = & \nil \\
+del\ x\ (c, l, (k, a), r) & = & \begin{cases}
+  x < k: & (c, del\ x\ l, (k, a), r) \\
+  x > k: & (c, l, (k, a), del\ x\ r) \\
+  x = k: & (c, l, (k, False), r) \\
+\end{cases}
+\end{array}
+\]
+
+Of there are more than half nodes are inactive, we convert the tree to a list, filter the active nodes and rebuild the tree.
+
+\[
+rebuild\ t = \begin{cases}
+  size\ t < \dfrac{1}{2} (cap\ t): & (fromList \circ toList)\ t \\
+  \text{otherwise}: & t
+\end{cases}
+\]
+
+Where $toList$ traverse the tree and skip the deleted nodes:
+
+\[
+\begin{array}{rcl}
+toList\ \nil & = & [\ ] \\
+toList\ (c, l, (k, a), r) & = &
+  \begin{cases}
+    a: & toList\ l \doubleplus [k] \doubleplus toList\ r \\
+    \text{otherwise}: & toList\ l \doubleplus toList\ r \\
+  \end{cases}
+\end{array}
+\]
+
+To avoid traverse the entire tree every time when count the nodes, we save the tree capacity and size in each node. Extend the type of the tree to $Tree\ (K, Bool, Int, Int)$, and define $node$ as:
+
+\[
+\begin{array}{rcl}
+node\ \nil & = & \nil \\
+node\ c\ l\ (k, a, \_, \_)\ r & = & (c, l, (k, a, sz, ca), r) \\
+\end{array}
+\]
+
+Where:
+
+\[
+\begin{cases}
+sz = size\ l + size\ r + (\text{if}\ a\ \text{then}\ 1\ \text{else}\ 0) \\
+ca = 1 + cap\ l + cap\ r \\
+\end{cases}
+\]
+
+Function $size$ and $cap$ access the stored size and capacity:
+
+\[
+\begin{array}{cc}
+  \begin{array}{rcl}
+  size\ \nil & = & 0 \\
+  size\ (\_, (\_, \_, sz, \_), \_) & = & sz \\
+  \end{array}
+&
+  \begin{array}{rcl}
+  cap\ \nil & = & 0 \\
+  cap\ (\_, (\_, \_, \_, ca), \_) & = & ca \\
+  \end{array}
+\end{array}
+\]
+
+we replace the node constructor $(c, l, k, r)$ in insert/delete implementation with the $node$ function. Below is the example program.
+
+\begin{Haskell}
+data Elem a = Elem a Bool Int Int deriving (Eq)
+
+active (Elem _ a _ _) = a
+getElem (Elem x _ _ _) = x
+
+instance Ord a => Ord (Elem a) where
+  compare = compare `on` getElem
+
+insert x = makeBlack . ins (Elem x True 1 1) where
+    ins e Empty = Node R Empty e Empty
+    ins e (Node color l k r)
+        | e < k     = balance color (ins e l) k r
+        | otherwise = balance color l k (ins e r)
+    makeBlack (Node _ l k r) = Node B l k r
+
+balance B (Node R (Node R a x b) y c) z d = node R (node B a x b) y (node B c z d)
+balance B (Node R a x (Node R b y c)) z d = node R (node B a x b) y (node B c z d)
+balance B a x (Node R b y (Node R c z d)) = node R (node B a x b) y (node B c z d)
+balance B a x (Node R (Node R b y c) z d) = node R (node B a x b) y (node B c z d)
+balance color l k r = node color l k r
+
+node c l (Elem k a _ _) r = Node c l (Elem k a sz ca) r where
+  sz = size l + size r + if a then 1 else 0
+  ca = cap l + cap r + 1
+
+size Empty = 0
+size (Node _ _ (Elem _ _ sz _) _) = sz
+
+cap Empty = 0
+cap (Node _ _ (Elem _ _ _ ca) _) = ca
+
+delete x = rebuild . del x where
+  del _ Empty = Empty
+  del x (Node c l e@(Elem k a sz ca) r)
+    | x < k = node c (del x l) e r
+    | x > k = node c l e (del x r)
+    | x == k = node c l (Elem k False 0 0) r
+
+rebuild t | 2 * size t < cap t = (fromList . toList) t
+          | otherwise = t
+
+fromList :: (Ord a) => [a] -> RBTree (Elem a)
+fromList = foldr insert Empty
+
+toList Empty = []
+toList (Node _ l e r) | active e = toList l ++ [getElem e] ++ toList r
+                      | otherwise = toList l ++ toList r
+\end{Haskell}
+}
+\end{Answer}
 
 \section{Imperative red-black tree$\star$}
 \index{red-black tree!imperative insertion}
