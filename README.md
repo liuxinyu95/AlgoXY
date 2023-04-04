@@ -3,7 +3,7 @@ Elementary Algorithms
 
 Edition: $\displaystyle e = \sum \limits _{n=0}^{\infty }{\frac {1}{n!}} = 1 + {\frac {1}{1}}+{\frac {1}{1\cdot 2}}+{\frac {1}{1\cdot 2\cdot 3}}+\cdots = 2.718283$
 
-2023/03
+2023/04
 
 This book introduces about elementary algorithms and data structure. It includes side-by-side comparison about purely functional realization and their imperative counterpart.
 
@@ -12,7 +12,7 @@ This book introduces about elementary algorithms and data structure. It includes
 Contents
 --------
 
-I am adding exercises and answers to the **second edition** from 2023/03. I wrote the first edition from 2009 to 2017, then rewrote from 2020 to 2023. The PDF can be downloaded for preview ([EN](https://github.com/liuxinyu95/AlgoXY/files/11098467/algoxy-en.pdf), [中文](https://github.com/liuxinyu95/AlgoXY/files/11089454/algoxy-zh-cn.pdf)). The 1st edition in Chinese ([中文](http://www.ituring.com.cn/book/1907)) was published in 2017. I recently switched my focus to the Mathematics of programming, the new book is also available in ([github](https://github.com/liuxinyu95/unplugged))
+I am adding exercises and answers to the **second edition** from 2023/03. I wrote the first edition from 2009 to 2017, then rewrote from 2020 to 2023. The PDF can be downloaded for preview ([EN](https://github.com/liuxinyu95/AlgoXY/files/11146247/algoxy-en.pdf), [中文](https://github.com/liuxinyu95/AlgoXY/files/11146249/algoxy-zh-cn.pdf)). The 1st edition in Chinese ([中文](http://www.ituring.com.cn/book/1907)) was published in 2017. I recently switched my focus to the Mathematics of programming, the new book is also available in ([github](https://github.com/liuxinyu95/unplugged))
 
 
 - Preface
