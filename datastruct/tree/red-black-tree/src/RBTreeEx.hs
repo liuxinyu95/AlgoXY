@@ -25,12 +25,14 @@ import Test.QuickCheck
 import qualified Data.List as L
 
 data Color = R | B deriving (Show, Eq)
+
 data RBTree a = Empty
               | Node Color (RBTree a) a (RBTree a)
 
 data Elem a = Elem a Bool Int Int deriving (Eq)
 
 active (Elem _ a _ _) = a
+
 getElem (Elem x _ _ _) = x
 
 instance Ord a => Ord (Elem a) where
@@ -73,12 +75,11 @@ rebuild t | 2 * size t < cap t = (fromList . toList) t
 fromList :: (Ord a) => [a] -> RBTree (Elem a)
 fromList = foldr insert Empty
 
-trSort :: Ord a => [a] -> [a]
-trSort = toList . fromList
-
 toList Empty = []
 toList (Node _ l e r) | active e = toList l ++ [getElem e] ++ toList r
                       | otherwise = toList l ++ toList r
+
+trSort = toList . fromList
 
 prop_bst :: [Int] -> Bool
 prop_bst xs = let ys = L.nub xs in L.sort ys == (trSort ys)
@@ -97,3 +98,4 @@ prop_rebuild xs = L.sort bs == (toList $ foldr delete (fromList ys) as)
 testAll = do
   quickCheck prop_bst
   quickCheck prop_del
+  quickCheck prop_rebuild
