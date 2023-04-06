@@ -60,12 +60,30 @@ lookup k (Branch l _ r) | even k    = lookup (k `div` 2) l
 
 fromList = foldr (uncurry insert) Empty
 
--- k = ... a2, a1, a0 ==> k' = ai * m + k, where m=2^i
-toList :: IntTrie a -> [(Key, Maybe a)]
-toList = toList' 0 1 where
-  toList' _ _ Empty = []
-  toList' k m (Branch l v r) = (toList' k (2 * m) l) ++
-    ((k, v) : (toList' (m + k) (2 * m) r))
+-- k = ... a2, a1, a0 ==> k' = ai * n + k, where n = 2^i
+toList :: IntTrie a -> [(Key, a)]
+toList = prefixes 0 1 where
+  prefixes _ _ Empty = []
+  prefixes k n (Branch l m r) = case m of
+    Nothing -> as ++ bs
+    (Just v) -> (k, v) : as ++ bs
+    where
+      as = prefixes k       (2 * n) l
+      bs = prefixes (n + k) (2 * n) r
+
+-- Pre-order fold
+foldPre _ _ z Empty = z
+foldPre g f z (Branch l k r) = g m (foldPre g f a l) (foldPre g f b r)
+  where
+    (a, m, b) = f k z
+
+keys t = snd $ foldPre g f ((0, 1), []) t where
+  f m ((k, n), xs) = (((k, 2 * n), xs), ((k, n), m), ((n + k, 2 * n), xs))
+  g (kn,    Nothing) (_, as) (_, bs) = (kn, as ++ bs)
+  g ((k, n), Just v) (_, as) (_, bs) = ((k, n), k : as ++ bs)
+
+bitsLE 0 = []
+bitsLE n = (n `mod` 2) : bitsLE (n `div` 2)
 
 -- Verification
 
@@ -82,6 +100,10 @@ prop_build :: Sample -> Bool
 prop_build (S kvs ks') = let t = fromList kvs in
   (all (\(k, v) -> Just v == lookup k t) kvs ) &&
   (all (isNothing . (flip lookup) t) ks')
+
+prop_traverse :: Sample -> Bool
+prop_traverse (S kvs ks') = (keys t) == ((fst . unzip . toList) t) where
+  t = fromList kvs
 
 example = do
   let t = fromList [(1, 'a'), (4, 'b'), (5, 'c'), (9, 'd')]

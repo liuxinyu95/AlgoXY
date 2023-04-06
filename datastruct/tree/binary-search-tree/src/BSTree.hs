@@ -54,7 +54,7 @@ mapt f (Node l x r)= Node (mapt f l) (f x) (mapt f r)
 maptr :: (a -> b) -> Tree a -> Tree b
 maptr f = foldt f Node Empty
 
--- plain fold, drop the tree structure, i.e. can't implement map
+-- plain fold from right, drop the tree structure, i.e. can't implement map
 fold _ z Empty = z
 fold f z (Node l k r) = fold f (k `f` (fold f z r)) l
 

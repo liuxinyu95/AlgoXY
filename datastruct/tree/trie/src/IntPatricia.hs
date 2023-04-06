@@ -72,13 +72,13 @@ lcp p1 p2 = (p, m) where
 -- For a number x = 00...0,1,a(i-1)...a(1)
 -- the result is i
 highestBit :: Int -> Int
-highestBit x = if x==0 then 0 else 1+highestBit (shiftR x 1)
+highestBit x = if x==0 then 0 else 1 + highestBit (shiftR x 1)
 
 -- For a number x = a(n),a(n-1)...a(i),a(i-1),...,a(0)
 -- and a mask m = 100..0 (=2^i)
 -- the result is a(n),a(n-1)...a(i),00..0
 mask :: Int -> Mask -> Int
-mask x m = (x .&. complement (m-1)) -- complement means bitwise not.
+mask x m = (x .&. complement (m - 1)) -- complement means bitwise not.
 
 
 -- Test if the next bit after mask bit is zero
@@ -121,7 +121,7 @@ lookup k (Branch p m l r) | match k p m = if zero k m then lookup k l else looku
 -- fromList :: [(Key, a)] -> IntTree a
 fromList = foldr (uncurry insert) Empty
 
-toString :: (Show a)=>IntTree a -> String
+toString :: (Show a) => IntTree a -> String
 toString t =
     case t of
       Empty -> "."
