@@ -514,7 +514,6 @@ toList = go 0 1 [] where
     (Just v) -> (k, v) : xs
     where xs = go k (2 * n) (go (n + k) (2 * n) z r) l
 \end{Haskell}
-}
 
 进一步，我们可以抽象出整数trie的前序叠加操作。和第二章中的$fold$相比，树中的key是计算出来的。
 
@@ -531,6 +530,32 @@ toList = foldpre f [] where
   f k (Just v) xs = (k, v) : xs
 \end{Haskell}
 
+整数前缀树的前序遍历更加简单，无需计算key。我们可以定义抽象的前序叠加：
+\begin{Haskell}
+foldpre _ z Empty = z
+foldpre f z (Leaf k v) = f k v z
+foldpre f z (Branch p m l r) = foldpre f (foldpre f z r) l
+\end{Haskell}
+
+然后实现从树转换为键-值列表：
+\begin{Haskell}
+toList = foldpre (\k v xs -> (k, v):xs) []
+keys = fst . unzip . toList
+\end{Haskell}
+
+如果前序遍历输出一棵树中的所有键，无论是小端整数trie还是大端整数前缀树，它们都是按照表示键的二进制位顺序升序排列的。为了验证，我们定义一个转换函数$bitsLE$，将小端整数转换为对应的二进制位列表。然后可以验证前序遍历的顺序如下：
+\begin{Haskell}
+verify kvs = sorted $ map bitsLE $ keys $ fromList kvs where
+  sorted [] = True
+  sorted xs = and $ zipWith (<=) xs (tail xs)
+  bitsLE 0 = []
+  bitsLE n = (n `mod` 2) : bitsLE (n `div` 2)
+\end{Haskell}
+其中$kvs$是随机输入的键-值列表。对应大端整数前缀树的验证程序如下：
+\begin{Haskell}
+verify kvs = sorted $ keys $ fromList kvs
+\end{Haskell}
+}
 \end{Answer}
 
 \section{Trie}

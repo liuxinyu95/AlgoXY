@@ -119,10 +119,6 @@ lookup k (Branch p m l r) | match k p m = if zero k m then lookup k l else looku
 -- fromList :: [(Key, a)] -> IntTree a
 fromList = foldr (uncurry insert) Empty
 
--- toList Empty = []
--- toList (Leaf k v) = [(k, v)]
--- toList (Branch p m l r) = toList l ++ toList r
-
 foldpre _ z Empty = z
 foldpre f z (Leaf k v) = f k v z
 foldpre f z (Branch p m l r) = foldpre f (foldpre f z r) l
