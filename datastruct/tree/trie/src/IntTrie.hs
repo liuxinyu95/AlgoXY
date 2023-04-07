@@ -61,26 +61,25 @@ lookup k (Branch l _ r) | even k    = lookup (k `div` 2) l
 fromList = foldr (uncurry insert) Empty
 
 -- k = ... a2, a1, a0 ==> k' = ai * n + k, where n = 2^i
-toList :: IntTrie a -> [(Key, a)]
-toList = prefixes 0 1 where
-  prefixes _ _ Empty = []
-  prefixes k n (Branch l m r) = case m of
-    Nothing -> as ++ bs
-    (Just v) -> (k, v) : as ++ bs
-    where
-      as = prefixes k       (2 * n) l
-      bs = prefixes (n + k) (2 * n) r
+toList = go 0 1 [] where
+  go _ _ z Empty = z
+  go k n z (Branch l m r) = case m of
+    Nothing -> xs
+    (Just v) -> (k, v) : xs
+    where xs = go k (2 * n) (go (n + k) (2 * n) z r) l
 
--- Pre-order fold
-foldPre _ _ z Empty = z
-foldPre g f z (Branch l k r) = g m (foldPre g f a l) (foldPre g f b r)
-  where
-    (a, m, b) = f k z
+-- fold in pre-order
+foldpre f z = go 0 1 z where
+  go _ _ z Empty = z
+  go k n z (Branch l m r) = f k m (go k (2 * n) (go (n + k) (2 * n) z r) l)
 
-keys t = snd $ foldPre g f ((0, 1), []) t where
-  f m ((k, n), xs) = (((k, 2 * n), xs), ((k, n), m), ((n + k, 2 * n), xs))
-  g (kn,    Nothing) (_, as) (_, bs) = (kn, as ++ bs)
-  g ((k, n), Just v) (_, as) (_, bs) = ((k, n), k : as ++ bs)
+toAssocList = foldpre f [] where
+  f _ Nothing xs = xs
+  f k (Just v) xs = (k, v) : xs
+
+keys = fst . unzip . toAssocList
+
+values = snd . unzip . toAssocList
 
 bitsLE 0 = []
 bitsLE n = (n `mod` 2) : bitsLE (n `div` 2)
@@ -102,8 +101,12 @@ prop_build (S kvs ks') = let t = fromList kvs in
   (all (isNothing . (flip lookup) t) ks')
 
 prop_traverse :: Sample -> Bool
-prop_traverse (S kvs ks') = (keys t) == ((fst . unzip . toList) t) where
+prop_traverse (S kvs ks') = (toList t) == (toAssocList t) where
   t = fromList kvs
+
+testAll = do
+  quickCheck prop_build
+  quickCheck prop_traverse
 
 example = do
   let t = fromList [(1, 'a'), (4, 'b'), (5, 'c'), (9, 'd')]

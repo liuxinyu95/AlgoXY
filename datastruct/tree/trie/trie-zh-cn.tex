@@ -492,18 +492,45 @@ zero x m = x .&. (shiftR m 1) == 0
 我们先考虑如何通过前序遍历将整数trie转换成关联列表。前序遍历的顺序是递归的“中-左-右”。空树的遍历结果是$[\ ]$。对分枝节点$(l, m, r)$，令左右子树的递归前序遍历结果为$as$、$bs$，中间的$m$类型是Maybe，如果是Nothing，则递归结果是$as \doubleplus bs$；如果是Just $v$，则结果是$(k, v) \cons as \doubleplus bs$，其中$k$是节点对应的二进制整数编码（0向左、1向右的小端整数）。
 
 \begin{Haskell}
-toList = prefixes 0 1 where
-  prefixes _ _ Empty = []
-  prefixes k n (Branch l m r) = case m of
+toList = go 0 1 where
+  go _ _ Empty = []
+  go k n (Branch l m r) = case m of
     Nothing -> as ++ bs
     (Just v) -> (k, v) : as ++ bs
     where
-      as = prefixes k       (2 * n) l
-      bs = prefixes (n + k) (2 * n) r
+      as = go k       (2 * n) l
+      bs = go (n + k) (2 * n) r
 \end{Haskell}
 
-这样通过$keys = fst \circ unzip \circ toList$就可以获得前序遍历的键列表。
+我们从根结点开始，令$k = 0$，深度$d = 0$。向左则$k' = 0$，向右则$k' = 1 = 2^d + k = 1 + 0$；进入下一层$d = 1$。4个节点对应的$k$为$(00)_2 = 0$、$(10)_2 = 2^1 + 0$、$(01)_2 = 1$、$(11)_2 = 2^1 + 1$。一般地，对于第$d$层节点，令$k = (a_d...a_2 a_1 a_0)_2$，向左则$k' = k$，向右则$k' = a_d * 2^d + k$。因此在上述实现中，我们用$k = 0$, $n = 2^0 = 1$启动函数$go\ k\ n$。向左递归调用$go\ k\ 2n$、向右递归调用$go\ (n + k)\ 2n$。
+
+这样通过$keys = fst \circ unzip \circ toList$就可以获得前序遍历的键列表。上述实现中$as \doubleplus bs$需要线性时间。我们可以利用尾递归优化：
+
+\begin{Haskell}
+toList = go 0 1 [] where
+  go _ _ z Empty = z
+  go k n z (Branch l m r) = case m of
+    Nothing -> xs
+    (Just v) -> (k, v) : xs
+    where xs = go k (2 * n) (go (n + k) (2 * n) z r) l
+\end{Haskell}
 }
+
+进一步，我们可以抽象出整数trie的前序叠加操作。和第二章中的$fold$相比，树中的key是计算出来的。
+
+\begin{Haskell}
+foldpre f z = go 0 1 z where
+  go _ _ z Empty = z
+  go k n z (Branch l m r) = f k m (go k (2 * n) (go (n + k) (2 * n) z r) l)
+\end{Haskell}
+
+使用叠加操作，我们可以重新定义$toList$为：
+\begin{Haskell}
+toAssocList = foldpre f [] where
+  f _ Nothing xs = xs
+  f k (Just v) xs = (k, v) : xs
+\end{Haskell}
+
 \end{Answer}
 
 \section{Trie}
