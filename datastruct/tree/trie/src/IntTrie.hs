@@ -30,6 +30,7 @@ module IntTrie where
 import Test.QuickCheck
 import Data.Maybe (isNothing)
 import Prelude hiding (lookup)
+import Data.List (sort)
 
 data IntTrie a = Empty
                | Branch (IntTrie a) (Maybe a) (IntTrie a) -- left, value, right
@@ -60,29 +61,20 @@ lookup k (Branch l _ r) | even k    = lookup (k `div` 2) l
 
 fromList = foldr (uncurry insert) Empty
 
--- k = ... a2, a1, a0 ==> k' = ai * n + k, where n = 2^i
-toList = go 0 1 [] where
-  go _ _ z Empty = z
-  go k n z (Branch l m r) = case m of
-    Nothing -> xs
-    (Just v) -> (k, v) : xs
-    where xs = go k (2 * n) (go (n + k) (2 * n) z r) l
-
 -- fold in pre-order
+-- k = (... a2 a1 a0)_2 ==> k' = am * n + k, where n = 2^m, am = 0 or 1.
 foldpre f z = go 0 1 z where
   go _ _ z Empty = z
   go k n z (Branch l m r) = f k m (go k (2 * n) (go (n + k) (2 * n) z r) l)
 
-toAssocList = foldpre f [] where
+toList = foldpre f [] where
   f _ Nothing xs = xs
   f k (Just v) xs = (k, v) : xs
 
-keys = fst . unzip . toAssocList
+keys = fst . unzip . toList
 
-values = snd . unzip . toAssocList
+values = snd . unzip . toList
 
-bitsLE 0 = []
-bitsLE n = (n `mod` 2) : bitsLE (n `div` 2)
 
 -- Verification
 
@@ -101,17 +93,18 @@ prop_build (S kvs ks') = let t = fromList kvs in
   (all (isNothing . (flip lookup) t) ks')
 
 prop_traverse :: Sample -> Bool
-prop_traverse (S kvs ks') = (toList t) == (toAssocList t) where
-  t = fromList kvs
+prop_traverse (S kvs _) = (sort kvs) == (sort $ toList $ fromList kvs) where
+
+prop_preorder :: Sample -> Bool
+prop_preorder (S kvs _) = sorted $ map bitsLE $ keys $ fromList kvs where
+  sorted [] = True
+  sorted xs = and $ zipWith (<=) xs (tail xs)
+
+bitsLE 0 = []
+bitsLE n = (n `mod` 2) : bitsLE (n `div` 2)
 
 testAll = do
   quickCheck prop_build
   quickCheck prop_traverse
 
-example = do
-  let t = fromList [(1, 'a'), (4, 'b'), (5, 'c'), (9, 'd')]
-  putStrLn $ show $ toList t
-  putStrLn "lookup 4 t"
-  putStrLn $ show $ lookup 4 t
-  putStrLn "lookup 0 t"
-  putStrLn $ show $ lookup 0 t
+-- example: t = fromList [(1, 'a'), (4, 'b'), (5, 'c'), (9, 'd')]
