@@ -93,7 +93,7 @@ prop_build (S kvs ks') = let t = fromList kvs in
   (all (isNothing . (flip lookup) t) ks')
 
 prop_traverse :: Sample -> Bool
-prop_traverse (S kvs _) = (sort kvs) == (sort $ toList $ fromList kvs) where
+prop_traverse (S kvs _) = (sort kvs) == (sort $ toList $ fromList kvs)
 
 prop_preorder :: Sample -> Bool
 prop_preorder (S kvs _) = sorted $ map bitsLE $ keys $ fromList kvs where

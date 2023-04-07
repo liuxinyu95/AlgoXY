@@ -30,21 +30,19 @@ import Data.Bits
 import Test.QuickCheck hiding ((.&.))
 import Data.Maybe (isNothing)
 import Prelude hiding (lookup)
+import Data.List (sort)
 
 {------------------------------------
-  1. Big Edian integer tree
+  Big Edian integer tree
 -------------------------------------}
 data IntTree a = Empty
                | Leaf Key a
                | Branch Prefix Mask (IntTree a) (IntTree a) -- prefix, mask, left, right
+               deriving (Show)
 
 type Key = Int
 type Prefix = Int
 type Mask = Int
-
-{-----------------------------------
-  2. helpers
------------------------------------}
 
 -- join 2 nodes together.
 -- (prefix1, tree1) ++ (prefix2, tree2)
@@ -121,21 +119,19 @@ lookup k (Branch p m l r) | match k p m = if zero k m then lookup k l else looku
 -- fromList :: [(Key, a)] -> IntTree a
 fromList = foldr (uncurry insert) Empty
 
-toString :: (Show a) => IntTree a -> String
-toString t =
-    case t of
-      Empty -> "."
-      Leaf k x -> (show k) ++ ":" ++ (show x)
-      Branch p m l r -> "[" ++ (show p) ++ "@" ++ (show m) ++ "]" ++
-                        "(" ++ (toString l) ++ ", " ++ (toString r) ++ ")"
+-- toList Empty = []
+-- toList (Leaf k v) = [(k, v)]
+-- toList (Branch p m l r) = toList l ++ toList r
 
-{---------------------------------
-  6. Test cases
-----------------------------------}
-testIntTree = "t=" ++ (toString t) ++ "\nlookup 4 t: " ++ (show $ lookup 4 t) ++
-              "\nlookup 0 t: " ++ (show $ lookup 0 t)
-    where
-      t = fromList [(1, 'x'), (4, 'y'), (5, 'z')]
+foldpre _ z Empty = z
+foldpre f z (Leaf k v) = f k v z
+foldpre f z (Branch p m l r) = foldpre f (foldpre f z r) l
+
+toList = foldpre (\k v xs -> (k, v):xs) []
+
+keys = fst . unzip . toList
+
+values = snd . unzip . toList
 
 -- Verification
 
@@ -152,3 +148,16 @@ prop_build :: Sample -> Bool
 prop_build (S kvs ks') = let t = fromList kvs in
   (all (\(k, v) -> Just v == lookup k t) kvs ) &&
   (all (isNothing . (flip lookup) t) ks')
+
+prop_traverse :: Sample -> Bool
+prop_traverse (S kvs _) = (sort kvs) == (sort $ toList $ fromList kvs)
+
+prop_preorder :: Sample -> Bool
+prop_preorder (S kvs _) = sorted $ keys $ fromList kvs where
+  sorted [] = True
+  sorted xs = and $ zipWith (<=) xs (tail xs)
+
+testAll = do
+  mapM quickCheck [prop_build, prop_traverse, prop_preorder]
+
+-- example: t = fromList [(1, 'x'), (4, 'y'), (5, 'z')]
