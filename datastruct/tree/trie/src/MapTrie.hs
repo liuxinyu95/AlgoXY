@@ -17,45 +17,50 @@
 -}
 
 -- Refer to http://en.wikipedia.org/wiki/Trie
-module MapTrie where
 
+module MapTrie (
+  Trie, empty, isEmpty, insert, Trie.lookup, keys,
+  MapTrie(..), fromList, fromString
+  ) where
+
+import Trie hiding (fromList, fromString)
 import Data.List (sort, sortBy)
 import Data.Function (on)
 import qualified Data.Map as Map
+import Data.Maybe
 import Prelude hiding (lookup)
 
 -- Map based Trie
 data MapTrie k v = MapTrie { value :: Maybe v
                            , subTrees :: Map.Map k (MapTrie k v)} deriving (Show)
 
-empty = MapTrie Nothing Map.empty
+instance Trie MapTrie where
+  empty = MapTrie Nothing Map.empty
 
--- insert :: (Ord k) => [k] -> v -> MapTrie k v -> MapTrie k v
-insert [] x (MapTrie _ ts) = MapTrie (Just x) ts
-insert (k:ks) x (MapTrie v ts) = MapTrie v (Map.insert k (insert ks x t) ts)
-  where
-    t = maybe empty id (Map.lookup k ts)
+  isEmpty (MapTrie v ts) = isNothing v && Map.null ts
 
--- lookup :: (Ord k) => [k] -> MapTrie k v -> Maybe v
-lookup [] (MapTrie v _) = v
-lookup (k:ks) (MapTrie _ ts) = case Map.lookup k ts of
-                  Nothing -> Nothing
-                  Just t' -> lookup ks t'
-
--- fromList :: Ord k => [([k], v)] -> MapTrie k v
-fromList = foldr (uncurry insert) empty where
-
-fromString :: (Enum v, Num v) => String -> MapTrie Char v
-fromString = fromList . (flip zip [1..]) . words
-
--- Pre-order traverse to populate keys in lexicographical order
-keys :: Ord k => MapTrie k v -> [[k]]
-keys t = map reverse $ keys' t [] where
-  keys' (MapTrie v ts) prefix = case v of
-    Nothing -> ks
-    (Just _ ) -> prefix : ks
+  insert [] x (MapTrie _ ts) = MapTrie (Just x) ts
+  insert (k:ks) x (MapTrie v ts) = MapTrie v (Map.insert k (insert ks x t) ts)
     where
-      ks = concatMap (\(k, t') -> keys' t' (k : prefix)) (Map.toAscList ts)
+      t = maybe empty id (Map.lookup k ts)
+
+  lookup [] (MapTrie v _) = v
+  lookup (k:ks) (MapTrie _ ts) = case Map.lookup k ts of
+                    Nothing -> Nothing
+                    Just t' -> lookup ks t'
+
+  keys t = map reverse $ keys' t [] where
+    keys' (MapTrie v ts) prefix = case v of
+      Nothing -> ks
+      (Just _ ) -> prefix : ks
+      where
+        ks = concatMap (\(k, t') -> keys' t' (k : prefix)) (Map.toAscList ts)
+
+fromList :: Ord k => [([k], v)] -> MapTrie k v
+fromList = foldr (uncurry insert) empty
+
+fromString :: String -> MapTrie Char Integer
+fromString = fromList . (flip zip [1..]) . words
 
 -- example
 example = insert "zoo" 0 (fromString "a place where animals are for public to see")
