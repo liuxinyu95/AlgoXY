@@ -18,48 +18,39 @@
 
 -- Refer to http://en.wikipedia.org/wiki/Trie
 
-module MapTrie (
-  Trie, empty, isEmpty, insert, Trie.lookup, keys,
-  MapTrie(..), fromList, fromString
-  ) where
+module MapTrie where
 
-import Trie hiding (fromList, fromString)
+import qualified Data.Map as Map
 import Data.List (sort, sortBy)
 import Data.Function (on)
-import qualified Data.Map as Map
-import Data.Maybe
 import Prelude hiding (lookup)
 
 -- Map based Trie
 data MapTrie k v = MapTrie { value :: Maybe v
                            , subTrees :: Map.Map k (MapTrie k v)} deriving (Show)
 
-instance Trie MapTrie where
-  empty = MapTrie Nothing Map.empty
+empty = MapTrie Nothing Map.empty
 
-  isEmpty (MapTrie v ts) = isNothing v && Map.null ts
+insert [] x (MapTrie _ ts) = MapTrie (Just x) ts
+insert (k:ks) x (MapTrie v ts) = MapTrie v (Map.insert k (insert ks x t) ts)
+  where
+    t = maybe empty id (Map.lookup k ts)
 
-  insert [] x (MapTrie _ ts) = MapTrie (Just x) ts
-  insert (k:ks) x (MapTrie v ts) = MapTrie v (Map.insert k (insert ks x t) ts)
+lookup [] (MapTrie v _) = v
+lookup (k:ks) (MapTrie _ ts) = case Map.lookup k ts of
+                  Nothing -> Nothing
+                  Just t' -> lookup ks t'
+
+-- Pre-order traverse to populate keys in lexicographical order
+keys t = map reverse $ keys' t [] where
+  keys' (MapTrie v ts) prefix = case v of
+    Nothing -> ks
+    (Just _ ) -> prefix : ks
     where
-      t = maybe empty id (Map.lookup k ts)
+      ks = concatMap (\(k, t') -> keys' t' (k : prefix)) (Map.toAscList ts)
 
-  lookup [] (MapTrie v _) = v
-  lookup (k:ks) (MapTrie _ ts) = case Map.lookup k ts of
-                    Nothing -> Nothing
-                    Just t' -> lookup ks t'
-
-  keys t = map reverse $ keys' t [] where
-    keys' (MapTrie v ts) prefix = case v of
-      Nothing -> ks
-      (Just _ ) -> prefix : ks
-      where
-        ks = concatMap (\(k, t') -> keys' t' (k : prefix)) (Map.toAscList ts)
-
-fromList :: Ord k => [([k], v)] -> MapTrie k v
 fromList = foldr (uncurry insert) empty
 
-fromString :: String -> MapTrie Char Integer
 fromString = fromList . (flip zip [1..]) . words
 
 -- example

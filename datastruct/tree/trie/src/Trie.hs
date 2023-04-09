@@ -18,57 +18,40 @@
 
 -- Refer to http://en.wikipedia.org/wiki/Trie
 
-module Trie (
-  Trie, empty, isEmpty, insert, Trie.lookup, keys,
-  AssocTrie(..), fromList, fromString
-  ) where
+module Trie where
 
 import Data.List (sort, sortBy)
 import Data.Function (on)
 import qualified Data.Map as Map
 
-class Trie t where
-  empty :: t k v
-  isEmpty :: t k v -> Bool
-  insert :: (Eq k, Ord k) => [k] -> v -> t k v -> t k v
-  lookup :: (Eq k, Ord k) => [k] -> t k v -> Maybe v
-  keys :: (Eq k, Ord k) => t k v -> [[k]]
-
--- Default implementation: Assoc list based Trie
+-- Assoc list based Trie
 data AssocTrie k v = AssocTrie { value :: Maybe v
                                , subTrees :: [(k, AssocTrie k v)]} deriving (Show)
 
-instance Trie AssocTrie where
-  empty = AssocTrie Nothing []
+empty = AssocTrie Nothing []
 
-  isEmpty (AssocTrie Nothing []) = True
-  isEmpty _ = False
+insert [] x (AssocTrie _ ts) = AssocTrie (Just x) ts
+insert (k:ks) x (AssocTrie v ts) = AssocTrie v (ins ts) where
+    ins [] = [(k, insert ks x empty)]
+    ins ((c, t) : ts) = if c == k then (k, insert ks x t) : ts
+                        else (c, t) : (ins ts)
 
-  insert [] x (AssocTrie _ ts) = AssocTrie (Just x) ts
-  insert (k:ks) x (AssocTrie v ts) = AssocTrie v (ins ts) where
-      ins [] = [(k, insert ks x empty)]
-      ins ((c, t) : ts) = if c == k then (k, insert ks x t) : ts
-                          else (c, t) : (ins ts)
+lookup [] t = value t
+lookup (k:ks) t = case Prelude.lookup k (subTrees t) of
+                  Nothing -> Nothing
+                  Just t' -> Trie.lookup ks t'
 
-  lookup [] t = value t
-  lookup (k:ks) t = case Prelude.lookup k (subTrees t) of
-                    Nothing -> Nothing
-                    Just t' -> Trie.lookup ks t'
+-- Pre-order traverse to populate keys in lexicographical order
+keys t = map reverse $ keys' t [] where
+  keys' t prefix = case (value t) of
+    Nothing -> ks
+    (Just _ ) -> prefix : ks
+    where
+      ks = concatMap (\(k, t') -> keys' t' (k : prefix)) ts
+      ts = sortBy (compare `on` fst) (subTrees t)
 
-  -- Pre-order traverse to populate keys in lexicographical order
-  keys t = map reverse $ keys' t [] where
-    keys' t prefix = case (value t) of
-      Nothing -> ks
-      (Just _ ) -> prefix : ks
-      where
-        ks = concatMap (\(k, t') -> keys' t' (k : prefix)) ts
-        ts = sortBy (compare `on` fst) (subTrees t)
-
-
-fromList :: (Eq k, Ord k) => [([k], v)] -> AssocTrie k v
 fromList = foldr (uncurry insert) empty
 
-fromString :: String -> AssocTrie Char Integer
 fromString = fromList . (flip zip [1..]) . words
 
 -- example
