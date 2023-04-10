@@ -20,6 +20,7 @@
 
 module MapTrie where
 
+import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Function (on)
 import Control.Arrow (first)
@@ -28,7 +29,7 @@ import Data.List (isPrefixOf, sort, sortBy, inits, nub)
 
 -- Map based Trie
 data MapTrie k v = MapTrie { value :: Maybe v
-                           , subTrees :: Map.Map k (MapTrie k v)} deriving (Show)
+                           , subTrees :: Map k (MapTrie k v)} deriving (Show)
 
 empty = MapTrie Nothing Map.empty
 
@@ -63,8 +64,9 @@ startsWith (k:ks) (MapTrie _ ts) = case Map.lookup k ts of
   Nothing -> []
   Just t -> map (first (k:)) (startsWith ks t)
 
-enum :: Ord k => Map.Map k (MapTrie k v) -> [([k], v)]
-enum = (concatMap (\(k, t) -> map (first (k:)) (startsWith [] t))) . Map.assocs
+enum :: Ord k => Map k (MapTrie k v) -> [([k], v)]
+enum = (concatMap (\(k, t) ->
+                     map (first (k:)) (startsWith [] t))) . Map.assocs
 
 -- look up the trie up to n candidates
 get n k t = take n $ startsWith k t

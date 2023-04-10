@@ -489,6 +489,7 @@ zero x m = x .&. (shiftR m 1) == 0
 }
 \Question{实现整数trie和整数树的前序遍历，仅输出值不为空的节点键。结果有何规律？
 
+\label{ex:prefix-tree-pre-order-traverse}
 我们先考虑如何通过前序遍历将整数trie转换成关联列表。前序遍历的顺序是递归的“中-左-右”。空树的遍历结果是$[\ ]$。对分枝节点$(l, m, r)$，令左右子树的递归前序遍历结果为$as$、$bs$，中间的$m$类型是Maybe，如果是Nothing，则递归结果是$as \doubleplus bs$；如果是Just $v$，则结果是$(k, v) \cons as \doubleplus bs$，其中$k$是节点对应的二进制整数编码（0向左、1向右的小端整数）。
 
 \begin{Haskell}
@@ -675,7 +676,7 @@ Trie的空间利用率很低。我们可以用同样的方法压缩链接在一�
   \label{fig:patricia-tree}
 \end{figure}
 
-下面的例子程序定义了前缀树：
+下面的例子程序定义了前缀树\footnote{也可以用\texttt{Map [k] PrefixTree k v}存储子树。}：
 
 \begin{Haskell}
 data PrefixTree k v = PrefixTree { value :: Maybe v
@@ -1142,20 +1143,24 @@ findT9 (PrefixTree _ ts) k = concatMap find pfx where
 
 对于输入的前缀$ks$，我们沿着trie前进至子节点$t$，然后将$t$下面的子树全部展开。最后截断前$n$个候选项：
 \begin{Haskell}
+import Data.Map (Map)
+import qualified Data.Map as Map
+
 startsWith :: Ord k => [k] -> Trie k v -> [([k], v)]
 startsWith [] (Trie Nothing  ts) = enum ts
 startsWith [] (Trie (Just v) ts) = ([], v) : enum ts
-startsWith (k:ks) (MapTrie _ ts) = case Map.lookup k ts of
+startsWith (k:ks) (Trie _ ts) = case Map.lookup k ts of
   Nothing -> []
   Just t -> map (first (k:)) (startsWith ks t)
 
-enum :: Ord k => Map.Map k (Trie k v) -> [([k], v)]
-enum = (concatMap (\(k, t) -> map (first (k:)) (startsWith [] t))) . Map.assocs
+enum :: Ord k => Map k (Trie k v) -> [([k], v)]
+enum = (concatMap (\(k, t) ->
+                    map (first (k:)) (startsWith [] t))) . Map.assocs
 
 get n k t = take n $ startsWith k t
-\end{Haskell}
+\end{Haskell} %$
 
-其中$first\ f\ (a, b) = (f\ a, b)$，将函数$f$应用到一对值的前一个上。实现预测式输入时，针对每个数字，我们都在$M_{T9}$中找到所有可能的字符，然后到trie中递归查找对应的子树：
+其中$\textit{first}\ f\ (a, b) = (f\ a, b)$，将函数$f$应用到一对值的前一个上。实现预测式输入时，针对每个数字，我们都在$M_{T9}$中找到所有可能的字符，然后到trie中递归查找对应的子树：
 
 \begin{Haskell}
 findT9 [] _ = [[]]
@@ -1166,8 +1171,10 @@ findT9 (d:ds) (Trie _ ts) = concatMap find cts where
   find (c, t) = map (c:) (findT9 ds t)
 \end{Haskell}
 }
-\Question{对于返回多个候选结果的前缀树查找算法，如何保证输出的结果按照字典顺序排序？这会对性能产生怎样的影响？}
-\Question{在没有惰性求值的环境中，如何按需返回最多$n$条结果？}
+\Question{对于返回多个候选结果的前缀树查找算法，如何保证输出的结果按照字典顺序排序？这会对性能产生怎样的影响？
+
+由习题\ref{ex:prefix-tree-pre-order-traverse}，对于二叉前缀树，按照前序遍历可以获得字典顺序的结果。对于多叉前缀树，我们需要对子树按字典顺序遍历。如果用自平衡排序二叉树管理子树（如红黑树或AVL树），可以在线性时间内按序遍历子树（见习题\autoref{ex:bst-iterate}）。如果用散列表或者关联列表管理子树，则需要$O(n\lg n)$时间对子树排序。
+}
 \end{Answer}
 
 \section{附录：例子程序}
