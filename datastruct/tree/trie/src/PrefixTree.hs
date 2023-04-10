@@ -86,7 +86,7 @@ startsWith k (PrefixTree _ ts) =
 
 enum = concatMap (\(k, t) -> [(k ++ a, b) | (a, b) <- startsWith [] t])
 
--- ITU-T keypad mapping
+-- ITU-T keypad (T9) mapping
 mapT9 = Map.fromList [('1', ",."), ('2', "abc"), ('3', "def"), ('4', "ghi"),
                       ('5', "jkl"), ('6', "mno"), ('7', "pqrs"), ('8', "tuv"),
                       ('9', "wxyz")]
@@ -96,9 +96,11 @@ rmapT9 = Map.fromList $ concatMap (\(d, s) -> [(c, d) | c <- s]) $ Map.toList ma
 
 digits = map (\c -> Map.findWithDefault '#' c rmapT9)
 
-findT9 _ [] = [[]]
-findT9 (PrefixTree _ ts) k = concatMap find pfx where
-  find (s, t) = map (take (length k) . (s++)) $ findT9 t (drop (length s) k)
+-- Given a list of digits, find all candidate words (including partial words)
+-- with T9 map from a dictionary (implemented in prefix Tree).
+findT9 [] _ = [[]]
+findT9 k (PrefixTree _ ts) = concatMap find pfx where
+  find (s, t) = map (take (length k) . (s++)) $ findT9 (drop (length s) k) t
   pfx = [(s, t) | (s, t) <- ts, let ds = digits s in
               ds `isPrefixOf` k || k `isPrefixOf` ds]
 
@@ -141,7 +143,9 @@ verifyStartsWith = all verifyLookup [("a", 5), ("a", 6), ("a", 7), ("ab", 2),
 
 verifyT9 = all verify' $ concatMap (tail . inits) ["4663", "22", "2668437"]
   where
-    t9lst = [("home", 1), ("good", 2), ("gone", 3), ("hood", 4), ("a", 5), ("another", 6), ("an", 7)]
+    t9lst = zip ["home", "good", "gone", "hood", "a", "another", "an"] [1..]
     verify' ds = ((==) `on` sort . nub) as bs where
-      as = findT9 (fromList t9lst) ds
+      as = findT9 ds (fromList t9lst)
       bs = filter ((==) ds . digits) (map (take (length ds) . fst) t9lst)
+
+verifyAll = and [verify, verifyKeys, verifyStartsWith, verifyT9]
