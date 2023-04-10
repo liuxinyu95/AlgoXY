@@ -179,9 +179,22 @@ We can eliminate the recursion to implement the iterative $lookup$ as the follow
 
 The $lookup$ function is bound to $O(m)$ time, where $m$ is the number of bits of $k$.
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:int-trie-empty-node}
 \Question{Can we change the definition from \texttt{Branch (IntTrie a) (Maybe a) (IntTrie a)} to \texttt{Branch (IntTrie a) a (IntTrie a)}, and return \textit{Nothing} if the value does not exist, and \textit{Just\ v} otherwise?}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:int-trie-empty-node}]
+\Question{Can we change the definition from \texttt{Branch (IntTrie a) (Maybe a) (IntTrie a)} to \texttt{Branch (IntTrie a) a (IntTrie a)}, and return \textit{Nothing} if the value does not exist, and \textit{Just\ v} otherwise?
+
+Besides $lookup$, we need handle branch node without value when $insert$, as the blank circle nodes in figure \ref{fig:int-trie}. Alternatively, we can add an additional constructor in the algebraic data type (ADT) to replace the Maybe type:
+
+\begin{Haskell}
+data IntTrie a = Empty
+               | Branch (IntTrie a) a (IntTrie a)
+               | EmptyBranch (IntTrie a) (IntTrie a)
+\end{Haskell}
+}
+\end{Answer}
 
 \section{Integer prefix tree}
 \label{int-patricia} \index{Integer Patricia} \index{Integer prefix tree}
@@ -433,10 +446,118 @@ We can also eliminate the recursion to implement the iterative lookup algorithm.
 
 The $lookup$ algorithm is bound to $O(m)$, where $m$ is the number of bits in the key.
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:int-tree-lookup}
 \Question{Write a program to implement the $lookup$ function.}
 \Question{Implement the pre-order traverse for both integer trie and integer tree. Only output the keys when the nodes store values. What pattern does the result follow?}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:int-tree-lookup}]
+\Question{Write a program to implement the $lookup$ function.
+
+\begin{Haskell}
+import Data.Bits
+
+type Key = Int
+type Prefix = Int
+type Mask = Int
+
+data IntTree a = Empty
+               | Leaf Key a
+               | Branch Prefix Mask (IntTree a) (IntTree a)
+
+lookup :: Key -> IntTree a -> Maybe a
+lookup _ Empty = Nothing
+lookup k (Leaf k' v) = if k == k' then Just v else Nothing
+lookup k (Branch p m l r) | match k p m = if zero k m then lookup k l
+                                          else lookup k r
+                          | otherwise = Nothing
+
+match :: Key -> Prefix -> Mask -> Bool
+match k p m = (mask k m) == p
+
+mask :: Int -> Mask -> Int
+mask x m = (x .&. complement (m - 1))
+
+zero :: Int -> Mask -> Bool
+zero x m = x .&. (shiftR m 1) == 0
+\end{Haskell}
+}
+\Question{Implement the pre-order traverse for both integer trie and integer tree. Only output the keys when the nodes store values. What pattern does the result follow?
+
+\label{ex:prefix-tree-pre-order-traverse}
+We first convert an integer trie to assoc-list. The pre-order is the recursive `middle-left-right' order. When traverse the empty tree, the result is $[\ ]$, For branch node $(l, m, r)$, let the recursive pre-order lists of the left and right sub-trees be $as$ and $bs$ respectively. For the middle Maybe value $m$, if it's Nothing, the result is $as \doubleplus bs$; if it's Just $v$, then the result is $(k, v) \cons as \doubleplus bs$, where $k$ is the corresponding binary integer (the little endian, 0 for left, 1 for right).
+
+\begin{Haskell}
+toList = go 0 1 where
+  go _ _ Empty = []
+  go k n (Branch l m r) = case m of
+    Nothing -> as ++ bs
+    (Just v) -> (k, v) : as ++ bs
+    where
+      as = go k       (2 * n) l
+      bs = go (n + k) (2 * n) r
+\end{Haskell}
+
+We start from the root. Let $k = 0$, the depth $d = 0$. If go left, then $k' = 0$, if go right, then $k' = 1 = 2^d + k = 1 + 0$; For the next level $d = 1$, the corresponding $k$ for the four nodes are $(00)_2 = 0$, $(10)_2 = 2^1 + 0$, $(01)_2 = 1$, and $(11)_2 = 2^1 + 1$. Basically, for the node in level $d$, let $k = (a_d...a_2 a_1 a_0)_2$, when go left, then $k' = k$, when go right, then $k' = a_d * 2^d + k$. In above implementation, we start with $k = 0$, $n = 2^0 = 1$ to call $go\ k\ n$. Call $go\ k\ 2n$ when go left, call $go\ (n + k)\ 2n$ when go right.
+
+Thus we obtain the keys in pre-order through $keys = fst \circ unzip \circ toList$. We can use tail recursive call to optimize $as \doubleplus bs$:
+
+\begin{Haskell}
+toList = go 0 1 [] where
+  go _ _ z Empty = z
+  go k n z (Branch l m r) = case m of
+    Nothing -> xs
+    (Just v) -> (k, v) : xs
+    where xs = go k (2 * n) (go (n + k) (2 * n) z r) l
+\end{Haskell}
+
+Further, we can define generic pre-order fold for integer trie. Different from the $fold$ in chapter 2, the keys are computed while folding.
+
+\begin{Haskell}
+foldpre f z = go 0 1 z where
+  go _ _ z Empty = z
+  go k n z (Branch l m r) = f k m (go k (2 * n) (go (n + k) (2 * n) z r) l)
+\end{Haskell}
+
+We redefine the $toList$ with fold:
+
+\begin{Haskell}
+toList = foldpre f [] where
+  f _ Nothing xs = xs
+  f k (Just v) xs = (k, v) : xs
+\end{Haskell}
+
+It's more straightforward to implement the pre-order traverse for integer prefix tree than trie. We needn't compute keys. Below is the generic fold in pre-order:
+
+\begin{Haskell}
+foldpre _ z Empty = z
+foldpre f z (Leaf k v) = f k v z
+foldpre f z (Branch p m l r) = foldpre f (foldpre f z r) l
+\end{Haskell}
+
+We can convert a integer tree to assoc-list and get keys with fold:
+\begin{Haskell}
+toList = foldpre (\k v xs -> (k, v):xs) []
+keys = fst . unzip . toList
+\end{Haskell}
+
+When populate keys of a tree, their binary bits are in ascending order for both little endian binary trie and big endian integer prefix tree. To verify it, we define a function $bitsLE$ converting an integer to a list of bits in little endian. Then use it to verify the key ordering of trie:
+
+\begin{Haskell}
+verify kvs = sorted $ map bitsLE $ keys $ fromList kvs where
+  sorted [] = True
+  sorted xs = and $ zipWith (<=) xs (tail xs)
+  bitsLE 0 = []
+  bitsLE n = (n `mod` 2) : bitsLE (n `div` 2)
+\end{Haskell}
+
+Where $kvs$ is a list of random key-value pairs. The corresponding verification for big endian integer prefix tree is as below:
+
+\begin{Haskell}
+verify kvs = sorted $ keys $ fromList kvs
+\end{Haskell}
+}
+\end{Answer}
 
 \section{Trie}
 \index{Trie}
