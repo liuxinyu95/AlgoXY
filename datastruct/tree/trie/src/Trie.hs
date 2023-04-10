@@ -65,6 +65,9 @@ startsWith (k:ks) (AssocTrie _ ts) = case Prelude.lookup k ts of
 
 enum = concatMap (\(k, t) -> map (first (k:)) (startsWith [] t))
 
+-- look up the trie up to n candidates
+get n k t = take n $ startsWith k t
+
 -- ITU-T keypad (T9) mapping: digit -> [char]
 mapT9 = Map.fromList [('1', ",."), ('2', "abc"), ('3', "def"), ('4', "ghi"),
                       ('5', "jkl"), ('6', "mno"), ('7', "pqrs"), ('8', "tuv"),
@@ -81,11 +84,8 @@ findT9 [] _ = [[]]
 findT9 (d:ds) (AssocTrie _ ts) = concatMap find cts where
   cts = case Map.lookup d mapT9 of
     Nothing -> []
-    (Just cs) -> filter (\(c, t) -> c `elem` cs) ts
+    Just cs -> filter (\(c, t) -> c `elem` cs) ts
   find (c, t) = map (c:) (findT9 ds t)
-
--- look up the trie up to n candidates
-get n k t = take n $ startsWith k t
 
 -- test
 

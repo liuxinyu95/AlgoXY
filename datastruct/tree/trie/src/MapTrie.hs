@@ -21,9 +21,10 @@
 module MapTrie where
 
 import qualified Data.Map as Map
-import Data.List (sort, sortBy)
 import Data.Function (on)
+import Control.Arrow (first)
 import Prelude hiding (lookup)
+import Data.List (isPrefixOf, sort, sortBy, inits, nub)
 
 -- Map based Trie
 data MapTrie k v = MapTrie { value :: Maybe v
@@ -53,6 +54,40 @@ fromList = foldr (uncurry insert) empty
 
 fromString = fromList . (flip zip [1..]) . words
 
+-- Applications
+
+startsWith :: Ord k => [k] -> MapTrie k v -> [([k], v)]
+startsWith [] (MapTrie Nothing  ts) = enum ts
+startsWith [] (MapTrie (Just v) ts) = ([], v) : enum ts
+startsWith (k:ks) (MapTrie _ ts) = case Map.lookup k ts of
+  Nothing -> []
+  Just t -> map (first (k:)) (startsWith ks t)
+
+enum :: Ord k => Map.Map k (MapTrie k v) -> [([k], v)]
+enum = (concatMap (\(k, t) -> map (first (k:)) (startsWith [] t))) . Map.assocs
+
+-- look up the trie up to n candidates
+get n k t = take n $ startsWith k t
+
+-- ITU-T keypad (T9) mapping: digit -> [char]
+mapT9 = Map.fromList [('1', ",."), ('2', "abc"), ('3', "def"), ('4', "ghi"),
+                      ('5', "jkl"), ('6', "mno"), ('7', "pqrs"), ('8', "tuv"),
+                      ('9', "wxyz")]
+
+-- reverse ITU-T keypad map: char -> digit
+rmapT9 = Map.fromList $ concatMap (\(d, s) -> [(c, d) | c <- s]) $ Map.toList mapT9
+
+digits = map (\c -> Map.findWithDefault '#' c rmapT9)
+
+-- Given a list of digits, find all candidate words (including partial words)
+-- with T9 map from a dictionary (implemented in prefix Tree).
+findT9 [] _ = [[]]
+findT9 (d:ds) (MapTrie _ ts) = concatMap find cts where
+  cts = case Map.lookup d mapT9 of
+    Nothing -> []
+    Just cs -> Map.assocs $ Map.filterWithKey (\c _ -> c `elem` cs) ts
+  find (c, t) = map (c:) (findT9 ds t)
+
 -- example
 example = insert "zoo" 0 (fromString "a place where animals are for public to see")
 
@@ -66,3 +101,31 @@ verify = all (\as ->
 
 verifyKeys = all (\as ->
                    keys (fromList as) == (sort $ fst $ unzip as)) assocs
+
+verifyStartsWith = all verifyLookup [("a", 5), ("a", 6), ("a", 7), ("ab", 2),
+                                     ("ab", 5), ("b", 2), ("bo", 5), ("z", 3)]
+    where
+      lst=[("a", "the first letter of English"),
+           ("an", "used instead of 'a' when the following word begins with a vowel sound"),
+           ("another", "one more person or thing or an extra amount"),
+           ("abandon", "to leave a place, thing or person forever"),
+           ("about", "on the subject of; connected with"),
+           ("adam", "a character in the Bible who was the first man made by God"),
+           ("boy", "a male child or, more generally, a male of any age"),
+           ("bodyl", "the whole physical structure that forms a person or animal"),
+           ("zoo", "an area in which animals, especially wild animals, are kept so that people can go and look at them, or study them")]
+      t = fromList lst
+      m = Map.fromList lst
+      verifyLookup (k, n) = length r <= n &&
+                            all (\(k', v) -> k `isPrefixOf` k' && k' `Map.member` m) r
+        where
+          r = get n k t
+
+verifyT9 = all verify' $ concatMap (tail . inits) ["4663", "22", "2668437"]
+  where
+    t9lst = zip ["home", "good", "gone", "hood", "a", "another", "an"] [1..]
+    verify' ds = ((==) `on` sort . nub) as bs where
+      as = findT9 ds (fromList t9lst)
+      bs = filter ((==) ds . digits) (map (take (length ds) . fst) t9lst)
+
+verifyAll = and [verify, verifyKeys, verifyStartsWith, verifyT9]
