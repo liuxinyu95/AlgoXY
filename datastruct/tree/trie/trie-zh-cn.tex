@@ -878,7 +878,7 @@ lookup ks (PrefixTree v ts) =
 \Question{消除$lookup$算法中的递归，用循环实现前缀树的查找。}
 \end{Exercise}
 
-\begin{Answer}\label{ex:prefix-tr-lookup}
+\begin{Answer}[ref = {ex:prefix-tr-lookup}]
 \Question{消除$lookup$算法中的递归，用循环实现前缀树的查找。
 
 \begin{Bourbaki}
@@ -1131,11 +1131,44 @@ findT9 (PrefixTree _ ts) k = concatMap find pfx where
 
 我们从整数trie和整数前缀树开始，通过整数的二进制表示，我们复用二叉树实现了基于整数的映射（map）数据结构。接下来我们将键的类型从整数扩展到有限集元素的列表。其中一个特例就是字符串，trie和前缀树可以用来进行文字处理。我们给出了两个应用的例子：自动补齐和预测式输入。基数树的另外一个应用是后缀树，它和trie与前缀树有着密切的关系，是文字和DNA处理的有力工具。
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:prefix-tree-app}
 \Question{使用trie实现自动补齐和预测式输入。}
 \Question{对于返回多个候选结果的前缀树查找算法，如何保证输出的结果按照字典顺序排序？这会对性能产生怎样的影响？}
 \Question{在没有惰性求值的环境中，如何按需返回最多$n$条结果？}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:prefix-tree-app}]
+\Question{使用trie实现自动补齐和预测式输入。
+
+对于输入的前缀$ks$，我们沿着trie前进至子节点$t$，然后将$t$下面的子树全部展开。最后截断前$n$个候选项：
+\begin{Haskell}
+startsWith :: Ord k => [k] -> Trie k v -> [([k], v)]
+startsWith [] (Trie Nothing  ts) = enum ts
+startsWith [] (Trie (Just v) ts) = ([], v) : enum ts
+startsWith (k:ks) (MapTrie _ ts) = case Map.lookup k ts of
+  Nothing -> []
+  Just t -> map (first (k:)) (startsWith ks t)
+
+enum :: Ord k => Map.Map k (Trie k v) -> [([k], v)]
+enum = (concatMap (\(k, t) -> map (first (k:)) (startsWith [] t))) . Map.assocs
+
+get n k t = take n $ startsWith k t
+\end{Haskell}
+
+其中$first\ f\ (a, b) = (f\ a, b)$，将函数$f$应用到一对值的前一个上。实现预测式输入时，针对每个数字，我们都在$M_{T9}$中找到所有可能的字符，然后到trie中递归查找对应的子树：
+
+\begin{Haskell}
+findT9 [] _ = [[]]
+findT9 (d:ds) (Trie _ ts) = concatMap find cts where
+  cts = case Map.lookup d mapT9 of
+    Nothing -> []
+    Just cs -> Map.assocs $ Map.filterWithKey (\c _ -> c `elem` cs) ts
+  find (c, t) = map (c:) (findT9 ds t)
+\end{Haskell}
+}
+\Question{对于返回多个候选结果的前缀树查找算法，如何保证输出的结果按照字典顺序排序？这会对性能产生怎样的影响？}
+\Question{在没有惰性求值的环境中，如何按需返回最多$n$条结果？}
+\end{Answer}
 
 \section{附录：例子程序}
 
