@@ -873,9 +873,35 @@ lookup ks (PrefixTree v ts) =
 
 The prefix testing is linear to the length of the list, the $lookup$ algorithm is bound to $O(mn)$ time, where $m$ is the size of the element set, and $n$ is the length of the key. We skip the imperative implementation, and leave it as the exercise.
 
-\begin{Exercise}
-\Question{Eliminate the recursion to implement the prefix tree $lookup$ purely with loops}
+\begin{Exercise}\label{ex:prefix-tr-lookup}
+\Question{Eliminate the recursion to implement the prefix tree $lookup$ purely with loops.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:prefix-tr-lookup}]
+\Question{Eliminate the recursion to implement the prefix tree $lookup$ purely with loops.
+
+\begin{Bourbaki}
+Optional<V> lookup(PrefixTree<K, V> t, K key) {
+    if t == null then return Optional.Nothing
+    Bool match
+    repeat {
+        match = False
+        for k, tr in t.subtrees {
+            if k == key then return Optional.of(tr.value)
+            (K prefix, K k1, K k2) = lcp(key, k)
+            if prefix != [] and k2 == [] {
+                match = True
+                key = k1
+                t = tr
+                break
+            }
+        }
+    } until not match
+    return Optional.Nothing
+}
+\end{Bourbaki}
+}
+\end{Answer}
 
 \section{Applications of trie and prefix tree}
 We can use trie and prefix tree to solve many interesting problems, like implement a dictionary, populate candidate inputs, and realize the textonym input method. Different from the industry implementation, we give the examples to illustrate the ideas of trie and prefix tree.
@@ -1101,10 +1127,51 @@ To realize the predictive text input imperatively, we can perform breadth first 
 
 We start from integer trie and prefix tree. By turning the integer key to binary format, we re-used binary tree to realize the integer based map data structure. Then extend the key from integer to generic list, and limit the list element to finite set. Particularly for alphabetic strings, the generic trie and prefix tree can be used as tools to manipulate the text information. We give example applications about auto-completion and predictive text input. as another instance of radix tree, the suffix tree is closely related to trie and prefix tree used in text, and DNA processing.
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:prefix-tree-app}
 \Question{Implement the auto-completion and predictive text input with trie.}
 \Question{How to ensure the candidates in lexicographic order in the auto-completion and predictive text input program? What's the performance change accordingly?}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:prefix-tree-app}]
+\Question{Implement the auto-completion and predictive text input with trie.
+
+For input prefix $ks$, we advance to node $t$ in the trie, expand all sub-trees, the take the first $n$ items:
+
+\begin{Haskell}
+import Data.Map (Map)
+import qualified Data.Map as Map
+
+startsWith :: Ord k => [k] -> Trie k v -> [([k], v)]
+startsWith [] (Trie Nothing  ts) = enum ts
+startsWith [] (Trie (Just v) ts) = ([], v) : enum ts
+startsWith (k:ks) (Trie _ ts) = case Map.lookup k ts of
+  Nothing -> []
+  Just t -> map (first (k:)) (startsWith ks t)
+
+enum :: Ord k => Map k (Trie k v) -> [([k], v)]
+enum = (concatMap (\(k, t) ->
+                    map (first (k:)) (startsWith [] t))) . Map.assocs
+
+get n k t = take n $ startsWith k t
+\end{Haskell} %$
+
+Where $\textit{first}\ f\ (a, b) = (f\ a, b)$, it applies the function $f$ to the first one of a pair. When implement predictive input with trie, we lookup $M_{T9}$ for all characters mapped to a digit, then lookup the trie for candidate words.
+
+\begin{Haskell}
+findT9 [] _ = [[]]
+findT9 (d:ds) (Trie _ ts) = concatMap find cts where
+  cts = case Map.lookup d mapT9 of
+    Nothing -> []
+    Just cs -> Map.assocs $ Map.filterWithKey (\c _ -> c `elem` cs) ts
+  find (c, t) = map (c:) (findT9 ds t)
+\end{Haskell}
+}
+
+\Question{How to ensure the candidates in lexicographic order in the auto-completion and predictive text input program? What's the performance change accordingly?
+
+From exercise \ref{ex:prefix-tree-pre-order-traverse}, if traverse a binary prefix tree in pre-order, the result is in lexicographic order. For multi-way prefix tree, we need traverse sub-trees in lexicographic order. If the sub-trees are managed with self-balanced tree (like the red-black tree or the AVL tree), we can do this in linear time (exercise \autoref{ex:bst-iterate}). If the sub-trees are stored in hash table or assoc-list, then we need $O(n \lg n)$ time to sort them.
+}
+\end{Answer}
 
 \section{Appendix: Example programs}
 
