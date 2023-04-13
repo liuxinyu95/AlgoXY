@@ -85,6 +85,30 @@ def insert_nonfull(d, t, x):
         insert_nonfull(d, t.subtrees[i], x)
     return t
 
+def insert1(d, t, x):
+    """call loop_insert_nonfull inside"""
+    root = t
+    if full(d, root):
+        s = BTree()
+        s.subtrees = [root]
+        split(d, s, 0)
+        root = s
+    return loop_insert_nonfull(d, root, x)
+
+def loop_insert_nonfull(d, t, x):
+    root = t
+    while not is_leaf(t):
+        i = len(t.keys)
+        while i > 0 and x < t.keys[i-1]:
+            i = i - 1
+        if full(d, t.subtrees[i]):
+            split(d, t, i)
+            if x > t.keys[i]:
+                i = i + 1
+        t = t.subtrees[i]
+    ordered_insert(t.keys, x)
+    return root
+
 def ordered_insert(lst, x):
     i = len(lst)
     lst.append(x)
@@ -222,6 +246,13 @@ def prop_insert(xs):
     t = fromlist(d, xs)
     assert is_btree(d, t, 0), f"violate B-tree: d = {d}, t = {t}"
 
+def prop_insert1(xs):
+    d = deg(xs)
+    t = BTree()
+    for x in xs:
+        t = insert1(d, t, x)
+    assert is_btree(d, t, 0), f"violate B-tree: d = {d}, t = {t}"
+
 def prop_lookup(xs):
     d = deg(xs)
     t = fromlist(d, xs)
@@ -257,5 +288,6 @@ def test(f):
 if __name__ == "__main__":
     test(prop_order)
     test(prop_insert)
+    test(prop_insert1)
     test(prop_lookup)
     test(prop_delete)
