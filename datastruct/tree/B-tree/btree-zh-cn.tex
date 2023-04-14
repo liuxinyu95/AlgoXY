@@ -949,10 +949,23 @@ balance d (ks1, ts1) t (ks2, ts2)
 \begin{Answer}[ref = {ex:btree-del}]
 \Question{我们在本节中使用了前驱子分枝中的最大元素$k' = max(t')$替换要删除的元素$k$，然后递归地在$t'$中删除$k'$。还有一种对称的处理方法：用后继分枝中的最小元素来替换$k$。请实现这一方法
 
+我们首先要定义$min$函数，获取B树中的最小元素：
 \begin{Haskell}
 min' (BTree ks []) = head ks
 min' (BTree _  ts) = min' $ head ts
+\end{Haskell}
 
+在用$x$划分树时，需要用$\leq$替换$<$使得$x$可能出现在左侧的尾部。为此我们将划分条件抽出作为参数传入：
+\begin{Haskell}
+partitionWith p (BTree ks ts) = (l, t, r) where
+  l = (ks1, ts1)
+  r = (ks2, ts2)
+  (ks1, ks2) = L.span p ks
+  (ts1, (t:ts2)) = L.splitAt (length ks1) ts
+\end{Haskell}
+
+接下来就可以对称地实现删除了：
+\begin{Haskell}
 delete' x (d, t) = fixRoot (d, del x t) where
     del x (BTree ks []) = BTree (L.delete x ks) []
     del x t = if (Just x) == (listToMaybe $ reverse ks') then
@@ -961,12 +974,6 @@ delete' x (d, t) = fixRoot (d, del x t) where
               else balance d l (del x t') r
       where
         (l@(ks', ts'), t', r) = partitionWith (<= x) t
-
-partitionWith p (BTree ks ts) = (l, t, r) where
-  l = (ks1, ts1)
-  r = (ks2, ts2)
-  (ks1, ks2) = L.span p ks
-  (ts1, (t:ts2)) = L.splitAt (length ks1) ts
 \end{Haskell}
 }
 
