@@ -61,15 +61,12 @@ def split(d, z, i):
         y.subtrees = x.subtrees[d : ]
         x.subtrees = x.subtrees[ : d]
 
-def insert(d, t, x):
-    """insert key x to tree t, where the degree is d"""
-    root = t
-    if full(d, root):
-        s = BTree()
-        s.subtrees = [root]
-        split(d, s, 0)
-        root = s
-    return insert_nonfull(d, root, x)
+def ordered_insert(lst, x):
+    i = len(lst)
+    lst.append(x)
+    while i > 0 and lst[i] < lst[i - 1]:
+        (lst[i - 1], lst[i]) = (lst[i], lst[i - 1])
+        i = i - 1
 
 def insert_nonfull(d, t, x):
     if is_leaf(t):
@@ -85,15 +82,15 @@ def insert_nonfull(d, t, x):
         insert_nonfull(d, t.subtrees[i], x)
     return t
 
-def insert1(d, t, x):
-    """call loop_insert_nonfull inside"""
+def insert(d, t, x, insert_nonfull_func = insert_nonfull):
+    """insert key x to tree t, where the degree is d"""
     root = t
     if full(d, root):
         s = BTree()
         s.subtrees = [root]
         split(d, s, 0)
         root = s
-    return loop_insert_nonfull(d, root, x)
+    return insert_nonfull_func(d, root, x)
 
 def loop_insert_nonfull(d, t, x):
     root = t
@@ -109,12 +106,8 @@ def loop_insert_nonfull(d, t, x):
     ordered_insert(t.keys, x)
     return root
 
-def ordered_insert(lst, x):
-    i = len(lst)
-    lst.append(x)
-    while i > 0 and lst[i] < lst[i - 1]:
-        (lst[i - 1], lst[i]) = (lst[i], lst[i - 1])
-        i = i - 1
+def insert1(d, t, x):
+    return insert(d, t, x, loop_insert_nonfull)
 
 def delete(d, t, x):
     if t.keys == []:
