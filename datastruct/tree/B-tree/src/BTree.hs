@@ -35,10 +35,12 @@ full d (BTree ks _) = (length ks) > 2 * d - 1
 
 low d (BTree ks _) = (length ks) < d - 1
 
-partition x (BTree ks ts) = (l, t, r) where
+partition x = partitionWith (< x)
+
+partitionWith p (BTree ks ts) = (l, t, r) where
   l = (ks1, ts1)
   r = (ks2, ts2)
-  (ks1, ks2) = L.span (< x) ks
+  (ks1, ks2) = L.span p ks
   (ts1, (t:ts2)) = L.splitAt (length ks1) ts
 
 split d (BTree ks ts) = (BTree ks1 ts1, k, BTree ks2 ts2) where
@@ -67,6 +69,19 @@ delete x (d, t) = fixRoot (d, del x t) where
               else balance d l (del x t') r
       where
         (l, t', r@(ks', ts')) = partition x t
+
+-- Symmetric delete implementation using min
+
+min' (BTree ks []) = head ks
+min' (BTree _  ts) = min' $ head ts
+
+delete' x (d, t) = fixRoot (d, del x t) where
+    del x (BTree ks []) = BTree (L.delete x ks) []
+    del x t = if (Just x) == (listToMaybe $ reverse ks') then
+                let k' = min' t' in balance d ((init ks') ++ [k'], ts') (del k' t') r
+              else balance d l (del x t') r
+      where
+        (l@(ks', ts'), t', r) = partitionWith (<= x) t
 
 fixRoot (d, BTree [] [t]) = (d, t)
 fixRoot (d, t) | full d t  = let (t1, k, t2) = split d t in
@@ -122,16 +137,26 @@ prop_order xs = (L.sort $ L.nub xs) == (toList $ snd $ fromList d xs) where
 prop_insert :: [Int] -> Bool
 prop_insert xs = isBTree d 0 $ snd $ fromList d xs where d = degOf xs
 
-prop_delete :: [Int] -> Int -> Bool
-prop_delete xs x = (L.sort $ L.delete x ys) ==
-                   (toList $ snd $ delete x $ fromList d ys) where
+verifyDelete fdel xs x = (L.sort $ L.delete x ys) ==
+                         (toList $ snd $ fdel x $ fromList d ys) where
   ys = L.nub xs
   d = degOf xs
 
-prop_del_balance :: [Int] -> Int -> Bool
-prop_del_balance xs x = isBTree d 0 $ snd $ delete x $ fromList d ys where
+verifyDelBalance fdel xs x = isBTree d 0 $ snd $ fdel x $ fromList d ys where
   ys = L.nub xs
   d = degOf xs
+
+prop_delete :: [Int] -> Int -> Bool
+prop_delete = verifyDelete delete
+
+prop_del_balance :: [Int] -> Int -> Bool
+prop_del_balance = verifyDelBalance delete
+
+prop_delete_symmetric :: [Int] -> Int -> Bool
+prop_delete_symmetric = verifyDelete delete'
+
+prop_del_symmetric_balance :: [Int] -> Int -> Bool
+prop_del_symmetric_balance = verifyDelBalance delete'
 
 prop_lookup :: [Int] -> Int -> Bool
 prop_lookup xs x = f $ BTree.lookup x $ snd $ fromList d xs where
@@ -151,3 +176,5 @@ testAll = do
   quickCheck prop_del_balance
   quickCheck prop_lookup
   quickCheck prop_foldt
+  quickCheck prop_delete_symmetric
+  quickCheck prop_del_symmetric_balance
