@@ -977,7 +977,45 @@ delete' x (d, t) = fixRoot (d, del x t) where
 \end{Haskell}
 }
 
-\Question{实现列表对B树的删除算法。}
+\Question{实现列表对B树的删除算法。
+
+\begin{Haskell}
+delete x (d, t) = fixRoot (d, del x t) where
+  del _ Empty = Empty
+  del x t = if (Just x) == fmap fst (listToMaybe r) then
+              case t' of
+                Empty -> balance d l Empty (tail r)
+                _     -> let k' = max' t' in
+                  balance d l (del k' t') ((k', snd $ head r):(tail r))
+            else balance d l (del x t') r
+    where
+      (l, t', r) = partition (< x) t
+
+max' t@(BTree _ _ []) = max' (stepL t)
+max' (BTree _ _ [(k, Empty)]) = k
+max' (BTree _ _ [(k, t)]) = max' t
+max' t = max' (stepR t)
+\end{Haskell}
+
+此外，我们需要对$balance$函数增加额外的处理，修复删除后不平衡的情形：
+\begin{Haskell}
+balance :: Int -> [(a, BTree a)] -> BTree a -> [(a, BTree a)] -> BTree a
+balance d l t r | full d t = fixFull
+                | low  d t = fixLow l t r
+                | otherwise = BTree l t r
+  where
+    fixFull = let (t1, k, t2) = split d t in BTree l t1 ((k, t2):r)
+    fixLow ((k', t'):l) t r = balance d l (unsplit t' k' t) r
+    fixLow l t ((k', t'):r) = balance d l (unsplit t k' t') r
+    fixLow l t r = t        -- l == r == []
+\end{Haskell}
+
+其中$unsplit$是$split$的逆运算，它的定义为：
+\begin{Haskell}
+unsplit t1 k t2@(BTree (_:_) _ _) = unsplit t1 k (stepL t2)
+unsplit t1@(BTree _ _ (_:_)) k t2 = unsplit (stepR t1) k t2
+\end{Haskell}
+}
 \end{Answer}
 
 \section{小结}
