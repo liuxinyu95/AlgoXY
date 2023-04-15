@@ -650,9 +650,37 @@ For the imperative implementation, we start from the root $r$, find a position $
 \EndFunction
 \end{algorithmic}
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:btree-binary_lookup}
   \Question{Improve the imperative look up with binary search among keys.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:btree-binary_lookup}]
+\Question{Improve the imperative look up with binary search among keys.
+
+\begin{Bourbaki}
+Optional<(BTree<K, deg>, Int)> lookup(BTree<K, deg> tr, K key) {
+    loop {
+        Int l = 0, u = length(tr.keys)
+        while l < u {
+            Int m = (l + u) / 2
+            if key == tr.keys[m] {
+                return Optional.of((tr, m))
+            } else if t.keys[m] < key {
+                l = m + 1
+            } else {
+                u = m
+            }
+        }
+        if isLeaf(tr) {
+            return Optional.Nothing
+        } else {
+            tr = tr.subTrees[l]
+        }
+    }
+}
+\end{Bourbaki}
+}
+\end{Answer}
 
 \section{Delete}
 \index{B-tree!delete}
@@ -917,10 +945,85 @@ Where \textproc{Merge-At}($t, i$) merges sub-tree $t_i(t)$, key $k_i(t)$, and $t
 \EndProcedure
 \end{algorithmic}
 
-\begin{Exercise}
-  \Question{When delete a key $k$ from the branch node, we use the maximum key from the predecessor sub-tree $k' = max(t')$ to replace $k$, then recursively delete $k'$ from $t'$. There is a symmetric method, to replace $k$ with the minimum key from the successor sub-tree. Implement this solution.}
-  \Question{Define the $delete$ function for the `paired list' implementation.}
+\begin{Exercise}\label{ex:btree-del}
+\Question{When delete a key $k$ from the branch node, we use the maximum key from the predecessor sub-tree $k' = max(t')$ to replace $k$, then recursively delete $k'$ from $t'$. There is a symmetric method, to replace $k$ with the minimum key from the successor sub-tree. Implement this solution.}
+\Question{Define the $delete$ function for the `paired list' implementation.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:btree-del}]
+\Question{When delete a key $k$ from the branch node, we use the maximum key from the predecessor sub-tree $k' = max(t')$ to replace $k$, then recursively delete $k'$ from $t'$. There is a symmetric method, to replace $k$ with the minimum key from the successor sub-tree. Implement this solution.
+
+We first define the $min$ function to get the minimum key:
+\begin{Haskell}
+min' (BTree ks []) = head ks
+min' (BTree _  ts) = min' $ head ts
+\end{Haskell}
+
+When partition the tree with $x$, we need use $\leq$, but not $<$, because $x$ may be the last one on the left. We abstract the partition predicate as a parameter:
+
+\begin{Haskell}
+partitionWith p (BTree ks ts) = (l, t, r) where
+  l = (ks1, ts1)
+  r = (ks2, ts2)
+  (ks1, ks2) = L.span p ks
+  (ts1, (t:ts2)) = L.splitAt (length ks1) ts
+\end{Haskell}
+
+We can next implement the delete with $min$:
+\begin{Haskell}
+delete' x (d, t) = fixRoot (d, del x t) where
+    del x (BTree ks []) = BTree (L.delete x ks) []
+    del x t = if (Just x) == (listToMaybe $ reverse ks') then
+                let k' = min' t' in
+                  balance d ((init ks') ++ [k'], ts') (del k' t') r
+              else balance d l (del x t') r
+      where
+        (l@(ks', ts'), t', r) = partitionWith (<= x) t
+\end{Haskell}
+}
+
+\Question{Define the $delete$ function for the `paired list' implementation.
+
+\begin{Haskell}
+delete x (d, t) = fixRoot (d, del x t) where
+  del _ Empty = Empty
+  del x t = if (Just x) == fmap fst (listToMaybe r) then
+              case t' of
+                Empty -> balance d l Empty (tail r)
+                _     -> let k' = max' t' in
+                  balance d l (del k' t') ((k', snd $ head r):(tail r))
+            else balance d l (del x t') r
+    where
+      (l, t', r) = partition (< x) t
+
+max' t@(BTree _ _ []) = max' (stepL t)
+max' (BTree _ _ [(k, Empty)]) = k
+max' (BTree _ _ [(k, t)]) = max' t
+max' t = max' (stepR t)
+\end{Haskell}
+
+We need add additional logic in $balance$ to fix the too low cases after delete:
+
+\begin{Haskell}
+balance :: Int -> [(a, BTree a)] -> BTree a -> [(a, BTree a)] -> BTree a
+balance d l t r | full d t = fixFull
+                | low  d t = fixLow l t r
+                | otherwise = BTree l t r
+  where
+    fixFull = let (t1, k, t2) = split d t in BTree l t1 ((k, t2):r)
+    fixLow ((k', t'):l) t r = balance d l (unsplit t' k' t) r
+    fixLow l t ((k', t'):r) = balance d l (unsplit t k' t') r
+    fixLow l t r = t        -- l == r == []
+\end{Haskell}
+
+Where $unsplit$ is the reverse of $split$:
+
+\begin{Haskell}
+unsplit t1 k t2@(BTree (_:_) _ _) = unsplit t1 k (stepL t2)
+unsplit t1@(BTree _ _ (_:_)) k t2 = unsplit (stepR t1) k t2
+\end{Haskell}
+}
+\end{Answer}
 
 \section{Summary}
 We extend the binary search tree to multiple branches, then constrain the branches within a range to develop the B-tree. B-tree is used as a tool to control the magnetic disk access (chapter 18, \cite{CLRS}). Because all B-tree nodes store keys in a range, not too few or too many. B-tree is balanced. Most of the tree operations are proportion to the height. The performance is bound to $O(\lg n)$ time, where $n$ is the number of keys in B-tree.
