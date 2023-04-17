@@ -20,9 +20,7 @@
 
 module SplayHeap where
 
-import System.Random -- only for testing
-
--- Definition
+import System.Random -- for testing
 
 data STree a = E -- Empty
              | Node (STree a) a (STree a) -- left, element, right
@@ -131,7 +129,6 @@ toStr :: (Show a)=>(STree a) -> String
 toStr E = "."
 toStr (Node l x r) = "(" ++ (toStr l) ++ " " ++
                      (show x) ++ " " ++ (toStr r) ++ ")"
-
 
 --testSplay :: IO (STree Int)
 testSplay = do

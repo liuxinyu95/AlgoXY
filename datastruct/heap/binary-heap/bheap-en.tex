@@ -259,7 +259,7 @@ Robert. W. Floyd gave a fast implementation with max-heap. The top stores the ma
 \EndFunction
 \end{algorithmic}
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:arrayed-binary-heap}
 \Question{Consider another idea about in-place heap sort: Build a min-heap from the array $A$, the first element $a_1$ is in the right position. Treat the rest $[a_2, a_3, ..., a_n]$ as the new heap, and apply \textproc{Heapify} from $a_2$. Repeat this till the last element. Is this method correct?
 \begin{algorithmic}[1]
 \Function{Heap-Sort}{$A$}
@@ -284,8 +284,9 @@ Robert. W. Floyd gave a fast implementation with max-heap. The top stores the ma
 }
 \end{Exercise}
 
-\begin{Answer}
+\begin{Answer}[ref = {ex:arrayed-binary-heap}]
 \Question{No, it is not correct. The sub-array $[a_2, a_3, ..., a_n]$ can't map back to binary heap. It's insufficient to only apply \textproc{Heapify} from $a_2$, we need run \textproc{Build-Heap} to rebuild the heap.}
+
 \Question{For the same reason, it does not work.}
 \end{Answer}
 
@@ -651,13 +652,86 @@ If a heap is empty, then the result is the other heap; otherwise, let a heap be 
 
 We give the generic definition of binary heap in this chapter. There are several implementations. The array based representation is suitable for imperative implementation. It maps a complete binary tree to array, supports random access any element. We also directly use the binary tree to implement the heap in functional way. Most operations are bound to $O(\lg n)$ time, some are $O(1)$ amortized time. Okasaki gave detailed analysis\cite{okasaki-book}. When extend from binary tree to $k$-ary tree, we obtain binomial heap, Fibonacci heap, and pairing heap. We introduce these heaps in chapter 10.
 
-\begin{Exercise}
-\Question{Realize leftist heap, skew heap, and splay heap in imperative approach.}
+\begin{Exercise}\label{ex:other-binary-heaps}
+\Question{Realize leftist heap and skew heap in imperative approach.} % exclude splay heap
 \Question{Define fold for heap.}
 \end{Exercise}
 
-\begin{Answer}
-\Question{Realize leftist heap, skew heap, and splay heap in imperative approach.}
+\begin{Answer}[ref = {ex:other-binary-heaps}]
+\Question{Realize leftist heap and skew heap in imperative approach.
+
+We add a parent reference in the node definition for easy back-tracking.
+
+\begin{Bourbaki}
+data Node<T> {
+    T value
+    Int rank = 1
+    Node<T> left = null
+    Node<T> right = null
+    Node<T> parent = null
+}
+\end{Bourbaki}
+
+When merge two leftist heaps, we firstly top-down merge along the right sub-tree, then bottom-up update the rank along the parent reference, swap the sub-trees if the left has the smaller rank. To simplify the empty tree handling, we use a sentinel node.
+
+\begin{Bourbaki}
+Node<T> merge(Node<T> a, Node<T> b) {
+    var h = Node(null)  // the sentinel node
+    while a != null and b != null {
+        if b.value < a.value then swap(a, b)
+        var c = Node(a.value, parent = h, left = a.left)
+        h.right = c
+        h = c
+        a = a.right
+    }
+    h.right = if a != null then a else b
+    while h.parent != null {
+        if rank(h.left) < rank(h.right) then swap(h.left, h.right)
+        h.rank = 1 + rank(h.right)
+        h = h.parent
+    }
+    h = h.right
+    if h != null then h.parent = null
+    return h
+}
+
+Int rank(Node<T> x) = if x != null then x.rank else 0
+
+Node<T> insert(Node<T> h, T x) = merge(Node(x), h)
+
+T top(Node<T> h) = h.value
+
+Node<T> pop(Node<T> h) = merge(h.left, h.right)
+\end{Bourbaki}
+
+The skew heap is more simple. We needn't update the rank, nor need the parent and back-track.
+
+\begin{Bourbaki}
+data Node<T> {
+    T value
+    Node<T> left = null
+    Node<T> right = null
+}
+\end{Bourbaki}
+
+Below is the merge function, the others are same as the leftist heap.
+\begin{Bourbaki}
+Node<T> merge(Node<T> a, Node<T> b) {
+    var h = Node(None)
+    var root = h
+    while a != null and b != null {
+        if b.value < a.value then swap(a, b)
+        var c = Node(a.value, left = null, right = a.left)
+        h.left = c
+        h = c
+        a = a.right
+    }
+    h.left = if a != null then a else b
+    root = root.left
+    return root
+}
+\end{Bourbaki}
+}
 \Question{Define fold for heap.
 
 \[
