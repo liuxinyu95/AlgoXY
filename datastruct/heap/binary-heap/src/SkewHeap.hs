@@ -20,16 +20,17 @@
 
 module SkewHeap where
 
--- Definition
+import Test.QuickCheck
+import Data.List (sort)
 
-data SHeap a = E -- Empty 
+data SHeap a = E -- Empty
              | Node a (SHeap a) (SHeap a) -- element, left, right
                deriving (Eq, Show)
 
 merge::(Ord a)=>SHeap a -> SHeap a -> SHeap a
 merge E h = h
 merge h E = h
-merge h1@(Node x l r) h2@(Node y l' r') = 
+merge h1@(Node x l r) h2@(Node y l' r') =
     if x < y then Node x (merge r h2) l
     else Node y (merge h1 r') l'
 
@@ -52,6 +53,7 @@ heapSort = hsort . fromList where
 
 -- test
 
-testFromList = fromList [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+prop_sort :: [Int] -> Bool
+prop_sort xs = heapSort xs == sort xs
 
-testHeapSort = heapSort [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+-- example = fromList [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]

@@ -1,4 +1,3 @@
-# leftistheap.py, Leftist Heap
 # Copyright (C) 2023, Liu Xinyu (liuxinyu95@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify
@@ -17,35 +16,24 @@
 from random import sample, randint
 
 class Node:
-    def __init__(self, value, rank = 1, left = None, right = None, parent = None):
+    def __init__(self, value, left = None, right = None):
         self.value = value
-        self.rank = rank
         self.left = left
         self.right = right
-        self.parent = parent
-
-def rank(x):
-    return x.rank if x else 0
 
 def merge(a, b):
     h = Node(None)  # the sentinel node
+    root = h
     while a and b:
         if b.value < a.value:
             a, b = b, a
-        c = Node(a.value, parent = h, left = a.left)
-        h.right = c
+        c = Node(a.value, left = None, right = a.left)
+        h.left = c
         h = c
         a = a.right
-    h.right = a if a else b
-    while h.parent:
-        if rank(h.left) < rank(h.right):
-            h.left, h.right = h.right, h.left
-        h.rank = 1 + rank(h.right)
-        h = h.parent
-    h = h.right
-    if h:
-        h.parent = None
-    return h
+    h.left = a if a else b
+    root = root.left
+    return root
 
 def insert(h, x):
     return merge(Node(x), h)
@@ -54,7 +42,7 @@ def top(h):
     return h.value
 
 def pop(h):
-    return h.value, merge(h.left, h.right)
+    return merge(h.left, h.right)
 
 def fromlist(xs):
     h = None
@@ -66,8 +54,8 @@ def hsort(xs):
     h = fromlist(xs)
     ys = []
     while h:
-        y, h = pop(h)
-        ys.append(y)
+        ys.append(top(h))
+        h = pop(h)
     return ys
 
 def test(f):
