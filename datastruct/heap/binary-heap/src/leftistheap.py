@@ -22,6 +22,8 @@ def merge(a, b):
         a = a.right
     h.right = a if a else b
     while h.parent:
+        if rank(h.left) < rank(h.right):
+            h.left, h.right = h.right, h.left
         h.rank = 1 + rank(h.right)
         h = h.parent
     h = h.right
@@ -30,7 +32,7 @@ def merge(a, b):
     return h
 
 def insert(h, x):
-    return merge(Node(x, 1), h)
+    return merge(Node(x), h)
 
 def top(h):
     return h.value
