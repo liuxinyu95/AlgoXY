@@ -20,6 +20,9 @@
 
 module LeftistHeap where
 
+import Test.QuickCheck
+import Data.List (sort)
+
 -- Definition
 
 data LHeap a = E -- Empty
@@ -60,6 +63,7 @@ heapSort = hsort . fromList where
 
 -- test
 
-testFromList = fromList [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+prop_sort :: [Int] -> Bool
+prop_sort xs = heapSort xs == sort xs
 
-testHeapSort = heapSort [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
+-- example = fromList [16, 14, 10, 8, 7, 9, 3, 2, 4, 1]
