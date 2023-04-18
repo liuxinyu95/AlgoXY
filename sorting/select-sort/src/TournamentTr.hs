@@ -37,30 +37,41 @@ only (Only x) = x
 
 minBy p a b = if p a b then a else b
 
-branch p t1 t2 = Br t1 (minBy p (key t1) (key t2)) t2
+merge p t1 t2 = Br t1 (minBy p (key t1) (key t2)) t2
 
--- fromList :: (Ord a) => (Infinite a -> Infinite a -> Bool) -> [a] -> Tr a
-fromList p xs = build $ map wrap xs where
+fromList :: Ord a => [a] -> Tr a
+fromList = fromListWith (<=)
+
+-- fromListWith :: (Ord a) => (Infinite a -> Infinite a -> Bool) -> [a] -> Tr a
+fromListWith p xs = build $ map wrap xs where
   build [] = Empty
   build [t] = t
   build ts = build $ pair ts
-  pair (t1:t2:ts) = (branch p t1 t2) : pair ts
+  pair (t1:t2:ts) = (merge p t1 t2) : pair ts
   pair ts = ts
 
-pop p inf = delMin where
+pop :: Ord a => Tr a -> Tr a
+pop = popWith (<=) Inf
+
+popWith p inf = delMin where
   delMin (Br Empty _ Empty) = Br Empty inf Empty
   delMin (Br l k r) | k == key l = let l' = delMin l in Br l' (minBy p (key l') (key r)) r
                     | k == key r = let r' = delMin r in Br l (minBy p (key l) (key r')) r'
 
 top = only . key
 
--- tsortBy :: (Ord a) => (Infinite a -> Infinite a -> Bool) -> Infinite a -> [a] -> [a]
-tsortBy p inf xs = sort' $ fromList p xs where
-    sort' Empty = []
-    sort' t | inf == key t = []
-            | otherwise = (top t) : (sort' $ pop p inf t)
+toList :: Ord a => Tr a -> [a]
+toList = toListWith (<=) Inf
 
-tsort = tsortBy (<=) Inf
+toListWith p inf = flat where
+  flat Empty = []
+  flat t | inf == key t = []
+         | otherwise = (top t) : (flat $ popWith p inf t)
+
+tsort = toList . fromList
+
+-- tsortBy :: (Ord a) => (Infinite a -> Infinite a -> Bool) -> Infinite a -> [a] -> [a]
+tsortBy p inf xs = toListWith p inf $ fromListWith p xs where
 
 prop_tsort :: [Int] -> Bool
 prop_tsort xs = (sort xs) == (tsort xs)

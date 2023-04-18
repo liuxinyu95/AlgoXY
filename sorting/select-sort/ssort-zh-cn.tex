@@ -541,7 +541,7 @@ sort\ t & = & (key\ t) : sort\ (pop\ t) \\
 \ee
 
 \begin{Exercise}\label{ex:tournament-tree-sort}
-\Question{将递归的锦标赛排序实现为升序。}
+\Question{将递归的锦标赛排序实现为升序。}\label{ex:parameterized-tournament-tree-sort}
 \Question{锦标赛树排序可以处理相等元素么？它是稳定排序么？}
 \Question{比较锦标赛树排序和二叉搜索树排序，它们的时间和空间效率如何。}
 \Question{比较堆排序和锦标赛树排序，它们的时间和空间效率如何。}
@@ -551,10 +551,48 @@ sort\ t & = & (key\ t) : sort\ (pop\ t) \\
 \Question{将递归的锦标赛排序实现为升序。
 
 把$max$和$-\infty$替换为$min$和$\infty$就可以实现升序排序。我们可以进一步把它们抽象成参数：
+
+\begin{Haskell}
+minBy p a b = if p a b then a else b
+
+merge p t1 t2 = Br t1 (minBy p (key t1) (key t2)) t2
+
+fromListWith p xs = build $ map wrap xs where
+  build [] = Empty
+  build [t] = t
+  build ts = build $ pair ts
+  pair (t1:t2:ts) = (merge p t1 t2) : pair ts
+  pair ts = ts
+
+popWith p inf = delMin where
+  delMin (Br Empty _ Empty) = Br Empty inf Empty
+  delMin (Br l k r) | k == key l = let l' = delMin l in
+                      Br l' (minBy p (key l') (key r)) r
+                    | k == key r = let r' = delMin r in
+                      Br l (minBy p (key l) (key r')) r'
+
+toListWith p inf = flat where
+  flat Empty = []
+  flat t | inf == key t = []
+         | otherwise = (top t) : (flat $ popWith p inf t)
+
+sortBy p inf xs = toListWith p inf $ fromListWith p xs where
+\end{Haskell}
+
+$sortBy\ (<)\ \infty$定义了升序排序，而$sortBy\ (>)\ -\infty$定义了降序排序。
 }
-\Question{锦标赛树排序可以处理相等元素么？它是稳定排序么？}
-\Question{比较锦标赛树排序和二叉搜索树排序，它们的时间和空间效率如何。}
-\Question{比较堆排序和锦标赛树排序，它们的时间和空间效率如何。}
+\Question{锦标赛树排序可以处理相等元素么？它是稳定排序么？
+
+可以处理相等元素。使用\cref{ex:parameterized-tournament-tree-sort}的结果，$sortBy\ (\leq)\ \infty$即可实现含有相等元素的升序排序。它不是稳定排序。
+}
+\Question{比较锦标赛树排序和二叉搜索树排序，它们的时间和空间效率如何。
+
+它们的时间复杂度都是$O(n \lg n)$，空间复杂度都是$O(n)$。区别在于，二叉搜索树建立后不再改变（除非插入、删除）。而锦标赛树在排序后变成含有$n$个无穷节点的空树。
+}
+\Question{比较堆排序和锦标赛树排序，它们的时间和空间效率如何。
+
+它们的时间复杂度都是$O(n \lg n)$，空间复杂度都是$O(n)$。区别在于，堆排序结束后堆变空，而锦标赛树在排序后仍然占据$O(n)$的空间。
+}
 \end{Answer}
 
 
