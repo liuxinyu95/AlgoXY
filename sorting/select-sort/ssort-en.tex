@@ -163,7 +163,7 @@ sort\ xs   & = & m : (sort\ xs'),\ \text{where}\ (m, xs') = \min\ xs \\
 
 Selection sort need scan the unsorted elements to find the minimum for $n$ times. It compares $n + (n-1) + (n-2) + ... + 1$ times. The time bound is $O(\dfrac{n(n+1)}{2}) = O(n^2)$. Compare to the insertion sort, selection sort performs same in the best, worst, and average cases. While insertion sort performs best at $O(n)$ (the linked-list is in reversed ordered), and worst at $O(n^2)$.
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:basic-sel-sort}
 \Question{What is the problem with below implementation of $\min$?
 \[
 \begin{array}{rcl}
@@ -175,12 +175,27 @@ min'\ as\ m\ (b:bs) & = & \begin{cases}
 \end{array}
 \]
 }
-\Question{Implement the selection sort for both in-placed and not.}
+\Question{Implement the in-place selection sort.}
 \end{Exercise}
 
-\begin{Answer}
+\begin{Answer}[ref = {ex:basic-sel-sort}]
 \Question{We should use link but not append. Appending is linear to the length of the list, while linking is constant time.}
-\Question{Implement the selection sort for both in-placed and not. TO-DO}
+
+\Question{Implement the in-place selection sort.
+
+\begin{Bourbaki}
+Void sort([K] xs) {
+    var n = length(xs)
+    for var i = 0 to n - 1 {
+        var m = i
+        for Int j = i + 1 to n - 1 {
+            if xs[j] < xs[m] then m = j
+        }
+        swap(xs[i], xs[m])
+    }
+}
+\end{Bourbaki}
+}
 \end{Answer}
 
 \section{Improvement}
@@ -529,12 +544,63 @@ sort\ t & = & (key\ t) : sort\ (pop\ t) \\
 \label{eq:tsort}
 \ee
 
-\begin{Exercise}
-\Question{Implement the recursive tournament tree sort in ascending order.}
-\Question{When there are duplicated elements, how to sort it with tournament tree?}
+\begin{Exercise}\label{ex:tournament-tree-sort}
+\Question{Implement the recursive tournament tree sort in ascending order.}\label{ex:parameterized-tournament-tree-sort}
+\Question{How to handle duplicated element with the tournament tree? is tournament tree sort stable?}
 \Question{Compare the tournament tree sort and binary search tree sort in terms of space and time performance.}
 \Question{Compare heap sort and tournament tree sort in terms of space and time performance.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:tournament-tree-sort}]
+\Question{Implement the recursive tournament tree sort in ascending order.
+
+We can realize the ascending sort by replacing the $max$ and $-\infty$ with the $min$ and $\infty$. Further, we can abstract them as two parameters:
+
+\begin{Haskell}
+minBy p a b = if p a b then a else b
+
+merge p t1 t2 = Br t1 (minBy p (key t1) (key t2)) t2
+
+fromListWith p xs = build $ map wrap xs where
+  build [] = Empty
+  build [t] = t
+  build ts = build $ pair ts
+  pair (t1:t2:ts) = (merge p t1 t2) : pair ts
+  pair ts = ts
+
+popWith p inf = delMin where
+  delMin (Br Empty _ Empty) = Br Empty inf Empty
+  delMin (Br l k r) | k == key l = let l' = delMin l in
+                      Br l' (minBy p (key l') (key r)) r
+                    | k == key r = let r' = delMin r in
+                      Br l (minBy p (key l) (key r')) r'
+
+toListWith p inf = flat where
+  flat Empty = []
+  flat t | inf == key t = []
+         | otherwise = (top t) : (flat $ popWith p inf t)
+
+sortBy p inf xs = toListWith p inf $ fromListWith p xs where
+\end{Haskell}
+
+$sortBy\ (<)\ \infty$ defines the ascending sort, and $sortBy\ (>)\ -\infty$ defines the descending sort.
+}
+
+\Question{How to handle duplicated element with the tournament tree? is tournament tree sort stable?
+
+From \cref{ex:parameterized-tournament-tree-sort}, we can handle the duplicated elements with $sortBy\ (\leq)\ \infty$ (ascending sort) for example. The tournament tree sort is not stable.
+}
+
+\Question{Compare the tournament tree sort and binary search tree sort in terms of space and time performance.
+
+They are both bound to $O(n \lg n)$ time, and $O(n)$ space. The difference is, the binary search tree does not change after build (unless insert, delete), while the tournament tree changes to a tree with $n$ nodes of infinity.
+}
+
+\Question{Compare heap sort and tournament tree sort in terms of space and time performance.
+
+They are both bound to $O(n \lg n)$ time, and $O(n)$ space. The difference is, the heap becomes empty after sort complete, while the tournament tree still occupies $O(n)$ space.
+}
+\end{Answer}
 
 \subsection{Heap sort}
 
