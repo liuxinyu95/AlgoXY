@@ -71,7 +71,7 @@ toListWith p inf = flat where
 tsort = toList . fromList
 
 -- tsortBy :: (Ord a) => (Infinite a -> Infinite a -> Bool) -> Infinite a -> [a] -> [a]
-tsortBy p inf xs = toListWith p inf $ fromListWith p xs where
+tsortBy p inf xs = toListWith p inf $ fromListWith p xs
 
 prop_tsort :: [Int] -> Bool
 prop_tsort xs = (sort xs) == (tsort xs)
