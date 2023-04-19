@@ -52,8 +52,6 @@ deleteMin (Node _ hs) = mergePairs hs where
     mergePairs [h] = h
     mergePairs (h1:h2:hs) = merge (merge h1 h2) (mergePairs hs)
 
--- Helper functions
-
 fromList :: (Ord a) => [a] -> PHeap a
 fromList xs = foldl insert E xs
 

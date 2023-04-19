@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# pairingheap.py, pairing heap 
+# pairingheap.py, pairing heap
 # Copyright (C) 2012, Liu Xinyu (liuxinyu95@gmail.com)
 #
 # This program is free software: you can redistribute it and/or modify
@@ -17,13 +17,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #
-# Based on Michael L. Fredman, Robert Sedgewick, Daniel D. Sleator, 
-# and Robert E. Tarjan. ``The Pairing Heap: A New Form of Self-Adjusting 
+# Based on Michael L. Fredman, Robert Sedgewick, Daniel D. Sleator,
+# and Robert E. Tarjan. ``The Pairing Heap: A New Form of Self-Adjusting
 # Heap'' Algorithmica (1986) 1: 111-129
 #
 
-import random # for testing only
-from collections import deque # for right to left merge only
+from functools import reduce
+from random import sample, randint, choice
+from collections import deque # for right to left merge
 
 #
 # Assume the heap is min-heap
@@ -65,7 +66,7 @@ def top(h):
 
 def decrease_key(h, x, key):
     x.key = key # assume key <= x.key
-    if x.parent is not None:
+    if x.parent:
         x.parent.children.remove(x) # Sadly, this is O(N) operation.
     x.parent = None
     return merge(x, h)
@@ -86,18 +87,38 @@ def pop(h):
     for y in lst:
         x = merge(x, y)
     return x
-        
-# helper functions
+
+def lookup_node(h, x):
+    if h.key == x:
+        return h
+    for t in h.children:
+        node = lookup_node(t, x)
+        if node:
+            return node
+    return None
+
+def delete(h, x):
+    node = lookup_node(h, x)
+    if not node:
+        return h
+    if node == h:
+        return pop(h)
+    node.parent.children.remove(node)
+    node.parent = None
+    return merge(pop(node), h)
+
 def from_list(lst):
-    return reduce(insert, lst, None)
+    return reduce(insert, lst)
+
+def to_list(h):
+    xs = []
+    while h:
+        xs.append(top(h))
+        h = pop(h)
+    return xs
 
 def heap_sort(lst):
-    h = from_list(lst)
-    res = []
-    while h is not None:
-        res.append(top(h))
-        h = pop(h)
-    return res
+    return to_list(from_list(lst))
 
 def to_str(h):
     s = "(" + str(h.key) + ", "
@@ -107,33 +128,44 @@ def to_str(h):
     return s
 
 # testing
-def test_sort():
-    n = 1000
-    for i in range(n):
-        lst = random.sample(range(n), random.randint(1, n))
-        assert(heap_sort(lst) == sorted(lst))
-    print "heap-sort:", n, "test cases are OK."
+def random_list(n = 1000):
+    return sample(range(n), randint(1, n))
 
-def test_decrease_key():
-    n = 1000
-    m = 16 # too slow for big m
-    for i in range(m):
-        xs = random.sample(range(n), random.randint(1, n))
-        ns = [KTree(x) for x in xs]
-        h = reduce(insert_node, ns, None)
-        xs = [x - random.randint(1, n) for x in xs]
-        for node, x in zip(ns, xs):
-            h = decrease_key(h, node, x)
-        ys = []
-        while h is not None:
-            ys.append(top(h))
-            h = pop(h)
-        assert(ys == sorted(xs))
-    print "decrease-key:", m, "test cases are OK."
+def test(f):
+    for _ in range(100):
+        xs = random_list()
+        f(xs)
+    print(f"100 tests for {f} passed.")
 
-def test():
-    test_sort()
-    test_decrease_key()
+def test_sort(xs):
+    ys = heap_sort(xs)
+    zs = sorted(xs)
+    assert ys == zs, f"heap sort fail: xs = {xs}, ys = {ys}, zs = {zs}"
+
+def test_decrease_key(xs):
+    n = len(xs)
+    lst = xs.copy()
+    ns = [KTree(x) for x in xs]
+    h = reduce(insert_node, ns)
+    i = randint(0, n-1)
+    xs[i] = xs[i] - randint(1, n)
+    h = decrease_key(h, ns[i], xs[i])
+    ys = to_list(h)
+    zs = sorted(xs)
+    assert ys == zs, f"decease-key fail: xs = {lst}, changed to: {xs}, ys = {ys}, zs = {zs}"
+
+def test_del(xs):
+    h = from_list(xs)
+    n = len(xs)
+    y = choice(xs)
+    h = delete(h, y)
+    ys = to_list(h)
+    zs = xs.copy()
+    zs.remove(y)
+    zs.sort()
+    assert ys == zs, f"del fail: xs = {xs}, y = {y}, ys = {ys}, zs = {zs}"
 
 if __name__ == "__main__":
-    test()
+    test(test_sort)
+    test(test_decrease_key)
+    test(test_del)
