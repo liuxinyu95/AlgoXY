@@ -26,24 +26,18 @@ from functools import reduce
 from random import sample, randint, choice
 from collections import deque # for right to left merge
 
-#
+
 # Assume the heap is min-heap
-#   If we don't realize decrease-key operation, there is no need
-#   to use the parent pointer.
-#
 class KTree:
     def __init__(self, x = None):
         self.key = x
         self.parent = None
-        self.children = []
+        self.subtrees = []
 
 # O(1) time merge two heaps
 #
-# Instead of add one tree as the first child, it is added at
-# the end of the children list to achieve O(1) time if the
-# built-in list is realized as array.
-# However, it should be insert at the beginning if it is realized
-# as linked list.
+# Add to tail (append) instead of insert to the head to achieve O(1) time for array.
+# Add to head for linked-list
 def merge(t1, t2):
     if t1 is None:
         return t2
@@ -51,34 +45,37 @@ def merge(t1, t2):
         return t1
     if t2.key < t1.key:
         (t1, t2) = (t2, t1)
-    t1.children.append(t2)
+    t1.subtrees.append(t2)
     t2.parent = t1
     return t1
 
-def insert(h, x):
-    return merge(h, KTree(x))
+# mitigate the worst case, that continuously insert n elements, followed with a pop
+# operation, when n is big, the pop performance overhead (to amortize) is big.
+MAX_SUBTREES = 16
 
-def insert_node(h, x):
-    return merge(h, x)
+def insert(h, x):
+    if h and len(h.subtrees) > MAX_SUBTREES:
+        h = insert(pop(h), top(h))
+    return merge(h, KTree(x))
 
 def top(h):
     return h.key
 
-def decrease_key(h, x, key):
-    x.key = key # assume key <= x.key
-    if x.parent:
-        x.parent.children.remove(x) # Sadly, this is O(N) operation.
-    x.parent = None
-    return merge(x, h)
+def decrease_key(h, node, key):
+    if (not node) or node.key < key:
+        return h
+    node.key = key
+    if node == h:
+        return h
+    node.parent.subtrees.remove(node) # O(n), where n = len(subtrees)
+    node.parent = None
+    return merge(node, h)
 
-# Python itertools and receipe provide plenty of
-# tools, which help for iterating over pairs.
-# They are not used here, so fresh python user
-# can read the code.
+# Alternative: to use itertools and receipe to iterate over pairs
 def pop(h):
     lst = deque()
     x = None
-    for y in h.children:
+    for y in h.subtrees:
         if x is None:
             x = y
         else:
@@ -91,7 +88,7 @@ def pop(h):
 def lookup_node(h, x):
     if h.key == x:
         return h
-    for t in h.children:
+    for t in h.subtrees:
         node = lookup_node(t, x)
         if node:
             return node
@@ -103,12 +100,12 @@ def delete(h, x):
         return h
     if node == h:
         return pop(h)
-    node.parent.children.remove(node)
+    node.parent.subtrees.remove(node)
     node.parent = None
     return merge(pop(node), h)
 
 def from_list(lst):
-    return reduce(insert, lst)
+    return reduce(insert, lst, None)
 
 def to_list(h):
     xs = []
@@ -122,20 +119,16 @@ def heap_sort(lst):
 
 def to_str(h):
     s = "(" + str(h.key) + ", "
-    for t in h.children:
+    for t in h.subtrees:
         s = s + to_str(t)
     s = s + ")"
     return s
 
-# testing
-def random_list(n = 1000):
-    return sample(range(n), randint(1, n))
-
-def test(f):
+def test(f, n = 100):
     for _ in range(100):
-        xs = random_list()
+        xs = sample(range(n), randint(1, n))
         f(xs)
-    print(f"100 tests for {f} passed.")
+    print(f"{n} tests for {f} passed.")
 
 def test_sort(xs):
     ys = heap_sort(xs)
@@ -144,15 +137,13 @@ def test_sort(xs):
 
 def test_decrease_key(xs):
     n = len(xs)
-    lst = xs.copy()
-    ns = [KTree(x) for x in xs]
-    h = reduce(insert_node, ns)
-    i = randint(0, n-1)
-    xs[i] = xs[i] - randint(1, n)
-    h = decrease_key(h, ns[i], xs[i])
+    x = choice(xs)
+    y = x - randint(1, n)
+    h = from_list(xs)
+    h = decrease_key(h, lookup_node(h, x), y)
     ys = to_list(h)
-    zs = sorted(xs)
-    assert ys == zs, f"decease-key fail: xs = {lst}, changed to: {xs}, ys = {ys}, zs = {zs}"
+    zs = sorted(y if a == x else a for a in xs)
+    assert ys == zs, f"decease-key fail: xs = {xs}, changed from {x} to {y}, ys = {ys}, zs = {zs}"
 
 def test_del(xs):
     h = from_list(xs)
@@ -160,9 +151,7 @@ def test_del(xs):
     y = choice(xs)
     h = delete(h, y)
     ys = to_list(h)
-    zs = xs.copy()
-    zs.remove(y)
-    zs.sort()
+    zs = sorted(filter(lambda x: x != y, xs))
     assert ys == zs, f"del fail: xs = {xs}, y = {y}, ys = {ys}, zs = {zs}"
 
 if __name__ == "__main__":
