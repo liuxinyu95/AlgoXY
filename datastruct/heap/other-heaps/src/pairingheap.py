@@ -61,15 +61,15 @@ def insert(h, x):
 def top(h):
     return h.key
 
-def decrease_key(h, node, key):
-    if (not node) or node.key < key:
+def decrease_key(h, tr, key):
+    if (not tr) or tr.key < key:
         return h
-    node.key = key
-    if node == h:
+    tr.key = key
+    if tr == h:
         return h
-    node.parent.subtrees.remove(node) # O(n), where n = len(subtrees)
-    node.parent = None
-    return merge(node, h)
+    tr.parent.subtrees.remove(tr) # O(n), where n = len(subtrees)
+    tr.parent = None
+    return merge(tr, h)
 
 # Alternative: to use itertools and receipe to iterate over pairs
 def pop(h):
@@ -85,24 +85,24 @@ def pop(h):
         x = merge(x, y)
     return x
 
-def lookup_node(h, x):
+def lookuptr(h, x):
     if h.key == x:
         return h
     for t in h.subtrees:
-        node = lookup_node(t, x)
-        if node:
-            return node
+        tr = lookuptr(t, x)
+        if tr:
+            return tr
     return None
 
 def delete(h, x):
-    node = lookup_node(h, x)
-    if not node:
+    tr = lookuptr(h, x)
+    if not tr:
         return h
-    if node == h:
+    if tr == h:
         return pop(h)
-    node.parent.subtrees.remove(node)
-    node.parent = None
-    return merge(pop(node), h)
+    tr.parent.subtrees.remove(tr)
+    tr.parent = None
+    return merge(pop(tr), h)
 
 def from_list(lst):
     return reduce(insert, lst, None)
@@ -140,7 +140,7 @@ def test_decrease_key(xs):
     x = choice(xs)
     y = x - randint(1, n)
     h = from_list(xs)
-    h = decrease_key(h, lookup_node(h, x), y)
+    h = decrease_key(h, lookuptr(h, x), y)
     ys = to_list(h)
     zs = sorted(y if a == x else a for a in xs)
     assert ys == zs, f"decease-key fail: xs = {xs}, changed from {x} to {y}, ys = {ys}, zs = {zs}"

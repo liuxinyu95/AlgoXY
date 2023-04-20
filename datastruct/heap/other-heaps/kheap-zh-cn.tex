@@ -1085,11 +1085,76 @@ pop\ (x, ts) = \textit{consolidate}\ ts
 因为删除算法调用弹出操作，我们猜想它的分摊性能也是对数时间$O(\lg n)$。
 
 \begin{Exercise}\label{ex:pairing-heap-del}
-实现配对堆的删除。
+\Question{如果连续向配对堆中插入$n$个元素，然后执行弹出。当$n$很大时，弹出的单次性能变得很差（尽管分摊性能是$O(lg n)$）。如何避免这一最差情况？}
+\Question{实现配对堆的删除。}
+\Question{实现配对堆的优先级调整\textproc{Decrease-Key}}
 \end{Exercise}
 
 \begin{Answer}[ref ={ex:pairing-heap-del}]
-实现配对堆的删除。
+\Question{如果连续向配对堆中插入$n$个元素，然后执行弹出。当$n$很大时，弹出的单次性能变得很差（尽管分摊性能是$O(lg n)$）。如何避免这一最差情况？
+
+我们可以设置一个子树棵树的阈值$m$，在插入时检查，如果超过阈值就执行一次弹出操作，然后把弹出的元素再加入回堆。
+\begin{Bourbaki}
+MAX_SUBTREES = 16
+
+Node<K> insert(Node<K> h, K x) {
+    if h != null and length(h.subTrees) > MAX_SUBTREES {
+        h = insert(pop(h), top(h))
+    }
+    return merge(h, Node(x))
+}
+\end{Bourbaki}
+}
+
+\Question{实现配对堆的删除。
+
+为了方便删除，我们给每个节点增加一个父指针：
+\begin{Bourbaki}
+data Node<K> {
+    K key
+    Node<K> parent = null
+    [Node<K>] subTrees = []
+
+    Node<K>(K k) { key = k }
+}
+\end{Bourbaki}
+考虑删除值为$x$的元素。我们先从堆$h$中找到以$x$为根的子树$t$。如果$t$是$h$的根，我们只要执行弹出操作$pop$即可，否则我们通过$t$的父节点$p$，从子树中把$t$切下。然后对$t$执行弹出操作，最后将$pop(t)$合并回$h$。
+\begin{Bourbaki}
+Node<K> delete(Node<K> h, K x) {
+    var tr = lookuptr(h, x)
+    if tr == null then return h
+    if tr == h then return pop(h)
+    tr.parent.subtrees.remove(tr)
+    tr.parent = null
+    return merge(pop(tr), h)
+}
+
+Node<K> lookuptr(Node<K> h, K x) {
+    if h.key == x then return h
+    for var t in h.subtrees {
+        var tr = lookuptr(t, x)
+        if tr != null then return tr
+    }
+    return null
+}
+\end{Bourbaki}
+递归查找的时间复杂度为$O(n)$，其中$n$是堆中元素的数目，删除的复杂度为$O(m)$，其中$m$是所在节点包含子树的棵树。总体复杂度为$O(n)$。
+}
+\Question{实现配对堆的优先级调整\textproc{Decrease-Key}
+
+如果调整根节点$h$的值，我们直接用新值$x$覆盖。否则，我们通过$tr$的父节点从子树中将$tr$切下，更新$tr$的值为$x$后，将$tr$合并回$h$：
+\begin{Bourbaki}
+Node<K> decreaseKey(Node<K> h, Node<K> tr, K x) {
+    if tr == null or tr.key < x then return h
+    tr.key = x
+    if tr == h then return h
+    tr.parent.subtrees.remove(tr)  // O(m), where m = length(subtrees)
+    tr.parent = null
+    return merge(tr, h)
+\end{Bourbaki}
+}
+
+使用时，我们可以先调用$lookuptr(h, y)$获得要调整的节点，然后把$y$的值更新为$x$，即：$deceaseKey(h, lookuptr(h, y), x)$。其复杂度和删除相同，为$O(n)$。
 \end{Answer}
 
 \section{小结}
