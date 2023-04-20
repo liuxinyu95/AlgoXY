@@ -161,14 +161,14 @@ We can implement link with `left child, right sibling' method as below. Link ope
 \EndFunction
 \end{algorithmic}
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:binomial-tree}
 \Question{Write a program to generate Pascal's triangle.}
 \Question{Prove that the $i$-th row in tree $B_n$ has $\binom{n}{i}$ nodes.}
 \Question{Prove there are $2^n$ elements in $B_n$ tree.}
 \Question{Use a container to store sub-trees, how to implement link? How to secure the operation is in constant time?}
 \end{Exercise}
 
-\begin{Answer}
+\begin{Answer}[ref = {ex:binomial-tree}]
 \Question{Write a program to generate Pascal's triangle.
 \begin{Haskell}[frame=single]
 pascal = gen [1] where
@@ -786,9 +786,29 @@ During cascade cut, if node $x$ is marked, it has lost some sub-tree before. We 
 \EndFunction
 \end{algorithmic}
 
-\begin{Exercise}
-Prove \textproc{Decrease} is bound to amortized $O(1)$ time.
+\begin{Exercise}\label{ex:fibo-heap-decrease}
+Why is \textproc{Decrease} bound to amortized $O(1)$ time?
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:fibo-heap-decrease}]
+Why is \textproc{Decrease} bound to amortized $O(1)$ time?
+
+Define the potential function as:
+
+\[
+\Phi(H) = t(H) + 2m(H)
+\]
+
+Where $t(H)$ is the number of trees in the heap, and $m(H)$ is the number of the nodes being marked. As we mark, then later cut and clear the flag, its coefficient is 2. \textproc{Decrease} takes $O(1)$ time to cut $x$ off, then recursively call \textproc{Cascade-Cut}. Assume it's recursively called $c$ times. Each time takes $O(1)$ time to call \textproc{Cut}, then continue recursion. Hence the total cost of \textproc{Decrease} is $O(c)$.
+
+For the potential change, let $H$ is the heap before we call \textproc{Decrease}, every recursive \textproc{Cascade-Cut} cuts a marked node off, then clear the flag (except for the last call). After that, there are $t(H) + c$ trees, including the original $t(H)$ trees, the cut and added back $c - 1$ trees, and the tree with $x$ as the root. There are at most $m(H) - c + 2$ marked nodes, including the original $m(H)$ nodes, minus the $c - 1$ nodes being cleared in the \textproc{Cascade-Cut} call. The last call may mark another node. The potential changes at most:
+
+\[
+t(H) + c + 2(m(H) - c + 2) - [t(H) + 2m(H)] = 4 - c
+\]
+
+Hence the amortized cost is at most $O(c) + 4 - c = O(1)$.
+\end{Answer}
 
 \subsection{The name of Fibonacci heap}
 
@@ -1038,9 +1058,85 @@ To delete a node $x$, we can first decrease the value in $x$ to $-\infty$, then 
 
 As delete is implemented with pop, the performance is conjectured to be amortized $O(\lg n)$ time.
 
-\begin{Exercise}
-Implement delete for paring heap.
+\begin{Exercise}\label{ex:pairing-heap-del}
+\Question{If continuously insert $n$ elements then followed with a pop. The performance overhead is big when $n$ is a large number (although the amortized performance is $O(\lg n)$. How to mitigate such worst case?}
+\Question{Implement delete operation for the pairing heap.}
+\Question{Implement priority change for the pairing heap, i.e. \textproc{Decrease-Key}.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:pairing-heap-del}]
+\Question{If continuously insert $n$ elements then followed with a pop. The performance overhead is big when $n$ is a large number (although the amortized performance is $O(\lg n)$. How to mitigate such worst case?
+
+We can set a threshold $m$ to the number of sub-trees. When insert, we check whether it exceeds $m$, if yes, then perform a pop then add the element back.
+
+\begin{Bourbaki}
+MAX_SUBTREES = 16
+
+Node<K> insert(Node<K> h, K x) {
+    if h != null and length(h.subTrees) > MAX_SUBTREES {
+        h = insert(pop(h), top(h))
+    }
+    return merge(h, Node(x))
+}
+\end{Bourbaki}
+}
+
+\Question{Implement delete operation for the pairing heap.
+
+We add a parent reference to the node definition:
+\begin{Bourbaki}
+data Node<K> {
+    K key
+    Node<K> parent = null
+    [Node<K>] subTrees = []
+
+    Node<K>(K k) { key = k }
+}
+\end{Bourbaki}
+
+When delete element $x$, we first lookup the heap $h$ to find the sub-tree $t$ rooted at $x$. If $t$ is the root of $h$, then we merely do a $pop$; otherwise, we get the parent $p$ of $t$, remove $t$ from its sub-trees. Then apply $pop$, and finally merge $pop(t)$ back with $h$.
+
+\begin{Bourbaki}
+Node<K> delete(Node<K> h, K x) {
+    var tr = lookuptr(h, x)
+    if tr == null then return h
+    if tr == h then return pop(h)
+    tr.parent.subtrees.remove(tr)
+    tr.parent = null
+    return merge(pop(tr), h)
+}
+
+Node<K> lookuptr(Node<K> h, K x) {
+    if h.key == x then return h
+    for var t in h.subtrees {
+        var tr = lookuptr(t, x)
+        if tr != null then return tr
+    }
+    return null
+}
+\end{Bourbaki}
+
+The recursive lookup takes $O(n)$ time, where $n$ is the number of elements in the heap. Then it takes $O(m)$ time to remove $t$ from the sub-trees. The total performance is $O(n)$.
+}
+
+\Question{Implement priority change for the pairing heap, i.e. \textproc{Decrease-Key}.
+
+If decrease the key of the root of $h$, we can directly update the key to $x$; otherwise, we get the parent of $tr$, then cut $tr$ off from the sub-trees; update the key of $tr$ to $x$, then merge $tr$ back to $h$:
+
+\begin{Bourbaki}
+Node<K> decreaseKey(Node<K> h, Node<K> tr, K x) {
+    if tr == null or tr.key < x then return h
+    tr.key = x
+    if tr == h then return h
+    tr.parent.subtrees.remove(tr)  // O(m), where m = length(subtrees)
+    tr.parent = null
+    return merge(tr, h)
+}
+\end{Bourbaki}
+
+When use, we first call $lookuptr(h, y)$ to find the node, then update from $y$ to $x$, i.e., $deceaseKey(h, lookuptr(h, y), x)$. The performance is as same as delete, which is $O(n)$.
+}
+\end{Answer}
 
 \section{Summary}
 
