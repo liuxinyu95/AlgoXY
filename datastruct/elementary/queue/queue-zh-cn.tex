@@ -561,7 +561,63 @@ abort\ S & = & S
 
 只有弹出操作pop会调用$abort$函数。$n = 0$时, 轮转操作刚完成，状态即将从$(S_c, 0, (x \cons a), f')$转换成$(S_f, a)$。而上次链接好的$x$正是要弹出的元素，因此需要去掉$x$返回$a$作为结果。
 }
-\Question{使用双数组实现实时队列。注意：当开始递进反转时，不能一次性复制数组，否则就会将性能降低到线性时间。请实现一个惰性复制，使得每步反转时仅复制一个元素。}
+\Question{使用双数组实现实时队列。注意：当开始递进反转时，不能一次性复制数组，否则就会将性能降低到线性时间。请实现一个惰性复制，使得每步反转时仅复制一个元素。
+
+设可以在常数时间内获得数组的长度。我们在数组$f$的尾部加入元素（push），在数组$r$的尾部弹出元素（pop）。双数组不平衡时，启动一个状态机分步计算$acc = reverse(f) \doubleplus r$。如果$f \neq [\ ]$，我们取出尾部元素，添加到$acc$的末尾。当$f$反转结束后，我们从$r$左侧逐一将元素加到$acc$末尾，即$append(acc, r[i])$，其中$i = 0, 1, .., |r| - 1$。分步计算时仍然可能从$r$的末尾弹出元素，当$i$超出$|r|$时计算结束。
+
+\begin{Bourbaki}
+data State<K> {
+    [K] acc, front, rear
+    Int idx
+
+    State([K] f, [K] r) {
+        acc = [], front = f, rear = r
+        idx = 0
+    }
+
+    // compute reverse(f) ++ r step by step
+    Self step() {
+        if front != [] then acc.append(front.popLast())  // reversing
+        if s.front == [] and idx < length(rear) {    // concatenating
+            acc.append(rear[idx])
+            idx = idx + 1
+        }
+    }
+
+    Bool done() = (front == [] and length(rear) < idx)
+}
+
+data RealtimeQueue<K> {
+    [K] front = []
+    [K] rear = []
+    State<K> state = null
+
+    Bool isEmpty() = (front == [] and rear == [])
+
+    Self push(K x) {
+        front.append(x)
+        balance()
+    }
+
+    K pop() {
+        x = rear.popLast()
+        balance()
+        return x
+    }
+
+    Void balance() {
+        if state == null and length(rear) < length(front) {
+            state = State(front, rear).step()
+            front = []
+        }
+        if state != null and state.step().done() {
+            rear = state.acc
+            state = null
+        }
+    }
+}
+\end{Bourbaki}
+}
 \end{Answer}
 
 \section{惰性实时队列}
