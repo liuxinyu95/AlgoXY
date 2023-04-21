@@ -84,4 +84,4 @@ fromList = foldr push (empty::RealtimeQueue a)
 prop_queue :: [Int] -> Bool
 prop_queue xs = proc xs (empty::(RealtimeQueue Int)) == proc' xs []
 
---[1]. Chris Okasaki's ``Purely Functional Data structures''
+-- [1] Chris Okasaki. ``Purely Functional Data Structures.'' Cambridge university press, (July 1, 1999), ISBN-13: 978-0521663502
