@@ -215,9 +215,55 @@ Symmetrically, we can append element to the tail of array, but it takes linear t
 \EndFunction
 \end{algorithmic}
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:buffered-queue}
 The circular buffer is allocated with a predefined size. We can use two references head and tail instead of count. How to determine if a circular buffer queue is full or empty? (the head can be either ahead of tail or behind it.)
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:buffered-queue}]
+The circular buffer is allocated with a predefined size. We can use two references head and tail instead of count. How to determine if a circular buffer queue is full or empty? (the head can be either ahead of tail or behind it.)
+
+Although we can deal with different cases that the head is before/behind the tail reference, as shown in \cref{fig:circular-buffer-queue}, let us seek for some simple and unified solution. Consider an array with both sides open and are extending to infinitely. Let the head index be $h$, the tail be $t$, the size of the buffer be $s$. The range $[h, t)$ (left close, right open) is occupied with elements. The empty/full testing is as below:
+
+\[
+\begin{cases}
+empty(h, t): & h = t  \\
+full(h, t): & t - h = s \\
+\end{cases}
+\]
+
+The circular buffer is essentially modular arithmetic on top of this. Write $[n]_s = n \bmod s$, apply to above full test: $[t]_s - [h]_s = [s]_s = 0$, which gives $[t]_s = [h]_s$. It is exactly the empty test condition. It means we can't differentiate empty with full only with the modular result. We need either add a flag (indicate the order between $h$ and $t$), or use the original index (of the infinite long segment) without applying modular for the empty/full test. Consider the integer number has limited byte size, we can modular the index with a big number $p$ ($p > s$) which is co-prime with $s$:
+
+\[
+\begin{cases}
+empty(h, t): & [h]_p = [t]_p  \\
+full(h, t): & [t - h]_p = s \\
+\end{cases}
+\]
+
+Below is the example program:
+
+\begin{Bourbaki}
+Int P_LIMIT = 104743 // the 10000th prime
+Bool empty(Queue<K> q) = (q.h == q.t)
+Bool full(Queue<K> q) = (q.s == (q.t - q.h) mod P_LIMIT)
+
+void enqueue(Queue<K> q, K x) {
+    if not full(q) {
+        q.t = (q.t + 1) mod P_LIMIT
+        q.buf[q.t mod q.s] = x
+    }
+}
+
+Optional<K> dequeue(Queue<K> q) {
+    Optional<K> x = Optional.Nothing
+    if not empty(q) {
+        x = Optional.of(q.buf[q.h mod q.s])
+        q.h = (q.h + 1) mod P_LIMIT
+    }
+    return x
+}
+\end{Bourbaki}
+\end{Answer}
 
 \section{Paired-list queue}
 \index{Queue!Paired-list queue}
@@ -283,18 +329,22 @@ There is a symmetric implementation with a pair of arrays. \Cref{tab:array-list-
   \label{fig:horseshoe-array}
 \end{figure}
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:paired-list-queue}
 \Question{Why need balance check and adjustment after push?}
-\Question{Prove the amortized performance of paired-list queue is constant time.}
+\Question{Do the amortized analysis for the paired-list queue.}
 \Question{Implement the paired-array queue.}
 \end{Exercise}
 
-\begin{Answer}
+\begin{Answer}[ref = {ex:paired-list-queue}]
 \Question{Why need balance check and adjustment after push?
 
 Consider the case, first $push\ a\ ([\ ], [\ ])$, then $pop$.
 }
-\Question{Prove the amortized performance of paired-list queue is constant time.}
+\Question{Do the amortized analysis for the paired-list queue.
+
+We use the banker's accounting method. Each element in the rear list $r$ has 1 credit. When push to rear, we take a step to add, and increase 1 credit. The amortized cost is $O(2)$. When pop, if it doesn't cause list reverse, we take a step to remove an element without decreasing the credit. The amortized cost is $O(1)$. If causes list reverse, we take $m$ steps to reverse, and take a step to remove an element, where $m$ is the length of $r$. We also use $m$ credits in $r$. The amortized cost is $O(m + 1 - m) = O(1)$.
+}
+
 \Question{Implement the paired-array queue.
 
 \begin{algorithmic}[1]
