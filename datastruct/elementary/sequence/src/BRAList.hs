@@ -49,10 +49,10 @@ head' = fst . extract
 
 tail' = snd . extract
 
-getAt _ [] = Nothing
-getAt i (t:ts) | i < 0 = Nothing
+getAt [] _ = Nothing
+getAt (t:ts) i | i < 0 = Nothing
                | i < size t = lookupTree i t
-               | otherwise = getAt (i - size t) ts
+               | otherwise = getAt ts (i - size t)
   where
     lookupTree 0 (Leaf x) = Just x
     lookupTree i (Node sz t1 t2) | i < sz `div` 2 = lookupTree i t1
@@ -83,7 +83,7 @@ prop_head xs = not (null xs) ==> xs == (rebuild $ fromList xs) where
     rebuild ts = head' ts : (rebuild $ tail' ts)
 
 prop_lookup :: [Int] -> Int -> Bool
-prop_lookup xs i = case getAt i (fromList xs) of
+prop_lookup xs i = case getAt (fromList xs) i of
   Nothing -> i < 0 || i >= length xs
   Just x -> x == (xs !! i)
 

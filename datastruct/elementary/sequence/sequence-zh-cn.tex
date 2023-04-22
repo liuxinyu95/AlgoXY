@@ -30,6 +30,7 @@
 \numberwithin{Exercise}{chapter}
 \fi
 
+\lstset{frame = single}
 \section{简介}
 \label{introduction}
 
@@ -200,12 +201,11 @@ lookup_T\ i\ (s, t_1, t_2) & = & \begin{cases}
 
 我们可以引入Maybe类型来处理越界情况。如果索引$i < 0$，返回Nothing，如果索引过大，则最终递归转换成森林为空的情形，返回Nothing。
 
-\lstset{frame = single}
 \begin{Haskell}
-getAt _ [] = Nothing
-getAt i (t:ts) | i < 0 = Nothing
+getAt [] _ = Nothing
+getAt (t:ts) i | i < 0 = Nothing
                | i < size t = lookupTree i t
-               | otherwise = getAt (i - size t) ts
+               | otherwise = getAt ts (i - size t)
   where
     lookupTree 0 (Leaf x) = Just x
     lookupTree i (Node sz t1 t2) | i < sz `div` 2 = lookupTree i t1
@@ -238,7 +238,7 @@ minus\ (Zero \cons ts) & = & (t_1, (One\ t_2) \cons ts'), \text{其中}: (s, t_1
 \end{array}
 \ee
 
-数字表示并没有改变复杂度。我们使用聚合方法法，分析在插入的分摊复杂度。考虑依次向空序列插入$n = 2^m$个元素的过程。森林的二进制表示如\cref{tab:ralist-insertion}：
+数字表示并没有改变复杂度。我们使用聚合法，分析插入的分摊复杂度。考虑依次向空序列插入$n = 2^m$个元素的过程。森林的二进制表示如\cref{tab:ralist-insertion}：
 
 \begin{table}[htbp]
 \centering
@@ -267,18 +267,71 @@ minus\ (Zero \cons ts) & = & (t_1, (One\ t_2) \cons ts'), \text{其中}: (s, t_1
 O(T/n) = O(\dfrac{2^{m+1}}{2^m}) = O(1)
 \ee
 
-这就证明了插入的分摊复杂度为常数时间。
+因此插入的分摊复杂度为常数时间。
 
 \begin{Exercise}\label{ex:num-representaion}
 \Question{实现数值表示序列的随机访问$S[i], 1 \leq i \leq n$。其中$n$是序列长度。}
 \Question{分析数值表示序列删除操作的分摊复杂度。} %amortized O(1)
-\Question{可以用长度为$2^m$的数组表示完全二叉树（$m$是非负整数）。请用数组实现二叉树森林的插入和随机访问。并分析它们的分摊复杂度。}
+\Question{可以用长度为$2^m$的数组表示完全二叉树（$m$是非负整数）。请用数组实现二叉树森林的插入和随机访问。}
 \end{Exercise}
 
 \begin{Answer}[ref = {ex:num-representaion}]
-\Question{实现数值表示序列的随机访问$S[i], 1 \leq i \leq n$。其中$n$是序列长度。}
-\Question{分析数值表示序列删除操作的分摊复杂度。} %amortized O(1)
-\Question{可以用长度为$2^m$的数组表示完全二叉树（$m$是非负整数）。请用数组实现二叉树森林的插入和随机访问。并分析它们的分摊复杂度。}
+\Question{实现数值表示序列的随机访问$S[i], 1 \leq i \leq n$。其中$n$是序列长度。
+
+我们跳过索引越界的情况：
+\begin{Haskell}
+getAt (Zero:ts) i = getAt ts i
+getAt (One t:ts) i = if i < size t then lookupTree t i
+                     else getAt ts (i - size t)
+  where
+    lookupTree (Leaf x) 0 = x
+    lookupTree (Node sz t1 t2) i = if i < sz `div` 2 then lookupTree t1 i
+                                   else lookupTree t2 (i - sz `div` 2)
+\end{Haskell}
+}
+\Question{分析数值表示序列删除操作的分摊复杂度。
+
+考虑插入的逆过程，从含有$n = 2^m$的序列依次删除元素，直到序列变空。相应的分析和插入对称，删除的分摊复杂度是常数时间。
+} %amortized O(1)
+\Question{可以用长度为$2^m$的数组表示完全二叉树（$m$是非负整数）。请用数组实现二叉树森林的插入和随机访问。
+
+\begin{Bourbaki}
+Int M = 32
+data List<K> {
+    Int size = 0
+    [[K]] trees = [[] * M]
+}
+
+Int nbits(Int n) {
+    Int i = 0
+    while n != 0 {
+        i = i + 1
+        n = n / 2
+    }
+    return i
+}
+
+List<K> insert(List<K> xs, K x) {
+    var i = nbits(xs.size xor (1 + xs.size))    // locate the bit flip to 1
+    xs.trees[i] = [x]
+    for Int j = 0, j < i, j++ {
+        xs.trees[i] = xs.trees[i] ++ xs.trees[j]
+        xs.trees[j] = []
+    }
+    xs.size = xs.size + 1
+    return xs
+}
+
+Optional<K> get(List<K> xs, Int i) {
+    for t in xs.trees {
+        Int size = length(t)
+        if i < size then return Optional.of(t[i])
+        i = i - size
+    }
+    return Optional.Nothing
+}
+\end{Bourbaki}
+}
 \end{Answer}
 
 \section{双数组序列}
@@ -448,7 +501,6 @@ concat = fold\ (\doubleplus)\ \nil
 
 二叉随机访问列表可以在头部用常数时间（分摊）插入、删除，以对数时间进行随机访问。但是难以向尾部添加元素、也无法进行快速连接。可连接列表能够用常数时间（分摊）进行连接，在头、尾部用常数时间插入。但不能用索引进行随机访问。这两个例子提示我们：1、需要某种方式快速访问头、尾以进行增删；2、带有递归的结构（例如树）可将随机访问转换成分而治之的搜索。手指树\cite{finger-tree-1977}利用了这两点来实现序列\cite{finger-tree-2006}。树是否平衡对搜索性能至关重要。手指树利用了2-3树（一种B-树）。一棵2-3树包含二或三棵子树，如：$(t_1, t_2)$或$(t_1, t_2, t_3)$。
 
-\lstset{frame = single}
 \begin{Haskell}
 data Node a = Br2 a a | Br3 a a a
 \end{Haskell}

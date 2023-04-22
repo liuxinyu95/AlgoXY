@@ -59,11 +59,11 @@ getAt :: RAList a -> Int -> a
 getAt (Zero:ts) i = getAt ts i
 getAt (One t:ts) i = if i < size t then lookupTree t i
                      else getAt ts (i - size t)
-
-lookupTree :: Tree a -> Int -> a
-lookupTree (Leaf x) 0 = x
-lookupTree (Node sz t1 t2) i = if i < sz `div` 2 then lookupTree t1 i
-                               else lookupTree t2 (i - sz `div` 2)
+  where
+    lookupTree :: Tree a -> Int -> a
+    lookupTree (Leaf x) 0 = x
+    lookupTree (Node sz t1 t2) i = if i < sz `div` 2 then lookupTree t1 i
+                                   else lookupTree t2 (i - sz `div` 2)
 
 setAt :: RAList a -> Int -> a -> RAList a
 setAt (Zero:ts) i x = Zero:setAt ts i x
