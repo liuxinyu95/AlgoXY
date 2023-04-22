@@ -49,10 +49,12 @@ head' = fst . extract
 
 tail' = snd . extract
 
-getAt i (t:ts) | i < size t = lookupTree i t
+getAt _ [] = Nothing
+getAt i (t:ts) | i < 0 = Nothing
+               | i < size t = lookupTree i t
                | otherwise = getAt (i - size t) ts
   where
-    lookupTree 0 (Leaf x) = x
+    lookupTree 0 (Leaf x) = Just x
     lookupTree i (Node sz t1 t2) | i < sz `div` 2 = lookupTree i t1
                                  | otherwise = lookupTree (i - sz `div` 2) t2
 
@@ -80,14 +82,21 @@ prop_head xs = not (null xs) ==> xs == (rebuild $ fromList xs) where
     rebuild [] = []
     rebuild ts = head' ts : (rebuild $ tail' ts)
 
-prop_lookup :: [Int] -> Int -> Property
-prop_lookup xs i = (0 <=i && i < length xs) ==> (getAt i (fromList xs)) == (xs !! i)
+prop_lookup :: [Int] -> Int -> Bool
+prop_lookup xs i = case getAt i (fromList xs) of
+  Nothing -> i < 0 || i >= length xs
+  Just x -> x == (xs !! i)
 
 prop_update :: [Int] -> Int -> Int -> Property
 prop_update xs i y = (0 <=i && i< length xs) ==> toList (setAt (fromList xs) i y) == xs' where
     xs' = as ++ [y] ++ bs
     (as, (_:bs)) = splitAt i xs
 
+testAll = do
+  quickCheck prop_insert
+  quickCheck prop_head
+  quickCheck prop_lookup
+  quickCheck prop_update
 
 -- Reference
 -- [1]. Chris Okasaki. ``Purely Functional Random-Access Lists''. Functional Programming Languages and Computer Architecutre, June 1995, pages 86-95.
