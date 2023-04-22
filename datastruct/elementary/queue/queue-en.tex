@@ -551,9 +551,75 @@ abort\ S & = & S
 \end{array}
 \ee
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:realtime-queue}
 \Question{Why need rollback an element (we cancelled the previous `cons', removed $x$ and return $a$ as the result) when $n=0$ in $abort$? }
+\Question{Implement the real-time queue with paired arrays. We can't copy the array when start rotation, or the performance will downgrade to linear time. Please implement `lazy' copy, i.e., copy an element per step.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:realtime-queue}]
+\Question{Why need rollback an element (we cancelled the previous `cons', removed $x$ and return $a$ as the result) when $n=0$ in $abort$?
+
+The $abort$ function is only called during pop. When $n = 0$, the rotate just finished, is about to transform the state from $(S_c, 0, (x \cons a), f')$ to $(S_f, a)$. While $x$ being linked previously is the one to be popped, hence, we need remove $x$ and return $a$ as the result.
+}
+
+\Question{Implement the real-time queue with paired arrays. We can't copy the array when start rotation, or the performance will downgrade to linear time. Please implement `lazy' copy, i.e., copy an element per step.
+
+Assume we can get the length of an array in constant time. We push element to the tail of array $f$, and pop from the tail of array $r$. When the two arrays are not balanced, start a state machine to compute $acc = reverse(f) \doubleplus r$ step by step. If $f \neq [\ ]$, we extract the tail element and append to the tail of $acc$. After reversed $f$, we copy the elements from the left of $r$, and append to the tail of $acc$ one by one, i.e., $append(acc, r[i])$, where $i = 0, 1, .., |r| - 1$. While rotating in steps, one can still pop from the tail of $r$, the rotation completes when $i$ exceeds $|r|$.
+
+\begin{Bourbaki}
+data State<K> {
+    [K] acc, front, rear
+    Int idx
+
+    State([K] f, [K] r) {
+        acc = [], front = f, rear = r
+        idx = 0
+    }
+
+    // compute reverse(f) ++ r step by step
+    Self step() {
+        if front != [] then acc.append(front.popLast())  // reversing
+        if s.front == [] and idx < length(rear) {    // concatenating
+            acc.append(rear[idx])
+            idx = idx + 1
+        }
+    }
+
+    Bool done() = (front == [] and length(rear) < idx)
+}
+
+data RealtimeQueue<K> {
+    [K] front = []
+    [K] rear = []
+    State<K> state = null
+
+    Bool isEmpty() = (front == [] and rear == [])
+
+    Self push(K x) {
+        front.append(x)
+        balance()
+    }
+
+    K pop() {
+        x = rear.popLast()
+        balance()
+        return x
+    }
+
+    Void balance() {
+        if state == null and length(rear) < length(front) {
+            state = State(front, rear).step()
+            front = []
+        }
+        if state != null and state.step().done() {
+            rear = state.acc
+            state = null
+        }
+    }
+}
+\end{Bourbaki}
+}
+\end{Answer}
 
 \section{Lazy real-time queue}
 \index{Queue!Lazy real-time queue}
