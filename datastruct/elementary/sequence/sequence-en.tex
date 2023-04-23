@@ -193,9 +193,26 @@ lookup_T\ i\ (s, t_1, t_2) & = & \begin{cases}
 
 There are $O(\lg n)$ full binary trees to hold $n$ elements. For index $i$, we need at most $O(\lg n)$ time to locate the tree, the next lookup time is proportion to the height, which is $O(\lg n)$ at most. The overall random access time is bound to $O(\lg n)$.
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:bralist-idx-bound}
 How to handle the out of bound exception?
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:bralist-idx-bound}]
+How to handle the out of bound exception?
+
+We can use Mybe type to handle the out of bound cases. If the index $i < 0$, return Nothing, if the index exceeds, then it eventually converts to empty forest after recursion, we return Nothing in this case too.
+
+\begin{Haskell}
+getAt [] _ = Nothing
+getAt (t:ts) i | i < 0 = Nothing
+               | i < size t = lookupTree i t
+               | otherwise = getAt ts (i - size t)
+  where
+    lookupTree 0 (Leaf x) = Just x
+    lookupTree i (Node sz t1 t2) | i < sz `div` 2 = lookupTree i t1
+                                 | otherwise = lookupTree (i - sz `div` 2) t2
+\end{Haskell}
+\end{Answer}
 
 \section{Numeric representation}
 \index{Sequence!numeric representation}
@@ -253,11 +270,70 @@ O(T/n) = O(\dfrac{2^{m+1}}{2^m}) = O(1)
 
 Proved the amortized constant time performance.
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:num-representaion}
 \Question{Implement the random access for numeric representation $S[i], 1 \leq i \leq n$, where $n$ is the length of the sequence.}
-\Question{Prove the amortized performance of delete is constant time. (hint: use aggregation method).}
-\Question{We can represent the full binary tree with array of length $2^m$, where $m$ is none negative integer. Implement the binary tree forest, insert, and random access. What are the performance?}
+\Question{Analyze the amortized performance of delete.}
+\Question{We can represent the full binary tree with array of length $2^m$, where $m$ is none negative integer. Implement the binary tree forest, insert, and random access.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:num-representaion}]
+\Question{Implement the random access for numeric representation $S[i], 1 \leq i \leq n$, where $n$ is the length of the sequence.
+
+We skip the index out of bound exception:
+\begin{Haskell}
+getAt (Zero:ts) i = getAt ts i
+getAt (One t:ts) i = if i < size t then lookupTree t i
+                     else getAt ts (i - size t)
+  where
+    lookupTree (Leaf x) 0 = x
+    lookupTree (Node sz t1 t2) i = if i < sz `div` 2 then lookupTree t1 i
+                                   else lookupTree t2 (i - sz `div` 2)
+\end{Haskell}
+}
+\Question{Analyze the amortized performance of delete.
+
+Consider the reverse process of insert, delete from a sequence with $n = 2^m$ elements repeatedly till it becomes empty. The analysis is symmetric to insert, and it gives the amortized constant time.
+} %amortized O(1)
+\Question{We can represent the full binary tree with array of length $2^m$, where $m$ is none negative integer. Implement the binary tree forest, insert, and random access.
+
+\begin{Bourbaki}
+data List<K> {
+    Int size = 0
+    [[K]] trees = [[]]
+}
+
+Int nbits(Int n) {
+    Int i = 0
+    while n != 0 {
+        i = i + 1
+        n = n / 2
+    }
+    return i
+}
+
+List<K> insert(List<K> xs, K x) {
+    var i = nbits(xs.size xor (1 + xs.size))    // locate the bit flip to 1
+    if i >= length(xs.trees) then xs.trees.append([])
+    xs.trees[i] = [x]
+    for Int j = 0, j < i, j++ {
+        xs.trees[i] = xs.trees[i] ++ xs.trees[j]
+        xs.trees[j] = []
+    }
+    xs.size = xs.size + 1
+    return xs
+}
+
+Optional<K> get(List<K> xs, Int i) {
+    for t in xs.trees {
+        Int size = length(t)
+        if i < size then return Optional.of(t[i])
+        i = i - size
+    }
+    return Optional.Nothing
+}
+\end{Bourbaki}
+}
+\end{Answer}
 
 \section{paired-array sequence}
 \index{Sequence!Paired-array sequence}
@@ -342,9 +418,26 @@ Every time when delete, we check $f$, $r$ and balance them:
 
 Due to reverse, the performance is $O(n)$ in the worst case, where $n$ is the number of elements, while it is amortized constant time.
 
-\begin{Exercise}
-\Question{For paired-array delete, prove the amortized performance is constant time.}
+\begin{Exercise}\label{ex:paired-array-seq}
+Analyze the amortized performance for paired-array delete.
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:paired-array-seq}]
+Analyze the amortized performance for paired-array delete.
+
+Define the potential of the paired-array sequence as the difference of the array lengths: $\Phi(s) = |r| - |f| = n - m$, where $m = |f|$ and $n = |r|$. When delete from the head, if $f \neq []$, then takes $O(1)$ time to remove the last element of $f$. If $f = []$, the takes $O(n)$ time to halve $r$, reverse and replace as $f'$. Then use another $O(1)$ time to remove the last element of $f'$. The amortized cost is:
+
+\[
+\begin{array}{rcl}
+c & = & n + 1 + \Phi(s') - \Phi(s) \\
+  & = & n + 1 + (|r'| - |f'|) - (|r| - |f|) \\
+  & = & n + 1 + (n - \lceil \dfrac{n}{2} \rceil) - (\lceil \dfrac{n}{2} \rceil - 1) -  (n - 0) \\
+  & = & 1 \\
+\end{array}
+\]
+
+Hence the amortized time is $O(1)$ when delete from head, symmetrically, the amortized time is $O(1)$ when delete from tail too.
+\end{Answer}
 
 \section{Concatenate-able list}
 \index{Sequence!Concatenate-able list}
@@ -418,9 +511,9 @@ concat = fold\ (\doubleplus)\ \nil
 
 Normally, the add, append, delete randomly happen. The performance is bound to linear time in worst case: delete after repeatedly add $n$ elements. All $n-1$ sub-trees are singleton. $concat$ takes $O(n)$ time to consolidate. Nevertheless, the amortized performance is constant time.
 
-\begin{Exercise}
-\Question{Prove the amortized performance for delete is constant time} %Banker method.
-\end{Exercise}
+%% \begin{Exercise}
+%% \Question{Prove the amortized performance for delete is constant time} %Banker method.
+%% \end{Exercise}
 
 \section{Finger tree}
 \index{Sequence!finger tree}
@@ -503,11 +596,11 @@ The insert performance is constant time except for the recursive case. The recur
 xs \gg t = foldr\ insert\ t\ xs
 \ee
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:finger-tree-insert}
 \Question{Eliminate recursion, implement insert with loop.}
 \end{Exercise}
 
-\begin{Answer}
+\begin{Answer}[ref = {ex:finger-tree-insert}]
 \Question{Eliminate recursion, implement insert with loop.
 
 Let $\textproc{Mid}(T) = t$ access the middle part of tree $T = (f, t, r)$.
@@ -585,11 +678,11 @@ tail & = snd \circ extract \\
 \end{cases}
 \ee
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:finger-tree-del}
 \Question{Eliminate recursion, implement extract in loops.}
 \end{Exercise}
 
-\begin{Answer}
+\begin{Answer}[ref = {ex:finger-tree-del}]
 \Question{Eliminate recursion, implement extract in loops.
 
 We borrow node from the middle when $f$ is empty. However, the tree may not well formed, e.g., both $f$ and the middle are empty. It is caused by splitting.
@@ -854,12 +947,12 @@ mtf\ i\ S = x \lhd S', \text{where}(x, S') = \textit{extractAt}\ i\ S
 
 In the next chapters, we'll go through the classic divide and conquer sorting algorithms, including quick sort, merge sort and their variants; then give the string matching algorithms and elementary search algorithms.
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:finger-tree-index}
 \Question{For random access, how to handle empty tree $\nil$ and out of bound cases?}
 \Question{Implement $cut\ i\ S$, split sequence $S$ at position $i$.}
 \end{Exercise}
 
-\begin{Answer}
+\begin{Answer}[ref = {ex:finger-tree-index}]
 \Question{For random access, how to handle empty tree $\nil$ and out of bound cases?
 
 We check boundaries during random access, for example:
