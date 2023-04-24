@@ -64,19 +64,19 @@ foldp f z xs = foldp f z (pairs xs) where
 bmsortp = foldp merge [] . map (:[])
 
 -- Bottom up with foldl
-bmsort' = foldl merge [] . map (\x->[x])
+bmsort' = foldl merge [] . map (:[])
 
 -- A version for performance visualization
 -- Record the number of swaps which happens during sorting.
 
---merge :: (Ord a)=>([a], Int)->([a], Int) -> ([a], Int)
+--merge :: (Ord a) => ([a], Int) -> ([a], Int) -> ([a], Int)
 merge' ([], n) (ys, m) = (ys, n+m)
 merge' (xs, n) ([], m) = (xs, n+m)
 merge' ((x:xs), n) ((y:ys), m) =
     if x< y then let (xs', n') = merge' (xs, n) ((y:ys), m) in (x:xs', n')
     else let (xs', n') = merge' ((x:xs), n) (ys, m) in (y:xs', n'+1)
 
---sort'' :: (Ord a)=>[([a], Int)] -> ([a], Int)
+--sort'' :: (Ord a) => [([a], Int)] -> ([a], Int)
 sort'' [] = ([], 0)
 sort'' [(xs, n)] = (xs, n)
 sort'' xss = sort'' $ mergePairs' xss where
