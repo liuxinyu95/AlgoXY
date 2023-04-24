@@ -53,8 +53,20 @@ sort' xss = sort' (mergePairs xss) where
     mergePairs (xs:ys:xss) = merge xs ys : mergePairs xss
     mergePairs xss = xss
 
+-- Pairwise fold [1]
+-- Constraint: the binary function f is commutative, i.e. f x y = f y x
+--   x1 `f` x2 `f` ... xn = x1' `f` x2' `f` ... xn'
+--   where x1', x2', ..., xn' is any permutation of x1, x2, ..., xn
+foldp f z [] = z
+foldp f z [x] = f x z
+foldp f z xs = foldp f z (pairs xs) where
+  pairs (x:y:ys) = (f x y) : pairs ys
+  pairs ys = ys
+
+bmsortp = foldp merge [] . map (:[])
+
 -- Bottom up with foldl
-bmsort' = foldl merge [] . map (\x->[x]) where
+bmsort' = foldl merge [] . map (\x->[x])
 
 -- A version for performance visualization
 -- Record the number of swaps which happens during sorting.
@@ -88,3 +100,10 @@ prop_bmsort xs = sort xs == (bmsort xs)
 
 prop_bmsort' :: [Int] -> Bool
 prop_bmsort' xs = sort xs == (bmsort' xs)
+
+prop_bmsortp :: [Int] -> Bool
+prop_bmsortp xs = sort xs == (bmsortp xs)
+
+testAll = mapM_ quickCheck [prop_msort, prop_mergesort, prop_bmsort, prop_bmsort', prop_bmsortp]
+
+-- [1]. https://doisinkidney.com/posts/2017-10-30-balancing-folds.html
