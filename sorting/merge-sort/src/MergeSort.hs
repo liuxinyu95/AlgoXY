@@ -54,9 +54,7 @@ sort' xss = sort' (mergePairs xss) where
     mergePairs xss = xss
 
 -- Pairwise fold [1]
--- Constraint: the binary function f is commutative, i.e. f x y = f y x
---   x1 `f` x2 `f` ... xn = x1' `f` x2' `f` ... xn'
---   where x1', x2', ..., xn' is any permutation of x1, x2, ..., xn
+-- The binary function f is associative f (f x y) z = f x (f y z)
 foldp f z [] = z
 foldp f z [x] = f x z
 foldp f z xs = foldp f z (pairs xs) where
