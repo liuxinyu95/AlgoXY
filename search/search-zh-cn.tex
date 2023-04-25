@@ -890,7 +890,50 @@ max_s & = & fst \cdot foldr\ f\ ((0, [\ ]), (0, [\ ])) \\
 复杂度存在递归关系$T(n) = 2T(n/2) + O(n)$。利用主定理可知复杂度为$O(n)$。
 }
 
-\Question{在$m \times n$的二维整数矩阵中寻找子矩阵，使得各元素相加后的和最大。}
+\Question{在$m \times n$的二维整数矩阵中寻找子矩阵，使得各元素相加后的和最大。
+
+我们从矩阵中的第一行开始，每轮增加一行$[M[1, *], M[2, *], ..., M[i, *]]$。然后沿列把各行中的值加起来转换成一个一维向量：
+
+\[
+V = \left [ \sum_{j=1}^i M[1, j], \sum_{j=1}^i M[2, j], ..., \sum_{j=1}^i M[n, j] \right ]
+\]
+
+再使用本节中介绍的$maxsum$求出向量$V$中的最大和，并记录全局最大和。
+
+\begin{Haskell}
+maxSum = maximum . (map maxS) . concat . acc . rows where
+    rows = init . tails              -- exclude the empty row
+    acc = map (scanl1 (zipWith (+))) -- accumulated sum along columns
+    maxS = snd . (foldl f (0, 0))    -- max sum in a vector
+    f (m, s) x = let m' = max (m + x) 0
+                     s' = max m' s in (m', s')
+\end{Haskell}
+
+对应的命令式例子程序如下：
+\begin{Bourbaki}
+K maxsum2([[K]] m) {
+    Int n = length(m), k = length(m[0]) // number of row, col
+    K maxs = 0            // max so far
+    for i = 0 to n - 1 {
+        xs = [0] * k
+        for j = i to n - 1 {
+            xs = [x + y for (x, y) in zip(xs, m[j])]
+            maxs = max(maxs, maxsum1(xs))
+        }
+    }
+    return maxs
+
+K maxsum1([K] xs) {
+    K s = 0 // max so far
+    K m = 0 // max end here
+    for x in xs {
+        m = max(m + x, 0)
+        s = max(m, s)
+    }
+    return s
+}
+\end{Bourbaki}
+}
 \end{Answer}
 
 \section{字符串搜索}
@@ -1283,9 +1326,8 @@ adj\ (x, y) = [(x', y') | & (x', y') \gets [(x-1, y), (x+1, y), (x, y-1), (x, y+
 
 [(Int, Int)] adjacent([[(Int, Int)]] m, (Int, Int) p) {
     var (x, y) = p
-    [(Int, Int)] ds = [(0, 1), (0, -1), (1, 0), (-1, 0)]
     [(Int, Int)] ps = []
-    for (dx, dy) in ds {
+    for (dx, dy) in [(0, 1), (0, -1), (1, 0), (-1, 0)] {
         Int x1 = x + dx
         Int y1 = y + dy
         if 0 <= x1 and x1 < len(m[0]) and
