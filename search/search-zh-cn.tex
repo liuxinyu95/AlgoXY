@@ -415,17 +415,27 @@ T(2^i, 2^j) & = j + 2 T(2^{i-1}, 2^{j-1}) \\
 
 伯德证明了这是在$m \times n$区域内搜索的最优下界\cite{fp-pearls}。
 
-\begin{Exercise}
-\Question{参考快速排序的复杂度分析，证明$k$选择的平均复杂度为$O(n)$。}
+\begin{Exercise}\label{ex:binary-search}
+\Question{证明$k$选择的平均复杂度为$O(n)$。}
 \Question{为了查找$A$中的前$k$小元素，我们可以获取$x = \max\ (take\ k\ A), y = \min\ (drop\ k\ A)$。如果$x < y$，则$A$的前$k$个元素就是答案；否则我们用$x$划分前$k$个元素，用$y$划分剩余元素，然后在子序列$[a | a \gets A, x < a < y]$中递归查找前$k'$个元素，其中$k' = k - |[a | a \gets A, a \leq x]|$。请实现这一算法，并分析复杂度。
 }
-\Question{设计算法查找两个已序数组$A$和$B$的中值，满足时间复杂度$O(\lg (m + n))$，其中$m = |A|, n = |B|$，分别为两个数组的长度。中值$x$定义为$A$、$B$中小于$x$的元素和大于$x$的元素同样多或相差1。}
+\Question{查找两个已序数组$A$和$B$的“简化中值”，满足时间复杂度$O(\lg (m + n))$，其中$m = |A|, n = |B|$，分别为两个数组的长度。数组下标从0开始。简化中值定义为: $median(A, B) = C[\lfloor \dfrac{m + n}{2} \rfloor]$，其中$C = merge(A, B)$为合并后的已序数组\footnote{简化定义与常见的统计学定义不同。后者对于含有$n$个元素升序序列$x$的中值定义为：
+\[
+median(x) = \begin{cases}
+odd(n): & x[\frac{n + 1}{2}] \\
+even(n): & \dfrac{1}{2}(x[\dfrac{n}{2}] + x[\dfrac{n}{2}+1]) \\
+\end{cases}
+\]
+}。}
 \Question{消除递归，通过更新搜索边界实现马鞍查找。}
 \Question{实现二维搜索算法并分析复杂度：矩形搜索区域的左下角是最小值，右上角是最大值。若搜索值$z$小于最小值或者大于最大值无解；否则从中心划一个十字，分割成4个小矩形，然后递归搜索。}
 \end{Exercise}
 
-\begin{Answer}
-\Question{参考快速排序的复杂度分析，证明$k$选择的平均复杂度为$O(n)$。}
+\begin{Answer}[ref = {ex:binary-search}]
+\Question{证明$k$选择的平均复杂度为$O(n)$。
+
+参考快速排序的复杂度分析\cref{sec:quick-sort-big-o}。}
+
 \Question{为了查找$A$中的前$k$小元素，我们可以获取$x = \max\ (take\ k\ A), y = \min\ (drop\ k\ A)$。如果$x < y$，则$A$的前$k$个元素就是答案；否则我们用$x$划分前$k$个元素，用$y$划分剩余元素，然后在子序列$[a | a \gets A, x < a < y]$中递归查找前$k'$个元素，其中$k' = k - |[a | a \gets A, a \leq x]|$。请实现这一算法，并分析复杂度。
 
 \begin{algorithmic}[1]
@@ -448,7 +458,45 @@ T(2^i, 2^j) & = j + 2 T(2^{i-1}, 2^{j-1}) \\
 
 平均情况下的复杂度是$O(n)$。分析思路大致为：每轮循环用线性时间找到最大、最小值$i, j$，然后执行两轮线性时间的划分。如果划分平衡，分摊下来每次平均丢弃一半元素。这样总时间为$O(n + n/2 + n/4...) = O(n)$。
 }
-\Question{设计算法查找两个已序数组$A$和$B$的中值，满足时间复杂度$O(\lg (m + n))$，其中$m = |A|, n = |B|$，分别为两个数组的长度。中值$x$定义为$A$、$B$中小于$x$的元素和大于$x$的元素同样多或相差1。}
+
+\Question{查找两个已序数组$A$和$B$的“简化中值”，满足时间复杂度$O(\lg (m + n))$，其中$m = |A|, n = |B|$，分别为两个数组的长度。数组下标从0开始。简化中值定义为: $median(A, B) = C[\lfloor \dfrac{m + n}{2} \rfloor]$，其中$C = merge(A, B)$为合并后的已序数组\footnote{简化定义与常见的统计学定义不同。后者对于含有$n$个元素升序序列$x$的中值定义为：
+\[
+median(x) = \begin{cases}
+odd(n): & x[\frac{n + 1}{2}] \\
+even(n): & \dfrac{1}{2}(x[\dfrac{n}{2}] + x[\dfrac{n}{2}+1]) \\
+\end{cases}
+\]
+}。
+
+我们给出两个方法。第一个方法在两个数组中分别进行二分查找。令$l = 0$、$u = m$，我们猜测中值在$A$中的索引为：$i = \lfloor \frac{l + u}{2} \rfloor$。根据简化中值的定义，共有$h = \lfloor \frac{m + n}{2} \rfloor$个元素在它之前。其中，$A$中有$i$个元素在$A[i]$之前，如果猜测正确，则在$B$中应有$j = h - i$个元素在$A[i]$之前。检查不等式$B[j] \leq A[i] \leq B[j + 1]$。如果成立，说明猜测的$A[i]$就是中值。否则根据偏大或偏小调整$l$、$u$重新二分查找。下面的例子程序实现了这一方法：
+
+\begin{Bourbaki}
+K median([K] a, [K] b) {
+    if a == [] then return b[length(b) / 2]
+    if b == [] then return a[length(a) / 2)]
+    Int i = medianOf(a, b)
+    return if i == -1 then return median(b, a) else a[i]
+}
+
+Int medianOf([K] a, [K] b) {
+    Int l = 0, u = length(a)
+    while l < u {
+        var i = (l + u) / 2
+        var j = (length(a) + length(b)) / 2  - i
+        if j < 1 or j >= len(b) {
+            if (j == 0 and a[i] <= b[0]) or
+               (j == len(b) and b[j - 1] <= a[i]) then return i
+            if j >= len(b) then l = i + 1 else u = i
+        } else {
+            if b[j - 1]  <= a[i] and a[i] <= b[j] then return i
+            if a[i] < b[j - 1] then l = i + 1 else u = i
+        }
+    }
+    return -1
+}
+\end{Bourbaki}
+
+}
 \Question{消除递归，通过更新搜索边界实现马鞍查找。
 
 \begin{algorithmic}[1]
