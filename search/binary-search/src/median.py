@@ -58,7 +58,37 @@ def medof(a, b):
                 u = i       # too big
     return None
 
-# method 2:
+# method 2: use k-th element in a and b.
+#
+# Suppose m = len(a) >= n = len(b), otherwise, exchange a, b.
+# If B == [], return the k-th element of A, if k = 0, return min(a[0], B[0])
+# Otherwise, guess j = min(k/2, n), and i = k - j, then compare a[i] and b[j]
+# If a[i] < b[j], drop all elements before a[i] and after b[j], then
+# recursively find the (k - i)-th element in the rest.
+# Othewise, drop all elements before b[j] and after a[i], then recursively
+# find the (k-j)-th element in the rest.
+
+def median1(xs, ys):
+    n, m = len(xs), len(ys)
+    return kth(xs, 0, n, ys, 0, m, (m + n) // 2 + 1)
+
+# find the k-th element from xs[x0, x1) and ys[y0, y1), k starts from 1
+def kth(xs, x0, x1, ys, y0, y1, k):
+    if x1 - x0 < y1 - y0:
+        return kth(ys, y0, y1, xs, x0, x1, k)
+    if x1 <= x0:
+        return ys[y0 + k - 1]
+    if y1 <= y0:
+        return xs[x0 + k - 1]
+    if k == 1:
+        return min(xs[x0], ys[y0])
+    j = min(k // 2, y1 - y0)
+    i = k - j
+    i, j = x0 + i, y0 + j
+    if xs[i - 1] < ys[j - 1]:
+        return kth(xs, i, x1, ys, y0, j, k - i + x0)
+    else:
+        return kth(xs, x0, i, ys, j, y1, k - j + y0)
 
 def test(f, n = 100):
     for _ in range(n):
@@ -73,3 +103,4 @@ def test(f, n = 100):
 
 if __name__ == "__main__":
     test(median)
+    test(median1)
