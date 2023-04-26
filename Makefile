@@ -12,10 +12,12 @@ PDFS = $(DOTS:.dot=.pdf)
 
 pdf: $(PDFS)
 
+TEX_FLAGS = -shell-escape
+
 %.ps:  %.dot; dot -Tps  -o $@ $<
 %.eps: %.dot; dot -Teps -o $@ $<
 %.pdf: %.dot; dot -Tpdf -o $@ $<
-%.pdf: %.tex; latexmk -cd -xelatex -shell-escape $<
+%.pdf: %.tex; latexmk -cd -xelatex $(TEX_FLAGS) $<
 
 CHAPTERS-CN := $(shell egrep -l documentclass $$(find . -name '*-zh-cn.tex' -a \! -name 'algoxy-*.tex'))
 CHAPTERS-EN := $(shell egrep -l documentclass $$(find . -name '*-en.tex' -a \! -name 'algoxy-*.tex'))
@@ -24,7 +26,7 @@ chapters-cn chapters-en: pdf
 chapters-cn: $(CHAPTERS-CN:.tex=.pdf)
 chapters-en: $(CHAPTERS-EN:.tex=.pdf)
 
-FORCE-FLAGS = -g -use-make -shell-escape
+FORCE-FLAGS = -g -use-make $(TEX_FLAGS)
 force: force-cn force-en
 force-cn:
 	latexmk -cd -xelatex $(FORCE-FLAGS) algoxy-zh-cn.tex
