@@ -7,7 +7,7 @@ module MaxSum2 where
 import Data.List (scanl1, inits, tails)
 
 maxSum = maximum . (map maxS) . acc . rows where
-    rows = init . tails -- exclude the empty row
+    rows = init . tails   -- exclude the empty row
     acc = concatMap (scanl1 (zipWith (+))) -- accumulated sum along columns
     maxS = snd . (foldl f (0, 0)) -- max sum in a vector
     f (m, s) x = let m' = max (m + x) 0

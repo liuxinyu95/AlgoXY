@@ -24,11 +24,12 @@ chapters-cn chapters-en: pdf
 chapters-cn: $(CHAPTERS-CN:.tex=.pdf)
 chapters-en: $(CHAPTERS-EN:.tex=.pdf)
 
-# force build:
+FORCE-FLAGS = -g -use-make -shell-escape
+force: force-cn force-en
 force-cn:
-	latexmk -cd -xelatex algoxy-zh-cn.tex
+	latexmk -cd -xelatex $(FORCE-FLAGS) algoxy-zh-cn.tex
 
 force-en:
-	latexmk -cd -xelatex algoxy-en.tex
+	latexmk -cd -xelatex $(FORCE-FLAGS) algoxy-en.tex
 
 .PHONY: all cn en pdf chapters chapters-cn chapters-en
