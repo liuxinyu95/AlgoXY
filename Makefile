@@ -15,7 +15,7 @@ pdf: $(PDFS)
 %.ps:  %.dot; dot -Tps  -o $@ $<
 %.eps: %.dot; dot -Teps -o $@ $<
 %.pdf: %.dot; dot -Tpdf -o $@ $<
-%.pdf: %.tex; latexmk -cd -xelatex $<
+%.pdf: %.tex; latexmk -cd -xelatex -shell-escape $<
 
 CHAPTERS-CN := $(shell egrep -l documentclass $$(find . -name '*-zh-cn.tex' -a \! -name 'algoxy-*.tex'))
 CHAPTERS-EN := $(shell egrep -l documentclass $$(find . -name '*-en.tex' -a \! -name 'algoxy-*.tex'))
