@@ -1451,7 +1451,38 @@ $n$ & 解 \\
 5 & [2,4,1,3,5],[3,1,4,2,5],[1,3,5,2,4], ... 共10个解 \\
 \etab
 }
-\Question{八皇后问题存在92个不同的解。对于任何一个解，将其旋转$90^{\circ}$、$180^{\circ}$、$270^{\circ}$也都是八皇后问题的解。并且在水平和垂直方向翻转也能产生解。有些解是对称的，因此旋转或者翻转后的解是同一个。在这个意义上说，真正不同的解只有12个。修改八皇后的程序，找出这12个不同的解。改进程序，使用较少的搜索步骤找出92个解。}
+\Question{八皇后问题存在92个不同的解。对于任何一个解，将其旋转$90^{\circ}$、$180^{\circ}$、$270^{\circ}$也都是八皇后问题的解。并且在水平和垂直方向翻转也能产生解。有些解是对称的，因此旋转或者翻转后的解是同一个。在这个意义上说，真正不同的解只有12个。修改八皇后的程序，找出这12个不同的解。改进程序，使用较少的搜索步骤找出92个解。
+
+八皇后解的对称性，本质上是正方形棋盘的对称性。群是解决对称的有力武器。正方形的对称性被二面体群$D_4$定义，包括如下8个置换：恒等置换$id$，围绕中心旋转90$\degree$、180$\degree$、270$\degree$。水平、垂直翻转，沿两个对角线翻转。每找到一个解，我们就用这8种置换产生8个解，并认为它们是等价的。我们用一个集合来维护12个本质不同的解：
+
+\begin{Haskell}
+import Data.List ((\\), sortOn)
+import Data.Set (Set, empty, insert, notMember, size)
+import Data.Tuple (swap)
+
+uniqueSolve = dfs [[]] (empty :: Set [Int]) where
+    dfs [] s = s
+    dfs (c:cs) s
+      | length c == 8 = dfs cs (uniqueAdd c s)
+      | otherwise = dfs ([(x:c) | x <- [1..8] \\ c, not (attack x c)] ++ cs) s
+    uniqueAdd c s = if all (`notMember` s) [f c | f <- [id,
+        reverse, map (9 - ), -- reflect vertical/horizontal
+        trans swap, trans (\(i, j) -> (9 - j, 9 - i)), -- reflect AC, BD
+        trans (\(i, j) -> (9 - j, i)),
+        trans (\(i, j) -> (9 - i, 9 - j)),
+        trans (\(i, j) -> (j, 9 - i))]] then insert c s else s
+    trans f xs = snd $ unzip $ sortOn fst $ map f $ zip [1..8] xs
+    attack x cs = let y = 1 + length cs in
+        any (\(c, r) -> abs(x - c) == abs(y - r)) $ zip (reverse cs) [1..]
+\end{Haskell}
+
+这12个解为：
+\begin{Verbatim}[fontsize=\footnotesize]
+[3,6,4,1,8,5,7,2],[3,6,8,1,4,7,5,2],[4,1,5,8,6,3,7,2],[4,2,7,3,6,8,5,1]
+[4,6,8,3,1,7,5,2],[4,7,1,8,5,2,6,3],[5,2,4,7,3,8,6,1],[5,3,8,4,7,1,6,2]
+[5,7,1,3,8,6,4,2],[5,7,4,1,3,8,6,2],[6,2,7,1,4,8,5,3],[6,4,7,1,8,2,5,3]
+\end{Verbatim}
+}
 \end{Answer}
 
 \subsubsection{跳棋趣题}
