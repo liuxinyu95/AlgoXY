@@ -1,16 +1,16 @@
 -- LeapFrog.hs
 -- Copyright (C) 2013 Liu Xinyu (liuxinyu95@gmail.com)
--- 
+--
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
 -- (at your option) any later version.
--- 
+--
 -- This program is distributed in the hope that it will be useful,
 -- but WITHOUT ANY WARRANTY; without even the implied warranty of
 -- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 -- GNU General Public License for more details.
--- 
+--
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -35,3 +35,11 @@ moves s = filter (/=s) [leapLeft s, hopLeft s, leapRight s, hopRight s] where
     hopRight [] = []
     hopRight (-1:0:ys) = 0:(-1):ys
     hopRight (y:ys) = y:hopRight ys
+
+solvep n = dfs [[start]] [] where
+    dfs [] s = s
+    dfs (c:cs) s
+             | head c == end = dfs cs (reverse c:s)
+             | otherwise = dfs ((map (:c) $ moves $ head c) ++ cs) s
+    start = replicate n (-1) ++ [0] ++ replicate n 1
+    end = reverse start
