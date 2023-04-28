@@ -26,7 +26,6 @@ solve = dfsSolve [[]] [] where
     dfsSolve (c:cs) s
              | length c == 8 = dfsSolve cs (c:s)
              | otherwise = dfsSolve ([(x:c) | x <- [1..8] \\ c, not $ attack x c] ++ cs) s
-
     attack x cs = let y = 1 + length cs in
                  any (\(c, r) -> abs(x - c) == abs(y - r)) $ zip (reverse cs) [1..]
 
@@ -36,21 +35,32 @@ solve = dfsSolve [[]] [] where
 -- 3 rotations: 90, 180, 270
 -- 2 reflection: x, y
 -- 2 reflection: AC, BD
+
+d4 = [id,
+      reverse, map (9 - ),                           -- reflect Y, X
+      trans swap, trans (\(i, j) -> (9 - j, 9 - i)), -- reflect AC, BD
+      trans (\(i, j) -> (9 - j, i)),                 -- 90
+      trans (\(i, j) -> (9 - i, 9 - j)),             -- 180
+      trans (\(i, j) -> (j, 9 - i))]                 -- 270
+  where
+    trans f xs = snd $ unzip $ sortOn fst $ map f $ zip [1..8] xs
+
+solveD4 = dfs [[]] (empty :: Set [Int]) where
+    dfs [] s = s
+    dfs (c:cs) s
+      | length c == 8 = dfs cs $ foldr (\f s -> insert (f c) s) s d4
+      | otherwise = dfs ([(x:c) | x <- [1..8] \\ c, not $ attack x c] ++ cs) s
+    attack x cs = let y = 1 + length cs in
+        any (\(c, r) -> abs(x - c) == abs(y - r)) $ zip (reverse cs) [1..]
+
 uniqueSolve = dfs [[]] (empty :: Set [Int]) where
     dfs [] s = s
     dfs (c:cs) s
       | length c == 8 = dfs cs (uniqueAdd c s)
       | otherwise = dfs ([(x:c) | x <- [1..8] \\ c, not $ attack x c] ++ cs) s
-    uniqueAdd c s = if all (`notMember` s) [f c | f <- [id,
-        reverse, map (9 - ), -- reflect vertical/horizontal
-        trans swap, trans (\(i, j) -> (9 - j, 9 - i)), -- reflect AC, BD
-        trans (\(i, j) -> (9 - j, i)),
-        trans (\(i, j) -> (9 - i, 9 - j)),
-        trans (\(i, j) -> (j, 9 - i))]] then insert c s else s
-    trans f xs = snd $ unzip $ sortOn fst $ map f $ zip [1..8] xs
+    uniqueAdd c s = if all (`notMember` s) [f c | f <- d4] then insert c s else s
     attack x cs = let y = 1 + length cs in
         any (\(c, r) -> abs(x - c) == abs(y - r)) $ zip (reverse cs) [1..]
-
 
 -- n queens, extended from 8 to n
 queens n = dfsSolve [[]] [] where
