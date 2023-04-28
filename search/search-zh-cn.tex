@@ -720,13 +720,11 @@ cnt\ a\ m' = \text{if}\ a \in m'\ \text{then}\ m'[a] \gets m'[a] + 1\ \text{else
 
 \begin{Haskell}
 majorities k xs = verify $ foldr maj Map.empty xs where
-  maj :: (Eq a, Ord a) => a -> Map.Map a Int -> Map.Map a Int
   maj x m | x `Map.member` m = Map.adjust (1+) x m
           | Map.size m < k = Map.insert x 1 m
-          | otherwise = Map.filter (/=0) $ Map.map (-1+) m
+          | otherwise = Map.filter (/=0) $ Map.map (-1 +) m
   verify m = Map.keys $ Map.filter (> th) $ foldr cnt m' xs where
     m' = Map.map (const 0) m
-    cnt :: (Eq a, Ord a) => a -> Map.Map a Int -> Map.Map a Int
     cnt x m = if x `Map.member` m then Map.adjust (1+) x m else m
     th = (length xs) `div` k
 \end{Haskell}
@@ -1325,6 +1323,20 @@ adj\ (x, y) = [(x', y') | & (x', y') \gets [(x-1, y), (x+1, y), (x, y-1), (x, y+
 \begin{Answer}[ref = {ex:dfs-maze}]
 \Question{使用栈来找出迷宫问题的所有解。
 
+\begin{Haskell}
+dfsSolveAll m from to = map reverse $ solve [[from]] [] where
+    solve [] ss = ss
+    solve (c@(p:path):cs) ss
+        | p == to = solve cs (c:ss) -- find a solution, go on search
+        | otherwise = let os = filter (`notElem` path) (adjacent p) in
+                          if os == [] then solve cs ss
+                          else solve ((map (:c) os) ++ cs) ss
+    adjacent (x, y) = [(x', y') |
+           (x', y') <- [(x-1, y), (x+1, y), (x, y-1), (x, y+1)],
+           inRange (bounds m) (x', y'), m ! (x', y') == 0]
+\end{Haskell}
+
+对应的命令式程序
 \begin{Bourbaki}
 [[(Int, Int)]] solve([[Int]] m, (Int, Int) src, (Int, Int) dst) {
     [[(Int, Int)]] stack = [[src]]
@@ -1342,34 +1354,16 @@ adj\ (x, y) = [(x', y') | & (x', y') \gets [(x-1, y), (x+1, y), (x, y-1), (x, y+
     return s
 }
 
-[(Int, Int)] adjacent([[(Int, Int)]] m, (Int, Int) p) {
-    var (x, y) = p
+[(Int, Int)] adjacent([[(Int, Int)]] m, (Int x, Int y)) {
     [(Int, Int)] ps = []
     for (dx, dy) in [(0, 1), (0, -1), (1, 0), (-1, 0)] {
-        Int x1 = x + dx
-        Int y1 = y + dy
-        if 0 <= x1 and x1 < len(m[0]) and
-           0 <= y1 and y1 < len(m)
+        Int x1 = x + dx, y1 = y + dy
+        if 0 <= x1 < len(m[0]) and 0 <= y1 < len(m)
            and m[y][x] == 0 then ps.append((x1, y1))
     }
     return ps
 }
 \end{Bourbaki}
-
-对应的纯函数式解法：
-
-\begin{Haskell}
-dfsSolveAll m from to = map reverse $ solve [[from]] [] where
-    solve [] ss = ss
-    solve (c@(p:path):cs) ss
-        | p == to = solve cs (c:ss) -- find a solution, go on search
-        | otherwise = let os = filter (`notElem` path) (adjacent p) in
-                          if os == [] then solve cs ss
-                          else solve ((map (:c) os) ++ cs) ss
-    adjacent (x, y) = [(x', y') |
-           (x', y') <- [(x-1, y), (x+1, y), (x, y-1), (x, y+1)],
-           inRange (bounds m) (x', y'), m ! (x', y') == 0]
-\end{Haskell}
 }
 \end{Answer}
 
