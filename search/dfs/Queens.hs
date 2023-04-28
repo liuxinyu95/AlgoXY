@@ -45,14 +45,6 @@ d4 = [id,
   where
     trans f xs = snd $ unzip $ sortOn fst $ map f $ zip [1..8] xs
 
-solveD4 = dfs [[]] (empty :: Set [Int]) where
-    dfs [] s = s
-    dfs (c:cs) s
-      | length c == 8 = dfs cs $ foldr (\f s -> insert (f c) s) s d4
-      | otherwise = dfs ([(x:c) | x <- [1..8] \\ c, not $ attack x c] ++ cs) s
-    attack x cs = let y = 1 + length cs in
-        any (\(c, r) -> abs(x - c) == abs(y - r)) $ zip (reverse cs) [1..]
-
 uniqueSolve = dfs [[]] (empty :: Set [Int]) where
     dfs [] s = s
     dfs (c:cs) s

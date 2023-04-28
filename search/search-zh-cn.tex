@@ -1988,18 +1988,56 @@ pr_B\ (p, q) = (\min(x + y, a), \max(0, x + y - a)) \\
 \end{algorithmic}
 
 \begin{Exercise}\label{ex:water-jugs-puzzle}
-\Question{给出完整的扩展欧几里得算法以解决倒水问题。}
-\Question{改进扩展欧几里得算法，寻找最好的线性组合使得$|x| + |y|$最小。}
+\Question{改进扩展欧几里得算法，寻找线性组合使得$|x| + |y|$最小，以解决倒水问题。}
 \end{Exercise}
 
 \begin{Answer}[ref = {ex:water-jugs-puzzle}]
-\Question{给出完整的扩展欧几里得算法以解决倒水问题。
+\Question{改进扩展欧几里得算法，寻找线性组合使得$|x| + |y|$最小，以解决倒水问题。
 
-请参见《同构——编程中的数学》第二章，2.8附录。
-}
-\Question{改进扩展欧几里得算法，寻找最好的线性组合使得$|x| + |y|$最小。
+\begin{Haskell}
+import Data.List
+import Data.Function (on)
 
-请参见《同构——编程中的数学》第二章，2.2.3 扩展欧几里得算法一节中的例子程序。
+-- Extended Euclidean Algorithm
+gcmex a 0 = (a, 1, 0)
+gcmex a b = (g, y', x' - y' * (a `div` b)) where
+  (g, x', y') = gcmex b (a `mod` b)
+
+-- Solve the linear Diophantine equation ax + by = c
+solve a b c | c `mod` g /= 0 = (0, 0, 0, 0) -- no solution
+            | otherwise = (x1, u, y1, v)
+  where
+    (g, x0, y0) = gcmex a b
+    (x1, y1) = (x0 * c `div` g, y0 * c `div` g)
+    (u, v) = (b `div` g, a `div` g)
+
+-- Minimize |x| + |y|
+jars a b c = (x, y) where
+  (x1, u, y1, v) = solve a b c
+  x = x1 - k * u
+  y = y1 + k * v
+  k = minimumBy (compare `on` (\i -> abs (x1 - i * u) +
+                                     abs (y1 + i * v))) [-m..m]
+  m = max (abs x1 `div` u) (abs y1 `div` v)
+
+-- Populate the steps
+water a b c = if x > 0 then pour a x b y
+              else map swap $ pour b y a x
+  where
+    (x, y) = jars a b c
+
+-- Pour from a to b, fill a for x times, and empty b for y times.
+pour a x b y = steps x y [(0, 0)]
+  where
+    steps 0 0 ps = reverse ps
+    steps x y ps@((a', b'):_)
+      | a' == 0 = steps (x - 1) y ((a, b'):ps)  -- fill a
+      | b' == b = steps x (y + 1) ((a', 0):ps)  -- empty b
+      | otherwise = steps x y ((max (a' + b' - b) 0,
+                                min (a' + b') b):ps) -- a to b
+\end{Haskell}
+
+更多内容，请参见《同构——编程中的数学》第二章，2.2.3节。
 }
 \end{Answer}
 
@@ -2230,7 +2268,7 @@ $move$把棋子$L[k]$移动$d$成为：$move\ L\ (k, d) = map\ (+ d)\ L[k]$。$u
  \label{fig:weighted-dag}
 \end{figure}
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:conway-slide-puzzle}
 \Question{康威提出了一种滑动趣题。\cref{fig:conway7}给出的是一种简化的版本。8个圆圈中的7个已经放入了棋子，每个棋子上标有编号1到7。如果和棋子相邻的圆圈是空的，则棋子可以滑动过去。圆圈间如果有连线，则表示它们是相连的。目标是将棋子从顺序1、2、3、4、5、6、7通过滑动反转成7、6、5、4、3、2、1。编写一个程序解决康威滑动问题。
 \begin{center}
  \centering
@@ -2241,6 +2279,13 @@ $move$把棋子$L[k]$移动$d$成为：$move\ L\ (k, d) = map\ (+ d)\ L[k]$。$u
 \end{center}
 }
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:conway-slide-puzzle}]
+\Question{康威滑动趣题。
+
+}
+\end{Answer}
+
 
 \subsection{贪心算法}
 \index{贪心算法}
