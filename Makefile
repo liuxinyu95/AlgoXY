@@ -12,7 +12,7 @@ PDFS = $(DOTS:.dot=.pdf)
 
 pdf: $(PDFS)
 
-TEX_FLAGS = -shell-escape
+TEX_FLAGS =
 
 %.ps:  %.dot; dot -Tps  -o $@ $<
 %.eps: %.dot; dot -Teps -o $@ $<
