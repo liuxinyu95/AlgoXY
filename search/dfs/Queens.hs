@@ -46,19 +46,19 @@ d4 = [id,
     trans f xs = snd $ unzip $ sortOn fst $ map f $ zip [1..8] xs
 
 uniqueSolve = dfs [[]] (empty :: Set [Int]) where
-    dfs [] s = s
-    dfs (c:cs) s
-      | length c == 8 = dfs cs (uniqueAdd c s)
-      | otherwise = dfs ([(x:c) | x <- [1..8] \\ c, not $ attack x c] ++ cs) s
-    uniqueAdd c s = if all (`notMember` s) [f c | f <- d4] then insert c s else s
-    attack x cs = let y = 1 + length cs in
-        any (\(c, r) -> abs(x - c) == abs(y - r)) $ zip (reverse cs) [1..]
+  dfs [] s = s
+  dfs (c:cs) s
+    | length c == 8 = dfs cs (uniqueAdd c s)
+    | otherwise = dfs ([(x:c) | x <- [1..8] \\ c, not $ attack x c] ++ cs) s
+  uniqueAdd c s = if all (`notMember` s) $ map ($ c) d4 then insert c s else s
+  attack x cs = let y = 1 + length cs in
+      any (\(c, r) -> abs(x - c) == abs(y - r)) $ zip (reverse cs) [1..]
 
 -- n queens, extended from 8 to n
 queens n = dfsSolve [[]] [] where
-    dfsSolve [] s = s
-    dfsSolve (c:cs) s
-             | length c == n = dfsSolve cs (c:s)
-             | otherwise = dfsSolve ([(x:c) | x <- [1..n] \\ c, not $ attack x c] ++ cs) s
-    attack x cs = let y = 1 + length cs in
-                 any (\(c, r) -> abs(x - c) == abs(y - r)) $ zip (reverse cs) [1..]
+  dfsSolve [] s = s
+  dfsSolve (c:cs) s
+    | length c == n = dfsSolve cs (c:s)
+    | otherwise = dfsSolve ([(x:c) | x <- [1..n] \\ c, not $ attack x c] ++ cs) s
+  attack x cs = let y = 1 + length cs in
+    any (\(c, r) -> abs(x - c) == abs(y - r)) $ zip (reverse cs) [1..]

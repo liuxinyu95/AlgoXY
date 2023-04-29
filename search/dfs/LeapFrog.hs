@@ -22,7 +22,7 @@ solve = dfsSolve [[[-1, -1, -1, 0, 1, 1, 1]]] [] where
              | head c == [1, 1, 1, 0, -1, -1, -1] = dfsSolve cs (reverse c:s)
              | otherwise = dfsSolve ((map (:c) $ moves $ head c) ++ cs) s
 
-moves s = filter (/=s) [leapLeft s, hopLeft s, leapRight s, hopRight s] where
+moves s = filter (/=s) $ map ($ s) [leapLeft, hopLeft, leapRight, hopRight] where
     leapLeft [] = []
     leapLeft (0:y:1:ys) = 1:y:0:ys
     leapLeft (y:ys) = y:leapLeft ys

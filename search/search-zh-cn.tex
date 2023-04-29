@@ -2474,9 +2474,77 @@ lookup\ (w, l, r)\ (b \cons bs) & = & lookup\ (\text{if}\ b = 0\ \text{then}\ l\
 
 哈夫曼树的构造过程采取了一种特殊策略：每次合并有若干选项，总是选取权重最小的两棵树合并。这一系列\textbf{局部}最优选择，产生了全局最优的前缀编码。局部最优一般不产生全局最优解。哈夫曼编码是个例外。我们称这种每次选择局部最优选项的方法为\textbf{贪心}策略。贪心算法可以解决、简化很多问题。但判断贪心策略能否产生全局最优解并不容易。通用的形式化证明仍然是一个活跃的研究领域\cite{CLRS}。
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:huffman-code}
 \Question{实现命令式的Huffman码表生成算法。}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:huffman-code}]
+\Question{实现命令式的哈夫曼码表生成算法。
+
+\begin{Bourbaki}
+data Node<T> {
+    Int w
+    Optional<T> c
+    Node<T> left, right
+
+    Bool isLeaf() = (left == null and right == null)
+
+    Self Node(T x = Optional.Nothing, Int weight,
+              Node<T> l = null, Node<T> r = null) {
+        c = x, w = weight
+        left = l, right = r
+    }
+}
+
+Node<T> merge(Node<T> a, Node<T> b) = Node(Optional.Nothing, a.w + b.w, a, b)
+
+Bool (<)(Node<T> a, Node<T> b) = (a.w < b.w)
+
+Bool (>)(Node<T> a, Node<T> b) = (b.w < a.w)
+
+Node<T> max(Node<T> a, Node<T> b) = if a < b then b else a
+
+Void swap([Nodes<T>] ts, Int i, Int j, Int k) {
+    swap(ts[i], ts[if ts[j] < ts[k] then k else j])
+}
+
+Node<T> huffman([Node<T>] ts) {
+    while length(ts) > 1 {
+        Int n = length(ts)
+        for Int i = n - 3 down to i 0 {
+            if ts[i] < max(ts[n-1], ts[n-2]) then swap(ts, i, n-1, n-2)
+        }
+        ts[n-2] = merge(ts[n-1], ts[n-2])
+        ts.popLast()
+    }
+    return ts[0]
+}
+
+Map<T, [T]> codeTable(Node<T> t) {
+    Map<T, [T]> codes
+    codetab(t, [], codes)
+    return codes
+}
+
+Void codetab(Node<T> t, [T] bits, Map<T, [T]> codes) {
+    if t.isleaf()
+        codes[t.c] = bits
+    else {
+        codetab(t.left, bits + [0], codes)
+        codetab(t.right, bits + [1], codes)
+    }
+}
+
+[T] encode(Map<T, [T]> codes, [T] w) {
+    [T] bits
+    for c in w {
+        bits += codes[c]
+    }
+    return bits
+}
+\end{Bourbaki}
+}
+\end{Answer}
 
 \subsubsection{换零钱问题}
 \index{换零钱问题}
@@ -2506,13 +2574,13 @@ change\ x & = & c_m : change\ (x - c_m), \text{其中}: c_m = \max\ \{c \in C, c
 \EndFor
 \end{algorithmic}
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:huffman-build-tree}
 \Question{使用堆来构造哈夫曼树：不断从堆顶取出两颗子树，合并后放回堆中。}
 \Question{如果字符已按权重排序成列表$A$，存在一个线性时间的构造哈夫曼树的方法：用队列$Q$保存合并结果。不断从$Q$和$A$头部取出较小的树，合并后入队。处理完列表中所有树后，队列中将只剩下一棵树。即最终的哈夫曼树。请实现这一方法。}
 \Question{给定哈夫曼树$T$，用左侧叠加实现哈夫曼解码。}
 \end{Exercise}
 
-\begin{Answer}
+\begin{Answer}[ref = {ex:huffman-build-tree}]
 \Question{使用堆来构造哈夫曼树：不断从堆顶取出两颗子树，合并后放回堆中。
 
 \[

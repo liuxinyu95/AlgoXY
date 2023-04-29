@@ -11,8 +11,11 @@ solve1 = dfs [[start]] where
     | head c == end = reverse c
     | otherwise = dfs ((map (:c) $ moves c) ++ cs)
 
--- The solution space is big, the exhaustive solution can't terminate
--- within reasonable time.
+-- TBD: The solution space is big, the exhaustive solution can't terminate
+-- within reasonable time. Need optimize:
+--   (1) avoid store full path in each stack item;
+--   (2) Use a global visited Map (from :: [Int]) (to :: [Int]);
+--   (3) when rebuild solution path, lookup the visited Map, back-track to start.
 solve = dfs [[start]] [] where
   dfs [] s = s
   dfs (c:cs) s
