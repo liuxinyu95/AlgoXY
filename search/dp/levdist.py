@@ -14,7 +14,7 @@ def lev(s, t):
     d = [[0]*n for _ in range(m)] #d[i][j]: Levenshtein distance between s[:i] and t[:j]
     for i in range(m): #source prefix can be transfered to empty by dropping all chars
         d[i][0] = i
-    for j in range(n): #target prefix can be reached from empty from empty by insering all chars
+    for j in range(n): #target prefix can be reached from empty by inserting all chars
         d[0][j] = j
     for j in range(1, n):
         for i in range(1, m):
