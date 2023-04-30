@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 # lcs.py
 # Copyright (C) 2014 Liu Xinyu (liuxinyu95@gmail.com)
 #
@@ -18,6 +16,8 @@
 
 
 # Longest Common Subsequence, DP - memorization
+from enum import Flag, auto
+
 import random
 
 def lcs(xs, ys):
@@ -46,6 +46,44 @@ def fetch(c, xs, ys):
     r.reverse()
     return r
 
+# Record both length and direction.
+class Dir(Flag):
+    N = auto()
+    W = auto()
+    NW = auto()
+
+def lcs_dir(xs, ys):
+    fst = lambda p : p[0]
+    m, n = len(xs), len(ys)
+    c = [[(0, None)]*(n + 1) for _ in range(m + 1)]
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if xs[i-1] == ys[j-1]:
+                c[i][j] = (c[i-1][j-1][0] + 1, Dir.NW)
+            else:
+                c[i][j] = (max(c[i-1][j], c[i][j-1], key=fst)[0], \
+                           Dir.N if fst(c[i-1][j]) > fst(c[i][j-1]) else Dir.W)
+    return fetch_dir(c, xs, ys)
+
+def fetch_dir(c, xs, ys):
+    snd = lambda p : p[1]
+    r = []
+    m, n = len(xs), len(ys)
+    while m > 0 and n > 0:
+        d = snd(c[m][n])
+        if d == Dir.NW:
+            r.append(xs[m - 1]) # or ys[n - 1]
+            m = m - 1
+            n = n - 1
+        elif d == Dir.N:
+            m = m - 1
+        elif d == Dir.W:
+            n = n - 1
+        else:
+            assert False, f"should not be here {d}"
+    r.reverse()
+    return r
+
 # the naive one is very slow, don't test it with big lists.
 def naive_lcs(xs, ys):
     if xs == [] or ys == []:
@@ -60,16 +98,17 @@ def naive_lcs(xs, ys):
         else:
             return a
 
-def test():
-    N = 10  #Caution! don't use big number, or naive method will too slow.
+# Caution! don't use big num for the naive method.
+def test(lcs_func, num = 10):
     for i in range(100):
-        m = random.randint(1, N)
-        n = random.randint(1, N)
-        xs = random.sample(range(N), m)
-        ys = random.sample(range(N), n)
-        #Note that two lcs algorithms may return different results with same length.
-        assert(len(naive_lcs(xs, ys))==len(lcs(xs, ys)))
-        print("test", i, "OK.")
+        m = random.randint(1, num)
+        n = random.randint(1, num)
+        xs = random.sample(range(num), m)
+        ys = random.sample(range(num), n)
+        #Note that two lcs algorithms may return different results with the same length.
+        assert len(naive_lcs(xs, ys)) == len(lcs_func(xs, ys)),  "fail"
+    print("test", lcs_func, "with 100 cases OK.")
 
 if __name__ == "__main__":
-    test()
+    test(lcs)
+    test(lcs_dir)
