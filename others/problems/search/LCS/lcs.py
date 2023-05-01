@@ -29,9 +29,9 @@ def lcs(xs, ys):
                 c[i][j] = c[i-1][j-1] + 1
             else:
                 c[i][j] = max(c[i-1][j], c[i][j-1])
-    return fetch(c, xs, ys)
+    return rebuild(c, xs, ys)
 
-def fetch(c, xs, ys):
+def rebuild(c, xs, ys):
     r = []
     m, n = len(xs), len(ys)
     while m > 0 and n > 0:
@@ -63,9 +63,9 @@ def lcs_dir(xs, ys):
             else:
                 c[i][j] = (max(c[i-1][j], c[i][j-1], key=fst)[0], \
                            Dir.N if fst(c[i-1][j]) > fst(c[i][j-1]) else Dir.W)
-    return fetch_dir(c, xs, ys)
+    return rebuild_dir(c, xs, ys)
 
-def fetch_dir(c, xs, ys):
+def rebuild_dir(c, xs, ys):
     snd = lambda p : p[1]
     r = []
     m, n = len(xs), len(ys)
