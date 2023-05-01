@@ -568,7 +568,7 @@ Consider the counter example: $[0, 1, 2, 3, 3, 3, 3, 3, 5]$. It doesn't work eve
 \EndProcedure
 \end{algorithmic}
 
-Performance:
+Let the time to search in rectangle of area $A$ be $T(A)$. We take $O(1)$ time to check whether $z \leq f(a, b)$ or $f(c, d) \geq z$, then divide into 4 smaller squares, i.e., $T(A) = 4 T(A/4) + O(c)$. We apply the master theorem, the complexity is $O(A) = O(m n)$, which is proportion to the area. It's essentially same as exhaustive search in the rectangle.
 }
 \end{Answer}
 
@@ -690,11 +690,11 @@ Below is the corresponding iterative implementation:
 \EndFunction
 \end{algorithmic}
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:majority-problem}
 \Question{Extend to find $k$ majorities that occurs over $\lfloor n/k \rfloor$ in collection $A$, where $n = |A|$. Hint: Drop $k$ different elements every time, till the remaining is less than $k$ unique candidates. Any $k$-majority (the one over $\lfloor n/k \rfloor$) must remain in the end.}
 \end{Exercise}
 
-\begin{Answer}
+\begin{Answer}[ref = {ex:majority-problem}]
 \Question{Extend to find $k$ majorities that occurs over $\lfloor n/k \rfloor$ in collection $A$, where $n = |A|$.
 
 \vspace{3mm}
@@ -840,13 +840,13 @@ We can also find the maximum sum with fold: $S_{max} = fst \circ foldr\ f\ (0, 0
 f\ x\ (S_m, S) = (S_m' = \max(S_m, S'), S' = \max(0, x + S))
 \ee
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:max-subsum}
 \Question{Modify the solution that finds the max sum of sub-vector, returns the sub-vector of the maximum sum.}
 \Question{Bentley gives a divide and conquer algorithm to find the max sum in $O(n \lg n)$ time\cite{Bentley}. Split the vector at middle, recursively find the max sum in two halves, and the max sum that crosses the middle. Then pick the greatest. Implement this solution.}
 \Question{Find the sub-metrics in a $m \times n$ metrics that gives the maximum sum.}
 \end{Exercise}
 
-\begin{Answer}
+\begin{Answer}[ref = {ex:max-subsum}]
 \Question{Modify the solution that finds the max sum of sub-vector, returns the sub-vector of the maximum sum.
 
 If want to return the sub-list together with the maximum sum, we can maintain two pairs $P_m$ and $P$ during folding, each pair contains the sum and the sub-list $(S, L)$.
@@ -885,6 +885,71 @@ max_s & = & 1st \circ foldr\ f\ ((0, [\ ]), (0, [\ ])) \\
 \end{algorithmic}
 
 Consider the recursive equation: $T(n) = 2T(n/2) + O(n)$, from the master theorem, the performance is $O(n)$.
+}
+
+\Question{Find the sub-metrics in a $m \times n$ metrics that gives the maximum sum.
+
+We start from the first row of the metrics, add a row per round $[M[1, *], M[2, *], ..., M[i, *]]$. Then sum the numbers in each column and convert it to a vector:
+
+\[
+V = \left [ \sum_{j=1}^i M[1, j], \sum_{j=1}^i M[2, j], ..., \sum_{j=1}^i M[n, j] \right ]
+\]
+
+Next use the $maxsum$ to find the max sum in vector $V$, and record the global maximum sum.
+
+\begin{Haskell}
+maxSum = maximum . (map maxS) . acc . rows where
+    rows = init . tails              -- exclude the empty row
+    acc = concatMap (scanl1 (zipWith (+))) -- accumulated sum along columns
+    maxS = snd . (foldl f (0, 0))    -- max sum in a vector
+    f (m, s) x = let m' = max (m + x) 0
+                     s' = max m' s in (m', s')
+\end{Haskell}
+
+Where \texttt{tails} is defined in \cref{ex:list-tails}, \texttt{zipWith} is defined in \cref{sec:list-zipwith}, \texttt{concatMap} is defined in \cref{sec:list-concatmap}. The $scanl$ is similar to $foldl$, it records the result every time in a list. $scanl1$ is a special case of $scanl$, that the initial value is the first element.
+
+\[
+\begin{array}{rcl}
+scanl1\ f [\ ] & = & [\ ] \\
+scanl1\ f (x \cons xs) & = & scanl\ f\ x\ xs \\
+\end{array}
+\]
+
+where
+
+\[
+\begin{array}{rcl}
+scanl\ f\ q\ [\ ] & = & [q] \\
+scanl\ f\ (x \cons xs) & = & q : scanl\ f\ (f\ q\ x)\ xs \\
+\end{array}
+\]
+
+Below is the corresponding example program:
+
+\begin{Bourbaki}
+K maxsum2([[K]] m) {
+    Int n = length(m), k = length(m[0]) // number of row, col
+    K maxs = 0            // max so far
+    for i = 0 to n - 1 {
+        xs = [0] * k
+        for j = i to n - 1 {
+            xs = [x + y for (x, y) in zip(xs, m[j])]
+            maxs = max(maxs, maxsum1(xs))
+        }
+    }
+    return maxs
+}
+
+K maxsum1([K] xs) {
+    K s = 0 // max so far
+    K m = 0 // max end here
+    for x in xs {
+        m = max(m + x, 0)
+        s = max(m, s)
+    }
+    return s
+}
+\end{Bourbaki}
 }
 \end{Answer}
 
@@ -1094,9 +1159,57 @@ Below is the iterative implementation:
 Each step tries 4 options (up, down, left, and right) through the backtrack. It seems the performance is $O(4^n)$, where $n$ is the length of the path. The actual time won't be so large because we skip the visited places. In the worst case, we traverse all the reachable points {\em exactly once}. Hence the time is bound to $O(n)$, where $n$ is the
 number of connected points. We need additional $O(n^2)$ space for the stack.
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:dfs-maze}
 \Question{Modify the implementation with stack, find all ways to the maze.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:dfs-maze}]
+\Question{Modify the implementation with stack, find all ways to the maze.
+
+\begin{Haskell}
+dfsSolveAll m from to = map reverse $ solve [[from]] [] where
+    solve [] ss = ss
+    solve (c@(p:path):cs) ss
+        | p == to = solve cs (c:ss) -- find a solution, go on search
+        | otherwise = let os = filter (`notElem` path) (adjacent p) in
+                          if os == [] then solve cs ss
+                          else solve ((map (:c) os) ++ cs) ss
+    adjacent (x, y) = [(x', y') |
+           (x', y') <- [(x-1, y), (x+1, y), (x, y-1), (x, y+1)],
+           inRange (bounds m) (x', y'), m ! (x', y') == 0]
+\end{Haskell}
+
+The corresponding imperative program:
+
+\begin{Bourbaki}
+[[(Int, Int)]] solve([[Int]] m, (Int, Int) src, (Int, Int) dst) {
+    [[(Int, Int)]] stack = [[src]]
+    [[(Int, Int)]] s = []
+    while stack != [] {
+        path = stack.pop()
+        if last(path) == dst {
+            s.append(path)
+        } else {
+            for p in adjacent(m, last(path)) {
+                if not p in path then stack.append(path + [p])
+            }
+        }
+    }
+    return s
+}
+
+[(Int, Int)] adjacent([[(Int, Int)]] m, (Int x, Int y)) {
+    [(Int, Int)] ps = []
+    for (dx, dy) in [(0, 1), (0, -1), (1, 0), (-1, 0)] {
+        Int x1 = x + dx, y1 = y + dy
+        if 0 <= x1 < len(m[0]) and 0 <= y1 < len(m)
+           and m[y][x] == 0 then ps.append((x1, y1))
+    }
+    return ps
+}
+\end{Bourbaki}
+}
+\end{Answer}
 
 \subsubsection{Eight queens puzzle}
 \index{8 queens puzzle}
@@ -1163,10 +1276,77 @@ We've exhausted all options when the stack becomes empty, $s$ records all the so
 
 We only try the unoccupied columns among the 8, in total 15720 arrangements. It is far less than $8^8 = 16777216$\cite{wiki-8-queens}. Because the square board is horizontal and vertical symmetric, when find a solution, we can rotate, flip to obtain other symmetric solutions. We can expand to solve $n$ queues puzzle, where $n \geq 4$. However, the time increase fast along with $n$. The backtrack algorithm is slightly better than the exhaustive permutations of 8 (bound to $o(n!)$).
 
-\begin{Exercise}
-\Question{There are 92 solutions to the 8 queens puzzle. For any solution, we can rotate $90^{\circ}$, $180^{\circ}$, $270^{\circ}$, and flip it to obtain symmetric solutions. We can generate all solutions from 12 unique ones. Implement this method.}
+\begin{Exercise}\label{ex:queens-puzzle}
 \Question{Extend the 8 queens to $n$ queens.}
+
+\Question{There are 92 solutions to the 8 queens puzzle. For any solution, it's also a solution if rotates $90^{\circ}$. We can flip to get another solution. There are essentially 12 unique solutions. Write a program to find them.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:queens-puzzle}]
+\Question{Extend the 8 queens to $n$ queens.
+
+We are about to put $n$ queens on the $n \times n$ board. We replace 8 with the passed in $n$. Below table list the solutions and the number of queens till 5.
+
+\btab{c|l}
+$n$ & solution \\
+\hline
+1 & [1] \\
+2 & no solution \\
+3 & no solution \\
+4 & [2,4,1,3],[3,1,4,2] \\
+5 & [2,4,1,3,5],[3,1,4,2,5],[1,3,5,2,4], ... total 10 solutions \\
+\etab
+}
+
+\Question{There are 92 solutions to the 8 queens puzzle. For any solution, it's also a solution if rotates $90^{\circ}$. We can flip to get another solution. There are essentially 12 unique solutions. Write a program to find them.
+
+The solutions are symmetric because the square board is symmetric. The dihedral group $D_4$ defines the square symmetric, including 8 permutations: identity $id$, counter clockwise rotate around the center by 90$\degree$, 180$\degree$, and 270$\degree$. Reflect horizontally, vertically, along the two diagonals. They send the queen at location $(i, j)$ to:
+
+\btab{c|l}
+permutation & position \\
+\hline
+$id$ & $(i, j)$ \\
+reflect along $Y$ and $X$ & $(9-i, j)$、$(i, 9 - j)$ \\
+reflect along two diagonals & $(j, i)$、$(9 - j, 9 - i)$ \\
+rotate 90$\degree$, 180$\degree$, 270$\degree$ & $(9 - j, i)$, $(9 - i, 9 - j)$, $(j, 9 - i)$
+\etab
+
+We apply the 8 permutations for every solution to generate 8 solutions. We treat them same, and use a set to store 12 unique solutions.
+
+\begin{Haskell}
+import Data.List ((\\), sortOn)
+import Data.Set (Set, empty, insert, notMember, size)
+import Data.Tuple (swap)
+
+d4 = [id,
+      reverse, map (9 - ),                           -- reflect Y, X
+      trans swap, trans (\(i, j) -> (9 - j, 9 - i)), -- reflect AC, BD
+      trans (\(i, j) -> (9 - j, i)),                 -- 90
+      trans (\(i, j) -> (9 - i, 9 - j)),             -- 180
+      trans (\(i, j) -> (j, 9 - i))]                 -- 270
+  where
+    trans f xs = snd $ unzip $ sortOn fst $ map f $ zip [1..8] xs
+
+uniqueSolve = dfs [[]] (empty :: Set [Int]) where
+  dfs [] s = s
+  dfs (c:cs) s
+    | length c == 8 = dfs cs (uniqueAdd c s)
+    | otherwise = dfs ([(x:c) | x <- [1..8] \\ c,
+                           not (attack x c)] ++ cs) s
+  uniqueAdd c s = if all (`notMember` s) [f c | f <- d4]
+                  then insert c s else s
+  attack x cs = let y = 1 + length cs in
+      any (\(c, r) -> abs(x - c) == abs(y - r)) $ zip (reverse cs) [1..]
+\end{Haskell}
+
+The 12 solutions are:
+\begin{Verbatim}[fontsize=\footnotesize]
+[3,6,4,1,8,5,7,2],[3,6,8,1,4,7,5,2],[4,1,5,8,6,3,7,2],[4,2,7,3,6,8,5,1]
+[4,6,8,3,1,7,5,2],[4,7,1,8,5,2,6,3],[5,2,4,7,3,8,6,1],[5,3,8,4,7,1,6,2]
+[5,7,1,3,8,6,4,2],[5,7,4,1,3,8,6,2],[6,2,7,1,4,8,5,3],[6,4,7,1,8,2,5,3]
+\end{Verbatim}
+}
+\end{Answer}
 
 \subsubsection{Peg puzzle}
 \index{Peg puzzle}
@@ -1330,9 +1510,25 @@ go(X, Y) :- c(X, Z), go(Z, Y)
 
 This program says: a place $X$ is connected with itself. Given two places $X$ and $Y$, if $X$ is connected with $Z$, and $Z$ is connected with $Y$, then $X$ is connected with $Y$. For multiple choices of $Z$, Prolog chooses one, and go on searching. It only tries another $Z$ if the recursive search fails and backtrack. This is exactly the DFS. We can apply DFS when only need a solution, but don't care the number of steps. For example, we need a way out of the maze, although it may not be the shortest.
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:leap-frog}
 \Question{Extend the pegs puzzle solution for $n$ pegs on each side.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:leap-frog}]
+\Question{Extend the pegs puzzle solution for $n$ pegs on each side.
+
+We use $n$ to build the start/end states:
+\begin{Haskell}
+solve n = dfs [[start]] [] where
+    dfs [] s = s
+    dfs (c:cs) s
+        | head c == end = dfs cs (reverse c:s)
+        | otherwise = dfs ((map (:c) $ moves $ head c) ++ cs) s
+    start = replicate n (-1) ++ [0] ++ replicate n 1
+    end = reverse start
+\end{Haskell}
+}
+\end{Answer}
 
 \subsubsection{The wolf, goat, and cabbage puzzle}
 \index{The wolf, goat, and cabbage puzzle}
@@ -1626,10 +1822,59 @@ This method returns the solution with the fewest steps. To avoid storing the com
 \EndFunction
 \end{algorithmic}
 
-\begin{Exercise}
-\Question{Implement the solution to the water jugs puzzle with the extended Euclid algorithm.}
-\Question{Improve the extended Euclid algorithm, find the $x$ and $y$ that minimize $|x| + |y|$ for the optimal solution.}
+\begin{Exercise}\label{ex:water-jugs-puzzle}
+\Question{Improve the extended Euclid algorithm, find the $x$ and $y$ that minimize $|x| + |y|$ for the optimal solution for the two jugs puzzle.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:water-jugs-puzzle}]
+\Question{Improve the extended Euclid algorithm, find the $x$ and $y$ that minimize $|x| + |y|$ for the optimal solution for the two jugs puzzle.
+
+\begin{Haskell}
+import Data.List
+import Data.Function (on)
+
+-- Extended Euclidean Algorithm
+gcmex a 0 = (a, 1, 0)
+gcmex a b = (g, y', x' - y' * (a `div` b)) where
+  (g, x', y') = gcmex b (a `mod` b)
+
+-- Solve the linear Diophantine equation ax + by = c
+solve a b c | c `mod` g /= 0 = (0, 0, 0, 0) -- no solution
+            | otherwise = (x1, u, y1, v)
+  where
+    (g, x0, y0) = gcmex a b
+    (x1, y1) = (x0 * c `div` g, y0 * c `div` g)
+    (u, v) = (b `div` g, a `div` g)
+
+-- Minimize |x| + |y|
+jars a b c = (x, y) where
+  (x1, u, y1, v) = solve a b c
+  x = x1 - k * u
+  y = y1 + k * v
+  k = minimumBy (compare `on` (\i -> abs (x1 - i * u) +
+                                     abs (y1 + i * v))) [-m..m]
+  m = max (abs x1 `div` u) (abs y1 `div` v)
+
+-- Populate the steps
+water a b c = if x > 0 then pour a x b y
+              else map swap $ pour b y a x
+  where
+    (x, y) = jars a b c
+
+-- Pour from a to b, fill a for x times, and empty b for y times.
+pour a x b y = steps x y [(0, 0)]
+  where
+    steps 0 0 ps = reverse ps
+    steps x y ps@((a', b'):_)
+      | a' == 0 = steps (x - 1) y ((a, b'):ps)  -- fill a
+      | b' == b = steps x (y + 1) ((a', 0):ps)  -- empty b
+      | otherwise = steps x y ((max (a' + b' - b) 0,
+                                min (a' + b') b):ps) -- a to b
+\end{Haskell}
+
+See section 2.2.3, chapter 2 in `isomorphism - mathematics of programming' for more details.
+}
+\end{Answer}
 
 \subsubsection{Kloski}
 \index{Kloski puzzle}
@@ -1858,8 +2103,8 @@ Because we can't really search in parallel, we realize BFS with a queue. Repeat 
  \label{fig:weighted-dag}
 \end{figure}
 
-\begin{Exercise}
-\Question{John Conway gives a slide tile puzzle. \Cref{fig:conway7} is a simplified example. There are 8 cells, 7 are occupied. Label the pieces from 1 to 7. Each piece can slide to the connected free cell. (two cells are connected if there is a line between them.) How to reverse the pieces from 1, 2, 3, 4, 5, 6, 7 to 7, 6, 5, 4, 3, 2, 1 by sliding? Write a program to solve this puzzle.
+\begin{Exercise}\label{ex:conway-slide-puzzle}
+\Question{John Conway\footnote{John Conway (1937 - 2020), British mathematician.} gives a slide tile puzzle. \Cref{fig:conway7} is a simplified example. There are 8 cells, 7 are occupied. Label the pieces from 1 to 7. Each piece can slide to the connected free cell. (two cells are connected if there is a line between them.) How to reverse the pieces from 1, 2, 3, 4, 5, 6, 7 to 7, 6, 5, 4, 3, 2, 1 by sliding? Write a program to solve this puzzle.
 \begin{center}
  \centering
  \input{img/conway7.tex}
@@ -1868,6 +2113,43 @@ Because we can't really search in parallel, we realize BFS with a queue. Repeat 
 \end{center}
 }
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:conway-slide-puzzle}]
+\Question{Conway slide puzzle.
+
+We use 8 numbers from 0 to 7 to represents pieces, where 0 is the free cell. The pieces next to 0 can slide in, we represent it as the number 0 move forward/backward in a permutation. When move forward beyond tail, it goes back to the head; when move backward beyond head, it goes to the tail. Particularly, when 0 is the first, it can swap with the 5th piece and vice versa. The solution is very long with 12948 steps. The last several steps is as below.
+
+\begin{Haskell}
+start = [0..7]
+end = 0:[7,6..1]
+
+solve1 = dfs [[start]] where
+  dfs [] = []
+  dfs (c:cs)
+    | head c == end = reverse c
+    | otherwise = dfs ((map (:c) $ moves c) ++ cs)
+
+moves (s:visited) = filter (`notElem` visited) [fwd s, bk s, cut s]
+  where
+    fwd xs = case break (0 ==) xs of
+      (as, 0:b:bs) -> as ++ (b:0:bs)
+      (a:as, [0]) -> 0:as ++ [a]
+    bk xs = case break (0 ==) xs of
+      ([], 0:bs) -> bs ++ [0]
+      (as, 0:bs) -> (init as) ++ (0 : last as : bs)
+    cut xs = case splitAt 4 xs of
+      ((0:as), (x:bs)) -> (x:as) ++ (0:bs)
+      ((x:as), (0:bs)) -> (0:as) ++ (x:bs)
+      _ -> xs
+\end{Haskell}
+
+\begin{Verbatim}[fontsize=\footnotesize]
+...
+[1,0,7,6,5,4,3,2],[1,7,0,6,5,4,3,2],[1,7,6,0,5,4,3,2],[1,7,6,5,0,4,3,2],
+[1,7,6,5,4,0,3,2],[1,7,6,5,4,3,0,2],[1,7,6,5,4,3,2,0],[0,7,6,5,4,3,2,1]
+\end{Verbatim}
+}
+\end{Answer}
 
 \subsection{Greedy algorithm}
 \index{Greedy algorithm}
@@ -2024,9 +2306,54 @@ lookup\ (w, l, r)\ (b \cons bs) & = & lookup\ (\text{if}\ b = 0\ \text{then}\ l\
 
 Huffman tree building reflects a special strategy: always pick the two trees with the minimal weight for merge every time. The series of {\em local} optimal options generate a {\em global} optimal prefix-code. Local optimal sub-solutions are not necessary lead to global optimal solution usually. Huffman coding is an exception. We call the strategy that always choose the local optimal option as the {\em greedy} strategy. Greedy method simplifies and works for many problems. However, it's not easy to tell whether the greedy method generates the global optimal solution. The generic formal proof is still an active research area\cite{CLRS}.
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:huffman-code}
 \Question{Implement the imperative Huffman code table algorithm.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:huffman-code}]
+\Question{Implement the imperative Huffman code table algorithm.
+
+\begin{Bourbaki}
+data Node<T> {
+    Optional<T> c = Nothing
+    Int w
+    Node<T> left = null, right = null
+
+    Bool isLeaf() = (left == null and right == null)
+}
+
+Node<T> merge(Node<T> a, Node<T> b) = Node(Nothing, a.w + b.w, a, b)
+
+Bool (<)(Node<T> a, Node<T> b) = (a.w < b.w)
+
+Node<T> huffman([Node<T>] ts) {
+    while length(ts) > 1 {
+        Int n = length(ts)
+        for Int i = n - 3 down to i 0 {
+            if ts[i] < max(ts[n-1], ts[n-2]) {
+                Int j = if ts[n-1] < ts[n-2] then n - 2 else n - 1
+                swap(ts[i], ts[j])
+            }
+        }
+        ts[n-2] = merge(ts[n-1], ts[n-2])
+        ts.popLast()
+    }
+    return ts[0]
+}
+
+Map<T, [T]> codeTab(Node<T> t, [T] bits = [], Map<T, [T]> codes = {}) {
+    if t.isLeaf() {
+        codes[t.c] = bits
+    } else {
+        codeTab(t.left,  bits + [0], codes)
+        codeTab(t.right, bits + [1], codes)
+    }
+    return codes
+}
+\end{Bourbaki}
+}
+\end{Answer}
+
 
 \subsubsection{Change making problem}
 \index{Change making problem}
@@ -2056,13 +2383,13 @@ Although it's not the optimal solution, the greedy method often gives a simplifi
 \EndFor
 \end{algorithmic}
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:huffman-build-tree}
 \Question{Use heap to build the Huffman tree: take two trees from the top, merge then add back to the heap.}
 \Question{If we sort the symbols by their weight as $A$, there is a linear time algorithm to build the Huffman tree: use a tree $Q$ to store the merge result, repeat take the minimal weighted tree from $Q$ and the head of $A$, merge then add to the queue. After process all trees in $A$, there is a single tree in the $Q$, which is the Huffman tree. Implement this algorithm.}
 \Question{Given a Huffman tree $T$, implement the decode algorithm with fold left.}
 \end{Exercise}
 
-\begin{Answer}
+\begin{Answer}[ref = {ex:huffman-build-tree}]
 \Question{Use heap to build the Huffman tree: take two trees from the top, merge then add back to the heap.
 
 \[
@@ -2097,7 +2424,7 @@ build\ (t, h) & = & build\ (extract\ (ts, push\ (merge\ t\ t')\ q)) \\
 \end{array}
 \]
 
-其中：$(t', (ts, q)) = extract\ h$
+where $(t', (ts, q)) = extract\ h$
 
 \[
 \begin{array}{rcl}
@@ -2337,11 +2664,11 @@ We next build the longest common sub-sequence from $T$. Start from the bottom-ri
 \EndFunction
 \end{algorithmic}
 
-\begin{Exercise}
+\begin{Exercise}\label{ex:lcs}
 \Question{For the longest common sub-sequence, build the optimal solution table with fold.}
 \end{Exercise}
 
-\begin{Answer}
+\begin{Answer}[ref={ex:lcs}]
 \Question{For the longest common sub-sequence, build the optimal solution table with fold.
 
 \begin{Haskell}
@@ -2496,8 +2823,8 @@ f\ V\ j = \begin{cases}
   \end{cases}
 \ee
 
-\begin{Exercise}
-\Question{For the longest common sub-sequence problem, an alternative solution is to record the direction in the table. There are three directions: 'N' for north, 'W' for west, and 'NW'. Given such a table, we can build the longest common sub-sequence from the bottom-right entry. If the entry is 'NW', next go to the upper-left entry; if it's 'N', go to the above row; and go to the previous entry if it's 'W'. Implement this solution.}
+\begin{Exercise}\label{ex:dynamic-programming}
+\Question{For the longest common sub-sequence problem, an alternative solution is to record the length and the direction in the table. There are three directions: 'N' for north, 'W' for west, and 'NW'. Given such a table, we can build the longest common sub-sequence from the bottom-right entry. If the entry is 'NW', next go to the upper-left entry; if it's 'N', go to the above row; and go to the previous entry if it's 'W'. Implement this solution.}
 \Question{For the subset sum upper/lower bound, does $l \leq 0 \leq u$ always hold? can we reduce the range between the bounds?}
 \Question{Given a list of non-negative integers, find the maximum sum composed by numbers that none of them are adjacent.
 % refer to others/problems/DP/non-adjcent-sum/
@@ -2510,6 +2837,76 @@ f\ V\ j = \begin{cases}
   \end{enumerate}
 Compute the edit distance with dynamic programming.}
 \end{Exercise}
+
+\begin{Answer}[ref = {ex:dynamic-programming}]
+\Question{For the longest common sub-sequence problem, an alternative solution is to record the length and the direction in the table. There are three directions: 'N' for north, 'W' for west, and 'NW'. Given such a table, we can build the longest common sub-sequence from the bottom-right entry. If the entry is 'NW', next go to the upper-left entry; if it's 'N', go to the above row; and go to the previous entry if it's 'W'. Implement this solution.
+
+\begin{Bourbaki}
+data DIR = N | W | NW
+
+[K] lcs([K] xs, [K] ys) {
+    Int m = length(x), n = length(ys)
+    [[(Int, DIR)]] c = [[(0, null)] * (n + 1)] * (m + 1)
+    for i = 1 to m {
+        for j = 1 to n {
+            if xs[i-1] == ys[j-1] {
+                c[i][j] = (fst(c[i-1][j-1]) + 1, DIR.NW)
+            } else {
+                c[i][j] = if fst(c[i-1][j]) > fst(c[i][j-1])
+                    then (fst(c[i-1][j]), DIR.N)
+                    else (fst(c[i][j-1]), DIR.W)
+            }
+        }
+    }
+    return rebuild(c, xs, ys)
+}
+
+[K] rebuild([[(Int, DIR)]] c, [K] xs, [K] ys) {
+    [K] r = []
+    Int m = length(xs), n = length(ys)
+    while m > 0 and n > 0 {
+        DIR d = snd(c[m][n])
+        if d == DIR.NW {
+            r.append(xs[m - 1]) // or ys[n - 1]
+            m = m - 1, n = n - 1
+        } else if d == DIR.N {
+            m = m - 1
+        } else if d == DIR.W {
+            n = n - 1
+        }
+    }
+    return reverse(r)
+}
+\end{Bourbaki}
+}
+\Question{For the subset sum upper/lower bound, does $l \leq 0 \leq u$ always hold? can we reduce the range between the bounds?
+
+For non-empty subset (the sum of empty is 0), $l \leq 0 \leq u$ does not hold necessarily. Consider set $X$ of only positive numbers, the lower bound can't be less than 0, and $l = \min(X)$. For set of only negative numbers, the upper bound can't be greater than 0, and $u = \max(X)$.
+}
+\Question{Compute the edit distance between two strings.
+
+\begin{Bourbaki}
+Int lev([K] s, [K] t) {
+    [[Int]] d = [[0]*n]*m   //d[i][j]: distance between s[:i] and t[:j]
+    for Int i = 0 to length(s) {
+        d[i][0] = i  //drop all chars of source prefix gives []
+    }
+    for Int j = 0 to length(t) {
+        d[0][j] = j  //insert all chars of target prefix to []
+    }
+    for Int j = 1 to length(t) {
+        for i = 1 to length(m) {
+            c = if s[i-1] == t[j-1] then 0 else 1
+            d[i][j] = min([d[i-1][j] + 1,    //deletion
+                           d[i][j-1] + 1,    //insertion
+                           d[i-1][j-1] + c]) //substitution
+        }
+    }
+    return d[length(s)][length(t)]
+}
+\end{Bourbaki}
+}
+\end{Answer}
 
 \section{Appendix - example programs}
 
