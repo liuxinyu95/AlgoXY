@@ -5,7 +5,7 @@ Edition: $\displaystyle e = \sum \limits _{n=0}^{\infty }{\frac {1}{n!}} = 1 + {
 
 2023/05
 
-This book introduces about elementary algorithms and data structure. It includes side-by-side comparison about purely functional realization and their imperative counterpart.
+This book introduces about elementary algorithms and data structure. It includes side-by-side comparison about purely functional realization and their imperative counterpart, with 119 exercises and answers.
 
 <img src="https://user-images.githubusercontent.com/332938/95418499-442e4b00-096a-11eb-81b9-496020aa5f10.jpg" width="400">
 
