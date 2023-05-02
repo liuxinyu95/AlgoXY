@@ -17,7 +17,7 @@ TEX_FLAGS =
 %.ps:  %.dot; dot -Tps  -o $@ $<
 %.eps: %.dot; dot -Teps -o $@ $<
 %.pdf: %.dot; dot -Tpdf -o $@ $<
-%.pdf: %.tex; latexmk -cd -xelatex $(TEX_FLAGS) $<
+%.pdf: %.tex; latexmk -cd -lualatex $(TEX_FLAGS) $<
 
 CHAPTERS-CN := $(shell egrep -l documentclass $$(find . -name '*-zh-cn.tex' -a \! -name 'algoxy-*.tex'))
 CHAPTERS-EN := $(shell egrep -l documentclass $$(find . -name '*-en.tex' -a \! -name 'algoxy-*.tex'))
@@ -29,9 +29,9 @@ chapters-en: $(CHAPTERS-EN:.tex=.pdf)
 FORCE-FLAGS = -g -use-make $(TEX_FLAGS)
 force: force-cn force-en
 force-cn:
-	latexmk -cd -xelatex $(FORCE-FLAGS) algoxy-zh-cn.tex
+	latexmk -cd -lualatex $(FORCE-FLAGS) algoxy-zh-cn.tex
 
 force-en:
-	latexmk -cd -xelatex $(FORCE-FLAGS) algoxy-en.tex
+	latexmk -cd -lualatex $(FORCE-FLAGS) algoxy-en.tex
 
 .PHONY: all cn en pdf chapters chapters-cn chapters-en

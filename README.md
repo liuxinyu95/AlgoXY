@@ -3,7 +3,7 @@ Elementary Algorithms
 
 Edition: $\displaystyle e = \sum \limits _{n=0}^{\infty }{\frac {1}{n!}} = 1 + {\frac {1}{1}}+{\frac {1}{1\cdot 2}}+{\frac {1}{1\cdot 2\cdot 3}}+\cdots = 2.718283$
 
-2023/04
+2023/05
 
 This book introduces about elementary algorithms and data structure. It includes side-by-side comparison about purely functional realization and their imperative counterpart.
 
@@ -38,7 +38,7 @@ Install
 To build the book in PDF format from the sources, you need
 the following software pre-installed.
 
-- TeXLive, The book is built with XeLaTeX, a Unicode friendly version of TeX;
+- TeXLive, The book is built with LuaLaTeX, to support both EN and CN.
 
 ### Install TeXLive
 
@@ -74,6 +74,14 @@ In Windows, you can install the MSYS for it. In Mac OS X, please install the dev
 
 ```bash
 $ xcode-select --install
+```
+
+### Font setting
+
+The default build support Linux, Mac OS X, and Windows. You can install font (like Noto) and apply them (see `prelude.styl`). Some system fonts, e.g. STKaiti, were moved to `/System/Library/AssetsV2/com_apple_MobileAsset_Font7` in Mac OS X, you need add the path into local TeXLive configuration:
+
+```bash
+sudo tlmgr conf texmf OSFONTDIR /System/Library/AssetsV2/com_apple_MobileAsset_Font7
 ```
 
 ### Build the book PDF
