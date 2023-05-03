@@ -34,4 +34,7 @@ force-cn:
 force-en:
 	latexmk -cd -lualatex $(FORCE-FLAGS) algoxy-en.tex
 
+clean:
+	git clean -fdx
+
 .PHONY: all cn en pdf chapters chapters-cn chapters-en
