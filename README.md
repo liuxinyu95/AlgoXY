@@ -12,7 +12,7 @@ This book introduces about elementary algorithms and data structure. It includes
 Contents
 --------
 
-I am adding exercises and answers to the **second edition** from 2023/03 (added 119 answers as of 2023/05). I wrote the first edition from 2009 to 2017, then rewrote from 2020 to 2023. The PDF can be downloaded for preview ([EN](https://github.com/liuxinyu95/AlgoXY/files/11395580/algoxy-en.pdf), [中文](https://github.com/liuxinyu95/AlgoXY/files/11395583/algoxy-zh-cn.pdf)). The 1st edition in Chinese ([中文](http://www.ituring.com.cn/book/1907)) was published in 2017. I recently switched my focus to the Mathematics of programming, the new book is also available in ([github](https://github.com/liuxinyu95/unplugged))
+I am adding exercises and answers to the **second edition** from 2023/03 (added 119 answers as of 2023/05). I wrote the first edition from 2009 to 2017, then rewrote from 2020 to 2023. The PDF can be downloaded for preview ([EN](https://github.com/liuxinyu95/AlgoXY/files/11413742/algoxy-en.pdf), [中文](https://github.com/liuxinyu95/AlgoXY/files/11413743/algoxy-zh-cn.pdf)). The 1st edition in Chinese ([中文](http://www.ituring.com.cn/book/1907)) was published in 2017. I recently switched my focus to the Mathematics of programming, the new book is also available in ([github](https://github.com/liuxinyu95/unplugged))
 
 
 - Preface
@@ -52,15 +52,6 @@ $ sudo ./install-tl -gui text -repository http://mirror.ctan.org/systems/texlive
 ```
 
 In Windows, TeXLive provide a [gui based installer](https://tug.org/texlive/), in Mac OS X, there's a [MacTeX](https://www.tug.org/mactex/).
-
-### Install ImageMagick and Graphviz
-
-```bash
-$ sudo apt-get install imagemagick
-$ sudo apt-get install graphviz
-```
-
-For Windows and Mac OS X installer, ImageMagick can be download through http://www.imagemagick.org; Graphviz can be download from: http://graphviz.org
 
 ### Others
 
