@@ -610,7 +610,6 @@ delAll x = foldr f [] where
 \end{Answer}
 
 \subsubsection{连接}
-\label{concat}
 \index{列表!连接}
 
 连接是添加操作的更一般形式，添加每次向列表尾部加入一个元素，而连接向列表尾部加入多个元素。但如果通过多次添加来实现，则整体操作的性能会下降为平方级别。令$|xs| = n$，$|ys| = m$，分别是两个列表的长度。每次添加都需要前进到尾部，总共添加$m$次。总时间复杂度为$O(n + (n + 1) + ... + (n + m)) = O(nm + m^2)$。
@@ -630,6 +629,7 @@ xs \doubleplus (y \cons ys) & = & append\ xs\ y \doubleplus ys \\
 xs \doubleplus [\ ] & = & xs \\
 (x \cons xs) \doubleplus ys & = & x : (xs \doubleplus ys) \\
 \end{array}
+\label{eq:concat}
 \ee
 
 改进实现的复杂度为$O(n)$。在命令式环境中，通过使用尾部引用，可以实现常数时间的连接操作（见本节习题）。
@@ -1665,7 +1665,7 @@ sum\ (map\ snd\ (foldr\ step\ [(1, 0), (2, 0), ..., (n, 0)]\ [1, 2, ..., n]))
 \ee
 
 \index{列表!串联}
-如果用“$\doubleplus$”（\cref{concat}）在一组列表上折叠，相当于把它们串联成一个列表。这和数字累加是类似的：
+如果用“$\doubleplus$”（\cref{eq:concat}）在一组列表上折叠，相当于把它们串联成一个列表。这和数字累加是类似的：
 
 \be
 concat = fold_r\ (\doubleplus)\ [\ ]
@@ -1729,7 +1729,7 @@ map\ f = foldr\ (x\ xs \mapsto (f\ x) \cons xs)\ [\ ]
 \be
 \begin{array}{rcl}
 a \in [\ ] & = & False \\
-a \in (b:bs) & = & \begin{cases}
+a \in (b \cons bs) & = & \begin{cases}
   b = a : & True \\
   b \neq a : & a \in bs \\
   \end{cases}
@@ -1751,10 +1751,8 @@ lookup\ x\ ((k, v) \cons kvs) & = & \begin{cases}
 \end{array}
 \ee
 
-和$elem$不同，我们不仅想知道$x$存在与否，还希望找到对应的值。由于键$x$并不一定存在，我们引入了“可能”代数类型$\mathbf{Maybe}\ A$，它有两种不同的值：类型$A$的某个值$a$或是空。分别记为$Just\ a$或\textit{Nothing}。这是一种解决空引用的方法\footnote{类似于某些编程环境的\texttt{Optional<A>}。}（\cite{unplugged}4.2.2节）。
-
+和$elem$不同，我们不仅想知道$x$存在与否，还希望找到对应的值。由于键$x$并不一定存在，我们引入了“可能”代数类型$\mathbf{Maybe}\ A$，它有两种不同的值：类型$A$的某个值$a$或是空。分别记为$Just\ a$或\textit{Nothing}。这是一种解决空引用的方法\footnote{类似于某些编程环境的\texttt{Optional<A>}。}（\cite{unplugged}4.2.2节）。进一步扩展$lookup$到一般情况。不再比较是否等于某个值，而是查找满足某一条件的元素：
 \index{列表!查找（find）} \index{列表!过滤}
-进一步扩展$lookup$到一般情况。不再比较是否等于某个值，而是查找满足某一条件的元素：
 
 \be
 \begin{array}{rcl}
@@ -1839,17 +1837,17 @@ filter\ p = foldr\ (f\ p)\ [\ ]
 由于扫描列表，前缀检查是线性时间的。但我们不能用同样的方法来检查后缀：对齐尾部，然后从右向左比较。这一点与数组不同。为了实现线性时间的后缀检查，可以反转两个列表，转换为前缀检查：
 
 \be
-A \supseteq B = reverse(A) \subseteq reverse(B)
+as \supseteq bs = reverse(as) \subseteq reverse(bs)
 \ee
 
-使用$\subseteq$，可以解决子列表问题（中缀检查）。定义空列表是任何列表的中缀，遍历列表$B$不断进行前缀检查：
+使用$\subseteq$，可以解决子列表问题（中缀检查）。定义空列表是任何列表的中缀，遍历列表$bs$不断进行前缀检查：
 
 \be
 \begin{array}{rcl}
 \textit{infix}?\ (a \cons as)\ [\ ] & = & False \\
 \textit{infix}?\ A\ B & = & \begin{cases}
-  A \subseteq B: & True \\
-  \text{否则}: & \textit{infix}?\ A\ B' \\
+  as \subseteq (b \cons bs) : & True \\
+  \text{否则}: & \textit{infix}?\ A\ bs \\
   \end{cases}
 \end{array}
 \ee
@@ -1872,13 +1870,13 @@ A \supseteq B = reverse(A) \subseteq reverse(B)
 \EndFunction
 \end{algorithmic}
 
-由于前缀检测需要线性时间，并且在遍历时被不断调用，这一算法的复杂度为$O(nm)$，其中$n$和$m$分别是两个列表的长度。对称地，我们可以枚举出$B$的所有后缀，然后检查$A$是否是某个后缀的前缀：
+由于前缀检测需要线性时间，并且在遍历时被不断调用，这一算法的复杂度为$O(mn)$，其中$m$和$n$分别是两个列表的长度。对称地，我们可以枚举出$B$的所有后缀，然后检查$A$是否是某个后缀的前缀：
 
 \be
 \textit{infix}?\ A\ B = \exists S \in \textit{suffixes}\ B, A \subseteq S
 \ee
 
-下面的Haskell例子程序使用列表解析实现了这一方法：
+下面的例子程序使用列表解析实现了这一方法：
 
 \begin{Haskell}
 isInfixOf a b = (not . null) [s | s <- tails b, a `isPrefixOf` s]
@@ -1887,7 +1885,7 @@ isInfixOf a b = (not . null) [s | s <- tails b, a `isPrefixOf` s]
 其中\texttt{isPrefixOf}进行前缀检查。\texttt{tails}枚举一个列表的所有后缀（本节练习）。
 
 \begin{Exercise}\label{ex:list-query}
-\Question{使用$reverse$实现线性时间的过滤算法。}
+\Question{使用\textit{reverse}实现线性时间的过滤算法。}
 \Question{给定一个列表，枚举出它的所有后缀。}\label{ex:list-tails}
 \end{Exercise}
 
@@ -1902,7 +1900,7 @@ isInfixOf a b = (not . null) [s | s <- tails b, a `isPrefixOf` s]
 %% }
 %% \end{Bourbaki}
 %% }
-\Question{使用$reverse$实现线性时间的过滤算法。
+\Question{使用\textit{reverse}实现线性时间的过滤算法。
 \begin{Bourbaki}
 List<K> filterL((K -> Bool) p, List<K> xs) {
     List<K> ys = null
@@ -1911,15 +1909,6 @@ List<K> filterL((K -> Bool) p, List<K> xs) {
         xs = xs.next
     }
     return reverse(ys)
-}
-
-List<K> reverse(List<K> xs) {
-    List<K> ys = null
-    while xs != null {
-        ys = cons(xs.key, ys)
-        xs = xs.next
-    }
-    return ys
 }
 \end{Bourbaki}
 }

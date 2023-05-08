@@ -607,7 +607,7 @@ delAll x = foldr f [] where
 \end{Answer}
 
 \subsubsection{concatenate}
-\label{concat} \index{List!concat}
+\index{List!concat}
 
 Append is a special case for concatenation. It adds only one element, while concatenation adds multiple. However, the performance would be quadratic if repeatedly append. Let $|xs| = n$, $|ys| = m$ be the lengths, we need advance to the tail of $xs$ for $m$ times, the performance is $O(n + (n + 1) + ... + (n + m)) = O(nm + m^2)$.
 
@@ -626,6 +626,7 @@ While the `cons' is fast (constant time), we can traverse to the tail of $xs$ on
 xs \doubleplus [\ ] & = & xs \\
 (x \cons xs) \doubleplus ys & = & x : (xs \doubleplus ys) \\
 \end{array}
+\label{eq:concat}
 \ee
 
 This improvement has the performance of $O(n)$. In imperative settings, we can implement concatenation in constant time with the tail reference variable (see exercise).
@@ -1635,22 +1636,22 @@ take\ 10\ (foldr\ (x\ xs \mapsto [x] \cons xs)\ [\ ]\ [1, 2, ...]) \\
 \end{array}
 \]
 
-It does not work with $foldl$ or the evaluation never ends. We use a unified notation $fold$ when both fold left and right work. We also use $fold_l$ and $fold_r$ to indicate direction doesn't matter. Although this chapter is about list, the fold concept is generic, can apply to other algebraic structures. We can fold a tree (2.6 in \cite{unplugged}), a queue, and many other things as long as the following 2 things are defined: (1) empty (for example the empty tree); (2) decomposed recursive structure (like to decompose tree into sub-trees and key). People abstract them further with concepts like foldable, monoid, and traversable.
+It does not work with $foldl$ or the evaluation never ends. We use a unified notation $fold$ when both fold left and right work. We also use $fold_l$ and $fold_r$ to indicate direction doesn't matter. Although this chapter is about list, the fold concept is generic, applies to other algebraic structures. We can fold a tree (section 2.6 in \cite{unplugged}), a queue, and many other objects as long as the following 2 things are defined: (1) empty (for example the empty tree); (2) decomposed recursive structure (like to decompose a tree into sub-trees and a key). People abstract them further with concepts like foldable, monoid, and traversable.
 
-For example, we implement the $n$-lights puzzle with $fold$ and $map$. In the brute-force solution, we create a list of pairs. Each pair $(i, s)$ has a light number $i$, and on/off state $s$. Every round $j$, we switch the $i$-th light when the $j | i$. Define this process with $fold$:
+For example, let us implement the $n$-lights puzzle with $fold$ and $map$. In the brute-force solution, we create a list of pairs. Each pair $(i, s)$ has a light number $i$, and on/off state $s$. For every round $j$, switch the $i$-th light when $j | i$. Define this process with $fold$:
 
 \[
 foldr\ step\ [(1, 0), (2, 0), ..., (n, 0)]\ [1, 2, ..., n]
 \]
 
-All lights are off at the beginning. We fold the list of rounds 1 to $n$. Function $step$ takes two parameters: the round number $i$, and the list of pairs: $step\ i\ L\ = map\ (switch\ i)\ L$. The result of $foldr$ is the pairs of light number and final on/off state, we next extract the state out through $map$, and count the number with $sum$:
+All lights are off at the beginning. We fold the list of round 1 to $n$. Function $step$ takes two parameters: the round number $i$, and the list of pairs: $step\ i\ L\ = map\ (switch\ i)\ L$. The result of $foldr$ is the pairs of light number and the final on/off state. We extract the state out through $map$, and count the number with $sum$:
 
 \be
 sum\ (map\ snd\ (foldr\ step\ [(1, 0), (2, 0), ..., (n, 0)]\ [1, 2, ..., n]))
 \ee
 
 \index{List!concats}
-What if we $fold$ a list of lists with ``$\doubleplus$'' (\cref{concat})? It concatenates them to a list, just like $sum$ to numbers.
+What if we $fold$ a list of lists with ``$\doubleplus$'' (\cref{eq:concat})? It concatenates them to a list, just like $sum$ to numbers.
 
 \be
 concat = fold_r\ (\doubleplus)\ [\ ]
@@ -1709,12 +1710,12 @@ map\ f = foldr\ (x\ xs \mapsto (f\ x) \cons xs)\ [\ ]
 \section{Search and filter}
 
 \index{List!elem} \index{List!existence testing}
-Search and filter are generic concepts for a wide range of things. For list, it often takes linear time to scan and find the result. First consider how to test if $x$ is in list $X$? We compare every element with $x$, until either they are equal, or reach to the end:
+Search and filter are generic concepts for a wide range of things. For list, it often takes linear time to scan and find the result. First, consider how to test if $x$ is in list $X$? We compare every element with $x$, until either equal or reach to the end:
 
 \be
 \begin{array}{rcl}
 a \in [\ ] & = & False \\
-a \in (b:bs) & = & \begin{cases}
+a \in (b \cons bs) & = & \begin{cases}
   b = a : & True \\
   b \neq a : & a \in bs \\
   \end{cases}
@@ -1736,11 +1737,8 @@ lookup\ x\ ((k, v) \cons kvs) & = & \begin{cases}
 \end{array}
 \ee
 
-Different from $elem$, we want to find the corresponding value besides the existence of key $x$. However, it is not guaranteed the value always exists. We use the algebraic type class `Maybe'. A type of $\mathbf{Maybe}\ A$ has two kinds of value. It may be some $a$ in $A$ or nothing. Denoted as $Just\ a$ and \textit{Nothing} respectively. This is a way to deal with null reference\footnote{Similar to \texttt{Optional<A>} in some environments.} (4.2.2 in \cite{unplugged}).
-
+Different from $elem$, we want to find the corresponding value besides the existence of key $x$. However, it is not guaranteed the value always exists. We use the algebraic type class `Maybe'. A type of $\mathbf{Maybe}\ A$ has two kinds of value. It may be some $a$ in $A$ or nothing. Denoted as $Just\ a$ and \textit{Nothing} respectively. This is a way to deal with null reference\footnote{Similar to \texttt{Optional<A>} in some environments.} (4.2.2 in \cite{unplugged}). We can make \textit{lookup} generic, to find the element that satisfies a given predicate:
 \index{List!find} \index{List!filter}
-
-We can make \textit{lookup} generic, to find the element that satisfies a given predicate:
 
 \be
 \begin{array}{rcl}
@@ -1752,7 +1750,7 @@ find\ p\ (x \cons xs) & = & \begin{cases}
 \end{array}
 \ee
 
-Although there can be multiple elements satisfy $p$, the $find$ function picks the first. We can expand it to find all elements. It is called $filter$ as shown in \cref{fig:filter}. Define (ZF expression): $filter\ p\ X = [x | x \gets X, p\ x]$.
+Although there can be multiple elements satisfying $p$, the $find$ function picks the first. We can expand to find all, which is called $filter$ as shown in \cref{fig:filter}. Define (ZF expression): $filter\ p\ X = [x | x \gets X, p\ x]$.
 
 \begin{figure}[htbp]
    \centering
@@ -1767,7 +1765,7 @@ Although there can be multiple elements satisfy $p$, the $find$ function picks t
    \label{fig:filter}
 \end{figure}
 
-Different from $find$, \textit{filter} returns empty list instead of \textit{Nothing} when no element satisfies the predicate.
+Different from $find$, \textit{filter} returns the empty list instead of \textit{Nothing} when no element satisfies the predicate.
 
 \be
 \begin{array}{rcl}
@@ -1779,7 +1777,7 @@ filter\ p\ (x \cons xs) & = & \begin{cases}
 \end{array}
 \ee
 
-This definition builds the result from right. For iterative implementation, the performance will drop to $O(n^2)$ if build the result with \textproc{Append}. If change to \textproc{Cons}, then the order is reversed. We can further reverse it back in linear time (see the exercise).
+This definition builds the result from right. For iterative implementation, the performance will drop to $O(n^2)$ with \textproc{Append}. If change to \textproc{Cons}, then the order is reversed. We need further reverse it back in linear time (see the exercise).
 
 \begin{algorithmic}[1]
 \Function{Filter}{$p, X$}
@@ -1809,7 +1807,7 @@ Filter is a generic concept not only limit to list. We can apply a predicate to 
 
 \index{List!matching} \index{List!prefix} \index{List!suffix} \index{List!infix}
 
-Match is to find a pattern from some structure. Even if limit to list and string, there are still too many things to cover (chapter 14). The very basic problem is to test whether list $as$ exits in $bs$. There are two special cases: to test if $as$ is prefix or suffix of $bs$. The $span$ function actually finds the longest prefix under a given predicate. Similarly, we can compare each element between $as$ and $bs$. Define $as \subseteq bs$ if $as$ is prefix of $bs$:
+Match is to find a pattern from some structure. Even if limit to list and string, there are still too many things to cover (chapter 14). The very basic problem is to test whether list $as$ exits in $bs$ as a sub-list. There are two special cases: to test if $as$ is prefix or suffix of $bs$. The $span$ function actually finds the longest prefix under a given predicate. Similarly, we can compare each element between $as$ and $bs$. Define $as \subseteq bs$ if $as$ is a prefix of $bs$:
 
 \be
 \begin{array}{rcl}
@@ -1825,17 +1823,17 @@ Match is to find a pattern from some structure. Even if limit to list and string
 Prefix testing takes linear time to scan the two lists. However, we can not do suffix testing in this way because it is expensive to align the right ends and scan backwards. This is different from array. Alternatively, we can reverse both lists in linear time, convert the problem to prefix testing:
 
 \be
-A \supseteq B = reverse(A) \subseteq reverse(B)
+as \supseteq bs = reverse(as) \subseteq reverse(bs)
 \ee
 
-With $\subseteq$, we can test if a list is the sub-list of another one (infix testing). Define empty is infix of any list, we repeatedly apply prefix testing while traverse $B$:
+With $\subseteq$, we can test if a list is the sub-list of another one (infix testing). Define empty is infix of any list, we repeatedly apply prefix testing while traverse $bs$:
 
 \be
 \begin{array}{rcl}
 \textit{infix}?\ (a \cons as)\ [\ ] & = & False \\
-\textit{infix}?\ A\ B & = & \begin{cases}
-  A \subseteq B: & True \\
-  \text{otherwise}: & \textit{infix}?\ A\ B' \\
+\textit{infix}?\ as\ (b \cons bs) & = & \begin{cases}
+  as \subseteq (b \cons bs) : & True \\
+  \text{otherwise}: & \textit{infix}?\ as\ bs \\
   \end{cases}
 \end{array}
 \ee
@@ -1858,13 +1856,13 @@ Below is the iterative implementation:
 \EndFunction
 \end{algorithmic}
 
-Because prefix testing runs in linear time, and is called in every loop. This implementation is bound to $O(nm)$ time, where $m, n$ are the length of the two lists. Symmetrically, we can enumerate all suffixes of $B$, and test if $A$ is prefix of any:
+Because prefix testing runs in linear time, and is called in every loop. This implementation is bound to $O(m n)$ time, where $m, n$ are the length of the two lists. Symmetrically, we can enumerate all suffixes of $B$, and test if $A$ is prefix of any:
 
 \be
 \textit{infix}?\ A\ B = \exists S \in \textit{suffixes}\ B, A \subseteq S
 \ee
 
-Below example Haskell program implement infix testing with list comprehension:
+Below example program implements infix testing with list comprehension:
 
 \begin{Haskell}
 isInfixOf a b = (not . null) [s | s <- tails b, a `isPrefixOf` s]
@@ -1873,12 +1871,12 @@ isInfixOf a b = (not . null) [s | s <- tails b, a `isPrefixOf` s]
 Where \texttt{isPrefixOf} does the prefixing testing, \texttt{tails} generates all suffixes of a given list (exercise of this section).
 
 \begin{Exercise}\label{ex:list-query}
-\Question{Implement the linear time filter algorithm through $reverse$.}
+\Question{Implement the linear time filter algorithm through \textit{reverse}.}
 \Question{Enumerate all suffixes of a list.}\label{ex:list-tails}
 \end{Exercise}
 
 \begin{Answer}[ref = {ex:list-query}]
-\Question{Implement the linear time filter algorithm through $reverse$.
+\Question{Implement the linear time filter algorithm through \textit{reverse}.
 \begin{Bourbaki}
 List<K> filterL((K -> Bool) p, List<K> xs) {
     List<K> ys = null
@@ -1888,21 +1886,12 @@ List<K> filterL((K -> Bool) p, List<K> xs) {
     }
     return reverse(ys)
 }
-
-List<K> reverse(List<K> xs) {
-    List<K> ys = null
-    while xs != null {
-        ys = cons(xs.key, ys)
-        xs = xs.next
-    }
-    return ys
-}
 \end{Bourbaki}
 }
 
 \Question{Enumerate all suffixes of a list.
 
-Method 1: repeat drop the head of $xs$:
+Method 1: repeatedly drop the head of $xs$:
 \[
 [xs, tail\ xs, tail\ (tail\ xs), ..., [\ ]]
 \]
@@ -1924,7 +1913,7 @@ tails = foldr f [[]] where
 \section{zip and unzip}
 \index{List!zip} \index{List!unzip}
 
-The assoc list is a light weighted dictionary (map) for small data. It is easier than tree or heap based dictionary with the overhead of linear time lookup performance. In the `$n$-lights' puzzle, we build the assoc list as: $map\ (i \mapsto (i, 0))\ [1, 2, ..., n]$. We define a $zip$ function:
+The assoc list is a light weighted dictionary (map) for small data. It is easier than tree or heap based dictionary. But has the overhead of linear time lookup. In the `$n$-lights' puzzle, we build the assoc list as: $map\ (i \mapsto (i, 0))\ [1, 2, ..., n]$. We define a $zip$ function:
 
 \be
 \begin{array}{rcl}
@@ -1934,7 +1923,7 @@ zip\ (a \cons as)\ (b \cons bs) & = & (a, b) : zip\ as\ bs \\
 \end{array}
 \ee
 
-This implementation works when the two lists have different lengths. The result has the same length as the shorter one. We can even zip infinite lists (under lazy evaluation), for example\footnote{Or $zip\ (repeat\ 0)\ [1..n]$, where $repeat\ x = x : repeat\ x$.}: $zip\ [0, 0, ...]\ [1, 2, ..., n]$. For a list of words, we can index it as: $zip$ [1, 2, ...]\ [a, an, another, ...]. $zip$ builds the result from right. We can define it with $foldr$. It is bound to $O(m)$ time, where $m$ is the length of the shorter list. When implement the iterative $zip$, the performance will drop to quadratic if using \textproc{Append}, we can use \textproc{Cons} then reverse the result. However, this method can't handle two infinite lists. In imperative settings, we can reuse $A$ to hold the zip result (treat as transform every element to a pair).
+This implementation works even the two lists have different lengths. The result has the same length as the shorter one. We can even zip infinite lists (under lazy evaluation), for example\footnote{Or $zip\ (repeat\ 0)\ [1..n]$, where $repeat\ x = x : repeat\ x$.}: $zip\ [0, 0, ...]\ [1, 2, ..., n]$. For a list of words, we can index it as: $zip$ [1, 2, ...]\ [a, an, another, ...]. $zip$ builds the result from right. We can define it with $foldr$. It is bound to $O(m)$ time, where $m$ is the length of the shorter list. When implement the iterative $zip$, the performance will drop to quadratic if using \textproc{Append}, we can use \textproc{Cons} then reverse the result. However, this method can't handle two infinite lists. In imperative settings, we can reuse $A$ to hold the zip result (treat as transform every element to a pair).
 
 \begin{algorithmic}[1]
 \Function{Zip}{$A, B$}
@@ -1969,7 +1958,7 @@ zipWith\ f\ (a \cons as)\ (b \cons bs) & = & (f\ a\ b) : zipWith\ f\ as\ bs \\
 \end{array}
 \ee
 
-For example, we can define the inner-product (or dot-product)\cite{wiki-dot-product} as: $A \cdot B = sum\ (zipWith\ (\cdot)\ A\ B)$, or define the infinite Fibonacci sequence with lazy evaluation:
+We can define the inner product (or dot product)\cite{wiki-dot-product} as: $A \cdot B = sum\ (zipWith\ (\cdot)\ A\ B)$, or define the infinite Fibonacci sequence with lazy evaluation:
 
 \be
 F = 0 : 1 : zipWith\ (+)\ F\ F'
