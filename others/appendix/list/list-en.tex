@@ -89,6 +89,7 @@ For a none empty list $X$, we also denote the first element as $x_1$, and the re
 \begin{Answer}[ref={ex:list-eq}]
 \Question{For list of type $A$, suppose we can test if any two elements $x, y \in A$ are equal, define the algorithm to test if two lists are equal.
 
+We use type constraint to ensure compare lists of the same type.
 \begin{Haskell}
 (==) :: [a] -> [a] -> Bool
 [] == [] = True
@@ -97,7 +98,6 @@ xs == ys = False
 \end{Haskell}
 }
 \end{Answer}
-
 
 \section{Basic operations}
 \index{List!length}
@@ -276,11 +276,12 @@ drop\ m\ (x \cons xs) & = & drop\ (m - 1)\ xs \\
 \begin{Answer}[ref={ex:list-init-last}]
 \Question{In the \textproc{Init} algorithm, can we use \textproc{Append}($X'$, \textproc{First}($X$)) instead of \textproc{Cons}?
 
-\textproc{Append} need traverse to the tail every time, hence degrade the performance from $O(n)$ to $O(n^2)$, where $n$ is the length.
+\textproc{Append} need traverse to the tail every time, hence degrades the performance from $O(n)$ to $O(n^2)$, where $n$ is the length.
 }
 
 \Question{How to handle empty list or out of bound error in \textproc{Last-At}?
 
+Use \texttt{Optional<T>}:
 \begin{Bourbaki}
 Optional<T> lastAt(List<T> xs, Int i) {
     List<T> p = xs
@@ -590,10 +591,11 @@ delAll x = foldr f [] where
 \end{Haskell}
 }
 \Question{Design the delete algorithm for array, all elements after the delete position need shift to front.
+
 \begin{Bourbaki}
 [K] delAt(Int i, [K] xs) {
     Int n = length(xs)
-    if 0 <= i and i < n {
+    if 0 <= i < n {
         while i < n - 1 {
             xs[i] = xs[i + 1]
             i++
@@ -1436,7 +1438,7 @@ safeTake n (x:xs) | n <= 0 = []
 
 safeDrop n [] = []
 safeDrop n (x:xs) | n <= 0 = x:xs
-                  | otherwise = drop (n - 1) xs
+                  | otherwise = safeDrop (n - 1) xs
 \end{Haskell}
 }
 \Question{Implement the in-place imperative $take/drop$.
@@ -1475,7 +1477,7 @@ slice from to = drop (from - 1) . take to
 \begin{array}{rcl}
 span\ p\ [\ ] & = & ([\ ], [\ ]) \\
 span\ p\ (x \cons xs) & = & \begin{cases}
-  (p\ x) : & (x:as, bs), \text{where}: (as, bs) = span(p, xs) \\
+  (p\ x) : & (x:as, bs), \text{where}\ (as, bs) = span(p, xs) \\
   \text{otherwise}: & (as, x:bs) \\
 \end{cases}
 \end{array}
@@ -2123,13 +2125,13 @@ foldr2\ f\ z\ (x \cons xs)\ (y \cons ys) & = & foldr2\ f\ (f\ x\ y\ z)\ xs\ ys \
 Then define $zip$ with $foldr2$ (Curried form):
 
 \[
-zip = foldr2\ f\ [\ ], \text{其中}: f\ x\ y\ xys = (x, y) \cons xys
+zip = foldr2\ f\ [\ ], \text{where}\ f\ x\ y\ xys = (x, y) \cons xys
 \]
 }
 
 \Question{Implement $lastAt$ with $zip$.
 
-To index the right $k$-th element, we drop the first $k$ elements of $xs = [x_0, x_1, ..., x_{n-1}]$ to get $ys = drop\ k\ xs$. Then zip $xs$ and $ys$ as $zip\ xs\ ys$, the last pair is $(x_{n-k-1}, x_{n-1})$.
+To index the right $k$-th element, we drop the first $k$ elements of $xs = [x_0, x_1, ..., x_{n-1}]$ to get $ys = drop\ k\ xs$. Then $zip\ xs\ ys$, the last pair is $(x_{n-k-1}, x_{n-1})$.
 \[
 lastAt\ k\ xs = (fst \circ last)\ (zip\ xs\ (drop\ k\ xs))
 \]
@@ -2223,7 +2225,7 @@ minus (a:as) (b:bs) | a < b = (10 + a - b) : minus (minus as [1]) bs
                     | otherwise = (a - b) : minus as bs
 \end{Haskell}
 
-3. Multiply. For $as \times bs$, we multiply every digit $b$ in $bs$ to $as$, then times the by 10 and accumulate the result: $cs' = 10 \times cs + (b \times as)$. When compute $b \times as$, if $b = 0$, the it's $0$; otherwise, multiply $b$ with the first digit $a$ to get $d = ab \bmod 10$, add the carry $c = \lfloor \dfrac{ab}{10} \rfloor$ to the further result:
+3. Multiply. For $as \times bs$, we multiply every digit $b$ in $bs$ to $as$, then times the by 10 and accumulate the result: $cs' = 10 \times cs + (b \times as)$. When compute $b \times as$, if $b = 0$, then it's $0$; otherwise, multiply $b$ with the first digit $a$ to get $d = ab \bmod 10$, add the carry $c = \lfloor \dfrac{ab}{10} \rfloor$ to the further result:
 
 \[
 b \times (a \cons as) = d : ([c] + (b \times as))
@@ -2271,7 +2273,7 @@ as < bs: & 0 \\
 \end{cases}
 \]
 
-To improve it, consider $as = q \cdot bs + r$, where $q$ is the quotient, $0 \leq r < bs$ is the remainder. Let $as = (a_m...a_2a_1)_{10} = [a_1, a_2, ..., a_m]$, we first use the brute force way to divide $a_m$ by $bs$ to get the quotient $q_m$ and the remainder $r_m = a_m - q_m \cdot bs$. Then add the next digit $a_{m-1}$, to divide $10 r_{m} + a_{m-1}$ by $bs$ to get the quotient $q_{m-1}$ and the remainder $r_{m-1}$. Finally, put all digits together. This is exactly the $foldr$ process:
+To improve it, consider $as = q \cdot bs + r$, where $q$ is the quotient, $0 \leq r < bs$ is the remainder. Let $as = (a_m...a_2a_1)_{10} = [a_1, a_2, ..., a_m]$, we first use the brute force way to divide $a_m$ by $bs$ to get the quotient $q_m$ and the remainder $r_m = a_m - q_m \cdot bs$. Then add the next digit $a_{m-1}$ to divide $10 r_{m} + a_{m-1}$ by $bs$ to get the quotient $q_{m-1}$ and the remainder $r_{m-1}$. Finally, put all digits together. This is exactly the $foldr$ process:
 
 \begin{Haskell}
 ldiv as bs | isZero bs = error "divide by 0"
@@ -2324,7 +2326,7 @@ Bool hasCycle(List<K> h) {
 }
 \end{Bourbaki}
 
-Robert W. Folyd called this method `tortoise and hare' algorithm. We can further find the node where the circle starts. As shown in \cref{fig:circular-catching}, let OA has $k$ nodes. The loop starts from A. The circle contains $n$ nodes. When $p$ arrives at $A$, the faster pointer (doubled speed) $q$ will arrives at $B$. From this time point, the two pointers loop. $p$ is behind $q$ by $k$ nodes. From circle perspective, it equivalent to $q$ is going to catch up $p$, which is ahead of $n - k$ nodes. It takes time of:
+Robert W. Folyd calls this method `tortoise and hare' algorithm. We can further find the node where the circle starts. As shown in \cref{fig:circular-catching}, let OA has $k$ nodes. The loop starts from A. The circle contains $n$ nodes. When $p$ arrives at $A$, the faster pointer (doubled speed) $q$ will arrives at $B$. From this time point, the two pointers loop. $p$ is behind $q$ by $k$ nodes. From circle perspective, it equivalent to $q$ is going to catch up $p$, which is ahead of $n - k$ nodes. It takes time of:
 
 \[
  t = \dfrac{n - k}{2v - v} = \dfrac{n - k}{v}
