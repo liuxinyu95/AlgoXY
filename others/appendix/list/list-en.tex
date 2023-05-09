@@ -456,7 +456,6 @@ Since it need compare elements one by one, the performance is bound to $O(n)$ ti
 \EndFunction
 \end{algorithmic}
 
-\label{sec:isort}
 With $insert$, we can further define the insertion sort: repeatedly insert elements to the empty list. Since each insert takes liner time, the overall time is bound to $O(n^2)$.
 
 \be
@@ -464,6 +463,7 @@ With $insert$, we can further define the insertion sort: repeatedly insert eleme
 sort\ [\ ] & = & [\ ] \\
 sort\ (x \cons xs) & = & insert\ x\ (sort\ xs) \\
 \end{array}
+\label{eq:isort}
 \ee
 
 We can eliminate the recursion to implement the iterative sort. Scan the list, and insert elements one by one:
@@ -666,7 +666,7 @@ Sum and product have the same structure. We will introduce how to abstract them 
 \index{Tail call} \index{Tail recursion} \index{Tail recursive call}
 \label{sec:tail-call}
 
-Both need traverse the list, hence the performance is $O(n)$, where $n$ is the length. They compute from right to left. We can change to {\em accumulate} the result from left. For sum, accumulate from 0; while for product, accumulate from 1.
+Both need traverse the list, hence the performance is $O(n)$. They compute from right to left. We can change to {\em accumulate} the result from left to right.
 
 \be
 \begin{array}{cc}
@@ -682,7 +682,7 @@ Both need traverse the list, hence the performance is $O(n)$, where $n$ is the l
 \end{array}
 \ee
 
-Given a list, we call $sum'$ with 0, and $prod'$ with 1 as the accumulators:
+Given a list, we call $sum'$ with 0, and $prod'$ with 1 to start accumulating:
 
 \be
 sum\ xs = sum'\ 0\ xs
@@ -697,9 +697,9 @@ sum = sum'\ 0 \quad \quad \quad product = prod'\ 1
 \]
 
 \index{Curried Form} \index{Currying}
-Curried form was introduced by Schönfinkel (1889 - 1942) in 1924, then widely used by Haskell Curry from 1958. It is known as {\em Currying}\cite{slpj-book-1987}. For a function taking 2 parameters $f(x, y)$, when fix $x$ with a value, it becomes a function of $y$: $g(y) = f(x, y)$ or $g = f\ x$. For multiple variables of $f(x, y, ..., z)$, we convert it to a series of Curried functions: $f, f\ x, f\ x\ y, ...$, each takes one parameter: $f(x, y, ..., z) = f(x)(y)...(z) = f\ x\ y\ ...\ z$.
+Curried form was introduced by Schönfinkel (1889 - 1942) in 1924, then widely used by Haskell Curry from 1958. It is known as {\em Currying}\cite{slpj-book-1987}. For a function taking 2 parameters $f(x, y)$, when fix $x$ with a value, it becomes a function of $y$: $g(\pmb{y}) = f(x, \pmb{y})$ or $g = f\ x$. For multiple variables of $f(x, y, ..., z)$, we convert it to a series of Curried functions: $f, f\ x, f\ x\ y, ...$, each takes one parameter: $f(x, y, ..., z) = f(x)(y)...(z) = f\ x\ y\ ...\ z$.
 
-The accumulated implementation computes from left to right, needn't book keeping any context, state, or intermediate result for recursion. All states are either passed as argument (for example $a$), or dropped (for example the previous element). We can further optimize such recursive calls to loops. Because the recursion happens at the tail of the function, we call them {\em tail recursion} (or `tail call'), and the process to eliminate recursion as `tail recursion optimization'\cite{wiki-tail-call}. It greatly improves the performance and avoid stack overflow due to deep recursions. In \cref{sec:isort} about insertion sort, the recursive implementation sorts elements form right. We also optimize it to tail call:
+The accumulated implementation computes from left to right, needn't book keeping any context, state, or intermediate result for recursion. All states are either passed as argument (for example $a$), or dropped (for example the previous element). We can further optimize such recursive calls to loops. Because the recursion happens at the tail of the function, we call them {\em tail recursion} (or `tail call'), and the process to eliminate recursion as `tail recursion optimization'\cite{wiki-tail-call}. It greatly improves the performance and avoid stack overflow due to deep recursions. In \cref{eq:isort} about insertion sort, the recursive implementation sorts elements form right. We can also optimize it to tail call:
 
 \be
 \begin{array}{rcl}
@@ -720,34 +720,34 @@ We pass $[\ ]$ to start sorting (Curried form): $sort = sort'\ [\ ]$. As a typic
 \EndFunction
 \end{algorithmic}
 
-When compute $b^8$, after the first 2 loops, we get $x = b^2$. At this stage, we needn't multiply $x$ with $b$ to get $b^3$, but directly compute $x^2$, which gives $b^4$. If do this again, we get $(b^4)^2 = b^8$. We only need loop 3 times, but not 8 times. If $n = 2^m$ for some integer $m \geq 0$, we can compute $b^n$ fast as below:
+When compute $b^8$, after the first 2 loops, we get $x = b^2$. At this stage, we needn't multiply $x$ with $b$ to get $b^3$, but directly compute $x^2$, which gives $b^4$. If do this again, we get $(b^4)^2 = b^8$. We only need loop 4 times, but not 8 times. If $n = 2^m$ for some integer $m \geq 0$, we can compute $b^n$ fast as below:
 
 \[
 \begin{array}{rcl}
 b^1 & = & b \\
-b^n & = & (b^{\frac{n}{2}})^2 \\
+b^n & = & (b^{\tfrac{n}{2}})^2 \\
 \end{array}
 \]
 
-We next extend this divide and conquer method to any integer $n \geq 0$: if $n = 0$, define $b^0 = 1$; if $n$ is even, we halve $n$ to compute $b^{\frac{n}{2}}$, then square it; if $n$ is odd, since $n-1$ is even, we recursively compute $b^{n-1}$, then multiply $b$:
+We next extend this divide and conquer method to any integer $n \geq 0$: if $n = 0$, define $b^0 = 1$; if $n$ is even, we halve $n$ to compute $b^{\tfrac{n}{2}}$, then square it; if $n$ is odd, since $n-1$ is even, we recursively compute $b^{n-1}$, then multiply $b$:
 
 \be
 \begin{array}{rcl}
 b^0 & = & 1 \\
 b^n & = & \begin{cases}
-2 | n : & (b^{\frac{n}{2}})^2 \\
+2 | n : & (b^{\tfrac{n}{2}})^2 \\
 \text{otherwise}: & b \cdot b^{n-1} \\
 \end{cases}
 \end{array}
 \ee
 
-However, $(b^{\frac{n}{2}})^2$ is not tail recursive. Alternatively, we square the base number, and halve the exponent.
+However, $(b^{\tfrac{n}{2}})^2$ is not tail recursive. Alternatively, we square the base number, and halve the exponent.
 
 \be
 \begin{array}{rcl}
 b^0 & = & 1 \\
 b^n & = & \begin{cases}
-2 | n : & (b^2)^{\frac{n}{2}} \\
+2 | n : & (b^2)^{\tfrac{n}{2}} \\
 \text{otherwise}: & b \cdot b^{n-1} \\
 \end{cases}
 \end{array}
@@ -765,7 +765,7 @@ pow(b, n, a) & = & \begin{cases}
 \end{array}
 \ee
 
-This implementation is bound to $O(\lg n)$ time. We can improve it further. For the binary format $n = (a_ma_{m-1}...a_1a_0)_2$, we need compute $b^{2^i}$ if $a_i = 1$, similar to the Binomial heap (\cref{sec:binomial-heap}) algorithm. Multiply them together finally. For example, when compute $b^{11}$, as $11 = (1011)_2 = 2^3 + 2 +1$, gives $b^{11} = b^{2^3} \times b^2 \times b$. We follow these steps:
+This implementation is bound to $O(\lg n)$ time. Write $n$ in binary format $n = (a_ma_{m-1}...a_1a_0)_2$, we need compute $b^{2^i}$ if $a_i = 1$, similar to the Binomial heap (\cref{sec:binomial-heap}) algorithm. Multiply them together finally. For example, when compute $b^{11}$, as $11 = (1011)_2 = 2^3 + 2 +1$, gives $b^{11} = b^{2^3} \times b^2 \times b$. We follow these steps:
 
 \begin{enumerate}
 \item compute $b^1$, which is $b$;
@@ -882,7 +882,7 @@ We can optimize the tail recursive implementation with loops. Use the \textproc{
 \EndFunction
 \end{algorithmic}
 
-Alternatively, we can re-use the first element as the accumulator. Every time, we compare the first two elements, and drop one. Below is the example for $min$. $max$ is symmetric.
+Alternatively, we can re-use the first element as the accumulator. Every time, we compare the first two elements, and drop one. Below is the example for $min$.
 
 \be
 \begin{array}{rcl}
@@ -927,7 +927,7 @@ Monoid pow(Monoid b, Int n) {
 \section{Transform}
 \index{List!Transform}
 
-In algebra, there are two types of transformation: one keeps the list structure, but only transforms the elements; the other alter the list structure, hence the result is not isomorphic. Particularly, we call the former {\em map}.
+In algebra, there are two types of transformation: one keeps the list structure, but only transforms the elements; the other alter the list structure, hence the result is not isomorphic. We call the former {\em map}.
 
 \subsection{map and for-each}
 \index{List!map}
@@ -1255,17 +1255,17 @@ One can slice an array fast, but need linear time to traverse and extract sub-li
 When $n > |X|$ or $n < 0$, it ends up with the empty list case. We leave the imperative implementation as exercise. We can extract the sub-list at any position for a given length:
 
 \be
-sublist\ from\ cnt\ X = take\ cnt\ (drop\ (from - 1)\ X)
+sublist\ s\ n\ X = take\ n\ (drop\ (s - 1)\ X)
 \ee
 
 Or slice the list with left and right boundaries:
 
 \be
-slice\ from\ to\ X = drop\ (from - 1)\ (take\ to\ X)
+slice\ s\ e\ X = drop\ (s - 1)\ (take\ e\ X)
 \ee
 
 \index{List!split at}
-The range $[from, to]$ includes both ends. We can split the list at a position:
+The range $[s, e]$ includes both ends. We can split the list at a position:
 
 \be
 splitAt\ i\ X = (take\ i\ X, drop\ i\ X)
@@ -1719,10 +1719,8 @@ a \in (b \cons bs) & = & \begin{cases}
 \end{array}
 \ee
 
-The existence check is also called $elem$. The performance is $O(n)$ where $n$ is the length. We can not improve it to $O(\lg n)$ with binary search directly even for ordered list. This is because list does not support constant time random access (chapter 3).
-
+The existence check is also called $elem$. The performance is $O(n)$. We can not improve it to $O(\lg n)$ with binary search directly even for ordered list. This is because list does not support constant time random access (chapter 3). Let's extend $elem$. In the $n$-lights puzzle, we use a list of pairs $[(k, v)]$. Every pair contains a key and a value. Such list is called `associate list' (abbrev. assoc list). We can lookup the value with a key.
 \index{List!lookup}
-Let's extend $elem$. In the $n$-lights puzzle, we use a list of pairs $[(k, v)]$. Every pair contains a key and a value. Such list is called `associate list' (abbrev. assoc list). We can lookup the value with a key.
 
 \be
 \begin{array}{rcl}
