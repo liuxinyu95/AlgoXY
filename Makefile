@@ -7,11 +7,6 @@ cn en: pdf
 cn: $(BOOK-CN:.tex=.pdf)
 en: $(BOOK-EN:.tex=.pdf)
 
-DOTS = $(shell find . -name '*.dot')
-PDFS = $(DOTS:.dot=.pdf)
-
-pdf: $(PDFS)
-
 TEX_FLAGS =
 
 %.pdf: %.tex; latexmk -cd -lualatex $(TEX_FLAGS) $<
