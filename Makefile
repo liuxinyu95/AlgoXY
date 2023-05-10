@@ -14,9 +14,6 @@ pdf: $(PDFS)
 
 TEX_FLAGS =
 
-%.ps:  %.dot; dot -Tps  -o $@ $<
-%.eps: %.dot; dot -Teps -o $@ $<
-%.pdf: %.dot; dot -Tpdf -o $@ $<
 %.pdf: %.tex; latexmk -cd -lualatex $(TEX_FLAGS) $<
 
 CHAPTERS-CN := $(shell egrep -l documentclass $$(find . -name '*-zh-cn.tex' -a \! -name 'algoxy-*.tex'))
