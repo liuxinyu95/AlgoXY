@@ -44,12 +44,12 @@ Binary search tree stores data in nodes. Can we use the edges to carry informati
   \label{fig:radix-tree}
 \end{figure}
 
-\Cref{fig:radix-tree} shows a Radix tree. It contains bits 1011, 10, 011, 100 and 0. When lookup a key $k=(b_0b_1...b_n)_2$, we take the first bit $b_0$ (MSB from left), check whether it is 0 or 1. For 0, turn left, else turn right. Then take the second bit and repeat looking up till either reach a leaf node or consume all the $n$ bits. We needn't store keys in Radix tree node. The information is represented by edges. The nodes labelled with key in \cref{fig:radix-tree} are for illustration purpose. If the keys are integers, we can represent them in binary format, and implement lookup with bit-wise manipulations.
+\Cref{fig:radix-tree} shows a Radix tree. It contains bits 1011, 10, 011, 100 and 0. When lookup a key $k=(b_0b_1...b_n)_2$, we take the first bit $b_0$ (MSB from left), check whether it is 0 or 1. For 0, turn left, else turn right. Then take the second bit and repeat looking up till either reach a leaf node or finish all the $n$ bits. We needn't store keys in node because they are represented by edges. The nodes labelled with key in \cref{fig:radix-tree} are for illustration purpose. For the integer keys, we represent them in binary format, and implement lookup with bit-wise manipulations.
 
 \section{Integer trie}
 \label{int-trie} \index{Integer trie}
 
-We call the data structure in \cref{fig:radix-tree} \emph{binary trie}. Trie was developed by Edward Fredkin in 1960. It comes from ``re\textbf{trie}val'', pronounce as /'tri:/ by Freddkin, while others pronounce it as /'trai/ ``try''\cite{wiki-trie}. Although it's also called prefix tree in some context, we treat trie and prefix tree different in this chapter. A binary trie is a special binary tree in which the placement of each key is controlled by its bits, each 0 means `go left' and each 1 means `go right'\cite{okasaki-int-map}. Consider the binary trie in \cref{fig:big-endian-trie}. The three keys are different bit strings of ``11'', ``011'', and ``0011'' although they are all equal to 3.
+We call the data structure in \cref{fig:radix-tree} \emph{binary trie}, which was developed by Edward Fredkin in 1960. The name comes from ``re\textbf{trie}val'', pronounce as /'tri:/ by Freddkin, while others pronounce it as /'trai/ ``try''\cite{wiki-trie}. Although it's also called prefix tree, we treat trie and prefix tree differently in this book. A binary trie is a special binary tree in which the placement of each key is controlled by its bits, each 0 means `go left' and each 1 means `go right'\cite{okasaki-int-map}. Consider the binary trie in \cref{fig:big-endian-trie}. The three keys of ``11'', ``011'', and ``0011'' all equal to 3.
 
 \begin{figure}[htbp]
   \centering
@@ -58,22 +58,22 @@ We call the data structure in \cref{fig:radix-tree} \emph{binary trie}. Trie was
   \label{fig:big-endian-trie}
 \end{figure}
 
-It is inefficient to treat the prefix zeros as valid bits. For 32 bits integers, we need a tree of 32 levels to insert number 1. Okasaki suggested to use little-endian integers instead\cite{okasaki-int-map}. 1 is represented as bits $(1)_2$, 2 as $(01)_2$, and 3 is $(11)_2$, ...
+It is inefficient to treat the prefix zeros as valid bits. We need a tree of 32 levels to insert 1 as an integer of 32 bits. Okasaki suggests to use little-endian integers instead\cite{okasaki-int-map}. 1 is represented as bits $(1)_2$, 2 as $(01)_2$, and 3 is $(11)_2$, ...
 
 \subsection{Definition}
-We can re-use binary tree structure to define the little-endian binary trie. A node is either empty, or a branch containing the left, right sub-trees, and an optional value. The left sub-tree is encoded as 0 and the right sub-tree is encoded as 1.
+Re-use binary tree definition, a node is either empty, or a branch containing the left, right sub-trees, and an optional value $v$. The left sub-tree $l$ is encoded as 0 and the right $r$ is encoded as 1.
 
 \lstset{frame = single}
 \begin{Haskell}
 data IntTrie a = Empty | Branch (IntTrie a) (Maybe a) (IntTrie a)
 \end{Haskell}
 
-Given a node in the binary trie, the integer key bound to it is uniquely determined through its position. That is the reason we need not save the key, but only the value in the node. The type of the key is always integer, we call the tree $IntTrie\ A$ if the value is of type $A$.
+Given a node, the corresponding integer key is uniquely determined through its position. That is the reason we need not save the key, but only the value in the node. The type of the tree is $IntTrie\ A$ where $A$ is the type of the value.
 
 \subsection{Insert}
 \index{Integer trie!insert}
 
-When insert an integer key $k$ and a value $x$, we convert $k$ into binary form. If $k$ is even, the lowest bit is 0, we recursively insert to the left sub-tree; otherwise if $k$ is odd, the lowest bit is 1, we recursively insert to the right. We next divide $k$ by 2 to remove the lowest bit. For none empty trie $T = (l, v, r)$, where $l, r$ are the left and right sub-trees, and $v$ is the optional value, function $insert$ can be defined as below:
+When insert a key $k$ and a value $x$, we convert the integer $k$ into binary. If $k$ is even, the lowest bit is 0, we recursively insert to the left sub-tree; otherwise $k$ is odd, the lowest bit is 1, we insert to the right. Next divide $k$ by 2 to remove the lowest bit. For none empty trie $T = (l, v, r)$, function $insert$ is defined as below:
 
 \be
 \begin{array}{rcl}
@@ -86,7 +86,7 @@ insert\ k\ x\ (l, v, r) & = & \begin{cases}
 \end{array}
 \ee
 
-If $k = 0$, we put $x$ in the node. When $T = \nil$, it becomes $(\nil, \textit{Just}\ x, \nil)$. As far as $k \neq 0$, we goes down along the tree based on the parity of $k$. We create empty leaf $(\nil, \textit{Nothing}, \nil)$ whenever meet $\nil$ node. This algorithm overrides the value if $k$ already exists. Alternatively, we can store a list, and append $x$ to it. \Cref{fig:int-trie} shows an example trie, generated by inserting the key-value pairs of \{$ 1 \rightarrow a, 4 \rightarrow b, 5 \rightarrow c, 9 \rightarrow d$\}. Below is the example program implements $insert$:
+If $k = 0$, we put $x$ in the node. This algorithm overrides the value if $k$ already exists. Alternatively, we can store a list, and append $x$ to it. As far as $k \neq 0$, we goes down along the tree based on the parity of $k$. We create empty leaf $(\nil, \textit{Nothing}, \nil)$ whenever meet $\nil$. \Cref{fig:int-trie} shows an example trie, generated with key-value pairs of \{$ 1 \rightarrow a, 4 \rightarrow b, 5 \rightarrow c, 9 \rightarrow d$\}. Below example program implements $insert$:
 
 \begin{figure}[htbp]
   \centering
@@ -103,7 +103,7 @@ insert k x (Branch l v r) | even k    = Branch (insert (k `div` 2) x l) v r
                           | otherwise = Branch l v (insert (k `div` 2) x r)
 \end{Haskell}
 
-We can define the even/odd testing by modular 2, and check if the remainder is 0 or not: $even(k) = (k \bmod 2 = 0)$. Or use bit-wise operation in some environment, like \texttt{(k \& 0x1) == 0}. We can eliminate the recursion through loops to realize an iterative implementation as below:
+We can test even/odd with the remainder modular 2: $even(k) = (k \bmod 2 = 0)$m or use bit-wise operation, like \texttt{(k \& 0x1) == 0}. We can eliminate the recursion through loops to realize an iterative implementation:
 
 \begin{algorithmic}[1]
 \Function{Insert}{$T, k, x$}
