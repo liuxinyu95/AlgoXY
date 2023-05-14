@@ -186,7 +186,7 @@ The $lookup$ function is bound to $O(m)$ time, where $m$ is the number of bits o
 \begin{Answer}[ref = {ex:int-trie-empty-node}]
 \Question{Can we change the definition from \texttt{Branch (IntTrie a) (Maybe a) (IntTrie a)} to \texttt{Branch (IntTrie a) a (IntTrie a)}, and return \textit{Nothing} if the value does not exist, and \textit{Just\ v} otherwise?
 
-Besides $lookup$, we need handle branch node without value when $insert$, as the blank circle nodes in \cref{fig:int-trie}. Alternatively, we can add an additional constructor in the algebraic data type (ADT) to replace the Maybe type:
+Besides $lookup$, we need handle branch node without value (the blank circle nodes in \cref{fig:int-trie}) when $insert$. Alternatively, we can add an additional constructor in the algebraic data type (ADT) to replace the Maybe type:
 
 \begin{Haskell}
 data IntTrie a = Empty
@@ -445,12 +445,12 @@ We can also eliminate the recursion to implement the iterative lookup.
 The $lookup$ algorithm is bound to $O(m)$, where $m$ is the number of bits in the key.
 
 \begin{Exercise}\label{ex:int-tree-lookup}
-\Question{Write a program to implement the $lookup$ function.}
+\Question{Implement the $lookup$ function for integer tree.}
 \Question{Implement the pre-order traverse for both integer trie and integer tree. Only output the keys when the nodes store values. What pattern does the result follow?}
 \end{Exercise}
 
 \begin{Answer}[ref = {ex:int-tree-lookup}]
-\Question{Write a program to implement the $lookup$ function.
+\Question{Implement the $lookup$ function for integer tree.
 
 \begin{Haskell}
 import Data.Bits
@@ -483,7 +483,8 @@ zero x m = x .&. (shiftR m 1) == 0
 \Question{Implement the pre-order traverse for both integer trie and integer tree. Only output the keys when the nodes store values. What pattern does the result follow?
 
 \label{ex:prefix-tree-pre-order-traverse}
-We first convert an integer trie to assoc-list. The pre-order is the recursive `middle-left-right' order. When traverse the empty tree, the result is $[\ ]$, For branch node $(l, m, r)$, let the recursive pre-order lists of the left and right sub-trees be $as$ and $bs$ respectively. For the middle Maybe value $m$, if it's Nothing, the result is $as \doubleplus bs$; if it's Just $v$, then the result is $(k, v) \cons as \doubleplus bs$, where $k$ is the corresponding binary integer (the little endian, 0 for left, 1 for right).
+\vspace{3mm}
+We first convert an integer trie to assoc-list. The pre-order is the recursive `middle-left-right' order. When traverse the empty tree, the result is $[\ ]$, For branch node $(l, m, r)$, let the recursive pre-order lists of the left and right sub-trees be $as$ and $bs$ respectively. For the middle Maybe value $m$, if it's Nothing, the result is $as \doubleplus bs$; if it's Just $v$, then the result is $(k, v) \cons as \doubleplus bs$, where $k$ is the corresponding binary integer (in little endian, 0 for left, 1 for right).
 
 \begin{Haskell}
 toList = go 0 1 where
@@ -496,9 +497,9 @@ toList = go 0 1 where
       bs = go (n + k) (2 * n) r
 \end{Haskell}
 
-We start from the root. Let $k = 0$, the depth $d = 0$. If go left, then $k' = 0$, if go right, then $k' = 1 = 2^d + k = 1 + 0$; For the next level $d = 1$, the corresponding $k$ for the four nodes are $(00)_2 = 0$, $(10)_2 = 2^1 + 0$, $(01)_2 = 1$, and $(11)_2 = 2^1 + 1$. Basically, for the node in level $d$, let $k = (a_d...a_2 a_1 a_0)_2$, when go left, then $k' = k$, when go right, then $k' = a_d * 2^d + k$. In above implementation, we start with $k = 0$, $n = 2^0 = 1$ to call $go\ k\ n$. Call $go\ k\ 2n$ when go left, call $go\ (n + k)\ 2n$ when go right.
+We start from the root. Let $k = 0$, the depth $d = 0$. If go left, then $k' = 0$, if go right, then $k' = 1 = 2^d + k = 1 + 0$; For the next level $d = 1$, the corresponding $k$ for the four nodes are $(00)_2 = 0$, $(10)_2 = 2^1 + 0$, $(01)_2 = 1$, and $(11)_2 = 2^1 + 1$. Basically, for the node in level $d$, let $k = (a_d...a_2 a_1 a_0)_2$, when go left, then $k' = k$, when go right, then $k' = a_d 2^d + k$. In above implementation, we start with $k = 0$, $n = 2^0 = 1$ to call $go\ k\ n$. Call $go\ k\ 2n$ when go left, $go\ (n + k)\ 2n$ when go right.
 
-Thus we obtain the keys in pre-order through $keys = fst \circ unzip \circ toList$. We can use tail recursive call to optimize $as \doubleplus bs$:
+We get the keys in pre-order through $keys = fst \circ unzip \circ toList$. We can use tail recursive call to optimize $as \doubleplus bs$:
 
 \begin{Haskell}
 toList = go 0 1 [] where
@@ -986,7 +987,7 @@ We can also realize the algorithm \textproc{Starts-With}($T, k, n$) imperatively
 \EndFunction
 \end{algorithmic}
 
-Where function \textproc{Expand}($s, T, n$) populates $n$ results from $T$ and prepand $s$ to each key. We implement it with `breadth first search' method (see \cref{sec:BFS}):
+Where function \textproc{Expand}($s, T, n$) populates $n$ results from $T$ and prepand $s$ to each key. We implement it with `breadth first search' method (see \cref{sec:DFS-BFS}):
 
 \begin{algorithmic}[1]
 \Function{Expand}{$s, T, n$}
@@ -1008,7 +1009,7 @@ Where function \textproc{Expand}($s, T, n$) populates $n$ results from $T$ and p
 \subsection{Predictive text input}
 \index{T9}
 
-Before 2010, most mobile phones had a small keypad as shown in \cref{fig:itut-keypad}, called ITU-T keypad. It maps a digit to 3 - 4 characters. For example, when input word `home', one can press keys in below sequence:
+Before 2010, most mobile phones had a small keypad as shown in \cref{fig:itut-keypad}, called ITU-T keypad. It maps a digit to 3 - 4 characters. For example, when input the word `home', one presses keys in below sequence:
 
 \begin{figure}[htbp]
   \centering
@@ -1033,7 +1034,7 @@ A smarter input method allows to press less keys:
 \item ...
 \end{enumerate}
 
-This is called predictive input, or abbreviated as `T9'\cite{wiki-t9}, \cite {wiki-predictive-text}. We can realize it by storing the word dictionary in a prefix tree. The commercial implementations uses multiple layers of caches/index in both memory and file system. We simplify it as an example of prefix tree application. First, we need define the digit key mappings:
+This is called predictive input, or abbreviated as `T9'\cite{wiki-t9}, \cite {wiki-predictive-text}. The commercial implementations use multiple layers of caches/index in both memory and file system. We simplify it as an example of prefix tree application. First, we need define the digit key mappings:
 
 \be
 \begin{array}{ll}
@@ -1046,16 +1047,16 @@ M_{T9} = \{ & 2 \mapsto \texttt{"abc"}, 3 \mapsto \texttt{"def"}, 4 \mapsto \tex
 $M_{T9}[i]$ gives the corresponding characters for digit $i$. We can also define the reversed mapping from a character back to digit.
 
 \be
-M^{-1}_{T9} = \textit{concatMap}\ ((d, s) \mapsto [(c, d) | c \in s])\ M_{T9}
+M^{-1}_{T9} = \textit{concatMap}\ ((d, s) \mapsto [(c, d) | c \gets s])\ M_{T9}
 \ee
 
 Given a string, we can convert it to a sequence of digits by looking up $M^{-1}_{T9}$.
 
 \be
-digits(s) = [ M^{-1}_{T9}[c] | c \in s ]
+digits(s) = [ M^{-1}_{T9}[c] | c \gets s ]
 \ee
 
-For any character does not belong [\texttt{a..z}], we map it to a special key \texttt{'\#'} as fallback. Below example program defines the above two mappings.
+For any character not in [\texttt{a..z}], we map it to a special key `\texttt{\#}'. Below example program defines the two mappings.
 
 \begin{Haskell}
 mapT9 = Map.fromList [('2', "abc"), ('3', "def"), ('4', "ghi"),
@@ -1068,7 +1069,7 @@ rmapT9 = Map.fromList $ concatMap (\(d, s) -> [(c, d) | c <- s]) $
 digits = map (\c -> Map.findWithDefault '#' c rmapT9)
 \end{Haskell}
 
-Suppose we already build the prefix tree $(v, ts)$ from all words in a dictionary. We need change the above auto completion algorithm to process digit string $ds$. For every sub-tree mappings $(s \mapsto t) \in ts$, we convert the prefix $s$ to $digits(s)$, check if it matches to $ds$ (either one is the prefix of the other). There can be multiple sub-trees match $ds$ as:
+Suppose we already builded the prefix tree $(v, ts)$ from the words. We need change the above auto completion algorithm to process digit string $ds$. For every sub-tree mappings $(s \mapsto t) \in ts$, we convert the prefix $s$ to $digits(s)$, check if it matches to $ds$ (either one is the prefix of the other). There can be multiple sub-trees match $ds$ as:
 
 \[
 \textit{pfx} = [(s, t) | (s \mapsto t) \in ts, digits(s) \sqsubseteq ds\ \textit{or}\ ds\ \sqsubseteq digits(s)]
@@ -1081,13 +1082,13 @@ find_{T9}\ (v, ts)\ ds & = & \textit{concatMap}\ find\ \textit{pfx} \\
 \end{array}
 \ee
 
-For each mapping $(s, t)$ in \textit{pfx}, function $find$ recursively lookup the remaining digits $ds'$ in $t$, where $ds' = drop\ |s|\ ds$, then prepend $s$ to every candidate. However, the length may exceeds the number of digits, we need cut and only take $n = |ds|$ characters:
+For each mapping $(s, t)$ in \textit{pfx}, function $find$ recursively looks up the remaining digits $ds'$ in $t$, where $ds' = drop\ |s|\ ds$, then prepend $s$ to every candidate. However, the length may exceed the number of input digits, we need cut and only take $n = |ds|$ characters:
 
 \be
 find\ (s, t) = [ take\ n\ (s \doubleplus s_i) | s_i \in find_{T9}\ t\ ds']
 \ee
 
-The following example program implements the predictive input look up algorithm:
+The following example program implements the predictive input algorithm:
 
 \begin{Haskell}
 findT9 _ [] = [[]]
@@ -1097,7 +1098,7 @@ findT9 (PrefixTree _ ts) k = concatMap find pfx where
               ds `isPrefixOf` k || k `isPrefixOf` ds]
 \end{Haskell} %$
 
-To realize the predictive text input imperatively, we can perform breadth first search with a queue $Q$ of tuples $(\textit{prefix}, D, t)$. Every tuple records the possible \textit{prefix} searched so far; the remaining digits $D$ to be searched; and the sub-tree $t$ we are going to search. $Q$ is initialized with the empty prefix, the whole digits sequence, and the root. We repeatedly pop the tuple from the queue, and examine the sub-tree mappings. for every mapping $(s \mapsto T')$, we convert $s$ to $digits(s)$. If $D$ is prefix of it, then we find a candidate. We append $s$ to \textit{prefix}, and record it in the result. If $digits(s)$ is prefix of $D$, we need further search the sub-tree $T'$. We create a new tuple of $(\textit{prefix} \doubleplus s, D', T')$, where $D'$ is the remaining digits to be searched. Then push this new tuple back to the queue.
+To realize the predictive text input imperatively, we can perform breadth first search with a queue $Q$ of tuples $(\textit{prefix}, D, t)$. Every tuple records the possible \textit{prefix} searched so far; the remaining digits $D$ to be searched; and the sub-tree $t$ we are going to search. $Q$ is initialized with the empty prefix, the whole digits sequence, and the root. We repeatedly pop the tuple from the queue, and examine the sub-tree mappings. for every mapping $(s \mapsto T')$, we convert $s$ to $digits(s)$. If $D$ is prefix of it, then we find a candidate. We append $s$ to \textit{prefix}, and record it in the result. If $digits(s)$ is prefix of $D$, we need further search the sub-tree $T'$. We create a new tuple of $(\textit{prefix} \doubleplus s, D', T')$, where $D'$ is the remaining digits to be searched. Then add this new tuple back to the queue.
 
 \begin{algorithmic}[1]
 \Function{Look-Up-T9}{$T, D$}
@@ -1122,7 +1123,7 @@ To realize the predictive text input imperatively, we can perform breadth first 
 \EndFunction
 \end{algorithmic}
 
-We start from integer trie and prefix tree. By turning the integer key to binary format, we re-used binary tree to realize the integer based map data structure. Then extend the key from integer to generic list, and limit the list element to finite set. Particularly for alphabetic strings, the generic trie and prefix tree can be used as tools to manipulate the text information. We give example applications about auto-completion and predictive text input. as another instance of radix tree, the suffix tree is closely related to trie and prefix tree used in text, and DNA processing.
+We start from integer trie and prefix tree. With binary format, we re-use binary tree to realize the integer based map data structure. Then extend the key from integer to generic list of finite set. Particularly for alphabetic strings, the generic trie and prefix tree are powerful tools to manipulate the text. We give examples about auto-completion and predictive text input. As another instance of radix tree, the {\em suffix tree}, that is widely used in text/DNA processing, is closely related to trie and prefix tree.
 
 \begin{Exercise}\label{ex:prefix-tree-app}
 \Question{Implement the auto-completion and predictive text input with trie.}
@@ -1166,7 +1167,7 @@ findT9 (d:ds) (Trie _ ts) = concatMap find cts where
 
 \Question{How to ensure the candidates in lexicographic order in the auto-completion and predictive text input program? What's the performance change accordingly?
 
-From exercise \cref{ex:prefix-tree-pre-order-traverse}, if traverse a binary prefix tree in pre-order, the result is in lexicographic order. For multi-way prefix tree, we need traverse sub-trees in lexicographic order. If the sub-trees are managed with self-balanced tree (like the red-black tree or the AVL tree), we can do this in linear time (\cref{ex:bst-iterate}). If the sub-trees are stored in hash table or assoc-list, then we need $O(n \lg n)$ time to sort them.
+From \cref{ex:prefix-tree-pre-order-traverse}, if traverse a binary prefix tree in pre-order, the result is in lexicographic order. For multi-way prefix tree, we need traverse sub-trees in lexicographic order. If the sub-trees are managed with self-balancing tree (like the red-black tree or AVL tree), we can do this in linear time (\cref{ex:bst-iterate}). If the sub-trees are stored in hash table or assoc-list, then we need $O(n \lg n)$ time to sort them.
 }
 \end{Answer}
 
@@ -1176,13 +1177,12 @@ Definition of integer binary trie:
 
 \begin{lstlisting}[language = Bourbaki]
 data IntTrie<T> {
-    IntTrie<T> left = null
-    IntTrie<T> right = null
+    IntTrie<T> left = null, right = null
     Optional<T> value = Optional.Nothing
 }
 \end{lstlisting}
 
-The following example $insert$ program uses bit-wise operation to test even/odd, and shift the bit to right:
+Imperative $insert$ with bit-wise operations:
 
 \begin{lstlisting}[language = Bourbaki]
 IntTrie<T> insert(IntTrie<T> t, Int key,
@@ -1220,10 +1220,8 @@ Definition of integer prefix tree:
 data IntTree<T> {
     Int key
     T value
-    Int prefix
-    Int mask = 1
-    IntTree<T> left = null
-    IntTree<T> right = null
+    Int prefix = 0, mask = 1
+    IntTree<T> left = null, right = null
 
     IntTree(Int k, T v) {
         key = k, value = v, prefix = k
@@ -1293,7 +1291,7 @@ Int lcp(Int p1, Int p2) {
 %% }
 %% \end{lstlisting}
 
-Definition of trie and the insert program:
+Definition of trie and the insert:
 
 \begin{lstlisting}[language = Bourbaki]
 data Trie<K, V> {
@@ -1313,7 +1311,7 @@ Trie<K, V> insert(Trie<K, V> t, [K] key, V value) {
 }
 \end{lstlisting}
 
-Definition of Prefix Tree and insert program:
+Definition of Prefix Tree and insert:
 
 \begin{lstlisting}[language = Bourbaki]
 data PrefixTree<K, V> {
@@ -1359,7 +1357,7 @@ PrefixTree<K, V> insert(PrefixTree<K, V> t, [K] key, V value) {
 }
 \end{lstlisting}
 
-The longest common prefix \texttt{lcp} and \texttt{branch} example programs.
+The longest common prefix \texttt{lcp} and \texttt{branch}.
 
 \begin{lstlisting}[language = Bourbaki]
 ([K], [K], [K]) lcp([K] s1, [K] s2) {
@@ -1422,8 +1420,8 @@ Populate multiple candidates, they share the common prefix
 
 Predictive text input lookup
 \begin{lstlisting}[language = Bourbaki]
-var T9MAP={'2':"abc", '3':"def", '4':"ghi", '5':"jkl", \
-       '6':"mno", '7':"pqrs", '8':"tuv", '9':"wxyz"}
+var T9MAP={'2':"abc", '3':"def", '4':"ghi", '5':"jkl",
+           '6':"mno", '7':"pqrs", '8':"tuv", '9':"wxyz"}
 
 var T9RMAP = { c : d for var (d, cs) in T9MAP for var c in cs }
 
