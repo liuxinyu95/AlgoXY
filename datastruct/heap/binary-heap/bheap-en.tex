@@ -299,7 +299,7 @@ Both left and right sub-trees are heaps. If neither is empty, each root stores t
 \subsection{Leftist heap}
 \index{Leftist heap} \index{Leftist heap!rank} \index{Leftist heap!S-value}
 
-The leftist heap is implemented with leftist tree. C. A. Crane in 1972\cite{wiki-leftist-tree} developed the leftist tree. He defines a rank for every node (also known as $S$-value) as the distance to the nearest NIL. The rank of NIL is 0. As shown in \cref{fig:rank}, The nearest leaf node to 4 is 8, the rank of 4 is 2; Both 4 and 8 are leaves, their ranks are 1. Although the left sub-tree of 5 is not empty, its right sub-tree is NIL, hence the rank is 1. We can define the merge method with rank as below. Let the ranks for left and right sub-trees be $r_l$, $r_r$ respectively:
+The leftist heap is implemented with leftist tree. C. A. Crane in 1972\cite{wiki-leftist-tree} developed the leftist tree. He defines a rank for every node (also known as $S$-value) as the distance to the nearest NIL. The rank of NIL is 0. As shown in \cref{fig:rank}, The nearest leaf node to 4 is 8, the rank of 4 is 2; Both 6 and 8 are leaves, their ranks are 1. Although the left sub-tree of 5 is not empty, its right sub-tree is NIL, hence the rank is 1. Define the merge method with rank as below. Denote the rank of the left and right sub-trees be $r_l$, $r_r$ respectively:
 
 \begin{figure}[htbp]
   \centering
@@ -310,21 +310,20 @@ The leftist heap is implemented with leftist tree. C. A. Crane in 1972\cite{wiki
 
 \begin{enumerate}
 \item Always merge the right sub-tree;
-\item When $r_l < r_r$, exchange the left and right sub-trees.
+\item When $r_l < r_r$, swap the left and right sub-trees.
 \end{enumerate}
 
-We call above merge rules `leftist property'. Basically, a leftist tree always has the shortest path to some NIL on the right. It tends to be unbalanced, while maintain a critical constraint:
+We call this merge method the `leftist property'. Basically, a leftist tree always has the shortest path to some NIL on the right. Although it seems unbalanced, there is critical fact:
 
 \begin{theorem}
-For a leftist tree $T$ of $n$ nodes, the path from root to the rightmost NIL has at most $\lfloor \log (n + 1) \rfloor$ nodes.
+For a leftist tree $T$ of $n$ nodes, the path from the root to the rightmost NIL has at most $\lfloor \log (n + 1) \rfloor$ nodes.
 \end{theorem}
 
-We skip the proof \cite{brono-book} \cite{TAOCP}. With this theorem, algorithms process along this path are ensured bound to $O(\lg n)$ time. We can define the leftist tree by reusing binary tree plus an additional rank. Let the none empty leftist tree be $(r, L, k, R)$:
+We skip the proof \cite{brono-book} \cite{TAOCP}. This theorem ensures any algorithm processes along this path is bound to $O(\lg n)$ time. We define the leftist tree as a binary tree plus an additional rank. Let the none empty leftist tree be $(r, L, k, R)$:
 
 \lstset{frame = single}
 \begin{Haskell}
-data LHeap a = E -- Empty
-             | Node Int (LHeap a) a (LHeap a)
+data LHeap a = Empty | Node Int (LHeap a) a (LHeap a)
 \end{Haskell}
 
 Function $rank$ returns the rank value:
@@ -336,19 +335,17 @@ rank\ (r, L, k, R) & = & r \\
 \end{array}
 \ee
 
-\subsubsection{Merge}
 \index{Leftist heap!merge}
-
-To merge two leftist heaps, we define a $make$ function. It compares the ranks of the sub-trees and swap them if necessary.
+Define an auxiliary $make$ function. It compares the ranks of the sub-trees and swap them if necessary.
 
 \be
 make(A, k, B) = \begin{cases}
-  rank(A) < rank(B) : & (rank(A) + 1, B, k, A) \\
-  \text{否则}: & (rank(B) + 1, A, k, B) \\
+  rank(A) < rank(B) : & (1 + rank(A), B, k, A) \\
+  \text{otherwise}: & (1 + rank(B), A, k, B) \\
   \end{cases}
 \ee
 
-It takes two sub-trees $A$ and $B$. If rank of $A$ is smaller, we let $B$ be the left sub-tree, and $A$ be the right. The rank of the new node is $rank(A) + 1$; otherwise if rank of $B$ is smaller, we let $A$ be the left sub-tree, and $B$ be the right. The rank of the new node is $rank(B) + 1$. Given two leftist heaps $H_1$ and $H_2$, if they are not empty, let them be $(r_1, L_1, K_1, R_1)$ and $(r_2, L_2, k_2, R_2)$ respectively. Below function defines merge:
+For the two trees $A$ and $B$, if $rank(A)$ is smaller, set $B$ as the left sub-tree, and $A$ as the right. The rank of the new node is $1 + rank(A)$; otherwise if $rank(B)$ is smaller, set $A$ as the left sub-tree, and $B$ as the right. The rank of the new node is $1 + rank(B)$. Given two leftist heaps, and denote them as $H_1 = (r_1, L_1, K_1, R_1)$ and $H_2 = (r_2, L_2, k_2, R_2)$ if not empty, define merge:
 
 \be
 \begin{array}{rcl}
@@ -356,12 +353,12 @@ It takes two sub-trees $A$ and $B$. If rank of $A$ is smaller, we let $B$ be the
   \textit{merge}\ H_1\ \nil & = & H_1 \\
   \textit{merge}\ H_1\ H_2 & = & \begin{cases}
   k_1 < k_2 : & make(L_1, k_1, \textit{merge}\ R_1\ H_2)  \\
-  \text{否则}: & make(L_2, k_2, \textit{merge}\ H_1\ R_2) \\
+  \text{otherwise}: & make(L_2, k_2, \textit{merge}\ H_1\ R_2) \\
   \end{cases}
 \end{array}
 \ee
 
-We always apply $merge$ to the right sub-tree recursively, hence the leftist property is maintained, and it is bound to $O(\lg n)$ time.The binary heap implemented by array performs well in most cases, and it suitable for the modern cache technology. However, it takes $O(n)$ time for merge. We need concatenate two arrays, and rebuild the heap\cite{NIST}.
+We always $merge$ to the right sub-tree recursively to maintain the leftist property. It is bound to $O(\lg n)$ time. The binary heap implemented with array performs well in most cases, suitable for the modern cache technology. However, it takes $O(n)$ time to merge, because it needs concatenate two arrays, and rebuild the heap\cite{NIST}:
 
 \begin{algorithmic}[1]
 \Function{Merge-Heap}{$A, B$}
@@ -370,33 +367,29 @@ We always apply $merge$ to the right sub-tree recursively, hence the leftist pro
 \EndFunction
 \end{algorithmic}
 
-We can define most heap operations with $merge$.
-
-\subsubsection{Top and pop}
 \index{Leftist heap!top} \index{Leftist heap!pop}
 
-We can access the top element in $O(1)$ time, assume the heap is not empty:
+We can access the top of the leftist heap in constant time(assume it is not empty):
 
 \be
 top\ (r, L, k, R) = k
 \ee
 
-After pop the root, we merge the left and right sub-trees as a new heap. Same as $merge$, pop is also bound to $O(\lg n)$ time.
+After pop the root, we merge the two sub-trees in $O(\lg n)$ time.
 
 \be
 pop\ (r, L, k, R) = merge\ L\ R
 \ee
 
-\subsubsection{Insert}
 \index{Leftist heap!insert}
-
-To insert a new element $k$, we build a singleton leaf of $k$, then merge it with the heap:
+To insert a new element $k$, create a leaf of $k$, then merge it to the heap:
 
 \be
 insert\ k\ H = merge\ (1, \nil, k, \nil)\ H
 \ee
 
-Or write it in Curried form as $build = fold_r\ insert\ \nil$.
+\index{Leftist heap!heap sort}
+We can build a leftist heap from a list as (Curried form): $build = fold_r\ insert\ \nil$. Then repeatedly pop the minimum to output the sorted result:
 
 \begin{figure}[htbp]
   \centering
@@ -404,11 +397,6 @@ Or write it in Curried form as $build = fold_r\ insert\ \nil$.
   \caption{Build the leftist heap from $[9, 4, 16, 7, 10, 2, 14, 3, 8, 1]$.}
   \label{fig:leftist-tree}
 \end{figure}
-
-\subsubsection{Heap sort}
-\index{Leftist heap!heap sort}
-
-Given a list, we build a leftist heap from it, then repeatedly pop the minimum element from top to obtain the sorted result.
 
 \be
 sort = heapSort \circ build
@@ -423,7 +411,7 @@ heapSort\ H & = & (top\ H) : (heapSort\ (pop\ H)) \\
 \end{array}
 \ee
 
-We call pop $n$ times, each takes $O(\lg n)$ time. The total time is bound to $O(n \lg n)$.
+It pops $n$ times, each takes $O(\lg n)$ time. The total time is bound to $O(n \lg n)$.
 
 \subsection{Skew heap}
 \label{skew-heap} \index{Skew heap}
