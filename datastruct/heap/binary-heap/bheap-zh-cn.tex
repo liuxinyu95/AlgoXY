@@ -34,7 +34,7 @@
 \section{定义}
 \label{introduction} \index{二叉堆}
 
-堆是一种常见的数据结构，可以解决很多实际问题，包括排序、带有优先级的调度、实现图算法等\cite{wiki-heap}。堆有多种实现，最常见的一种通过数组来表示二叉树\cite{CLRS}，进而实现堆。许多程序库中的堆都是这样实现堆的。由R.W. Floyd给出的高效堆排序算法也利用了这个实现\cite{wiki-heapsort}\cite{rosetta-heapsort}。堆本身的定义是抽象的，除数组外，它也可以由其它数据结构来实现。本章中，我们介绍那些由二叉树实现的堆，包括左偏堆（Leftist heap）、斜堆（Skew heap）、伸展堆（splay heap）\cite{okasaki-book}。一个堆或为空，或存有若干可比较大小的元素。它满足一条性质并定义了三种操作：
+堆是一种常见的数据结构，可以用于排序、带有优先级的调度、图算法等\cite{wiki-heap}。堆通常用数组表示的二叉树\cite{CLRS}实现。Floyd由此给出了一种高效的堆排序算法\cite{wiki-heapsort}\cite{rosetta-heapsort}。堆本身的定义是抽象的，也可由其它数据结构实现。本章介绍用二叉树实现的堆，包括左偏堆（Leftist heap）、斜堆（Skew heap）、伸展堆（splay heap）\cite{okasaki-book}。一个堆或为空，或包含若干可比较的元素。它满足一条性质并定义了如下操作：
 
 \begin{enumerate}
 \item \textbf{性质}：堆顶总保存着最小元素；
@@ -43,12 +43,12 @@
 \item \textbf{其它操作}（如合并两个堆）也保持堆的性质。
 \end{enumerate}
 
-由于元素可比较，我们也可以令堆顶总保存最大元素。我们称顶部保存最小元素的堆为\textbf{小顶堆}，顶部保存最大元素的堆为\textbf{大顶堆}。可以用树来实现堆。将最小（或最大）元素置于根节点。获取“堆顶”元素时，可以直接返回根节点中的数据。执行“弹出”操作时，将根节点删除，然后从子节点重新构建树。我们称使用二叉树实现的堆为\textbf{二叉堆}。本章介绍三种不同的二叉堆。
+由于元素可比较，也可令堆顶总保存最大元素。我们称顶部保存最小元素的堆为\textbf{小顶堆}，顶部保存最大元素的堆为\textbf{大顶堆}。可以用树来实现堆。将最小（或最大）元素置于根节点。获取堆顶元素时，返回根节点中的数据。弹出堆顶时，将根节点删除，然后从子节点重新构建树。我们称使用二叉树实现的堆为\textbf{二叉堆}。
 
-\section{由数组实现的隐式二叉堆}
-\label{ibheap} \index{隐式二叉堆} \index{完全二叉树}
+\section{用数组实现的二叉堆}
+\label{ibheap} \index{完全二叉树}
 
-第一种实现称为“隐式二叉树”。它用数组来表示一棵完全二叉树。所谓完全二叉树，是一种“几乎”满的二叉树。深度为$k$的满二叉树含有$2^k-1$个节点。如果将每个节点从上到下，从左向右编号为1,2, ..., $2^k - 1$，则完全二叉树中编号为$i$的节点和满二叉树中编号为$i$的节点在树中的位置相同。完全二叉树的叶子节点仅出现在最下面一行和倒数第二行。\cref{fig:tree-array-map}给出了一棵完全二叉树和相应的数组表示形式。由于二叉树是完全的，对数组中第$i$个元素代表的节点，它的父节点定位到第$\lfloor i/2 \rfloor$个元素；左子树对应第$2i$个元素，而右子树对应第$2i+1$个元素。如果子节点的索引超出了数组的长度，说明它不含有相应的子树（例如叶子节点）。树和数组之间的映射可以定义如下（令数组的索引从1开始）：
+可以用数组表示一棵\textbf{完全二叉树}。它是一种“几乎”满的二叉树。深度为$k$的满二叉树含有$2^k-1$个节点。如果将每个节点从上到下、从左向右编号为1,2, ..., $2^k - 1$，则完全二叉树中编号为$i$的节点和满二叉树中编号为$i$的节点在树中的位置相同。完全二叉树的叶子节点仅出现在最下面一行和倒数第二行。\cref{fig:tree-array-map}给出了一棵完全二叉树及其数组表示。数组中第$i$个元素代表的节点，它的父节点对应第$\lfloor i/2 \rfloor$个元素、左子树对应第$2i$个元素、右子树对应第$2i+1$个元素。如果子节点的索引超出了数组的长度，则不含相应的子树（例如叶子节点）。树和数组之间的映射可以定义如下（令数组的索引从1开始，附录给出了位运算实现的例子）：
 
 \begin{figure}[htbp]
 \centering
@@ -64,12 +64,10 @@ right(i)  & = 2i + 1 \\
 \end{cases}
 \ee
 
-父节点和子树的访问可以通过位运算实现，见本章附录中的例子。
-
 \subsection{堆调整}
 \index{二叉堆!Heapify}
 
-堆调整\footnote{Heapify，也译作堆化。}是维护堆性质的过程，使得堆顶元素为最小（或最大）。由于堆背后的数据模型是二叉树，我们可以利用树的递归特性，获得一个增强的堆性质：使得每棵子树的根节点都是最小（或最大）的。也就是说任何子树都代表一个子堆。简单起见，我们考虑小顶堆。对于用数组表示的二叉堆，任给数组下标$i$，我们检查$i$对应的所有子节点的值是否都不小于($\geq$)它。如果不满足则交换，使得父节点总保存最小值\cite{CLRS}，并对以$i$为根的所有子树递归重复这个过程。如下算法定义了堆调整过程：
+堆调整\footnote{Heapify，也译作堆化。}是维护堆性质的过程，使得堆顶元素为最小（或最大）。由于背后的数据模型是带有递归结构的二叉树，我们可以获得一个增强的堆性质：每棵子树的根节点都是最小（或最大）的。即任何子树都代表一个子堆。简单起见，我们考虑数组表示的小顶堆。任给数组下标$i$，递归地检查$i$对应的子树中，左右子树的值是否大于等于（$\geq$）根的值。不满足则交换，使得父节点保存最小值\cite{CLRS}。
 
 \begin{algorithmic}[1]
 \Function{Heapify}{$A, i$}
@@ -93,7 +91,7 @@ right(i)  & = 2i + 1 \\
 \EndFunction
 \end{algorithmic}
 
-对于数组$A$和索引$i$，堆性质要求$A[i]$的子节点都不应比它小。否则，我选出最小的元素保存在$A[i]$，并将较大的元素交换至子树，然后自顶向下检查并调整堆，使得所有子树都满足堆性质。\textproc{Heapify}的时间复杂度为$O(\lg n)$，其中$n$是元素个数。这是因为算法中的循环次数和完全二叉树的高度成正比。\cref{fig:heapify}描述了\textproc{Heapify}从索引2开始，按照小顶堆调整数组[1, 13, 7, 3, 10, 12, 14, 15, 9, 16]的步骤。数组最终变换为[1, 3, 7,9, 10, 12, 14, 15, 13, 16]。
+由于自顶向下检查并调整堆，循环次数和完全二叉树的高度成正比。\textproc{Heapify}的时间复杂度为$O(\lg n)$，其中$n$是元素个数。\cref{fig:heapify}描述了小顶堆的调整步骤，索引从2开始，数组从[1, 13, 7, 3, 10, 12, 14, 15, 9, 16]变换为[1, 3, 7,9, 10, 12, 14, 15, 13, 16]。
 
 \begin{figure}[htbp]
   \centering
@@ -105,7 +103,7 @@ right(i)  & = 2i + 1 \\
 \subsection{构造堆}
 \index{二叉堆!构造堆}
 
-使用\textproc{Heapify}，我们可以从任意数组构造出堆。观察完全二叉树各层的节点数目：$1, 2, 4, 8, ...$都是2的整数次幂，唯一例外是最后一层。由于树不一定满，最后一层最多含有$2^{p-1}$个节点，其中$p$是使得$2^p -1 \geq n$的最小整数，$n$是数组的长度。\textproc{Heapify}对叶子节点不起作用，因为叶子节点都已经满足堆性质了。我们跳过叶子节点，从第一个分支节点开始不断向上执行\textproc{Heapify}。显然第一个分支节点的索引不大于$\lfloor n/2 \rfloor$。我们可以设计出如下的堆构造算法：
+使用\textproc{Heapify}，我们可以从任意数组构造出堆。观察完全二叉树各层的节点数目：$1, 2, 4, 8, ...$都是2的整数次幂，唯一例外是最后一层。由于树不一定满，最后一层最多含有$2^{p-1}$个节点，其中$p$是使$2^p -1 \geq n$的最小整数，$n$是数组长度。我们跳过所有叶子，从第一个分支节点（索引位于$\lfloor n/2 \rfloor$）开始不断向上执行\textproc{Heapify}。
 
 \begin{algorithmic}[1]
 \Function{Build-Heap}{$A$}
@@ -116,7 +114,7 @@ right(i)  & = 2i + 1 \\
 \EndFunction
 \end{algorithmic}
 
-虽然\textproc{Heapify}的复杂度为$O(\lg n)$，但是\textproc{Build-Heap}的复杂度不是$O(n \lg n)$，而是线性时间$O(n)$的。我们跳过了所有的叶子节点，最多有$1/4$的节点被比较并向下移动一次；最多有$1/8$的节点被比较并向下移动两次；最多有$1/16$的节点被比较并向下移动三次……总共比较和移动次数的上限为：
+虽然\textproc{Heapify}的复杂度为$O(\lg n)$，但是\textproc{Build-Heap}的复杂度不是$O(n \lg n)$，而是$O(n)$。我们跳过了所有叶子，最多有$1/4$的节点被比较并向下移动一次；最多有$1/8$的节点被比较并向下移动两次；最多有$1/16$的节点被比较并向下移动三次……总共比较和移动次数的上限为：
 
 \be
 S = n (\frac{1}{4} + 2 \frac{1}{8} + 3 \frac{1}{16} + ...)
@@ -130,7 +128,7 @@ S = n (\frac{1}{4} + 2 \frac{1}{8} + 3 \frac{1}{16} + ...)
 \label{eq:build-heap-2}
 \ee
 
-用\cref{eq:build-heap-2}减去\cref{eq:build-heap-1}，我们有：
+用\cref{eq:build-heap-2}减去\cref{eq:build-heap-1}：
 
 \bea*{rcll}
 2S - S & = & n [\dfrac{1}{2} + (2 \dfrac{1}{4} - \dfrac{1}{4}) + (3 \dfrac{1}{8} - 2 \dfrac{1}{8}) + ...] & \text{错开第一项两两相减} \\
@@ -152,9 +150,7 @@ S = n (\frac{1}{4} + 2 \frac{1}{8} + 3 \frac{1}{16} + ...)
 \index{二叉堆!获取顶部元素}
 堆的基本操作包括获取顶部，弹出顶部，寻找最小（或最大）的前$k$个元素，减小小顶堆中某一元素（或增大大顶堆中某一元素），以及插入新元素。在用二叉树实现的堆中，根节点保存了顶部元素，它对应数组的第一个值：$Top(A) = A[1]$。
 
-\subsubsection{弹出堆顶}
 \index{二叉堆!弹出} \index{二叉堆!pop}
-
 弹出堆顶后，数组剩余元素顺次向前移动。这相当于删除了二叉树的根节点，剩余部分不再保持一棵树状的结构。为了避免这种情况，我们可以将待移除的数组头部和末尾元素交换，然后将数组的长度减一，这相当于删除叶子节点而非根节点。最后再用\textproc{Heapify}恢复堆性质：
 
 \begin{algorithmic}[1]
@@ -171,9 +167,7 @@ S = n (\frac{1}{4} + 2 \frac{1}{8} + 3 \frac{1}{16} + ...)
 
 从数组的末尾删除元素仅需常数时间，这样弹出操作的时间复杂度就取决于\textproc{Heapify}，为$O(\lg n)$。
 
-\subsubsection{Top-k}
 \index{二叉堆!top-k}
-
 连续使用pop，可以找出一组元素中的前$k$个最小（或最大）：
 
 \begin{algorithmic}[1]
@@ -187,9 +181,7 @@ S = n (\frac{1}{4} + 2 \frac{1}{8} + 3 \frac{1}{16} + ...)
 \EndFunction
 \end{algorithmic}
 
-\subsubsection{提升优先级}
 \index{二叉堆!提升优先级}
-
 堆的一个应用是实现带有优先级的任务调度，称为“优先级队列”。将若干带有优先级的任务放入堆中，每次从堆顶取出优先级最高的任务执行。为了尽早执行堆中的某个任务，可以提升它的优先级。对于小顶堆，这意味着减小某个元素的值，如\cref{fig:decrease-key-2}所示。
 
 \begin{figure}[htbp]
@@ -210,9 +202,7 @@ S = n (\frac{1}{4} + 2 \frac{1}{8} + 3 \frac{1}{16} + ...)
 \EndFunction
 \end{algorithmic}
 
-\subsubsection{插入}
 \index{二叉堆!插入（push）}
-
 可以利用\textproc{Heap-Fix}来实现插入\cite{CLRS}。以小顶堆为例，先向数组末尾添加新元素$k$，再使用\textproc{Heap-Fix}调整：
 
 \begin{algorithmic}[1]
@@ -297,9 +287,9 @@ Robert. W. Floyd给出了另一种实现。思路是构建一个大顶堆。接�
 
 \[
 \begin{array}{rcl}
-merge(\nil, R) & = & R \\
-merge(L, \nil) & = & L \\
-merge(L, R) & = & ? \\
+merge\ \nil\ R & = & R \\
+merge\ L\ \nil & = & L \\
+merge\ L\ R & = & ? \\
 \end{array}
 \]
 
@@ -332,8 +322,7 @@ merge(L, R) & = & ? \\
 
 \lstset{frame = single}
 \begin{Haskell}
-data LHeap a = E -- 空
-             | Node Int (LHeap a) a (LHeap a)
+data LHeap a = Empty | Node Int (LHeap a) a (LHeap a)
 \end{Haskell}
 
 定义$rank$函数返回节点的秩。
@@ -345,19 +334,17 @@ rank\ (r, L, k, R) & = & r \\
 \end{array}
 \ee
 
-\subsubsection{合并}
 \index{左偏堆!合并}
-
 为了实现合并，我们定义$make$函数比较左右子树的秩，并交换子树保持左偏性质。
 
 \be
 make(A, k, B) = \begin{cases}
-  rank(A) < rank(B) : & (rank(A) + 1, B, k, A) \\
-  \text{否则}: & (rank(B) + 1, A, k, B) \\
+  rank(A) < rank(B) : & (1 + rank(A), B, k, A) \\
+  \text{否则}: & (1 + rank(B), A, k, B) \\
   \end{cases}
 \ee
 
-传入两棵子树$A$、$B$和元素$k$。若$A$的秩较小，则用$B$作为左子树、$A$作为右子树。新节点的秩为$rank(A) + 1$；否则，若$B$的秩较小，就用$A$作为左子树，$B$作为右子树。新节点的秩为$rank(B) + 1$。给定两个左偏堆$H_1$和$H_2$，它们不空时分别记为$(r_1, L_1, K_1, R_1)$、$(r_2, L_2, k_2, R_2)$，下面的函数定义了合并操作：
+传入两棵子树$A$、$B$和元素$k$。若$A$的秩较小，则用$B$作为左子树、$A$作为右子树。新节点的秩为$1 + rank(A)$；否则，若$B$的秩较小，就用$A$作为左子树，$B$作为右子树。新节点的秩为$1 + rank(B)$。给定两个左偏堆$H_1$和$H_2$，它们不空时分别记为$(r_1, L_1, K_1, R_1)$、$(r_2, L_2, k_2, R_2)$，下面的函数定义了合并操作：
 
 \be
 \begin{array}{rcl}
@@ -381,9 +368,7 @@ $merge$总在右子树上进行递归，左偏性质得以保持。这样就保�
 
 使用$merge$函数，可以实现基本的堆操作。
 
-\subsubsection{弹出顶部}
 \index{左偏堆!top} \index{左偏堆!pop} \index{左偏堆!弹出}
-
 我们可以在$O(1)$时间内获取根节点中的堆顶元素（设若树不为空）：
 
 \be
@@ -396,9 +381,7 @@ top\ (r, L, k, R) = k
 pop\ (r, L, k, R) = merge\ L\ R
 \ee
 
-\subsubsection{插入}
 \index{左偏树!插入}
-
 插入新元素$k$时，可以从$k$构造出只有一个叶子节点的树，然后将它和合并到待插入的树中：
 
 \be
@@ -420,9 +403,7 @@ build\ L = fold_r\ insert\ \nil\ L
   \label{fig:leftist-tree}
 \end{figure}
 
-\subsubsection{堆排序}
 \index{左偏树!堆排序}
-
 给定一个序列，将它转换成一个左偏堆，然后不断取出堆顶的最小元素就可以实现排序：
 
 \be
@@ -454,22 +435,19 @@ heapSort\ H & = & (top\ H) : (heapSort\ (pop\ H)) \\
 斜堆是由斜树（skew tree）实现的堆。斜树是一种特殊的二叉树。最小的元素保存在根节点，每棵子树也都是一棵斜树。它不保存秩，可以直接复用二叉树的定义。树或者为空，或记为$(L, k, R)$。
 
 \begin{Haskell}
-data SHeap a = E -- 空
-             | Node (SHeap a) a (SHeap a)
+data SHeap a = Empty | Node (SHeap a) a (SHeap a)
 \end{Haskell}
 
-\subsubsection{合并}
 \index{斜堆!合并} \index{斜堆!插入} \index{斜堆!top} \index{斜堆!pop} \index{斜堆!弹出}
-
-当合并两棵非空斜树时，先比较根节点，选择较小的作为新的根。然后把含有较大元素的树合并到某一子树上。最后再把左右子树交换。令两棵非空子树为：$H_1 = (L_1, k_1, R_1)$、$H_2 =(L_2, k_2, R_2)$。若$k_1 < k_2$，选择$k_1$作为新的根。我们既可以将$H_2$和$L_1$合并，也可以将$H_2$和$R_1$合并。不失一般性，我们合并到$R_1$上。然后交换左右子树，最后的结果为$(merge(R_1, H_2), k_1, L_1)$。
+当合并两棵非空斜树时，先比较根节点，选择较小的作为新的根。然后把含有较大元素的树合并到某一子树上。最后再把左右子树交换。令两棵非空子树为：$H_1 = (L_1, k_1, R_1)$、$H_2 =(L_2, k_2, R_2)$。若$k_1 < k_2$，选择$k_1$作为新的根。我们既可以将$H_2$和$L_1$合并，也可以将$H_2$和$R_1$合并。不失一般性，我们合并到$R_1$上。然后交换左右子树，最后的结果为$(\textit{merge}\ R_1\ H_2, k_1, L_1)$。
 
 \be
 \begin{array}{rcl}
-merge\ \nil\ H_2 & = & H_2 \\
-merge\ H_1\ \nil & = & H_1 \\
-merge\ H_1\ H_2\ & = & \begin{cases}
-  k_1 < k_2: & (merge(R_1, H_2), k_1, L_1) \\
-  \text{否则}: & (merge(H_1, R_2), k_2, L_2) \\
+\textit{merge}\ \nil\ H_2 & = & H_2 \\
+\textit{merge}\ H_1\ \nil & = & H_1 \\
+\textit{merge}\ H_1\ H_2\ & = & \begin{cases}
+  k_1 < k_2: & (\textit{merge}\ R_1\ H_2, k_1, L_1) \\
+  \text{否则}: & (\textit{merge}\ H_1\ R_2, k_2, L_2) \\
 \end{cases}
 \end{array}
 \ee
@@ -494,17 +472,17 @@ merge\ H_1\ H_2\ & = & \begin{cases}
 有两种方法可以实现伸展操作。第一种利用模式匹配，但需要处理较多的情况；第二种具备统一的形式，但是实现较为复杂。记正在访问的节点元素为$x$，它的父节点元素为$p$，如果存在祖父节点，其元素记为$g$。伸展操作分为三个步骤，每个步骤有两个对称的情况，我们以每步中的一种情况举例说明，如\cref{fig:splay}所示。
 
 \begin{enumerate}
-\item zig-zig步骤，$x$和$p$都是左子树或者$x$和$p$都是右子树。我们通过两次旋转，将$x$变成根节点。
+\item \textbf{zig-zig}步骤，$x$和$p$都是左子树或者$x$和$p$都是右子树。我们通过两次旋转，将$x$变成根节点。
 
-\item zig-zag步骤，$x$和$p$一棵是左子树另一棵是右子树。经过旋转，$x$变成根节点，$p$和$g$变成了兄弟节点。
+\item \textbf{zig-zag}步骤，$x$和$p$一棵是左子树另一棵是右子树。经过旋转，$x$变成根节点，$p$和$g$变成了兄弟节点。
 
-\item zig步骤，这种情况下，$p$是根节点，经过旋转，$x$变成了根节点。这是伸展操作的最后一步。
+\item \textbf{zig}步骤，这种情况下，$p$是根节点，经过旋转，$x$变成了根节点。这是伸展操作的最后一步。
 \end{enumerate}
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.45]{img/splay}
-  \caption{zig-zig: $x$和$p$都是左子树或都是右子树，$x$成为根节点。zig-zag: $x$和$p$一棵是左子树另一棵是右子树，$x$成为根节点，$p$和$g$变成了兄弟节点。zig: $p$是根节点，旋转后$x$变为根节点。}
+  \caption{\textbf{zig-zig}: $x$和$p$都是左子树或都是右子树，$x$成为根节点。\textbf{zig-zag}: $x$和$p$一棵是左子树另一棵是右子树，$x$成为根节点，$p$和$g$变成了兄弟节点。\textbf{zig}: $p$是根节点，旋转后$x$变为根节点。}
   \label{fig:splay}
 \end{figure}
 
@@ -562,7 +540,7 @@ insert\ y\ (L, x, R) & = & \begin{cases}
 \cref{fig:splay-result}给出了逐一插入$[1, 2, ..., 10]$的结果。伸展树产生了较平衡的结果。冈崎发现了一条简单的伸展操作规则\cite{okasaki-book}：每次连续向左或者向右访问两次的时候，就旋转节点。当访问节点$x$的时候，如果连续向左侧或者右侧前进两次，我们将树$T$分割成两部分：$L$和$R$，其中$L$中的所有元素小于$x$，$R$中的元素都大于$x$。然后以$x$为根，$L$、$R$为左右子树构建一棵新树。分割过程递归地对子树进行伸展操作。
 
 \be
-\resizebox{\linewidth}{!}{\ensuremath{
+%% \resizebox{\linewidth}{!}{\ensuremath{
 \begin{array}{l}
 \begin{array}{rcl}
 partition\ y\ \nil & = & (\nil, \nil) \\
@@ -590,10 +568,10 @@ partition\ y\ (L, x, R) & = &  \\
     \end{cases}
   \end{cases} \\
 \end{array}
-}}
+%% }}
 \ee
 
-$partition$接受一个基准值$y$一棵树$T$和。如果树为空，结果为一对空的左右子树。否则，记树为$(L, x, R)$，我们比较基准值$y$和根节点的值$x$。如果$x < y$，分为两种子情况。（1）$R$为空，根据二叉搜索树的性质，所有的元素都小于$y$，结果为$(T, \nil)$。（2）否则，令$R = (L', x', R')$，若$x' < y$，我们递归地用基准值分割$R'$，将$R'$中所有小于$y$的元素放入树$A$，其余元素放入树$B$。结果为一对树，其中一棵为$((L, x, L'), x', A)$，另一棵为$B$。若$x' > y$，我们递归地用$y$分割$L'$得到结果$(A, B)$。最终的结果为一对树，一棵是$(L, x, A)$，另一棵是$(B, x', R')$。当$y < x$时，情况是对称的。
+\textit{partition}接受一个基准值$y$一棵树$T$和。如果树为空，结果为一对空的左右子树。否则，记树为$(L, x, R)$，我们比较基准值$y$和根节点的值$x$。如果$x < y$，分为两种子情况。（1）$R$为空，根据二叉搜索树的性质，所有的元素都小于$y$，结果为$(T, \nil)$。（2）否则，令$R = (L', x', R')$，若$x' < y$，我们递归地用基准值分割$R'$，将$R'$中所有小于$y$的元素放入树$A$，其余元素放入树$B$。结果为一对树，其中一棵为$((L, x, L'), x', A)$，另一棵为$B$。若$x' > y$，我们递归地用$y$分割$L'$得到结果$(A, B)$。最终的结果为一对树，一棵是$(L, x, A)$，另一棵是$(B, x', R')$。当$y < x$时，情况是对称的。
 
 \index{伸展堆!插入}
 我们可以用$partition$实现插入算法。当向一个伸展堆$T$插入一个新元素$k$时，我们先将堆分割为两棵子树$L$和$R$。其中$L$含有所有小于$k$的节点，而$R$含有剩余的部分。然后我们构建一棵新树，使用$k$作为根，$L$和$R$作为子树。
@@ -663,9 +641,7 @@ merge\ (L, x, R)\ T & = & ((merge\ L\ L')\ x\ (merge\ R\ R')) \\
 data Node<T> {
     T value
     Int rank = 1
-    Node<T> left = null
-    Node<T> right = null
-    Node<T> parent = null
+    Node<T> left = null, right = null, parent = null
 }
 \end{Bourbaki}
 
@@ -704,8 +680,7 @@ Node<T> pop(Node<T> h) = merge(h.left, h.right)
 \begin{Bourbaki}
 data Node<T> {
     T value
-    Node<T> left = null
-    Node<T> right = null
+    Node<T> left = null, right = null
 }
 \end{Bourbaki}
 
