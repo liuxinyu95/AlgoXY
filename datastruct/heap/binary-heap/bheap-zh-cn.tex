@@ -34,7 +34,7 @@
 \section{定义}
 \label{introduction} \index{二叉堆}
 
-堆是一种常见的数据结构，可以用于排序、带有优先级的调度、图算法等\cite{wiki-heap}。堆通常用数组表示的二叉树\cite{CLRS}实现。Floyd由此给出了一种高效的堆排序算法\cite{wiki-heapsort}\cite{rosetta-heapsort}。堆本身的定义是抽象的，也可由其它数据结构实现。本章介绍用二叉树实现的堆，包括左偏堆（Leftist heap）、斜堆（Skew heap）、伸展堆（splay heap）\cite{okasaki-book}。一个堆或为空，或包含若干可比较的元素。它满足一条性质并定义了如下操作：
+堆是一种常见的数据结构，可以用于排序、带有优先级的调度、图算法等\cite{wiki-heap}。堆通常用数组表示的二叉树\cite{CLRS}实现。弗洛伊德（Robert W. Floyd）由此给出了一种高效的堆排序算法\cite{wiki-heapsort}\cite{rosetta-heapsort}。堆本身的定义是抽象的，也可由其它数据结构实现。本章介绍用二叉树实现的堆，包括左偏堆（Leftist heap）、斜堆（Skew heap）、伸展堆（splay heap）\cite{okasaki-book}。一个堆或为空，或包含若干可比较的元素。它满足一条性质并定义了如下操作：
 
 \begin{enumerate}
 \item \textbf{性质}：堆顶总保存着最小元素；
@@ -226,7 +226,7 @@ S = n (\frac{1}{4} + 2 \frac{1}{8} + 3 \frac{1}{16} + ...)
 \EndFunction
 \end{algorithmic}
 
-Floyd给出了另一种实现。构造一个大顶堆。将堆顶和数组末尾交换，这样最大元素就存储到了排序后的正确位置。而原来的末尾元素变成了新的堆顶。将堆的大小减一，然后执行\textproc{Heapify}恢复堆性质。重复这一过程，直到堆中仅剩一个元素。这一算法省去了额外的空间。
+弗洛伊德给出了另一种实现。构造一个大顶堆。将堆顶和数组末尾交换，这样最大元素就存储到了排序后的正确位置。而原来的末尾元素变成了新的堆顶。将堆的大小减一，然后执行\textproc{Heapify}恢复堆性质。重复这一过程，直到堆中仅剩一个元素。这一算法省去了额外的空间。
 
 \begin{algorithmic}[1]
 \Function{Heap-Sort}{$A$}
@@ -274,7 +274,7 @@ Floyd给出了另一种实现。构造一个大顶堆。将堆顶和数组末尾
 \section{左偏堆和斜堆}
 \label{ebheap}
 
-考虑不用数组而用显式的二叉树实现堆。当弹出堆顶元素后，剩余部分是左右两棵子树，它们都是堆，如\cref{fig:lvr}所示。我们如何将它们再次合并成一个堆呢？为保持堆性质，新的根节点必须是剩余元素中最小的。我们可以先给出两个特殊情况下的结果：
+弹出二叉堆的堆顶元素后，剩余左右两棵子树，它们也都是堆，如\cref{fig:lvr}所示。如何合并它们呢？显然：
 
 \begin{figure}[htbp]
   \centering
@@ -291,12 +291,12 @@ merge\ L\ R & = & ? \\
 \end{array}
 \]
 
-左右子树都不为空时，由于它们也都是堆，各自的根节点都保存了最小的元素。我们可以比较两棵子树的根，选择较小的一个作为合并后的根。令$L = (A, x, B)$、$R = (A', y, B')$，其中$A$、$A'$、$B$、$B'$都是子树。如果$x < y$，$x$就是新的根。我们可以保留$A$，然后递归地合并$B$和$R$；或者保留$B$，递归地合并$A$和$R$。新的堆可以为$(merge(A, R), x, B)$或$(A, x, merge(B, R))$之一。两个都可以，为了简单，我们可以总选择右子树进行合并。这样的堆称为\textbf{左偏堆}（{\em Leftist} heap）。
+如果左右子树都不空，为保持堆性质，新的根节点必须是剩余元素中最小的。左右子树（它们也都是堆）的根节点分别保存了各自的最小元素，我们选择较小的一个作为合并后的根。令$L = (A, x, B)$、$R = (A', y, B')$，其中$A$、$A'$、$B$、$B'$都是子树。如果$x < y$，$x$就是新的根。我们可以保留$A$，递归地合并$B$和$R$；或者保留$B$，递归地合并$A$和$R$。新的堆为$(merge\ A\ R, x, B)$或$(A, x, merge\ B\ R)$之一。两个都可以，为了简单，我们总选择右子树进行合并。称这样的堆为\textbf{左偏堆}（{\em Leftist} heap）。
 
 \subsection{左偏堆}
 \index{左偏堆} \index{左偏堆!秩} \index{左偏堆!S-值}
 
-使用左偏树实现的堆称为左偏堆。左偏树最早由C. A. Crane于1972年引入\cite{wiki-leftist-tree}。树中每个节点都定义了一个秩，也称作$S$值。节点的秩是到最近的NIL节点的距离。而NIL节点的秩等于0。如\cref{fig:rank}所示，距离根节点4最近的叶子节点为8，所以根节点的秩为2。节点6和8都是叶子，它们的秩为1。虽然节点5的左子树不为空，但是它的右子树为空，因此秩等于1。使用秩，我们可以定义合并策略如下，记左右子树的秩分别为$r_l$、$r_r$：
+使用左偏树实现的堆称为左偏堆。克雷恩（C. A. Crane）于1972年\cite{wiki-leftist-tree}提出了左偏树。每个节点都定义了一个秩（也称作$S$值），等于到最近的NIL节点的距离。NIL节点的秩等于0。如\cref{fig:rank}所示，距离根节点4最近的叶子节点为8，所以根节点的秩为2。节点6和8都是叶子，它们的秩为1。虽然节点5的左子树不为空，但是它的右子树为空，因此秩等于1。记左右子树的秩分别为$r_l$、$r_r$，定义合并策略如下：
 
 \begin{figure}[htbp]
   \centering
@@ -316,7 +316,7 @@ merge\ L\ R & = & ? \\
 若一棵左偏树$T$包含$n$个节点，从根节点到达最右侧NIL的路径上最多含有$\lfloor \log (n + 1) \rfloor$个节点。
 \end{theorem}
 
-我们这里省略了证明\cite{brono-book}, \cite{TAOCP-bheap}。根据此定理，沿着这一路径进行操作的算法，都可以保证$O(\lg n)$的复杂度。我们可以在二叉树的基础上增加一个秩来定义左偏树。记非空的左偏树为$(r, L, k, R)$，分别表示秩、左子树、元素值、右子树：
+我们省略了证明\cite{brono-book}, \cite{TAOCP-bheap}。根据此定理，沿着这一路径进行操作的算法，可以保证$O(\lg n)$的复杂度。记非空的左偏树为$(r, L, k, R)$，分别表示秩、左子树、元素值、右子树：
 
 \lstset{frame = single}
 \begin{Haskell}
@@ -333,7 +333,7 @@ rank\ (r, L, k, R) & = & r \\
 \ee
 
 \index{左偏堆!合并}
-为了实现合并，我们定义$make$函数比较左右子树的秩，并交换子树保持左偏性质。
+定义$make$函数比较左右子树的秩，并交换子树保持左偏性质。
 
 \be
 make(A, k, B) = \begin{cases}
@@ -342,7 +342,7 @@ make(A, k, B) = \begin{cases}
   \end{cases}
 \ee
 
-传入两棵子树$A$、$B$和元素$k$。若$A$的秩较小，则用$B$作为左子树、$A$作为右子树。新节点的秩为$1 + rank(A)$；否则，若$B$的秩较小，就用$A$作为左子树，$B$作为右子树。新节点的秩为$1 + rank(B)$。给定两个左偏堆$H_1$和$H_2$，它们不空时分别记为$(r_1, L_1, K_1, R_1)$、$(r_2, L_2, k_2, R_2)$，下面的函数定义了合并操作：
+传入两棵子树$A$、$B$和元素$k$。若$A$的秩较小，则用$B$作为左子树、$A$作为右子树。新节点的秩为$1 + rank(A)$；否则，若$B$的秩较小，就用$A$作为左子树，$B$作为右子树。新节点的秩为$1 + rank(B)$。给定两个左偏堆$H_1$和$H_2$，不空时记为$(r_1, L_1, K_1, R_1)$、$(r_2, L_2, k_2, R_2)$，合并操作定义为：
 
 \be
 \begin{array}{rcl}
@@ -355,7 +355,7 @@ make(A, k, B) = \begin{cases}
 \end{array}
 \ee
 
-$merge$总在右子树上进行递归，左偏性质得以保持。这样就保证了算法的复杂度为$O(\lg n)$。回顾上节，使用数组实现的堆在大多数情况下性能很好，并且和计算机的高速缓存技术配合良好。但是合并操作的时间复杂度却为线性时间$O(n)$。我们需要将两个数组连接起来，然后重新构建堆\cite{NIST}。
+$merge$总在右子树上进行递归以保持左偏性质，保证了复杂度为$O(\lg n)$。回顾上节，使用数组实现的堆在大多数情况下性能很好，但合并操作的时间复杂度为$O(n)$。我们需要连接两个数组，再重新构建堆\cite{NIST}。
 
 \begin{algorithmic}[1]
 \Function{Merge-Heap}{$A, B$}
@@ -364,35 +364,27 @@ $merge$总在右子树上进行递归，左偏性质得以保持。这样就保�
 \EndFunction
 \end{algorithmic}
 
-使用$merge$函数，可以实现基本的堆操作。
-
 \index{左偏堆!top} \index{左偏堆!pop} \index{左偏堆!弹出}
-我们可以在$O(1)$时间内获取根节点中的堆顶元素（设若树不为空）：
+使用$merge$函数，可以实现基本的堆操作，例如在常数时间获取位于根节点的堆顶元素（设树不为空）：
 
 \be
 top\ (r, L, k, R) = k
 \ee
 
-弹出顶部后，我们将左右子树合并为一个新堆。弹出的时间复杂度和$merge$相同，也是$O(\lg n)$。
+弹出顶部后，将左右子树合并为一个新堆。弹出的复杂度和$merge$相同，也是$O(\lg n)$。
 
 \be
 pop\ (r, L, k, R) = merge\ L\ R
 \ee
 
 \index{左偏树!插入}
-插入新元素$k$时，可以从$k$构造出只有一个叶子节点的树，然后将它和合并到待插入的树中：
+插入新元素$k$时，从$k$构造出一个叶子节点，然后将它合并：
 
 \be
 insert\ k\ H = merge\ (1, \nil, k, \nil)\ H
 \ee
 
-或写成柯里化的形式$insert\ k\ = merge\ (1, \nil, k, \nil)$。这样插入的时间复杂度也和合并相同，为$O(\lg n)$。我们可以将一个列表中的元素依次插入，从列表构造左偏堆。\cref{fig:leftist-tree}给出了一个构造左偏堆的例子。
-
-\be
-build\ L = fold_r\ insert\ \nil\ L
-\ee
-
-对应的柯里化形式为：$build = fold_r\ insert\ \nil$
+或写成柯里化的形式$insert\ k\ = merge\ (1, \nil, k, \nil)$。插入的复杂度也是$O(\lg n)$。我们可以将一个列表中的元素依次插入，构造左偏堆（柯里化形式）：$build = fold_r\ insert\ \nil$。\cref{fig:leftist-tree}给出了一个构造左偏堆的例子。
 
 \begin{figure}[htbp]
   \centering
@@ -412,7 +404,7 @@ sort = heapSort \circ build
 \be
 \begin{array}{rcl}
 heapSort\ \nil & = & [\ ] \\
-heapSort\ H & = & (top\ H) : (heapSort\ (pop\ H)) \\
+heapSort\ H & = & (top\ H) : heapSort\ (pop\ H) \\
 \end{array}
 \ee
 
@@ -421,7 +413,7 @@ heapSort\ H & = & (top\ H) : (heapSort\ (pop\ H)) \\
 \subsection{斜堆}
 \label{skew-heap} \index{斜堆}
 
-左偏堆在某些情况下会产生不平衡的结构，如\cref{fig:unbalanced-leftist-tree}所示。斜堆（skew heap）是一种自调整堆，它简化了左偏堆的实现并提高了平衡性\cite{wiki-skew-heap}、\cite{self-adjusting-heaps}。构造左偏堆时，若左侧的秩小于右侧，则交换左右子树。但是这一策略不能很好处理某一分支含有一个NIL子节点的情况：不管树有多大，它的秩总为1。斜堆简化了合并策略：每次都交换左右子树。
+左偏堆在某些情况下会产生不平衡的结构，如\cref{fig:unbalanced-leftist-tree}所示。斜堆（skew heap）是一种自调整堆，它简化了左偏堆并提高了平衡性\cite{wiki-skew-heap}\cite{self-adjusting-heaps}。构造左偏堆时，若左侧的秩小于右侧，则交换左右子树。但分支有一个NIL子节点时，不管树有多大，秩总为1。斜堆简化了合并策略：每次都交换左右子树。
 
 \begin{figure}[htbp]
   \centering
@@ -430,14 +422,14 @@ heapSort\ H & = & (top\ H) : (heapSort\ (pop\ H)) \\
   \label{fig:unbalanced-leftist-tree}
 \end{figure}
 
-斜堆是由斜树（skew tree）实现的堆。斜树是一种特殊的二叉树。最小的元素保存在根节点，每棵子树也都是一棵斜树。它不保存秩，可以直接复用二叉树的定义。树或者为空，或记为$(L, k, R)$。
+斜堆由斜树（skew tree）实现。斜树是一种特殊的二叉树。最小的元素位于根节点，每棵子树也是一棵斜树。它无需秩，可直接复用二叉树的定义。树或者为空，或记为$(L, k, R)$。
 
 \begin{Haskell}
 data SHeap a = Empty | Node (SHeap a) a (SHeap a)
 \end{Haskell}
 
 \index{斜堆!合并} \index{斜堆!插入} \index{斜堆!top} \index{斜堆!pop} \index{斜堆!弹出}
-当合并两棵非空斜树时，先比较根节点，选择较小的作为新的根。然后把含有较大元素的树合并到某一子树上。最后再把左右子树交换。令两棵非空子树为：$H_1 = (L_1, k_1, R_1)$、$H_2 =(L_2, k_2, R_2)$。若$k_1 < k_2$，选择$k_1$作为新的根。我们既可以将$H_2$和$L_1$合并，也可以将$H_2$和$R_1$合并。不失一般性，我们合并到$R_1$上。然后交换左右子树，最后的结果为$(\textit{merge}\ R_1\ H_2, k_1, L_1)$。
+合并两棵非空斜树$H_1 = (L_1, k_1, R_1)$、$H_2 =(L_2, k_2, R_2)$时，若$k_1 < k_2$，选择$k_1$作为新的根。我们既可以将$H_2$和$L_1$合并，也可以将$H_2$和$R_1$合并。我们选择合并到$R_1$上。然后交换左右子树，最后的结果为$(\textit{merge}\ R_1\ H_2, k_1, L_1)$。
 
 \be
 \begin{array}{rcl}
@@ -450,7 +442,7 @@ data SHeap a = Empty | Node (SHeap a) a (SHeap a)
 \end{array}
 \ee
 
-其他的操作，包括插入，获取和弹出顶部都和左偏树一样通过合并来实现。即使用斜堆处理已序序列，结果仍然是一棵较平衡的二叉树，如\cref{fig:skew-tree}所示。
+其它的操作，包括插入，获取和弹出顶部都和左偏树一样通过合并来实现。即使用斜堆处理已序序列，结果仍然是一棵较平衡的二叉树，如\cref{fig:skew-tree}所示。
 
 \begin{figure}[htbp]
   \centering
@@ -462,29 +454,27 @@ data SHeap a = Empty | Node (SHeap a) a (SHeap a)
 \section{伸展堆}
 \label{splayheap} \index{伸展堆}
 
-左偏堆和斜堆是直接用二叉树实现的堆。如果将二叉树换成二叉搜索树，则最小（或最大）元素就不再位于根节点。我们需要$O(\lg n)$时间来获取最小（或最大）元素。如果二叉搜索树不平衡，性能会下降。最坏情况下会退化为$O(n)$。尽管可以用红黑树来保持平衡，伸展树提供了一种轻量级的实现方法，使得树不断趋向平衡。伸展树采用类似于缓存的策略，它不断将正在访问的节点向根旋转，这样再次访问的时候就可以更快。我们将这样的操作称为“伸展（splay）”。对于不平衡的二叉搜索树，经过若干次伸展后，树会变得逐渐平衡。大多数伸展树操作的均摊性能是$O(\lg n)$的。Daniel Dominic Sleator和Robert Endre Tarjan在1985年最早引入了伸展树\cite{wiki-splay-tree}\cite{self-adjusting-trees}。
+左偏堆和斜堆是直接用二叉树实现的堆。如果将二叉树换成二叉搜索树，则最小（或最大）元素就不再位于根节点。我们需要$O(\lg n)$时间来获取最小（或最大）元素。如果二叉搜索树不平衡，性能会下降。最坏情况下会退化为$O(n)$。尽管可以用红黑树来保持平衡，伸展树提供了一种轻量级的实现方法，使得树不断趋向平衡。Sleator和Tarjan在1985年引入了伸展树\cite{wiki-splay-tree}\cite{self-adjusting-trees}。它采用类似缓存的策略，不断将正在访问的节点向根旋转，加快再次访问的速度。我们将这样的操作称为“伸展（splay）”。不平衡的二叉搜索树经过若干次伸展后，会逐渐变得平衡。大多数伸展树操作的均摊性能是$O(\lg n)$。
 
 \subsection{伸展操作}
 \index{伸展堆!splay}
 
-有两种方法可以实现伸展操作。第一种利用模式匹配，但需要处理较多的情况；第二种具备统一的形式，但是实现较为复杂。记正在访问的节点元素为$x$，它的父节点元素为$p$，如果存在祖父节点，其元素记为$g$。伸展操作分为三个步骤，每个步骤有两个对称的情况，我们以每步中的一种情况举例说明，如\cref{fig:splay}所示。
-
-\begin{enumerate}
-\item \textbf{zig-zig}步骤，$x$和$p$都是左子树或者$x$和$p$都是右子树。我们通过两次旋转，将$x$变成根节点。
-
-\item \textbf{zig-zag}步骤，$x$和$p$一棵是左子树另一棵是右子树。经过旋转，$x$变成根节点，$p$和$g$变成了兄弟节点。
-
-\item \textbf{zig}步骤，这种情况下，$p$是根节点，经过旋转，$x$变成了根节点。这是伸展操作的最后一步。
-\end{enumerate}
+有两种方法可以实现伸展操作。第一种利用模式匹配，但需要处理较多的情况；第二种具备统一的形式，但是实现较为复杂。记正在访问的节点为$x$，它的父节点为$p$，如果存在祖父节点，记为$g$。伸展操作分为三个步骤，每个步骤有两个对称的情况，我们以每步中的一种情况举例说明，如\cref{fig:splay}所示。
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[scale=0.45]{img/splay}
-  \caption{\textbf{zig-zig}: $x$和$p$都是左子树或都是右子树，$x$成为根节点。\textbf{zig-zag}: $x$和$p$一棵是左子树另一棵是右子树，$x$成为根节点，$p$和$g$变成了兄弟节点。\textbf{zig}: $p$是根节点，旋转后$x$变为根节点。}
+  \caption{\textbf{zig-zig}: $x$和$p$都是左子树或都是右子树，$x$成为根节点。\textbf{zig-zag}: $x$和$p$一左一右，$x$成为根节点，$p$和$g$变成兄弟节点。\textbf{zig}: $p$是根节点，旋转后$x$变为根节点。}
   \label{fig:splay}
 \end{figure}
 
-共有6种不同的情况。记非空二叉树为$T=(L, k, R)$，当访问树中的元素$y$时，伸展操作定义如下：
+\begin{enumerate}
+\item \textbf{zig-zig}步骤，$x$和$p$都是左子树或都是右子树。通过两次旋转将$x$变成根节点。
+\item \textbf{zig-zag}步骤，$x$和$p$一左一右。经过旋转$x$变成根节点，$p$和$g$变成兄弟节点。
+\item \textbf{zig}步骤，$p$是根节点，经过旋转$x$变成了根节点。这是伸展操作的最后一步。
+\end{enumerate}
+
+共有6种不同的情况。记非空二叉树为$T=(L, k, R)$，访问元素$y$时，定义伸展操作如下：
 
 \be
 \begin{array}{rcll}
@@ -516,14 +506,14 @@ splay\ y\ T & = & T & \text{其它} \\
 \end{array}
 \ee
 
-前两条子式处理zig-zig情况；接下来的两条子式处理zig-zag情况；最后两条子式处理zig情况。其他情况下，树都保持不变。每次插入新元素时，我们就执行伸展操作来调整树的平衡性。如果树为空，结果为一个叶子节点；否则我们比较待插入的元素和根节点，如果待插入的元素较小，就将其递归插入左子树，然后执行伸展操作；否则插入右子树，再执行伸展操作。
+其它情况下树保持不变。每次插入时，执行伸展操作调整平衡。如果树为空，结果为一个叶子节点；否则比较待插入元素$y$和根节点$x$，如果$y < x$就递归插入左子树，然后伸展；否则插入右子树再伸展。
 
 \be
 \begin{array}{rcl}
 insert\ y\ \nil & = & (\nil, y, \nil) \\
 insert\ y\ (L, x, R) & = & \begin{cases}
-  y < x: & splay\ y\ ((insert\ y\ L), x, R)  \\
-  \text{否则}: & splay\ y\ (L, x, (insert\ y\ R)) \\
+  y < x: & splay\ y\ (insert\ y\ L, x, R)  \\
+  \text{否则}: & splay\ y\ (L, x, insert\ y\ R) \\
 \end{cases}
 \end{array}
 \ee
@@ -535,7 +525,7 @@ insert\ y\ (L, x, R) & = & \begin{cases}
   \label{fig:splay-result}
 \end{figure}
 
-\cref{fig:splay-result}给出了逐一插入$[1, 2, ..., 10]$的结果。伸展树产生了较平衡的结果。冈崎发现了一条简单的伸展操作规则\cite{okasaki-book}：每次连续向左或者向右访问两次的时候，就旋转节点。当访问节点$x$的时候，如果连续向左侧或者右侧前进两次，我们将树$T$分割成两部分：$L$和$R$，其中$L$中的所有元素小于$x$，$R$中的元素都大于$x$。然后以$x$为根，$L$、$R$为左右子树构建一棵新树。分割过程递归地对子树进行伸展操作。
+\cref{fig:splay-result}给出了逐一插入$[1, 2, ..., 10]$的结果，产生的伸展树较平衡。冈崎发现了一条简单的伸展规则\cite{okasaki-book}：每次连续向左或向右访问两次就旋转节点。用当前访问的元素$x$将树$T$分割成两部分：$L$和$R$，使得$L < k < R$（$L$中元素都小于$x$，$R$中元素都大于$x$）。然后以$x$为根，$L$、$R$为子树构建一棵新树。分割过程递归地对子树进行伸展。
 
 \be
 %% \resizebox{\linewidth}{!}{\ensuremath{
