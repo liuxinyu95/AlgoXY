@@ -559,10 +559,10 @@ partition\ y\ (L, x, R) & = &  \\
 %% }}
 \ee
 
-\textit{partition}接受一个基准值$y$一棵树$T$和。如果树为空，结果为一对空的左右子树。否则，记树为$(L, x, R)$，我们比较基准值$y$和根节点的值$x$。如果$x < y$，分为两种子情况。（1）$R$为空，根据二叉搜索树的性质，所有的元素都小于$y$，结果为$(T, \nil)$。（2）否则，令$R = (L', x', R')$，若$x' < y$，我们递归地用基准值分割$R'$，将$R'$中所有小于$y$的元素放入树$A$，其余元素放入树$B$。结果为一对树，其中一棵为$((L, x, L'), x', A)$，另一棵为$B$。若$x' > y$，我们递归地用$y$分割$L'$得到结果$(A, B)$。最终的结果为一对树，一棵是$(L, x, A)$，另一棵是$(B, x', R')$。当$y < x$时，情况是对称的。
+\textit{partition}接受一个基准值$y$和一棵树$T$。如果树为空，结果为$(\nil, \nil)$。否则，记$T = (L, x, R)$，若$x < y$，分为两种子情况：（1）$R = \nil$，根据二叉搜索树的性质，所有元素都小于$y$，结果为$(T, \nil)$。（2）否则，令$R = (L', x', R')$，若$x' < y$，递归地用基准值分割$R'$，将所有小于$y$的元素放入树$A$，其余放入树$B$。结果为一对树：$((L, x, L'), x', A)$和$B$。若$x' > y$，递归地用$y$分割$L'$得$(A, B)$。结果为一对树：$(L, x, A)$和$(B, x', R')$。当$y < x$时，情况是对称的。
 
 \index{伸展堆!插入}
-我们可以用$partition$实现插入算法。当向一个伸展堆$T$插入一个新元素$k$时，我们先将堆分割为两棵子树$L$和$R$。其中$L$含有所有小于$k$的节点，而$R$含有剩余的部分。然后我们构建一棵新树，使用$k$作为根，$L$和$R$作为子树。
+可以用$partition$实现插入算法。向伸展堆$T$插入元素$k$时，先将堆分割为两棵子树$L$和$R$，使得$L < k < R$（$L$含有所有小于$k$的节点，$R$含有剩余的部分）。然后构造出树$(L, k, R)$。
 
 \be
 insert\ k\ T = (L, k, R), \text{其中：} (L, R) = partition\ k\ T
@@ -571,7 +571,7 @@ insert\ k\ T = (L, k, R), \text{其中：} (L, R) = partition\ k\ T
 \subsection{弹出顶部}
 \index{伸展堆!top} \index{伸展堆!pop} \index{伸展堆!弹出}
 
-由于伸展树本质上是二叉搜索树，最小的元素位于最左侧的节点。我们不断向左遍历以获取顶部元素。记非空的树为$T=(L, k, R)$，$top$函数可以定义如下：
+伸展树本质上是二叉搜索树，最小的元素位于最左侧。通过向左遍历可以获取顶部元素：
 
 \be
 \begin{array}{rcl}
@@ -580,7 +580,7 @@ top\ (L, k, R) & = & top\ L \\
 \end{array}
 \ee
 
-这实际上就是二叉搜索树的$min$函数。弹出顶部时，需要将最小元素删除。同时每当连续向左访问两次，就执行一次伸展操作。
+这实际上就是二叉搜索树的$min$函数（也可以定义：$top = \min$）。弹出时，每当连续向左两次，就进行伸展。
 
 \be
 \begin{array}{rcl}
@@ -590,15 +590,16 @@ pop\ ((L', k', R'), k, R) & = & (pop\ L', k', (R', k, R)) \\
 \end{array}
 \ee
 
-第三条子式实际上执行了伸展操作，它并没有显式地调用$partition$函数，而是直接使用了二叉搜索树的性质。伸展树在平衡时，堆顶操作的时间复杂度是$O(\lg n)$。
+第三条子式进行了伸展。它使用了二叉搜索树的性质，并未调用\textit{partition}函数。伸展树平衡时，弹出操作的复杂度是$O(\lg n)$。
 
 \subsection{合并}
 \index{伸展堆!合并}
 
-通过使用$partition$，我们可以实现$O(\lg n)$时间的合并算法。当合并两棵伸展树时，如果它们都不为空，我们可以将第一棵树的根节点作为新的根，然后将其作为基准值分割第二棵树。此后，我们递归地将第一棵树的子树合并。
+通过\textit{partition}，我们可以实现$O(\lg n)$时间的合并算法。合并两棵伸展树时，如果它们都不为空，可以将第一棵树的根节点作为新的根，然后将其作为基准值分割第二棵树。再递归地将第一棵树的子树合并。
 
 \be
 \begin{array}{rcl}
+merge\ T\ \nil & = & T \\
 merge\ \nil\ T & = & T \\
 merge\ (L, x, R)\ T & = & ((merge\ L\ L')\ x\ (merge\ R\ R')) \\
 \end{array}
@@ -610,11 +611,9 @@ merge\ (L, x, R)\ T & = & ((merge\ L\ L')\ x\ (merge\ R\ R')) \\
   (L', R') = partition\ x\ T
 \]
 
-如果第一个堆为空，结果为另一个堆。否则，记第一个堆为$(L, x, R)$，用$x$为基准值分割$T$得到结果$(L', R')$，其中$L'$包含$T$中所有小于$x$的元素，而$R'$包含其余元素。接下来递归地将$L$和$L'$合并为新的左子树，将$R$和$R'$合并为右子树。
-
 \section{小结}
 
-本章中，我们介绍了通用的二叉堆概念。只要满足堆的性质，可以使用各种形式的二叉树来实现。用数组作为存储结构适于命令式实现，它将一棵完全二叉树映射为数组。方便进行随机访问。我们还介绍了直接用二叉树实现的堆，适于函数式实现。大部分操作的时间复杂度可以达到$O(\lg n)$，有些操作的分摊时间复杂度是$O(1)$的。冈崎在\cite{okasaki-book}中给出了详细分析。一个自然的想法是将二叉树扩展到多叉树，这样就会得到其它数据结构如二项式堆、斐波那契堆和配对堆。参见第十章。
+本章中，我们介绍了二叉堆概念。只要满足堆性质，可以使用各种形式的二叉树实现。用数组表示完全二叉树易于随机访问，适于命令式实现。直接用二叉树实现的堆，适于函数式实现。大部分操作的时间复杂度可以达到$O(\lg n)$，有些操作的分摊复杂度是常数时间的。冈崎在\cite{okasaki-book}中给出了详细分析。如果将二叉树扩展成多叉树，就会得到更丰富的堆结构，如二项式堆、斐波那契堆、配对堆（见第十章）。
 
 \begin{Exercise}\label{ex:other-binary-heaps}
 \Question{用命令式的方式实现左偏堆、斜堆。} %伸展堆
@@ -664,7 +663,7 @@ T top(Node<T> h) = h.value
 Node<T> pop(Node<T> h) = merge(h.left, h.right)
 \end{Bourbaki}
 
-斜堆的实现更简单，我们无需维护子树的秩，省去了回溯的过程，因此无需父节点引用：
+斜堆的实现更简单，我们无需维护子树的秩，省去了回溯的过程，无需父节点引用：
 \begin{Bourbaki}
 data Node<T> {
     T value
@@ -672,7 +671,7 @@ data Node<T> {
 }
 \end{Bourbaki}
 
-我们仅实现合并函数，其它函数的实现和左偏堆相同：
+我们仅实现合并函数，其它函数和左偏堆相同：
 \begin{Bourbaki}
 Node<T> merge(Node<T> a, Node<T> b) {
     var h = Node(None)
@@ -759,7 +758,7 @@ K pop([K] a, Less<K> lt) {
 }
 \end{lstlisting}
 
-寻找top-$k$：
+寻找前$k$个元素：
 
 \begin{lstlisting}[language = Bourbaki]
 [K] topk([K] a, Int k, Less<K> lt) {
@@ -816,8 +815,8 @@ void heapSort([K] a, less<K> lt) {
 左偏堆合并：
 
 \begin{Haskell}
-merge E h = h
-merge h E = h
+merge Empty h = h
+merge h Empty = h
 merge h1@(Node _ x l r) h2@(Node _ y l' r') =
     if x < y then makeNode x l (merge r h2)
     else makeNode y l' (merge h1 r')
@@ -829,8 +828,8 @@ makeNode x a b = if rank a < rank b then Node (rank a + 1) x b a
 斜堆合并：
 
 \begin{Haskell}
-merge E h = h
-merge h E = h
+merge Empty h = h
+merge h Empty = h
 merge h1@(Node x l r) h2@(Node y l' r') =
     if x < y then Node x (merge r h2) l
     else Node y (merge h1 r') l'
@@ -859,7 +858,7 @@ splay t _ = t
 伸展堆的插入：
 
 \begin{Haskell}
-insert E y = Node E y E
+insert Empty y = Node Empty y Empty
 insert (Node l x r) y
     | x > y     = splay (Node (insert l y) x r) y
     | otherwise = splay (Node l x (insert r y)) y
@@ -868,11 +867,11 @@ insert (Node l x r) y
 伸展树的分割：
 
 \begin{Haskell}
-partition E _ = (E, E)
+partition Empty _ = (Empty, Empty)
 partition t@(Node l x r) y
     | x < y =
         case r of
-          E -> (t, E)
+          Empty -> (t, Empty)
           Node l' x' r' ->
               if x' < y then
                   let (small, big) = partition r' y in
@@ -882,7 +881,7 @@ partition t@(Node l x r) y
                   (Node l x small, Node big x' r')
     | otherwise =
         case l of
-          E -> (E, t)
+          Empty -> (Empty, t)
           Node l' x' r' ->
               if y < x' then
                   let (small, big) = partition l' y in
@@ -895,7 +894,8 @@ partition t@(Node l x r) y
 伸展树合并：
 
 \begin{Haskell}
-merge E t = t
+merge t Empty = t
+merge Empty t = t
 merge (Node l x r) t = Node (merge l l') x (merge r r')
     where (l', r') = partition t x
 \end{Haskell}
