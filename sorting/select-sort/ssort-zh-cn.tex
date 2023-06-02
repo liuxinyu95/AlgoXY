@@ -210,8 +210,8 @@ sortBy \lhd\ xs & = & m : sortBy\ \lhd\ xs',\ \text{其中}:\ (m, xs') = minBy\ 
 \be
 \begin{array}{rcl}
 minBy\ \lhd\ [x] & = & (x, [\ ]) \\
-minBy\ \lhd\ (x:xs) & = & \begin{cases}
-  x \lhd y: & (x, xs),\ \text{其中}:\ (y, ys) = minBy\ xs \\
+minBy\ \lhd\ (x \cons xs) & = & \begin{cases}
+  x \lhd y: & (x, xs),\ \text{其中}:\ (y, ys) = minBy\ \lhd\ xs \\
   \text{否则}: & (y,\ x:ys)
 \end{cases}
 \end{array}
@@ -221,8 +221,8 @@ minBy\ \lhd\ (x:xs) & = & \begin{cases}
 对于一组整数，传入小于号得到升序结果：$sortBy\ (<)\ [3, 1, 4, ...]$。这里要求比较$\lhd$操作满足严格弱序\cite{wiki-sweak-order}条件：
 
 \begin{itemize}
-\item 非自反性：对任何$x$，$x < x$不成立；
-\item 非对称性：对任何$x$、$y$，若$x < y$，则$y < x$不成立；
+\item 非自反性：对任何$x$，$x \nless x$；
+\item 非对称性：对任何$x$、$y$，若$x < y$，则$y \nless x$；
 \item 传递性：对任何$x$、$y$、$z$，若$x < y$且$y < z$，则$x < z$。
 \end{itemize}
 
@@ -347,37 +347,37 @@ minBy\ \lhd\ (x:xs) & = & \begin{cases}
 \begin{array}{rcl}
 sort\ [\ ] & = & [\ ] \\
 sort\ [x] & = & [x] \\
-sort\ xs & = & a : (sort\ xs') \doubleplus [b], \text{其中}: (a, b, xs') = \textit{minMax}\ xs \\
+sort\ xs & = & a : (sort\ xs') \doubleplus [b], \text{其中}: (a, b, xs') = \textit{min-max}\ xs \\
 \end{array}
 \ee
 
-其中，函数\textit{minMax}从序列中抽取出最小值和最大值：
+其中，函数\textit{min-max}从序列中抽取出最小值和最大值：
 
 \be
-\textit{minMax}\ (x:y:xs) = foldr\ sel (\min\ x\ y, \max\ x\ y, [\ ])\ xs
+\textit{min-max}\ (x \cons y \cons xs) = foldr\ sel\ (\min\ x\ y, \max\ x\ y, [\ ])\ xs
 \ee
 
 我们选取头两个元素分别作为已找到的最小值$x_0$，最大值$x_1$，用$foldr$扫描序列，其中$sel$定义为：
 
 \[
 sel\ x\ (x_0, x_1, xs) = \begin{cases}
-  x < x_0: & (x, x_1, x_0 : xs) \\
-  x_1 < x: & (x_0, x, x_1 : xs) \\
-  \text{否则}: & (x_0, x_1, x : xs) \\
+  x < x_0: & (x, x_1, x_0 \cons xs) \\
+  x_1 < x: & (x_0, x, x_1 \cons xs) \\
+  \text{否则}: & (x_0, x_1, x \cons xs) \\
 \end{cases}
 \]
 
-尽管\textit{minMax}的时间性能是线性时间$O(n)$的，但$\doubleplus[b]$的代价较大。如\cref{fig:cock-tail-sort}所示，令左侧$A$包含较小的已序元素；右侧$B$包含较大的已序元素。用$A$和$B$作为累积器，可以将鸡尾酒排序转换为尾递归的：
+尽管\textit{min-max}的时间性能是线性时间$O(n)$的，但$\doubleplus[b]$的代价较大。如\cref{fig:cock-tail-sort}所示，令左侧$A$包含较小的已序元素；右侧$B$包含较大的已序元素。用$A$和$B$作为累积器，可以将鸡尾酒排序转换为尾递归的：
 
 \be
 \begin{array}{rcl}
 sort'\ A\ B\ [\ ] & = & A \doubleplus B \\
-sort'\ A\ B\ [x]  & = & A \doubleplus (x:B) \\
-sort'\ A\ B\ (x:xs) & = & sort'\ (A \doubleplus [x_0])\ xs'\ (x_1:B) \\
+sort'\ A\ B\ [x]  & = & A \doubleplus (x \cons B) \\
+sort'\ A\ B\ (x \cons xs) & = & sort'\ (A \doubleplus [x_0])\ xs'\ (x_1 \cons B), \text{其中：}(x_0, x_1, xs') = \textit{min-max}\ xs \\
 \end{array}
 \ee
 
-其中：$(x_0, x_1, xs') = \textit{minMax}\ xs$，我们传入空的$A$、$B$启动排序：$sort = sort'\ [\ ]\ [\ ]$。追加操作仅仅发生在$A \doubleplus [x_0]$；而$x_1$则被链结到$B$的前面。每次递归都会产生一次追加操作。为了消除它，我们可以将$A$保存为逆序$\overleftarrow{A}$，这样就可以将$x_0$链结到前面而不是追加。我们有如下等价关系：
+传入空的$A$、$B$启动排序：$sort = sort'\ [\ ]\ [\ ]$。追加操作仅仅发生在$A \doubleplus [x_0]$；而$x_1$则被链结到$B$的前面。每次递归都会产生一次追加操作。为了消除它，我们可以将$A$保存为逆序$\overleftarrow{A}$，这样就可以将$x_0$链结到前面而不是追加。我们有如下等价关系：
 
 \be
 \begin{array}{rcl}
@@ -393,8 +393,8 @@ A' & = & A \doubleplus [x] \\
 \be
 \begin{array}{rcl}
 sort'\ A\ B\ [\ ] & = & (reverse\ A) \doubleplus B \\
-sort'\ A\ B\ [x]  & = & (reverse\ x:A) \doubleplus B \\
-sort'\ A\ B\ (x:xs) & = & sort'\ (x_0:A)\ xs'\ (x_1:B) \\
+sort'\ A\ B\ [x]  & = & (reverse\ x \cons A) \doubleplus B \\
+sort'\ A\ B\ (x \cons xs) & = & sort'\ (x_0 \cons A)\ xs'\ (x_1 \cons B) \\
 \end{array}
 \ee
 
