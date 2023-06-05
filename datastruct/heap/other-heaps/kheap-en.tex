@@ -167,6 +167,7 @@ pascal = gen [1] where
   gen cs (x:y:xs) = gen ((x + y) : cs) (y:xs)
   gen cs _ = 1 : cs
 \end{Haskell}
+Given any row in Pascal's triangle, this function generates the next row. We can build the first $n$ rows of pascal triangle as: \texttt{take n (iterate pascal [1])}.
 }
 \Question{Prove that the $i$-th row in tree $B_n$ has $\binom{n}{i}$ nodes.
 \begin{proof}
@@ -893,17 +894,17 @@ It's complex to implement Fibonacci heap. Pairing heap provides another option. 
 A pairing heap is a multi-way tree. The root holds the minimum. A pairing heap is either empty $\nil$, or a $k$-ary tree, consists of a root and multiple sub-trees, denoted as $(x, ts)$. We can also use `left child, right sibling' way to define the tree.
 
 \begin{Haskell}
-data PHeap a = E | Node a [PHeap a]
+data PHeap a = Empty | Node a [PHeap a]
 \end{Haskell}
 
 \subsection{Merge, insert, and top}
 \index{Pairing heap!insert} \index{Pairing heap!top}
 
-There are two cases when merge two heaps:
+There are two cases for merge:
 
 \begin{enumerate}
 \item Either heap is $\nil$, the result is the other heap;
-\item Otherwise, compare the two roots, turn the greater one as the new sub-tree of the other.
+\item Otherwise, compare the two roots, set the greater one as the new sub-tree of the other.
 \end{enumerate}
 
 \be
@@ -911,14 +912,13 @@ There are two cases when merge two heaps:
 merge\ \nil\ h_2 & = & h_2 \\
 merge\ h_1\ \nil & = & h_1 \\
 merge\ (x, ts_1)\ (y, ts_2) & = & \begin{cases}
-  x < y: & (x, (y, ts_2) : ts_1) \\
-  \text{otherwise}: & (y, (x, ts1) : ts_2) \\
+  x < y: & (x, (y, ts_2) \cons ts_1) \\
+  \text{otherwise}: & (y, (x, ts1) \cons ts_2) \\
   \end{cases}
 \end{array}
 \ee
 
-$merge$ is bound to constant time. With the `left-child, right
-sibling' method, we link the heap with greater root as the first sub-tree of the other.
+$merge$ is in constant time. Below is the imperative implementation with the `left-child, right sibling' method:
 
 \begin{algorithmic}[1]
 \Function{Merge}{$H_1, H_2$}
@@ -937,12 +937,12 @@ sibling' method, we link the heap with greater root as the first sub-tree of the
 \EndFunction
 \end{algorithmic}
 
-Similar to Fibonacci heap, we implement insert with merge as \cref{eq:fib-insert}. We access the top element from the root: $top\ (x, ts) = x$. Both operations are bound to constant time.
+Similar to Fibonacci heap, we implement insert with merge as \cref{eq:fib-insert}, access the top from the root: $top\ (x, ts) = x$. Both operations are in constant time.
 
-\subsection{Increase priority}
+\subsection{decrease key}
 \index{Pairing heap!decrease key}
 
-When decrease the value in a node, we cut the sub-tree rooted with this node, then merge it back to the heap. If the node is the root, we can directly decrease its value.
+When decrease the value of a node, if it is the root, then directly alter the value; otherwise, cut the sub-tree rooted at this node, then merge it back to the heap.
 
 \begin{algorithmic}[1]
 \Function{Decrease}{$H, x, k$}
@@ -960,13 +960,13 @@ When decrease the value in a node, we cut the sub-tree rooted with this node, th
 \subsection{Pop}
 \index{Pairing heap!pop}
 
-After pop the root, we consolidate the remaining sub-trees to a tree:
+After pop the root, we consolidate the sub-trees to a tree:
 
 \be
 pop\ (x, ts) = \textit{consolidate}\ ts
 \ee
 
-We firstly merge every two sub-trees from left to right, then merge these paired results from right to left to a tree. This explains the why we name it `paring heap'. \Cref{fig:merge-pairs,fig:merge-right} show the paired merge.
+We firstly merge every two sub-trees from left to right, then merge these paired results from right to left to a tree. This explains the name of `paring heap'. \Cref{fig:merge-pairs,fig:merge-right} show the paired merge.
 
 \begin{figure}[htbp]
   \centering
@@ -986,7 +986,7 @@ We firstly merge every two sub-trees from left to right, then merge these paired
 \begin{array}{rcl}
 \textit{consolidate}\ [\ ] & = & \nil \\
 \textit{consolidate}\ [t] & = & t \\
-\textit{consolidate}\ (t_1 : t_2 : ts) & = & merge\ (merge\ t_1\ t_2)\ (consolidate\ ts)
+\textit{consolidate}\ (t_1 \cons t_2 \cons ts) & = & merge\ (merge\ t_1\ t_2)\ (consolidate\ ts)
 \end{array}
 \ee
 
@@ -1007,12 +1007,12 @@ The corresponding `left child, right sibling' implementation is as below:
 \EndFunction
 \end{algorithmic}
 
-We iterate to merge $T_x$, $T_y$ to $T$, and link ahead of $L$. When loop on $L$ the second time, we actually traversed from right to left. When there are odd number of sub-trees, $T_y = $ NIL at last, hence $T = T_x$ in this case.
+We iterate to merge $T_x$, $T_y$ to $T$, and link ahead of $L$. When loop on $L$ the second time, we actually traverse from right to left. If there are odd number of sub-trees, $T_y = $ NIL at last, hence $T = T_x$ in this case.
 
 \subsection{Delete}
 \index{Pairing heap!delete}
 
-To delete a node $x$, we can first decrease the value in $x$ to $-\infty$, then followed with a pop. There is an alternative method. If $x$ is the root, we pop it; otherwise, we cut $x$ off $H$, then apply pop to $x$, and merge $x$ back to $H$:
+To delete a node $x$, first decrease the value of $x$ to $-\infty$, then followed with a pop. Alternatively, if $x$ is the root, pop it; otherwise, cut $x$ off $H$, then $pop(x)$, and merge it back to $H$:
 
 \begin{algorithmic}[1]
 \Function{Delete}{$H, x$}
@@ -1029,13 +1029,13 @@ To delete a node $x$, we can first decrease the value in $x$ to $-\infty$, then 
 As delete is implemented with pop, the performance is conjectured to be amortized $O(\lg n)$ time.
 
 \begin{Exercise}\label{ex:pairing-heap-del}
-\Question{If continuously insert $n$ elements then followed with a pop. The performance overhead is big when $n$ is a large number (although the amortized performance is $O(\lg n)$. How to mitigate such worst case?}
-\Question{Implement delete operation for the pairing heap.}
-\Question{Implement priority change for the pairing heap, i.e. \textproc{Decrease-Key}.}
+\Question{If continuously insert $n$ elements then followed with a pop. The performance overhead is big when $n$ is a large number (although the amortized performance is $O(\lg n)$). How to mitigate such worst case?}
+\Question{Implement \textit{delete} for the pairing heap.}
+\Question{Implement \textproc{Decrease-Key} for the pairing heap.}
 \end{Exercise}
 
 \begin{Answer}[ref = {ex:pairing-heap-del}]
-\Question{If continuously insert $n$ elements then followed with a pop. The performance overhead is big when $n$ is a large number (although the amortized performance is $O(\lg n)$. How to mitigate such worst case?
+\Question{If continuously insert $n$ elements then followed with a pop. The performance overhead is big when $n$ is a large number (although the amortized performance is $O(\lg n)$). How to mitigate such worst case?
 
 We can set a threshold $m$ to the number of sub-trees. When insert, we check whether it exceeds $m$, if yes, then perform a pop then add the element back.
 
@@ -1051,7 +1051,7 @@ Node<K> insert(Node<K> h, K x) {
 \end{Bourbaki}
 }
 
-\Question{Implement delete operation for the pairing heap.
+\Question{Implement \textit{delete} for the pairing heap.
 
 We add a parent reference to the node definition:
 \begin{Bourbaki}
@@ -1089,7 +1089,7 @@ Node<K> lookuptr(Node<K> h, K x) {
 The recursive lookup takes $O(n)$ time, where $n$ is the number of elements in the heap. Then it takes $O(m)$ time to remove $t$ from the sub-trees. The total performance is $O(n)$.
 }
 
-\Question{Implement priority change for the pairing heap, i.e. \textproc{Decrease-Key}.
+\Question{Implement \textproc{Decrease-Key} for the pairing heap.
 
 If decrease the key of the root of $h$, we can directly update the key to $x$; otherwise, we get the parent of $tr$, then cut $tr$ off from the sub-trees; update the key of $tr$ to $x$, then merge $tr$ back to $h$:
 
@@ -1107,10 +1107,6 @@ Node<K> decreaseKey(Node<K> h, Node<K> tr, K x) {
 When use, we first call $lookuptr(h, y)$ to find the node, then update from $y$ to $x$, i.e., $deceaseKey(h, lookuptr(h, y), x)$. The performance is as same as delete, which is $O(n)$.
 }
 \end{Answer}
-
-\section{Summary}
-
-In this chapter, we extend the heap from binary tree based implementation to more data structures. Binomial heap and Fibonacci heap use forest of multi-way trees, pairing heap use a single multi-way tree.It's a common practice to post pone some expensive operation, and obtain better amortized performance.
 
 \section{Appendix - example programs}
 
@@ -1356,8 +1352,8 @@ void consolidate(FibHeap<K> h) {
 Fibonacci heap pop:
 
 \begin{Haskell}
-pop (FH _ (Node _ x []) []) = (x, E)
-pop (FH sz (Node _ x tsm) ts) = (x, FH (sz - 1) tm ts') where
+pop (FibHeap _ (Node _ x []) []) = (x, Empty)
+pop (FibHeap sz (Node _ x tsm) ts) = (x, FibHeap (sz - 1) tm ts') where
     (tm, ts') = extractMin $ consolidate (tsm ++ ts)
 \end{Haskell} %$
 
