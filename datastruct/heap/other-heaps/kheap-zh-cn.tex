@@ -462,30 +462,24 @@ sort  = heapSort \circ fromList
 向二项式堆插入新元素$x$时，我们将$x$放入只有一个叶子节点的树中，然后插入到森林中。树按照秩递增的顺序插入，如果秩相等，则进行链接，然后递归插入。时间复杂度为$O(\lg n)$。使用惰性策略，我们将按秩有序插入和链接等操作推迟进行。将$x$所在的树直接加入森林中。为了快速获得堆顶元素，我们需要记录哪一棵树的根节点保存了最小元素。一个斐波那契堆或者为空$\nil$，或者是若干树的森林，记为$(n, t_m, ts)$。其中含有最小元素的树被单独记录为$t_m$，堆中元素个数记录为$n$，其余二项式树的列表为$ts$。下面的例子程序定义了斐波那契堆（复用了二项式树的定义）：
 
 \begin{lstlisting}[style=Haskell]
-data FibHeap a = E | FH { size :: Int
-                        , minTree :: BiTree a
-                        , trees :: [BiTree a]}
+data FibHeap a = Empty | FibHeap { size :: Int
+                                 , minTree :: BiTree a
+                                 , trees :: [BiTree a]}
 \end{lstlisting}
 
-这样就可以用常数时间获取堆顶元素：$top\ H = key\ (\textit{minTree}\ H)$。
+这样就可以用常数时间获取堆顶元素（柯里化）：$top = key \circ \textit{minTree}$。
 
 \subsection{插入}
 \index{斐波那契堆!插入}
 
-我们将插入定义为一种特殊的合并操作，其中一个堆仅含有一棵一个叶节点的树：
-
-\[
-insert\ x\ H = merge\ (singleton\ x)\ H
-\]
-
-或写成柯里化的形式：
+我们将插入定义为一种特殊的合并操作，其中一个堆仅含有一棵一个叶节点的树：$insert\ x\ H = merge\ (singleton\ x)\ H$。或写成柯里化的形式：
 
 \be
-insert = merge \circ singleton
+insert\ x = merge \circ (singleton\ x)
 \label{eq:fib-insert}
 \ee
 
-其中$singleton$从$x$构建仅含有一个元素的树：
+其中\textit{singleton}从$x$构建仅含有一个元素的树：
 
 \[
 singleton\ x = (1, (1, x, [\ ]), [\ ])
@@ -517,8 +511,8 @@ singleton\ x = (1, (1, x, [\ ]), [\ ])
 merge\ h\ \nil & = & h \\
 merge\ \nil\ h & = & h \\
 merge\ (n, t_m, ts)\ (n', t_m', ts') & = & \begin{cases}
-  key\ t_m < key\ t_m': & (n + n', t_m, t_m' : ts \doubleplus ts') \\
-  \text{否则}: & (n + n', t_m', t_m : ts \doubleplus ts') \\
+  key\ t_m < key\ t_m': & (n + n', t_m, t_m' \cons ts \doubleplus ts') \\
+  \text{否则}: & (n + n', t_m', t_m \cons ts \doubleplus ts') \\
   \end{cases}
 \end{array}
 \ee
@@ -607,9 +601,9 @@ consolidate = foldr\ melt\ [\ ]
 \be
 \begin{array}{rcl}
   melt\ x\ [\ ] & = & x \\
-  melt\ x\ (x':xs) & = & \begin{cases}
+  melt\ x\ (x' \cons xs) & = & \begin{cases}
     x = x': & melt\ 2x\ xs \\
-    x < x': & x : x' : xs \\
+    x < x': & x \cons x' \cons xs \\
     x > x': & x' : melt\ x\ xs \\
   \end{cases}
 \end{array}
@@ -620,9 +614,9 @@ consolidate = foldr\ melt\ [\ ]
 \be
 \begin{array}{rcl}
   melt\ t\ [\ ] & = & [t] \\
-  melt\ t\ (t':ts) & = & \begin{cases}
+  melt\ t\ (t' \cons ts) & = & \begin{cases}
     rank\ t = rank\ t': & melt\ (link\ t\ t')\ ts \\
-    rank\ t < rank\ t': & t : t' : ts \\
+    rank\ t < rank\ t': & t \cons t' \cons ts \\
     rank\ t > rank\ t': & t' : melt\ t\ ts \\
   \end{cases}
 \end{array}

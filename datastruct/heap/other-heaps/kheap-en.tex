@@ -90,7 +90,7 @@ A binomial heap is a set of binomial trees (a forest) satisfying the following t
 \item Every tree has the unique rank. i.e. any two trees have different ranks.
 \end{enumerate}
 
-From the 2nd rule, for a binomial heap of $n$ elements, convert $n$ to its binary format $n = (a_m ... a_1, a_0)_2$, where $a_0$ is the least significant bit (LSB) and $a_m$ is the most significant bit (MSB). If if $a_i=0$, there is no tree of rank $i$; if $a_i = 1$, there is a tree of rank $i$. For example, consider a binomial heap of 5 elements. As 5 = $(101)_2$ in binary, there are 2 binomial trees: $B_0$ and $B_2$. The binomial heap in \cref{fig:bheap2} has 19 elements, 19 = $(10011)_2$. There are three trees: $B_0$, $B_1$, and $B_4$.
+From the 2nd rule, for a binomial heap of $n$ elements, convert $n$ to its binary format $n = (a_m ... a_1, a_0)_2$, where $a_0$ is the least significant bit (LSB) and $a_m$ is the most significant bit (MSB). There is a tree of rank $i$ if and only if $a_i = 1$. For example, consider a binomial heap of 5 elements. As 5 = $(101)_2$ in binary, there are 2 binomial trees: $B_0$ and $B_2$. The binomial heap in \cref{fig:bheap2} has 19 elements, 19 = $(10011)_2$. There are three trees: $B_0$, $B_1$, and $B_4$.
 
 \begin{figure}[htbp]
   \centering
@@ -99,7 +99,7 @@ From the 2nd rule, for a binomial heap of $n$ elements, convert $n$ to its binar
   \label{fig:bheap2}
 \end{figure}
 
-We define the binomial tree as $(r, k, ts)$, where $r$ is the rank, $k$ is the element in the root, and $ts$ is the list of sub-trees ordered by rank.
+We define the binomial tree as $(r, k, ts)$, where $r$ is the rank, $k$ is the root element, and $ts$ is the list of sub-trees ordered by rank.
 
 \lstset{frame=single}
 \begin{Haskell}
@@ -217,7 +217,7 @@ We can store the sub-trees in reversed order, it's need constant time to append 
 \subsection{Insert}
 \index{Binomial heap!insert} \index{Binomial heap!push}
 
-When insert a tree, we keep the trees ordered by rank (ascending):
+When insert a tree, we keep the forest ordered by rank (ascending):
 
 \be
 \begin{array}{rcl}
@@ -230,13 +230,13 @@ ins\ t\ (t' \cons ts) & = & \begin{cases}
 \end{array}
 \ee
 
-Where $rank\ (r, k, ts) = r$ gives the rank of a tree. For empty heap $[\ ]$, it becomes a singleton of $[t]$; otherwise, compare the rank of $t$ with the first tree $t'$, if $t$ has the less rank, then it becomes the new first tree; if $t'$ has the less rank, we recursively insert $t$ to the rest trees; if they have the same rank, then link $t$ and $t'$ to a bigger tree, and recursively insert to the rest. For $n$ elements, there are at most $O(\lg n)$ binomial trees in the heap. $ins$ links $O(\lg n)$ time at most. As linking is bound to constant time, the overall performance is bound to $O(\lg n)$\footnote{It's similar to adding two binary numbers. A more generic topic is {\em numeric representation}\cite{okasaki-book}.}. We can define insert for binomial heap with $ins$. First wrap the new element $x$ in a singleton tree, then insert the tree to the heap:
+Where $rank\ (r, k, ts) = r$ returns the rank of a tree. For empty heap $[\ ]$, it becomes a singleton of $[t]$; otherwise, compare the rank of $t$ with the first tree $t'$, if $t$ has the less rank, then it becomes the new first tree; if $t'$ has the less rank, we recursively insert $t$ to the rest trees; if they have the same rank, then link $t$ and $t'$ to a bigger tree, and recursively insert. For $n$ elements, there are at most $O(\lg n)$ binomial trees in the heap. $ins$ links $O(\lg n)$ time at most. As linking is constant time, the overall performance is bound to $O(\lg n)$\footnote{It's similar to adding two binary numbers. A more generic topic is {\em numeric representation}\cite{okasaki-book}.}. We define \textit{insert} for binomial heap with $ins$. First wrap the new element $x$ in a singleton tree, then insert to the heap:
 
 \be
 insert\ x = ins\ (0, x, [\ ])
 \ee
 
-This is a Curried definition, we can further insert a list of elements with \textit{fold}:
+This is in Curried form. We can further insert a list of elements with \textit{fold}:
 
 \be
 \textit{fromList} = foldr\ insert\ [\ ]
@@ -327,24 +327,11 @@ If there are $m_1$ trees in $H_1$, $m_2$ trees in $H_2$. There are at most $m_1 
 \subsection{Pop}
 \index{Binomial heap!pop}
 
-Although every tree has the minimal element in its root, we don't know which tree holds the overall minimum of the heap. We need locate it from all trees. As there are $O(\lg n)$ trees, it takes $O(\lg n)$ time to find the top element. For pop, we need further remove the top element and maintain heap property. Let the trees be $B_i, B_j, ..., B_p, ..., B_m$ in the heap, and the minimum is in the root of $B_p$. After remove the top, there leave $p$ sub binomial trees with ranks of $p-1, p-2, ..., 0$. We can reverse them to form a new binomial heap $H_p$. The other trees without $B_p$ also form a binomial heap $H' = H - [B_p]$. We merge $H_p$ and $H'$ to get the final result as shown in \cref{fig:bheap-del-min}. Below is the definition to access the minimal of the heap.
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.4]{img/bheap-pop}
-  \caption{Binomial heap pop.}
-  \label{fig:bheap-del-min}
-\end{figure}
+Although every tree has the minimal element in its root, we don't know which tree holds the overall minimum of the heap. We need locate it from all trees. As there are $O(\lg n)$ trees, it takes $O(\lg n)$ time to find the top element.
 
 \be
-top\ (t \cons ts) = foldr\ f\ (key\ t)\ ts
+top\ (t \cons ts) = foldr\ f\ (key\ t)\ ts \quad \text{where}\ f\ (r, x, ts)\ y = \min\ x\ y
 \ee
-
-\[
-f\ (r, x, ts)\ y = min\ x\ y
-\]
-
-It traverses all trees and finds which root has the minimum.
 
 \begin{algorithmic}[1]
 \Function{Top}{$H$}
@@ -357,7 +344,14 @@ It traverses all trees and finds which root has the minimum.
 \EndFunction
 \end{algorithmic}
 
-To support pop, we need extract the tree containing the minimum out:
+For pop, we need further remove the top element and maintain heap property. Let the trees be $B_i, B_j, ..., B_p, ..., B_m$ in the heap, and the minimum is in the root of $B_p$. After remove the top, there leave $p$ sub binomial trees with ranks of $p-1, p-2, ..., 0$. We can reverse them to form a new binomial heap $H_p$. The other trees without $B_p$ also form a binomial heap $H' = H - [B_p]$. We merge $H_p$ and $H'$ to get the final result as shown in \cref{fig:bheap-del-min}. To support pop, we need extract the tree containing the minimum out:
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.4]{img/bheap-pop}
+  \caption{Binomial heap pop.}
+  \label{fig:bheap-del-min}
+\end{figure}
 
 \be
 \begin{array}{rcl}
@@ -431,11 +425,11 @@ Binomial heap insert and merge are bound to $O(\lg n)$ time in worst case, their
 \section{Fibonacci heap}
 \label{fib-heap} \index{Fibonacci heap}
 
-Binomial heap is named from binomial theorem, Fibonacci heap is named after Fibonacci numbers\footnote{Michael L. Fredman and Robert E. Tarjan, used Fibonacci numbers to prove the performance time bound, they decided to use Fibonacci to name this data structure.\cite{CLRS}}. Fibonacci heap is essentially a `lazy' binomial heap. It delays some operation. However, it does not mean the binomial heap turns to be Fibonacci heap automatically in lazy evaluation environment. Such environment only makes the implementation easy\cite{hackage-fibq}. All operations except for pop are bound to amortized constant time\cite{okasaki-fibh}.
+Binomial heap is named after the binomial theorem, Fibonacci heap is named after Fibonacci numbers\footnote{Michael L. Fredman and Robert E. Tarjan, used Fibonacci numbers to prove the performance time bound, they decided to use Fibonacci to name this data structure.\cite{CLRS}}. Fibonacci heap is essentially a `lazy' binomial heap. It delays some operation. However, it does not mean the binomial heap turns to be Fibonacci heap automatically in lazy evaluation environment. Such environment only makes the implementation easy\cite{hackage-fibq}. All operations except for pop are bound to amortized constant time\cite{okasaki-fibh}.
 
 \begin{table}[htbp]
 \centering
-\begin{tabular}{| l | c | r |}
+\begin{tabular}{| c | c | r |}
   \hline
   operation & Binomial heap & Fibonacci heap \\
   \hline
@@ -451,37 +445,32 @@ Binomial heap is named from binomial theorem, Fibonacci heap is named after Fibo
 \caption{Performance of Fibonacci heap and binomial heap}
 \end{table}
 
-When insert new element $x$ to a binomial heap, we wrap $x$ to a single tree, then insert to the forest. We keep the rank ordering, if two ranks are same, we link them, and recursively insert. The performance is bound to $O(\lg n)$ time. Taking lazy strategy, we delay the ordered (by rank) insert and link later. Put the single tree of $x$ directly to the forest. To access the top element in constant time, we need record which tree has the minimum in its root. A Fibonacci heap is either empty $\nil$, or a forest of trees denoted as $(n, t_m, ts)$. Where $t_m$ is the tree holds the minimal element, $n$ is the number of elements in the heap, and $ts$ is the rest trees. Below example program defines Fibonacci heap (reused the definition of binomial tree).
+When insert $x$ to a binomial heap, we wrap it to a single tree, then insert to the forest. We maintain the rank ordering. If two ranks are same, link them, and recursively insert. The performance is bound to $O(\lg n)$ time. Taking lazy strategy, we delay the ordered (by rank) insert and link later. Put the singleton tree of $x$ directly to the forest. To access the top element in constant time, we need record which tree has the overall minimum. A Fibonacci heap is either empty $\nil$, or a forest of trees denoted as $(n, t_m, ts)$. Where $n$ is the number of elements in the heap, $t_m$ is the tree holds the top element, and $ts$ is the rest trees. Below example defines Fibonacci heap (reuse the definition of binomial tree).
 
 \begin{lstlisting}[style=Haskell]
-data FibHeap a = E | FH { size :: Int
-                        , minTree :: BiTree a
-                        , trees :: [BiTree a]}
+data FibHeap a = Empty | FibHeap { size :: Int
+                                 , minTree :: BiTree a
+                                 , trees :: [BiTree a]}
 \end{lstlisting}
 
-We can access the top element in constant time: $top\ H = key\ (\textit{minTree}\ H)$.
+We can access the top in constant time (Curried form): $top = key \circ \textit{minTree}$.
 
 \subsection{Insert}
 \index{Fibonacci Heap!insert}
 
-We define insert as a special case of merge: one heap contains a singleton tree:
-
-\[
-insert\ x\ H = merge\ (singleton\ x)\ H
-\]
-
-Or simplified in Curried form:
+We define insert as a special case of merge: one heap is a singleton tree: $insert\ x\ H = merge\ (singleton\ x)\ H$. Or simplified in Curried form:
 
 \be
-insert = merge \circ singleton
+insert\ x = merge \circ (singleton\ x)
 \label{eq:fib-insert}
 \ee
 
+Where:
 \[
 singleton\ x = (1, (1, x, [\ ]), [\ ])
 \]
 
-We can also implement insert as add a tree to the forest, then update the reference to the tree holds the minimum.
+Below is the imperative implementation:
 
 \begin{algorithmic}[1]
 \Function{Insert}{$k, H$}
@@ -497,23 +486,23 @@ We can also implement insert as add a tree to the forest, then update the refere
 
 Where \textproc{Trees}($H$) access the list of trees in $H$, \textproc{Min-Tree}($H$) returns the tree that holds the minimal element.
 
-\subsubsection{Merge}
+\subsection{Merge}
 \index{Fibonacci Heap!merge}
 
-Different from binomial heap, we delay the link operation, but only put the trees from two heaps together, and pick the new top element.
+When merge two heaps, we delay the link, but only put the trees together, then pick the new top.
 
 \be
 \begin{array}{rcl}
 merge\ h\ \nil & = & h \\
 merge\ \nil\ h & = & h \\
 merge\ (n, t_m, ts)\ (n', t_m', ts') & = & \begin{cases}
-  key\ t_m < key\ t_m': & (n + n', t_m, t_m' : ts \doubleplus ts') \\
-  \text{otherwise}: & (n + n', t_m', t_m : ts \doubleplus ts') \\
+  key\ t_m < key\ t_m': & (n + n', t_m, t_m' \cons ts \doubleplus ts') \\
+  \text{otherwise}: & (n + n', t_m', t_m \cons ts \doubleplus ts') \\
   \end{cases}
 \end{array}
 \ee
 
-When neither tree is empty, the $\doubleplus$ takes time that is proportion to the number of trees in one heap. We can improve it to constant time with doubly linked-list to store trees as shown in below example program.
+When neither tree is empty, the $\doubleplus$ takes time that is proportion to the number of trees in one heap. We can improve it to constant time with doubly linked-list as in below example program.
 
 \begin{lstlisting}[language = Bourbaki]
 data Node<K> {
@@ -552,10 +541,10 @@ data FibHeap<K> {
 \EndFunction
 \end{algorithmic}
 
-\subsubsection{Pop}
+\subsection{Pop}
 \index{Fibonacci Heap!pop} \index{Fibonacci Heap!delete min}
 
-As the link operation is delayed to future during merge, we need `compensate' it during pop. We define it as tree consolidation. Consider another problem: given a list of numbers of $2^m$ ($m$ is natural numbers), for e.g., $L = [2, 1, 1, 4, 8, 1, 1, 2, 4]$, we repeatedly sum the two equal numbers until all numbers are unique. The result is $[8, 16]$. This process is shown in \cref{tb:num-consolidate}. The first column gives the number we are `scanning'; the second is the middle step, i.e. compare current number and the first number in result list, add them when equal; the last column is the merge result, which inputs to the next step. The consolidation process can be defined with fold:
+As the \textit{merge} function delays the link, we need `compensate' it during pop. We define it as tree consolidation. Consider another problem: given a list of numbers of $2^m$ (for some integer $m \geq 0$), for e.g., $L = [2, 1, 1, 4, 8, 1, 1, 2, 4]$, we repeatedly sum two equal numbers until every one is unique. The result is $[8, 16]$, as shown in \cref{tb:num-consolidate}. The first column gives the number we are `scanning'; the second is the middle step, i.e. compare current number and the first number in result list, add them when equal; the last column is the merge result to the next step. We can define the consolidation with fold:
 
 \begin{table}[htbp]
 \centering
@@ -595,22 +584,22 @@ Where $melt$ is defined as below:
 \be
 \begin{array}{rcl}
   melt\ x\ [\ ] & = & x \\
-  melt\ x\ (x':xs) & = & \begin{cases}
+  melt\ x\ (x' \cons xs) & = & \begin{cases}
     x = x': & melt\ 2x\ xs \\
-    x < x': & x : x' : xs \\
+    x < x': & x \cons x' \cons xs \\
     x > x': & x' : melt\ x\ xs \\
   \end{cases}
 \end{array}
 \ee
 
-Let $n = sum\ L$, the sum of all numbers. $consolidate$ actually represent $n$ in binary format. If the $i$-th bit is 1, then the result contains $2^i$ ($i$ starts from 0). For e.g., $sum [2, 1, 1, 4, 8, 1, 1, 2, 4] = 24$. It's 11000 in binary, the 3rd and 4th bit are 1, hence the result contains $2^3= 8, 2^4 = 16$. We can consolidate trees in similar way: compare the rank, and link the trees:
+Let $n = sum\ L$. \textit{consolidate} actually represents $n$ in binary format. The result contains $2^i$ ($i$ starts from 0) if and only if the $i$-th bit is 1. For e.g., $sum [2, 1, 1, 4, 8, 1, 1, 2, 4] = 24$. It's $(11000)_2$ in binary, the 3rd and 4th bit are 1, hence the result contains $2^3= 8, 2^4 = 16$. We can consolidate trees in similar way: compare the rank, and link trees:
 
 \be
 \begin{array}{rcl}
   melt\ t\ [\ ] & = & [t] \\
-  melt\ t\ (t':ts) & = & \begin{cases}
+  melt\ t\ (t' \cons ts) & = & \begin{cases}
     rank\ t = rank\ t': & melt\ (link\ t\ t')\ ts \\
-    rank\ t < rank\ t': & t : t' : ts \\
+    rank\ t < rank\ t': & t \cons t' \cons ts \\
     rank\ t > rank\ t': & t' : melt\ t\ ts \\
   \end{cases}
 \end{array}
@@ -720,7 +709,7 @@ Insert, merge, and pop ensure all trees are binomial trees, therefore, the upper
 \subsection{Increase priority}
 \index{Fibonacci Heap!decrease key}
 
-We can use heap to manage tasks with priority. When need prioritize a task, we decrease the corresponding element, making it close to the heap top. Some graph algorithms, like the minimum spanning tree and Dijkstra's algorithm rely on this heap operation\cite{CLRS} meet amortized constant time. Let $x$ be a node in the heap $H$, we need decrease its value to $k$. As shown in \cref{fig:cut-fib-tree}, if the element in $x$ is less than the one in its parent $y$, we cut $x$ off $y$, the add it the heap (forest). Although it ensures the parent still holds the minimum in the tree, it is not binomial tree any more. The performance drops when loss too many sub-trees. We add another rule to address this problem: {\em If a node losses its second sub-tree, it is immediately cut from parent, and added to the heap (forest).}
+We can use heap to manage tasks with priority. When need prioritize a task, we decrease (for the min heap) the value, making it close to the heap top. Some graph algorithms, like the minimum spanning tree and Dijkstra's algorithm require this heap operation\cite{CLRS} meet amortized constant time. Let $x$ be a node, we need decrease its value to $k$. As shown in \cref{fig:cut-fib-tree}, if $x$ is less than its parent $y$ (in terms of key), we cut $x$ off $y$, then add it to the heap (forest). Although the parent still holds the minimum of the tree, it is not a binomial tree any more. The performance drops when loss too many sub-trees. We add another rule to address this problem: {\em If a node losses its second sub-tree, it is immediately cut from parent, and added to the heap (forest).}
 
 \begin{figure}[htbp]
   \centering
@@ -820,13 +809,13 @@ F_k & = & F_{k-1} + F_{k-2} \\
 \end{lemma}
 
 \begin{proof}
-For tree $x$, let its $k$ sub-trees be $y_1, y_2, ..., y_k$, ordered by the time when they are linked to $x$. Where $y_1$ is the first, and $y_k$ is the latest. Obviously, $|y_i| \geq 0$. When link $y_i$ to $x$, there have already been sub-trees of $y_1, y_2, ..., y_{i-1}$. Because we only link nodes of the same rank, by that time we have:
+For tree $x$, let its $k$ sub-trees be $y_1, y_2, ..., y_k$, ordered by the time when they are linked to $x$. Where $y_1$ is the earliest, and $y_k$ is the latest. Obviously, $|y_i| \geq 0$. When link $y_i$ to $x$, there have already been sub-trees of $y_1, y_2, ..., y_{i-1}$. Because we only link nodes of the same rank, by that time we have:
 
 \[
   rank(y_i) = rank(x) = i - 1
 \]
 
-After that, $y_i$ can lost additional sub-tree at most, (through the \textproc{Decrease}). Once loss the second sub-tree, it will be cut off then add to the forest. For any $i = 2, 3, ..., k$, we have:
+After that, $y_i$ can lost an additional sub-tree at most, (through the \textproc{Decrease}). Once loss the second sub-tree, it will be cut off then added to the forest. For any $i = 2, 3, ..., k$, we have:
 
 \[
 rank(y_i) \geq i-2
@@ -846,7 +835,7 @@ The last row holds because $rank(y_i) \geq i - 2$, and $s_k$ is monotonic, hence
 |x| & \geq & s_k & \\
     & \geq & 2 + s_0 + s_1 + ... + s_{k-2} & \\
     & \geq & 2 + F_2 + F_3 + ... + F_k & \text{induction hypothesis}\\
-    & =    & 1 + F_0 + F_1 + F_2 + ... + F_k & \text{from} F_0 = 0, F_1 = 1 \\
+    & =    & 1 + F_0 + F_1 + F_2 + ... + F_k & F_0 = 0, F_1 = 1 \\
 \eea*
 
 Next, we prove:
@@ -876,10 +865,10 @@ n \geq |x| \geq F_{k+2}
 For Fibonacci sequence, $F_k \geq \phi^k$, where $\phi = \dfrac{1+\sqrt{5}}{2}$ is the golden ratio. We prove that pop is amortized $O(\lg n)$ algorithm. We can define $maxRank$ as:
 
 \be
-  MaxRank(n) = 1 + \lfloor \log_{\phi} n \rfloor
+  maxRank(n) = 1 + \lfloor \log_{\phi} n \rfloor
 \ee
 
-We can also implement \textproc{Max-Degree} from Fibonacci numbers:
+We can also implement \textproc{Max-Rank} from Fibonacci numbers:
 
 \begin{algorithmic}[1]
 \Function{Max-Rank}{$n$}
@@ -1020,7 +1009,7 @@ The corresponding `left child, right sibling' implementation is as below:
 
 We iterate to merge $T_x$, $T_y$ to $T$, and link ahead of $L$. When loop on $L$ the second time, we actually traversed from right to left. When there are odd number of sub-trees, $T_y = $ NIL at last, hence $T = T_x$ in this case.
 
-\subsubsection{Delete}
+\subsection{Delete}
 \index{Pairing heap!delete}
 
 To delete a node $x$, we can first decrease the value in $x$ to $-\infty$, then followed with a pop. There is an alternative method. If $x$ is the root, we pop it; otherwise, we cut $x$ off $H$, then apply pop to $x$, and merge $x$ back to $H$:
