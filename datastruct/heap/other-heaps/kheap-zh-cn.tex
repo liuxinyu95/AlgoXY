@@ -169,7 +169,10 @@ pascal = gen [1] where
   gen cs (x:y:xs) = gen ((x + y) : cs) (y:xs)
   gen cs _ = 1 : cs
 \end{Haskell}
-任给帕斯卡三角形中的一行，这一函数产生下一行。例如，产生前5行：\lstinline{take n (iterate pascal [1])}。
+
+任给帕斯卡三角形中的一行，此函数产生下一行。可以这样产生前$n$行：
+
+\lstinline{take n (iterate pascal [1])}
 }
 \Question{证明二项式树$B_n$中第$i$行的节点数为$\binom{n}{i}$。
 \begin{proof}
@@ -279,6 +282,7 @@ insert\ x = ins\ (0, x, [\ ])
 合并两个二项式堆相当于合并两个二项式树森林。合并结果中没有秩相同的树，并且按照秩递增。合并过程和归并排序类似。每次从两个堆中各取出第一棵树，比较它们的秩，将较小的一棵放入结果中。如果两棵树的秩相等，我们将它们链接成为一棵较大的树，然后递归插入到合并结果中。
 
 \be
+\resizebox{\linewidth}{!}{\ensuremath{
 \begin{array}{rcl}
 merge\ ts_1\ [\ ] & = & ts_1 \\
 merge\ [\ ]\ ts_2 & = & ts_2 \\
@@ -288,6 +292,7 @@ merge\ (t_1 \cons ts_1)\ (t_2 \cons ts_2) & = & \begin{cases}
   \text{否则}: & ins\ (link\ t_1\ t_2)\ (merge\ ts_1\ ts_2) \\
   \end{cases}
 \end{array}
+}}
 \ee
 
 当$t_1$、$t_2$秩相同时，我们也可以将链接后的树插入回任意一个堆，然后递归合并：
@@ -296,7 +301,7 @@ merge\ (t_1 \cons ts_1)\ (t_2 \cons ts_2) & = & \begin{cases}
 merge\ (ins\ (link\ t_1\ t_2)\ ts_1)\ ts_2
 \]
 
-用这种方式可以消除递归，用迭代的方式实现堆合并：
+用这种方式可以消除递归，实现迭代式的合并：
 
 \begin{algorithmic}[1]
 \Function{Merge}{$H_1, H_2$}
@@ -326,31 +331,18 @@ merge\ (ins\ (link\ t_1\ t_2)\ ts_1)\ ts_2
 \EndFunction
 \end{algorithmic}
 
-设堆$H_1$中有$m_1$棵树，堆$H_2$中有$m_2$棵树。合并后的结果中最多有$m_1 + m_2$棵树。如果没有秩相同的树，则合并时间为$O(m_1 + m_2)$。如果存在秩相同的树，最多需要调用$O(m_1 + m_2)$次$ins$。考虑$m_1 = 1 + \lfloor \lg n_1 \rfloor$，$m_2 = 1 + \lfloor \lg n_2 \rfloor$，其中$n_1$和$n_2$是两个堆各自的元素数，且$\lfloor \lg n_1 \rfloor + \lfloor \lg n_2 \rfloor \leq 2 \lfloor \lg n \rfloor$，其中$n = n_1 + n_2$。最终合并的复杂度为$O(\lg n)$。
+若堆$H_1$中有$m_1$棵树，$H_2$中有$m_2$棵树。合并后的结果中最多有$m_1 + m_2$棵树。如果没有秩相同的树，则合并时间为$O(m_1 + m_2)$。如果存在秩相同的树，最多需要调用$O(m_1 + m_2)$次$ins$。考虑$m_1 = 1 + \lfloor \lg n_1 \rfloor$，$m_2 = 1 + \lfloor \lg n_2 \rfloor$，其中$n_1$和$n_2$是两个堆各自的大小，且$\lfloor \lg n_1 \rfloor + \lfloor \lg n_2 \rfloor \leq 2 \lfloor \lg n \rfloor$，其中$n = n_1 + n_2$。最终合并的复杂度为$O(\lg n)$。
 
 \subsection{弹出}
 \index{二项式堆!弹出}
 
-二项式堆中，每棵树的根节点保存了树中的最小元素。但根节点元素间的大小关系是任意的。为了获取堆中的最小元素，需要在全部根节点中查找。因为堆中有$O(\lg n)$棵树，所以获取最小值的时间复杂度为$O(\lg n)$。但是弹出操作不仅找出最小元素，还需要将其删除并保持堆性质。设堆中的二项式树为$B_i, B_j, ..., B_p, ..., B_m$。设$B_p$的根节点为堆中最小元素。将其删除后会产生$p$棵子二项式树，秩为$p-1, p-2, ..., 0$。我们可以将$p$棵子树逆序，形成一个新二项式堆$H_p$。除去$B_p$的树也构成一个二项式堆$H' = H - [B_p]$。将$H_p$和$H'$合并就可以得到最终结果，如\cref{fig:bheap-del-min}所示。我们首先定义从堆中寻找最小元素的操作：
-
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[scale=0.4]{img/bheap-pop}
-  \caption{二项式堆的弹出操作}
-  \label{fig:bheap-del-min}
-\end{figure}
+二项式堆中每棵树的根节点保存了各自的最小值，但这些最小值间的关系是不确定的。为了获取堆的最小元素（堆顶），需要在全部根节点元素中查找。堆中有$O(\lg n)$棵树，因此获取堆顶的复杂度为$O(\lg n)$。
 
 \be
-top\ (t \cons ts) = foldr\ f\ (key\ t)\ ts
+top\ (t \cons ts) = foldr\ f\ (key\ t)\ ts \quad \text{其中}\ f\ (r, x, ts)\ y = min\ x\ y
 \ee
 
-其中
-
-\[
-f\ (r, x, ts)\ y = min\ x\ y
-\]
-
-这相当于遍历堆中的所有树，找出根节中存储的最小值：
+对应的迭代实现：
 
 \begin{algorithmic}[1]
 \Function{Top}{$H$}
@@ -363,7 +355,14 @@ f\ (r, x, ts)\ y = min\ x\ y
 \EndFunction
 \end{algorithmic}
 
-为了实现弹出，我们需要从堆中分离出最小元素所在的树：
+弹出堆顶后还需要保持堆性质。令堆中的二项式树为$B_i, B_j, ..., B_p, ..., B_m$，其中$B_p$的根节点为堆中最小元素。将其删除后产生$p$棵二项式子树，秩为$p-1, p-2, ..., 0$。将这$p$棵子树逆序，形成一个新二项式堆$H_p$。除去$B_p$的树也构成一个二项式堆$H' = H - [B_p]$。将$H_p$和$H'$合并就可以得到最终结果，如\cref{fig:bheap-del-min}所示。为了实现弹出，我们需要从堆中分离出堆顶所在的树：
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[scale=0.4]{img/bheap-pop}
+  \caption{二项式堆的弹出操作}
+  \label{fig:bheap-del-min}
+\end{figure}
 
 \be
 \begin{array}{rcl}
@@ -376,10 +375,10 @@ min'\ (t \cons ts) & = & \begin{cases}
 \label{eq:extract-min-bitree}
 \ee
 
-其中$key\ (r, k, ts) = k$获取二项式树中的根节点元素。$min'$的结果为一对值：最小元素所在的树，和其它的树。接下来就可以定义弹出操作：
+其中$key\ (r, k, ts) = k$获取根节点元素。$min'$的结果为一对值：堆顶所在的树，和其它树。接下来定义弹出：
 
 \be
-pop\ H = merge\ (reverse\ ts)\ H', \text{其中}: ((r, k, ts), H') = min'\ H
+pop\ H = merge\ (\textit{reverse}\ ts)\ H' \quad \text{其中}\ ((r, k, ts), H') = min'\ H
 \ee
 
 对应的迭代实现为：
@@ -417,13 +416,13 @@ pop\ H = merge\ (reverse\ ts)\ H', \text{其中}: ((r, k, ts), H') = min'\ H
 \EndFunction
 \end{algorithmic}
 
-使用弹出操作可以实现堆排序。首先从待排序元素构建一个二项式堆，然后不断从中弹出最小元素。
+弹出可以实现堆排序。首先从待排序元素构建一个二项式堆，然后不断弹出最小元素。
 
 \be
 sort  = heapSort \circ fromList
 \ee
 
-其中$heapSort$实现如下：
+其中：
 
 \be
 \begin{array}{rcl}
@@ -432,12 +431,12 @@ sort  = heapSort \circ fromList
 \end{array}
 \ee
 
-二项式堆的插入、合并的时间复杂度在最坏情况下是$O(\lg n)$。他们的分摊复杂度为常数时间，我们这里略去了分摊复杂度的证明。
+二项式堆的插入、合并的时间复杂度在最坏情况下是$O(\lg n)$，分摊复杂度为常数时间，我们这里略去了证明。
 
 \section{斐波那契堆}
 \label{fib-heap} \index{斐波那契堆}
 
-二项式堆的名字来自二项式展开，斐波那契堆的名字来自斐波那契数列\footnote{Michael L. Fredman和Robert E. Tarjan在证明这种堆的时间复杂度时使用了斐波那契数列的性质，他们于是给这种堆命名为“斐波那契堆”\cite{CLRS}。}。斐波那契堆本质上是一个惰性二项式堆。但这并不意味着二项式堆在支持惰性求值的环境下自动就成为了斐波那契堆。惰性环境仅提供了实现上的便利\cite{hackage-fibq}。除弹出操作外，斐波那契堆所有操作的分摊复杂度都可以达到常数时间\cite{okasaki-fibh}。
+二项式堆的名字来自二项式定理，斐波那契堆的名字来自斐波那契数列\footnote{Michael L. Fredman和Robert E. Tarjan在证明这种堆的时间复杂度时使用了斐波那契数列的性质，于是他们命名为“斐波那契堆”\cite{CLRS}。}。斐波那契堆本质上是惰性二项式堆。但这并不意味着在惰性求值环境下二项式堆会自动成为斐波那契堆。惰性环境仅提供了实现上的便利\cite{hackage-fibq}。除弹出外，斐波那契堆所有操作的分摊复杂度都是常数时间\cite{okasaki-fibh}。
 
 \begin{table}[htbp]
 \centering
@@ -457,7 +456,7 @@ sort  = heapSort \circ fromList
 \caption{斐波那契堆和二项式堆的（分摊）复杂度对比}
 \end{table}
 
-向二项式堆插入新元素$x$时，我们将$x$放入只有一个叶子节点的树中，然后插入到森林中。树按照秩递增的顺序插入，如果秩相等，则进行链接，然后递归插入。时间复杂度为$O(\lg n)$。使用惰性策略，我们将按秩有序插入和链接等操作推迟进行。将$x$所在的树直接加入森林中。为了快速获得堆顶元素，我们需要记录哪一棵树的根节点保存了最小元素。一个斐波那契堆或者为空$\nil$，或者是若干树的森林，记为$(n, t_m, ts)$。其中含有最小元素的树被单独记录为$t_m$，堆中元素个数记录为$n$，其余二项式树的列表为$ts$。下面的例子程序定义了斐波那契堆（复用了二项式树的定义）：
+向二项式堆插入元素$x$时，我们将$x$放入叶子节点，再插入到森林中。树按照秩递增的顺序插入，如果秩相等，则进行链接，然后递归插入。时间复杂度为$O(\lg n)$。使用惰性策略，我们将按秩插入和链接推迟进行。将叶子$x$直接加入森林中。为了快速获取堆顶，我们需要记录哪棵树的根节点保存了最小元素。一个斐波那契堆或者为空$\nil$，或者是若干树的森林，记为$(n, t_m, ts)$。其中$n$是元素个数，$t_m$是堆顶所在的树，$ts$是其余二项式树的列表。下面的例子程序定义了斐波那契堆（复用了二项式树的定义）：
 
 \begin{lstlisting}[style=Haskell]
 data FibHeap a = Empty | FibHeap { size :: Int
@@ -465,25 +464,25 @@ data FibHeap a = Empty | FibHeap { size :: Int
                                  , trees :: [BiTree a]}
 \end{lstlisting}
 
-这样就可以用常数时间获取堆顶元素（柯里化）：$top = key \circ \textit{minTree}$。
+这样就可以用常数时间获取堆顶（柯里化）：$top = key \circ \textit{minTree}$。
 
 \subsection{插入}
 \index{斐波那契堆!插入}
 
-我们将插入定义为一种特殊的合并操作，其中一个堆仅含有一棵一个叶节点的树：$insert\ x\ H = merge\ (singleton\ x)\ H$。或写成柯里化的形式：
+定义插入为一种特殊的合并，其中一个堆仅含有一个叶节点：$insert\ x\ H = merge\ (singleton\ x)\ H$。或写成柯里化形式：
 
 \be
 insert\ x = merge \circ (singleton\ x)
 \label{eq:fib-insert}
 \ee
 
-其中\textit{singleton}从$x$构建仅含有一个元素的树：
+其中：
 
 \[
 singleton\ x = (1, (1, x, [\ ]), [\ ])
 \]
 
-插入操作也可以实现为向森林中追加一个新节点，然后更新存有最小元素的树。
+下面是对应的命令式实现：
 
 \begin{algorithmic}[1]
 \Function{Insert}{$k, H$}
@@ -497,12 +496,12 @@ singleton\ x = (1, (1, x, [\ ]), [\ ])
 \EndFunction
 \end{algorithmic}
 
-其中\textproc{Trees}($H$)获取堆$H$中所有树的列表，\textproc{Min-Tree}($H$)记录了$H$中最小元素所在的树。
+其中\textproc{Trees}($H$)获取堆$H$的森林（所有树的列表），\textproc{Min-Tree}($H$)记录了$H$堆顶所在的树。
 
 \subsection{合并}
 \index{斐波那契堆!合并}
 
-和二项式堆不同，我们在合并时将链接操作推迟到将来，仅仅将两个堆中的树放到一起，然后比较出新的含有最小元素的树。
+合并时推迟链接，仅将两个堆中的树放到一起，然后找出新的堆顶。
 
 \be
 \begin{array}{rcl}
@@ -515,7 +514,7 @@ merge\ (n, t_m, ts)\ (n', t_m', ts') & = & \begin{cases}
 \end{array}
 \ee
 
-当两个堆都不为空时，这一实现中的$\doubleplus$操作和其中一个堆中树的棵数成正比。如果使用双向链表，则可以把堆合并操作提高到常数时间。下面的例子程序使用双向链表定义了斐波那契堆：
+当两个堆都不为空时，$\doubleplus$的耗时和其中一个堆中树的棵数成正比。使用双向链表可以把合并提高到常数时间。
 
 \begin{lstlisting}[language = Bourbaki]
 data Node<K> {
@@ -529,8 +528,6 @@ data FibHeap<K> {
     Node<K> minTree, trees
 }
 \end{lstlisting}
-
-这样就可以实现常数时间的合并操作：
 
 \begin{algorithmic}[1]
 \Function{Merge}{$H_1, H_2$}
@@ -559,7 +556,7 @@ data FibHeap<K> {
 \subsection{弹出}
 \index{斐波那契堆!弹出} \index{斐波那契堆!删除最小元素}
 
-我们在合并时推迟了树的链接，接下来需要在弹出时将其“补偿”回来。我们定义这一过程为树的归并。首先考虑这样一个问题：给定若干2的整数次幂，如：$L = [2, 1, 1, 4, 8, 1, 1, 2, 4]$，我们不断将值相同的两个数字相加，直到没有任何相等的数。这个例子的最终结果为$[8, 16]$。\cref{tb:num-consolidate}给出了归并的步骤。第一列表示每次“扫描”到的数字；第二列是中间结果。被扫描的数字和结果列表中的第一个元素相比较。如果相等，就用两个括号围起来；最后一列是归并的结果，每个结果都用于下一步的处理。这个数的归并的过程可以用叠加来实现：
+合并时推迟了树的链接，接下来需要在弹出时将其“补偿”回来。我们定义这一过程为树的归并。考虑另一个问题：给定若干2的整数次幂，如：$L = [2, 1, 1, 4, 8, 1, 1, 2, 4]$，不断将相等的两个数相加，直到没有任何相等的数。这个例子的最终结果为$[8, 16]$。\cref{tb:num-consolidate}给出了归并步骤。第一列表示每次“扫描”到的数字；第二列是中间结果。被扫描的数字和结果列表中的第一个元素相比较。如果相等，就括起来；最后一列是归并结果，每个结果都用于下一步的处理。归并过程可以用叠加实现：
 
 \begin{table}[htbp]
 \centering
@@ -594,7 +591,7 @@ data FibHeap<K> {
 consolidate = foldr\ melt\ [\ ]
 \ee
 
-其中$melt$定义为：
+其中：
 
 \be
 \begin{array}{rcl}
@@ -607,7 +604,7 @@ consolidate = foldr\ melt\ [\ ]
 \end{array}
 \ee
 
-令$n = sum\ L$，为所有数字的和，$consolidate$相当于把$n$表示为二进制数，如果第$i$位上的数字是1，则最终列表中包含$2^i$这个数（$i$从0开始）。例如$sum [2, 1, 1, 4, 8, 1, 1, 2, 4] = 24$，写成二进制是11000，第3和第4位上是1，所以最终列表中包含$2^3= 8, 2^4 = 16$。用类似的方法可以实现树的归并。我们需要比较秩，并把秩相同的树链接起来：
+令$n = sum\ L$，为所有数之和，\textit{consolidate}相当于把$n$表示为二进制数，当且仅当第$i$位上的数字是1，结果列表中包含$2^i$这个数（$i$从0开始）。例如$sum$ [2, 1, 1, 4, 8, 1, 1, 2, 4] = 24，写成二进制是$(11000)_2$，第3和第4位上是1，所以最终列表中包含$2^3= 8, 2^4 = 16$。用类似的方法可以实现树的归并。比较秩并把秩相同的树链接起来：
 
 \be
 \begin{array}{rcl}
@@ -620,7 +617,7 @@ consolidate = foldr\ melt\ [\ ]
 \end{array}
 \ee
 
-\cref{fig:fib-melt-b}给出了斐波那契堆树归并过程的步骤，和\cref{tb:num-consolidate}对比可以看出它们是相似的。我们也可以使用一个辅助数组$A$来进行归并。$A[i]$保存秩为$i$的树。在遍历堆中的树时，如果遇到另一棵秩为$i$的树，我们就将它们链接起来得到一棵秩为$i+1$的树。然后将$A[i]$清空，并接着检查$A[i+1]$是否为空，若不为空，就再次进行链接。遍历完成后，$A$中就保存了归并后的结果。
+\cref{fig:fib-melt-b}给出了树归并的步骤，和\cref{tb:num-consolidate}对比可以看出相似性。也可以使用辅助数组$A$进行归并。$A[i]$保存秩为$i$的树。遍历时，如果遇到另一棵秩为$i$的树，就将它们链接起来得到一棵秩为$i+1$的树。然后将$A[i]$清空，接着检查$A[i+1]$，若不为空就再次进行链接。遍历后，$A$中就保存了归并结果。
 
 \captionsetup[subfigure]{labelformat=empty, margin=10pt}
 \begin{figure}[htbp]
@@ -674,8 +671,7 @@ consolidate = foldr\ melt\ [\ ]
 %% \end{figure}
 %% \captionsetup[subfigure]{labelformat=parens}
 
-将堆中所有二项式树归并后，斐波那契堆就变成了二项式堆。此时堆中的树合并为$O(\lg n)$棵。\textproc{Max-Rank}($n$)返回$n$个元素的堆中最大可能的秩$R$。根据二项式堆的结论，秩最大的树$B_R$有$2^R$个元素。我们有：$2^R \leq n < 2^{R+1}$。
-我们推测它一个大致上限为$R \leq \log_2 n$。我们稍后给出$R$的更准确的估计。我们需要额外扫描一遍所有树的根节点，找到存有最小元素的树。我们可以复用\cref{eq:extract-min-bitree}定义的$min'$分离出堆顶元素所在的树。
+将所有二项式树归并后，斐波那契堆就变成了二项式堆，共有$O(\lg n)$棵树。若堆的大小为$n$，\textproc{Max-Rank}($n$)返回最大可能的秩$R$。由二项式堆的结论，秩最大的树$B_R$有$2^R$个元素。有：$2^R \leq n < 2^{R+1}$。据此推测它的上限为$R \leq \log_2 n$。我们稍后给出$R$的更准确估计。接下来需要再扫描一遍树找出堆顶。可以复用\cref{eq:extract-min-bitree}定义的$min'$分离出堆顶所在的树。
 
 \be
 \begin{array}{rcl}
@@ -684,7 +680,7 @@ consolidate = foldr\ melt\ [\ ]
 \end{array}
 \ee
 
-其中$(t_m, ts') = min'\ consolidate\ (ts_m \doubleplus ts)$。注意到$\doubleplus$的时间复杂度是$O(|ts_m|)$，和最小值所在的树中的子树棵数成正比。对应的命令式实现如下：
+其中$(t_m, ts') = min'\ (consolidate\ (ts_m \doubleplus ts))$。注意到$\doubleplus$的复杂度是$O(|ts_m|)$，和堆顶所在的树中的子树棵数成正比。对应的命令式实现如下：
 
 \begin{algorithmic}[1]
 \Function{Pop}{$H$}
@@ -700,13 +696,13 @@ consolidate = foldr\ melt\ [\ ]
 \EndFunction
 \end{algorithmic}
 
-我们使用“势能方法”分析弹出算法的分摊性能。回忆物理学中重力势能的定义：
+我们使用“势能方法”分析弹出的分摊性能。回忆物理学中重力势能的定义：
 
 \be
 E = m g h
 \ee
 
-如\cref{fig:potential-energy}所示，假设一个复杂的操作过程，将质量为$m$的物体上下移动，最终物体静止在了高为$h'$的位置。如果这一过程中的摩擦阻力做功$W_f$，则做功的总和为：
+如\cref{fig:potential-energy}所示，假设一个复杂的操作过程，将质量为$m$的物体上下移动，最终停在高为$h'$的位置。这一过程中的摩擦阻力做功$W_f$，做功总和为：
 
 \[
 W = m g (h' - h) + W_f
@@ -719,13 +715,13 @@ W = m g (h' - h) + W_f
   \label{fig:potential-energy}
 \end{figure}
 
-考虑斐波那契堆的弹出操作。为了计算总消耗，我们首先定义删除最小元素前的势能为$\Phi(H)$。这个势能是由迄今为止的插入、合并操作累积的。经过树的归并，形成了新的堆$H'$，由此计算新的势能$\Phi(H')$。$\Phi(H')$和$\Phi(H)$的差再加上树归并消耗的部分就可以给出弹出的分摊复杂度。定义势能为：
+为了计算斐波那契堆弹出的总消耗，令弹出前的势能为$\Phi(H)$。这个势能是由迄今为止的插入、合并操作累积的。经过树归并，形成了新堆$H'$，由此计算新势能$\Phi(H')$。$\Phi(H')$和$\Phi(H)$的差再加上树归并消耗的部分就是弹出的分摊复杂度。定义势能为：
 
 \be
 \Phi(H) = t(H)
 \ee
 
-其中$t(H)$是堆中树的棵数。对于$n$个节点的斐波那契堆，令堆中所有树秩的上限为$R(n)$。归并后，堆中树的棵数最多为$t(H') = R(n) + 1$。在归并前，我们还做了另外一个重要的操作，也对总运行时间有所贡献：我们将存有最小元素的树根删除，然后将其全部子树添加到森林中。因此树归并操作最多处理$R(n) + t(H) - 1$棵树。设弹出操作的时间复杂度为$T$，树归并的时间复杂度为$T_c$，我们推导分摊性能如下：
+其中$t(H)$是堆中树的棵数。对于$n$个节点的斐波那契堆，令秩的上限为$R(n)$。归并后的棵数最多为$t(H') = R(n) + 1$。在归并前，我们还做了另一个重要操作：将堆顶所在的树根删除，将其子树添加到森林中。因此最多归并$R(n) + t(H) - 1$棵树。设弹出操作的时间复杂度为$T$，树归并的时间复杂度为$T_c$，推导分摊复杂度如下：
 
 \be
 \begin{array}{rcl}
@@ -735,14 +731,15 @@ T & = & T_c + \Phi(H') -\Phi(H) \\
 \end{array}
 \ee
 
-插入、合并、弹出操作可以确保斐波那契堆中的所有树都为二项式树，此时$R(n)$的上限为$O(\lg n)$。
+插入、合并、弹出操作确保斐波那契堆中的所有树都为二项式树，此时$R(n)$的上限为$O(\lg n)$。
 
 \subsection{提升优先级}
 \index{斐波那契堆!提升优先级}
 
-提升优先级是堆的一个实际应用。用堆管理若干任务，某个任务需要提前执行，为此我们希望将代表其优先级的数值减小，使得任务更接近堆顶。某些图算法，例如最小生成树算法和Dijkstra算法都依赖这一操作\cite{CLRS}。并且我们需要其分摊性能达到常数时间。令$x$指向堆$H$中的某个节点，我们希望将它的值减小为$k$。如\cref{fig:cut-fib-tree}，若节点$x$的值小于父节点$y$，将子树$x$切下并添加到堆（森林）中。尽管这样可以使得每棵树的父节点仍然存有最小值，但切除节点后的树不再是二项式树。如果失去了很多子树，就无法保证合并操作的性能。为了解决这一问题，我们给斐波那契堆增加一个限制条件：
+用堆管理若干任务。若某个任务需要提前执行，我们将其优先级的值减小，使得任务更接近堆顶。某些图算法，例如最小生成树算法和Dijkstra算法都要求这一操作\cite{CLRS}的分摊复杂度达到常数时间。令$x$为堆$H$中的某个节点，需要将它的值减小为$k$。如\cref{fig:cut-fib-tree}，若$x$的值小于父节点$y$的值，将$x$切下并添加到堆（森林）中。尽管这样使得每棵树的父节点仍存有最小值，但切除节点后的树不再是二项式树。如果失去了很多子树，就无法保证合并的性能。为了解决这一问题，需要增加一个限制条件：
 
-\begin{center}当一个节点第二次失去了某个子节点时，立即将它切下并添加到堆（森林）中。
+\begin{center}
+{\em 当节点第二次失去了某个子节点时，立即将它切下并添加到堆（森林）中。}
 \end{center}
 
 \begin{figure}[htbp]
@@ -766,7 +763,7 @@ T & = & T_c + \Phi(H') -\Phi(H) \\
 \EndFunction
 \end{algorithmic}
 
-\textproc{Cascade-Cut}使用一个标记来记录它此前是否失去过子节点。并在\textproc{Cut}中清除这一标记。
+\textproc{Cascade-Cut}使用一个标记来记录它此前是否失去过子节点。并在\textproc{Cut}中清除标记。
 
 \begin{algorithmic}[1]
 \Function{Cut}{$H, x$}
@@ -779,7 +776,7 @@ T & = & T_c + \Phi(H') -\Phi(H) \\
 \EndFunction
 \end{algorithmic}
 
-回溯切除时，若节点$x$被标记了，说明它此前已经失去了子节点。我们需要继续回溯切除，直到根节点。
+回溯时若节点$x$被标记了，说明它此前已经失去了子节点。我们需要继续回溯切除，直到根节点。
 
 \begin{algorithmic}[1]
 \Function{Cascade-Cut}{$H, x$}
@@ -822,11 +819,11 @@ t(H) + c + 2(m(H) - c + 2) - [t(H) + 2m(H)] = 4 - c
 
 \subsection{斐波那契堆的命名}
 
-我们尚未给出\textproc{Max-Rank}($n$)的实现。它定义了$n$个元素的斐波那契堆中所有树的秩的上限。
+我们尚未给出\textproc{Max-Rank}($n$)的实现。它定义了$n$个元素的斐波那契堆中秩的上限。
 
 \begin{lemma}
 \label{lemma:Fib-degree}
-对于斐波那契堆中的任何树$x$，若其秩为$k$，（即：$k = rank(x)$），$|x|$为树中元素个数，则：
+对于斐波那契堆中的任何树$x$，若其秩为$k$，即$k = rank(x)$，$|x|$为树中元素个数，则：
 
 \be
   |x| \geq F_{k+2}
@@ -850,7 +847,7 @@ F_k & = & F_{k-1} + F_{k-2} \\
   rank(y_i) = rank(x) = i - 1
 \]
 
-此后$y_i$最多只能失去一个子节点（通过\textproc{Decrease}），一旦失去第二个子节点，它会被立即切除并加入到森林中。因此我们可以推断，对任何$i = 2, 3, ..., k$，有：
+此后$y_i$最多只能失去一个子节点（通过\textproc{Decrease}），一旦失去第二个子节点，它会被立即切除并加入到森林中。因此可以推断，对任何$i = 2, 3, ..., k$，有：
 
 \[
 rank(y_i) \geq i - 2
@@ -864,7 +861,7 @@ rank(y_i) \geq i - 2
     & \geq & 2 + s_0 + s_1 + ... + s_{k-2} \\
 \eea*
 
-其中最后一行成立是因为$rank(y_i) \geq i - 2$并且$s_k$单调增，所以$s_{rank(y_i)} \geq s_{i-2}$。我们接下来要证明$s_k > F_{k+2}$。使用数学归纳法。对于边界情况，我们有$s_0 = 1 \geq F_2 = 1$，以及$s_1 = 2 \geq F_3 = 2$。对于$k \geq 2$的情况，我们有：
+其中最后一行成立是因为$rank(y_i) \geq i - 2$并且$s_k$单调增，所以$s_{rank(y_i)} \geq s_{i-2}$。接下来要证明$s_k > F_{k+2}$。使用数学归纳法。对于边界情况，有$s_0 = 1 \geq F_2 = 1$，以及$s_1 = 2 \geq F_3 = 2$。对于$k \geq 2$的情况，有：
 
 \bea*{rcll}
 |x| & \geq & s_k & \\
@@ -873,7 +870,7 @@ rank(y_i) \geq i - 2
     & =    & 1 + F_0 + F_1 + F_2 + ... + F_k & \text{利用}F_0 = 0, F_1 = 1 \\
 \eea*
 
-现在，我们需要证明
+接下来需要证明
 
 \be
 F_{k+2} = 1 +  \sum_{i=0}^{k} F_i
@@ -891,13 +888,13 @@ F_{k+2} = 1 +  \sum_{i=0}^{k} F_i
 \eea*
 \end{itemize}
 
-综上，我们得到最终结论：
+综上得到结论：
 \be
 n \geq |x| \geq F_{k+2}
 \ee
 \end{proof}
 
-根据斐波那契数列的性质：$F_k \geq \phi^k$，其中$\phi = \dfrac{1+\sqrt{5}}{2}$为黄金分割比。我们同时证明了弹出操作的分摊复杂度为$O(\lg n)$。根据这一结果，我们可以定义$maxRank$为：
+根据斐波那契数列的性质：$F_k \geq \phi^k$，其中$\phi = \dfrac{1+\sqrt{5}}{2}$为黄金分割比。我们同时证明了弹出操作的分摊复杂度为$O(\lg n)$。根据这一结果，可以定义$maxRank$为：
 
 \be
   maxRank(n) = 1 + \lfloor \log_{\phi} n \rfloor
@@ -920,7 +917,7 @@ n \geq |x| \geq F_{k+2}
 \section{配对堆}
 \label{pairing-heap} \index{配对堆}
 
-斐波那契堆的实现较为复杂。本节介绍配对堆。它实现简单、性能优异。大部分操作，包括插入、获取堆顶、合并都是常数时间复杂度，人们猜测它的弹出操作的分摊复杂度为$O(\lg n)$\cite{pairing-heap}\cite{okasaki-book}。
+斐波那契堆的实现较为复杂。配对堆实现简单、性能优异。大部分操作，包括插入、获取堆顶、合并都是常数时间复杂度，人们猜测它的弹出操作的分摊复杂度为$O(\lg n)$\cite{pairing-heap}\cite{okasaki-book}。
 
 \subsection{定义}
 \index{配对堆!定义}
@@ -1000,7 +997,7 @@ merge\ (x, ts_1)\ (y, ts_2) & = & \begin{cases}
 pop\ (x, ts) = \textit{consolidate}\ ts
 \ee
 
-我们先从左向右，两两成对地将子树合并。然后再从右向左合并合并成一棵树。配对堆的名字就来自这一合并过程。如\cref{fig:merge-pairs}和\cref{fig:merge-right}所示。合并过程和自底向上的归并排序\cite{okasaki-book}类似。
+我们先从左向右，两两成对地将子树合并。然后再从右向左合并成一棵树。配对堆的名字就来自这一合并过程。如\cref{fig:merge-pairs}和\cref{fig:merge-right}所示。合并过程和自底向上的归并排序\cite{okasaki-book}类似。
 
 \begin{figure}[htbp]
   \centering
@@ -1041,12 +1038,12 @@ pop\ (x, ts) = \textit{consolidate}\ ts
 \EndFunction
 \end{algorithmic}
 
-我们从左向右每次成对迭代两棵子树$T_x$、$T_y$合并成$T$，然后链接到$L$的前面。这样再次遍历$L$时，实际是按照从右向左的顺序。堆中可能含有奇数棵子树，这种情况下，最后一次$T_y =$ NIL，成对合并后$T = T_x$。
+从左向右每次成对迭代两棵子树$T_x$、$T_y$合并成$T$，然后链接到$L$的前面。这样再次遍历$L$时，实际是按照从右向左的顺序。堆中可能含有奇数棵子树，这种情况下，最后一次$T_y =$ NIL，成对合并后$T = T_x$。
 
 \subsection{删除}
 \index{配对堆!删除}
 
-为了删除某个节点$x$，我们可以先将节点的值减小为$-\infty$，然后再执行一次弹出操作。本节介绍另外一种删除方法。若$x$为根节点，我们只需要执行一次弹出操作。否则，我们将$x$从堆$H$中切下，然后对$x$执行一次弹出操作，再将结果合并回$H$：
+删除某个节点$x$时，可先将节点的值减小为$-\infty$，然后再执行一次弹出操作。本节介绍另外一种删除方法。若$x$为根节点，我们只需要执行一次弹出操作。否则，我们将$x$从堆$H$中切下，然后对$x$执行一次弹出操作，再将结果合并回$H$：
 
 \begin{algorithmic}[1]
 \Function{Delete}{$H, x$}
