@@ -65,7 +65,7 @@ x <| Seq xs = Seq (Elem x `cons` xs)
 cons :: (Sized a) => a -> Tree a -> Tree a
 cons a Empty = Lf a
 cons a (Lf b) = Br (size a + size b) [a] Empty [b]
-cons a (Br s [b, c, d, e] m r) = Br (s + size a) [a, b] ((tr3 c d e) `cons` m) r
+cons a (Br s [b, c, d] m r) = Br (s + size a) [a] ((tr3 b c d) `cons` m) r
 cons a (Br s f m r) = Br (s + size a) (a:f) m r
 
 -- Remove from left
@@ -85,7 +85,7 @@ Seq xs |> x  = Seq (xs `snoc` Elem x)
 snoc :: (Sized a) => Tree a -> a -> Tree a
 snoc Empty a = Lf a
 snoc (Lf a) b = Br (size a + size b) [a] Empty [b]
-snoc (Br s f m [a, b, c, d]) e = Br (s + size e) f (m `snoc` (tr3 a b c)) [d, e]
+snoc (Br s f m [a, b, c]) d = Br (s + size d) f (m `snoc` (tr3 a b c)) [d]
 snoc (Br s f m r) a = Br (s + size a) f m (r ++ [a])
 
 -- Remove from right
