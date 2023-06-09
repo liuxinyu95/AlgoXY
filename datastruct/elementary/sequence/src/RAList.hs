@@ -57,13 +57,13 @@ tail' = snd . minus
 
 getAt :: RAList a -> Int -> a
 getAt (Zero:ts) i = getAt ts i
-getAt (One t:ts) i = if i < size t then lookupTree t i
+getAt (One t:ts) i = if i < size t then lookupTree i t
                      else getAt ts (i - size t)
   where
-    lookupTree :: Tree a -> Int -> a
-    lookupTree (Leaf x) 0 = x
-    lookupTree (Node sz t1 t2) i = if i < sz `div` 2 then lookupTree t1 i
-                                   else lookupTree t2 (i - sz `div` 2)
+    lookupTree :: Int -> Tree a -> a
+    lookupTree 0 (Leaf x) = x
+    lookupTree i (Node sz t1 t2) = if i < sz `div` 2 then lookupTree i t1
+                                   else lookupTree (i - sz `div` 2) t2
 
 setAt :: RAList a -> Int -> a -> RAList a
 setAt (Zero:ts) i x = Zero:setAt ts i x
@@ -105,6 +105,11 @@ prop_update xs i y = (0 <=i && i< length xs) ==> toList (setAt (fromList xs) i y
     xs' = as ++ [y] ++ bs
     (as, (_:bs)) = splitAt i xs
 
+testAll = do
+  quickCheck prop_cons
+  quickCheck prop_head
+  quickCheck prop_lookup
+  quickCheck prop_update
 
 -- Reference
 -- [1]. Chris Okasaki. ``Purely Functional Random-Access Lists''. Functional Programming Languages and Computer Architecutre, June 1995, pages 86-95.
