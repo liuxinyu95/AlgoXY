@@ -253,7 +253,7 @@ prop_update xs = and [(updateAt i xs (i + 1)) == toList (setAt s i (i + 1))
     (as, []) -> xs
 
 prop_mtf :: [Int] -> Bool
-prop_mtf xs = and [(toList $ moveToFront s i) == mtf xs i | i <-[-1 .. length xs]]
+prop_mtf xs  =and [(toList $ moveToFront s i) == mtf xs i | i <-[-1 .. length xs]]
     where
       s = fromList xs
       mtf xs i = if i < 0 || i >= length xs then xs
