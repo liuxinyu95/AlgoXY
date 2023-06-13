@@ -88,5 +88,3 @@ This will generate algoxy-en.pdf and algoxy-zh-cn.pdf. If you only need the Chin
 --
 
 LIU Xinyu
-
-liuxinyu95@gmail.com
