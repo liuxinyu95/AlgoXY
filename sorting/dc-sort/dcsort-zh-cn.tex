@@ -431,14 +431,14 @@ O(T(n)) = O(n \lg n)
 \subsection{改进}
 \index{快速排序!改进} \index{快速排序!三分划分}
 
-快速排序性能优异，但在最坏情况下，性能会退化到平方级别。如果数据随机分布，出现最坏情况的概率很低。尽管如此，工程上常常采用一些方法以避免或减少出现最坏情况。我们给出的划分实现\textproc{Partition}在处理大量重复元素时出现性能下降。考虑含有$n$个相等元素的特殊序列$[x, x, ..., x]$：
+\textproc{Partition}在处理大量重复元素时性能不佳。考虑含有$n$个相等元素的特殊序列$[x, x, ..., x]$：
 
 \begin{enumerate}
-\item 基本快速排序：任选一个元素作为基准$p = x$，分割后得到两个序列：$[x, x, ..., x]$，长度为$n-1$，另外一个序列为空。接下来递归地对长为$n-1$的序列排序。总复杂度为$O(n^2)$。
-\item 只用严格的$< x$、$> x$进行划分。结果是两个空序列和$n$个等于$x$的元素。接下来的递归只应用到两个空列上并立即结束。结果为$[\ ] \doubleplus [x, x, ..., x] \doubleplus [\ ]$。总复杂度为$O(n)$。
+\item 根据定义：任选某一元素作为基准$p = x$，划分为一个空序列和长度为$n-1$的序列：$[x, x, ..., x]$。然后递归地对长为$n-1$的序列排序。总复杂度为$O(n^2)$。
+\item 用条件$< x$和$> x$划分。结果是两个空序列和$n$个等于$x$的元素。对两个空列递归并立即结束。结果为$[\ ] \doubleplus [x, x, ..., x] \doubleplus [\ ]$。总复杂度为$O(n)$。
 \end{enumerate}
 
-据此，我们对划分进行改进：相对于二分划分，\textbf{三分划分}能更好地处理重复元素。
+据此将二分划分改进为\textbf{三分划分}来处理重复元素。
 
 \be
 \begin{array}{rcl}
@@ -457,7 +457,7 @@ G = [ y \gets xs, y > x ] \\
 \end{cases}
 \]
 
-这一实现需要线性时间将三个子列表连接起来。我们可以使用一个累积变量进行改进：$qsort = sort\ [\ ]$。其中：
+使用累积变量改进$S$、$E$、$G$的连接：$qsort = sort\ [\ ]$。其中：
 
 \be
 \begin{array}{rcl}
@@ -466,7 +466,7 @@ sort\ A\ (x \cons xs) & = & sort\ (E \doubleplus sort\ A\ G)\ S \\
 \end{array}
 \ee
 
-我们将非空列表划分为三个子列表$S, E, G$，其中$E$中元素全相等，无需进一步排序。我们先使用累积变量$A$对$G$排序，将结果连接到$E$的后面，作为新的累积变量再对$S$排序。划分也可以使用累积变量改进：
+$E$中元素全相等，无需排序。先用累积变量$A$对$G$排序，然后将$E$连接到结果前作为新的累积变量对$S$排序。划分也可以使用累积变量改进：
 
 \be
 \begin{array}{rcl}
@@ -479,7 +479,7 @@ part\ S\ E\ G\ x\ (y \cons ys) & = & \begin{cases}
 \end{array}
 \ee
 
-理查德$\cdot$伯德给出了另一种改进\cite{fp-pearls}，它不立即连接递归排序的结果，而是把排好的子列表保存起来，最终再连接在一起：
+伯德给出了另一种改进\cite{fp-pearls}，把递归排好的子列表收集起来再连接：
 
 \begin{Haskell}
 sort :: (Ord a) => [a] -> [a]
@@ -494,7 +494,7 @@ pass xss (x:xs) = step xs [] [x] [] xss where
 \end{Haskell}
 
 \index{快速排序!双向扫描}
-罗伯特$\cdot$塞奇维克（Robert Sedgewick）给出了\textbf{双向扫描}的划分方法\cite{qsort-impl}\cite{Bentley}。使用两个指针$i, j$从左右两侧相向扫描。开始时$i, j$指向数组左右边界，选择最左侧的元素作为基准$p$。然后左指针$i$向右扫描直到遇到一个$\geq p$的元素；另外\footnote{两轮扫描可以并发。}右指针$j$向左扫描直到遇到一个$\leq p$的元素。此时，所有$i$左边的元素都$< p$，所有$j$右边的元素都$> p$。$i$指向一个$\geq p$的元素，而$j$指向一个$\leq p$的元素。如图\cref{fig:partition-2-way} (a)。为了将全部$\leq p$的元素划分到左侧，其余元素划分到右侧，我们交换$i$和$j$指向的两个元素。然后恢复扫描，重复上面的步骤直到$i$和$j$相遇或者交错。在划分的任何时刻，总保持着不变条件：所有$i$左侧的元素（包括$i$）都$\leq p$；所有$j$右侧的元素（包括$j$）都$\geq p$。$i$和$j$之间的元素尚未处理。如图\cref{fig:partition-2-way} (b)。
+塞奇维克（Sedgewick）给出了\textbf{双向扫描}划分方法\cite{qsort-impl}\cite{Bentley}。使用两个指针$i, j$从左右两侧相向扫描。开始时$i, j$指向数组左右边界，选择最左侧的元素作为基准$p$。然后左指针$i$向右扫描直到遇到某个$\geq p$的元素；另外\footnote{两轮扫描可以并发。}右指针$j$向左扫描直到遇到某个$\leq p$的元素。此时，所有$i$左边的元素$< p$，$j$右边的元素$> p$。$i$指向一个$\geq p$的元素，而$j$指向一个$\leq p$的元素。如\cref{fig:partition-2-way} (a)。为了将全部$\leq p$的元素划分到左侧，其余元素划分到右侧，我们交换$i$和$j$指向的两个元素。然后继续扫描，重复上面的步骤直到$i$和$j$相遇或者交错。在划分的任何时刻，总保持不变条件：所有$i$左侧的元素（包括$i$）都$\leq p$；所有$j$右侧的元素（包括$j$）都$\geq p$。$i$和$j$之间的元素尚未处理。如\cref{fig:partition-2-way} (b)。
 
 \begin{figure}[htbp]
    \centering
@@ -532,7 +532,7 @@ pass xss (x:xs) = step xs [] [x] [] xss where
    \label{fig:partition-2-way}
 \end{figure}
 
-当$i$、$j$相遇或交错时，我们需要一次额外的交换，将最左侧的基准$p$交换到$j$指向的位置上。然后，我们对划分区间下界$l$和$j$之间的数组片段$A[l ... j)$；$i$和划分区间上界$u$之间的片段$A[i ... u)$进行递归排序。
+当$i$、$j$相遇或交错时，需要一次额外的交换，将最左侧的基准$p$交换到$j$指向的位置上。然后，对划分区间下界$l$和$j$之间的数组片段$A[l ... j)$；$i$和划分区间上界$u$之间的片段$A[i ... u)$递归排序。
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$} \Comment{排序区间：$[l, u)$}
@@ -559,7 +559,7 @@ pass xss (x:xs) = step xs [] [x] [] xss where
 \end{algorithmic}
 
 \index{快速排序!三路划分}
-考虑所有元素都相等的极端情况：数组划分为两段长度相等的子数组，发生了$\dfrac{n}{2}$次交换。由于划分是平衡的，所以总体性能仍然为$O(n \lg n)$，而没有退化。和此前的划分实现对比，这一方法的交换次数更少。它跳过了那些在基准正确一侧的元素不进行处理。我们可以把双向扫描和三路划分结合起来。只对不等于基准的元素进行递归。Jon Bentley和Douglas McIlroy给出了一个方法：如图\cref{fig:partition-3-way} (a)所示，先把所有和基准相等的元素保存在两侧\cite{3-way-part}\cite{opt-qs}。
+考虑所有元素都相等的极端情况：数组被均分为两段，共进行$\dfrac{n}{2}$次交换。由于划分是平衡的，总体性能仍然为$O(n \lg n)$，没有退化。和此前的实现对比，这一方法的交换次数更少。它跳过了那些在基准正确一侧的元素不进行处理。我们可以把双向扫描和三路划分结合起来。只对不等于基准的元素递归排序。本特利（Jon Bentley）和麦基尔罗伊（Douglas McIlroy）给出了一个方法：如\cref{fig:partition-3-way} (a)所示，先把所有和基准相等的元素保存在两侧\cite{3-way-part}\cite{opt-qs}。
 
 \begin{figure}[htbp]
    \centering
@@ -603,7 +603,7 @@ pass xss (x:xs) = step xs [] [x] [] xss where
    \label{fig:partition-3-way}
 \end{figure}
 
-扫描过程仍然是左右相向的。直到$i$遇到$\geq$基准的元素，并且$j$遇到$\leq$基准的元素。此时如果$i$和$j$没有相遇或者交错，我们不仅交换$A[i] \leftrightarrow A[j]$，同时检查$A[i], A[j]$是否等于基准。如果相等，就交换$A[i] \leftrightarrow A[p]$或$A[j] \leftrightarrow A[q]$。在划分结束前，我们需要把所有等于基准的元素从左右交换到中间。交换次数取决于重复元素的个数。如果所有元素唯一，则交换次数为零，不产生任何额外消耗。划分结果如图\cref{fig:partition-3-way} (b)所示。此后，我们只需要对“严格小于”和“严格大于”部分递归。
+仍然左右相向扫描，直到$i$遇到$\geq$基准的元素，并且$j$遇到$\leq$基准的元素。此时如果$i$、$j$没有相遇或者交错，不仅交换$A[i] \leftrightarrow A[j]$，同时检查$A[i], A[j]$是否等于基准。如果相等，就交换$A[i] \leftrightarrow A[p]$或$A[j] \leftrightarrow A[q]$。在划分结束前，需要把所有等于基准的元素从左右交换到中间。交换次数取决于重复元素的个数。如果所有元素都不同，则交换次数为零，不产生任何额外消耗。划分结果如\cref{fig:partition-3-way} (b)所示。此后，我们只需要对“严格小于”和“严格大于”部分递归。
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
@@ -648,7 +648,7 @@ pass xss (x:xs) = step xs [] [x] [] xss where
 \EndProcedure
 \end{algorithmic}
 
-双向扫描加三路划分的逻辑变得复杂了，需要仔细处理各种边界条件。此前的单向扫描具有简单、直观的特点。我们考虑直接对它进行改进。首先需要调整不变条件。选择第一个元素作为基准$p$，如图\cref{fig:partition-3-way-lomuto}所示。任何时刻，左侧片段包含$< p$的元素；接下来的片段包含$= p$的元素；最右侧片段包含$> p$的元素。三个片段的边界分别为$i$、$k$、$j$。$[k, j)$之间是尚未扫描的元素。我们从左向右逐一扫描。开始时，$< p$的部分为空；$= p$的部分只有一个元素。$i$指向数组的下界，$k$指向$i$的下一个元素。$> p$的部分也为空，$j$指向数组上界。
+双向扫描加三路划分的逻辑变得复杂了，需要仔细处理各种边界条件。此前的单向扫描具有简单、直观的特点。我们也可以直接改进它。首先调整不变条件。选择第一个元素作为基准$p$，如\cref{fig:partition-3-way-lomuto}所示。任何时刻，左侧片段包含$< p$的元素；接下来的片段包含$= p$的元素；最右侧片段包含$> p$的元素。三个片段的边界分别为$i$、$k$、$j$。$[k, j)$之间是尚未扫描的元素。从左向右逐一扫描。开始时，$< p$的部分为空；$= p$的部分只有一个元素。$i$指向数组的下界，$k$指向$i$的下一个元素。$> p$的部分也为空，$j$指向数组上界。
 
 \begin{figure}[htbp]
    \centering
@@ -671,7 +671,7 @@ pass xss (x:xs) = step xs [] [x] [] xss where
    \label{fig:partition-3-way-lomuto}
 \end{figure}
 
-划分开始后，我们逐一检查$k$指向的元素。如果它等于$p$，就移动$k$指向下一个元素；如果$> p$，我们将$A[k]$和未处理区间的最后一个元素$A[j-1]$交换，这样$> p$的区间长度就增加一。它的边界$j$向左移动一步。由于不确定移动到位置$k$的元素是否仍然大于$p$，我们需要再次比较，重复上述过程。否则，如果元素$< p$，我们将$A[k]$和$= p$的区间的第一个元素$A[i]$交换。当$k$和$j$相遇时，划分过程结束。
+逐一检查$k$指向的元素。如果$A[k] = p$，就向前移动$k$；如果$A[k] > p$，交换$A[k] \leftrightarrow A[j-1]$，这样$> p$的区间长度增加一。它的边界$j$向左移动一步。由于不确定移动到位置$k$的元素是否仍然大于$p$，我们需要再次比较并重复上述过程。否则，如果$A[k] < p$，交换$A[k] \leftrightarrow A[i]$，其中$A[i]$是$= p$的区间中的第一个元素。当$k$、$j$相遇时划分结束。
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
@@ -697,15 +697,15 @@ pass xss (x:xs) = step xs [] [x] [] xss where
 
 和双向扫描加三路划分相比，这一实现相对简单但需要更多的交换次数。
 
-\subsubsection{最差情况}
+\subsubsection{特殊情况}
 
-虽然三路划分能较好地应对大量重复元素，但仍然无法有效解决一些最差情况。例如，序列中的大部分元素已序时（无论是升序还是降序），划分结果不平衡。图\cref{fig:worst-cases-1}是两种极端情况：$[x_1 < x_2 < ... < x_n]$和$[y_1 > y_2 > ... > y_n]$的划分结果。我们可以给出更多的最差情况，例如$[x_m, x_{m-1}, ..., x_2, x_1, x_{m+1}, x_{m+2}, ... x_n]$，其中$[ x_1 < x_2 < ... < x_n]$，以及$[x_n, x_1, x_{n-1}, x_2, ... ]$。如图\cref{fig:worst-cases-2}所示。
+虽然三路划分能应对重复元素，但仍有一些困难的情况。例如，序列中的大部分元素已序时（无论是升序还是降序），划分结果不平衡。\cref{fig:worst-cases-1}是两种极端情况：$[x_1 < x_2 < ... < x_n]$和$[y_1 > y_2 > ... > y_n]$的划分结果。还有更多的例子，如$[x_m, x_{m-1}, ..., x_2, x_1, x_{m+1}, x_{m+2}, ... x_n]$，其中$[ x_1 < x_2 < ... < x_n]$，以及$[x_n, x_1, x_{n-1}, x_2, ... ]$。如\cref{fig:worst-cases-2}所示。
 
 \begin{figure}[htbp]
    \centering
    \subcaptionbox{$[x_1 < x_2 < ... < x_n]$的划分树。$\leq p$的部分总为空。}{\hspace{.3\textwidth} \includegraphics[scale=0.5]{img/unbalanced} \hspace{.3\textwidth}} \\
-   \subcaptionbox{$[y_1 > y_2 > ... > y_n]$的划分树，$\geq p$的部分总为空。}{\includegraphics[scale=0.5]{img/unbalanced-2}} \\
-   \caption{两种最差情况}
+   \subcaptionbox{$[y_1 > y_2 > ... > y_n]$的划分树，$\geq p$的部分总为空。}{\hspace{.3\textwidth} \includegraphics[scale=0.5]{img/unbalanced-2} \hspace{.3\textwidth}} \\
+   \caption{特殊情况}
    \label{fig:worst-cases-1}
 \end{figure}
 
@@ -713,11 +713,11 @@ pass xss (x:xs) = step xs [] [x] [] xss where
    \centering
    \subcaptionbox{除了第一次划分，其它都不平衡。}{\includegraphics[scale=0.5]{img/unbalanced-3}} \\
    \subcaptionbox{一个之字形的划分树。}{\includegraphics[scale=0.5]{img/unbalanced-zigzag}} \\
-   \caption{更多最差情况}
+   \caption{更多特殊情况}
    \label{fig:worst-cases-2}
 \end{figure}
 
-这几种最差情况中，选择第一个元素作为基准使得划分结果不平衡。塞奇维克给出了一种改进\cite{qsort-impl}：不在固定的位置上选择基准，而是进行简单的抽样以减小引发不平衡划分的可能性。检查第一个元素、中间元素、末尾元素，选择这三个元素的中数作为基准。有两种方法来寻找中数，一种最多需要三次比较操作\cite{3-way-part}；另外一种通过交换将三个元素中的最小值移动到第一个元素的位置，将最大值移动到最后一个位置，将中数移动到中间。
+这几种情况中，用第一个元素作为基准造成不平衡划分。塞奇维克给出了一种改进\cite{qsort-impl}：不在固定的位置上选择基准，而是进行简单的抽样以减小不平衡的可能性。检查头部、中间、末尾元素，选择这三者的中数作为基准。有两种方法：一种最多需要三次比较\cite{3-way-part}；另一种通过交换将三者的最小值移动到头部，将最大值移动到尾部，将中数移动到中间。
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
@@ -740,7 +740,7 @@ pass xss (x:xs) = step xs [] [x] [] xss where
 \EndProcedure
 \end{algorithmic}
 
-对上述四种特殊的最差情况，这一实现性能良好。它被称为“三点中值”算法。另一种常见方法是随机选择元素作为基准：
+这一实现可以应对上述四种特殊情况，被称为“三点中值”法。另外，我们也可以随机选择基准：
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
@@ -753,9 +753,9 @@ pass xss (x:xs) = step xs [] [x] [] xss where
 \EndProcedure
 \end{algorithmic}
 
-函数\textproc{Random}($l, u$)返回一个在$l$和$u$之间的随机整数$l \leq i < u$。这一位置上的元素被交换到最左侧作为基准。这一方法称为\textbf{随机快速排序}\cite{CLRS}。无论是三点中值还是随机快速排序都不能完全避免最差情况。如果序列随机分布，无论选择第一个还是其它位置上的元素作为基准，在效果上都是相同的。即使在理论上无法避免最差情况，但是这些方法在实际应用中往往能够取得很好的结果。
+函数\textproc{Random}($l, u$)返回$l$和$u$之间的随机整数$l \leq i < u$。交换$A[i]$到头部作为基准。此方法称为\textbf{随机快速排序}\cite{CLRS}。无论是三点中值还是随机快速排序都无法完全避免最差情况。如果序列随机分布，无论选择第一个还是其它位置上的元素作为基准，在效果上都是相同的。尽管如此，这些改进在实际中被广泛应用。
 
-还有一些工程实践，它们不是着眼于解决划分的最差情况。塞奇维克观察到在序列较短时，快速排序没有明显优势，而插入排序反而更快\cite{Bentley}\cite{3-way-part}。塞奇维克、本特利、麦基尔罗伊测试了不同的序列长度，定义了一个阈值。如果序列中的元素个数少于阈值，就转而使用插入排序。
+除改进划分外，还有一些工程实践。塞奇维克观察到在序列较短时，快速排序没有明显优势，而插入排序反而更快\cite{Bentley}\cite{3-way-part}。他和本特利、麦基尔罗伊测试了不同的序列长度，定义了一个阈值。如果元素个数少于阈值，就转而使用插入排序。
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
