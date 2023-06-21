@@ -769,12 +769,12 @@ pass xss (x:xs) = step xs [] [x] [] xss where
 
 \subsection{快速排序与树排序}
 
-“真正的快速排序”复合应用了多种改进——当序列较短时转为插入排序，就地交换元素，使用三点中值选择基准，双向扫描三路划分。简短的递归定义虽然诠释了快速排序的思路，却没有使用上述任何改进。有人认这样的快速排序本质上是树排序。快速排序和树排序的确有紧密的关系。理查德$\cdot$伯德给出了如何通过“砍伐”概念\footnote{deforestation}，从二叉树排序推导出快速排序\cite{algo-fp}。定义\textit{unfold}函数将一个列表转换为二叉搜索树：
+“真正的快速排序”复合应用了多种改进——当序列较短时转为插入排序，就地交换元素，使用三点中值选择基准，双向扫描三路划分……简短的递归定义仅诠释了思路，却没有使用任何改进。有人认这样的快速排序本质上是树排序。快速排序和树排序的确有紧密的关系。伯德指出可以通过“砍伐”概念\footnote{deforestation}，从二叉树排序推导出快速排序\cite{algo-fp}。定义\textit{unfold}函数将列表转换为二叉搜索树：
 
 \be
 \begin{array}{rcl}
 \textit{unfold}\ [\ ] & = & \nil \\
-\textit{unfold}\ (x \cons xs) & = & (\textit{unfold}\ [a | a \in xs, a \leq x], x, \textit{unfold}\ [a | a \in xs, a > x]) \\
+\textit{unfold}\ (x \cons xs) & = & (\textit{unfold}\ [a \gets xs, a \leq x], x, \textit{unfold}\ [a \gets xs, a > x]) \\
 \end{array}
 \ee
 
@@ -787,18 +787,18 @@ pass xss (x:xs) = step xs [] [x] [] xss where
 \end{array}
 \ee
 
-我们可以将上述两个函数组合起来，定义出快速排序算法：
+将上述两个函数组合起来，就可定义出快速排序算法：
 
 \be
 \textit{sort} = \textit{toList} \circ \textit{unfold}
 \ee
 
-我们先通过\textit{unfold}构造出二叉搜索树，将其作为中间结果送入\textit{toList}得出列表后就可以将树丢弃了。如果将这一临时的中间结果树消除，就得到了基本的快速排序算法\cite{slpj-book-1987}。
+我们先通过\textit{unfold}构造出二叉搜索树，将其作为中间结果送入\textit{toList}，结束后丢弃。如果将临时的中间结果树消除，就得到了基本的快速排序算法\cite{slpj-book-1987}。
 
 \section{归并排序}
 \index{归并排序} \index{归并排序!定义}
 
-快速排序在大多数情况下性能优异，但在最差情况下出现退化。即使辅以各种改进也无法完全避免最差情况。归并排序在所有情形下都保证$O(n \lg n)$的复杂度，在算法设计和分析上具有重要意义。归并排序对数组和列表都适用，很多编程环境适用归并排序作为标准的排序方案\footnote{如Haskell, Python和Java}。归并排序本质上也利用了分而治之的策略。它保证划分是严格平衡的，每次将序列从中间位置分开，递归进行排序，然后将两个已序序列归并。
+快速排序性能优异，但无法完全避免最差情况。归并排序在所有情形下都保证$O(n \lg n)$的复杂度，适用于数组和列表，在算法设计和分析上具有重要意义。很多编程环境用归并排序作为标准工具\footnote{如Haskell, Python和Java}。归并排序也利用了分治策略。每次将序列均分，递归排序、归并。
 
 \be
 \begin{array}{rcl}
@@ -808,7 +808,7 @@ sort\ xs & = & merge\ (sort\ as)\ (sort\ bs), \text{其中}: (as, bs) = \textit{
 \end{array}
 \ee
 
-其中\textit{halve}将序列对半分开。对于数组，我们可以利用索引直接在中间位置分割：$\textit{splitAt}\ \lfloor \dfrac{|xs|}{2} \rfloor\ xs$。对于列表我们需要线性时间移动到中点进行分割（见第一章），例如：
+其中\textit{halve}将序列对半分开。对于数组，我们可以直接在中间位置分割：$\textit{splitAt}\ \lfloor \dfrac{|xs|}{2} \rfloor\ xs$。但列表需要线性时间移动到中点（见\cref{eq:split-at}）：
 
 \be
 \textit{splitAt}\ n\ xs = \textit{shift}\ n\ [\ ]\ xs
@@ -823,7 +823,7 @@ sort\ xs & = & merge\ (sort\ as)\ (sort\ bs), \text{其中}: (as, bs) = \textit{
 \end{array}
 \ee
 
-对半拆分并不需要保持顺序，我们可以利用奇偶位置分割进行简化。奇偶要么同样多，要么仅相差一个，总能保证平衡。$\textit{halve} = \textit{split}\ [\ ]\ [\ ]$，其中：
+考虑均分无需要保持元素间顺序，我们可以利用奇偶位置简化。奇偶要么同样多，要么仅差一个，总能保证平衡。$\textit{halve} = \textit{split}\ [\ ]\ [\ ]$，其中：
 
 \be
 \begin{array}{rcl}
@@ -833,7 +833,7 @@ sort\ xs & = & merge\ (sort\ as)\ (sort\ bs), \text{其中}: (as, bs) = \textit{
 \end{array}
 \ee
 
-我们也可以利用叠加操作进一步简化，如下面的例子程序，每次总把元素$x$添加到$as$上，然后交换$as \leftrightarrow bs$：
+我们也可以用叠加进一步简化如下，每次把元素$x$添加到$as$上，然后交换$as \leftrightarrow bs$：
 
 \begin{Haskell}
 halve = foldr f ([], []) where
@@ -843,7 +843,7 @@ halve = foldr f ([], []) where
 \subsection{归并}
 \index{归并排序!归并}
 
-归并的思想如图\cref{fig:merge}所示。考虑两队孩子，已分别按照身高排队。我们要求孩子们依次通过一扇门，每次一人，按照身高顺序。由于两队都已序，我们比较两个排头，个子较小的一个通过门；然后重复这一步骤，直到任何一队的孩子都已经通过，此后剩下的一队中的孩子们可以逐一通过这扇门。
+归并的思想如\cref{fig:merge}所示。考虑两队孩子，已分别按照身高排队。我们要求孩子们依次通过一扇门，每次一人，按照身高顺序。由于两队都已序，我们比较两个排头，个子较小的一个通过门；然后重复这一步骤，直到任何一队的孩子都已经通过，此后剩下的一队中的孩子们可以逐一通过这扇门。
 
 \begin{figure}[htbp]
  \centering
