@@ -104,6 +104,34 @@ fromList = foldr insert Empty
 toList Empty = []
 toList (Node l k r) = toList l ++ [k] ++ toList r
 
+partition x Empty = (Empty, Empty)
+partition x (Node a y b)
+  | x < y = let (a1, a2) = partition x a in (a1, Node a2 y b)
+  | otherwise = let (b1, b2) = partition x b in (Node a y b1, b2)
+
+merge Empty t = t
+merge t Empty = t
+merge (Node a x b) (Node c y d)
+  | x < y = let
+      (b1, b2) = partition y b
+      (c1, c2) = partition x c
+      in Node (Node (merge a c1) x (merge b1 c2)) y (merge d b2)
+  | otherwise = let
+      (a1, a2) = partition y a
+      (d1, d2) = partition x d
+      in Node (merge a1 c) y (Node (merge a2 d1) x (merge b d2))
+
+toTree :: (Ord a) => [a] -> Tree a
+toTree = foldp merge Empty . map leaf
+
+-- Pairwise fold [1]
+-- The binary function f is associative f (f x y) z = f x (f y z)
+foldp f z [] = z
+foldp f z [x] = f x z
+foldp f z xs = foldp f z (pairs xs) where
+  pairs (x:y:ys) = (f x y) : pairs ys
+  pairs ys = ys
+
 -- tree sort
 tsort :: (Eq a, Ord a) => [a] -> [a]
 tsort = toList . fromList
@@ -160,6 +188,9 @@ prop_rebuild xs = tr == rebuild prs ins where
   prs = preOrder tr
   ins = toList tr
 
+prop_merge :: [Int] -> Bool
+prop_merge xs = L.sort xs == toList (toTree xs)
+
 testAll = do
   quickCheck (prop_build::[Int]->Bool)
   quickCheck (prop_map::[Int]->Bool)
@@ -172,3 +203,4 @@ testAll = do
   quickCheck (prop_del::[Int]->Int->Bool)
   quickCheck (prop_mapR::[Int]->Int->Int->Bool)
   quickCheck (prop_rebuild::[Int]->Bool)
+  quickCheck prop_merge

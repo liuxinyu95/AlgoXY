@@ -84,7 +84,7 @@ sort'' xss = sort'' $ mergePairs' xss where
     mergeParis' xss = xss
 
 msort' :: (Ord a)=>[a]->([a], Int)
-msort' = sort'' . map (\x->([x], 0))
+msort' = sort'' . map (\ x -> ([x], 0))
 
 --test
 prop_msort :: [Int] -> Bool
