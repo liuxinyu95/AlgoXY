@@ -993,7 +993,7 @@ T(n) = T(\dfrac{n}{2}) + T(\dfrac{n}{2}) + c n = 2 T(\dfrac{n}{2}) + c n
 \subsection{原地归并排序}
 \index{归并排序!原地归并排序}
 
-为了避免使用额外空间，考虑如何复用原数组作为工作区。如\cref{fig:merge-in-place-naive}所示，子数组$X$和$Y$已排序好，原地归并时，令$l$之前为已归并部分（已序）。若$A[l] < A[m]$，向前移动$l$一步；否则若$A[l] \geq A[m]$需要把$A[m]$放入归并结果中，位于$l$之前。为此需要把所有$l$和$m$之间的元素（包括$l$）向后平移一个位置。
+为了避免使用额外空间，考虑如何复用原数组作为工作区。如\cref{fig:merge-in-place-naive}所示，子数组$X$和$Y$已排序好，原地归并时，令$l$之前为已归并部分（已序）。若$A[l] < A[m]$，向前移动$l$一步；否则若$A[l] \geq A[m]$需要把$A[m]$放入归并结果中，位于$l$之前。为此需要把所有位于区间$[l, m)$中\footnote{$[a, b)$表示左闭右开区间，包括$a$，但不包括$b$。}的元素向后平移一个位置。
 
 \begin{figure}[htbp]
  \centering
@@ -1026,28 +1026,28 @@ T(n) = T(\dfrac{n}{2}) + T(\dfrac{n}{2}) + c n = 2 T(\dfrac{n}{2}) + c n
 \end{algorithmic}
 
 \index{归并排序!原地工作区}
-但平移使得时间复杂度退化成$O(n^2)$。数组移动是线性时间的操作，和$X$中的元素个数成正比。对子数组排序时，我们使用数组剩余部分作为工作区。对那些已在工作区内的元素，要避免它们被覆盖丢失。当比较已序子数组$A$和$B$的元素时，每当把较小的元素放入工作区中的某个位置时，我们同时将工作区中的元素交换出来。归并完成后，原来的两个子数组就保存了此前工作区的内容。如图\cref{fig:merge-workarea}所示。
+但平移使得时间复杂度退化成$O(n^2)$。数组移动是线性时间的操作，和$X$中的元素个数成正比。对子数组排序时，我们使用数组剩余部分作为工作区。对那些已在工作区内的元素，要避免它们被覆盖丢失。比较已序子数组$X$、$Y$，每当把较小的元素放入工作区时，同时将工作区中的元素交换出来。归并完成后，$X$和$Y$就保存了此前工作区的内容。如\cref{fig:merge-workarea}所示。
 
 \begin{figure}[htbp]
  \centering
       \begin{tikzpicture}[scale=0.8]
       \draw (0, 2) rectangle (3, 3) node [pos=.5] {...复用...}
-            (3, 2) rectangle (4, 3) node (ai) [pos=.5] {$A[i]$}
+            (3, 2) rectangle (4, 3) node (ai) [pos=.5] {$X[i]$}
             (4, 2) rectangle (5, 3) node [pos=.5] {...}
             (7, 2) rectangle (10, 3) node [pos=.5] {...复用...}
-            (10, 2) rectangle (11, 3) node (bj) [pos=.5] {$B[j]$}
+            (10, 2) rectangle (11, 3) node (bj) [pos=.5] {$Y[j]$}
             (11, 2) rectangle (12, 3) node [pos=.5] {...}
             (0, 0) rectangle (3, 1) node [pos=.5] {...已归并...}
-            (3, 0) rectangle (4, 1) node (ck) [pos=.5] {$C[k]$}
+            (3, 0) rectangle (4, 1) node (ck) [pos=.5] {$Z[k]$}
             (4, 0) rectangle (5, 1) node [pos=.5] {...};
       \draw[thick, <->] (ai) edge [bend left] node [above] {比较} (bj)
-                        (ai) edge node [right] {若$A[i] < B[j]$，则交换$A[i] \leftrightarrow C[k]$} (ck);
+                        (ai) edge node [right] {若$X[i] < Y[j]$，则交换$X[i] \leftrightarrow Z[k]$} (ck);
       \end{tikzpicture}
  \caption{归并时将工作区内容交换出来}
  \label{fig:merge-workarea}
 \end{figure}
 
-已序子数组$A$、$B$和工作区$C$都是原数组的一部分。归并时需要提供的参数包括：$A$、$B$的起始、结束位置，分别用区间$[i, m)$、$[j, n)$表示\footnote{$[a, b)$表示左闭右开区间，包括$a$，但不包括$b$。}；工作区的起始位置$k$。
+$X$、$Y$和工作区$Z$都是原数组的一部分。归并时我们传入$X$、$Y$的起始、结束位置：区间$[i, m)$、$[j, n)$和工作区的起始位置$k$。
 
 \begin{algorithmic}[1]
 \Procedure{Merge}{$A, [i, m), [j, n), k$}
@@ -1074,14 +1074,7 @@ T(n) = T(\dfrac{n}{2}) + T(\dfrac{n}{2}) + c n = 2 T(\dfrac{n}{2}) + c n
 \EndProcedure
 \end{algorithmic}
 
-归并工作区需要满足两个条件：
-
-\begin{enumerate}
-\item 工作区必须足够大，以容纳交换进来的元素而不越界；
-\item 工作区可以和任一子数组重叠，但须保证不会覆盖尚未归并的元素。
-\end{enumerate}
-
-我们可以用一半数组作为工作区，将另一半归并排序。如图\cref{fig:merge-in-place-start}所示。
+工作区需要满足两个条件：1）必须足够大，以容纳交换进来的元素而不越界；2）工作区可以和任一子数组重叠，但须保证不覆盖尚未归并的元素。可以用一半数组作为工作区来归并排序另一半，如\cref{fig:merge-in-place-start}所示。
 
 \begin{figure}[htbp]
  \centering
@@ -1093,30 +1086,30 @@ T(n) = T(\dfrac{n}{2}) + T(\dfrac{n}{2}) + c n = 2 T(\dfrac{n}{2}) + c n
  \label{fig:merge-in-place-start}
 \end{figure}
 
-如果再递归地对一半工作区排序，就只剩下$\dfrac{1}{4}$尚未排序了。如图\cref{fig:merge-in-place-quater}所示。我们必须在某个时刻归并$A$（$\dfrac{1}{2}$数组）和$B$（$\dfrac{1}{4}$数组）。但剩余工作区大小只能容纳$\dfrac{1}{4}$数组，不能容纳$A + B$的结果。
+如果再递归地对一半工作区排序，就只剩下$\dfrac{1}{4}$了，如\cref{fig:merge-in-place-quater}所示。我们必须在某个时刻归并$X$（$\dfrac{1}{2}$数组）和$Y$（$\dfrac{1}{4}$数组）。但剩余工作区大小只能容纳$\dfrac{1}{4}$数组，不能容纳$X + Y$的结果。
 
 \begin{figure}[htbp]
  \centering
  \includegraphics[scale=0.8]{img/workarea-1}
- \caption{需要在某个时刻归并$A$、$B$}
+ \caption{工作区不足以归并$X$和$Y$}
  \label{fig:merge-in-place-quater}
 \end{figure}
 
-工作区的第二条规则启发我们：通过某种设计，使得未归并的元素不被覆盖，从而利用工作区和子数组的重叠部分来解决问题。我们先对工作区的后1/2排序，结果$B$被交换到前1/2部分，新工作区就位于$A$、$B$中间，如图\cref{fig:merge-in-place-setup}上方所示。这样的安排使得工作区和子数组$A$产生了重叠\cite{msort-in-place}。考虑两种极端情况：
+工作区的第二条规则启发我们：通过某种设计，使得未归并的元素不被覆盖，从而利用工作区和子数组的重叠部分来解决问题。我们先对工作区的后1/2排序，结果$Y$被交换到前1/2部分，新工作区就位于$X$、$Y$中间，如图\cref{fig:merge-in-place-setup}上方所示。这样的安排使得工作区和子数组$X$产生了重叠\cite{msort-in-place}。考虑两种极端情况：
 
 \begin{figure}[htbp]
  \centering
  \includegraphics[scale=0.8]{img/workarea-2}
- \caption{利用工作区归并$A$、$B$}
+ \caption{利用工作区归并$X$、$Y$}
  \label{fig:merge-in-place-setup}
 \end{figure}
 
 \begin{enumerate}
-\item 所有$B$中元素都小于$A$中任意元素。归并后，$B$中全部内容移动到工作区中，而$B$中包括以前工作区中的内容。由于工作区和$B$的大小相等，因此恰好可以交换它们；
-\item 所有$A$中元素都小于$B$中任意元素。归并不断交换$A$和工作区中的内容。当工作区被$A$中一半元素填满后，开始覆盖$A$中的内容。幸运的是，被覆盖的是已归并的元素。工作区的右侧边界不断向数组的末尾移动到3/4的位置。此后，归并算法开始交换$B$和工作区的内容。最终工作区被移动到了数组最左侧，如图\cref{fig:merge-in-place-setup}下方所示。
+\item 所有$Y$中元素$y$都小于$X$中元素$x$。归并后，$Y$和工作区内容交换（$Y$和工作区大小相等）；
+\item 所有$X$中元素$x$都小于$Y$中元素$y$。归并不断交换$X$和工作区中的内容。当工作区被$X$中一半元素填满后，开始覆盖$X$中的内容。幸运的是，被覆盖的是已归并的元素。工作区的右侧边界不断向数组的末尾移动到3/4的位置。此后，归并算法开始交换$Y$和工作区的内容。最终工作区被移动到了数组最左侧，如\cref{fig:merge-in-place-setup}下方所示。
 \end{enumerate}
 
-其它情况介于两种极端情况之间，最终工作区被移动到前1/4。我们重复这一步骤，总是对未排序部分的后1/2排序，将结果交换到前1/2，而使新工作区位于中间。不断将工作区的大小减半，从$\dfrac{1}{2}$到$\dfrac{1}{4}$到$\dfrac{1}{8}$……归并的规模不断下降。当工作区中只剩下一个元素时结束。归并只有一个元素的数组等价于插入。我们可以使用插入排序来处理最后的几个元素。
+其它情况介于两种极端情况之间，最终工作区被移动到前1/4。我们重复这一步骤，总是对未排序部分的后1/2排序，将结果交换到前1/2，而使新工作区位于中间。不断将工作区的大小减半，从$\dfrac{1}{2}$到$\dfrac{1}{4}$到$\dfrac{1}{8}$……归并的规模不断下降。当工作区中只剩下一个元素时结束。归并只有一个元素的数组等价于插入。也可以使用插入排序来处理最后的几个元素。
 
 \begin{algorithmic}[1]
 \Procedure{Sort}{$A, l, u$}
@@ -1160,7 +1153,7 @@ T(n) = T(\dfrac{n}{2}) + T(\dfrac{n}{2}) + c n = 2 T(\dfrac{n}{2}) + c n
 \EndProcedure
 \end{algorithmic}
 
-这一方法在归并中并不平移子数组。未排序部分不断递减：$\dfrac{n}{2}, \dfrac{n}{4}, \dfrac{n}{8}, ...$，总共需要$O(\lg n)$步完成排序。每次递归对剩余部分的一半排序，然后使用线性时间进行归并。令$n$个元素排序时间为$T(n)$，我们有如下递归关系：
+这一方法不需要平移子数组。未排序部分不断递减：$\dfrac{n}{2}, \dfrac{n}{4}, \dfrac{n}{8}, ...$，总共需要$O(\lg n)$步完成排序。每次递归对剩余部分的一半排序，然后使用线性时间进行归并。令$n$个元素排序时间为$T(n)$，有如下递归关系：
 
 \be
 T(n) = T(\frac{n}{2}) + c \frac{n}{2} + T(\frac{n}{4}) + c \frac{3n}{4} + T(\frac{n}{8}) + c \frac{7n}{8} + ...
@@ -1174,19 +1167,19 @@ T(\frac{n}{2}) = T(\frac{n}{4}) + c \frac{n}{4} + T(\frac{n}{8}) + c \frac{3n}{8
 \label{eq:in-place-sort-time-half}
 \ee
 
-两式相减(\cref{eq:in-place-sort-time}) - (\cref{eq:in-place-sort-time-half})得：
+两式相减\cref{eq:in-place-sort-time} - \cref{eq:in-place-sort-time-half}：
 
 \[
 T(n) - T(\frac{n}{2}) = T(\frac{n}{2}) + c n (\frac{1}{2} + \frac{1}{2} + ... )
 \]
 
-共有$\lg n$个$\dfrac{1}{2}$相加，由此得到计算时间的递归关系为：
+共有$\lg n$个$\dfrac{1}{2}$相加，由此得：
 
 \[
 T(n) = 2 T(\frac{n}{2}) + \frac{c}{2} n \lg n
 \]
 
-使用裂项求和法解方程，得到结果$O(n \lg^2 n)$。
+使用裂项求和法解方程（或利用主定理），得到结果$O(n \lg^2 n)$。
 
 \subsection{自然归并排序}
 \index{归并排序!自然归并排序}
