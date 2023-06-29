@@ -840,7 +840,7 @@ halve = foldr f ([], []) where
   f x (as, bs) = (bs, x : as)
 \end{Haskell}
 
-\index{归并排序!归并}
+\index{归并排序!归并} \label{sec:merge-sort-merge}
 归并的思想如\cref{fig:merge}所示。考虑两按照身高排队的人，他们按身高顺序依次通过一扇门，每次一人。由于两队已序，我们比较两个排头，个子较小的通过门；重复这一步骤，直到任何一队都已经通过，然后剩下的一队再逐一通过。
 
 \begin{figure}[htbp]
@@ -859,6 +859,7 @@ halve = foldr f ([], []) where
   \text{否则}: & b : \textit{merge}\ (a \cons as)\ bs
   \end{cases}
 \end{array}
+\label{eq:merge-sort-merge}
 \ee
 
 对于数组，可以直接在中点分割，分别递归排序后再归并：
@@ -1450,9 +1451,45 @@ sort = foldp merge [] . map (:[])
 
 到本章为止，我们给出了基本排序算法，包括插入排序、树排序、选择排序、堆排序、快速排序、归并排序。排序仍然是计算机科学中活跃的研究领域。撰写本章时，人们正经历着“大数据”挑战，传统的排序方法无法在有限的时间和资源下处理越来越巨大的数据。在某些领域，处理几百G的数据已经成为日常工作中的任务。
 
-\begin{Exercise}
-\Question{使用归并排序的策略，设计算法从一个序列产生二叉搜索树。}
+\begin{Exercise}\label{ex:bst-merge}
+\Question{使用归并排序的策略从一个序列产生二叉搜索树。}
 \end{Exercise}
+
+\begin{Answer}[ref={ex:bst-merge}]
+\Question{使用归并排序的策略从一个序列产生二叉搜索树。
+
+\vspace{3mm}
+可以自顶向下或自底向上构建二叉搜索树。自顶向下：均分序列，递归构建两棵二叉搜索树再合并；自底向上：将每个元素封装成单叶子节点，然后不断两两合并成一棵树。两种方法都依赖二叉树合并\footnote{如果是二叉搜索树合并的独立题目，可以将每棵树转换成数组或列表（中序遍历），然后利用\cref{eq:merge-sort-merge}合并，最后用中间位置元素作为根结点重建二叉树。}。若任一棵树为空，合并结果为另外一棵。否则令两棵树为$(A, x, B)$和$(C, y, D)$。若$x < y$，用$y$划分$B$为两棵树：$B_y$、$B^y$，其中$B_y$包含全部$\{b < y\}$的节点，$B^y$包含$\{b \geq y\}$的节点；用$x$划分$C$为$C_x$、$C^x$。然后构建合并结果：
+
+\[
+(A, x, B) \oplus (C, y, D) = ((A \oplus C_x, x, B_y \oplus C^x), y, D \oplus B^y)
+\]
+
+其中‘$\oplus$’表示树合并。对称地，若$x \geq y$，我们划分子树$A$、$D$。下面的例子程序实现了树划分、合并。它使用了\cref{ex:pairwise-fold}定义的两两叠加\textit{foldp}。
+
+\begin{Haskell}
+toTree :: (Ord a) => [a] -> Tree a
+toTree = foldp merge Empty . map leaf
+
+partition x Empty = (Empty, Empty)
+partition x (Node a y b)
+  | x < y = let (a1, a2) = partition x a in (a1, Node a2 y b)
+  | otherwise = let (b1, b2) = partition x b in (Node a y b1, b2)
+
+merge Empty t = t
+merge t Empty = t
+merge (Node a x b) (Node c y d)
+  | x < y = let
+      (b1, b2) = partition y b
+      (c1, c2) = partition x c
+      in Node (Node (merge a c1) x (merge b1 c2)) y (merge d b2)
+  | otherwise = let
+      (a1, a2) = partition y a
+      (d1, d2) = partition x d
+      in Node (merge a1 c) y (Node (merge a2 d1) x (merge b d2))
+\end{Haskell}
+}
+\end{Answer}
 
 \section{附录：例子程序}
 
