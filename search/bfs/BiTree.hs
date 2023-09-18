@@ -5,8 +5,9 @@ import Data.Sequence (Seq((:<|)), (|>))
 import Test.QuickCheck
 import Data.List (nub, sort, group, isPrefixOf)
 
-data Tr a = E | Br (Tr a) a (Tr a) deriving (Show)
+data Tr a = E | Br (Tr a) a (Tr a)
 
+-- traverse the binary tree level by level (BFS order).
 toList t = bfs (Q.singleton t) where
   bfs Q.Empty = []
   bfs (E :<| q) = bfs q
