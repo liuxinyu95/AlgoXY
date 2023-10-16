@@ -5,14 +5,14 @@ Edition: $\displaystyle e = \sum \limits _{n=0}^{\infty }{\frac {1}{n!}} = 1 + {
 
 2023/10
 
-This book introduces about elementary algorithms and data structure. It includes side-by-side comparison about purely functional realization and their imperative counterpart, with 119 exercises and answers.
+This book introduces about elementary algorithms and data structure. It includes side-by-side comparison about purely functional realization and their imperative counterpart, with 120 exercises and answers.
 
 <img src="https://user-images.githubusercontent.com/332938/95418499-442e4b00-096a-11eb-81b9-496020aa5f10.jpg" width="400">
 
 Contents
 --------
 
-I am adding exercises and answers to the **second edition** from 2023/03 (added 120 answers as of 2023/10). I wrote the first edition from 2009 to 2017, then rewrote from 2020 to 2023. The PDF can be **downloaded** ([EN](https://github.com/liuxinyu95/AlgoXY/files/12855002/algoxy-en.pdf), [中文](https://github.com/liuxinyu95/AlgoXY/files/12855005/algoxy-zh-cn.pdf)). The 1st edition in Chinese ([中文](http://www.ituring.com.cn/book/1907)) was published in 2017. I recently switched my focus to the Mathematics of programming, the new book is also available in ([github](https://github.com/liuxinyu95/unplugged))
+I am adding exercises and answers to the **second edition** from 2023/03 (added 120 answers as of 2023/10). I wrote the first edition from 2009 to 2017, then rewrote from 2020 to 2023. The PDF can be **downloaded** ([EN](https://github.com/liuxinyu95/AlgoXY/files/12855002/algoxy-en.pdf), [中文](https://github.com/liuxinyu95/AlgoXY/files/12855005/algoxy-zh-cn.pdf)). The 1st edition in Chinese ([中文](http://www.ituring.com.cn/book/1907)) was published in 2017. I switched my focus to the mathematics of programming from 2018, see ([github](https://github.com/liuxinyu95/unplugged)).
 
 
 - Preface
@@ -35,10 +35,7 @@ I am adding exercises and answers to the **second edition** from 2023/03 (added 
 Install
 --------
 
-To build the book in PDF format from the sources, you need
-the following software pre-installed.
-
-- TeXLive, The book is built with LuaLaTeX, to support both EN and CN.
+You need TeXLive to build the book in PDF format. We use LuaLaTeX, an extended version of TeX.
 
 ### Install TeXLive
 
@@ -51,17 +48,17 @@ $ cd install-tl
 $ sudo ./install-tl -gui text -repository http://mirror.ctan.org/systems/texlive/tlnet
 ```
 
-In Windows, TeXLive provide a [gui based installer](https://tug.org/texlive/), in Mac OS X, there's a [MacTeX](https://www.tug.org/mactex/).
+In Windows, TeXLive provides a [gui based installer](https://tug.org/texlive/), in Mac OS X, there's a [MacTeX](https://www.tug.org/mactex/).
 
 ### Others
 
-You need the GNU make tool, in Debian/Ubuntu like Linux, it can be installed through the apt-get command:
+You need the GNU make tool, in Debian/Ubuntu like Linux, it can be installed through:
 
 ```bash
 $ sudo apt-get install build-essential
 ```
 
-In Windows, you can install the MSYS for it. In Mac OS X, please install the developer tool from this command line:
+In Windows, you can use WSL or install MSYS. In Mac OS X, please install the developer tool from this command line:
 
 ```bash
 $ xcode-select --install
@@ -69,7 +66,7 @@ $ xcode-select --install
 
 ### Font setting
 
-The default build supports Linux, Mac OS X, and Windows. You can install additional font (like [Noto CJK](https://github.com/notofonts/noto-cjk/)) typesetting (see `prelude.sty`). Some system fonts, e.g. STKaiti, were moved to `/System/Library/AssetsV2/com_apple_MobileAsset_Font7` in Mac OS X, you need add the path to the local TeXLive configuration:
+The default build supports Linux, Mac OS X, and Windows. You can install additional font (like [Noto CJK](https://github.com/notofonts/noto-cjk/)) typesetting (see `prelude.sty`). Some system fonts, e.g. STKaiti, were moved to `/System/Library/AssetsV2/com_apple_MobileAsset_Font7` in Mac OS X from 2022, you need add the path to the local TeXLive configuration:
 
 ```bash
 sudo tlmgr conf texmf OSFONTDIR /System/Library/AssetsV2/com_apple_MobileAsset_Font7
