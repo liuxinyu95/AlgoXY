@@ -1,6 +1,6 @@
 /*
- * q235.cpp, 
- * Copyright (C) 2011, Liu Xinyu (liuxinyu95@gmail.com)
+ * q235.cpp,
+ * Copyright (C) 2011, Liu Xinyu (liuxinyu99@hotmail.com)
 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@ typedef unsigned long Integer;
 using namespace std;
 
 Integer get_q235(int n){
-  if(n==1) 
+  if(n==1)
     return 1;
   queue<Integer> Q2, Q3, Q5;
   Q2.push(2);
