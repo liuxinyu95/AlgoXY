@@ -1,11 +1,11 @@
-Elementary Algorithms
+Elementary Functional Algorithms
 ====
 
 Edition: $\displaystyle e = \sum \limits _{n=0}^{\infty }{\frac {1}{n!}} = 1 + {\frac {1}{1}}+{\frac {1}{1\cdot 2}}+{\frac {1}{1\cdot 2\cdot 3}}+\cdots = 2.718283$
 
 2023/10
 
-This book introduces about elementary algorithms and data structure. It includes side-by-side comparison about purely functional realization and their imperative counterpart, with 120 exercises and answers.
+This book introduces about elementary functional algorithms and data structures. It includes side-by-side comparison about purely functional realization and their imperative counterpart, with 120 exercises and answers.
 
 <img src="https://user-images.githubusercontent.com/332938/95418499-442e4b00-096a-11eb-81b9-496020aa5f10.jpg" width="400">
 
@@ -16,21 +16,21 @@ I am adding exercises and answers to the **second edition** from 2023/03 (added 
 
 
 - Preface
-- Chapter 0, List;
-- Chapter 1, Binary Search Tree;
-- Chapter 2, Insertion sort;
-- Chapter 3, Red-black tree;
-- Chapter 4, AVL tree;
-- Chapter 5, Radix tree, Trie and Prefix Tree;
-- Chapter 6, B-Trees;
-- Chapter 7, Binary Heaps;
-- Chapter 8, Selection sort;
-- Chapter 9, Binomial heap, Fibonacci heap, and pairing heap;
-- Chapter 10, Queue;
-- Chapter 11, Sequence;
-- Chapter 12, Divide and conquer sort;
-- Chapter 13, Search;
-- Appendix and answers
+- Chapter 1, List;
+- Chapter 2, Binary Search Tree;
+- Chapter 3, Insertion sort;
+- Chapter 4, Red-black tree;
+- Chapter 5, AVL tree;
+- Chapter 6, Radix tree, Trie and Prefix Tree;
+- Chapter 7, B-Trees;
+- Chapter 8, Binary Heaps;
+- Chapter 9, Selection sort;
+- Chapter 10, Binomial heap, Fibonacci heap, and pairing heap;
+- Chapter 11, Queue;
+- Chapter 12, Sequence;
+- Chapter 13, Divide and conquer sort;
+- Chapter 14, Search;
+- Appendices and answers
 
 Install
 --------
