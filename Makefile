@@ -3,7 +3,6 @@ all: cn en
 BOOK-CN := $(wildcard *-zh-cn.tex)
 BOOK-EN := $(wildcard *-en.tex)
 
-cn en: pdf
 cn: $(BOOK-CN:.tex=.pdf)
 en: $(BOOK-EN:.tex=.pdf)
 
@@ -13,8 +12,8 @@ TEX_FLAGS =
 
 CHAPTERS-CN := $(shell egrep -l documentclass $$(find . -name '*-zh-cn.tex' -a \! -name 'algoxy-*.tex'))
 CHAPTERS-EN := $(shell egrep -l documentclass $$(find . -name '*-en.tex' -a \! -name 'algoxy-*.tex'))
+
 chapters: chapters-cn chapters-en
-chapters-cn chapters-en: pdf
 chapters-cn: $(CHAPTERS-CN:.tex=.pdf)
 chapters-en: $(CHAPTERS-EN:.tex=.pdf)
 
@@ -31,4 +30,4 @@ force-en:
 clean:
 	git clean -fdx
 
-.PHONY: all cn en pdf chapters chapters-cn chapters-en
+.PHONY: all cn en chapters chapters-cn chapters-en
