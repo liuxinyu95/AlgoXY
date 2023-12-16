@@ -19,7 +19,9 @@ chapters-cn: $(CHAPTERS-CN:.tex=.pdf)
 chapters-en: $(CHAPTERS-EN:.tex=.pdf)
 
 FORCE-FLAGS = -g -use-make $(TEX_FLAGS)
+
 force: force-cn force-en
+
 force-cn:
 	latexmk -cd -lualatex $(FORCE-FLAGS) $(BOOK-CN)
 
