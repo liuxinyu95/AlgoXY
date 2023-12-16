@@ -23,10 +23,10 @@ FORCE-FLAGS = -g -use-make $(TEX_FLAGS)
 force: force-cn force-en
 
 force-cn:
-	latexmk -cd -lualatex $(FORCE-FLAGS) $(BOOK-CN)
+	latexmk -cd -lualatex $(FORCE-FLAGS) algoxy-zh-cn.tex
 
 force-en:
-	latexmk -cd  -lualatex $(FORCE-FLAGS) $(BOOK-EN)
+	latexmk -cd -lualatex $(FORCE-FLAGS) algoxy-en.tex
 
 clean:
 	git clean -fdx
