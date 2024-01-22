@@ -3,9 +3,9 @@ Elementary Functional Algorithms
 
 Edition: $\displaystyle e = \sum \limits _{n=0}^{\infty }{\frac {1}{n!}} = 1 + {\frac {1}{1}}+{\frac {1}{1\cdot 2}}+{\frac {1}{1\cdot 2\cdot 3}}+\cdots = 2.718283$
 
-2023/11
+2024/01
 
-This book presents elementary functional algorithms and data structures with 120 exercises and answers. I wrote the first edition from 2009 to 2017, then rewrote from 2020 to 2023. The **second edition** in PDF can be **downloaded** ([EN](https://github.com/liuxinyu95/AlgoXY/files/13434940/algoxy-en.pdf), [中文](https://github.com/liuxinyu95/AlgoXY/files/13434941/algoxy-zh-cn.pdf)). The first edition in Chinese ([中文](https://book.douban.com/subject/26931430/)) was published in 2017.
+This book presents elementary functional algorithms and data structures with 120 exercises and answers. I wrote the first edition from 2009 to 2017, then rewrote from 2020 to 2023. The **second edition** in PDF can be **downloaded** ([EN](https://github.com/liuxinyu95/AlgoXY/files/14003500/algoxy-en.pdf), [中文](https://github.com/liuxinyu95/AlgoXY/files/14003498/algoxy-zh-cn.pdf)). The first edition in Chinese ([中文](https://book.douban.com/subject/26931430/)) was published in 2017.
 
 <img src="https://user-images.githubusercontent.com/332938/95418499-442e4b00-096a-11eb-81b9-496020aa5f10.jpg" width="400">
 
@@ -26,7 +26,8 @@ Contents
 - Chapter 11, Queue;
 - Chapter 12, Sequence;
 - Chapter 13, Divide and conquer sort;
-- Chapter 14, Search;
+- Chapter 14, Search I;
+- Chapter 15, Search II;
 - Appendices and answers
 
 Install
