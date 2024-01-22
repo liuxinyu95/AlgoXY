@@ -1040,6 +1040,199 @@ The KMP algorithm builds the prefix function in amortized $O(m)$ time\cite{CLRS}
 
 %% Richard Bird presents a formal program deduction to KMP algorithm by using fold fusion law in chapter 17 of \cite{fp-pearls}.
 
+\section{Appendix - example programs}
+
+Find the top-$k$ element:
+
+\begin{lstlisting}[language = Bourbaki]
+Optional<K> top(Int k, [K] xs, Int l, Int u) {
+    if l < u {
+        swap(xs, l, rand(l, u))
+        var p = partition(xs, l, u)
+        if p - l + 1 == k
+            return Optional.of(xs[p])
+        return if k < p - l + 1 then top(k, xs, l, p)
+               else top(k- p + l - 1, xs, p + 1, u)
+    }
+    return Optional.Nothing
+}
+
+Int partition([K] xs, Int l, Int u) {
+    var p = l
+    for var r = l + 1 to u {
+        if not xs[p] < xs[r] {
+            l = l + 1
+            swap(xs, l, r)
+        }
+    }
+    swap(xs, p, l)
+    return l
+}
+\end{lstlisting}
+
+Saddle back search:
+
+\begin{Haskell}
+solve f z = search 0 m where
+  search p q | p > n || q < 0 = []
+             | z' < z = search (p + 1) q
+             | z' > z = search p (q - 1)
+             | otherwise = (p, q) : search (p + 1) (q - 1)
+    where z' = f p q
+  m = bsearch (f 0) z (0, z)
+  n = bsearch (\x->f x 0) z (0, z)
+
+bsearch f y (l, u) | u <= l = l
+                   | f m <= y = if f (m + 1) <= y then bsearch f y (m + 1, u) else m
+                   | otherwise = bsearch f y (l, m-1)
+  where m = (l + u) `div` 2
+\end{Haskell}
+
+Boyer-Moore majority:
+
+\begin{lstlisting}[language = Bourbaki]
+Optional<T> majority([T] xs) {
+    var (m, c) = (Optional<T>.Nothing, 0)
+    for var x in xs {
+        if c == 0 then (m, c) = (Optional.of(x), 0)
+        if x == m then c++ else c--
+    }
+    c = 0
+    for var x in xs {
+        if x == m then c++
+    }
+    return if c > length(xs)/2 then m else Optional<T>.Nothing
+}
+\end{lstlisting}
+
+Find the majority with fold:
+
+\begin{Haskell}
+majority xs = verify $ foldr maj (Nothing, 0) xs where
+  maj x (Nothing, 0) = (Just x, 1)
+  maj x (Just y, v) | x == y = (Just y, v + 1)
+                    | v == 0 = (Just x, 1)
+                    | otherwise = (Just y, v - 1)
+  verify (Nothing, _) = Nothing
+  verify (Just m, _)  = if 2 * (length $ filter (==m) xs) > length xs
+                        then Just m else Nothing
+\end{Haskell} %$
+
+The maximum sum of sub-vector:
+
+\begin{Haskell}
+maxSum :: (Ord a, Num a) => [a] -> a
+maxSum = fst . foldr f (0, 0) where
+  f x (m, mSofar) = (m', mSofar') where
+    mSofar' = max 0 (mSofar + x)
+    m' = max mSofar' m
+\end{Haskell}
+
+KMP string matching:
+
+\begin{lstlisting}[language = Bourbaki]
+[Int] match([T] w, [T]p) {
+    n = length(w), m = length(p)
+    [Int] fallback = prefixes(p)
+    [Int] r = []
+    Int k = 0
+    for i = 0 to n {
+        while k > 0 and p[k] != w[i] {
+            k = fallback[k]
+        }
+        if p[k] == w[i] then k = k + 1
+        if k == m {
+            add(r, i + 1 - m)
+            k = fallback[k - 1]
+        }
+    }
+    return r
+}
+
+[Int] prefixes([T] p) {
+    m = length(p)
+    [Int] t = [0] * m  //fallback table
+    Int k = 0
+    for i = 2 to m {
+        while k > 0 and p[i-1] != p[k] {
+            k = t[k-1] #fallback
+        }
+        if p[i-1] == p[k] then k = k + 1
+        t[i] = k
+    }
+    return t
+}
+\end{lstlisting}
+
+%% 鲍耶-摩尔字符串匹配算法：
+
+%% \begin{lstlisting}[language = Bourbaki]
+%% [Int] bmMatch([T] w, [T] p) {
+%%     n = length(w), m = length(p)
+%%     tab1 = badChar(p)
+%%     tab2 = goodSuffix(p)
+%%     res = []
+%%     offset = 0
+%%     while offset + m <= n {
+%%         i = m - 1
+%%         while i >= 0 and p[i] == w[offset + i] {
+%%             i = i - 1
+%%         }
+%%         if i < 0 {
+%%             append(res, offset)
+%%             offset = offset + 1
+%%         } else {
+%%             offset = offset + max(tab1[w[offset + m - 1]], tab2[i])
+%%         }
+%%     }
+%%     return res
+%% }
+
+%% Map<T, Int> badChar([T] p) {
+%%     m = length(p)
+%%     tab = mapOf(T.values, m)
+%%     for i = 0 to m - 2 {
+%%         tab[p[i]] = m - 1 - i
+%%     }
+%%     return tab
+%% }
+
+%% [Int] goodSuffix(p) {
+%%     m = len(p)
+%%     tab = [0] * m
+%%     Int last = 0
+%%     for i = m - 1 down to 1 {
+%%         if isPrefix(p, i) then last = i
+%%         tab[i - 1] = last
+%%     }
+%%     for i = 0 to m - 1 {
+%%         slen = suffixLen(p, i)
+%%         if slen != 0 and p[i - slen] != p[m - 1 - slen] {
+%%             tab[m - 1 - slen] = m - 1 - i
+%%         }
+%%     }
+%%     return tab
+%% }
+
+%% // if p[i..m-1] `is prefix of` p
+%% Bool isPrefix([T] p, Int i) {
+%%     for j = 0 to length(p) - i - 1 {
+%%         if p[j] != p [i+j] then return False
+%%     }
+%%     return True
+%% }
+
+%% // length of the longest suffix of p[..i], which is also a suffix of p
+%% Int suffix_len([T] p, Int i) {
+%%     m = length(p)
+%%     Int j = 0
+%%     while p[m - 1 - j] == p[i - j] and j < i {
+%%         j = j + 1
+%%     }
+%%     return j
+%% }
+%% \end{lstlisting}
+
 \chapter{Solution search II}
 \numberwithin{Exercise}{chapter}
 
@@ -2907,197 +3100,6 @@ Int lev([K] s, [K] t) {
 \end{Answer}
 
 \section{Appendix - example programs}
-
-Find the top-$k$ element:
-
-\begin{lstlisting}[language = Bourbaki]
-Optional<K> top(Int k, [K] xs, Int l, Int u) {
-    if l < u {
-        swap(xs, l, rand(l, u))
-        var p = partition(xs, l, u)
-        if p - l + 1 == k
-            return Optional.of(xs[p])
-        return if k < p - l + 1 then top(k, xs, l, p)
-               else top(k- p + l - 1, xs, p + 1, u)
-    }
-    return Optional.Nothing
-}
-
-Int partition([K] xs, Int l, Int u) {
-    var p = l
-    for var r = l + 1 to u {
-        if not xs[p] < xs[r] {
-            l = l + 1
-            swap(xs, l, r)
-        }
-    }
-    swap(xs, p, l)
-    return l
-}
-\end{lstlisting}
-
-Saddle back search:
-
-\begin{Haskell}
-solve f z = search 0 m where
-  search p q | p > n || q < 0 = []
-             | z' < z = search (p + 1) q
-             | z' > z = search p (q - 1)
-             | otherwise = (p, q) : search (p + 1) (q - 1)
-    where z' = f p q
-  m = bsearch (f 0) z (0, z)
-  n = bsearch (\x->f x 0) z (0, z)
-
-bsearch f y (l, u) | u <= l = l
-                   | f m <= y = if f (m + 1) <= y then bsearch f y (m + 1, u) else m
-                   | otherwise = bsearch f y (l, m-1)
-  where m = (l + u) `div` 2
-\end{Haskell}
-
-Boyer-Moore majority:
-
-\begin{lstlisting}[language = Bourbaki]
-Optional<T> majority([T] xs) {
-    var (m, c) = (Optional<T>.Nothing, 0)
-    for var x in xs {
-        if c == 0 then (m, c) = (Optional.of(x), 0)
-        if x == m then c++ else c--
-    }
-    c = 0
-    for var x in xs {
-        if x == m then c++
-    }
-    return if c > length(xs)/2 then m else Optional<T>.Nothing
-}
-\end{lstlisting}
-
-Find the majority with fold:
-
-\begin{Haskell}
-majority xs = verify $ foldr maj (Nothing, 0) xs where
-  maj x (Nothing, 0) = (Just x, 1)
-  maj x (Just y, v) | x == y = (Just y, v + 1)
-                    | v == 0 = (Just x, 1)
-                    | otherwise = (Just y, v - 1)
-  verify (Nothing, _) = Nothing
-  verify (Just m, _)  = if 2 * (length $ filter (==m) xs) > length xs
-                        then Just m else Nothing
-\end{Haskell} %$
-
-The maximum sum of sub-vector:
-
-\begin{Haskell}
-maxSum :: (Ord a, Num a) => [a] -> a
-maxSum = fst . foldr f (0, 0) where
-  f x (m, mSofar) = (m', mSofar') where
-    mSofar' = max 0 (mSofar + x)
-    m' = max mSofar' m
-\end{Haskell}
-
-KMP string matching:
-
-\begin{lstlisting}[language = Bourbaki]
-[Int] match([T] w, [T]p) {
-    n = length(w), m = length(p)
-    [Int] fallback = prefixes(p)
-    [Int] r = []
-    Int k = 0
-    for i = 0 to n {
-        while k > 0 and p[k] != w[i] {
-            k = fallback[k]
-        }
-        if p[k] == w[i] then k = k + 1
-        if k == m {
-            add(r, i + 1 - m)
-            k = fallback[k - 1]
-        }
-    }
-    return r
-}
-
-[Int] prefixes([T] p) {
-    m = length(p)
-    [Int] t = [0] * m  //fallback table
-    Int k = 0
-    for i = 2 to m {
-        while k > 0 and p[i-1] != p[k] {
-            k = t[k-1] #fallback
-        }
-        if p[i-1] == p[k] then k = k + 1
-        t[i] = k
-    }
-    return t
-}
-\end{lstlisting}
-
-%% 鲍耶-摩尔字符串匹配算法：
-
-%% \begin{lstlisting}[language = Bourbaki]
-%% [Int] bmMatch([T] w, [T] p) {
-%%     n = length(w), m = length(p)
-%%     tab1 = badChar(p)
-%%     tab2 = goodSuffix(p)
-%%     res = []
-%%     offset = 0
-%%     while offset + m <= n {
-%%         i = m - 1
-%%         while i >= 0 and p[i] == w[offset + i] {
-%%             i = i - 1
-%%         }
-%%         if i < 0 {
-%%             append(res, offset)
-%%             offset = offset + 1
-%%         } else {
-%%             offset = offset + max(tab1[w[offset + m - 1]], tab2[i])
-%%         }
-%%     }
-%%     return res
-%% }
-
-%% Map<T, Int> badChar([T] p) {
-%%     m = length(p)
-%%     tab = mapOf(T.values, m)
-%%     for i = 0 to m - 2 {
-%%         tab[p[i]] = m - 1 - i
-%%     }
-%%     return tab
-%% }
-
-%% [Int] goodSuffix(p) {
-%%     m = len(p)
-%%     tab = [0] * m
-%%     Int last = 0
-%%     for i = m - 1 down to 1 {
-%%         if isPrefix(p, i) then last = i
-%%         tab[i - 1] = last
-%%     }
-%%     for i = 0 to m - 1 {
-%%         slen = suffixLen(p, i)
-%%         if slen != 0 and p[i - slen] != p[m - 1 - slen] {
-%%             tab[m - 1 - slen] = m - 1 - i
-%%         }
-%%     }
-%%     return tab
-%% }
-
-%% // if p[i..m-1] `is prefix of` p
-%% Bool isPrefix([T] p, Int i) {
-%%     for j = 0 to length(p) - i - 1 {
-%%         if p[j] != p [i+j] then return False
-%%     }
-%%     return True
-%% }
-
-%% // length of the longest suffix of p[..i], which is also a suffix of p
-%% Int suffix_len([T] p, Int i) {
-%%     m = length(p)
-%%     Int j = 0
-%%     while p[m - 1 - j] == p[i - j] and j < i {
-%%         j = j + 1
-%%     }
-%%     return j
-%% }
-%% \end{lstlisting}
 
 The maze puzzle:
 

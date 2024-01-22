@@ -26,13 +26,13 @@
 %\markboth{搜索}{基本算法}
 
 \ifx\wholebook\relax
-\chapter{搜索}
+\chapter{搜索 I}
 \numberwithin{Exercise}{chapter}
 \fi
 
 \def\includetikz{}
 
-人们借助现代计算机系统实现了复杂的搜索功能。生产线上的工业机器人从物料堆中找出零件进行组装，带有卫星导航的汽车从地图中找出最佳行驶路线，智能手机从网上商店中找出最便宜的购物方案……本章介绍最基本的查找、匹配、图搜索算法。
+人们借助现代计算机系统实现了复杂的搜索功能。生产线上的工业机器人从物料堆中找出零件进行组装，带有卫星导航的汽车从地图中找出最佳行驶路线，智能手机从网上商店中找出最便宜的购物方案……本章介绍最基本的查找和匹配搜索算法。
 
 \section{$k$选择问题}
 \index{$k$选择}
@@ -152,7 +152,7 @@ tops n (x:xs) | len == n = as
 \label{eq:bsearch}
 \ee
 
-\subsection{二维查找}
+\section{二维查找}
 
 考虑把二分查找从一维扩展到二维或更高维。令矩阵$M$的大小为$m \times n$。每行、每列的元素都是单调增加的自然数。如\cref{fig:matrix-eg}所示。如何快速地在矩阵中找到所有等于$z$的元素呢？我们需要给出一个算法，返回一组位置$(i, j)$的列表，使得所有的$M_{i,j} = z$
 
@@ -1209,15 +1209,140 @@ KMP预处理待搜索串，构建前缀函数的分摊复杂度为$O(m)$\cite{CL
 
 %% 在最坏的情况下，只有当$P$不出现在文本中时复杂度才是$O(n+m)$\cite{boyer-moore}。如果$P$出现，则复杂度为$O(nm)$。伯德给出了算法的一种纯函数式实现（\cite{fp-pearls}第16章）。
 
-\section{解的搜索}
+\section{附录：例子程序}
+
+查找前$k$小元素：
+
+\begin{Bourbaki}
+Optional<K> top(Int k, [K] xs, Int l, Int u) {
+    if l < u {
+        swap(xs, l, rand(l, u))
+        var p = partition(xs, l, u)
+        if p - l + 1 == k
+            return Optional.of(xs[p])
+        return if k < p - l + 1 then top(k, xs, l, p)
+               else top(k- p + l - 1, xs, p + 1, u)
+    }
+    return Optional.Nothing
+}
+
+Int partition([K] xs, Int l, Int u) {
+    var p = l
+    for var r = l + 1 to u {
+        if not xs[p] < xs[r] {
+            l = l + 1
+            swap(xs, l, r)
+        }
+    }
+    swap(xs, p, l)
+    return l
+}
+\end{Bourbaki}
+
+马鞍搜索：
+
+\begin{Haskell}
+solve f z = search 0 m where
+  search p q | p > n || q < 0 = []
+             | z' < z = search (p + 1) q
+             | z' > z = search p (q - 1)
+             | otherwise = (p, q) : search (p + 1) (q - 1)
+    where z' = f p q
+  m = bsearch (f 0) z (0, z)
+  n = bsearch (\x->f x 0) z (0, z)
+
+bsearch f y (l, u) | u <= l = l
+                   | f m <= y = if f (m + 1) <= y then bsearch f y (m + 1, u) else m
+                   | otherwise = bsearch f y (l, m-1)
+  where m = (l + u) `div` 2
+\end{Haskell}
+
+众数查找：
+
+\begin{Bourbaki}
+Optional<T> majority([T] xs) {
+    var (m, c) = (Optional<T>.Nothing, 0)
+    for var x in xs {
+        if c == 0 then (m, c) = (Optional.of(x), 0)
+        if x == m then c++ else c--
+    }
+    c = 0
+    for var x in xs {
+        if x == m then c++
+    }
+    return if c > length(xs)/2 then m else Optional<T>.Nothing
+}
+\end{Bourbaki}
+
+用叠加实现的众数查找：
+
+\begin{Haskell}
+majority xs = verify $ foldr maj (Nothing, 0) xs where
+  maj x (Nothing, 0) = (Just x, 1)
+  maj x (Just y, v) | x == y = (Just y, v + 1)
+                    | v == 0 = (Just x, 1)
+                    | otherwise = (Just y, v - 1)
+  verify (Nothing, _) = Nothing
+  verify (Just m, _)  = if 2 * (length $ filter (==m) xs) > length xs
+                        then Just m else Nothing
+\end{Haskell} %$
+
+最大子序列和：
+
+\begin{Haskell}
+maxSum :: (Ord a, Num a) => [a] -> a
+maxSum = fst . foldr f (0, 0) where
+  f x (m, mSofar) = (m', mSofar') where
+    mSofar' = max 0 (mSofar + x)
+    m' = max mSofar' m
+\end{Haskell}
+
+KMP字符串匹配算法：
+
+\begin{Bourbaki}
+[Int] match([T] w, [T]p) {
+    n = length(w), m = length(p)
+    [Int] fallback = prefixes(p)
+    [Int] r = []
+    Int k = 0
+    for i = 0 to n {
+        while k > 0 and p[k] != w[i] {
+            k = fallback[k]
+        }
+        if p[k] == w[i] then k = k + 1
+        if k == m {
+            add(r, i + 1 - m)
+            k = fallback[k - 1]
+        }
+    }
+    return r
+}
+
+[Int] prefixes([T] p) {
+    m = length(p)
+    [Int] t = [0] * m  //fallback table
+    Int k = 0
+    for i = 2 to m {
+        while k > 0 and p[i-1] != p[k] {
+            k = t[k-1] #fallback
+        }
+        if p[i-1] == p[k] then k = k + 1
+        t[i] = k
+    }
+    return t
+}
+\end{Bourbaki}
+
+\chapter{搜索 II}
+\numberwithin{Exercise}{chapter}
 
 在人工智能的早期阶段，人们发展出了许多方法搜索解。不同于字符串匹配，解并不一定直接存在于某个候选集中。往往需要一边构造解一边尝试。某些问题可解，某些问题无解，也可能存在多个解（例如存在多条走出迷宫的路线）。人们还需要求出某种意义下的最优解。
 
-\subsection{深度优先和广度优先搜索}
+\section{深度优先和广度优先搜索}
 \index{DFS} \index{深度优先搜索} \label{sec:DFS-BFS}
 深度优先搜索（DFS）和广度优先搜索（BFS）常被叫做“图搜索”算法。我们简单介绍这两种搜索算法而略过图的概念。
 
-\subsubsection{迷宫}
+\subsection{迷宫}
 \index{迷宫问题}
 走迷宫是一类历史悠久的趣题。有窍门说：“当遇到分叉时总向右转。”这个方法有缺陷。如\cref{fig:maze-loop}(b)所示，不断向右会绕着中心的大方块转圈。存在多个选项时，决策直接影响到最终的解。童话故事提供了一种思路：携带一块面包进入迷宫。遇到岔路时任选一条道路，并留下一小块面包屑记录下这次尝试。遇到了死路就沿着留下的面包屑走回上次选择的地方，然后换一条路。一旦发现地上已经有面包屑了，就说明进入了循环，必须进一步回退尝试。不断这样的“尝试——检查”，要么最终走出迷宫，要么退回起点（无解）。我们用$m \times n$的矩阵$M$描述迷宫，元素值为0、1，表示是否有路。\cref{fig:maze-loop}(b)的迷宫可以用下面的矩阵定义：
 
@@ -1367,7 +1492,7 @@ dfsSolveAll m from to = map reverse $ solve [[from]] [] where
 }
 \end{Answer}
 
-\subsubsection{八皇后问题}
+\subsection{八皇后问题}
 \index{八皇后问题}
 
 虽然国际象棋历史悠久，但直到1848年贝策尔（Max Bezzel）才提出八皇后趣题\cite{wiki-8-queens}。皇后威力巨大，可以攻击同一行、列、斜线上的任意棋子。如何在棋盘上摆下八个皇后，而她们之间不互相攻击。\cref{fig:8-queens-puzzle} (a)描述了皇后可以攻击到的范围。\cref{fig:8-queens-puzzle} (b)给出了八皇后问题的某一种解。
@@ -1501,7 +1626,7 @@ uniqueSolve = dfs [[]] (empty :: Set [Int]) where
 }
 \end{Answer}
 
-\subsubsection{跳棋趣题}
+\subsection{跳棋趣题}
 \index{跳棋趣题}
 
 如\cref{fig:leapfrog}，在一排7块石头上有6只青蛙。一块石头只够一只青蛙停在上面。青蛙可以跳到它前方的石头上，或越过一只青蛙跳到更前方的石头上。青蛙只能前进或停止，不能后退，如\cref{fig:pegrules}。这些青蛙如何移动、跳跃，使得左右3只位置互换？标记左侧青蛙为-1，右侧为1，没有青蛙的石头为0，我们要找到从$s = [-1, -1, -1, 0, 1, 1, 1]$转换到$e = [1, 1, 1, 0, -1, -1, -1]$的解。
@@ -1681,7 +1806,7 @@ solve n = dfs [[start]] [] where
 }
 \end{Answer}
 
-\subsubsection{狼、羊、白菜过河问题}
+\subsection{狼、羊、白菜过河问题}
 \index{狼、羊、白菜趣题}
 
 这是一道传统趣题。农夫带着一只狼、一只羊、一筐白菜过河。有一条小船，只有农夫会划船。小船只能装下农夫和另外一样东西。农夫每次只能在狼、羊、白菜中任选一样和他一起过河。但是如果农夫不在，狼会吃掉羊，而羊会吃掉白菜。如何用最快的方法让所有东西都渡过河？
@@ -1790,7 +1915,7 @@ A, B \neq 3 \text{或} 6, (A, B) \notin c
  & & 狼、羊、白菜、农夫
 \etab
 
-\subsubsection{倒水问题}
+\subsection{倒水问题}
 \index{倒水问题}
 
 有两个水瓶，一个9升、一个4升。如何才能从河中取出6升水？这个题目可以追溯到古希腊。有一个故事说法国数学家泊松在孩童时代就解决了这个问题。在好莱坞电影《虎胆龙威3》中也出现了这个问题。数学家波利亚在《如何解题》中用倒推法给出了一个解\cite{how-to-solve-it}。最终状态大瓶子中盛有6升水。倒数第二步时，从9升的瓶子中倒出3升水。为了达成这一点，小瓶子中需要盛有1升水。如\cref{fig:jugs-r1}所示。
@@ -2039,7 +2164,7 @@ pour a x b y = steps x y [(0, 0)]
 }
 \end{Answer}
 
-\subsubsection{华容道}
+\subsection{华容道}
 \index{华容道}
 
 传统玩具华容道是滑块类游戏，如\cref{fig:klotski-cn}。国外称Klotski。滑块大小、布局会有不同。华容道有10个滑块，上面标有数字或者图案。最小的滑块大小为一个单位的正方形，最大的一块为$2 \times 2$单位。在棋盘下方的中间，有一个宽度为2个单位长的缺口。最大的一块代表曹操，其他的为刘备手下的五虎上将和士兵。游戏的目标是要通过滑动，将曹操移动到棋盘最下方逃走。\cref{fig:klotski-jp}是日本游戏“箱子中的女儿”，最大的一块代表女儿，剩余滑块代表其他家庭成员。
@@ -2331,12 +2456,12 @@ moves (s:visited) = filter (`notElem` visited) [fwd s, bk s, cut s]
 \end{Answer}
 
 
-\subsection{贪心算法}
+\section{贪心算法}
 \index{贪心算法}
 
 人们需要“最好”的解来节省时间、空间、成本、能量。使用有限的资源搜索最优解并不容易。有很多问题不存在多项式时间的解法。仅对一些特定问题存在简单方法找到最优解。
 
-\subsubsection{哈夫曼编码} \index{哈夫曼编码}
+\subsection{哈夫曼编码} \index{哈夫曼编码}
 哈夫曼编码是一种用最小长度对信息编码的方法。早期的ASCII码使用7位二进制数对字母、数字、符号编码，可以表达$2^7 = 128$个字符。只用0、1，我们至少需要$\log_2 n$位分辨$n$个不同字符。下面是大写英文字母的码表，将字母A到Z映射为0到25。每个编码5位。零被扩充到5位00000而非0。这样的编码方式称为定长编码。
 
 \btab{l|l||l|l}
@@ -2529,7 +2654,7 @@ Map<T, [T]> codeTab(Node<T> t, [T] bits = [], Map<T, [T]> codes = {}) {
 }
 \end{Answer}
 
-\subsubsection{换零钱问题}
+\subsection{换零钱问题}
 \index{换零钱问题}
 
 如果用现金购物，如何用最少的硬皮找零钱？假设有5种面额的硬币：1分、5分、2.5角、5角、1元。1角合10分，1元合10角，记为：$C = \{1, 5, 25, 50, 100\}$。需要找零$x$分。使用贪心策略，每次总挑选最大面值硬币：
@@ -2625,7 +2750,7 @@ lookup\ ((w, l, r), cs)\ b & = & \text{if}\ b = 0\ \text{then}\ (l, cs)\ \text{e
 }
 \end{Answer}
 
-\subsection{动态规划}
+\section{动态规划}
 \index{动态规划}
 
 考虑在任何币值系统下寻找换零钱的最优解（使用最少的硬币）。假设已找到兑换零钱$x$的最优解：硬币列表$C_m$。将$C_m$中的硬币分成两组：$C_1$、$C_2$。分别等价于$x_1$、$x_2$。即$C_m = C_1 \doubleplus C_2$、$x = x_1 + x_2$。则$C_1$是兑换$x_1$的最优解，且$C_2$是兑换$x_2$的最优解。
@@ -2752,7 +2877,7 @@ change\ x\ T & = & c : change\ (x - c)\ T, \text{其中}: c = \textit{snd}\ T[x]
 \item 重叠子问题。子问题的解可被反复使用以寻找整体上的解。
 \end{enumerate}
 
-\subsubsection{最长公共子序列}
+\subsection{最长公共子序列}
 \index{LCS} \index{最长公共子序列}
 
 和子串不同，子序列无需连续。例如，Mississippi和Missunderstanding的最长公共子串为Miss，而最长公共子序列为Misssi，如\cref{fig:lcs}所示。如果这是两段代码，旋转90度就是代码对比（diff）的结果。搜索最长公共子序列是版本控制工具的常见功能。两个字符串$xs$、$ys$的最长公共子序列定义如下：
@@ -2865,7 +2990,7 @@ lcs xs ys = construct $ foldl f (singleton $ fromList $ replicate (n+1) 0)
 }
 \end{Answer}
 
-\subsubsection{子集和问题}
+\subsection{子集和问题}
 \index{子集和问题}
 
 给定整数集合$X$，如何找到所有子集$S \subseteq X$，使得$S$中整数相加之和为$s$，即：$\sum S = \sum\limits_{i \in S} i = s$？例如$X$ = \{11, 64, -82, -68, 86, 55, -88, -21, 51\}, $s = 0$有三个解：$S = \varnothing$、\{64, -82, 55, -88, 51\}、\{64, -82, -68, 86\}。如果穷举，总共检查$2^n$个子集之和，其中$n = |X|$。复杂度为$O(n 2^n)$。
@@ -3080,128 +3205,6 @@ Int lev([K] s, [K] t) {
 \end{Answer}
 
 \section{附录：例子程序}
-
-查找前$k$小元素：
-
-\begin{Bourbaki}
-Optional<K> top(Int k, [K] xs, Int l, Int u) {
-    if l < u {
-        swap(xs, l, rand(l, u))
-        var p = partition(xs, l, u)
-        if p - l + 1 == k
-            return Optional.of(xs[p])
-        return if k < p - l + 1 then top(k, xs, l, p)
-               else top(k- p + l - 1, xs, p + 1, u)
-    }
-    return Optional.Nothing
-}
-
-Int partition([K] xs, Int l, Int u) {
-    var p = l
-    for var r = l + 1 to u {
-        if not xs[p] < xs[r] {
-            l = l + 1
-            swap(xs, l, r)
-        }
-    }
-    swap(xs, p, l)
-    return l
-}
-\end{Bourbaki}
-
-马鞍搜索：
-
-\begin{Haskell}
-solve f z = search 0 m where
-  search p q | p > n || q < 0 = []
-             | z' < z = search (p + 1) q
-             | z' > z = search p (q - 1)
-             | otherwise = (p, q) : search (p + 1) (q - 1)
-    where z' = f p q
-  m = bsearch (f 0) z (0, z)
-  n = bsearch (\x->f x 0) z (0, z)
-
-bsearch f y (l, u) | u <= l = l
-                   | f m <= y = if f (m + 1) <= y then bsearch f y (m + 1, u) else m
-                   | otherwise = bsearch f y (l, m-1)
-  where m = (l + u) `div` 2
-\end{Haskell}
-
-众数查找：
-
-\begin{Bourbaki}
-Optional<T> majority([T] xs) {
-    var (m, c) = (Optional<T>.Nothing, 0)
-    for var x in xs {
-        if c == 0 then (m, c) = (Optional.of(x), 0)
-        if x == m then c++ else c--
-    }
-    c = 0
-    for var x in xs {
-        if x == m then c++
-    }
-    return if c > length(xs)/2 then m else Optional<T>.Nothing
-}
-\end{Bourbaki}
-
-用叠加实现的众数查找：
-
-\begin{Haskell}
-majority xs = verify $ foldr maj (Nothing, 0) xs where
-  maj x (Nothing, 0) = (Just x, 1)
-  maj x (Just y, v) | x == y = (Just y, v + 1)
-                    | v == 0 = (Just x, 1)
-                    | otherwise = (Just y, v - 1)
-  verify (Nothing, _) = Nothing
-  verify (Just m, _)  = if 2 * (length $ filter (==m) xs) > length xs
-                        then Just m else Nothing
-\end{Haskell} %$
-
-最大子序列和：
-
-\begin{Haskell}
-maxSum :: (Ord a, Num a) => [a] -> a
-maxSum = fst . foldr f (0, 0) where
-  f x (m, mSofar) = (m', mSofar') where
-    mSofar' = max 0 (mSofar + x)
-    m' = max mSofar' m
-\end{Haskell}
-
-KMP字符串匹配算法：
-
-\begin{Bourbaki}
-[Int] match([T] w, [T]p) {
-    n = length(w), m = length(p)
-    [Int] fallback = prefixes(p)
-    [Int] r = []
-    Int k = 0
-    for i = 0 to n {
-        while k > 0 and p[k] != w[i] {
-            k = fallback[k]
-        }
-        if p[k] == w[i] then k = k + 1
-        if k == m {
-            add(r, i + 1 - m)
-            k = fallback[k - 1]
-        }
-    }
-    return r
-}
-
-[Int] prefixes([T] p) {
-    m = length(p)
-    [Int] t = [0] * m  //fallback table
-    Int k = 0
-    for i = 2 to m {
-        while k > 0 and p[i-1] != p[k] {
-            k = t[k-1] #fallback
-        }
-        if p[i-1] == p[k] then k = k + 1
-        t[i] = k
-    }
-    return t
-}
-\end{Bourbaki}
 
 深度优先走迷宫：
 
