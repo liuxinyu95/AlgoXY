@@ -3,7 +3,7 @@ Elementary Functional Algorithms
 
 Edition: $\displaystyle e = \sum \limits _{n=0}^{\infty }{\frac {1}{n!}} = 1 + {\frac {1}{1}}+{\frac {1}{1\cdot 2}}+{\frac {1}{1\cdot 2\cdot 3}}+\cdots = 2.718283$
 
-2024/01
+2024/02
 
 This book presents elementary functional algorithms and data structures with 120 exercises and answers. I wrote the first edition from 2009 to 2017, then rewrote from 2020 to 2023. The **second edition** in PDF can be **downloaded** ([EN](https://github.com/liuxinyu95/AlgoXY/files/14003500/algoxy-en.pdf), [中文](https://github.com/liuxinyu95/AlgoXY/files/14003498/algoxy-zh-cn.pdf)). The first edition in Chinese ([中文](https://book.douban.com/subject/26931430/)) was published in 2017.
 
@@ -33,20 +33,11 @@ Contents
 Install
 --------
 
-You need TeXLive to build the book in PDF format. We use LuaLaTeX, an extended version of TeX.
+You may use [gitpod](https://gitpod.io/new#https://github.com/liuxinyu95/algoxy) to build the PDF book from cloud desktop. For local build, you need TeXLive. We use LuaLaTeX, an extended version of TeX.
 
 ### Install TeXLive
 
-In Debian/Ubuntu like Linux environment, do **NOT** install the TeXLive through apt-get. Go to TeXLive [official site](https://tug.org/texlive/) to download the setup script.
-
-```bash
-$ wget http://mirror.ctan.org/systems/texlive/tlnet/install-tl.zip
-$ unzip install-tl.zip
-$ cd install-tl
-$ sudo ./install-tl -gui text -repository http://mirror.ctan.org/systems/texlive/tlnet
-```
-
-In Windows, TeXLive provides a [gui based installer](https://tug.org/texlive/), in Mac OS X, there's a [MacTeX](https://www.tug.org/mactex/).
+In Debian/Ubuntu like Linux environment, do **NOT** install the TeXLive through apt-get. Go to TeXLive [official site](https://tug.org/texlive/) to download the setup script. In Windows, TeXLive provides a [gui based installer](https://tug.org/texlive/windows.html), in Mac OS X, there's a [MacTeX](https://www.tug.org/mactex/).
 
 ### Others
 
