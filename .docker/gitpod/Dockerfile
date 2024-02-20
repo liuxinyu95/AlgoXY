@@ -1,5 +1,6 @@
 # This is the Dockerfile for `algoxy:gitpod`.
 
+# Debian based image from https://gitlab.com/islandoftex/images/texlive
 FROM texlive/texlive:latest
 
 USER root

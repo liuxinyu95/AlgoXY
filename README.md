@@ -33,11 +33,11 @@ Contents
 Install
 --------
 
-You may use [gitpod](https://gitpod.io/new#https://github.com/liuxinyu95/algoxy) to build the PDF book from cloud desktop. For local build, you need TeXLive. We use LuaLaTeX, an extended version of TeX.
+You may use [gitpod](https://gitpod.io/#https://github.com/liuxinyu95/algoxy) to build the PDF book from cloud desktop. (It takes about 15 ~ 20 min to build the workspace at the first time, while [later access](https://gitpod.io/workspaces) is quick.) For local build, you need TeXLive. We use LuaLaTeX, an extended version of TeX.
 
 ### Install TeXLive
 
-In Debian/Ubuntu like Linux environment, do **NOT** install the TeXLive through apt-get. Go to TeXLive [official site](https://tug.org/texlive/) to download the setup script. In Windows, TeXLive provides a [gui based installer](https://tug.org/texlive/windows.html), in Mac OS X, there's a [MacTeX](https://www.tug.org/mactex/).
+In Linux/Unix like environment, do **NOT** install the TeXLive through package manager (e.g. apt-get or apk). Go to TeXLive [official site](https://tug.org/texlive/) to download the setup script. In Windows, TeXLive provides a [gui based installer](https://tug.org/texlive/windows.html), in Mac OS X, there's a [MacTeX](https://www.tug.org/mactex/).
 
 ### Others
 
