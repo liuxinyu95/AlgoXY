@@ -1,19 +1,19 @@
 # This is the Dockerfile for `algoxy:gitpod`.
 
-FROM ghcr.io/xu-cheng/texlive-full:latest
+FROM texlive/texlive:latest
 
 USER root
 
-# Add additional pkgs to https://github.com/xu-cheng/latex-docker/blob/master/setup.sh
+RUN apt-get update && \
+    apt-get install -y \
+        fonts-noto-cjk fonts-freefont-ttf \
+        sudo wget bash-completion && \
+    apt-get clean && \
+    rm -rf /var/cache/apt/* && rm -rf /var/lib/apt/lists/* && rm -rf /tmp/*
 
-RUN apk add --no-cache \
-       font-noto-cjk ttf-freefont \
-       bash-completion sudo \
-    rm -rf /tmp/*
-
-# Add gitpod user
-RUN echo '%gitpod ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/gitpod \
-    && addgroup -g 33333 gitpod && adduser -u 33333 -G gitpod -h /home/gitpod -s /bin/bash -D gitpod
+RUN useradd -l -u 33333 -G sudo -md /home/gitpod -s /bin/bash -p gitpod gitpod \
+    # passwordless sudo for users in the 'sudo' group
+    && sed -i.bkp -e 's/%sudo\s\+ALL=(ALL\(:ALL\)\?)\s\+ALL/%sudo ALL=NOPASSWD:ALL/g' /etc/sudoers
 
 USER gitpod
 WORKDIR /home/gitpod
