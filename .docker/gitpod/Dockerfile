@@ -1,29 +1,20 @@
 # This is the Dockerfile for `algoxy:gitpod`.
 
-# gitpod doesn't support multiple FROM statements, (or rather, you can't copy from one to another)
-# so we just install everything in one go
-FROM ubuntu:jammy
+FROM ghcr.io/xu-cheng/texlive-full:latest
 
 USER root
 
-RUN apt-get update && \
-    apt-get install -y \
-        make perl \
-        fonts-noto-cjk fonts-freefont-ttf \
-        sudo git curl wget bash-completion && \
-    apt-get clean && \
-    rm -rf /var/cache/apt/* && rm -rf /var/lib/apt/lists/* && rm -rf /tmp/*
+# Add additional pkgs to https://github.com/xu-cheng/latex-docker/blob/master/setup.sh
 
-# install texlive, reference from: https://www.tug.org/texlive/quickinstall.html
-
-RUN wget https://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
-RUN zcat < install-tl-unx.tar.gz | tar xf - && \
-    cd install-tl-* && \
-    perl ./install-tl --no-interaction # as root or with writable destination
+RUN apk add \
+       font-noto-cjk ttf-freefont \
+       bash-completion sudo \
+    rm -rf /tmp/*
 
 RUN useradd -l -u 33333 -G sudo -md /home/gitpod -s /bin/bash -p gitpod gitpod \
     # passwordless sudo for users in the 'sudo' group
     && sed -i.bkp -e 's/%sudo\s\+ALL=(ALL\(:ALL\)\?)\s\+ALL/%sudo ALL=NOPASSWD:ALL/g' /etc/sudoers
+
 USER gitpod
 WORKDIR /home/gitpod
 
@@ -32,10 +23,10 @@ SHELL ["/bin/bash", "-c"]
 # gitpod bash prompt
 RUN { echo && echo "PS1='\[\033[01;32m\]\u\[\033[00m\] \[\033[01;34m\]\w\[\033[00m\]\$(__git_ps1 \" (%s)\") $ '" ; } >> .bashrc
 
-# prepend /usr/local/texlive/YYYY/bin/PLATFORM to user's PATH,
+# texlive path should be /usr/local/texlive/YYYY/bin/PLATFORM to user's PATH,
 # e.g., /usr/local/texlive/2023/bin/x86_64-linux
 
-ENV PATH="/home/gitpod/.local/bin:/usr/local/texlive/2023/bin/x86_64-linux:${PATH}"
+ENV PATH="/home/gitpod/.local/bin:${PATH}"
 
 # fix the infoview when the container is used on gitpod:
 ENV VSCODE_API_VERSION="1.50.0"
