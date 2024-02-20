@@ -10,7 +10,7 @@ RUN apt-get update && \
     apt-get install -y \
         make perl \
         fonts-noto-cjk fonts-freefont-ttf \
-        sudo git curl bash-completion && \
+        sudo git curl wget bash-completion && \
     apt-get clean && \
     rm -rf /var/cache/apt/* && rm -rf /var/lib/apt/lists/* && rm -rf /tmp/*
 
