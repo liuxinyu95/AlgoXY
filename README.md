@@ -3,7 +3,7 @@ Elementary Functional Algorithms
 
 Edition: $\displaystyle e = \sum \limits _{n=0}^{\infty }{\frac {1}{n!}} = 1 + {\frac {1}{1}}+{\frac {1}{1\cdot 2}}+{\frac {1}{1\cdot 2\cdot 3}}+\cdots = 2.718283$
 
-2025/01
+2025/12
 
 This book presents elementary functional algorithms and data structures with 120 exercises and answers. I wrote the first edition from 2009 to 2017, then rewrote from 2020 to 2023. The **second edition** in PDF can be **downloaded** ([EN](https://github.com/user-attachments/files/18287890/algoxy-en.pdf), [中文](https://github.com/user-attachments/files/18287891/algoxy-zh-cn.pdf)). The first edition in Chinese ([中文](https://book.douban.com/subject/26931430/)) was published in 2017. For more about [mathematics in programming](https://link.springer.com/book/10.1007/978-981-97-2432-1).
 
@@ -49,7 +49,7 @@ Chris Okasaki and Richard Bird established the main content of purely functional
 Install
 --------
 
-You may use [gitpod](https://gitpod.io/#https://github.com/liuxinyu95/algoxy) to build the PDF book from cloud desktop. (It takes about 15 ~ 20 min to build the workspace at the first time, while [later access](https://gitpod.io/workspaces) is quick.) For local build, you need TeXLive. We use LuaLaTeX, an extended version of TeX.
+We use LuaLaTeX, an extended version of TeX, which is provided in TeXLive distribution.
 
 ### Install TeXLive
 
